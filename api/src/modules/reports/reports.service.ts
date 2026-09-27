@@ -70,6 +70,7 @@ import {
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, THE_LEADS_LABEL, displayName } from './party-labels';
 import { aMoveForTheReader } from './a-move-is-the-thing-to-do';
 import { withoutOtherPeoplesReads } from './own-reads-only';
+import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
@@ -1027,7 +1028,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
         checkIn: { select: { sessionNumber: true } },
       },
     });
-    const records = theRecordAsItIs.map(withTheDisputeAttached);
+    const records = theRecordAsItIs.map(withTheDisputeAttached)
+      /* A name in their words becomes that person's label here, once, so every read below - the
+         corpus, the facts about each person, the network read - gets the same text. See
+         a-name-in-their-words-is-the-label. The quotes the models write from it are put back into
+         the person's own words, name and all, before the report is stored: see
+         a-quote-is-what-they-said, which reads `theRecordAsItIs`, never this. */
+      .map((r) => ({ ...r, text: aNameInTheirWordsIsTheLabel(r.text, namesInThisCheckIn) }));
     /* THE LINES A QUOTE IN THIS REPORT MAY COME FROM: this same read, before anything is added to it,
        and the lead's own words at set-up. See a-quote-is-what-they-said. */
     const whatAQuoteMayBe = theLinesAQuoteMayComeFrom(
@@ -2230,6 +2237,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         participantId: p.id,
       })),
       leadName: (parties as any[]).filter((p) => p.partyType === PartyType.INITIATOR).map((p) => labelById.get(p.id) ?? null)[0] ?? null,
+      namesInThisCheckIn,
       differences: (Array.isArray((result as any).divergences) ? (result as any).divergences : []).map((d: any) => ({
         topic: String(d?.topic ?? ''),
         positions: (Array.isArray(d?.positions) ? d.positions : []).map((x: any) => ({
@@ -3920,6 +3928,8 @@ happened, and what is in the way.`;
     room?: {
       people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string }[];
       leadName: string | null;
+      /* Each person's label and name, so their own words reach the judgement with labels in them too. */
+      namesInThisCheckIn?: ALabelAndAName[];
       differences: { topic: string; positions: { who: string; view: string }[] }[];
     },
   ): Promise<{ judgement: any; table: string } | null> {
@@ -4033,6 +4043,7 @@ happened, and what is in the way.`;
        *
        * Counted off the records rather than written: see what-more-than-one-person-named.ts.
        */
+      const theirWords = (t: string) => aNameInTheirWordsIsTheLabel(t, room!.namesInThisCheckIn ?? []);
       const perPersonTexts = await this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participant: { groundId } },
         select: { text: true, participantId: true },
@@ -4040,7 +4051,10 @@ happened, and what is in the way.`;
       const shared = whatMoreThanOnePersonNamed(
         room!.people.map((p) => ({
           who: p.who,
-          texts: (perPersonTexts as any[]).filter((r) => r.participantId === p.participantId).map((r) => String(r.text ?? '')),
+          /* Their words with every name in this check-in already a label, the same as the corpus. This
+             read comes straight off the table, so without it "Nadia" reached the judgement as a
+             stranger here too - and was even counted as something two people named. */
+          texts: (perPersonTexts as any[]).filter((r) => r.participantId === p.participantId).map((r) => theirWords(String(r.text ?? ''))),
         })),
         room!.people.map((p) => p.who),
       );
@@ -4069,7 +4083,7 @@ happened, and what is in the way.`;
           patterns: (seen as any[])
             .filter((x) => x.participantId === p.participantId && !ALIGNMENT_FEED_ONLY_CODES.has(x.code) && (x.observationText ?? '').trim())
             .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
-          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => String(c.text)),
+          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => theirWords(String(c.text))),
         })),
         room!.differences,
         sessions,
