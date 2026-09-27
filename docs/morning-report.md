@@ -19,6 +19,14 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 **What I finished tonight** (the list grows as I go):
 - Item 2, the evidence for verdicts, requests through chat and being away, was done last night. It is in the section "The three capabilities I rated missing" below, and in `docs/capability-check.md`.
 - Item 3, `docs/weekly-plan.md`, was done last night.
+- **Item 5, the lead confirms the exact question (decision 34), is built on the engine side** (`5f30dde3`, `be5e9d78`, `d6d00a44`, `f1eb3fb2`).
+  - **What the lead sees:** when the lead sets a question for a person, Groundwork writes it once, exactly as it will ask it. The lead reads, for example, `Groundwork will ask Ngozi: "Have you sent the Client B proposal?"`, and confirms it, changes its words or leaves it out, one question at a time.
+  - **Only a confirmed question reaches the person's session, and it is asked word for word.** If the model rewords it, the product puts the confirmed words back before the turn is saved.
+  - **What the question is written from:** only the person's first name and the lead's question, never the lead's private notes or their description of the person. Code checks the draft, and falls back to the lead's own words if the draft fails.
+  - **Old questions:** questions set before today are not asked until the lead confirms them. They are shown to the lead as waiting.
+  - **The new database column** is a migration applied only to the local test database.
+  - **Proven by 29 tests**, not by a scenario run: no scenario sets a question through the context chat.
+  - **For the screens workspace:** what it needs is written in `docs/answers-from-engine.md`, including the card with Confirm, Edit and Not now.
 - Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
 
 **What needs Hafsah:**
