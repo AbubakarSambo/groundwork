@@ -80,3 +80,19 @@ describe('the setup shows what will be saved (U.6 review)', () => {
     expect(document.body.textContent).not.toContain('every 2 weeks unless')
   })
 })
+
+describe('coming back to /start with a setup unfinished (U.6 review)', () => {
+  it('offers "Carry on with this one" or "Start a new one"', async () => {
+    localStorage.clear()
+    localStorage.setItem('gw_entry_session', JSON.stringify({
+      scenario: '', history: [], closed: false, onboardingStep: 1,
+      onboardingSelections: { mode: 'new', initial: 'x', classifiedScenario: 'PIP' },
+      onboardingHistory: [{ role: 'assistant', content: 'Opening.' }, { role: 'user', content: 'Someone is not delivering.' }, { role: 'assistant', content: 'Who is it?' }],
+    }))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/start?new=1']}><EntryChatPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByRole('button', { name: 'Carry on with this one' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Start a new one' })).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/scenario|Keep current session/i)
+  })
+})

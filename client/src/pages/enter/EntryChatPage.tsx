@@ -4294,7 +4294,8 @@ export function EntryChatPage() {
                 }}
                 style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                Keep current session
+                {/* U.6 review: plain words, where it said "Keep current session" / "Start new scenario". */}
+                Carry on with this one
               </button>
               <button
                 onClick={() => {
@@ -4334,7 +4335,7 @@ export function EntryChatPage() {
                 }}
                 style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                Start new scenario
+                Start a new one
               </button>
             </div>
           </div>
