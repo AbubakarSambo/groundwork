@@ -10,6 +10,23 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 This section is kept up to date as I go. If it stops partway, that is where I got to.
 
+### Run-10, today's last full run: the lead's words stay with the lead, checked in the database
+
+Run-10 ran on everything up to `3f323d61`. It includes all the routes by which the lead's description leaked, and the new wording for unnamed colleagues.
+
+- **The run is sound except for loans.** Its report was incomplete again (6 findings for 9 people). Every other captured report matches the database.
+- **The lead's words no longer reach the person, checked in the database.** For every invited person whose record holds a description the lead typed, I looked for any run of five words from that description in two places: Groundwork's turns to that person, and what that person is served (their report and their board).
+  - **Run-9, before the fix:** 27 of 27 people had such runs of words.
+  - **Run-10:** 2 of 27. Both are the person's own words, not the lead's. Femi said "My goal is 12 approved facilities this quarter" himself. Tobi said he was to own "the relationships with our five largest clients", and the lead said the same in her own check-in. So there are no real leaks left.
+- **Invited people are asked who they are.** In run-9, no invited person was asked the question. In run-10, 11 were, all in the situations about starting something: advisor, cofounder, handover, newmanager, project, renewal and seniorhire. The others are in situations where that question is not used, and most of them are asked about their part anyway, for example "What did you understand your role in this to be?".
+- **Every quote is from the record.** 427 of 427 quotes are word for word what people typed.
+- **The checker says nothing is worse than the baseline.** "Blocker checked" is 54 now, well above its baseline of 37. It had been sliding.
+- **Two numbers rose since run-9, and neither is past the baseline.** Jargon in Groundwork's turns rose from 13 to 38, and in reports and boards from 84 to 138. Almost all of it is the word "pipeline" in the sales scenario, 108 times, and the simulated people used jargon twice as often this run (31 times against 15). It is the same pattern as run-6, and I see no link to today's changes.
+- **The judgements: 15 clearly right of the 17 that count, and 15 of all 24.**
+  - **Couldn't be tested (6):** advisor, drift, handover, openread, shock and workplan. Each time the simulated people left out a fact the answer depends on. That is more than in any other run, and I would not read this run's number as a step back.
+  - **Not right (2):** sales and realign. In sales it is Kwame's miscount again. In realign, the simulated Ruth called Omar the CEO, although Omar is the team lead, and the gap followed her and said two of the priorities "came from you". Its actions do name the CEO's dinner with Marco. I have graded it not right rather than untestable, because Marco's account of the CEO was clear.
+- **A small defect for the wording check.** "Success for Dr means…". The code took the title in "Dr Amina Bello" as her first name.
+
 ### Hafsah's decisions, merged into one file for her to put in place
 
 `docs/decisions.md` held only 16 of Hafsah's decisions. It is a protected file that I cannot change, so the full version is in **`docs/decisions-merged.md`** (`ef147ceb`).
@@ -121,58 +138,65 @@ These are the eight names the screens workspace asked about (their request 5), p
 If you agree, the table's names change in the engine, and the screens workspace changes its list in the same step so their parity test stays green.
 
 
-### How often each scenario was clearly right, across runs 6, 7, 8 and 9
+### How often each scenario was clearly right, across runs 6 to 10
 
-Graded against each scenario's right answer. Run-6 came before last night's changes, run-7 after the first seven, run-8 after all of them, and run-9 after today's.
+Graded against each scenario's right answer. Run-6 came before any of the changes of 26 September. Run-7 came after the first seven. Run-8 came after all of that night's. Run-9 came after the names and quotes work of 27 September. Run-10 came after the routes the lead's description leaked by were closed.
 
 **Two counts.** A run is marked "couldn't be tested" for a scenario when the simulated people never said the fact that scenario depends on. It is marked "report incomplete" when the runner itself says the report is not usable. The first count leaves both out. The second counts all 24, as before.
 
-| Scenario | Run-6 | Run-7 | Run-8 | Run-9 | Right, of the runs that count | Right, of all four |
-| --- | --- | --- | --- | --- | --- | --- |
-| cofounder | right | right | right | right | 4 of 4 | 4 of 4 |
-| contractreview | right | right | right | right | 4 of 4 | 4 of 4 |
-| discovery | right | right | right | right | 4 of 4 | 4 of 4 |
-| implementation | right | right | right | right | 4 of 4 | 4 of 4 |
-| newmanager | right | right | right | right | 4 of 4 | 4 of 4 |
-| pip | right | right | right | right | 4 of 4 | 4 of 4 |
-| realign | right | right | right | right | 4 of 4 | 4 of 4 |
-| renewal | right | right | right | right | 4 of 4 | 4 of 4 |
-| seniorhire | right | right | right | right | 4 of 4 | 4 of 4 |
-| workplan | right | right | right | right | 4 of 4 | 4 of 4 |
-| board | couldn't be tested | right | right | right | 3 of 3 | 3 of 4 |
-| crisis | right | right | right | report incomplete | 3 of 3 | 3 of 4 |
-| advisor | right | couldn't be tested | couldn't be tested | couldn't be tested | 1 of 1 | 1 of 4 |
-| openread | couldn't be tested | couldn't be tested | right | couldn't be tested | 1 of 1 | 1 of 4 |
-| handover | - | right | right | right | 3 of 4 | 3 of 4 |
-| project | right | right | - | right | 3 of 4 | 3 of 4 |
-| updates | right | - | right | right | 3 of 4 | 3 of 4 |
-| pulse | right | - | - | right | 2 of 4 | 2 of 4 |
-| recognition | - | - | right | right | 2 of 4 | 2 of 4 |
-| snapshot | right | - | - | right | 2 of 4 | 2 of 4 |
-| drift | - | - | - | right | 1 of 4 | 1 of 4 |
-| sales | right | - | - | - | 1 of 4 | 1 of 4 |
-| loans | - | - | - | report incomplete | 0 of 3 | 0 of 4 |
-| shock | couldn't be tested | - | couldn't be tested | couldn't be tested | 0 of 1 | 0 of 4 |
-| **Total** | **17 of 21** | **14 of 22** | **16 of 22** | **18 of 19** | | |
+| Scenario | Run-6 | Run-7 | Run-8 | Run-9 | Run-10 | Right, of the runs that count | Right, of all five |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| cofounder | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| contractreview | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| discovery | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| implementation | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| newmanager | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| pip | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| renewal | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| seniorhire | right | right | right | right | right | 5 of 5 | 5 of 5 |
+| board | couldn't be tested | right | right | right | right | 4 of 4 | 4 of 5 |
+| crisis | right | right | right | report incomplete | right | 4 of 4 | 4 of 5 |
+| workplan | right | right | right | right | couldn't be tested | 4 of 4 | 4 of 5 |
+| advisor | right | couldn't be tested | couldn't be tested | couldn't be tested | couldn't be tested | 1 of 1 | 1 of 5 |
+| openread | couldn't be tested | couldn't be tested | right | couldn't be tested | couldn't be tested | 1 of 1 | 1 of 5 |
+| project | right | right | - | right | right | 4 of 5 | 4 of 5 |
+| realign | right | right | right | right | - | 4 of 5 | 4 of 5 |
+| updates | right | - | right | right | right | 4 of 5 | 4 of 5 |
+| handover | - | right | right | right | couldn't be tested | 3 of 4 | 3 of 5 |
+| pulse | right | - | - | right | right | 3 of 5 | 3 of 5 |
+| recognition | - | - | right | right | right | 3 of 5 | 3 of 5 |
+| snapshot | right | - | - | right | right | 3 of 5 | 3 of 5 |
+| drift | - | - | - | right | couldn't be tested | 1 of 4 | 1 of 5 |
+| sales | right | - | - | - | - | 1 of 5 | 1 of 5 |
+| loans | - | - | - | report incomplete | report incomplete | 0 of 3 | 0 of 5 |
+| shock | couldn't be tested | - | couldn't be tested | couldn't be tested | couldn't be tested | 0 of 1 | 0 of 5 |
+| **Total** | **17 of 21** | **14 of 22** | **16 of 22** | **18 of 19** | **15 of 17** | | |
 
-**On all 24, as before:** 17 on run-6, 14 on run-7, 16 on run-8 and **18 on run-9**.
+**On all 24, as before:** 17 on run-6, 14 on run-7, 16 on run-8, 18 on run-9 and 15 on run-10.
 
 **The runs left out, and why:**
 
 - **advisor, run-7, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
 - **advisor, run-8, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
 - **advisor, run-9, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **advisor, run-10, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
 - **board, run-6, couldn't be tested:** Wanjiru never gives a timeline for the licence, only that there is none yet.
 - **crisis, run-9, report incomplete:** 2 findings for 3 people.
+- **drift, run-10, couldn't be tested:** neither Nadia nor Zainab says who asked Zainab to move to sales support.
+- **handover, run-10, couldn't be tested:** Patience never mentions the year-end spreadsheet; the judgement finds the verbal supplier agreement, which she did mention.
 - **loans, run-9, report incomplete:** 8 findings for 9 people.
+- **loans, run-10, report incomplete:** 6 findings for 9 people.
 - **openread, run-6, couldn't be tested:** Kofi says it is "not a freeze problem", so the two engineers never agree.
 - **openread, run-7, couldn't be tested:** Kofi says it is "a scheduling problem, not a problem with the actual freezes".
 - **openread, run-9, couldn't be tested:** Kofi says "I don't think it's about a freeze or anything like that".
+- **openread, run-10, couldn't be tested:** Kofi never mentions the freeze at all.
 - **shock, run-6, couldn't be tested:** nobody says first-hand that the quarterly reviews were missed.
 - **shock, run-8, couldn't be tested:** nobody says first-hand that the quarterly reviews were missed.
 - **shock, run-9, couldn't be tested:** nobody mentions the champion leaving; only the cancelled reviews and the tickets are said.
+- **shock, run-10, couldn't be tested:** nobody mentions the missed quarterly reviews; the champion leaving and the tickets are said, and the judgement's actions put those two in order.
+- **workplan, run-10, couldn't be tested:** Chidi never mentions Studio Lune, so there is no double booking in what was said.
 
-**A correction to last night's report.** I wrote that on run-7 Daniel never said that Priti was the one he was waiting on. That was wrong. He said "Priti can grant that access." So updates on run-7 could be tested, and the judgement missed it.
+**A correction to an earlier report.** I wrote that on run-7 Daniel never said that Priti was the one he was waiting on. That was wrong. He said "Priti can grant that access." So updates on run-7 could be tested, and the judgement missed it.
 
 
 ## THE NIGHT IN SHORT, 27 September, about 03:30
