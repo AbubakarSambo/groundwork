@@ -1,7 +1,7 @@
 <!--
 This is docs/decisions.md with Hafsah's missing decisions added.
 docs/decisions.md is a protected file, so this is written alongside it for Hafsah to put in place.
-Decisions 1 to 16 are exactly as they are in docs/decisions.md, unchanged. Decisions 17 to 33 are added.
+Decisions 1 to 16 are exactly as they are in docs/decisions.md, unchanged. Decisions 17 to 36 are added.
 Her own list's items 1 to 16 are all already in 1 to 16 here (her 1 is here as 1 and 2; her 3 and 4 are here as 4).
 -->
 # Decisions already made
@@ -53,3 +53,6 @@ These are settled. Do not change them. If one seems to block the work, stop and 
 31. **The engine may know the dates of someone's approved leave.** Dates only, and never a reason.
 32. **A lead's private notes about a person never reach the model in that person's own session.** They are left out of what that session is given, not kept back by an instruction to the model.
 33. **Decided later, when that work starts:** whether the person who runs a check-in counts as a person's lead for approvals, and the thresholds for verdicts.
+34. **A question the lead wants asked of a person may reach that person's session.** Before it goes, the lead sees the exact question as Groundwork will ask it, and confirms it, as decision 12 says.
+35. **Bank and card numbers a person types into a check-in message or the setup chat are hidden too.** The same code as for documents hides them, before anything is stored and before any model call. Where a quote shows the message, it says a number was hidden. This is protection, not changing someone's words.
+36. **Members who use Ask Groundwork may appear on their organisation's list of people.** A guest from another organisation is never added to the list. If a guest uses Ask Groundwork, it works only within their own check-in.
