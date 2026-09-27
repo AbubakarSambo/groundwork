@@ -249,3 +249,92 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     expect(conversationApi.complete).not.toHaveBeenCalled()
   })
 })
+
+describe('the Done page, after “That’s right, finish”', () => {
+  const DIMS = { delivery: 'specific', evidence: 'vague', enablement: 'specific', coverage: 'directional', commitment: 'specific' }
+  const tomorrowAt4 = () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(16, 0, 0, 0); return d.toISOString() }
+
+  async function finish(opts: { ground?: any; carry?: string | null; whatChanged?: unknown } = {}) {
+    const ground = opts.ground ?? { ...SALES, checkIns: [{ id: 'ci1', participantId: 'p-m', sessionNumber: 38, status: 'COMPLETED', specificityDimensions: DIMS }], roundCompletions: [] }
+    ;(groundsApi.get as any).mockResolvedValue(ground)
+    ;(groundsApi.getMyCheckinStatus as any).mockResolvedValue({
+      participantId: 'p-m', partyType: 'PARTICIPANT', latestStatus: null, latestSessionNumber: null,
+      checkIns: [
+        { id: 'ci1', sessionNumber: 38, status: 'COMPLETED', completedAt: new Date().toISOString() },
+        { id: 'ci2', sessionNumber: 39, status: 'NOT_STARTED', completedAt: null, availableFrom: tomorrowAt4() },
+      ],
+    })
+    ;(conversationApi.artifact as any).mockResolvedValue({ artifact: opts.carry ? { whatToCarry: opts.carry } : null })
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: 'Did anything else change with your sales today?', suggestedAnswers: ['I’ll visit Westgate Deli on Friday'] }],
+    })
+    ;(conversationApi.send as any).mockResolvedValue({ reply: 'That’s all for today. Is anything wrong?', sessionComplete: true })
+    ;(conversationApi.complete as any).mockResolvedValue({ status: 'COMPLETED', whatChanged: opts.whatChanged })
+    renderChat()
+    fireEvent.click(await screen.findByRole('button', { name: 'I’ll visit Westgate Deli on Friday' }, { timeout: 6000 }))
+    fireEvent.click(await screen.findByRole('button', { name: 'That’s right, finish' }, { timeout: 6000 }))
+    await screen.findByRole('heading', { name: 'Done. Thanks, Miriam.' }, { timeout: 6000 })
+  }
+
+  it('Miriam reads that it is saved, when the next one opens, and her two reports', async () => {
+    await finish()
+    expect(await screen.findByText('Your check-in is saved. Your next check-in opens tomorrow at 4pm.', {}, { timeout: 5000 })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Two reports come from this' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Your own report' })).toBeTruthy()
+    expect(screen.getByText('Only you')).toBeTruthy()
+    expect(screen.getByText('What you said today and what it shows. Ready now.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Read yours' }).getAttribute('href')).toBe('/checkin/ci1/report')
+    expect(screen.getByRole('heading', { name: 'The team’s report' })).toBeTruthy()
+    expect(screen.getByText('Not shared yet')).toBeTruthy()
+    expect(screen.getByText('Everyone’s check-ins together. You’ll get it once everyone has answered.')).toBeTruthy()
+    // The conversation is gone from the screen; the Done page stands on its own.
+    expect(screen.queryByPlaceholderText('Type your answer')).toBeNull()
+  })
+
+  it('she reads why answering matters and how checkable her own check-in was, which only she sees', async () => {
+    await finish()
+    expect(await screen.findByRole('heading', { name: 'That’s saved' }, { timeout: 5000 })).toBeTruthy()
+    const saved = screen.getByRole('heading', { name: 'That’s saved' }).parentElement!
+    expect(saved.textContent).toBe('That’s savedWhy answering matters: Wairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
+    const checkable = screen.getByRole('region', { name: 'How checkable today’s check-in was' })
+    expect(within(checkable).getByText('4 of 5')).toBeTruthy()
+    expect(within(checkable).getByText('One date, number or document')).toBeTruthy()
+    expect(within(checkable).getByText('This is about the check-in. Only you see it.')).toBeTruthy()
+  })
+
+  it('one thing for next time is the sentence the session wrote, once it arrives', async () => {
+    await finish({ carry: 'Get Green Mart’s January date in writing.' })
+    expect(await screen.findByText('One thing for next time: Get Green Mart’s January date in writing.', {}, { timeout: 6000 })).toBeTruthy()
+  })
+
+  it('once everyone has answered, the team’s report is there to read', async () => {
+    await finish({ ground: { ...SALES, checkIns: [], roundCompletions: [{ sessionNumber: 38, completedAt: new Date().toISOString() }] } })
+    const read = await screen.findByRole('link', { name: 'Read it' }, { timeout: 5000 })
+    expect(read.getAttribute('href')).toBe('/grounds/g1/session/38')
+    expect(screen.queryByText('Not shared yet')).toBeNull()
+  })
+
+  it('with nobody else answering, there is one report and no team report', async () => {
+    await finish({ ground: { ...SALES, participants: [SALES.participants[1]], checkIns: [], roundCompletions: [] } })
+    expect(await screen.findByRole('heading', { name: 'Your own report' }, { timeout: 5000 })).toBeTruthy()
+    expect(screen.queryByText('Two reports come from this')).toBeNull()
+    expect(screen.queryByText('The team’s report')).toBeNull()
+    expect(screen.queryByText(/Why answering matters/)).toBeNull()
+  })
+
+  it('without the engine’s stages or the read of how checkable it was, those parts are not drawn', async () => {
+    await finish({ ground: { ...SALES, checkIns: [], roundCompletions: [] } })
+    await screen.findByRole('heading', { name: 'Your own report' }, { timeout: 5000 })
+    expect(screen.queryByText(/How checkable/)).toBeNull()
+    expect(screen.queryByText(/What changed/)).toBeNull()
+  })
+
+  it('shows what changed on a deal, with its stages, when the engine sends it', async () => {
+    await finish({ whatChanged: { title: 'What changed on your deals', items: [{ name: 'Green Mart', says: 'Quote photo added', stages: [{ name: 'Contacted', mark: 'proven' }, { name: 'Need', mark: 'proven' }, { name: 'Pitched', mark: 'proven' }, { name: 'Qualified', mark: 'not_reached' }, { name: 'Quoted', mark: 'not_reached' }] }] } })
+    expect(await screen.findByRole('heading', { name: 'What changed on your deals' }, { timeout: 5000 })).toBeTruthy()
+    expect(screen.getByText('Green Mart')).toBeTruthy()
+    expect(screen.getByText('Quote photo added')).toBeTruthy()
+    expect(screen.getByText('Qualified')).toBeTruthy()
+  })
+})

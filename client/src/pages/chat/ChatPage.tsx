@@ -16,6 +16,7 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
+import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 
@@ -330,6 +331,13 @@ export function ChatPage() {
   /* The end card's parts that only the engine can write, sent with the reply that closes the
      conversation (request 7). Null until it does; the card shows what is there. */
   const [endCard, setEndCard] = useState<TheEndCardData | null>(null)
+  /*
+   * THE DONE PAGE (done.txt) replaces the conversation the moment somebody finishes here. A check-in
+   * finished earlier and opened again still shows its conversation and its report, as before.
+   */
+  const [justFinished, setJustFinished] = useState(false)
+  /* What moved through stages, sent with the completion when the engine has it (request 7). */
+  const [whatChanged, setWhatChanged] = useState<WhatChanged | null>(null)
   /* This person's own sessions, for when the next one opens. Only while the end is on screen. */
   const myStatus = useQuery({
     queryKey: ['my-checkin-status', groundId, 'end'],
@@ -349,6 +357,8 @@ export function ChatPage() {
      */
     onSuccess: (res: any) => {
       setCompleted(true)
+      setJustFinished(true)
+      if (res?.whatChanged) setWhatChanged(res.whatChanged as WhatChanged)
       if (res?.whatYouGave) setWhatYouGave(res.whatYouGave as WhatYouGave)
       if (bareFrame && groundId) navigate(`/grounds/${groundId}/board?done=1`, { replace: true })
     },
@@ -372,7 +382,7 @@ export function ChatPage() {
      */
     onError: (err: any) => {
       const message: string = err?.response?.data?.message ?? ''
-      if (/already complete/i.test(message)) { setCompleted(true); return }
+      if (/already complete/i.test(message)) { setCompleted(true); setJustFinished(true); return }
       /**
        * A REFUSAL THAT ASKS FOR MORE HAS TO LET THEM GIVE IT.
        *
@@ -787,6 +797,22 @@ export function ChatPage() {
    * file and still render where somebody is deciding whether to take part - the invitation, and
    * the admin's guide - which is where a promise belongs. Not in front of every session.
    */
+
+  if (justFinished && groundId && checkInId && !bareFrame) {
+    return (
+      <div style={{ minHeight: 'calc(100dvh - var(--gw-bottom-nav, 0px))', background: 'var(--gw-page)', overflowY: 'auto' }}>
+        <TheDonePage
+          firstName={user?.firstName}
+          checkInId={checkInId}
+          groundId={groundId}
+          sessionNumber={sessionNumber}
+          myUserId={user?.id}
+          isInitiator={isInitiator || !!(ground.data as any)?.viewerIsInitiator}
+          whatChanged={whatChanged}
+        />
+      </div>
+    )
+  }
 
   /* Fills the screen exactly, so the composer sits at the bottom of the phone and the transcript scrolls inside. It was minHeight, and the composer measured 1,518px down on an 812px screen. */
   return (

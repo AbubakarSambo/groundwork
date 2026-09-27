@@ -53,7 +53,7 @@ export function wasItThere(level: Level | undefined): boolean {
  * The past-tense forms are mine, because she only wrote the missing case; they are the same five
  * facts said as things that were there.
  */
-const THE_FIVE: { key: string; met: string; missing: string }[] = [
+export const THE_FIVE: { key: string; met: string; missing: string }[] = [
   {
     key: 'delivery',
     met: 'What you did, not just what was happening',
