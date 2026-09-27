@@ -727,12 +727,16 @@ export function GroundParticipantPage() {
                  * count `ground.participants` - the array a hidden check-in reduces to this reader's
                  * own row alone, so it read "1" for a real team of four the moment its report
                  * released (U.8 fifth review, same bug as `aTeamReport` on the Done page).
-                 * `aTeamReportComes` is a plain yes/no read off the raw participants, so falling back
-                 * to "2" rather than the true count still tells the truth about whether this is a
-                 * team at all, without this field learning its own exact size from a boolean.
+                 *
+                 * NOT A FABRICATED "2" EITHER (U.8 fifth review, second pass). That first fix
+                 * invented a total, which `WhatTheReportCanSayYet` printed as "X of 2 have
+                 * answered" - untrue the moment the real team had three or more people in it. A
+                 * genuinely solo check-in (`aTeamReportComes` false) still gets its true count, 1;
+                 * a team of unknown size gets `null`, which the component reads as "more than one,
+                 * exact number not known" and says something true instead of a guessed total.
                  */
                 parties: (ground as any)?.sessionProgress?.total
-                  ?? ((ground as any)?.aTeamReportComes ? 2 : 1),
+                  ?? ((ground as any)?.aTeamReportComes ? null : 1),
                 /* Empty where peers are hidden, and the component says "one person" instead. A page
                    being private to its reader does not make somebody else's name theirs to know. */
                 waitingOn: (ground as any)?.peersVisibleEffective === false
