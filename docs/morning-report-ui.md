@@ -28,6 +28,10 @@ how checkable their answers were went to the lead and admins (U.8). The board st
 rating into "nothing checkable" for the lead; since U.10 the server no longer serves it (request 8
 asks the engine to change the rule itself).
 
+**One privacy question found in the engine's code, not closed:** the engine's pattern detectors read
+everybody's questions to Ask Groundwork, which are meant to be private always. That is engine code, so
+I have asked the engine workspace (request 16(g)) and put it to you as item 25.2.
+
 **What needs you most, in order:**
 1. Item 14: let the reviewer sign in (my recommendation: allow reading the local test password).
 2. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
