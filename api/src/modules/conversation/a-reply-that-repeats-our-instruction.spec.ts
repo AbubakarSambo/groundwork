@@ -40,7 +40,7 @@ describe('a reply that repeats our own instruction to a person is never sent', (
   });
 
   it('is wired into the date retry, so a refused reply falls back to the product asking', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/const theInstruction = SAY_THE_DATE\(period, dateItHadToSay\);/);
     expect(src).toMatch(/!repeatsTheInstruction\(second\.text, theInstruction\)\s*\)\s*\{\s*screened = second;/);
   });

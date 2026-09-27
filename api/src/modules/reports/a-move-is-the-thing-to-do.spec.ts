@@ -46,7 +46,7 @@ describe('a move that tells the reader to do something is written as the thing t
   });
 
   it('runs where the judgement is stored, on every move', () => {
-    const src = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/move: aMoveForTheReader\(x\.move, THE_LEADS_LABEL\)/);
   });
 });

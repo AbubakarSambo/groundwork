@@ -59,7 +59,7 @@ describe('a close is never cut down to two words', () => {
   });
 
   it('is what the live turn uses', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/whatIsLeftToSend\(screened\.text, promiseNobodyMade, closingNow\)/);
   });
 });

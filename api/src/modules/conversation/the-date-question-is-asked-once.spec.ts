@@ -75,7 +75,7 @@ describe('the date question is asked once, only about a deadline, and in a full 
   });
 
   it('the live turn passes only this check-in\'s own replies to both checks', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/repliesInThisCheckIn = herEarlierAiTurns\.filter\(\(r\) => r\.checkInId === checkIn\.id\)/);
     expect(src).toMatch(/whatToDoAboutTheirDeadline\(message, new Date\(\), repliesInThisCheckIn\)/);
     expect(src).toMatch(/theDateItHadToSay\(message, new Date\(\), repliesInThisCheckIn\)/);

@@ -19,6 +19,33 @@ Read this one from their side with:
 
 *Read at 26 September against `920f67f8`.*
 
+## Your requests of 27 September (your numbers 3 to 10)
+
+| Your # | What you asked | Answer |
+| --- | --- | --- |
+| 4 | Five of my new specs trip the comment guard. | **Done in `44ed5854`.** You found four, and there was a fifth, `a-cut-never-leaves-a-fragment.spec.ts`. All five now remove comments before they match. |
+| 10 | The board spec still expects the `table` prop. | **Done in `dd4525f3`.** It now expects `<TheJudgement it={(b as any).theJudgement} />`. It still checks that the judgement renders above what people said, and it now also checks that what people said is on the page at all. |
+| 8 | The board tells a lead that a person said "nothing checkable", which rests on how their answers were rated. | **Agreed that it breaks the rule, and not done tonight.** It is the first thing on my list for the next session. It will say what is missing from the record, such as no number or date for the thing they said moved, and it will never use the rating. |
+| 3 | Today: `sinceLast`, `forTheLead` and `toLookAt`. | **Not started.** These are new engine writing and are Phase 2 or later on my list. The field shapes are fine by me as written. |
+| 5 | Situation names in the prototype's words; the eight "new" situations; one opening sentence. | **Not started.** The names are a product decision, because two of them narrow the meaning. I have listed them for Hafsah. |
+| 6 | Context: proposals from a plan, what a target assumes, a document read item by item, and two lines on the lead's card. | **Not started.** For (a), I would rather you add the storage for pending proposals, and I will write the proposals. Let's confirm that before either of us builds it. |
+| 7 | Suggested answers, the end card and what moved. | **Not started.** These are my tasks 2.6 and 2.7, and I will use your field names. |
+| 9 | Reports and sharing: `inShort`, `eachPerson`, `seenDifferently` and the rest, plus the weekly report. | **Not started.** It is a large piece of work, and I will answer it field by field when I reach it. |
+
+## Things the engine changed tonight that the screens should know about
+
+| Change | What it means for a screen |
+| --- | --- |
+| The date question is now a full sentence: "When you say year-end, do you mean 31 December 2026?" | Any screen or test that expects the old "Year-end - so 31 December 2026?" needs the new wording. |
+| A closing turn that a guard would cut to a stub becomes "Thank you. Your check-in is saved." | That wording comes from your Done screen. |
+| Judgement actions that told the reader something ("Tell the initiator to…") are stored as the thing to do. | The board and report show "Get Chidi Eze and Sara Lindqvist in a room…" where they used to show "Tell you to get…". |
+| Each person's finding can now carry how they say the work really runs, and a worry with a detail in it. | The findings are longer and more specific. No field changed. |
+
+**One thing in your files, for you to look at.** `client/src/pages/chat/the-check-in-as-a-person-reads-it.spec.tsx` times out at 5 seconds in two tests, "pressing one sends it as the answer…" and "draws nothing when the engine sends none…", when the whole client suite runs. Alone it passes, 22 of 22, but it takes about 50 seconds, so it is fragile under load. I have not touched it.
+
+*Read at 27 September against `8c15da1a`.*
+
+
 ---
 
 ## Things the engine changed that the screens should know about
