@@ -2312,6 +2312,25 @@ two related untruths came back, each fixed in its own commit, with tests:
 - **Local test data only:** rows written by the in-between build (between the seat rule and the held
   flag) make Mto Test Supplies' counts inconsistent on this computer. Nothing outside it is affected.
 
+**U.4 fourth review (27 September).** All four checks passed live on a fresh organisation. Three small
+defects came back, each fixed in its own commit, with tests:
+- **Someone who left is not listed** (`c370c62b`). After "Leave Kilima Test Estates", Pendo's row
+  stayed on People and counted in "N people shown." The list now takes only active accounts, for its
+  rows, its total and every filter.
+- **"Already here" means in this organisation** (`366bd7e3`). Someone with an account at another
+  organisation read "1 person is already here." and was never invited. They now read "1 person will
+  be invited.", and inviting them adds them here as before.
+- **The no-seat card says when there is room** (`61fa85f2`). With a seat freed, it now reads "There is
+  a seat for them now. Send their invitation when you are ready." With room for some of them, it reads
+  "There are seats for 2 of them now. Send their invitations when you are ready, and the rest wait
+  until there is room."
+- **For you:**
+  - Someone who left still reads "Already here" when pasted again. Inviting them would not bring them
+    back, because an invitation does not reactivate an account. Should an admin be able to bring back
+    someone who left? **My recommendation:** yes, with a "Bring them back" on their page.
+  - People's heading counts seats, so a guest held for a seat and someone waiting to be let in are
+    listed but not counted. With either on the page, "N people shown." can be higher than the heading.
+
 ### U.5 Today and the check-ins list: built and tested, not yet reviewed
 
 - **A privacy leak closed.** The check-ins list used to send every participant the whole record for
