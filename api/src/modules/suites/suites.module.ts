@@ -9,10 +9,11 @@ import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
 import { TodosService } from './the-todos.service';
+import { CustomersService } from './the-customers.service';
 
 @Module({
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService],
   exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, SpendingService],
 })
 export class SuitesModule {}

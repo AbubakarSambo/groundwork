@@ -472,6 +472,8 @@ model Organization {
   /// Spending and budgets: requests to spend, and each team's budget for a month (E7, U.17).
   spendRequests      SpendRequest[]
   teamBudgets        TeamBudget[]
+  /// Customers and deals: where each customer stands, as the engine writes it (E9, U.17).
+  customerStandings  CustomerStanding[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2410,6 +2412,26 @@ model TeamBudget {
 
   @@unique([organizationId, team, month])
   @@map("team_budgets")
+}
+
+/// WHERE ONE CUSTOMER STANDS (E9, the customers and deals suite, U.17), in a few plain words, such as
+/// "Quote sent. Buys in January", written by the engine from the sales check-ins
+/// (docs/requests-to-engine.md, request 28) with the prompt version that ran. Empty until then. One row
+/// for each change, and the board shows the latest. The customer itself stays a `Subject` of type
+/// COUNTERPARTY, a name and an id, and is never edited here. Facts about the customer only, never about
+/// how anybody works. Who reads it is decided in suites/the-customers.service.ts.
+model CustomerStanding {
+  id                     String   @id @default(uuid())
+  organizationId         String   @map("organization_id")
+  counterpartyExternalId String   @map("counterparty_external_id")
+  says                   String   @db.VarChar(300)
+  promptVersionId        String?  @map("prompt_version_id")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, counterpartyExternalId, createdAt])
+  @@map("customer_standings")
 }
 
 /// ONE PERFORMANCE REVIEW (E4, the reviews suite, U.17), started for a review that falls due

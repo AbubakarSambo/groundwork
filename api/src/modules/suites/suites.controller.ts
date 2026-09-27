@@ -11,6 +11,7 @@ import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
 import { SpendingService } from './the-spending.service';
 import { TodosService } from './the-todos.service';
+import { CustomersService } from './the-customers.service';
 
 class SwitchDto {
   @IsBoolean() on!: boolean;
@@ -63,6 +64,7 @@ export class SuitesController {
     private readonly roles: RoleMapService,
     private readonly spend: SpendingService,
     private readonly todos: TodosService,
+    private readonly customers: CustomersService,
   ) {}
 
   @Get()
@@ -213,6 +215,12 @@ export class SuitesController {
   @ApiOperation({ summary: 'To-dos: what each person said they will do in their check-ins, for an admin or the lead of the team' })
   todosBoard(@CurrentUser() user: CurrentUserData) {
     return this.todos.board({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('customers/board')
+  @ApiOperation({ summary: 'Customers and deals, while the suite is on, for an admin or the lead of the team' })
+  customersBoard(@CurrentUser() user: CurrentUserData) {
+    return this.customers.board({ userId: user.id, organizationId: user.organizationId });
   }
 
   @Put(':key')
