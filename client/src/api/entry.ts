@@ -265,7 +265,7 @@ export const entryApi = {
       /* `waiting` is true where the invitation has NOT gone: the check-in starts in the future and
          the row is written uninvited, for the cron to send on the day. The screen has to say so, or
          "all participants i added didnt get an email" is what it produces. */
-      contributors?: { email: string; waiting?: boolean }[]
+      contributors?: { email: string; waiting?: boolean; waitingBecause?: 'starts_later' | 'no_seat' | 'mail_failed'; saying?: string }[]
       failedInvites?: string[]
       /* Why each one failed, in the API's own words. See entry.service.ts. */
       whyInvitesFailed?: { email: string; because: string }[]

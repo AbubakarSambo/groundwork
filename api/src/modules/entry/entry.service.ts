@@ -2275,7 +2275,7 @@ from finishing at all.`;
     // Invite each contributor. addParticipant generates a fresh token per participant.
     // Do NOT pass a shared client-side inviteToken here - it would collide on the unique constraint
     // for the second and subsequent contributors, silently dropping them.
-    const inviteResults: { email: string; devUrl?: string; waiting?: boolean }[] = [];
+    const inviteResults: { email: string; devUrl?: string; waiting?: boolean; waitingBecause?: string; saying?: string }[] = [];
     const failedInvites: string[] = [];
     /*
      * WHY EACH ONE FAILED, NOT JUST THAT IT DID.
@@ -2310,6 +2310,9 @@ from finishing at all.`;
           email: c.email,
           devUrl: (result as any)?.devUrl,
           waiting: !(result as { invitedAt?: Date | null })?.invitedAt,
+          /* U.6 review: why it waits, so the page after the link can say it truly for each person. */
+          ...((result as any)?.notInvitedBecause ? { waitingBecause: (result as any).notInvitedBecause } : {}),
+          ...((result as any)?.saying ? { saying: (result as any).saying } : {}),
         });
       } catch (err: any) {
         this.logger.error(`entry commit: failed to invite ${c.email}: ${err.message}`);

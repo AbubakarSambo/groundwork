@@ -25,7 +25,7 @@ const FRONTEND_URL = window.location.origin
 // the success screen. Cache each token's outcome at module scope so remounts
 // replay the outcome instead of re-verifying.
 type VerifyOutcome =
-  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string }
+  | { kind: 'success'; groundId: string; joinUrl: string | null; invited: string[]; waitingInvites?: { email: string; because: string }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[]; passwordSetupToken?: string }
   | { kind: 'noSession' }
   /* The save is still running somewhere else (COMMIT_IN_PROGRESS): not lost, not failed. */
   | { kind: 'stillSaving' }
@@ -70,6 +70,7 @@ export function MagicVerifyPage() {
   const [failedInvites, setFailedInvites] = useState<string[]>([])
   const [whyInvitesFailed, setWhyInvitesFailed] = useState<{ email: string; because: string }[]>([])
   const [invited, setInvited] = useState<string[]>([])
+  const [waitingInvites, setWaitingInvites] = useState<{ email: string; because: string }[]>([])
   const [nextGroundId, setNextGroundId] = useState<string | null>(null)
   // null while we do not know yet; the welcome panel waits rather than flashing.
   const [isFirstGround, setIsFirstGround] = useState<boolean | null>(null)
@@ -100,6 +101,7 @@ export function MagicVerifyPage() {
       setFailedInvites(outcome.failedInvites)
       setWhyInvitesFailed(outcome.whyInvitesFailed ?? [])
       setInvited(outcome.invited)
+      setWaitingInvites(outcome.waitingInvites ?? [])
       setJoinUrl(outcome.joinUrl)
       setNextGroundId(outcome.groundId)
     } else if (outcome.kind === 'noSession') {
@@ -143,13 +145,31 @@ export function MagicVerifyPage() {
       queryClient.invalidateQueries({ queryKey: ['grounds'] })
 
       clearEntryHandover()
-      const invitedEmails = (result.contributors ?? []).map(c => c.email).filter(e => !result.failedInvites?.includes(e))
+      /*
+       * INVITED MEANS SENT (U.6 review). Everybody who was not failed was listed as "Invited", which
+       * the save card had promised too. Somebody can be added and not written to: the check-in starts
+       * later, there is no seat for them yet, or the mail did not go. They are listed apart, each with
+       * why, and never as invited.
+       */
+      const failed = new Set(result.failedInvites ?? [])
+      const invitedEmails = (result.contributors ?? []).filter(c => !failed.has(c.email) && !c.waiting).map(c => c.email)
+      const waitingInvites = (result.contributors ?? []).filter(c => !failed.has(c.email) && c.waiting).map(c => ({
+        email: c.email,
+        because: c.waitingBecause === 'no_seat'
+          ? (c.saying ?? 'Their invitation waits until there is a seat for them.')
+          : c.waitingBecause === 'mail_failed'
+            ? 'The invitation did not send. You can send it again from your check-in page.'
+            : 'Their invitation goes out on the morning the check-in starts.',
+      }))
       return {
         kind: 'success',
         groundId: result.groundId,
         joinUrl: result.joinToken ? `${FRONTEND_URL}/join?t=${result.joinToken}` : null,
         invited: invitedEmails,
+        waitingInvites,
         failedInvites: result.failedInvites ?? [],
+        /* Why each one did not go, which the server has always sent and this never passed on (U.6 review). */
+        whyInvitesFailed: (result as { whyInvitesFailed?: { email: string; because: string }[] }).whyInvitesFailed ?? [],
       }
     } catch (err: any) {
       const msg: string = err?.response?.data?.message ?? ''
@@ -495,6 +515,17 @@ export function MagicVerifyPage() {
               <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', lineHeight: 1.55, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
                 Track who has checked in on your check-in page - each person shows as invited, in progress, or completed, and you can send a reminder from there.
               </div>
+            </div>
+          )}
+          {waitingInvites.length > 0 && (
+            <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Not invited yet ({waitingInvites.length})</div>
+              {waitingInvites.map(w => (
+                <div key={w.email} style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 5, lineHeight: 1.5 }}>
+                  <span style={{ fontFamily: 'monospace', color: 'var(--gw-text)' }}>{w.email}</span>
+                  <div>{w.because}</div>
+                </div>
+              ))}
             </div>
           )}
           {failedInvites.length > 0 && (

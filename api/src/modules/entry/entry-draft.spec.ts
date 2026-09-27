@@ -340,3 +340,25 @@ describe('ISSUE-17 tripwire: stateless endpoints never touch the draft table', (
     await service.report([{ role: 'user', content: 'hello' }] as any, undefined, undefined);
   });
 });
+
+describe('the commit says why an invitation waits (U.6 review)', () => {
+  /* The page the link opens lists as invited only those written to, and says why each other one
+     was not; it can only do that if the commit passes the reason on. */
+  it('passes on "starts later" and "no seat", with the seat sentence', async () => {
+    const { service, grounds } = makeService();
+    grounds.addParticipant
+      .mockResolvedValueOnce({ invitedAt: null, notInvitedBecause: 'starts_later' })
+      .mockResolvedValueOnce({ invitedAt: null, notInvitedBecause: 'no_seat', saying: 'Held for a seat.' })
+      .mockResolvedValueOnce({ invitedAt: new Date() });
+    const res: any = await service.commit('org1', 'u1', {
+      groundLabel: 'Help someone get back on track', history: HISTORY, scenario: 'PIP',
+      contributors: [{ email: 'later@x.test' }, { email: 'guest@other.test' }, { email: 'sent@x.test' }],
+    } as any);
+    expect(res.contributors).toEqual([
+      expect.objectContaining({ email: 'later@x.test', waiting: true, waitingBecause: 'starts_later' }),
+      expect.objectContaining({ email: 'guest@other.test', waiting: true, waitingBecause: 'no_seat', saying: 'Held for a seat.' }),
+      expect.objectContaining({ email: 'sent@x.test', waiting: false }),
+    ]);
+    expect(res.contributors[2].waitingBecause).toBeUndefined();
+  });
+});

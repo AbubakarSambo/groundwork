@@ -43,9 +43,12 @@ describe('the invites wait if you say so', () => {
     expect(choice).toMatch(/onStartsOn=\{setCheckInBy\}/)
   })
 
+  /* U.6 review: "Your invites go out straight away." was not always true (no seat, an admin to
+     accept it, an address that cannot be invited). It says what is certain now. */
   it('and says which one is happening, rather than one line for both', () => {
-    expect(page).toMatch(/invites go out on \$\{checkInBy\}, not before/)
-    expect(page).toContain('Save this. Your invites go out straight away.')
+    expect(page).toMatch(/Save this\. Nobody is invited before \$\{theDay\(/)
+    expect(page).toContain('Save this. You then see who was invited and who has to wait.')
+    expect(page).not.toContain('Your invites go out straight away')
   })
 
   /*

@@ -24,7 +24,7 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
-import { TheSetup } from './TheSetup'
+import { TheSetup, theDay } from './TheSetup'
 import { FillsInAsYouTalk } from './FillsInAsYouTalk'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
@@ -1067,6 +1067,19 @@ export function itIsStillAskingSomething(reply: string): boolean {
  * LEAD picked now (theSituationTheLeadPicked), and a known situation is said in its plain words from
  * the catalogue. The underscore rule below stays for a key the catalogue does not know.
  */
+/**
+ * WHAT OPENING THE EMAILED LINK DOES, AS THE SAVE CARD SAYS IT (U.6 review). Only what it always does.
+ * An invitation can wait (the check-in starts later, there is no seat for the person, an admin has to
+ * accept the check-in first) or fail (an address that cannot be invited), so this never says the link
+ * sends them. It says the page that opens shows who was invited and who has to wait, which that page
+ * does (MagicVerifyPage), and, when the start is later, the one thing that is certain.
+ */
+export function whatOpeningTheLinkDoes(people: number, startsOnLater: string | null): string {
+  if (people === 0) return ' - opening it saves your check-in'
+  const later = startsOnLater ? `. Nobody is invited before ${theDay(new Date(`${startsOnLater}T00:00:00`))}` : ''
+  return ` - opening it saves your check-in, then shows who was invited and who has to wait${later}`
+}
+
 export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
   const known = classifiedScenario ? (SCENARIO_LABELS as Record<string, string>)[classifiedScenario] : undefined
   if (known) return sentenceCase(known)
@@ -2525,6 +2538,12 @@ export function EntryChatPage() {
     if (card) return card.label
     return scenario && (SCENARIO_LABELS as Record<string, string>)[scenario] ? scenario : undefined
   }
+  /* Whether the start is after today, which is the one case where nobody is invited on saving, for certain. */
+  const startsLater = (() => {
+    if (!checkInBy) return false
+    const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+    return checkInBy > today
+  })()
   const atTheDoor = phase === 'onboarding' && onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation
   /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
   function describeItInYourOwnWords(text: string) {
@@ -3755,12 +3774,12 @@ export function EntryChatPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(user
                     ? [
-                      checkInBy ? `Save this. Your invites go out on ${checkInBy}, not before.` : 'Save this. Your invites go out straight away.',
+                      startsLater ? `Save this. Nobody is invited before ${theDay(new Date(`${checkInBy}T00:00:00`))}.` : 'Save this. You then see who was invited and who has to wait.',
                       'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]
                     : [
                       'Save your email below to keep access to this report.',
-                      'Open the confirmation link we email you - that saves it and sends your invites.',
+                      'Open the confirmation link we email you. That saves it, then shows who was invited and who has to wait.',
                       'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]).map((step, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -3926,7 +3945,7 @@ export function EntryChatPage() {
                 <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (
                   <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
-                    <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => shownAs(e.split(' - ')[0])).join(', ')}. Invites go out when you confirm your email.
+                    <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => shownAs(e.split(' - ')[0])).join(', ')}. Nobody is invited before you confirm your email.
                   </div>
                 ) : (
                   /* Saying nothing here read as "you have left something
@@ -3989,7 +4008,7 @@ export function EntryChatPage() {
                 {inviteSubtext}
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
-                Add them here now. Anyone you added from the report above is already on this list. Invites don't go out yet - they're sent once you save this check-in and confirm your email.
+                Add them here now. Anyone you added from the report above is already on this list. Nobody is invited before you save this check-in and confirm your email.
                 {' '}
                 {/*
                   * HOW MANY PEOPLE CAN BE ON THIS, SAID WHERE PEOPLE ARE ADDED.
@@ -4202,7 +4221,7 @@ export function EntryChatPage() {
                   Nothing else to do here. The link is in your inbox at <strong>{email}</strong>{(() => {
                     const pending = inviteContextFor && !inviteAdded.some(e => e === inviteContextFor || e.startsWith(`${inviteContextFor} - `)) ? 1 : 0
                     const n = inviteAdded.length + pending
-                    return n > 0 ? ` - opening it saves your check-in and sends the ${n} invite${n === 1 ? '' : 's'}` : ' - opening it saves your check-in'
+                    return whatOpeningTheLinkDoes(n, startsLater ? checkInBy : null)
                   })()}. You can reopen this any time from the bar below.
                 </div>
               </div>
