@@ -259,3 +259,39 @@ describe('a document card, as each reader sees it', () => {
   })
 })
 
+/* U.7 review: the bands' lines are full sentences, said to whoever is reading. */
+describe('the lines under each band', () => {
+  const withRecord = {
+    contextItems: [{ id: 'l1', kind: 'WAY_OF_WORKING', text: 'Log every visit the same day.', audience: 'EVERYONE' }],
+    commitments: [{ id: 'k1', participantId: 'p-aisha', text: 'Visit Green Mart on Friday.', explicit: false, status: 'UNKNOWN' }],
+  }
+  it('Wairimu, who leads it', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([])
+    draw('lead', 'u-lead', withRecord)
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('Open a card to see that person’s numbers, to-dos and what they said they would show.')
+    expect(text).toContain('Nobody is marked as having done these. The check-ins ask about them.')
+    expect(text).toContain('What you put here guides every check-in. You can change any line in it.')
+    expect(text).toContain('These are the rules, as you wrote them.')
+    expect(text).toContain('These are your words, not theirs.')
+    expect(text).not.toMatch(/·|what they owe a look at|a click/)
+  })
+  it('Aisha, who takes part', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([])
+    draw('party', 'u-aisha', withRecord)
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('Your card is open. Open anyone else’s card to see what is on it.')
+    expect(text).toContain('What Wairimu put here guides the check-ins. It is never quoted as something anyone found.')
+    expect(text).toContain('These are the rules, as Wairimu wrote them.')
+    expect(text).toContain('These are Wairimu’s words, not yours.')
+    expect(text).not.toMatch(/your words, not theirs|the lead’s framing|·/)
+  })
+  it('an admin who is not in it', async () => {
+    draw('admin', 'u-otieno', withRecord)
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('Open a card to see that person’s numbers, to-dos and what they said they would show.')
+    expect(text).toContain('These are Wairimu’s words, not theirs.')
+    expect(text).not.toContain('These are your words')
+  })
+})
+

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { EachPerson } from './EachPerson'
 
 /* The expectation part of a card is ExpectationsPanel, scoped to one person and drawn bare. It talks
@@ -47,7 +47,8 @@ describe('each person holds everything about them', () => {
   it('a collapsed row says what that person holds, in counts', () => {
     render(<EachPerson groundId="g1" people={people as any} targets={targets} toDos={toDos} files={files} asks={asks as any} viewerUserId="u2" isLead={false} />)
     /* Amina's row is shut for Miriam, and says what is in it. */
-    expect(screen.getByText(/1 expectation · 1 target · 1 to-do · 1 thing to show · 1 file/)).toBeTruthy()
+    /* U.7 review: joined with commas, not dots. */
+    expect(screen.getByText(/1 expectation, 1 target, 1 to-do, 1 thing to show, 1 file/)).toBeTruthy()
   })
 
   it('only your own to-do offers a state, and the team target is not on anybody\'s card', () => {
@@ -77,5 +78,27 @@ describe('each person holds everything about them', () => {
     render(<EachPerson groundId="g1" people={withNote as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-otieno" isLead />)
     expect(document.body.textContent).not.toContain('Your note')
     expect(document.body.textContent).not.toContain('slow to follow up')
+  })
+
+  /* U.7 review: said to the reader. Aisha reads "Your numbers" on her own card, and nobody but
+     the lead reads "your own check-in" about the lead's. */
+  it('Aisha reads her own numbers as hers, and a colleague with none is named', () => {
+    render(<EachPerson groundId="g1" people={people as any} targets={targets} toDos={toDos} files={files} asks={asks as any} viewerUserId="u1" isLead={false} leadFirstName="Wanjiru" />)
+    expect(screen.getByText('Your numbers')).toBeTruthy()
+    expect(screen.queryByText('Their numbers')).toBeNull()
+    expect(screen.getByText('Only you can read it.')).toBeTruthy()
+  })
+
+  it('with no number of your own, you read it in a sentence about you', () => {
+    render(<EachPerson groundId="g1" people={people as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u2" isLead={false} leadFirstName="Wanjiru" />)
+    expect(screen.getByText('You have no number of your own. Your check-in asks against the team’s.')).toBeTruthy()
+    expect(screen.getByText('Nothing yet. It comes from Wanjiru’s own check-in, or from the conversation on this page.')).toBeTruthy()
+  })
+
+  it('an admin opening a card reads the lead by name, not "your"', () => {
+    render(<EachPerson groundId="g1" people={[people[1]] as any} targets={[]} toDos={[]} files={[]} asks={{}} viewerUserId="u-otieno" isLead leadFirstName="Wanjiru" />)
+    fireEvent.click(screen.getByText('Miriam'))
+    expect(screen.getByText('Miriam has no number of their own, so their check-in asks against the team’s.')).toBeTruthy()
+    expect(screen.getByText('Nothing yet. It comes from Wanjiru’s own check-in, or from the conversation on this page.')).toBeTruthy()
   })
 })

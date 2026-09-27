@@ -265,13 +265,19 @@ export function ContextPage({
    * THE BUCKETS, IN THE ORDER THE PAGE DRAWS THEM. Kept in step with THE_BUCKETS on the server by
    * name rather than by import, because this list is also the page's copy order.
    */
+  /** Whose words the brief is, for everybody but the lead. */
+  const theLeadsFirstName: string =
+    atTheStart(firstNameOrLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') ?? { partyType: 'INITIATOR' }))
+  /* The same, inside a sentence: "Wanjiru" stays "Wanjiru", and a lead with no name is "the lead". */
+  const theLeadMidSentence: string =
+    firstNameOrLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') ?? { partyType: 'INITIATOR' })
   const BUCKETS: { kind: string; title: string; sub: string }[] = [
-    { kind: 'STRATEGY', title: 'The strategy', sub: 'how we win work and what we lead with' },
+    { kind: 'STRATEGY', title: 'The strategy', sub: 'This is how we win work and what we lead with.' },
     /* "as you wrote them" to the person who wrote them - item D. See the source lines below. */
-    { kind: 'WAY_OF_WORKING', title: 'How we work', sub: isTheLead ? 'the rules, as you wrote them' : 'the rules, as the lead wrote them' },
-    { kind: 'DECISION', title: 'Still to decide', sub: 'nobody has decided these yet' },
-    { kind: 'UNSETTLED', title: 'Not settled', sub: 'not treated as fact or as a target' },
-    { kind: 'NOTE', title: 'Notes', sub: 'kept because somebody said it' },
+    { kind: 'WAY_OF_WORKING', title: 'How we work', sub: isTheLead ? 'These are the rules, as you wrote them.' : `These are the rules, as ${theLeadMidSentence} wrote them.` },
+    { kind: 'DECISION', title: 'Still to decide', sub: 'Nobody has decided these yet.' },
+    { kind: 'UNSETTLED', title: 'Not settled', sub: 'These are not treated as facts or as targets.' },
+    { kind: 'NOTE', title: 'Notes', sub: 'These are kept because somebody said them.' },
   ]
   const contextLines: any[] = (ground as any).contextItems ?? []
   /*
@@ -346,9 +352,6 @@ export function ContextPage({
    */
   const sentToWhoeverRunsIt: string | null = isLead ? (ground as any).briefAsEveryoneReadsIt ?? null : null
   const whatEveryoneReads: string = (sentToWhoeverRunsIt ?? theBrief ?? '').trim()
-  /** Whose words the brief is, for everybody but the lead. */
-  const theLeadsFirstName: string =
-    atTheStart(firstNameOrLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') ?? { partyType: 'INITIATOR' }))
   /*
    * WHOSE WORDS THEY ARE, SAID ONLY WHEN IT IS TRUE (U.7 review). "Your words, from setup." while the
    * text is the lead's own and nobody else has changed it; the name of whoever changed it, where the
@@ -366,7 +369,7 @@ export function ContextPage({
       return changedBy ? `${theLeadsFirstName}\u2019s words.` : `${theLeadsFirstName}\u2019s words, from setup.`
     }
     if (isTheLead) return 'Groundwork wrote this from your words.'
-    if (isLead && !changedBy) return `Groundwork wrote this from ${theLeadsFirstName}\u2019s words.`
+    if (isLead && !changedBy) return `Groundwork wrote this from ${theLeadMidSentence}\u2019s words.`
     return null
   })()
   const objectives: any[] = (ground as any).objectives ?? []
@@ -568,7 +571,7 @@ export function ContextPage({
               /* Renamed 22 September 2026: "not sure the purpose of person by person". The band is a
                  card per person holding everything about them, so it is named after that. */
               title={isLead ? 'Each person' : 'Your part, and everybody else\u2019s'}
-              src={isLead ? 'their numbers, their to-dos, what they owe a look at' : 'yours is open \u00b7 theirs are a click'}
+              src={isLead ? 'Open a card to see that person\u2019s numbers, to-dos and what they said they would show.' : 'Your card is open. Open anyone else\u2019s card to see what is on it.'}
             />
             {/*
               WHAT IS OUTSTANDING, IN ONE LINE, BEFORE THE LIST OF IT.
@@ -614,6 +617,7 @@ export function ContextPage({
               viewerUserId={viewerUserId}
               isLead={isLead}
               isTheLead={isTheLead}
+              leadFirstName={theLeadMidSentence}
               onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
               /*
                 ATTACHING AGAINST THE THING THEY PROMISED, not into a general pile. The line they
@@ -1097,7 +1101,7 @@ export function ContextPage({
             */}
             {(isTheLead || commitments.length > 0) && (
               <>
-                <Sec n={band()} title="What people are down as doing" src="nobody is marked as having done it &middot; the check-ins ask" />
+                <Sec n={band()} title="What people are down as doing" src="Nobody is marked as having done these. The check-ins ask about them." />
                 {isTheLead && contextEnabled && commitments.length === 0 && (
                   <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 14, maxWidth: 720, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                     Nothing yet. Anything somebody says they will do in a check-in lands here on its
@@ -1123,7 +1127,8 @@ export function ContextPage({
                         </span>
                         <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 200 }}>{c.text}</span>
                         {c.whenSaid && <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{c.whenSaid}</span>}
-                        {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>your words, not theirs</span>}
+                        {/* Whose words, to whoever is reading: it said "your words" to everyone (U.7 review). */}
+                        {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{isTheLead ? 'These are your words, not theirs.' : p && p.id === myParticipant?.id ? `These are ${theLeadMidSentence}\u2019s words, not yours.` : `These are ${theLeadMidSentence}\u2019s words, not theirs.`}</span>}
                       </div>
                     )
                   }}
@@ -1162,7 +1167,7 @@ export function ContextPage({
             */}
             {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
               <>
-                <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'what you put here guides every check-in \u00b7 change any line in it' : 'the lead\u2019s framing, never quoted as a finding'} />
+                <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'What you put here guides every check-in. You can change any line in it.' : `What ${theLeadMidSentence} put here guides the check-ins. It is never quoted as something anyone found.`} />
                 {/*
                   A PLACE TO TYPE A LINE, BESIDE THE CONVERSATION RATHER THAN INSTEAD OF IT.
 
@@ -1263,7 +1268,7 @@ export function ContextPage({
                         <div key={l.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                           <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 220 }}>{l.text}</span>
                           {l.audience !== 'EVERYONE' && (
-                            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-sub)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)' }}>only you</span>
+                            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-sub)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)' }}>Only you</span>
                           )}
                           {isTheLead && l.legacy && l.audience !== 'EVERYONE' && (
                             <button

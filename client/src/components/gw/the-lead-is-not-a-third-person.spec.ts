@@ -25,11 +25,13 @@ describe('what the page calls whoever is reading it', () => {
   })
 
   it('and the rules are the ones you wrote', () => {
-    expect(CONTEXT).toContain("isTheLead ? 'the rules, as you wrote them'")
+    /* U.7 review: a full sentence now, and the lead's name to anyone else. */
+    expect(CONTEXT).toContain("isTheLead ? 'These are the rules, as you wrote them.' : `These are the rules, as ${theLeadMidSentence} wrote them.`")
   })
 
   it('and a line you put in somebody else’s mouth is your line', () => {
-    expect(CARDS).toContain("isLead ? 'your words, not theirs'")
+    /* U.7 review: to the lead alone (an admin reading the page did not write it), in a sentence. */
+    expect(CARDS).toContain("isTheLead ? 'These are your words, not theirs.'")
   })
 
   /*

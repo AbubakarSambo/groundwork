@@ -83,6 +83,7 @@ export function EachPerson({
   viewerUserId,
   isLead,
   isTheLead = false,
+  leadFirstName = null,
   onChangeInChat,
   onUploadFor,
   onSetToDo,
@@ -98,6 +99,8 @@ export function EachPerson({
   isLead: boolean
   /** The check-in's own lead, not an admin reading it. Only the lead reads their own notes. */
   isTheLead?: boolean
+  /** The lead's first name, so nobody but the lead reads "your" about the lead's own things. */
+  leadFirstName?: string | null
   /** The lead changes what is expected of somebody in the conversation, not in a form. */
   onChangeInChat?: (said: string) => void
   /** A person attaching the thing they said they would show. */
@@ -125,6 +128,8 @@ export function EachPerson({
      "another colleague", and you are "You". */
   const labels = peopleLabels(rows as any[], { forTheLead: true, readerId: mine?.id ?? null })
   const labelOf = (p: APersonOnTheCard) => labels.get(p.id) ?? 'a colleague'
+  /* "Wanjiru’s", never "the lead’s" and never "your" to an admin reading the page (U.7 review). */
+  const leadsOwn = leadFirstName ? `${leadFirstName}\u2019s` : 'the lead\u2019s'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
@@ -144,7 +149,7 @@ export function EachPerson({
           theirToDos.length ? line(theirToDos.length, 'to-do') : null,
           theirAsks.length ? `${line(theirAsks.length, 'thing')} to show` : null,
           theirFiles.length ? line(theirFiles.length, 'file') : null,
-        ].filter(Boolean).join(' · ') || 'nothing on record yet'
+        ].filter(Boolean).join(', ') || 'Nothing on record yet'
 
         return (
           <div key={p.id} style={{ background: 'white', border: `1px solid ${isMe ? 'var(--gw-navy)' : 'var(--gw-border)'}`, borderRadius: 10, overflow: 'hidden' }}>
@@ -207,7 +212,7 @@ export function EachPerson({
                         to decide whether to offer the chat link.
                       */
                       <Empty>
-                        Nothing yet. It comes from {isLead ? 'your' : 'the lead\u2019s'} own check-in,
+                        Nothing yet. It comes from {isTheLead ? 'your' : leadsOwn} own check-in,
                         or from the conversation on this page.
                       </Empty>
                     )}
@@ -216,7 +221,7 @@ export function EachPerson({
                   )}
                 </Part>
 
-                <Part title="Their numbers">
+                <Part title={isMe ? 'Your numbers' : 'Their numbers'}>
                   {theirTargets.length ? theirTargets.map((t) => (
                     <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4 }}>
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)' }}>{t.name}</span>
@@ -224,7 +229,9 @@ export function EachPerson({
                         {t.target == null ? <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--gw-muted)' }}>no number</span> : t.target.toLocaleString('en-GB')}
                       </span>
                     </div>
-                  )) : <Empty>No number of their own. Their check-in asks against the team's.</Empty>}
+                  )) : <Empty>{isMe
+                    ? 'You have no number of your own. Your check-in asks against the team\u2019s.'
+                    : `${atTheStart(labelOf(p))} has no number of their own, so their check-in asks against the team\u2019s.`}</Empty>}
                 </Part>
 
                 {/* THEIR TO-DOS, MOVED BY THEM. A lead cannot mark somebody else's work done. */}
@@ -240,7 +247,7 @@ export function EachPerson({
                       */}
                       {!t.explicit && (
                         <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>
-                          {isLead ? 'your words, not theirs' : 'the lead\u2019s words, not theirs'}
+                          {isTheLead ? 'These are your words, not theirs.' : isMe ? `These are ${leadsOwn} words, not yours.` : `These are ${leadsOwn} words, not theirs.`}
                         </span>
                       )}
                       {isMe && onSetToDo && (
@@ -277,7 +284,9 @@ export function EachPerson({
                     <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4, flexWrap: 'wrap' }}>
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 160 }}>{f.fileName}</span>
                       <span style={{ fontSize: 11.5, color: f.visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
-                        {f.visibility === 'OPEN' ? 'everyone here reads it' : 'only you and the check-in'}
+                        {f.visibility === 'OPEN'
+                          ? 'Everyone in this check-in can read it.'
+                          : f.visibility === 'CLOSED' ? 'Whoever runs this check-in can read it.' : 'Only you can read it.'}
                       </span>
                     </div>
                   )) : <Empty>{isMe ? 'Nothing attached yet.' : 'Nothing attached.'}</Empty>}
