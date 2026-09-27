@@ -1405,6 +1405,13 @@ the changed files and both type checks were run, as you asked. The only failures
 in the engine workspace's own files (requests 4 and 10). No screen could be checked signed in (item
 14), so the screens were checked by rendering tests only. Item 21 lists what needs you.
 
+**The full run passed:** every screen test (2,737) and the build, and every API test apart from the
+engine workspace's own two failures (requests 4 and 10). Two of U.10's fixes changed how the board
+module serves the board, though no engine text was touched: opening the board never words or writes
+anything now, and a lead is never shown the checkability rating. Because the board module is shared
+ground, I have told the engine workspace exactly what changed (request 12), so it can take them over.
+**Not ticked,** because no review can sign in (item 14).
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
