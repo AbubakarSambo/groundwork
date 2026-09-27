@@ -17,10 +17,11 @@ screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in),
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
 onboarding, leave requests, time sheets, performance reviews, when someone leaves, the role map,
-spending and budgets, to-dos, customers and deals, and equipment) and U.18 (connections and
-channels). Each passed the full screen and API suites; the few failures each run found came from
+spending and budgets, to-dos, customers and deals, and equipment), U.18 (connections and
+channels) and U.19 (billing). Each passed the full screen and API suites; the few failures each run found came from
 that module and were fixed. The latest full run, after U.18, passed 3,006 screen tests and 9,647 API
-tests apart from three failures from U.18 itself, all since fixed. **None
+tests apart from three failures from U.18 itself, all since fixed. U.19 has passed the tests for
+every file it changed; its full run is next. **None
 could be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
@@ -72,18 +73,24 @@ that one is yours to decide (item 27.4).
     load? (a privacy question)
 14. Item 29.1: may an admin connect their own WhatsApp number while Groundwork's WhatsApp is off?
     and 29.4: should everyone's word-for-word check-ins be deleted after a time? (a privacy question)
-15. The rest of items 13, 15 to 29 are smaller, each with a recommendation.
+15. Item 30.1: what happens to organisations already on the free plan when you turn on the one
+    switch for the trial and the free plan (it is off, so nothing has changed yet); 30.2: one trial
+    for each organisation, or for each person?
+16. The rest of items 13, 15 to 30 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** U.18, connections and channels, at the prototype's three addresses.
-Connections shows WhatsApp (only while it is switched on) with three counts from the server, your
-numbers, your own address as not set up, notices in Slack or Teams, figures from your other systems,
-and what else you can connect. Connect WhatsApp is six steps, each done only when the server says so;
-Meta's check of the address is now recorded, so "Not proven yet" is true. The old Connect page is
-"Connect your own tools", with everything it did. Only admins get in, on the server and on the page.
-Payments, the spreadsheet, the setup link and "Add your own" are left out, because nothing real
-stands behind them (item 29).
+**Just finished, not ticked:** U.19, billing. Stripe works exactly as before, in test mode only: the
+same checkout, webhooks, invoices, care fee and portal. Plan and billing is the prototype's page, with
+every plan, price and limit read from the database; only an admin is served the money, and a guest is
+served nothing about billing. The five published plans are already the ones in the database. A seat
+is now counted the same way on the People page, on Plan and billing and at the invite gate: everybody
+who belongs to the organisation except guests from outside. The pricing page no longer tells a
+visitor the free plan is theirs. And, as you decided, **one switch** (the free trial's setting, off)
+now does two things when you turn it on: teams under 20 get 3 months free, really given by billing,
+and new organisations stop getting the free plan and the free first session. While it is off,
+nothing about today's billing has changed. Nobody already on the free plan is cut off (item 30.1).
 
-**Next:** U.19 (billing, keeping Stripe exactly as it is). U.18's review cannot sign in (item 14).
+**Next:** U.20 (small states and errors), after the reviews that are waiting for item 14, as you
+asked. U.19's review cannot sign in either (item 14).
 
 ## Every module since U.2, and its review
 
@@ -105,7 +112,7 @@ stands behind them (item 29).
 | U.16 Links between check-ins, and each person's load | Yes | Waiting |
 | U.17 The Suites page and all ten suites | Yes | Waiting |
 | U.18 Connections and channels | Yes | Waiting |
-| U.19 Billing | Being built | Not yet |
+| U.19 Billing | Yes | Waiting |
 
 **No module after U.2 has passed a review, because the reviewer cannot sign in** (item 14). Since
 26 September the auto-mode safety check refuses to let the reviewer read the local test password or
@@ -1616,6 +1623,100 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
 
 
 
+
+
+### 30. Billing (U.19): what needs you
+
+1. **What happens when you turn on the one switch.** You decided that the free trial's setting
+   (`pricing.freeTrial`) is one switch for the trial and the free plan. It is **off**, and while it is
+   off billing is exactly as today. Nothing has been switched on. When you turn it on, the server
+   writes down the moment, and this is what happens:
+   - **Organisations that already exist keep everything they have on the free plan.** That is: up to
+     10 free check-ins (the ones they have already opened count), unlimited sessions and reports in
+     each free check-in, up to 5 people including the person who created the account, the one free
+     extension, and the one session in hand that every check-in starts with. Nobody is removed and no
+     check-in stops.
+   - **At their limits they read exactly what they read today.** The eleventh check-in is refused with
+     "Your free plan includes 10 check-ins. Subscribe to open more.", and the sixth person with "The
+     free plan covers 5 people, including you, so you can invite 4 others. Subscribe to add more
+     people."
+   - **A new organisation that says it has fewer than 20 people** gets 3 months on Small Team (up to
+     20 people, unlimited check-ins), with no card and no charge. Past 19 people, the trial carries on
+     to its end date, as the prototype says; the twenty-first person is refused, because Small Team
+     holds 20.
+   - **A new organisation of 20 or more** gets no trial and no free plan. It cannot open a check-in
+     or add anybody until an admin chooses a plan. It reads "Your organisation has no plan yet.
+     Choose one on Plan and billing to open a check-in." (or "... to add people.").
+   - **When a new organisation's trial ends,** it has no plan. Nothing is charged until an admin
+     chooses one. Its check-ins pause, and the people in them read "This check-in is paused until your
+     team subscribes. Only an admin can do that, and your answers so far are kept." Reports and boards
+     stay readable. Check-ins opened during the trial start with no free session, so there is nothing
+     free left to run.
+   - **Anything the server cannot be sure of keeps the free plan:** a switch turned on with no record
+     of when, or an organisation with no creation date.
+   **My recommendation:** keep existing free organisations as they are when you switch on, then decide
+   separately whether to give them a date by which they choose a plan, and tell them first.
+2. **One trial for each organisation, or for each person?** The trial is given once to each
+   organisation. You decided a person can create more than one organisation, so one person could
+   start several trials. **My recommendation:** one trial for each person who creates an organisation.
+3. **There is no screen to turn the switch on.** Groundwork's staff can turn it on with
+   `PATCH /admin/pricing/free-trial` (`{ "on": true }`), which is staff only. **My recommendation:**
+   put the switch in Groundwork's own console (U.21), with a sentence saying what it changes.
+4. **The five published plans are already the ones in the database.** Starter $25 a month for up to
+   5 people, Small Team $90 for up to 20, Growth $400 for up to 100, Business $900 for up to 250,
+   Scale $1,650 for up to 500. The existing migrations already leave exactly these, so I added no
+   migration (which would also have thrown away the Stripe prices already made), only a test that
+   replays the migrations and checks. Enterprise stays as "Contact us", with no price. No screen types
+   a price: every one reads `GET /billing/pricing`, with the shipped numbers only while it loads.
+5. **What counts as a seat.** Seats were counted by the organisation a person last switched to. They
+   are now counted from the memberships: everybody who belongs to the organisation as an admin, a lead
+   or somebody who takes part, and not guests from outside. Deactivated people and people still
+   waiting to be let in do not count, as before. So a member who was looking at another company is
+   counted again, and a guest who had switched in is not. The People page says "Guests from outside
+   don't count toward the plan." when the list has guests. Groundwork's own console still counts the
+   old way (for U.21), and so does one engine list (request 30(c)).
+6. **"Guests from outside don't."** The prototype says "Guests with no account don't", but in the
+   product a guest has an account and still does not count. So Plan and billing says "Every person
+   with a Groundwork account at Baridi Appliances. Guests from outside don’t."
+7. **Invoices.** Each paid invoice reads, for example, "1 September" and "$400, paid." The prototype
+   adds "by card ending 4417", but the card used for an old invoice is not stored, so I left it out.
+   There is no "Download" beside each one; "Invoices and payment method" opens Stripe's own page,
+   where each invoice can be downloaded.
+8. **After Stripe's checkout.** The paid page says "Done. Baridi Appliances is on Growth." and "All 27
+   people can check in.", without "A receipt is on its way to ...", because whether Stripe sends one
+   is Stripe's setting. When somebody comes back without paying, it says "The payment didn’t go
+   through" and "You haven’t been charged, and your plan hasn’t changed.", without "Your bank
+   declined it": Stripe refuses a declined card on its own page, so coming back means only that
+   nothing was paid.
+9. **Left out, because nothing real stands behind them yet:** the prototype's in-page card form (the
+   product uses Stripe's checkout page, which is safer and already works); "Share Groundwork with
+   another organisation" with "Make a new code" (only Groundwork's staff can make codes; the page
+   keeps "Access codes"); the pricing page's "Run it yourself, or with support" with $700, $500 and
+   $3,500, which are not in the database; the common questions, because the prototype's text has no
+   answers; "Baridi started with 27, so it began on a plan." and the link to the free months ending;
+   and, from the page about the free months ending, the card for everybody else with "Remind them",
+   the access code card, and an email to the admin 7 days before. The admin sees the 7-day notice on
+   Plan and billing only. **My recommendation:** the email 7 days before, when you switch the trial on.
+10. **Wording no screen shows, which I wrote with the fewest words:** "The free plan, for up to 10
+    check-ins. 3 of 5 people, including you."; "Small Team, free until 27 December 2026. 12 of 20
+    people."; "No plan yet. Choose one below to open check-ins and add people."; "Nothing is charged
+    until you choose a plan."; "None while it is paused. Nothing is charged until you resume."; "No
+    more payments. Your plan ends on 30 September 2026."; "It renews on its own each month."; "So
+    far" with "38 check-ins, 12 reports shared, and 25 people taking part."; "No plan yet" as a
+    heading when starting a check-in; "Choose Small Team"; "You can check in." (for one person); and
+    "Guests from outside don’t count toward the plan."
+11. **Removed, because they were not true:** on the pricing page, "Why we price this way" ("no trial
+    that expires" becomes false once the trial is on, and "No proration surprises" is false, because
+    changing plan is prorated) and its closing quote; on Plan and billing, the "Billing" list that
+    said you can "choose between buying sessions or subscribing" (sessions are not sold).
+12. **Two engine sentences.** The engine passes billing's refusal through, so a paused check-in reads
+    billing's words. But in one rare race it still says "beyond your ten free check-ins", and the
+    emails about the free plan still say "ten free check-ins". Neither is reached while the switch is
+    off. I asked the engine about its sentence (request 30(a)). The emails are for later.
+13. **The scenario runner and the switch.** The 24-scenario runner creates new organisations and
+    relies on the free plan. While the switch is off nothing changes. If it were turned on in the
+    database the runner uses, every scenario would be refused, so I asked the engine workspace to
+    cover its organisations (request 30(b)). **Please keep the switch off wherever the scorer runs.**
 
 
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
@@ -3280,6 +3381,105 @@ test keeps its privacy check in the new words, and the builder confirmed in the 
 channel notice carries only one sentence and a link. Apart from those three, every screen test (3,006)
 and API test (9,647) passed. **Not ticked,** because no review can sign in (item 14).
 
+### U.19 Billing: built and tested, not yet reviewed
+
+**The gap list, before I started:**
+- Billing had no way to give the free trial, so its sentence had to stay switched off.
+- The People page and Plan and billing counted seats by the organisation a person last switched to,
+  while the People list counts memberships, guests included, so the two numbers could differ.
+- `GET /billing/status` served every signed-in person the card's last four digits, the renewal date
+  and each check-in's balance. Every billing action was already admin only on the server.
+- The billing page was not the prototype's page, and said a few things that were not true (you can
+  "choose between buying sessions or subscribing").
+- The pricing page told a visitor who was not signed in that the free plan was "Your current plan".
+- There were no invoices on the page, and the pages after Stripe's checkout were not the prototype's.
+- Stripe itself (checkout, webhooks, invoices, the care fee, the portal, pausing, resuming,
+  cancelling, retrying failed events) worked and had to keep working exactly as it does.
+
+**Then you decided two more things (27 September):** the plans are the five published ones, and "no
+free check-ins" is tied to the same switch as the trial, so there is one switch, off by default,
+and nobody already on the free plan is cut off.
+
+**What I built, in ten commits:**
+1. `11d4c428` A seat is counted from the memberships (`seatsIn` in `common/seats.ts`), the same way
+   for the invite gate, the seats left, Plan and billing and a check-in's seat check.
+2. `5a4d389e` Billing gives the free trial for real, behind the setting: when "Create an
+   organisation" is answered "Fewer than 20", 3 months on Small Team, with nothing sent to Stripe.
+   One new empty column, `free_trial_started_at`, so an organisation gets it once.
+3. `f6fad80e` Only an admin is served the money on `GET /billing/status`; a lead or a member only
+   the plan and the seat count; a guest nothing. Every billing route is now listed by who may use it.
+4. `b7781041` An admin's billing status carries the paid invoices.
+5. `46c7ab62` Plan and billing is the prototype's page.
+6. `97c9dfd1` The pricing page never tells a visitor the free plan is theirs.
+7. `fa14a972` The People page's head count is billing's seat count, and says guests do not count.
+8. `981d86ce` The prototype's pages after Stripe's checkout.
+9. `463637ac` and `fc576323` One switch for the trial and the free plan, on the server and on the
+   screens (item 30.1).
+10. `e5f10b6c` A test that a fresh database holds exactly the five published plans.
+
+**What each person now reads:**
+- **Grace, an admin, on Growth, on Plan and billing:** "Baridi Appliances", "Plan and billing", then
+  "Your plan": "Plan" with "Growth, $400 a month. 27 of 100 people." and "Change"; "Next payment"
+  with "1 October, $400, by card ending 4417." and "Change card"; "Everyone counts" with "Every
+  person with a Groundwork account at Baridi Appliances. Guests from outside don’t."; and "So far"
+  with "38 check-ins, 12 reports shared, and 25 people taking part." Then "Plans", "One flat monthly
+  rate, unlimited check-ins, sessions and reports", the five plans from the table ("$400/mo", "Up to
+  100 people", "Your plan" on hers and "Move to this" on the others) and "Enterprise" with "Custom
+  needs, volume pricing or dedicated support." and "Contact us". Then "Invoices" ("1 September",
+  "$400, paid.", and "Invoices and payment method"), and "Stopping" with "Pause, or cancel at the end
+  of this period. Either way, everything stays readable.", "Pause" and "Cancel", each asking first
+  exactly as before. Then her check-ins, the access codes and "Things our team does by hand", as
+  before.
+- **Grace, on the free plan:** "The free plan, for up to 10 check-ins. 3 of 5 people, including
+  you.", "Nothing is charged until you choose a plan.", "Your first 10 check-ins are free." and "Move
+  to this" on every plan.
+- **Grace, inside the free trial (only once the switch is on):** "Small Team, free until 27 December
+  2026. 12 of 20 people." and "Free trial" with "Teams of fewer than 20 people get 3 months free. No
+  card needed." Seven days before the end: "Your free 3 months end on 27 December", "Your team has 12
+  people, so Small Team, $90 a month, keeps everything running. Nothing is charged until you
+  choose.", "Choose Small Team" and "See every plan". At 20 people: "You now have 20 people" and "The
+  free 3 months are for teams of fewer than 20. Your trial carries on until its end date; after that
+  you’ll need Small Team, $90 a month."
+- **A new organisation once the switch is on, with no plan:** "No plan yet. Choose one below to open
+  check-ins and add people." On starting a check-in: "No plan yet" and "Your organisation has no plan
+  yet. Choose one on Plan and billing to open a check-in."
+- **After Stripe's checkout:** "Done. Baridi Appliances is on Growth.", "All 27 people can check in."
+  and "Back to Plan and billing". Coming back without paying: "The payment didn’t go through", "You
+  haven’t been charged, and your plan hasn’t changed.", "Try another card" and "Talk to us".
+- **A visitor on /pricing:** "Pricing", then, while the switch is off, "Start free with 10 check-ins,
+  for teams of 5 or fewer, including you. Subscribe as your team grows. Unlimited sessions and reports
+  on every plan." and the free plan's card with no "Your current plan"; the five plans from the table
+  with the prototype's descriptions ("For small teams getting each person’s own account written
+  down." and so on) and "Subscribe"; and Enterprise. Once the switch is on, the free plan's card is
+  gone, the first sentence is the trial's, and the trial's card reads "3 months free", "Teams of
+  fewer than 20 people", the trial's sentence with "After 3 months, subscribe to keep going.", "$0 for
+  3 months" and "Start your free 3 months".
+- **Anybody signed in on /pricing:** "Your current plan" only when the server says the free plan is
+  what covers their organisation.
+- **The People page:** "27 people, on the Growth plan, which is for up to 100." and, when the list
+  has guests, "Guests from outside don’t count toward the plan." Inside a free run it names that plan.
+- **Wairimu, a lead; Miriam, who takes part; Tomas, a guest:** no "Plan and billing" door. At its
+  address, only "You need admin access to manage billing for your organisation.", and nothing is
+  fetched. The server refuses every billing action to them, and serves a guest nothing about billing.
+
+**Tests changed, and why:** the seat test modelled no memberships; it now does, with three new cases.
+Two tests pinned the old where clause or the direct free-limit call; they now pin the one shared
+reader. The cancel test finds the buttons by the prototype's "Pause" and "Cancel". Two tests pinned
+the old stat tiles; they now pin the prototype's rows, still checking that the numbers show before
+anybody pays and that the state is said once. The thank-you test reads the prototype's words, still
+only after the server confirms. The People page test's helper takes the billing answer, for one new
+case. New: the trial granted only while on (10 tests), billing as each reader is served it (13), the
+switch for the free plan (14), the published plans (1), Plan and billing as each reader sees it (15),
+and the pricing page as each reader sees it (8).
+
+**Checked:** the tests for every file I changed, both type checks, and the existing Stripe tests
+(checkout, webhooks, invoices, the care fee, pausing, cancelling, the paywall), which all pass. **Not
+checked in the browser,** because no review can sign in (item 14). No live key was used and no
+charge was made: every test uses mocks, and nothing reached Stripe.
+
+**Requests to the engine:** request 30 (one sentence in the conversation, the scenario runner and
+the switch, and one seat count).
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
@@ -3315,7 +3515,7 @@ and API test (9,647) passed. **Not ticked,** because no review can sign in (item
 - **For U.19 (billing): the free trial.** You decided teams under 20 people get Groundwork free for 3
   months. The limit and length live in the database, never in the screens. Billing must really grant
   it before the sign-up's sentence is switched on. Every screen that mentions the free offer uses the
-  one shared sentence.
-- **For U.19 (billing): the head count on the People page.** "27 people, on the Growth plan…" comes
+  one shared sentence. **Done in U.19**, behind the same switch (item 30.1).
+- **For U.19 (billing): the head count on the People page.** **Done in U.19** (item 30.5). "27 people, on the Growth plan…" comes
   from billing's seat count, which still counts accounts by the organisation they last looked at. The
   People list now counts real memberships, including guests, so the two numbers can differ.
