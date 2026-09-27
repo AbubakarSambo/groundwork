@@ -11,7 +11,8 @@ describe('a label they can tell apart', () => {
 
   it('and dates the one that would have been a duplicate', () => {
     expect(aLabelTheyCanTellApart('The goal is to better understand', ['The goal is to better understand'], when))
-      .toBe('The goal is to better understand · 23 Sept');
+      /* U.6 review: a plain phrase, where it was "· 23 Sept" (a dot and a clipped date). */
+      .toBe('The goal is to better understand, from 23 September');
   });
 
   /* A label that differs only in case or a full stop is the same label to a person reading a rail. */
@@ -27,5 +28,10 @@ describe('a label they can tell apart', () => {
 
   it('and does nothing with nothing', () => {
     expect(aLabelTheyCanTellApart('', ['x'], when)).toBe('');
+  });
+
+  it('says the topic in the phrase, never a person (U.6 review)', () => {
+    expect(aLabelTheyCanTellApart('Help a new hire get started', ['Help a new hire get started'], new Date('2026-09-27T10:00:00Z')))
+      .toBe('Help a new hire get started, from 27 September');
   });
 });
