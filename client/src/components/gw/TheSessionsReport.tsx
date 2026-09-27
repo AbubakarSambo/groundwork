@@ -206,6 +206,21 @@ export function hasCheckedIn(c: { who: string; isYou: boolean; answered: boolean
   return c.answered ? `${c.who} has checked in.` : `${c.who} has not checked in yet.`
 }
 
+/** "6pm", "6:30pm": the time as the prototype writes it. */
+function atTime(d: Date | string): string {
+  return whenItWas(d, 'hourOfDay').replace(':00', '').replace(/\s+/g, '').toLowerCase()
+}
+
+/**
+ * "Last updated on Wednesday 23 September at 6pm. It only changes when something new comes in,
+ * such as a check-in, a document or a number from another system." (team-report.txt). The
+ * prototype adds who checked in ("when Miriam checked in"); nothing served says what the change
+ * was, so that part waits for the engine (request 9).
+ */
+export function lastUpdated(at: Date | string): string {
+  return `Last updated on ${whenItWas(at, 'weekdayAndDay')} at ${atTime(at)}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`
+}
+
 export function TheSessionsReport({ groundId, sessionNumber }: { groundId: string; sessionNumber: number }) {
   const [byPerson, setByPerson] = useState(false)
   const { data, isLoading, isError } = useQuery({
@@ -213,6 +228,21 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
     queryFn: () => reportsApi.sessionReport(groundId, sessionNumber),
     enabled: !!groundId && !!sessionNumber,
   })
+  /*
+   * WHEN IT LAST CHANGED, WHILE IT IS STILL CHANGING (U.9, team-report.txt).
+   *
+   * A report that is still forming is the check-in's current report, which is rebuilt only when
+   * something new comes in. The prototype says when that last happened. The session's own read
+   * carries no time until the round closes, so the time comes from the check-in's report, under
+   * the key every other page already uses for it: one request, and nothing is rebuilt by asking.
+   */
+  const { data: current } = useQuery({
+    queryKey: ['report', groundId],
+    queryFn: () => reportsApi.get(groundId),
+    enabled: !!groundId && !!data && (data as any).state !== 'final',
+    retry: false,
+  })
+  const lastChanged: string | null = (current as any)?.updatedAt ?? (current as any)?.createdAt ?? null
   /* The read is computed when asked for and takes ten to twenty seconds. Say so, or it looks stuck. */
   if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading everybody&apos;s side of this session. It takes a moment.</div>
   if (isError || !data) return null
@@ -541,6 +571,9 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
       {/* ── The promise, and what state this is in. */}
       <div style={{ ...ROW, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+        {!final && lastChanged && (
+          <span style={{ display: 'block', marginBottom: 4 }}>{lastUpdated(lastChanged)}</span>
+        )}
         {!final
           ? 'People are still answering, so this moves. '
           : amended

@@ -3,9 +3,13 @@ import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 
-vi.mock('@/api/reports', () => ({ reportsApi: { sessionReport: vi.fn() } }))
+vi.mock('@/api/reports', () => ({ reportsApi: { sessionReport: vi.fn(), get: vi.fn() } }))
+vi.mock('@/lib/a-date-reads-the-same-everywhere', async (orig) => {
+  const real: any = await orig()
+  return { ...real, whenItWas: (d: any, p: any) => real.whenItWas(d, p, 'UTC') }
+})
 import { reportsApi } from '@/api/reports'
-import { TheSessionsReport, sessionAndWhoCheckedIn, hasCheckedIn } from './TheSessionsReport'
+import { TheSessionsReport, sessionAndWhoCheckedIn, hasCheckedIn, lastUpdated } from './TheSessionsReport'
 
 /**
  * U.9: ONE SESSION'S REPORT, AS THE LEAD AND AS A PARTICIPANT READ ITS TOP.
@@ -32,7 +36,11 @@ function renderIt() {
 }
 
 describe('one session, as each reader reads its top', () => {
-  beforeEach(() => vi.mocked(reportsApi.sessionReport).mockReset())
+  beforeEach(() => {
+    vi.mocked(reportsApi.sessionReport).mockReset()
+    vi.mocked(reportsApi.get).mockReset()
+    vi.mocked(reportsApi.get).mockResolvedValue({ updatedAt: '2026-09-23T18:00:00.000Z' } as any)
+  })
 
   it('the lead, who did not check in, reads the count and each person as a sentence', async () => {
     vi.mocked(reportsApi.sessionReport).mockResolvedValue(aSession({
@@ -65,11 +73,21 @@ describe('one session, as each reader reads its top', () => {
     expect(screen.getByText('a colleague has not checked in yet.')).toBeTruthy()
     expect(document.body.textContent).not.toContain('Shared with the team.')
     expect(document.body.textContent).not.toContain('(you)')
+    expect(await screen.findByText('Last updated on Wednesday 23 September at 6pm. It only changes when something new comes in, such as a check-in, a document or a number from another system.')).toBeTruthy()
+  })
+
+  it('a report that is out, and so no longer changes, does not ask when it last changed', async () => {
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue(aSession({ counting: [] }) as any)
+    renderIt()
+    await screen.findByText('Shared with the team.')
+    expect(reportsApi.get).not.toHaveBeenCalled()
+    expect(document.body.textContent).not.toContain('Last updated')
   })
 
   it('says one person, and leaves out the count when nobody is counted', () => {
     expect(sessionAndWhoCheckedIn(2, null, 1, 1)).toBe('Session 2. 1 of 1 person checked in.')
     expect(sessionAndWhoCheckedIn(2, null, 0, 0)).toBe('Session 2.')
     expect(hasCheckedIn({ who: 'Brian', isYou: true, answered: false })).toBe('You have not checked in yet.')
+    expect(lastUpdated('2026-09-23T18:30:00.000Z')).toMatch(/^Last updated on Wednesday 23 September at 6:30pm\. /)
   })
 })
