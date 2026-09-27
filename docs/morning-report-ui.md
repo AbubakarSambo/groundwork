@@ -2062,9 +2062,20 @@ tests for the files changed were run, with the type check; the full run is the t
      work?" does the same, with the name they typed at sign-up if they typed one.
    - The sign-up reached from `/j/…` no longer shows "Your organisation (optional)" or suggests a
      name, and sends none.
-   - **Not changed:** signing up with Google still makes the person's own organisation, even from an
-     invite link or with a matching domain. That is `findOrCreateGoogleUser`, and needs the same
-     change; I have not made it here.
+   - **Google now does the same** (`d150c898`). The invite link rides to Google and back, and only a
+     path inside the app is kept. From an invite link, or with a matching domain, nothing is made:
+     the person lands on the same confirmation page, which joins an open link or asks "Where do you
+     work?". Their account signs in with Google and never asks for a password. A plain Google sign-up
+     is as before. Anything an earlier, unconfirmed sign-up for the same address left behind (a
+     password, a draft, a name) is not kept.
+   - **The cards are in the natural order** (`ea021ecd`): "Your email is confirmed" first, then "Where
+     do you work?", and it is never said twice. Someone who came from Google skips the first card,
+     because they confirmed no email.
+   - **For you, found while doing this, and not changed:** someone can sign up with another person's
+     email address and a password of their own choosing. If that person then opens the confirmation
+     email, the account is made with the first person's password. This was already so before U.3.
+     **My recommendation:** never carry a password chosen at sign-up past the confirmation. The
+     person would set one after confirming instead, or confirm it again.
 2. **The invite link keeps its place after the email is confirmed** (`f72c41f0`, `5920f2a3`). The
    place they were going is kept on the server with the waiting sign-up or the sign-in link, and comes
    back when the link opens. Only a path inside the app is ever kept or followed. The second commit
@@ -2095,7 +2106,8 @@ tests for the files changed were run, with the type check; the full run is the t
 
 **Two new database columns**, both empty for existing rows: where someone was going when they asked
 for a link (`next_path`, on waiting sign-ups and sign-in links), and how someone joined an
-organisation (`joined_how`). Applied to the local database only.
+organisation (`joined_how`). A third came with the Google fix: the Google id on a waiting sign-up
+(`google_id`). All three are applied to the local database only.
 
 ### U.4 People, roles and access: built and tested, not yet reviewed
 
