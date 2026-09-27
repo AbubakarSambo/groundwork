@@ -202,3 +202,12 @@ export const spendApi = {
   setBudget: async (team: string, amount: number): Promise<SpendBoard> =>
     (await apiClient.put('/suites/spend/budgets', { team, amount })).data,
 }
+
+/** To-dos (GET /suites/todos/board): what each person said they will do in their check-ins. */
+export interface TodoList {
+  people: { name: string; todos: { id: string; text: string; source: 'check-in'; on: string }[] }[]
+}
+
+export const todosApi = {
+  get: async (): Promise<TodoList> => (await apiClient.get('/suites/todos/board')).data,
+}

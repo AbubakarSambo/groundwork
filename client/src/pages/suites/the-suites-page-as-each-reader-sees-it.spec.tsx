@@ -107,11 +107,12 @@ describe('Grace, an admin, reads the Suites page', () => {
   })
 
   it('never offers a door to a board that is not built yet', async () => {
-    open(GRACE, withOn('todos'))
+    /* U.17, to-dos: its board now exists, so this checks customers and deals, still to build. */
+    open(GRACE, withOn('customers'))
     await screen.findByRole('heading', { level: 2, name: 'People' })
-    expect(card('To-dos').textContent).toContain('On')
+    expect(card('Customers and deals').textContent).toContain('On')
     expect(screen.queryByText('Open its board')).toBeNull()
-    expect(screen.queryAllByRole('link').map(a => a.getAttribute('href'))).not.toContain('/suite/todos')
+    expect(screen.queryAllByRole('link').map(a => a.getAttribute('href'))).not.toContain('/suite/customers')
   })
 
   it('"Open its board" is on the onboarding suite once it is on, and goes to its board', async () => {
@@ -213,16 +214,16 @@ describe('Wairimu, a lead, reads the Suites page', () => {
     expect(card('Time sheets').textContent).toBe('Time sheetsPeople say how many hours they spent, and on which client or project. Used for billing only.Open its board')
     expect(screen.queryAllByRole('switch')).toHaveLength(0)
     expect(text()).not.toMatch(/Only admins see this page|Already part of Groundwork|\bOff\b/)
-    /* U.17, time sheets: its board now exists, so its card has the door; To-dos, not built yet, has none. */
+    /* U.17, time sheets and to-dos: both boards now exist, so both cards have the door. */
     expect(within(card('Time sheets')).getByRole('link', { name: 'Open its board' })).toHaveAttribute('href', '/suite/time')
-    expect(within(card('To-dos')).queryByRole('link', { name: 'Open its board' })).toBeNull()
+    expect(within(card('To-dos')).getByRole('link', { name: 'Open its board' })).toHaveAttribute('href', '/suite/todos')
   })
 
   it('reads "Open its board" on onboarding, whose board is built', async () => {
     open(WAIRIMU, { reader: 'lead', suites: [...WAIRIMUS.suites, { key: 'onboard', name: 'Onboarding', line: 'A new person’s to-dos, and what each helper must do to set them up.' }] })
     expect(await within(await screen.findByRole('region', { name: 'Onboarding' })).findByRole('link', { name: 'Open its board' })).toHaveAttribute('href', '/suite/onboard')
-    /* Onboarding and time sheets have boards; to-dos does not yet. */
-    expect(screen.getAllByRole('link', { name: 'Open its board' })).toHaveLength(2)
+    /* Onboarding, time sheets and, since U.17's to-dos, to-dos all have boards. */
+    expect(screen.getAllByRole('link', { name: 'Open its board' })).toHaveLength(3)
   })
 
   it('says so plainly when none is on', async () => {
