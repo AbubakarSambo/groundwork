@@ -67,7 +67,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   const { data, isLoading, isError } = useQuery({ queryKey: ['org-members'], queryFn: fetchMembers })
   const status = useQuery({
     queryKey: ['billing-status-people'],
-    queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null }; subscription?: { plan: string | null } }),
+    queryFn: () => apiClient.get('/billing/status').then((r: any) => (r.data.data ?? r.data) as { people?: { count: number; cap: number | null }; subscription?: { plan: string | null }; onTheHouse?: { plan: string } | null }),
     retry: false,
   })
   const [find, setFind] = useState('')
@@ -105,7 +105,16 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
       <section className="gw-people-sec" aria-labelledby="everyone-h">
         <div className="gw-people-sec-head">
           <h2 id="everyone-h">{`Everyone at ${orgName}`}</h2>
-          <span>{howManyHere(status.data?.people?.count ?? everybody.length, status.data?.subscription?.plan, status.data?.people?.cap)}</span>
+          {/*
+            THE SAME NUMBER AS PLAN AND BILLING (U.19): billing's seat count, which counts everybody who
+            belongs here except guests from outside. The plan is whichever covers the organisation, so a
+            free run's plan is named rather than "the free plan". The list below shows guests too, so
+            the page says they do not count.
+          */}
+          <span>{howManyHere(status.data?.people?.count ?? everybody.length, status.data?.subscription?.plan ?? status.data?.onTheHouse?.plan, status.data?.people?.cap)}</span>
+          {status.data?.people && everybody.some((m) => m.role === 'GUEST') && (
+            <span>Guests from outside don’t count toward the plan.</span>
+          )}
         </div>
         <div className="gw-people-filters">
           <input value={find} onChange={(e) => setFind(e.target.value)} placeholder="Find somebody" aria-label="Find somebody" />
