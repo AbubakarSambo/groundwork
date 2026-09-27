@@ -89,7 +89,7 @@ now does two things when you turn it on: teams under 20 get 3 months free, reall
 and new organisations stop getting the free plan and the free first session. While it is off,
 nothing about today's billing has changed. Nobody already on the free plan is cut off (item 30.1).
 
-**Next:** U.20 (small states and errors), after the reviews that are waiting for item 14, as you
+**Next:** the 16 waiting reviews, U.3 first, one at a time. U.20 (small states and errors) starts only when all have passed, as you
 asked. U.19's review cannot sign in either (item 14).
 
 ## Every module since U.2, and its review
@@ -114,7 +114,7 @@ asked. U.19's review cannot sign in either (item 14).
 | U.18 Connections and channels | Yes | Waiting |
 | U.19 Billing | Yes | Waiting |
 
-**No module after U.2 has passed a review, because the reviewer cannot sign in** (item 14). Since
+**No module after U.2 has passed a review yet, because the reviewer could not sign in** (item 14). You have now chosen how it signs in, and the reviews are starting, oldest first. Since
 26 September the auto-mode safety check refuses to let the reviewer read the local test password or
 the invitation tokens it needs to sign in as each person, and you asked me never to work around a
 block. So the reviews cannot be finished from here. **As you asked, I will not start U.20 while these
@@ -3499,6 +3499,11 @@ charge was made: every test uses mocks, and nothing reached Stripe.
 
 **Requests to the engine:** request 30 (one sentence in the conversation, the scenario runner and
 the switch, and one seat count).
+
+**The full run** passed every screen test (3,030), the build, and every API test but one: U.19's own new
+test read the migration files without removing comments first, and the comment guard caught it. It now
+removes both kinds of SQL comment. The existing Stripe, care-fee, webhook and paywall tests all passed,
+none of them changed. **Not ticked,** until its review.
 
 ## Found on the way, for later tasks
 
