@@ -9,10 +9,11 @@ same file.
 *Kept up to date as the night goes on. The details are further down.*
 
 **Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help), U.2 (signing
-in, with every decision you made), U.3 (organisations and joining, passed on its third review) and U.4
-(people, roles and access, passed on its fifth).
+in, with every decision you made), U.3 (organisations and joining, passed on its third review), U.4
+(people, roles and access, passed on its fifth) and U.5 (Today and the check-ins list, passed on its
+third).
 
-**Built and tested, but not ticked:** U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
+**Built and tested, but not ticked:** U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
@@ -50,7 +51,7 @@ People page contradict itself. The prototype says a guest from outside "takes a 
 yours, seats now follow the prototype: everyone with a Groundwork account in the organisation takes a
 seat, guests included, and people answering by link with no account take none (item 30).
 
-**Two more privacy leaks, found by the U.5 review and being fixed:** the check-ins list named, to a
+**Two more privacy leaks, found by the U.5 review and now fixed:** the check-ins list named, to a
 participant, the other people on a check-in whose own page hides them from each other; and the check-in's
 own read gave a participant the team's report, with the lead's whole account in it, before it had been
 shared.
@@ -125,7 +126,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 | --- | --- | --- |
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
 | U.4 People, roles and access | Yes | **Passed** on 27 September, on the fifth round |
-| U.5 Today and the check-ins list | Yes | Sent back on 27 September, for two privacy leaks among other things; being fixed |
+| U.5 Today and the check-ins list | Yes | **Passed** on 27 September, on the third round |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
 | U.7 Context | Yes | Waiting |
 | U.8 The check-in screens | Yes | Waiting |
