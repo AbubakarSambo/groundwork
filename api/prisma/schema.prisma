@@ -765,6 +765,10 @@ model PendingSignup {
   // The draft token the entry page keeps, so post-email edits (the org name
   // arrives this way) can still reach this record before there is a user.
   draftToken   String?  @unique @map("draft_token")
+  /// Where in the app the person was going when they signed up, such as an organisation's invite
+  /// link ("/j/baridi-7k2p"). Only a path inside this app is ever stored (common/a-path-in-this-app),
+  /// and the confirmation carries them back to it (U.3).
+  next         String?  @map("next_path")
   expiresAt    DateTime @map("expires_at")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -889,6 +893,9 @@ model EmailVerificationToken {
   type      TokenType
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
+  /// For a sign-in link: where in the app the person was going when they asked for it. Only a path
+  /// inside this app (common/a-path-in-this-app). Null for every other kind of link (U.3).
+  next      String?   @map("next_path")
   createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

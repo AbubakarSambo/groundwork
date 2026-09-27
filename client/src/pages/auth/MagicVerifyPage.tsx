@@ -263,8 +263,15 @@ export function MagicVerifyPage() {
           return o
         }
 
-        if (fromParam && fromParam.startsWith('/')) {
-          return confirmFirst(passwordStep(fromParam) ?? { kind: 'redirect', to: fromParam })
+        /*
+         * THE EMAILED LINK CARRIES NO `next`, SO THE SERVER KEEPS IT (U.3 review). Somebody who pressed
+         * "Join Coamana" on an invite link, signed up, and opened the link from their mailbox used to
+         * land on "Where do you work?". The place they were going now comes back with the answer, and
+         * is checked here too: only a path inside this app.
+         */
+        const goingTo = [fromParam, res.next].find(p => typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') && !p.startsWith('/\\'))
+        if (goingTo) {
+          return confirmFirst(passwordStep(goingTo) ?? { kind: 'redirect', to: goingTo })
         }
         // ALWAYS attempt the commit. The server merges whatever this browser
         // has over the server-side draft written at entry-save, so the commit

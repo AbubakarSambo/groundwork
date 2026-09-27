@@ -38,6 +38,16 @@ export class EntrySaveDto {
   password?: string;
 
   /**
+   * WHERE IN THE APP THEY WERE GOING (U.3 review), such as "/j/coamana-6rr7". Kept with the waiting
+   * sign-up or the sign-in link, and handed back when the link is opened. Only a path inside this app
+   * is kept (common/a-path-in-this-app); anything else is dropped, and the answer is the same.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  next?: string;
+
+  /**
    * A FIELD A PERSON CANNOT SEE. Filled in means a bot.
    *
    * Named `_hp` to match the two existing endpoints, so there is one convention rather than two.

@@ -1,4 +1,5 @@
 import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
+import { aPathInThisApp } from '../../common/a-path-in-this-app';
 import { whatTheirWorkspaceIsCalled } from './a-roster-row-is-not-a-life-sentence';
 import { hashed } from './a-token-is-stored-as-its-hash';
 import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
@@ -85,6 +86,16 @@ export interface WhatANewOrganisationIsGiven {
   billingEmail?: string;
   /** "fewer" or "more" than `line` people, where `line` is the trial's team size they were shown. */
   teamSize?: { said: 'fewer' | 'more'; line: number };
+}
+
+/**
+ * WHERE THE CONFIRMATION CARRIES THEM ON TO (U.3 review). The place kept with the waiting sign-up or
+ * the sign-in link, checked again on the way out, so a value written before the check existed can
+ * never send anybody outside the app.
+ */
+function goOnTo<T extends object>(res: T, kept: string | null | undefined): T & { next?: string } {
+  const next = aPathInThisApp(kept);
+  return next ? { ...res, next } : res;
 }
 
 @Injectable()
@@ -330,7 +341,7 @@ export class AuthService {
       const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
       if (already) {
         await this.prisma.pendingSignup.delete({ where: { id: pending.id } }).catch(() => undefined);
-        return this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg, 'link'), already.id);
+        return goOnTo(await this.withPasswordSetup(await this.buildAuthResponse(already as unknown as UserWithOrg, 'link'), already.id), pending.next);
       }
 
       /*
@@ -387,7 +398,7 @@ export class AuthService {
 
         this.logger.log(`${pending.email} joined the organisation that already listed them`);
         /* This link has just made the account (U.2): the client says "Your email is confirmed". */
-        return { ...(await this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true };
+        return goOnTo({ ...(await this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true }, pending.next);
       }
 
       // The slug comes from the organisation NAME, never the email domain, so a
@@ -435,7 +446,7 @@ export class AuthService {
       });
 
       /* This link has just made the account and its organisation (U.2). */
-      return { ...(await this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true };
+      return goOnTo({ ...(await this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true }, pending.next);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -452,7 +463,7 @@ export class AuthService {
       return { user: tokenRecord.user };
     });
 
-    return this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg, 'link'), user.id);
+    return goOnTo(await this.withPasswordSetup(await this.buildAuthResponse(user as unknown as UserWithOrg, 'link'), user.id), tokenRecord.next);
   }
 
   async setPassword(dto: SetPasswordDto): Promise<AuthResponseDto> {
@@ -497,8 +508,11 @@ export class AuthService {
     draft?: { payload?: Record<string, any>; history?: unknown[] },
     /* A password chosen at sign-up (U.2). Used only for an address with no account. */
     password?: string,
+    /* Where in the app they were going (U.3 review). Only a path inside this app is kept. */
+    next?: string,
   ): Promise<{ message: string; email: string; draftToken?: string }> {
     const lower = email.toLowerCase();
+    const goingTo = aPathInThisApp(next);
     const message = 'Check your email for your sign-in link.';
 
     /*
@@ -567,6 +581,7 @@ export class AuthService {
           firstName,
           orgName: typedOrgName || null,
           ...(passwordHash ? { passwordHash } : {}),
+          next: goingTo,
           payload: (draft?.payload ?? {}) as any,
           history: (draft?.history ?? []) as any,
           draftToken: dt ?? null,
@@ -603,6 +618,8 @@ export class AuthService {
           expiresAt: expiresAtFor('verify an address'),
           /* A password sent again replaces the one before; a request without one leaves it alone. */
           ...(passwordHash ? { passwordHash } : {}),
+          /* The same for where they were going: a bare "send the link again" keeps the place. */
+          ...(goingTo ? { next: goingTo } : {}),
           ...(draft
             ? {
                 firstName,
@@ -657,7 +674,7 @@ export class AuthService {
       });
       const token = crypto.randomBytes(32).toString('hex');
       await this.prisma.emailVerificationToken.create({
-        data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address') },
+        data: { userId: user.id, token: hashed(token), type: TokenType.EMAIL_VERIFICATION, expiresAt: expiresAtFor('verify an address'), ...(goingTo ? { next: goingTo } : {}) },
       });
       await this.emailService.sendMagicLinkEmail(lower, user.firstName, token);
     }

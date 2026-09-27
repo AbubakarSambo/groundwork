@@ -103,4 +103,11 @@ export class AuthResponseDto {
    */
   @ApiProperty({ required: false, description: 'True only when this verification link has just created the account from a waiting sign-up.' })
   justCreated?: true;
+
+  /**
+   * WHERE THEY WERE GOING WHEN THEY ASKED FOR THIS LINK (U.3 review), such as an organisation's
+   * invite link. Only ever a path inside this app. Absent when there was none.
+   */
+  @ApiProperty({ required: false, description: 'A path inside this app to carry on to, kept from when the link was asked for.' })
+  next?: string;
 }

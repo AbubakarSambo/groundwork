@@ -258,12 +258,19 @@ export function AuthPage() {
    * the second link carries exactly what the first did.
    */
   const [sentBy, setSentBy] = useState<'link' | 'create'>('link')
+  /* `nextPath` rides with the link, so opening it from the mailbox comes back here (U.3 review). It is
+     only sent when there is one, so every other request is exactly what it was. */
+  const save = (draft: Parameters<typeof authApi.entrySave>[1], password?: string) => nextPath
+    ? authApi.entrySave(email.trim().toLowerCase(), draft, trap.filled, password, nextPath)
+    : password !== undefined
+      ? authApi.entrySave(email.trim().toLowerCase(), draft, trap.filled, password)
+      : authApi.entrySave(email.trim().toLowerCase(), draft, trap.filled)
   const sendTheLinkAgain = () => sentBy === 'create'
-    ? authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled)
-    : authApi.entrySave(email.trim().toLowerCase(), undefined, trap.filled)
+    ? save({ payload: whatTheyTyped() })
+    : save(undefined)
 
   const sendLink = useMutation({
-    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), undefined, trap.filled),
+    mutationFn: () => save(undefined),
     onSuccess: () => { setSentBy('link'); setLinkSent(true) },
     /**
      * A FAILURE IS NOT A SUCCESS. W10-2.
@@ -330,7 +337,9 @@ export function AuthPage() {
     }
   }
   const createAccount = useMutation({
-    mutationFn: () => authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled, signInBy === 'password' ? newPassword : undefined),
+    mutationFn: () => nextPath
+      ? save({ payload: whatTheyTyped() }, signInBy === 'password' ? newPassword : undefined)
+      : authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled, signInBy === 'password' ? newPassword : undefined),
     onSuccess: () => { setSentBy('create'); setLinkSent(true) },
     onError: (err: any) => {
       const status = err?.response?.status

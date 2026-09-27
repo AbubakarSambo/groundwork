@@ -18,6 +18,8 @@ export interface VerifyEmailResponse {
    * page goes straight on, as it always has.
    */
   justCreated?: boolean
+  /** Where they were going when they asked for this link, such as "/j/coamana-6rr7". Only a path in this app. */
+  next?: string
 }
 /** `expired` is true only for a real, unused link of the asked kind that has run out. The server never
  *  sends `email` or `firstName` today: which address a link is for is a privacy decision for Hafsah. */
@@ -98,8 +100,10 @@ export const authApi = {
      the name the two older endpoints already use. */
   /* `password` only when the person chose one at sign-up (U.2). The server uses it only for an
      address with no account, and answers the same either way. */
-  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string, password?: string) =>
-    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}) }).then(r => r.data),
+  /* `next`: where in the app they were going, such as an organisation's invite link. The server keeps
+     it with the link and hands it back when the link is opened (U.3 review). */
+  entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string, password?: string, next?: string | null) =>
+    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}), ...(next ? { next } : {}) }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),
