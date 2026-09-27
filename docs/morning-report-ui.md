@@ -16,11 +16,11 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page,
-the onboarding board, leave requests, time sheets, performance reviews, when someone leaves and the role map). Each up to U.16 passed
+the onboarding board, leave requests, time sheets, performance reviews, when someone leaves, the role map, and spending and budgets). Each up to U.16 passed
 the full screen and API suites; the few failures each run found came from that module and were fixed.
 The latest full run, midway through U.17 after time sheets, passed everything with no failures (2,892
-screen tests and 9,528 API tests); performance reviews, when someone leaves and the role map have
-passed their own tests since. **None could
+screen tests and 9,528 API tests); performance reviews, when someone leaves, the role map, and
+spending and budgets have passed their own tests since. **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
@@ -71,14 +71,16 @@ that one is yours to decide (item 27.4).
     in their review? (a privacy question)
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** the role map, the sixth suite (U.17), for admins only. It shows every
-role, what it owns and who holds it, built from the organisation's roles, who holds each one now and the
-directory's job titles, and names each job nobody holds ("Nobody owns stock planning."). It changes
-none of them. "Give it an owner" is left out (item 28.42), and the role interview waits for the engine
-(request 25). A lead, a member and a guest are refused by the server. Before that: when someone
-leaves, performance reviews, time sheets, leave requests, the onboarding board and the Suites page.
+**Just finished, not ticked:** spending and budgets, the seventh suite (U.17), for admins and leads.
+It shows each request waiting for a yes or no, with what the team has left this month and who approves
+it, and each team's budget against what was spent, in the prototype's words. Up to the admin's limit the
+person's lead approves, above it the person the admin named, never their own. Only an admin sets a
+budget. A lead reads only their own team's; a member and a guest are refused by the server. Asking in
+chat waits for the engine (request 26). One first question was added, the currency (item 28.45). Before
+that: the role map, when someone leaves, performance reviews, time sheets, leave requests, the
+onboarding board and the Suites page.
 
-**Next:** U.17 goes on with suite 7, spending and budgets. The ten are listed in order under U.17 below.
+**Next:** U.17 goes on with suite 8, to-dos. The ten are listed in order under U.17 below.
 
 ## Needs Hafsah
 
@@ -1374,6 +1376,26 @@ reviewed" in this report.
 44. **Wording no screen shows, on the role map:** "No roles are known yet.", "The board did not load.",
     and the server's refusals ("Only an admin can open this board." and "The role map suite is not
     switched on."). The role interview's part of the page is left out until the engine can run it.
+45. **I added a first question to spending: "Which currency do people spend in?"** The prototype writes
+    "KES 18,000", and nothing in the product says which currency an organisation uses. The choices are
+    KES, UGX, TZS, RWF, ETB, NGN, GHS, ZAR, USD, EUR and GBP. **My recommendation:** keep the question,
+    and add any currency you need to the list in `the-ten-suites.ts`.
+46. **Two prototype lines on spending are left out, because they are not true yet.** "Once your
+    accounting tool is connected under Connections, the real figures are shown instead." (no accounting
+    tool can be connected) and "How people use it" (asking in chat is the engine's, request 26). **My
+    recommendation:** bring each back when it works.
+47. **What "spent so far" counts.** Requests approved this month, by the team of the person when they
+    asked. A declined request counts for nothing. Budgets are set for one month at a time, by an admin.
+    **My recommendation:** keep it; later, let an admin carry a budget into the next month in one step.
+48. **Wording no screen shows, on spending:** "An admin can approve this.", "… so an admin must approve
+    it.", "… is … over its budget this month.", "… over" in the table, "Nothing is waiting for a yes or
+    no.", "No budget is set for this month.", "Set a team’s budget for this month", "Choose a team",
+    "Save", "The board did not load.", and the server's refusals ("The spending suite is not switched
+    on.", "Only an admin or a lead can open this board.", "Only an admin can set a budget.", "Only the
+    person who approves this request can decide it.", "This request has already been decided.",
+    "Choose a team from your staff directory.", "Give a budget of nothing or more.", and, for the
+    engine, "Only people in this organisation can ask to spend here.", "Give an amount of more than
+    nothing." and "Say what the money is for.").
 
 
 
@@ -2742,6 +2764,53 @@ engine's answers, no label, nothing written) and
 `client/src/pages/suites/the-role-map-as-an-admin-sees-it.spec.tsx` (10 tests, word for word). **No
 existing test was changed.** No screen could be checked signed in (item 14).
 
+#### Spending and budgets: built and tested, not yet reviewed
+
+**What was missing (the gap list):** the product kept no spending for customers at all. Groundwork's own
+back office has spending (`ops_expenses`), but it is Groundwork's own books: no row says which
+organisation it belongs to, so a customer's request could never be kept apart from ours. It is not
+reused; its rule that nobody approves their own spend is kept. There was nowhere to keep a request, its
+decision or a team's budget, no approval rule, and no board at `#/suite/spend`. Taking a request in chat
+and checking the budget first is the engine's (request 26).
+
+**New storage, on your computer only,** in the migration `20260927140000_spending_and_budgets`:
+`spend_requests` (who, how much, for what, the team it counts against, and the yes or no with who
+decided and when) and `team_budgets` (one team's budget for one month, set by an admin). It has not been
+run against any database. **One question was added** to the suite's first questions: "Which currency do
+people spend in?" (item 28.45).
+
+**What each person now reads:**
+- **Grace, an admin,** "Open its board" on the Spending and budgets card, then "Suites / Spending and
+  budgets", "Spending and budgets", "People ask to spend by telling Groundwork. It checks the budget and
+  the rules, then sends the request to the right person." Then "Waiting for a yes or no", with each
+  request as the prototype writes it: "Kamau: KES 18,000 for fuel for Kisumu deliveries" and "Operations
+  has KES 38,000 left this month. Kamau’s lead can approve this."; "Lina: KES 95,000 for a new laptop"
+  and "This is over KES 20,000, so Grace must approve it. Product has KES 60,000 left this month.", with
+  "Approve" and "Decline" only on the requests she approves. Then "Each team’s budget this month", a
+  table of "Team", "Budget", "Spent so far" and "Left", such as "Operations", "250,000", "212,000",
+  "38,000", and "Spending comes from the requests people make here." Then "Set a team’s budget for this
+  month", with "Team" ("Choose a team"), "Budget" and "Save". With nothing: "Nothing is waiting for a
+  yes or no." and "No budget is set for this month."
+- **Fatuma, a lead,** the same for her own team only: its requests, with Approve and Decline on those
+  she approves, and its budget. No way to set a budget.
+- **A member and a guest** are refused by the server: "Only an admin or a lead can open this board."
+- **Everybody, while the suite is off:** "The spending suite is not switched on."
+
+**Privacy and access, on the server:** a lead reads only their own team's requests and budgets. Up to
+the limit the person's lead approves (when that lead is a lead or an admin here), otherwise an admin;
+above it, the person the admin named. Nobody approves their own, and nobody reads their own request as
+waiting. A decision is made once. Only an admin sets a budget, and only for a team in the directory. A
+scan fails if anything outside the suites reads a request or a budget, so spending never reaches a
+check-in or its report. No labels on people, no addresses.
+
+**Commits:** `1ec7e2a8` (the server), `5e1c7439` (the board), `5187daeb` (request 26).
+
+**Tested:** `api/src/modules/suites/the-spending-as-each-reader-reads-it.spec.ts` (15 tests: off, every
+refusal, what Grace, Fatuma and Wairimu are each served, who approves, never your own, deciding once,
+setting a budget, the engine's check and ask, no label, the scan) and
+`client/src/pages/suites/spending-as-each-reader-sees-it.spec.tsx` (11 tests, word for word, for Grace,
+Fatuma and a member). **No existing test was changed.** No screen could be checked signed in (item 14).
+
 **Each suite, still to do, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
 1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
@@ -2765,8 +2834,10 @@ existing test was changed.** No screen could be checked signed in (item 14).
 6. **Role map** (`#/suite/roles`, admins only). **Built** (above), from the roles, who holds them and
    the directory's job titles, which it never changes. Still missing: "Give it an owner" (item 28.42).
    The engine's part: the role interview, and why a job nobody owns matters (request 25).
-7. **Spending and budgets** (`#/suite/spend`, admins and leads). Groundwork's own back office has
-   spending, to check for reuse. The engine's part: taking a request in chat and checking the budget.
+7. **Spending and budgets** (`#/suite/spend`, admins and leads). **Built** (above), with its own
+   tables; the back office's spending is Groundwork's own books, so it is not reused. Still missing:
+   "How people use it", and real figures from an accounting tool (item 28.46). The engine's part: taking
+   a request in chat and checking the budget, said back and confirmed first (request 26).
 8. **To-dos** (`#/suite/todos`, admins and leads). Commitments exist in each check-in, and the back
    office has to-dos, to check for reuse. The engine's part: "Remind me" in chat.
 9. **Customers and deals** (`#/suite/customers`, admins and leads). The back office has a sales
