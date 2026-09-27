@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
+import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 
 /**
  * HOW DOES THIS END? (U.11, B6, ending-and-probation-review.txt, #/c/kwame/end)
@@ -11,9 +12,11 @@ import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
  * is the server's answer, not this page's: anyone else who opens it reads the outcomes and who
  * decides, and somebody the server refuses reads nothing.
  *
- * Not built here, because only the engine can write them (request 13): Groundwork's suggestion with
- * why and what would change it, and the probation review's parts (week by week, why things went
- * wrong and what went well, what colleagues saw, the support given, and questions to help decide).
+ * Groundwork's suggestion about how it ends ("Groundwork suggests keeping Kwame on"), with why, what
+ * would change it and the person's own answer, is drawn for the lead when the engine has made one
+ * (C3, U.13; request 15). Not built here, because only the engine can write them (request 13): the
+ * probation review's parts (week by week, why things went wrong and what went well, what colleagues
+ * saw, the support given, and questions to help decide).
  */
 export default function EndingPage() {
   const { id } = useParams<{ id: string }>()
@@ -32,6 +35,7 @@ export default function EndingPage() {
       {ground?.label && (
         <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 16px' }}>{ground.label}</h1>
       )}
+      {!!id && <SuggestionsForTheLead groundId={id} where="ending" />}
       {!!id && <ResolutionPanel groundId={id} />}
     </div>
   )

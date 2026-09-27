@@ -6,6 +6,7 @@ import { myDataApi } from '@/api/my-data'
 import { useAuthStore } from '@/stores/auth'
 import { Button, NeedsYouList, NeedsYouRow, Tag } from '@/components/gw/kit'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
 
 /**
  * THE YOU BOARD (C2, #/you). The wording is copied from docs/prototype/screens/C2-the-you-board/
@@ -20,7 +21,10 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  *   - "Everything asked of you this week" and "Share with your lead": that is your load across
  *     check-ins, which is private unless you share it, and nothing yet holds the requests or the
  *     sharing (D3, U.16).
- *   - "Add my side" and "Say what’s behind it": they need somewhere to keep your side (C3, U.13).
+ *   - "Say what’s behind it" and "Stop sharing automatically", on something Groundwork noticed:
+ *     they wait for the engine to serve what it noticed (request 14).
+ * "Where you stand" from Groundwork's suggestions about you, with "Add my side" and "Appeal this
+ * decision", is drawn when the server serves one (C3, U.13).
  * The engine's own parts (where you stand, worth knowing now, what Groundwork noticed, coaching
  * followed over time, what you contributed, what keeps coming up) are drawn only when served.
  */
@@ -56,6 +60,8 @@ function TheBoard({ b }: { b: YourBoard }) {
     <>
       <h2 className="gw-t-h2 gw-you-h2">Your board</h2>
       {nothingYet && <p className="gw-t-body gw-you-quiet">You are not in any check-in yet.</p>}
+
+      <WhereYouStandFromSuggestions items={b.suggestionsAboutYou ?? []} />
 
       {b.whereYouStand?.says && (
         <section className="gw-you-card" aria-labelledby="you-stand-h">

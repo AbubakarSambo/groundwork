@@ -31,6 +31,7 @@ import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
 import { whenTheBoardLastChanged } from './when-the-board-last-changed'
+import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 
 /**
  * The delivery board.
@@ -503,6 +504,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         </p>
         {b.readOnlyNote && (
           <p role="note" style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '8px 0 0' }}>{b.readOnlyNote}</p>
+        )}
+
+        {/*
+          GROUNDWORK SUGGESTS … (C3, U.13, suggestion-daniel.txt), for whoever runs it: the
+          suggestion with why, what would change it and the person's own answer, and "Your
+          decision". The server serves it to the lead alone; nobody else is drawn anything here.
+        */}
+        {viewerRunsThisCheckIn && (
+          <div style={{ marginTop: 14 }}>
+            <SuggestionsForTheLead groundId={id!} where="board" />
+          </div>
         )}
 
         {/*

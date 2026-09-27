@@ -171,6 +171,32 @@ describe('when the engine serves its own parts (request 14)', () => {
   })
 })
 
+describe('Daniel, when Groundwork has made a suggestion about him (C3, U.13, what-daniel-sees.txt)', () => {
+  const DANIEL = { id: 'u-d', firstName: 'Daniel', role: 'MEMBER' }
+  const DANIELS: YourBoard = {
+    ...EMPTY,
+    checkIns: [{ id: 'd', label: 'Daniel, the next six weeks', youRunIt: false, line: 'You have finished 3 sessions.', to: '/grounds/d' }],
+    suggestionsAboutYou: [{
+      id: 's-d', checkIn: { id: 'd', label: 'Daniel, the next six weeks' }, leadName: 'Wairimu',
+      facts: 'In the last 4 weeks, you kept 11 of your 20 commitments. When fewer than 6 in 10 are kept, Groundwork suggests extra help to your manager.',
+      whatWouldChangeIt: 'Keeping 8 in 10 for the next 4 weeks.',
+      decision: null, yourSide: null, yourAppeal: null, appealDecision: null, mayAppeal: false,
+    }],
+  }
+
+  it('reads where he stands, in the prototype’s words, with "Add my side", and no label on him', async () => {
+    const { container } = open(DANIEL, DANIELS)
+    await screen.findByText('Where you stand')
+    const text = container.textContent ?? ''
+    expect(text).toContain('In the last 4 weeks, you kept 11 of your 20 commitments. When fewer than 6 in 10 are kept, Groundwork suggests extra help to your manager.')
+    expect(text).toContain('What would change this: Keeping 8 in 10 for the next 4 weeks.')
+    expect(text).toContain('Wairimu has not decided anything yet. You will see the decision and the reasons here.')
+    expect(screen.getByRole('button', { name: 'Add my side' })).toBeTruthy()
+    expect(text).not.toMatch(/\bPIP\b|at risk|\bexit\b|performance plan/i)
+    expect(text).not.toMatch(/specific|confidence|rating|score/i)
+  })
+})
+
 describe('when the board does not load', () => {
   it('says so, says nothing written is affected, and offers to try again', async () => {
     ;(youApi.get as any).mockRejectedValue(new Error('down'))

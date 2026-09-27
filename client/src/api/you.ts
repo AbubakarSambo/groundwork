@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import type { SuggestionForThePerson } from './suggestions'
 
 /**
  * THE YOU BOARD (C2, U.12): what is yours, across your check-ins. The server builds it from what you
@@ -43,6 +44,12 @@ export interface YourBoard {
   contributed?: string[]
   /** "Something that keeps coming up", about your part in the work. */
   keepsComingUp?: { title: string; says: string }[]
+
+  /**
+   * GROUNDWORK'S SUGGESTIONS ABOUT YOU (C3, U.13), served when there are any: the facts about your
+   * work, what would change them, and the decision with its reasons. Never the verdict.
+   */
+  suggestionsAboutYou?: SuggestionForThePerson[]
 }
 
 export const youApi = {

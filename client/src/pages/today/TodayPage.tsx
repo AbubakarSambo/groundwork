@@ -6,6 +6,7 @@ import { Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
+import { AppealsToDecide } from '@/components/gw/Suggestions'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -55,6 +56,9 @@ export function TodayPage() {
         <p className="gw-today-line">
           {whenItWas(now, 'weekdayAndDay')}.{data?.line ? ` ${data.line}` : ''}
         </p>
+
+        {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
+        {user?.role === 'ADMIN' && <AppealsToDecide />}
 
         <section aria-labelledby="needs-you-h" className="gw-today-section">
           <div className="gw-today-section-head">

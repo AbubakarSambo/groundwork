@@ -130,6 +130,37 @@ describe('Today, for a new organisation’s admin', () => {
   })
 })
 
+describe('Today, appeals to decide (C3, U.13)', () => {
+  const APPEAL = {
+    id: 's-d', checkIn: { id: 'g-d', label: 'Daniel, the next six weeks' }, aboutName: 'Daniel', leadName: 'Wairimu',
+    headline: 'Groundwork suggests a performance plan for Daniel', why: 'In the last 4 weeks, Daniel kept 11 of his 20 commitments.',
+    whatWouldChangeIt: null, theirOwnAnswer: null,
+    decision: { says: 'A 6-week plan.', reasons: 'Seven sales have been stuck.', at: null },
+    theirSide: null, appeal: { says: 'The records were the job I was given.', at: null }, appealDecision: null, mayDecide: true,
+  }
+
+  it('an admin reads the appeals waiting for her at the top', async () => {
+    ;(todayApi.get as any).mockResolvedValue({ count: 0, line: null, needs: [], comingUp: [] })
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) =>
+      ({ data: url === '/suggestions/appeals' ? { appeals: [APPEAL] } : { ...NEW_ORG, checkIns: 3, welcomeCardSeen: true } }) as any)
+    useAuthStore.setState({ user: GRACE, token: 't', isAuthenticated: true } as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={qc}><MemoryRouter><TodayPage /></MemoryRouter></QueryClientProvider>)
+    expect(await screen.findByRole('heading', { name: 'Appeals to decide' })).toBeTruthy()
+    expect(screen.getByText('Daniel appealed Wairimu’s decision')).toBeTruthy()
+  })
+
+  it('a lead or a participant never asks for appeals, and reads none', async () => {
+    for (const who of [WAIRIMU, MIRIAM]) {
+      const view = open(who, LEAD_READ)
+      await screen.findByText('3 things, most important first')
+      expect((apiClient.get as any).mock.calls.map((c: any[]) => c[0])).not.toContain('/suggestions/appeals')
+      expect(screen.queryByText('Appeals to decide')).toBeNull()
+      view.unmount()
+    }
+  })
+})
+
 describe('when the read fails', () => {
   it('says so, says nothing written is affected, and offers to try again', async () => {
     ;(todayApi.get as any).mockRejectedValue(new Error('offline'))
