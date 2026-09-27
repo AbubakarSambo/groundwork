@@ -1689,8 +1689,18 @@ export class GroundsService {
     const briefAsEveryoneReadsIt: string | null = (ground as any).toldToParticipants?.trim() || theSituationIn(brief) || null;
     const briefChange = rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).briefChangedBy ?? null : null;
     const changedBySomebodyElse = !!briefChange?.userId && briefChange.userId !== ground.initiatorId;
-    const briefIsTheLeadsOwnWords = !!briefAsEveryoneReadsIt && !changedBySomebodyElse
+    /*
+     * WHAT THE LEAD TYPED IN SETUP (U.7 re-check). Handed over only to the reader who leads this
+     * check-in and is also the person who typed it; nobody else is sent the text. Its existence also
+     * says the brief was put together by setup from her answers, so while nobody has rewritten it the
+     * brief is not "her words".
+     */
+    const setupWords: { authorUserId: string; text: string } | null =
+      await ((this.prisma as any).leadSetupWords?.findUnique?.({ where: { groundId: id }, select: { authorUserId: true, text: true } }) ?? Promise.resolve(null)).catch(() => null);
+    const briefWasPutTogetherBySetup = !briefChange?.userId && !!setupWords;
+    const briefIsTheLeadsOwnWords = !!briefAsEveryoneReadsIt && !changedBySomebodyElse && !briefWasPutTogetherBySetup
       && briefAsEveryoneReadsIt === (typeof brief === 'string' ? brief.trim() : '');
+
     const briefChangedBy: { firstName: string | null; isYou: boolean; isTheLead: boolean } | null = briefChange?.userId
       ? {
           isYou: briefChange.userId === requestingUserId,
@@ -2237,6 +2247,12 @@ export class GroundsService {
       briefIsTheLeadsOwnWords,
       /* Who last rewrote it, to whoever runs the check-in: their first name, or "you". */
       briefChangedBy: viewerRunsThisGround ? briefChangedBy : undefined,
+      /* Whether the brief is still the one setup put together from the lead's answers. */
+      briefPutTogetherBySetup: viewerRunsThisGround ? briefWasPutTogetherBySetup : undefined,
+      /* What she typed in setup, to her alone (U.7 re-check). See LeadSetupWords. */
+      leadsOwnSetupWords: viewerIsInitiator && setupWords && !!requestingUserId && setupWords.authorUserId === requestingUserId
+        ? setupWords.text
+        : undefined,
       signals,
       contextNotes,
       settingsChanges,

@@ -383,6 +383,18 @@ export class EntryCommitDto {
   @Type(() => TurnDto)
   history: TurnDto[];
 
+  /**
+   * WHAT THEY TYPED IN SETUP, THEIR OWN MESSAGES ONLY (U.7 re-check). The brief is put together
+   * from the answers setup drew out, so it is not what they wrote. These are kept so the Context
+   * page can show the lead her own words, and nobody else (LeadSetupWords).
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(A_HISTORY_MAX_TURNS)
+  @IsString({ each: true })
+  @MaxLength(A_MESSAGE_MAX, { each: true })
+  leadsOwnWords?: string[];
+
   @IsOptional()
   report?: any;
 

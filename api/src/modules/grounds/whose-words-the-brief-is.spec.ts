@@ -1,4 +1,5 @@
 import { GroundsService } from './grounds.service';
+import { EntryService } from '../entry/entry.service';
 
 /**
  * WHAT THIS CHECK-IN IS FOR: WHAT EACH READER IS SENT, AND WHOSE WORDS IT IS (U.7 review).
@@ -14,7 +15,7 @@ const OTIENO = 'u-otieno';
 const HER_WORDS = 'Twenty-five water pumps this quarter. I want to see what actually moved each week.';
 const TOLD = 'This check-in follows the water pump sales this quarter.';
 
-function getAs(userId: string, over: any = {}) {
+function getAs(userId: string, over: any = {}, setupWords: { authorUserId: string; text: string } | null = null) {
   const ground: any = {
     id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, createdAt: new Date(), timelineDays: null,
     restrictExternalVisibility: true, peersVisibleToEachOther: true, whoSeesTargets: 'THEIR_OWN',
@@ -40,6 +41,7 @@ function getAs(userId: string, over: any = {}) {
     groundParticipant: { findFirst: async () => null, findMany: async () => [] },
     organization: { findUnique: async () => ({ subscriptionPlan: 'FREE', subscriptionStatus: 'ACTIVE', freeExtensionUsed: false }) },
     leadContextNote: { findMany: async () => [] },
+    leadSetupWords: { findUnique: jest.fn(async () => setupWords) },
   };
   return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { respond: async () => '' } as any)
     .get('g1', 'org1', userId) as Promise<any>;
@@ -104,5 +106,87 @@ describe('rewriting it records who did', () => {
     const { service, updated } = makeService({ role: 'MEMBER', organizationId: 'org1' });
     await service.updateTimeline('g1', WANJIRU, { brief: HER_WORDS });
     expect(updated.mock.calls[0][0].data.groundAuditLog.briefChangedBy).toBeUndefined();
+  });
+});
+
+/*
+ * U.7 RE-CHECK: WHAT THE LEAD TYPED IN SETUP. The Context page's "What you wrote" held the brief
+ * setup put together from her answers. Her own messages are kept, and sent to her alone.
+ */
+const JUMA = 'Juma joined our warehouse team in January and his probation ends in March. I need to decide whether to confirm him. He is often late with the stock counts.';
+
+describe('what the lead typed in setup, as each reader is sent it', () => {
+  const hers = { authorUserId: WANJIRU, text: JUMA };
+  it('Wanjiru, who typed it and leads it, is sent it', async () => {
+    const got = await getAs(WANJIRU, {}, hers);
+    expect(got.leadsOwnSetupWords).toBe(JUMA);
+    expect(got.briefPutTogetherBySetup).toBe(true);
+  });
+  it('Aisha is not', async () => {
+    const got = await getAs(AISHA, {}, hers);
+    expect(got.leadsOwnSetupWords).toBeUndefined();
+    expect(JSON.stringify(got)).not.toContain('often late with the stock counts');
+  });
+  it('Otieno, an admin, is not', async () => {
+    const got = await getAs(OTIENO, {}, hers);
+    expect(got.leadsOwnSetupWords).toBeUndefined();
+    expect(JSON.stringify(got)).not.toContain('often late with the stock counts');
+  });
+  it('a lead the check-in was handed to, who did not type them, is not', async () => {
+    const got = await getAs(WANJIRU, {}, { authorUserId: 'u-earlier-lead', text: JUMA });
+    expect(got.leadsOwnSetupWords).toBeUndefined();
+  });
+  it('and a brief setup put together is not called the lead’s own words, even where everyone reads it as it is', async () => {
+    const got = await getAs(WANJIRU, { toldToParticipants: null, brief: 'Juma’s probation needs review.' }, hers);
+    expect(got.briefAsEveryoneReadsIt).toBe('Juma’s probation needs review.');
+    expect(got.briefIsTheLeadsOwnWords).toBe(false);
+  });
+});
+
+describe('setup keeps what the lead typed, and only that', () => {
+  function commitWith(dto: any) {
+    const upsert = jest.fn(async (a: any) => a.create);
+    const prisma: any = {
+      user: { findUnique: jest.fn(async () => ({ role: 'ADMIN' })) },
+      organization: { findUnique: jest.fn(async () => ({ whoMayOpenCheckIns: 'NAMED_LEADS', checkInsNeedApproval: true })), update: jest.fn(async () => ({})) },
+      entryDraft: { findUnique: jest.fn(async () => null), updateMany: jest.fn(async () => ({ count: 0 })) },
+      groundParticipant: { findMany: jest.fn(async () => [{ id: 'p1' }]), findFirst: jest.fn(async () => ({ id: 'p1' })), update: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({ count: 1 })) },
+      roundCompletion: { create: jest.fn(async (a: any) => a.data) },
+      checkIn: { count: jest.fn(async () => 1), findFirst: jest.fn(async () => ({ id: 'ci1' })), update: jest.fn(async () => ({})) },
+      conversationTurn: { createMany: jest.fn(async () => ({ count: 0 })) },
+      leadContextNote: { create: jest.fn(async () => ({})) },
+      ground: { update: jest.fn(async () => ({})), findUnique: jest.fn(async () => ({ joinToken: 'jt' })) },
+      leadSetupWords: { upsert },
+    };
+    const grounds: any = {
+      create: jest.fn(async () => ({ id: 'g-self', joinToken: 'jt' })),
+      createForLead: jest.fn(async () => ({ id: 'g-lead', joinToken: 'lead-jt' })),
+      addParticipant: jest.fn(async () => ({})),
+    };
+    const conversation: any = { extractRecordEntries: jest.fn(async () => undefined), extractExpectations: jest.fn(async () => undefined), ensureNextSession: jest.fn(async () => undefined), buildSoloArtifact: jest.fn(async () => undefined) };
+    const service = new EntryService({} as any, prisma, grounds, {} as any, {} as any, conversation, { emit: jest.fn() } as any);
+    return { run: () => service.commit('org1', WANJIRU, { groundLabel: 'Juma, probation', scenario: 'PROBATION_REVIEW', history: [{ role: 'user', content: 'hi' }], report: null, contributors: [], ...dto } as any), upsert };
+  }
+
+  it('keeps her own messages, without a folded-in document, against her as the author', async () => {
+    const { run, upsert } = commitWith({ leadsOwnWords: ['Juma joined our warehouse team in January and his probation ends in March.', '[Document: "rota.pdf"]\nrows', 'He is often late with the stock counts.'] });
+    await run();
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(upsert.mock.calls[0][0].create).toEqual({
+      groundId: 'g-self', authorUserId: WANJIRU,
+      text: 'Juma joined our warehouse team in January and his probation ends in March.\n\nHe is often late with the stock counts.',
+    });
+  });
+
+  it('keeps nothing when nothing was typed', async () => {
+    const { run, upsert } = commitWith({});
+    await run();
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('and on the path where somebody sets it up for another lead, keeps nothing: they are not the lead’s words', async () => {
+    const { run, upsert } = commitWith({ lead: { email: 'lead@test.com' }, brief: 'Context', leadsOwnWords: ['Set this up for Amina.'] });
+    await run();
+    expect(upsert).not.toHaveBeenCalled();
   });
 });

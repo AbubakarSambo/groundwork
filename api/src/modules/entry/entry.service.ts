@@ -1757,6 +1757,8 @@ from finishing at all.`;
       /** True when they said the other people check in and they read what comes back. */
       managingOnly?: boolean;
       history: ChatTurn[];
+      /** What they typed in setup, their own messages only (LeadSetupWords, U.7 re-check). */
+      leadsOwnWords?: string[];
       /** Documents attached during the anonymous chat, kept as real records. */
       documents?: { fileName: string; content: string; mimeType?: string }[];
       report?: EntryReport | null;
@@ -2213,6 +2215,29 @@ from finishing at all.`;
         .catch((err) => this.logger.warn(`Could not save the setter's role on ${ground.id}: ${err.message}`));
     }
     if (!participant) throw new BadRequestException('Participant not found after creating a check-in');
+
+    /*
+     * WHAT THEY TYPED IN SETUP, KEPT FOR THEM (U.7 re-check). The Context page showed the brief, which
+     * setup puts together from the answers it drew out, under "What you wrote". It was not what she
+     * wrote. Her own messages are kept here, apart from the ground's row so nothing spreads them, and
+     * are shown only to her while she leads it. Only on this path: on the coordinator's, the person
+     * committing is not the lead, and their words are not the lead's. A document folded into the chat
+     * and a picked situation card are not things they typed.
+     */
+    const theirOwnWords = (dto.leadsOwnWords ?? [])
+      .map((t) => (typeof t === 'string' ? t.trim() : ''))
+      .filter((t) => t && !t.startsWith('[Document:') && !t.startsWith('[Situation picked'))
+      .join('\n\n')
+      .slice(0, 20_000);
+    if (theirOwnWords) {
+      await (this.prisma as any).leadSetupWords
+        ?.upsert?.({
+          where: { groundId: ground.id },
+          create: { groundId: ground.id, authorUserId: initiatorId, text: theirOwnWords },
+          update: { authorUserId: initiatorId, text: theirOwnWords },
+        })
+        ?.catch?.((err: any) => this.logger.warn(`Could not keep the lead's setup words on ${ground.id}: ${err?.message}`));
+    }
 
     const checkIn = await this.prisma.checkIn.findFirst({
       where: { groundId: ground.id, participantId: participant.id, sessionNumber: 1 },
