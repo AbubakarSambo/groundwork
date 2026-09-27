@@ -99,11 +99,17 @@ describe('the plain word is "a colleague", numbered the same way everywhere', ()
     expect(plainWordsByPerson(PARTIES).has('p-aisha')).toBe(false);
   });
 
-  it('two are "one colleague" and "another colleague", in the order the report gives them', () => {
+  it('two are "a colleague" and "another colleague", in the order the report gives them', () => {
     const second = { ...NO_NAME, id: 'p-noname-2', userId: 'u-noname-2', email: 'x2@baridi.test', createdAt: new Date('2026-09-01T12:00:00Z') };
     const words = plainWordsByPerson([...PARTIES, second as any]);
-    expect(words.get('p-noname')).toBe('one colleague');
+    expect(words.get('p-noname')).toBe('a colleague');
     expect(words.get('p-noname-2')).toBe('another colleague');
+  });
+
+  it('three are "a colleague", "another colleague" and "a third colleague"', () => {
+    const more = [2, 3].map((n) => ({ ...NO_NAME, id: `p-noname-${n}`, userId: `u-noname-${n}`, email: `x${n}@baridi.test`, createdAt: new Date(`2026-09-01T1${n}:00:00Z`) }));
+    const words = plainWordsByPerson([...PARTIES, ...(more as any[])]);
+    expect(['p-noname', 'p-noname-2', 'p-noname-3'].map((id) => words.get(id))).toEqual(['a colleague', 'another colleague', 'a third colleague']);
   });
 
   it('a capital only at the start', () => {

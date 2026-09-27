@@ -182,7 +182,8 @@ describe('what the person being reviewed reads about a colleague they may not na
 
 describe('and where there are several of them', () => {
   /*
-   * Hafsah's words for more than one: "one colleague", "another colleague". Which person is
+   * Hafsah's words for more than one: "a colleague", "another colleague", "a third colleague"
+   * (27 September 2026; on 26 September the first was "one colleague"). Which person is
    * which comes from the order the parties were added to the check-in, not from the order a
    * sentence happens to mention them - so the second paragraph below, which names them the other
    * way round, still calls the same person the same thing.
@@ -213,14 +214,14 @@ describe('and where there are several of them', () => {
       { isLead: false, participantId: 'p-amara' },
     );
 
-  it('reads "one colleague" and "another colleague", and keeps each person on the same one', () => {
+  it('reads "a colleague" and "another colleague", and keeps each person on the same one', () => {
     expect(served().sharedPicture).toBe(
-      'One colleague built the front end. Another colleague wrote the tests.\n\n'
-      + 'Another colleague says the tests were the slow part, and one colleague agrees.',
+      'A colleague built the front end. Another colleague wrote the tests.\n\n'
+      + 'Another colleague says the tests were the slow part, and a colleague agrees.',
     );
-    expect(served().agreements[0]).toBe('One colleague and another colleague both describe a high-quality user experience.');
+    expect(served().agreements[0]).toBe('A colleague and another colleague both describe a high-quality user experience.');
     expect(served().engagement.parties.map((p: any) => p.who)).toEqual([
-      'Laura Whitfield', 'Amara Diallo', 'one colleague', 'another colleague',
+      'Laura Whitfield', 'Amara Diallo', 'a colleague', 'another colleague',
     ]);
   });
 

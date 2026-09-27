@@ -515,7 +515,7 @@ export function pluralLabelsBecomeSingular(text: string, known: Iterable<string>
  * THE SAME PERSON IS THE SAME PHRASE EVERYWHERE THIS READER LOOKS. The order comes from the
  * parties themselves - `labelsForParties` hands its labels out in a stable order, and this walks
  * them in that order - and not from the order sentences happen to mention people in. So whoever is
- * "one colleague" in the shared picture is "one colleague" in the judgement, in the divergences,
+ * "a colleague" in the shared picture is "a colleague" in the judgement, in the divergences,
  * and on the board.
  *
  * AND NEVER A JOB TITLE. The branch this replaces printed `handleOf(label)` for a long label,
@@ -552,15 +552,16 @@ export function plainWordsForTheUnnameable(
   const lead = unnameable.find((l) => l.toLowerCase() === THE_LEADS_LABEL);
   if (lead) out.set(lead, viewerLabel ? 'your lead' : 'the lead');
 
+  /*
+   * "A COLLEAGUE", THEN "ANOTHER COLLEAGUE", THEN "A THIRD COLLEAGUE". Hafsah's words, 27 September
+   * 2026, which replace "one colleague" for the first of several: the first is "a colleague" whether
+   * or not anybody follows, so a person is called the same thing when a second joins.
+   */
   const colleagues = unnameable.filter((l) => l.toLowerCase() !== THE_LEADS_LABEL);
-  if (colleagues.length === 1) {
-    out.set(colleagues[0], 'a colleague');
-  } else {
-    colleagues.forEach((l, i) => {
-      const phrase = i === 0 ? 'one colleague' : i === 1 ? 'another colleague' : AFTER_THE_SECOND[i - 2];
-      out.set(l, phrase ?? 'another colleague');
-    });
-  }
+  colleagues.forEach((l, i) => {
+    const phrase = i === 0 ? 'a colleague' : i === 1 ? 'another colleague' : AFTER_THE_SECOND[i - 2];
+    out.set(l, phrase ?? 'another colleague');
+  });
   return out;
 }
 
@@ -569,8 +570,8 @@ export function plainWordsForTheUnnameable(
  *
  * Where a person has no name, the board, the report's list of who answered, the conversation and the
  * end-state email each used to say "a teammate", which the prototype never says. They now say what
- * `plainWordsForTheUnnameable` says, from this one place: "a colleague" when there is one, "one
- * colleague", "another colleague", "a third colleague" when there are several, "the lead" (or "your
+ * `plainWordsForTheUnnameable` says, from this one place: "a colleague", then "another colleague",
+ * "a third colleague" when there are several, "the lead" (or "your
  * lead", with a reader) for a lead with no name. The order comes from `labelsForParties`, so the same
  * person is the same phrase on every surface.
  *
