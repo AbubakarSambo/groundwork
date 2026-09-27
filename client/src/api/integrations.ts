@@ -105,10 +105,19 @@ export interface WhatsAppConnection {
   connectedAt: string
   lastInboundAt: string | null
   lastOutboundAt: string | null
+  /** When Meta's handshake answered, or else when the first message came in through the address (U.18). */
+  webhookProvenAt?: string | null
   tokenEndsWith: string
 }
 
+/** The counts on the Connections page (U.18). Counts only, and admins only, on the server. */
+export interface ConnectionsAtAGlance {
+  whatsapp: { people: number; checkInsThisMonth: number; failedThisWeek: number } | null
+  figures: { fromYourProduct: boolean }
+}
+
 export const integrationsApi = {
+  atAGlance: () => apiClient.get<ConnectionsAtAGlance>('/integrations/connections').then(r => r.data),
   /* The organisation's own WhatsApp number. Secrets go in and are never read back. */
   whatsapp: () =>
     apiClient.get<{ connection: WhatsAppConnection | null; webhookPath: string }>('/integrations/whatsapp').then(r => r.data),

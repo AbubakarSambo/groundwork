@@ -108,7 +108,7 @@ describe('one gate, used by all three renderers', () => {
 
 describe('the group reads as a place', () => {
   it('the org routes are named in one list', () => {
-    expect(ORG_ROUTES).toEqual(['/org/members', '/org/integrations', '/billing', '/settings'])
+    expect(ORG_ROUTES).toEqual(['/org/members', '/settings/connections', '/settings/whatsapp', '/settings/tools', '/billing', '/settings'])
   })
 
   it('the heading is the organisation\'s own name', () => {

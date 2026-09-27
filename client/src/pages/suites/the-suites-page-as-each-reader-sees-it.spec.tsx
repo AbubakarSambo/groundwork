@@ -146,8 +146,8 @@ describe('Grace, an admin, reads the Suites page', () => {
       ['Teams and who reports to whom', 'Each person’s team, level and manager.', 'People', '/org/members'],
       ['Roles and permissions', 'Who can start check-ins, and who can see what.', 'People', '/org/members'],
       ['Company documents', 'The handbook, learnings and resources.', 'Company context', '/company/context'],
-      ['Numbers from other systems', 'Sales, payments and usage, shown beside what people say.', 'Connections', '/org/integrations'],
-      ['Slack or Teams', 'Notices in the channels your team already uses.', 'Connections', '/org/integrations'],
+      ['Numbers from other systems', 'Sales, payments and usage, shown beside what people say.', 'Connections', '/settings/connections'],
+      ['Slack or Teams', 'Notices in the channels your team already uses.', 'Connections', '/settings/connections'],
     ])
   })
 

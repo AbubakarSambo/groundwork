@@ -163,7 +163,7 @@ const NAV_ITEMS = [
        behind it is, and a nav item that leads to a refusal is worse than no nav item. */
     /* The design system's name for it. */
     label: 'Connections',
-    to: '/org/integrations',
+    to: '/settings/connections',
     adminOnly: true,
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -296,7 +296,13 @@ export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } |
  * - every check-in's shared picture - not a setting of the organisation. Listing it here would put
  * the company's name as a heading over a lead's two items, one of which is their own settings.
  */
-export const ORG_ROUTES = ['/org/members', '/org/integrations', '/billing', '/settings']
+/** Pages that sit under one door in the sidebar, so the door stays lit on them (U.18). */
+const ALSO_UNDER: Record<string, string[]> = { '/settings/connections': ['/settings/whatsapp', '/settings/tools'] }
+function under(to: string): boolean {
+  return (ALSO_UNDER[to] ?? []).some(p => window.location.pathname.startsWith(p))
+}
+
+export const ORG_ROUTES = ['/org/members', '/settings/connections', '/settings/whatsapp', '/settings/tools', '/billing', '/settings']
 
 type FbTab = 'reaction' | 'build' | 'wrong'
 
@@ -1118,8 +1124,8 @@ export function AppSidebar() {
                     <ul className="gw-rl-list">
                       {adminItems.map(item => (
                         <li key={item.to}>
-                          <NavLink to={item.to} className={({ isActive }) => `gw-rl-nav${isActive ? ' on' : ''}`}>
-                            {item.icon(location.pathname.startsWith(item.to))}
+                          <NavLink to={item.to} className={({ isActive }) => `gw-rl-nav${isActive || under(item.to) ? ' on' : ''}`}>
+                            {item.icon(location.pathname.startsWith(item.to) || under(item.to))}
                             <span>{item.label}</span>
                           </NavLink>
                         </li>

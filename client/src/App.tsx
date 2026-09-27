@@ -99,6 +99,8 @@ import {
 import { PromptVersioningPage } from '@/pages/prompts/PromptVersioningPage'
 import { PromptTestPage } from '@/pages/prompts/PromptTestPage'
 import { IntegrationsPage } from '@/pages/org/IntegrationsPage'
+import { ConnectionsPage } from '@/pages/connections/ConnectionsPage'
+import { WhatsAppSetupPage } from '@/pages/connections/WhatsAppSetupPage'
 import { AdminPage } from '@/pages/admin/AdminPage'
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
@@ -643,7 +645,11 @@ export default function App() {
                 server, and since A12 the door is at the route: AdminsOnly, the same gate /org/members
                 has, rather than the page mounting and refusing - the pattern RequirePlatformAdmin's
                 note above was written to remove. */}
-            <Route path="/org/integrations" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><IntegrationsPage /></AdminsOnly></RequireOrgSetup>} />
+            {/* Connections (F1, U.18): the page, WhatsApp step by step, and your own tools. The old address, which emails still carry, opens your own tools, the page it always was. */}
+            <Route path="/settings/connections" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><ConnectionsPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/settings/whatsapp" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><WhatsAppSetupPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/settings/tools" element={<RequireOrgSetup><AdminsOnly what="connect your systems"><IntegrationsPage /></AdminsOnly></RequireOrgSetup>} />
+            <Route path="/org/integrations" element={<Navigate to="/settings/tools" replace />} />
             <Route path="/admin" element={<RequirePlatformAdmin><AdminPage /></RequirePlatformAdmin>} />
             <Route path="/admin/api-access" element={<RequirePlatformAdmin><ApiAccessPage /></RequirePlatformAdmin>} />
             <Route path="/admin/dashboard" element={<RequirePlatformAdmin><AdminDashboardPage /></RequirePlatformAdmin>} />

@@ -75,7 +75,7 @@ describe('"More", as an admin reads it', () => {
     expect(hrefOf(bar(), 'Check-ins')).toEqual(['/grounds'])
     expect(hrefOf(main(), 'Boards')).toEqual(['/boards'])
     expect(hrefOf(main(), 'People')).toEqual(['/org/members'])
-    expect(hrefOf(main(), 'Connections')).toEqual(['/org/integrations'])
+    expect(hrefOf(main(), 'Connections')).toEqual(['/settings/connections'])
     expect(hrefOf(main(), 'Plan and billing')).toEqual(['/billing'])
     expect(hrefOf(main(), 'Your settings')).toEqual(['/settings'])
   })

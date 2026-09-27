@@ -56,7 +56,7 @@ export function getItGoing(f: RolloutFacts): Step[] {
     { key: 'admin', title: 'Add a second admin', to: '/org/members', done: f.admins > 1 },
     { key: 'checkin', title: 'Start your first check-in', to: '/start', done: f.checkIns > 0 },
   ]
-  if (f.whatsappOn) steps.push({ key: 'wa', title: 'Connect WhatsApp (optional)', to: '/org/integrations', done: !!f.whatsappConnected })
+  if (f.whatsappOn) steps.push({ key: 'wa', title: 'Connect WhatsApp (optional)', to: '/settings/whatsapp', done: !!f.whatsappConnected })
   return steps
 }
 
@@ -64,7 +64,7 @@ export function getItGoing(f: RolloutFacts): Step[] {
 export function doorsFor(f: Pick<RolloutFacts, 'whatsappOn'>): { title: string; line: string; to: string }[] {
   return [
     { title: 'People', line: 'Invite people, set roles and teams, let guests in', to: '/org/members' },
-    { title: 'Connections', line: f.whatsappOn ? 'WhatsApp, your numbers, your own address' : 'Your numbers, your own address', to: '/org/integrations' },
+    { title: 'Connections', line: f.whatsappOn ? 'WhatsApp, your numbers, your own address' : 'Your numbers, your own address', to: '/settings/connections' },
     { title: 'Suites', line: 'Leave, spending and onboarding, switched on as needed', to: '/settings/suites' },
     { title: 'Plan and billing', line: 'Seats, the card and invoices', to: '/billing' },
   ]

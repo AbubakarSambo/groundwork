@@ -38,6 +38,9 @@ const REACHED_FROM_OUTSIDE_THE_APP: Record<string, string> = {
    * of its own, so it adds no route to any data - every surface on it calls the endpoint it always
    * calls, with the reader's own token.
    */
+  /* U.18: the old address of the Connect page. The API-access and failed-delivery emails, and the
+     rollout checklist, still carry it; it opens "Connect your own tools", the page it always was. */
+  '/org/integrations': 'the links in the API-access and failed-delivery emails',
   '/verify-email': 'the link in the sign-up email',
   '/set-password': 'the link in the invite and add-a-password emails',
   '/reset-password': 'the link in the password-reset email',

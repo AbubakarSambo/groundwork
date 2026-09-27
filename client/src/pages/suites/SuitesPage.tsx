@@ -29,8 +29,8 @@ export const ALREADY_PART = [
   { name: 'Teams and who reports to whom', line: 'Each person’s team, level and manager.', where: 'People', to: '/org/members' },
   { name: 'Roles and permissions', line: 'Who can start check-ins, and who can see what.', where: 'People', to: '/org/members' },
   { name: 'Company documents', line: 'The handbook, learnings and resources.', where: 'Company context', to: '/company/context' },
-  { name: 'Numbers from other systems', line: 'Sales, payments and usage, shown beside what people say.', where: 'Connections', to: '/org/integrations' },
-  { name: 'Slack or Teams', line: 'Notices in the channels your team already uses.', where: 'Connections', to: '/org/integrations' },
+  { name: 'Numbers from other systems', line: 'Sales, payments and usage, shown beside what people say.', where: 'Connections', to: '/settings/connections' },
+  { name: 'Slack or Teams', line: 'Notices in the channels your team already uses.', where: 'Connections', to: '/settings/connections' },
 ]
 
 /** The suites whose board is built, and where it lives: all ten, since U.17. */

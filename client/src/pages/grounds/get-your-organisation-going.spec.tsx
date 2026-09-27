@@ -46,7 +46,7 @@ describe('the new admin', () => {
     const doors = [...document.querySelectorAll('.gw-welcome-door')].map(a => [a.querySelector('b')?.textContent, a.querySelector('span')?.textContent, a.getAttribute('href')])
     expect(doors).toEqual([
       ['People', 'Invite people, set roles and teams, let guests in', '/org/members'],
-      ['Connections', 'Your numbers, your own address', '/org/integrations'],
+      ['Connections', 'Your numbers, your own address', '/settings/connections'],
       ['Suites', 'Leave, spending and onboarding, switched on as needed', '/settings/suites'],
       ['Plan and billing', 'Seats, the card and invoices', '/billing'],
     ])

@@ -65,7 +65,7 @@ describe('the menu has to be on the screen', () => {
     const inRail = (name: string) => [...rail.querySelectorAll('a, button')].filter(el => el.textContent?.trim() === name)
     expect(inRail('Check-ins').map(a => a.getAttribute('href'))).toEqual(['/grounds'])
     expect(inRail('People').map(a => a.getAttribute('href'))).toEqual(['/org/members'])
-    expect(inRail('Connections').map(a => a.getAttribute('href'))).toEqual(['/org/integrations'])
+    expect(inRail('Connections').map(a => a.getAttribute('href'))).toEqual(['/settings/connections'])
     expect(inRail('Plan and billing').map(a => a.getAttribute('href'))).toEqual(['/billing'])
     expect(rail).toHaveTextContent('Test Org')
     fireEvent.click(screen.getByRole('button', { name: /Settings, help, sign out/ }))

@@ -175,7 +175,7 @@ describe('the sidebar, as a participant and as an admin read it', () => {
     expect(within(rail).getByRole('link', { name: 'Boards' })).toHaveAttribute('href', '/boards')
     const headings = [...rail.querySelectorAll('.gw-rl-h')].map(h => h.textContent)
     expect(headings).toEqual(['Check-ins', 'Coamana'])
-    for (const [name, href] of [['People', '/org/members'], ['Connections', '/org/integrations'], ['Suites', '/settings/suites'], ['Plan and billing', '/billing']]) {
+    for (const [name, href] of [['People', '/org/members'], ['Connections', '/settings/connections'], ['Suites', '/settings/suites'], ['Plan and billing', '/billing']]) {
       expect(within(rail).getByRole('link', { name })).toHaveAttribute('href', href)
     }
     /* U.17: Suites sits under the organisation's name, between Connections and Plan and billing, as today-admin.txt has it. */
