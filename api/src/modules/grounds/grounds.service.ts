@@ -63,6 +63,7 @@ import {
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { theLeadsWordsAbout } from './the-leads-words-about-someone';
+import { timelineDaysForAChosenEnd } from './session-count';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -530,9 +531,9 @@ export class GroundsService {
         // sensing-family ground is never accidentally created shared.
         mode: dto.mode ?? defaultModeFor(dto.scenario),
         moment: dto.moment,
-        timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
+        timelineDays: howLongItRuns(dto),
         /** Whether this was chosen or guessed for them, so the setup chat can offer to fix it. */
-        timelineStated: dto.timelineDays != null,
+        timelineStated: dto.timelineDays != null || !!dto.endsAt,
         cadenceStated: dto.cadence != null,
         cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
@@ -740,9 +741,9 @@ export class GroundsService {
         // sensing-family ground is never accidentally created shared.
         mode: dto.mode ?? defaultModeFor(dto.scenario),
           moment: dto.moment,
-          timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],
+          timelineDays: howLongItRuns(dto),
           /** Whether this was chosen or guessed for them, so the setup chat can offer to fix it. */
-          timelineStated: dto.timelineDays != null,
+          timelineStated: dto.timelineDays != null || !!dto.endsAt,
           cadenceStated: dto.cadence != null,
           cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
@@ -6503,3 +6504,21 @@ function diplomaticObservation(raw: string): string {
   const cleaned = raw.replace(/^\[period=\d+\]\s*/i, '').trim();
   return `Your record across sessions shows something worth noticing: ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)} It is worth being aware of as the record builds.`;
 }
+
+/**
+ * HOW LONG A NEW CHECK-IN RUNS (U.6 review): what they said, else the end they chose, else the
+ * situation's usual length. See timelineDaysForAChosenEnd.
+ */
+function howLongItRuns(dto: { timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null }): number {
+  if (dto.timelineDays != null) return dto.timelineDays;
+  if (dto.endsAt) {
+    return timelineDaysForAChosenEnd({
+      startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
+      endsAt: new Date(dto.endsAt),
+      cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario as keyof typeof RECOMMENDED_CADENCE],
+      workingDays: dto.workingDays ?? null,
+    });
+  }
+  return DEFAULT_TIMELINE_DAYS[dto.scenario as keyof typeof DEFAULT_TIMELINE_DAYS];
+}
+

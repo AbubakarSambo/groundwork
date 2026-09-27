@@ -129,3 +129,12 @@ describe('what is still to set, after saving (U.6 review)', () => {
     expect(said).toBe('Set: a name, a rhythm, a start date and 1 person.')
   })
 })
+
+describe('the chosen end, as the server will keep it (U.6 review)', () => {
+  /* The server walks the same dates (timelineDaysForAChosenEnd) and holds exactly this many check-ins,
+     so the check-in's header, its Setup and its invitation say the same. */
+  it('weekly from Sunday 27 September until 6 November is 6 check-ins', () => {
+    expect(whenTheyOpen({ cadence: 'WEEKLY', anchorDay: null, startsOn: '2026-09-27', endsOn: '2026-11-06', workingDays: [], today: new Date(2026, 8, 27) }))
+      .toBe('Check-ins open on Sun 27 September, Sun 4 October, Sun 11, Sun 18, Sun 25 and on from there, until 6 November: 6 in all.')
+  })
+})

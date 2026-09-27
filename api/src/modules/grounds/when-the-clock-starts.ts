@@ -18,11 +18,14 @@ export interface HasAClock {
   createdAt: Date;
   startsAt?: Date | null;
   timelineDays?: number | null;
+  /** The end the lead chose, when there is one. It is the deadline (U.6 review). */
+  endsAt?: Date | null;
 }
 
 export const clockStartsAt = (g: HasAClock): Date => g.startsAt ?? g.createdAt;
 
 export function deadlineOf(g: HasAClock): Date | null {
+  if (g.endsAt) return new Date(g.endsAt);
   if (!g.timelineDays || g.timelineDays <= 0) return null;
   /* No start date AND no creation date is a row nobody has a clock for, and "1 January 1970 plus
      ninety days" is worse than saying nothing. It threw here the first time a caller passed a row

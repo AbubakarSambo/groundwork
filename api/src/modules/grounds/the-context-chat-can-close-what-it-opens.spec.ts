@@ -210,7 +210,9 @@ describe('the question this whole feature exists to ask', () => {
 
   it('and both create paths record which it was', () => {
     // `dto.timelineDays != null` is the whole distinction: they said, or we filled it in.
-    const creates = CODE.split('timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS');
+    /* U.6 review: the length now goes through howLongItRuns(dto), which still takes what they said
+       first, then the end they chose, then the default; and a chosen end also counts as stated. */
+    const creates = CODE.split('timelineDays: howLongItRuns(dto),');
     expect(creates.length).toBe(3); // two call sites, so two splits
     for (const after of creates.slice(1)) {
       expect(after.slice(0, 260)).toMatch(/timelineStated: dto\.timelineDays != null/);
