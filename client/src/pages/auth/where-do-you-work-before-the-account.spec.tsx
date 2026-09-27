@@ -76,12 +76,17 @@ describe('an organisation lets their domain join', () => {
     expect(screen.queryByRole('heading', { name: 'Your email is confirmed' })).toBeNull()
   })
 
-  it('"Create" sends the same link asking for their own organisation', async () => {
+  it('"Create" sends the same link asking for their own organisation, and lands on its Today (U.3 re-review)', async () => {
     const { token } = open()
     await pastTheConfirmation()
-    vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ user: { ...user, role: 'ADMIN' }, accessToken: 't', justCreated: true } as any)
+    vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ user: { ...user, role: 'ADMIN' }, accessToken: 't', justCreated: true, next: '/today' } as any)
+    sessionStorage.setItem('gw-just-signed-in', '1')
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
-    await waitFor(() => expect(authApi.verifyEmail).toHaveBeenLastCalledWith(token, { createMyOwn: true }))
+    await waitFor(() => expect(navigated).toHaveBeenCalledWith('/today', { replace: true }))
+    expect(authApi.verifyEmail).toHaveBeenLastCalledWith(token, { createMyOwn: true })
+    /* Not sent round to "Where do you work?" again by the first page after signing in. */
+    expect(sessionStorage.getItem('gw-just-signed-in')).toBeNull()
+    expect(navigated).not.toHaveBeenCalledWith('/welcome', expect.anything())
   })
 
   it('a refusal is said on the card, which stays', async () => {

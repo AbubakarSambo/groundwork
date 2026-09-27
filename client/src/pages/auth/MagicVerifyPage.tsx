@@ -4,6 +4,7 @@ import { queryClient } from '@/lib/queryClient'
 import { authApi, type VerifyEmailResponse, type WhereDoYouWorkFirst } from '@/api/auth'
 import { WhereDoYouWork } from '@/pages/org/WhereDoYouWork'
 import { thePasswordKey, forgetThePasswordKey } from './the-password-key'
+import { takeJustSignedIn } from '@/lib/choose-an-organisation'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
 import { Arrival } from '@/components/gw/Arrival'
@@ -408,7 +409,11 @@ export function MagicVerifyPage() {
         const res = passwordKey ? await authApi.verifyEmail(token, choice, passwordKey) : await authApi.verifyEmail(token, choice)
         if ('accessToken' in res && res.accessToken) forgetThePasswordKey()
         if ('whereDoYouWork' in res && res.whereDoYouWork) return { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
-        return afterVerify(res as SignedIn, token, null, true)
+        const onward = await afterVerify(res as SignedIn, token, null, true)
+        /* They have just answered "Where do you work?", so the first page after signing in must not
+           ask it again. After afterVerify, because signing in is what sets that flag. */
+        takeJustSignedIn()
+        return onward
       } catch (err: any) {
         const said = err?.response?.data?.message
         const what = whatTheLinkDid(said)

@@ -341,6 +341,10 @@ export function AuthPage() {
     return {
       ...(firstName.trim() ? { firstName: firstName.trim() } : {}),
       ...(orgName.trim() && !fromAnInviteLink ? { orgName: orgName.trim() } : {}),
+      /* Left as we suggested it from the address, not typed (U.3 re-review): "Create a new
+         organisation" after "Where do you work?" does not reuse a suggestion that names the
+         organisation they chose not to join. */
+      ...(orgName.trim() && !fromAnInviteLink && !orgTouched && suggestedOrg && orgName === suggestedOrg ? { orgNameSuggested: true } : {}),
     }
   }
   const createAccount = useMutation({

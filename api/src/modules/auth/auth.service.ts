@@ -517,7 +517,15 @@ export class AuthService {
 
       // The slug comes from the organisation NAME, never the email domain, so a
       // company's namespace cannot be claimed from an address. See GW-001.
-      const orgName = pending.orgName?.trim() || `${pending.firstName}'s workspace`;
+      /*
+       * "CREATE A NEW ORGANISATION" ON "WHERE DO YOU WORK?" (U.3 re-review). Named from what they typed
+       * at sign-up if they typed a name. The box is filled in from the address ("Coamana" from
+       * @coamana.com), and that suggestion is the name of the organisation they have just chosen not
+       * to join, so a name they only left as suggested is not used: they get "<first name>'s
+       * workspace", which they can rename. A plain sign-up keeps the suggestion, as Hafsah decided.
+       */
+      const onlySuggested = !!dto.createMyOwn && (pending.payload as any)?.orgNameSuggested === true;
+      const orgName = (onlySuggested ? '' : pending.orgName?.trim()) || `${pending.firstName}'s workspace`;
       const slug = await this.generateUniqueSlug(orgName);
 
       const created = await this.prisma.$transaction(async (tx) => {
@@ -561,7 +569,8 @@ export class AuthService {
       });
 
       /* This link has just made the account and its organisation (U.2). */
-      return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true }, pending.next);
+      /* Chosen on "Where do you work?": on to the new organisation's Today, not back to where they came from. */
+      return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true }, dto.createMyOwn ? '/today' : pending.next);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });

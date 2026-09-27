@@ -127,6 +127,24 @@ describe('with an address whose domain an organisation lets join', () => {
     expect(made.users[0]).toMatchObject({ organizationId: 'o-new', role: 'ADMIN' });
   });
 
+  it('"Create" goes on to the new organisation\'s Today (U.3 re-review)', async () => {
+    const { svc } = service({ pending: waiting({ orgName: 'Ama Ltd', next: '/j/coamana-6rr7' }), domainOrgs: [COAMANA] });
+    const res: any = await svc.verifyEmail({ token: 'link', createMyOwn: true } as any);
+    expect(res.next).toBe('/today');
+  });
+
+  it('"Create" does not reuse a name only suggested from the address: "<first name>\'s workspace" (U.3 re-review)', async () => {
+    const { svc, made } = service({ pending: waiting({ orgName: 'Coamana', payload: { orgName: 'Coamana', orgNameSuggested: true } }), domainOrgs: [COAMANA] });
+    await svc.verifyEmail({ token: 'link', createMyOwn: true } as any);
+    expect(made.orgs[0].name).toBe("Ama's workspace");
+  });
+
+  it('a plain sign-up still takes the suggested name, as Hafsah decided', async () => {
+    const { svc, made } = service({ pending: waiting({ email: 'ama@acme.test', orgName: 'Acme', payload: { orgName: 'Acme', orgNameSuggested: true } }) });
+    await svc.verifyEmail({ token: 'link' } as any);
+    expect(made.orgs[0].name).toBe('Acme');
+  });
+
   it('an organisation that was not offered cannot be joined by naming it', async () => {
     const { svc, made } = service({ pending, domainOrgs: [COAMANA] });
     await expect(svc.verifyEmail({ token: 'link', joinOrganizationId: 'o-somebody-else' } as any)).rejects.toBeInstanceOf(ForbiddenException);

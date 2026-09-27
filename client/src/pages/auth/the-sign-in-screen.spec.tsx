@@ -252,8 +252,9 @@ describe('signing up with a password, if the person prefers (Hafsah, 26 Septembe
     fireEvent.change(screen.getByLabelText('Type it again'), { target: { value: 'harbour7lamp' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }))
     await screen.findByRole('heading', { name: 'Check your email' })
-    /* "Baridi" is the organisation name suggested from the address, which they left as it was. */
-    expect(authApi.entrySave).toHaveBeenCalledWith('wairimu@baridi.test', { payload: { firstName: 'Wairimu', orgName: 'Baridi' } }, '', 'harbour7lamp')
+    /* "Baridi" is the organisation name suggested from the address, which they left as it was, so it
+       is marked as suggested (U.3 re-review: "Create" after "Where do you work?" does not reuse it). */
+    expect(authApi.entrySave).toHaveBeenCalledWith('wairimu@baridi.test', { payload: { firstName: 'Wairimu', orgName: 'Baridi', orgNameSuggested: true } }, '', 'harbour7lamp')
   })
 
   it('a password that is the email address typed above is caught before anything is sent', async () => {
