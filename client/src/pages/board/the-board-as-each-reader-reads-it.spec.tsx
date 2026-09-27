@@ -17,6 +17,17 @@ let me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: me }) }))
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn().mockResolvedValue({ initiatorId: 'u-wairimu' }) } }))
+vi.mock('@/api/today', () => ({
+  todayApi: {
+    get: vi.fn().mockResolvedValue({
+      count: 2, line: null, comingUp: [],
+      needs: [
+        { key: 'n1', kind: 'ready', title: 'Today’s report is ready', detail: 'Read it first if you like.', action: { label: 'Read it', to: '/grounds/g1/report' }, groundId: 'g1', organizationId: 'org-1' },
+        { key: 'n2', kind: 'decide', title: 'Another check-in needs you', detail: null, action: { label: 'Open it', to: '/grounds/g2' }, groundId: 'g2', organizationId: 'org-1' },
+      ],
+    }),
+  },
+}))
 vi.mock('@/components/gw/HowThisHasMoved', () => ({ HowThisHasMoved: () => null }))
 vi.mock('@/components/gw/ResolutionPanel', () => ({ ResolutionPanel: () => null }))
 vi.mock('@/components/gw/WhatSuccessLooksLike', () => ({ WhatSuccessLooksLikeFor: () => null }))
@@ -80,6 +91,10 @@ describe('the board, as each reader reads it', () => {
     renderBoard(AS_THE_LEAD)
     expect(await screen.findByText(LAST_UPDATED)).toBeTruthy()
     expect(screen.getByText('What the target of 25 assumes')).toBeTruthy()
+    /* What needs her, kept to this check-in: Today's item for this one, not the other one's. */
+    expect(await screen.findByText('What needs you in this check-in')).toBeTruthy()
+    expect(screen.getByText('Today’s report is ready')).toBeTruthy()
+    expect(screen.queryByText('Another check-in needs you')).toBeNull()
     expect(screen.getByText('6 reps each close about 4 sales.')).toBeTruthy()
     expect(screen.getByText('What the target of 5 assumes')).toBeTruthy()
     expect(screen.getAllByText('If one of these stops being true, the target needs a second look.')).toHaveLength(2)
@@ -96,6 +111,7 @@ describe('the board, as each reader reads it', () => {
     expect(await screen.findByText(LAST_UPDATED)).toBeTruthy()
     expect(screen.getByText('What the target of 25 assumes')).toBeTruthy()
     expect(screen.queryByText(/supermarket buyers/)).toBeNull()
+    expect(screen.queryByText('What needs you in this check-in')).toBeNull()
     expect(screen.queryByText(/You can read this check-in’s board and reports/)).toBeNull()
   })
 

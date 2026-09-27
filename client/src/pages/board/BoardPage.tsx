@@ -15,7 +15,8 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
-import { Zone, Sec, Card, Row, Pill, td, btn, miniBtn, btnGhost } from '@/components/gw/kit'
+import { Zone, Sec, Card, Row, Pill, td, btn, miniBtn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
+import { todayApi, type Need } from '@/api/today'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
 import { useAreYouSure, Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
@@ -120,6 +121,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* Whether to build the attendance grid as a grid at all. See the component it chooses. */
   const onAPhone = useIsAPhone()
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
+
+  /* What needs the lead here: Today's items for this check-in. See where it is drawn. */
+  const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: viewerRunsThisCheckIn, retry: false })
+  const needsHere = (today?.needs ?? []).filter((n: Need) => n.groundId === id)
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['board', id, variant],
@@ -475,6 +480,28 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         </p>
         {b.readOnlyNote && (
           <p role="note" style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '8px 0 0' }}>{b.readOnlyNote}</p>
+        )}
+
+        {/*
+          WHAT NEEDS YOU IN THIS CHECK-IN (board-as-lead.txt), for whoever runs it. Not a second read:
+          the same items Today shows (GET /today, already cut to what this reader may see), kept to
+          this check-in. So the board and Today cannot disagree about what needs the lead.
+        */}
+        {viewerRunsThisCheckIn && needsHere.length > 0 && (
+          <section aria-labelledby="board-needs-you-h" style={{ marginTop: 16 }}>
+            <h2 id="board-needs-you-h" className="gw-t-h2" style={{ margin: '0 0 8px' }}>What needs you in this check-in</h2>
+            <NeedsYouList label="What needs you in this check-in">
+              {needsHere.map((n: Need) => (
+                <NeedsYouRow
+                  key={n.key}
+                  kind={n.kind}
+                  title={n.title}
+                  detail={n.detail ?? undefined}
+                  actions={<Button kind="secondary" size="small" to={n.action.to}>{n.action.label}</Button>}
+                />
+              ))}
+            </NeedsYouList>
+          </section>
         )}
 
         {/*
