@@ -111,8 +111,14 @@ describe('the group reads as a place', () => {
     expect(ORG_ROUTES).toEqual(['/org/members', '/settings/connections', '/settings/whatsapp', '/settings/tools', '/billing', '/settings'])
   })
 
-  it('the heading is the organisation\'s own name', () => {
-    expect(SHELL).toMatch(/user\?\.organizationName \?\? 'Your organisation'/)
+  it('the heading is the organisation\'s own name, never a placeholder standing in for it', () => {
+    /*
+     * U.8 REVIEW: "Your organisation" read as if it were the real name, on a placeholder profile a
+     * join link can leave standing before the real one arrives (JoinConfirmPage.tsx). Now nothing
+     * is shown until `organizationName` actually arrives, rather than a name that was never true.
+     */
+    expect(SHELL).toMatch(/user\?\.organizationName \?\? ''/)
+    expect(SHELL).not.toMatch(/\?\? 'Your organisation'/)
   })
 
   it('and it only appears when there is a group to head', () => {
