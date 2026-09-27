@@ -3281,6 +3281,43 @@ timers) and `nothing-about-next-while-the-current-one-opens.spec.tsx` (new, a fu
 for the "not let in" case). Only the tests for files changed run (`--maxWorkers=2`), both type
 checks clean.
 
+### U.8 The check-in screens: fourth review's findings, all fixed in one round
+
+- **The lead's name fell back to "Your lead" on exactly the check-ins that hide her own row.** A
+  participant on a hidden check-in reads only her own participant row from the server; the three
+  sentences that name the lead ("Rukia knows who is here", "Rukia also answers a check-in" on the
+  end card and the Done page) all looked her up inside that same filtered list, found nobody, and
+  fell back to the role word. `GET /grounds/:id` now sends `leadFirstName` and `leadAnswersToo` at
+  the top level, read off the raw participants before the peer filter runs, so all three sentences
+  say her actual name regardless of who else is hidden. The invitation that got a participant here
+  already named the lead in full, so this reveals nothing new - only her first name goes out, and
+  nothing else about her.
+- **A dead end: told "your report is ready", then given nothing to press.** The engine can write a
+  closing reply ("...Your report is ready now. Speak soon.") on the same response that sends
+  `sessionComplete: false`, so no end card comes up and "done" never becomes true - and the manual
+  "Finish my check-in now" fallback was still gated on the server's own turn floor, so a person could
+  be left with nothing to press for two more answers, repeating "Please finish my check-in" into the
+  identical closing reply each time. The offer now appears from the first landed answer, always;
+  pressing it before the record is ready reaches the completion gate's own refusal, which this page
+  already turns into a plain sentence with the composer handed back, so an early press costs one
+  exchange, never a dead end. The disagreement itself - the engine writing a closing sentence while
+  its own flag says the session did not close - is the engine's to fix (request 47, updated).
+- **"This can take up to a minute" was not true.** A real first open was timed at 90 to 130 seconds.
+  The shared opening-wait sentence now says "This can take a minute or two", which is true of that
+  range.
+
+**Tests:** `the-lead-is-named-even-when-hidden.spec.ts` (new, server: a participant on a hidden
+check-in gets only her own row plus the two top-level fields), `the-lead-is-named-even-when-hidden.spec.tsx`
+(new, client: the end card, the Done page and the topic card all render the lead's name from that
+same real shape), `what-the-end-of-a-check-in-can-say.spec.ts` (updated: `whoElseAnswers` no longer
+takes a participants list to search, so its fixture is the real shape rather than one carrying a
+lead row the server never sends), `ChatPage.offerOnlyWhatTheServerAccepts.spec.tsx` (updated: two
+tests asserted the offer must not appear on two landed answers, which was pinning the old defective
+threshold rather than a real rule - rewritten around the new one, one landed answer is enough, while
+still proving a local echo the server has not acknowledged never counts), `ChatPage.openIsSlow.spec.tsx`
+and `GroundChat.openIsSlow.spec.tsx` (updated to the new wording). Only the tests for files changed
+run (`--maxWorkers=2`), both type checks clean.
+
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 
 - **The lead's judgement on the board reads as sentences.** "What this cannot tell you" and "What
