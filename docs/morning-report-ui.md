@@ -1162,6 +1162,12 @@ workspace's four files (request 4); nothing of mine. **No screen could be checke
 14), so the screens were checked only by rendering them in tests. **Not ticked,** because no review
 can sign in.
 
+**The full run passed:** every screen test (2,714) and the build, and every API test apart from the
+engine workspace's own four (request 4). After merging the engine's latest, its conversation tests
+passed again (2,292). The privacy leak U.8 closed has a second half in the engine's board code, which
+still tells a lead a person said "nothing checkable" from the same rating. That is engine code, so it
+is request 8 to the engine workspace. **Not ticked,** because no review can sign in (item 14).
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
