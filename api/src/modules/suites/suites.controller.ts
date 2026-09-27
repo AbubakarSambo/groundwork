@@ -1,14 +1,19 @@
 import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsBoolean, IsObject, IsOptional } from 'class-validator';
+import { IsArray, IsBoolean, IsObject, IsOptional } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
 import { SuitesService } from './suites.service';
 import { OnboardingBoardService } from './the-onboarding-board.service';
 import { LeaveBoardService } from './the-leave-board.service';
+import { TimeSheetsService } from './the-time-sheets.service';
 
 class SwitchDto {
   @IsBoolean() on!: boolean;
   @IsOptional() @IsObject() answers?: Record<string, unknown>;
+}
+
+class AgreementsDto {
+  @IsArray() agreements!: unknown[];
 }
 
 /**
@@ -23,6 +28,7 @@ export class SuitesController {
     private readonly suites: SuitesService,
     private readonly onboarding: OnboardingBoardService,
     private readonly leave: LeaveBoardService,
+    private readonly time: TimeSheetsService,
   ) {}
 
   @Get()
@@ -59,6 +65,30 @@ export class SuitesController {
   @ApiOperation({ summary: 'The approver declines a request for time off' })
   declineLeave(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
     return this.leave.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined');
+  }
+
+  @Get('time/board')
+  @ApiOperation({ summary: 'Time sheets, while the suite is on, for an admin or the lead of the team. For billing only.' })
+  timeBoard(@CurrentUser() user: CurrentUserData) {
+    return this.time.board({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('time/mine')
+  @ApiOperation({ summary: 'Your own hours, week by week. Nobody else reads them here.' })
+  myTime(@CurrentUser() user: CurrentUserData) {
+    return this.time.mine({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('time/weeks/:weekOf/people/:personId/approve')
+  @ApiOperation({ summary: 'The approver approves one person’s week of hours' })
+  approveTime(@Param('weekOf') weekOf: string, @Param('personId') personId: string, @CurrentUser() user: CurrentUserData) {
+    return this.time.approve({ userId: user.id, organizationId: user.organizationId }, personId, weekOf);
+  }
+
+  @Put('time/agreements')
+  @ApiOperation({ summary: 'An admin says what each client agreed. It replaces the list.' })
+  setTimeAgreements(@CurrentUser() user: CurrentUserData, @Body() dto: AgreementsDto) {
+    return this.time.setAgreements({ userId: user.id, organizationId: user.organizationId }, dto.agreements);
   }
 
   @Put(':key')

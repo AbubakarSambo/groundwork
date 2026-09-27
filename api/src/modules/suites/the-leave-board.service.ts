@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
+import { mayApprove } from './who-approves';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const LEAVE_REFUSED = {
@@ -212,25 +213,11 @@ export class LeaveBoardService {
     return Math.max(0, perYear - used);
   }
 
-  private async mayDecide(reader: Reader, role: string | null, r: Row, approver: string | null, people: Map<string, any>): Promise<boolean> {
-    if (r.userId === reader.userId) return false;
-    if (approver === 'Their manager') {
-      const managerUserId = await this.managerWhoCanDecide(r.organizationId, people.get(r.userId)?.managerExternalId ?? null);
-      if (managerUserId) return managerUserId === reader.userId;
-    }
-    return role === 'ADMIN';
-  }
-
-  /** The person's manager in the directory, as a user who is a lead or an admin here; else null. */
-  private async managerWhoCanDecide(organizationId: string, managerExternalId: string | null): Promise<string | null> {
-    if (!managerExternalId) return null;
-    const m = await this.prisma.person.findFirst({
-      where: { organizationId, externalId: managerExternalId, active: true },
-      select: { linkedUserId: true },
+  private mayDecide(reader: Reader, role: string | null, r: Row, approver: string | null, people: Map<string, any>): Promise<boolean> {
+    return mayApprove(this.prisma, {
+      organizationId: r.organizationId, readerId: reader.userId, readerRole: role, personUserId: r.userId,
+      approver, managerExternalId: people.get(r.userId)?.managerExternalId ?? null,
     });
-    if (!m?.linkedUserId) return null;
-    const role = await this.roleOf({ userId: m.linkedUserId, organizationId });
-    return role === 'LEAD' || role === 'ADMIN' ? m.linkedUserId : null;
   }
 
   private async theLeadsTeam(reader: Reader, people: Map<string, { externalId: string; department: string | null; managerExternalId: string | null }>) {

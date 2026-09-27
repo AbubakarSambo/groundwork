@@ -457,6 +457,10 @@ model Organization {
   suites             OrganizationSuite[]
   /// Requests for time off, for the leave suite (E2, U.17).
   leaveRequests      LeaveRequest[]
+  /// Hours for billing, for the time sheets suite (E3, U.17). Never evidence about anybody's work.
+  timeEntries        TimeEntry[]
+  timeWeeks          TimeWeek[]
+  timeAgreements     TimeAgreement[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2266,6 +2270,62 @@ model Resolution {
 /// person's own answer, and decides, giving a reason. The person reads the facts about their work
 /// and the decision with its reasons, and can add their side or appeal. An admin decides an appeal.
 ///
+/// HOURS SPENT ON ONE CLIENT OR PROJECT ON ONE DAY (E3, the time sheets suite, U.17). FOR BILLING
+/// ONLY (decisions rule 10): nothing here is evidence about how well anybody works, and nothing outside
+/// the suites reads it, so it never reaches a check-in, its record or its report. Who reads which row is
+/// decided in suites/the-time-sheets.service.ts. `client` is one of the names the admin listed when
+/// switching the suite on.
+model TimeEntry {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  client         String   @db.VarChar(120)
+  onDay          DateTime @map("on_day") @db.Date
+  minutes        Int
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, onDay])
+  @@index([organizationId, userId, onDay])
+  @@map("time_entries")
+}
+
+/// ONE PERSON'S WEEK OF HOURS, APPROVED (E3, U.17): who approved it, when, and the total they saw.
+/// Hours added after that make the week wait again, because the total no longer matches.
+model TimeWeek {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  userId          String   @map("user_id")
+  /// The Monday the week starts on.
+  weekOf          DateTime @map("week_of") @db.Date
+  approvedMinutes Int      @map("approved_minutes")
+  approvedById    String   @map("approved_by_id")
+  approvedAt      DateTime @default(now()) @map("approved_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, weekOf])
+  @@map("time_weeks")
+}
+
+/// WHAT A CLIENT AGREED TO PAY FOR (E3, U.17): "Naivas Ngong Road: installing 12 freezers (whole job)",
+/// 40 hours. `span` is "whole" (the whole job) or "month" (each month). Set by an admin.
+model TimeAgreement {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  client         String   @db.VarChar(120)
+  work           String   @db.VarChar(200)
+  hours          Int
+  span           String   @db.VarChar(8)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("time_agreements")
+}
+
 /// A REQUEST FOR TIME OFF (E2, the leave suite, U.17). Who is off, from which day to which day, who
 /// stands in for them, and the decision: approved or declined, by whom, and when. There is no reason
 /// field, because the prototype never asks for one, and nothing here ever reaches a check-in or its
