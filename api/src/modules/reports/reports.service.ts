@@ -67,9 +67,11 @@ import {
   isAWindow,
   whetherItCanStillBeCorrected,
 } from '../conversation/the-window-for-correcting-a-record';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, THE_LEADS_LABEL } from './party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, THE_LEADS_LABEL, displayName } from './party-labels';
 import { aMoveForTheReader } from './a-move-is-the-thing-to-do';
 import { withoutOtherPeoplesReads } from './own-reads-only';
+import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
+import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
 import { tallyInReport } from './counts-accounts';
@@ -994,7 +996,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true },
+      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } },
     });
     /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
     const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
@@ -1002,6 +1004,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
     // One labelling rule, shared with the read path so a stored label always
     // resolves back to the same person. See party-labels.ts.
     const labelById = labelsForParties(parties as any);
+    /*
+     * AND EACH PERSON'S NAME BESIDE THEIR LABEL, so a label inside a quote can be found in the record
+     * as the name the person actually said. See a-quote-is-what-they-said. The names are the ones
+     * displayName already serves at the read, from the same rows, without the organisation and never
+     * the address; they are used only to find words in the record, and nothing stored is built from them.
+     */
+    const namesInThisCheckIn: ALabelAndAName[] = (parties as any[]).map((p) => ({
+      label: labelById.get(p.id) ?? '',
+      name: displayName({ ...p, organisationGiven: null }, false),
+    }));
 
     /*
      * DISPUTED LINES COME THROUGH HERE, LABELLED. See
@@ -1009,13 +1021,36 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * it. The reads that COUNT still filter it out; this is the read the report is written from, so
      * the claim and the objection arrive together and the report can say the accounts differ.
      */
-    const records = (await this.prisma.recordEntry.findMany({
+    const theRecordAsItIs = await this.prisma.recordEntry.findMany({
       where: { participant: { groundId } },
       include: {
         participant: { select: { id: true } },
         checkIn: { select: { sessionNumber: true } },
       },
-    })).map(withTheDisputeAttached);
+    });
+    const records = theRecordAsItIs.map(withTheDisputeAttached)
+      /* A name in their words becomes that person's label here, once, so every read below - the
+         corpus, the facts about each person, the network read - gets the same text. See
+         a-name-in-their-words-is-the-label. The quotes the models write from it are put back into
+         the person's own words, name and all, before the report is stored: see
+         a-quote-is-what-they-said, which reads `theRecordAsItIs`, never this. */
+      .map((r) => ({ ...r, text: aNameInTheirWordsIsTheLabel(r.text, namesInThisCheckIn) }));
+    /* THE LINES A QUOTE IN THIS REPORT MAY COME FROM: this same read, before anything is added to it,
+       and the lead's own words at set-up. See a-quote-is-what-they-said. */
+    /* And what they said they would do, and when, where each is their own words (the commitment row is
+       stamped as it is written), because "what the record shows over time" quotes them. */
+    const theirPromises = await (this.prisma.groundCommitment?.findMany?.({
+      where: { groundId },
+      select: { text: true, whenSaid: true, saidWordForWord: true, whenSaidWordForWord: true },
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    const whatAQuoteMayBe = theLinesAQuoteMayComeFrom(
+      [
+        ...(theRecordAsItIs as any[]),
+        ...(theirPromises as any[]).map((c) => ({ text: c.text, saidWordForWord: c.saidWordForWord === true })),
+        ...(theirPromises as any[]).map((c) => ({ text: c.whenSaid, saidWordForWord: c.whenSaidWordForWord === true })),
+      ],
+      [(ground as any).brief, ...(parties as any[]).flatMap((p) => [p.remitAsGiven, p.roleAsDescribed])],
+    );
 
     // GW-41: fetch the full version object so we can stamp promptVersionId on the
     // report. Without this, Outcome records have no prompt attribution and the
@@ -2046,9 +2081,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
         `Ground ${groundId}: withheld ${gated.removed.join(', ')} from the first round of a ground opened at the start - there is no run to read yet.`,
       );
     }
-    const enrichedEngagement = gated.engagement;
+    let enrichedEngagement = gated.engagement;
 
-    const inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
+    let inferences = ((result as any).inferences ?? []) as Array<{ id: string; text: string; participantLabel: string; reason: string }>;
 
     /* Ten of twelve reports came back marking nothing. Logged rather than refused - see the module. */
     const marking = doesThisReportMarkItsInferences(
@@ -2212,6 +2247,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         participantId: p.id,
       })),
       leadName: (parties as any[]).filter((p) => p.partyType === PartyType.INITIATOR).map((p) => labelById.get(p.id) ?? null)[0] ?? null,
+      namesInThisCheckIn,
       differences: (Array.isArray((result as any).divergences) ? (result as any).divergences : []).map((d: any) => ({
         topic: String(d?.topic ?? ''),
         positions: (Array.isArray(d?.positions) ? d.positions : []).map((x: any) => ({
@@ -2231,10 +2267,56 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * read - see what-the-record-shows-over-time. Best effort like every other read here: a report
      * that is already written is never lost to this.
      */
-    const overTime = await this.readTheRecordOverTime(groundId, parties as any, labelById).catch((err: any) => {
+    let overTime = await this.readTheRecordOverTime(groundId, parties as any, labelById).catch((err: any) => {
       this.logger.warn(`The longitudinal read on ${groundId} did not run: ${err?.message}`);
       return null;
     });
+
+    /*
+     * EVERY QUOTE IS THE RECORD'S WORDS, OR IS NOT A QUOTE, BEFORE ANYTHING IS STORED.
+     *
+     * Hafsah: "Every quote any person sees must be the person's original words, taken from the
+     * record, never the model's copy of them." One pass, here, over everything this write stores and
+     * the round copy below keeps, so no field can be missed by being added later to only one of them:
+     * the picture, the differences and agreements, the question, the findings, the inferences, the
+     * judgement, what the record shows over time, the network read and the engagement notes. See
+     * a-quote-is-what-they-said.
+     */
+    {
+      let restoredHere = 0;
+      const unquotedHere: string[] = [];
+      const droppedHere: string[] = [];
+      const fromTheRecord = <V,>(v: V): V => {
+        if (v === null || v === undefined) return v;
+        const r = everyQuoteFromTheRecord(v, whatAQuoteMayBe, namesInThisCheckIn);
+        restoredHere += r.restored;
+        unquotedHere.push(...r.unquoted);
+        droppedHere.push(...r.dropped);
+        return r.value;
+      };
+      (result as any).sharedPicture = fromTheRecord((result as any).sharedPicture);
+      (result as any).theOpening = fromTheRecord((result as any).theOpening);
+      (result as any).agreements = fromTheRecord((result as any).agreements);
+      (result as any).divergences = fromTheRecord((result as any).divergences);
+      (result as any).centralQuestion = fromTheRecord((result as any).centralQuestion);
+      (result as any).leadershipGaps = fromTheRecord((result as any).leadershipGaps);
+      findings.splice(0, findings.length, ...fromTheRecord(findings));
+      inferences = fromTheRecord(inferences);
+      enrichedEngagement = fromTheRecord(enrichedEngagement);
+      networkPicture = fromTheRecord(networkPicture);
+      if (theJudgement) theJudgement.judgement = fromTheRecord(theJudgement.judgement);
+      overTime = fromTheRecord(overTime);
+      if (unquotedHere.length) {
+        this.logger.warn(
+          `Report for ground ${groundId}: ${unquotedHere.length} quote(s) were not in the record word for word, so they are no longer quotes (${restoredHere} kept, in the record's own words). First: "${unquotedHere[0].slice(0, 120)}"`,
+        );
+      }
+      if (droppedHere.length) {
+        this.logger.warn(
+          `Report for ground ${groundId}: ${droppedHere.length} sentence(s) taken out, because each quoted words that were not in the record and could not stand without the marks. First: "${droppedHere[0].slice(0, 160)}"`,
+        );
+      }
+    }
 
     const report = await this.prisma.report.upsert({
       where: { groundId },
@@ -3863,6 +3945,8 @@ happened, and what is in the way.`;
     room?: {
       people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string }[];
       leadName: string | null;
+      /* Each person's label and name, so their own words reach the judgement with labels in them too. */
+      namesInThisCheckIn?: ALabelAndAName[];
       differences: { topic: string; positions: { who: string; view: string }[] }[];
     },
   ): Promise<{ judgement: any; table: string } | null> {
@@ -3976,6 +4060,7 @@ happened, and what is in the way.`;
        *
        * Counted off the records rather than written: see what-more-than-one-person-named.ts.
        */
+      const theirWords = (t: string) => aNameInTheirWordsIsTheLabel(t, room!.namesInThisCheckIn ?? []);
       const perPersonTexts = await this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participant: { groundId } },
         select: { text: true, participantId: true },
@@ -3983,7 +4068,10 @@ happened, and what is in the way.`;
       const shared = whatMoreThanOnePersonNamed(
         room!.people.map((p) => ({
           who: p.who,
-          texts: (perPersonTexts as any[]).filter((r) => r.participantId === p.participantId).map((r) => String(r.text ?? '')),
+          /* Their words with every name in this check-in already a label, the same as the corpus. This
+             read comes straight off the table, so without it "Nadia" reached the judgement as a
+             stranger here too - and was even counted as something two people named. */
+          texts: (perPersonTexts as any[]).filter((r) => r.participantId === p.participantId).map((r) => theirWords(String(r.text ?? ''))),
         })),
         room!.people.map((p) => p.who),
       );
@@ -4012,7 +4100,7 @@ happened, and what is in the way.`;
           patterns: (seen as any[])
             .filter((x) => x.participantId === p.participantId && !ALIGNMENT_FEED_ONLY_CODES.has(x.code) && (x.observationText ?? '').trim())
             .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
-          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => String(c.text)),
+          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => theirWords(String(c.text))),
         })),
         room!.differences,
         sessions,
@@ -5246,8 +5334,21 @@ happened, and what is in the way.`;
       include: { participants: { include: { user: { select: { firstName: true, lastName: true, email: true } } } }, report: { select: { id: true } } },
     });
     if (!ground || ground.scenario !== 'DISCOVERY' || !ground.report) return null;
-    const direction = await this.readTheDirectionInChunks(ground);
-    if (!direction) return null;
+    const read = await this.readTheDirectionInChunks(ground);
+    if (!read) return null;
+    /* Its quotes are the record's words or are not quotes, the same as the report's. See a-quote-is-what-they-said. */
+    const labels = labelsForParties(ground.participants as any);
+    const said = await this.prisma.recordEntry.findMany({
+      where: { disputedAt: null, participant: { groundId } },
+      select: { text: true, saidWordForWord: true },
+    });
+    const kept = everyQuoteFromTheRecord(
+      read,
+      theLinesAQuoteMayComeFrom(said, [(ground as any).brief, ...ground.participants.flatMap((p: any) => [p.remitAsGiven, p.roleAsDescribed])]),
+      ground.participants.map((p: any) => ({ label: labels.get(p.id) ?? '', name: displayName({ ...p, organisationGiven: null }, false) })),
+    );
+    if (kept.unquoted.length || kept.dropped.length) this.logger.warn(`The direction for ${groundId}: ${kept.unquoted.length} quote(s) were not in the record word for word, so they are no longer quotes, and ${kept.dropped.length} sentence(s) that could not stand without them were taken out.`);
+    const direction = kept.value;
     await this.prisma.report.update({ where: { groundId }, data: { direction: direction as any } }).catch((err: any) =>
       this.logger.warn(`The direction for ${groundId} was read but could not be kept: ${err?.message}`));
     return direction;

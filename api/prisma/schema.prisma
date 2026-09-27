@@ -1693,6 +1693,11 @@ model RecordEntry {
   /// Set by the person this row is about when they say it is not what they said. A disputed row stays
   /// on the record and stops counting toward every read. See the-wall-between-said-and-extracted.
   disputedAt           DateTime?      @map("disputed_at")
+  /// True only when this line is the person's own words: its text appears, as one unbroken passage,
+  /// in what they typed in this check-in (forgiving only capitals, spacing, end punctuation and curly
+  /// or straight marks). A line the record reader tidied, joined or bracketed stays false. A report
+  /// may only quote a line that is true. See reports/a-quote-is-what-they-said.
+  saidWordForWord      Boolean        @default(false) @map("said_word_for_word")
 
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
   checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
@@ -5161,6 +5166,12 @@ model GroundCommitment {
   carriedIntoCheckInId String? @map("carried_into_check_in_id")
   /// The session they first said it in. Null on a PASTE, which has no session.
   statedInSession Int? @map("stated_in_session")
+  /// True only when `text` is the person's own words: an unbroken passage of what they typed in the
+  /// session they said it in. A paste, a lead's edit or a tidied action stays false, and a report may
+  /// only put the text in quotation marks when it is true. See reports/a-quote-is-what-they-said.
+  saidWordForWord Boolean @default(false) @map("said_word_for_word")
+  /// The same, for `whenSaid`: their own words for when.
+  whenSaidWordForWord Boolean @default(false) @map("when_said_word_for_word")
   /// The sessions they said it again in, unresolved. Saying it again is not a second commitment -
   /// it is the same one, still open, and this is what makes that countable.
   saidAgainIn Int[] @default([]) @map("said_again_in")

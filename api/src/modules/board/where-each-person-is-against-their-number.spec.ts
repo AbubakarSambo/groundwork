@@ -20,8 +20,10 @@ describe('where each person is against their number', () => {
     const r = rep({ inTheWay: [{ what: 'the Sokoto lease', owner: null, days: 21, tried: 'asked-again' }] });
     expect(whyThisRow(r, 12)).toBe('stuck and not chasing');
     /* Changed 27 Sep 2026: this pinned the clipped line "21 days on "...", asked more than once,
-       same channel. Ask them to ...". It is now full sentences with his name. */
-    expect(whatToAskFor(r)).toBe('Musa has been waiting 21 days on "the Sokoto lease", and so far they have asked about it more than once, the same way each time. Ask Musa to find out who owns this by name. Everything else needs that first.');
+       same channel. Ask them to ...". It is now full sentences with his name.
+       Changed again 27 Sep 2026: the blocker is no longer in quotation marks, because it is the
+       dependency reader's phrase and not Musa's words. See whatToAskFor. */
+    expect(whatToAskFor(r)).toBe('Musa has been waiting 21 days on the Sokoto lease, and so far they have asked about it more than once, the same way each time. Ask Musa to find out who owns this by name. Everything else needs that first.');
   });
 
   it('and on the board row, the ask does not repeat what the sentence above it already says', () => {
@@ -35,7 +37,8 @@ describe('where each person is against their number', () => {
     /* Nothing tried and only five days: not the row's reason, so the ask says what it is about. */
     const [row] = whereEachPersonIs([rep({ inTheWay: [{ what: 'the price list from Kofi', owner: 'Kofi', days: 5, tried: 'nothing' }] })], 12);
     expect(row.reason).toBe('nothing to do');
-    expect(row.ask).toBe('Musa has been waiting 5 days on "the price list from Kofi", and nobody has said yet what was tried. Ask Musa to speak to Kofi rather than write to them.');
+    /* Changed 27 Sep 2026: no quotation marks round the blocker, which is not his words. */
+    expect(row.ask).toBe('Musa has been waiting 5 days on the price list from Kofi, and nobody has said yet what was tried. Ask Musa to speak to Kofi rather than write to them.');
   });
 
   it('asks a role, or somebody nobody can name, in a sentence that still reads', () => {

@@ -2773,7 +2773,7 @@ export class GroundsService {
       } else if (intent === 'assign' && change.participantId) {
         await this.prisma.groundCommitment.update({ where: { id: thing.id }, data: { participantId: change.participantId } });
       } else if (intent === 'reword' && change.newText?.trim()) {
-        await this.prisma.groundCommitment.update({ where: { id: thing.id }, data: { text: change.newText.trim().slice(0, 400) } });
+        await this.prisma.groundCommitment.update({ where: { id: thing.id }, data: { text: change.newText.trim().slice(0, 400), saidWordForWord: false } });
       }
       return;
     }

@@ -10,6 +10,11 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 This section is kept up to date as I go. If it stops partway, that is where I got to.
 
+### Your decisions at midday
+
+- **Situation names: agreed.** The prototype's names for six of the eight. Keep "contract" and "recognition" in the other two. I had an error in my own table: it also bolded a third change, "Make sense of something serious that happened". I am following your words, so that one takes the prototype's name, "Make sense of something serious".
+- **Scoring: a run where the key fact was never said is marked "couldn't be tested", and left out of the count.** Applied to runs 6, 7 and 8 below, with both counts shown.
+
 ### Your decisions this morning, and what I am doing with them
 
 - **Names inside people's words:** you said no to `8feedc64` and yes to the middle way, on two conditions. Every quote a person sees must be the original words from the record, and a test must prove that every quote in a served report matches the original answer exactly. That is step 3 below. If it cannot meet both conditions, I will stop and tell you.
@@ -20,7 +25,49 @@ This section is kept up to date as I go. If it stops partway, that is where I go
 1. **In step with the screens workspace.** I merged `mine/wip/prototype-ui`, which brought 108 commits overnight and 18 more this morning. Both were clean fast-forwards and are pushed.
 2. **The test database is up to date.** I applied 22 migrations, not the nine I mentioned: the screens workspace added 13 more overnight. It is the local test database `gw_pw9_1786222102` on localhost. Prisma now reports "Database schema is up to date".
 3. **The board never reads how a person's answers were rated (`a1747927`).** This was their privacy request 8. "Nothing checkable" came from the hidden rating of how checkable someone's answers were. Now the board reads only the record: whether anything they said this round has a number, a date or a document with it. A new privacy test builds the lead's board twice, once with every check-in rated best and once rated worst, and proves the rows are identical. Every row now also carries a plain sentence that says what happened and what would change it, with no verdict word. For example: "Femi is at 2 of 14, and 6 of the 12 rounds have gone. At this pace, 14 would not be reached by the end." The screens workspace's stop-gap, which showed such a row as "nothing to do", is gone, because it was untrue. **The screen still needs one change from the screens workspace:** it still shows each reason as a coloured pill beside the name, and it should show the new sentence instead. I have asked them for it.
-4. **Sales, checked before changing anything.** The fact is there. In all three runs Kwame says his target is 14 approved facilities, and he counts his 22 applications towards it. On run-6 he said "All 22 of them, actually. I counted them all towards my target". The record also holds "I have three approved facilities already". But his finding kept only "22 facilities were processed smoothly". The code picks the latest progress line that contains a digit, and "three" is spelled out. So the one line that shows 3 approvals against 14 never reached the judgement, and the judgement praised him for exceeding his target. A fix is being built: number words count as numbers, and when someone gave two different figures, both reach the report.
+4. **Sales, checked before changing anything.** The fact is there. In all three runs Kwame says his target is 14 approved facilities, and he counts his 22 applications towards it. On run-6 he said "All 22 of them, actually. I counted them all towards my target". The record also holds "I have three approved facilities already". But his finding kept only "22 facilities were processed smoothly". The code picks the latest progress line that contains a digit, and "three" is spelled out. So the one line that shows 3 approvals against 14 never reached the judgement, and the judgement praised him for exceeding his target. **The fix is in (`e9ec1e5a`):** number words now count as numbers, and when someone gave two different figures, both reach the report. I tested it on two sales runs. On the first, Kwame's finding reads "Kwame Mensah has three approved facilities, against a target of 14. Kwame has 19 other facilities that are still applications and not approvals." That is the fact, reaching the report at last. But the judgement still did not draw the conclusion. It put Kwame down as waiting for documents. On the second, the simulated Kwame gave his own target as 22, and the judgement called that target unachievable. **So sales is close in both, not clearly right.** I am keeping the fix because it makes the finding true to the record, and I am not chasing the judgement with prompt changes.
+5. **The "what to ask for" line on the board is in full sentences now (`88b84293`).** It does not repeat the new `says` line. For example: "Ask Amina to check in." and "Ask Musa to speak to Kofi rather than write to them."
+6. **The other close ones, checked against what was said before changing anything:**
+   - **snapshot is the names problem.** Ravi Menon is the lead in every run. Anna is waiting for Ravi's signature, so the lead is waiting on himself without knowing it. That is exactly the right answer, but the judgement asked the lead "who Ravi is". The middle way for names should fix snapshot, drift and pulse together.
+   - **advisor: the fact was not said.** In runs 7 and 8, Peter only ever mentions his contact at Equity Bank. He never says he has none at KCB or Co-operative Bank. Nothing to fix in the engine.
+   - **loans: the fact is in the findings now, and the judgement does not join it up.** On run-8, four borrowers' findings each say their repayments came before any income: Sunday, Hauwa, Grace and Esther. The judgement named only two of them, and never said it is one cause in how the loans are set up.
+   - **shock: the material has all three warning signs in only one run of three.** Only on run-7 did Tobi say "their two quarterly reviews were cancelled. One in June, one in September". Even then, the judgement did not put the three in order.
+   - **project: the fact is there, and the judgement framed it differently.** Rita's July reconciliation requirements are in the record. On run-8 the judgement led with the blocked credentials instead of the scope. I am leaving this one.
+7. **The middle way for names: built, and not yet finished.** There are four commits: `2b47bc4f`, `b6a3a379`, `21c76534` and `dcf44486`.
+   - **Quotes are restored from the record before storing.** Every quotation the report models write is replaced by the record's own words. If it cannot be matched, it loses its quotation marks. The serve step no longer changes anything inside a quote. Before this, three serve-time rewrites did: the name swap, the dash rewrite and the "party" rewrite. On run-8, 392 of the 732 quotes served were not word for word in the record.
+   - **The models read labels where people said names**, and quotes are restored from the unlabelled record.
+   - **Your proof test is in.** It runs the drift scenario from the record, through the report writer and storage, to what Nadia, Zainab and the anonymous copy are served. It checks that every served quote is in the record character for character. It fails when the fix is taken out. Nadia now reads "…since March, at your request. In Zainab's words, "Since March 11th, I've been almost entirely focused on inbound sales support as requested by Nadia"."
+   - **There is a checker for runs**, `api/journey/every-quote-is-from-the-record.ts`. It fails if any served quote is not in the record.
+   - **Two gaps I am closing before I call it done.** First, about 1 in 10 record lines is the extractor's tidied version of what the person typed, not the typed words. A quote restored from one of those would still be a model's copy, which your first condition rules out. So each record line will now be marked when it is written, according to whether it is word for word what the person typed, and only those lines can be quoted. Second, a quote that cannot be matched currently loses its marks and reads broken: "Zainab Suleiman says I have mostly been doing sales support at your request." That sentence will be dropped instead.
+   - **Both gaps are closed.** `c36c862b` marks each record line when it is written, according to whether it is word for word what the person typed. Of 26,060 lines, 23,386 are, and only those can be quoted. `d30f4d1b` drops a sentence whose quote is not theirs and cannot stand without quotation marks. `266bfdf6` gives commitments the same word-for-word mark, because they were being dropped. `ece89012` keeps wording the judgement suggests, such as "ask: What are you waiting for?", without quotation marks, and never leaves a field blank. The two new columns are migrations on the local test database only.
+   - **Proven live, twice.** I ran drift, pulse and snapshot twice each. **All three were clearly right in both rounds, six out of six.** Last night drift was right in one run of six, and pulse and snapshot were unsteady.
+     - drift: "Zainab Suleiman is spending eighty percent of their time on sales support at your request."
+     - snapshot: "Sign the lease variant for Anna Kowalski." The lead is the Ravi she was waiting for.
+     - pulse: the approvals are stuck with a manager on leave, and it says to find somebody who can sign. When it said the lead approved the leave without arranging cover, those were the lead's own words: "since I didn't arrange cover for them".
+   - **The checker: every quote served was word for word in the record.** 45 of 45 in the first round and 24 of 24 in the second. The checker exits with an error if even one is not.
+   - **For you to know.** A quote that is not the person's own words now loses its quotation marks, or its sentence is dropped. On the 300 newest stored reports that dropped 4 sentences the report models wrote and 98 sentences the product built, mostly lines in "what the record shows over time" that quote a commitment nobody said word for word.
+8. **Loans and shock: a rule for a shared cause and for one story in order (`2f4fa98e`).** It adds two short paragraphs to the judgement's instruction, with no scenario words in them. When several people give the same reason, say it once and name everyone it applies to. When different people each hold one piece of what happened, put the pieces in order of when they happened. I tested it twice on each.
+   - **Loans: right in substance both times, and neither run can count.** The first said to "review the loan's startup terms, including the grace period". The second named the shared cause for Sunday, Hauwa and Blessing, kept Musa's undelivered machine apart, and said "Introduce a 90-day period with no payments at the start of each loan". That is the right answer. **But both reports were incomplete** (8 and 7 findings for 9 people), so under the rules neither counts. With nine people, loans often misses the runner's five-minute wait when it runs next to other scenarios.
+   - **Shock: couldn't be tested, both times.** Only the support-ticket sign was said. Nobody mentioned the missed quarterly reviews or the champion leaving, so there was no story to put in order.
+9. **The situations have the names you chose (`bde4f419`).** The prototype's for six, keeping "contract" and "recognition": "Check in before a contract ends or renews" and "Support a raise, promotion or recognition". Every other name is now in sentence case. Nothing in the code chooses a situation by its name. The client's `SCENARIO_LABELS` changed in the same commit, strings only, so the screens workspace's parity test stays green. I have told them. They still write "Connect Goals Across the Team" by hand in five places. **One thing I checked and got right this time:** the scenario packs that actually run come from the database, not the file, as this report said before. So the six situation names written inside the packs' text are unchanged in what runs. That is part of your open question on the 50 packs.
+
+**Run-9, the first full run today, started at about 17:50 on `bde4f419`.** It includes everything above.
+
+### Run-9: 18 clearly right of the 19 that count, and 18 of all 24
+
+- **The judgements.**
+  - **Clearly right (18):** board, cofounder, contractreview, discovery, drift, handover, implementation, newmanager, pip, project, pulse, realign, recognition, renewal, seniorhire, snapshot, updates and workplan.
+  - **Couldn't be tested (3):** advisor, openread and shock. The reasons are in the table below.
+  - **Report incomplete (2):** crisis and loans. Crisis's gap reads as right ("the rota they used is known to be wrong"), but it cannot count.
+  - **Not right (1):** sales. Kwame says "I've got 22 in the pipeline right now. So I'm ahead of schedule!" against a target of 14 approvals. The judgement still does not say he is counting applications.
+- **Drift, pulse and snapshot, the three the names change was for, are all right.**
+- **Is task 1.5 met?** On all 24 it is 18, and the bar is 20. Leaving out the runs that couldn't be tested and the incomplete reports, it is 18 of 19. **Which count the bar uses is your call, so I have not ticked 1.5 and have not started 1.6.**
+- **Every quote is from the record.** The checker read all 496 quotes served across the 24 scenarios. All 496 are word for word in the record.
+- **The checker says nothing is worse than the baseline.** Jargon in reports and boards fell from 124 to 84, and in Groundwork's turns from 15 to 13.
+- **Every test, after merging the screens workspace's newest work.** All 9,859 API tests pass, and the typecheck is clean. The client passes 3,073 of 3,075. The two that fail are in the screens workspace's sidebar tests, "Jump to" and "the sidebar waits for the list". They fail the same way with my one client change taken out, so I have told them. I also applied the six migrations their newest work brought to the local test database.
+- **One number to watch.** "Blocker checked" is 35, against a baseline of 37. The checker allows a 10 per cent drop, so it passes, but it has gone 42, 46, 38 and now 35 across runs 6 to 9. It counts Groundwork's own conversation turns. Today's changes are all in reports, the board and names, apart from the situation-name line the conversation reads. I have not found a cause.
+
+   - **Next for loans and shock:** one rule in the judgement's instruction. When several people give the same cause, say it once and name everyone it applies to. When several people each hold part of the same story, put the parts in order of when they happened. This waits until the middle way is finished, because both touch the judgement files. I will test it twice on each.
 
 ### The situation names, side by side, for you to decide
 
@@ -40,39 +87,58 @@ These are the eight names the screens workspace asked about (their request 5), p
 If you agree, the table's names change in the engine, and the screens workspace changes its list in the same step so their parity test stays green.
 
 
-### How often each scenario was clearly right, across runs 6, 7 and 8
+### How often each scenario was clearly right, across runs 6, 7, 8 and 9
 
-These are the three full runs I have, graded against each scenario's right answer. I started no new run for this. Run-6 came before any of last night's changes, run-7 came after the first seven, and run-8 came after all of them.
+Graded against each scenario's right answer. Run-6 came before last night's changes, run-7 after the first seven, run-8 after all of them, and run-9 after today's.
 
-| Scenario | Run-6 | Run-7 | Run-8 | Clearly right |
-| --- | --- | --- | --- | --- |
-| cofounder | right | right | right | 3 of 3 |
-| contractreview | right | right | right | 3 of 3 |
-| crisis | right | right | right | 3 of 3 |
-| discovery | right | right | right | 3 of 3 |
-| implementation | right | right | right | 3 of 3 |
-| newmanager | right | right | right | 3 of 3 |
-| pip | right | right | right | 3 of 3 |
-| realign | right | right | right | 3 of 3 |
-| renewal | right | right | right | 3 of 3 |
-| seniorhire | right | right | right | 3 of 3 |
-| workplan | right | right | right | 3 of 3 |
-| board | - | right | right | 2 of 3 |
-| handover | - | right | right | 2 of 3 |
-| project | right | right | - | 2 of 3 |
-| updates | right | - | right | 2 of 3 |
-| advisor | right | - | - | 1 of 3 |
-| openread | - | - | right | 1 of 3 |
-| pulse | right | - | - | 1 of 3 |
-| recognition | - | - | right | 1 of 3 |
-| sales | right | - | - | 1 of 3 |
-| snapshot | right | - | - | 1 of 3 |
-| drift | - | - | - | 0 of 3 |
-| loans | - | - | - | 0 of 3 |
-| shock | - | - | - | 0 of 3 |
-| **Total** | **17** | **14** | **16** | |
+**Two counts.** A run is marked "couldn't be tested" for a scenario when the simulated people never said the fact that scenario depends on. It is marked "report incomplete" when the runner itself says the report is not usable. The first count leaves both out. The second counts all 24, as before.
 
-**Right in all three runs (11):** cofounder, contractreview, crisis, discovery, implementation, newmanager, pip, realign, renewal, seniorhire and workplan. **Never right (3):** drift, loans and shock. Drift needs the names change. Loans and shock come close each time but miss one part of the right answer. **Right in one or two (10):** the rest. For most of these, whether the key fact comes up depends on what the simulated people happen to say in that run.
+| Scenario | Run-6 | Run-7 | Run-8 | Run-9 | Right, of the runs that count | Right, of all four |
+| --- | --- | --- | --- | --- | --- | --- |
+| cofounder | right | right | right | right | 4 of 4 | 4 of 4 |
+| contractreview | right | right | right | right | 4 of 4 | 4 of 4 |
+| discovery | right | right | right | right | 4 of 4 | 4 of 4 |
+| implementation | right | right | right | right | 4 of 4 | 4 of 4 |
+| newmanager | right | right | right | right | 4 of 4 | 4 of 4 |
+| pip | right | right | right | right | 4 of 4 | 4 of 4 |
+| realign | right | right | right | right | 4 of 4 | 4 of 4 |
+| renewal | right | right | right | right | 4 of 4 | 4 of 4 |
+| seniorhire | right | right | right | right | 4 of 4 | 4 of 4 |
+| workplan | right | right | right | right | 4 of 4 | 4 of 4 |
+| board | couldn't be tested | right | right | right | 3 of 3 | 3 of 4 |
+| crisis | right | right | right | report incomplete | 3 of 3 | 3 of 4 |
+| advisor | right | couldn't be tested | couldn't be tested | couldn't be tested | 1 of 1 | 1 of 4 |
+| openread | couldn't be tested | couldn't be tested | right | couldn't be tested | 1 of 1 | 1 of 4 |
+| handover | - | right | right | right | 3 of 4 | 3 of 4 |
+| project | right | right | - | right | 3 of 4 | 3 of 4 |
+| updates | right | - | right | right | 3 of 4 | 3 of 4 |
+| pulse | right | - | - | right | 2 of 4 | 2 of 4 |
+| recognition | - | - | right | right | 2 of 4 | 2 of 4 |
+| snapshot | right | - | - | right | 2 of 4 | 2 of 4 |
+| drift | - | - | - | right | 1 of 4 | 1 of 4 |
+| sales | right | - | - | - | 1 of 4 | 1 of 4 |
+| loans | - | - | - | report incomplete | 0 of 3 | 0 of 4 |
+| shock | couldn't be tested | - | couldn't be tested | couldn't be tested | 0 of 1 | 0 of 4 |
+| **Total** | **17 of 21** | **14 of 22** | **16 of 22** | **18 of 19** | | |
+
+**On all 24, as before:** 17 on run-6, 14 on run-7, 16 on run-8 and **18 on run-9**.
+
+**The runs left out, and why:**
+
+- **advisor, run-7, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **advisor, run-8, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **advisor, run-9, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **board, run-6, couldn't be tested:** Wanjiru never gives a timeline for the licence, only that there is none yet.
+- **crisis, run-9, report incomplete:** 2 findings for 3 people.
+- **loans, run-9, report incomplete:** 8 findings for 9 people.
+- **openread, run-6, couldn't be tested:** Kofi says it is "not a freeze problem", so the two engineers never agree.
+- **openread, run-7, couldn't be tested:** Kofi says it is "a scheduling problem, not a problem with the actual freezes".
+- **openread, run-9, couldn't be tested:** Kofi says "I don't think it's about a freeze or anything like that".
+- **shock, run-6, couldn't be tested:** nobody says first-hand that the quarterly reviews were missed.
+- **shock, run-8, couldn't be tested:** nobody says first-hand that the quarterly reviews were missed.
+- **shock, run-9, couldn't be tested:** nobody mentions the champion leaving; only the cancelled reviews and the tickets are said.
+
+**A correction to last night's report.** I wrote that on run-7 Daniel never said that Priti was the one he was waiting on. That was wrong. He said "Priti can grant that access." So updates on run-7 could be tested, and the judgement missed it.
 
 
 ## THE NIGHT IN SHORT, 27 September, about 03:30

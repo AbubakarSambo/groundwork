@@ -1,5 +1,6 @@
 import { PartyType } from '@prisma/client';
 import { fromTheReadersSide } from './a-sentence-from-the-readers-side';
+import { theQuotesKept } from './a-quote-is-what-they-said';
 
 export type LabelParty = {
   id: string;
@@ -583,7 +584,24 @@ const withACapital = (s: string) => (s ? `${s[0].toUpperCase()}${s.slice(1)}` : 
 const NOT_THE_OBJECT_OF =
   '(?<!\\b(?:for|to|with|on|at|from|of|about|between|against|by|in|than|like|towards|toward|upon|onto|into)\\s)';
 
+/**
+ * AND NEVER INSIDE A QUOTATION. What is between quotation marks is a person's own words, taken from
+ * the record before the report was stored (see a-quote-is-what-they-said). Turning a label or a
+ * role inside it into "you" or a name would change what they said: Zainab's "as requested by Nadia"
+ * would reach Nadia as "as requested by you". So the inside of every quote is held aside, and every
+ * rule below works on the sentence around it.
+ */
 export function withNames(
+  text: string,
+  visible: Map<string, string>,
+  allLabels?: Iterable<string>,
+  opts?: { viewerLabel?: string | null },
+): string {
+  if (!text) return text;
+  return theQuotesKept(text, (outside) => withNamesOutsideTheQuotes(outside, visible, allLabels, opts));
+}
+
+function withNamesOutsideTheQuotes(
   text: string,
   visible: Map<string, string>,
   allLabels?: Iterable<string>,

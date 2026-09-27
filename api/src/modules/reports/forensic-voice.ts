@@ -30,6 +30,8 @@
  * sentence that explains what Groundwork is.
  */
 
+import { theQuotesKept } from './a-quote-is-what-they-said';
+
 export type ForensicHit = { phrase: string; why: string };
 
 const FORENSIC: { pattern: RegExp; why: string }[] = [
@@ -137,7 +139,13 @@ export function forensicInReport(report: Record<string, unknown>): { field: stri
 const A_CLAUSE_NOT_A_COMPOUND =
   /([a-z0-9])-(for|a|an|the|or|and|but|so|which|that|this|these|those|it|they|we|you|i|is|are|was|were|am|do|does|did|has|have|had|will|would|can|could|should|because|when|where|why|how|what|who)\b/gi;
 
+/* Never inside a quotation: a dash a person typed is part of what they said. See a-quote-is-what-they-said. */
 export function withoutDashes(text: string): string {
+  if (!text) return text;
+  return theQuotesKept(text, dashesOutsideTheQuotes);
+}
+
+function dashesOutsideTheQuotes(text: string): string {
   if (!text) return text;
   return text
     // "queue—the only" and "queue — the only" both become "queue, the only".

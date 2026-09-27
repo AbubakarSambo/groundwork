@@ -208,8 +208,12 @@ const WHAT_THEY_TRIED_SAID_IN_FULL: Record<Effort, string> = {
  *
  * It read "21 days on "the lease", asked once. Ask them to speak to Amina rather than write to
  * them." on the board: pieces joined by commas, and "them" where the row has a name. Now it is full
- * sentences with the name the row already resolves, the blocker quoted exactly as they said it,
- * because those are their words.
+ * sentences with the name the row already resolves.
+ *
+ * AND THE BLOCKER IS NOT IN QUOTATION MARKS, because it is not their words. It is the phrase the
+ * dependency reader wrote for it ("a clear definition of the role's objectives and expected
+ * output"), and on the run of 26 September 16 of the 22 put in quotes here were in nobody's record.
+ * A quote is only ever a person's own words from the record (see a-quote-is-what-they-said).
  *
  * AND NOT TWICE. Where the row's `says` already tells the lead how long it has sat and what was
  * tried (the row is there because of it), the ask carries only the ask. Pass `alreadySaid` then.
@@ -227,7 +231,7 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
   const theAsk = `Ask ${them} to ${first.charAt(0).toLowerCase()}${first.slice(1)}`;
   if (alreadySaid) return theAsk;
   const days = `${worst.days} ${worst.days === 1 ? 'day' : 'days'}`;
-  return `${start} has been waiting ${days} on "${worst.what}", and ${WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried]}. ${theAsk}`;
+  return `${start} has been waiting ${days} on ${worst.what}, and ${WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried]}. ${theAsk}`;
 }
 
 export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | null): Ranked[] {

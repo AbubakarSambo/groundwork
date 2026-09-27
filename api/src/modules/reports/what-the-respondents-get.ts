@@ -29,6 +29,8 @@
  * sold a guarantee the product cannot keep.
  */
 
+import { eachQuoteDecided, isSuggestedWording, readsAsAPlainStatement, theQuotesKept } from './a-quote-is-what-they-said';
+
 export type HowItWasShared = 'NAMED' | 'ANONYMOUS';
 
 export function isHowItWasShared(v: unknown): v is HowItWasShared {
@@ -83,12 +85,33 @@ export function withoutWhoSaidIt(text: string, identities: Identity[]): string {
       }
     }
   }
-  let out = text;
-  for (const [what, withWhat] of Array.from(words.entries()).sort((a, b) => b[0].length - a[0].length)) {
-    const escaped = what.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), withWhat);
-  }
-  return out;
+  const scrub = (piece: string): string => {
+    let out = piece;
+    for (const [what, withWhat] of Array.from(words.entries()).sort((a, b) => b[0].length - a[0].length)) {
+      const escaped = what.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), withWhat);
+    }
+    return out;
+  };
+  /*
+   * A QUOTE THAT HAS TO LOSE A NAME IS NO LONGER A QUOTE. What is between quotation marks is a
+   * person's own words, word for word (see a-quote-is-what-they-said). "as requested by somebody in
+   * this check-in" is not what anybody said, so it must not sit between the marks as though it were.
+   * The name still comes out - that is the whole promise of an anonymous copy. Where the words read
+   * correctly as a plain statement, the marks come off; where they do not ("I", "we", "you", or a
+   * sentence that has just said "in your words"), the sentence goes, the same rule as the report's.
+   * A quote with nobody in it keeps its marks and its words.
+   */
+  const decide = (mayDrop: boolean) => eachQuoteDecided(text, (q) => {
+    const without = scrub(q.inner);
+    if (without === q.inner) return { keep: q.inner };
+    if (isSuggestedWording(text, q)) return 'suggested';
+    return readsAsAPlainStatement(text, q, without) || !mayDrop ? 'unquote' : 'drop';
+  });
+  let decided = decide(true);
+  /* Never blank where there was a sentence: the whole text going means it stays, unquoted. */
+  if (text.trim() && !decided.text.trim()) decided = decide(false);
+  return theQuotesKept(decided.text, scrub);
 }
 
 /** The same, over every string in a report-shaped object, however deep. */

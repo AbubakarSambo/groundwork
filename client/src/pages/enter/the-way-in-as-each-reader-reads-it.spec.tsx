@@ -92,8 +92,8 @@ describe('someone signed out opens /start', () => {
     const person = screen.getByRole('region', { name: 'About one person' })
     expect(within(person).getAllByRole('button').map((b) => [...b.querySelectorAll('span')].map(text))).toEqual([
       ['Help someone get back on track', 'Both sides on the concern, before the conversation.'],
-      ['Support a raise, promotion, or recognition', 'The same evidence in front of both of you.'],
-      ['Check in before a contract or renewal', 'An honest read of how the term went, from both sides.'],
+      ['Support a raise, promotion or recognition', 'The same evidence in front of both of you.'],
+      ['Check in before a contract ends or renews', 'An honest read of how the term went, from both sides.'],
     ])
     expect(screen.getByText('None of these fit? Describe it and we’ll work out what it is together.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Describe it' })).toBeTruthy()
