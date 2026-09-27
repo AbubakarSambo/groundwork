@@ -58,8 +58,7 @@ import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-san
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
-import { whereEachPersonIs } from './where-each-person-is-against-their-number';
-import { withoutTheRating } from './the-lead-never-reads-a-rating';
+import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
 import { whichRoundIsOpen } from './which-round-is-open';
@@ -361,7 +360,9 @@ export class BoardService {
       where: { groundId },
       select: {
         id: true, participantId: true, sessionNumber: true, status: true,
-        completedAt: true, specificityLevel: true, specificityDimensions: true,
+        /* Not `specificityLevel` or `specificityDimensions`: nothing on this board is built from how
+           somebody's answers were rated. See thisRoundHasANumberADateOrADocument below. */
+        completedAt: true,
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -834,6 +835,23 @@ export class BoardService {
        * nobody has touched is next week's.
        */
       const openRound = whichRoundIsOpen(checkIns as any);
+      /*
+       * WHAT THIS ROUND PUT ON THE RECORD, so the board can say whether it holds anything to count.
+       * The record, not the rating: the lead may read what was written down, and never how anybody's
+       * answers were scored. A line somebody disputed has stopped counting, here as everywhere.
+       */
+      const thisRoundsCheckIns = checkIns.filter((c) => c.sessionNumber === openRound).map((c) => c.id);
+      const thisRoundsLines = thisRoundsCheckIns.length
+        ? ((await this.prisma.recordEntry?.findMany?.({
+            where: { checkInId: { in: thisRoundsCheckIns }, disputedAt: null },
+            select: { checkInId: true, text: true, anchoredDocumentId: true, documentSays: true },
+          })?.catch(() => [])) ?? []) as any[]
+        : [];
+      const somethingToCount = new Set(
+        thisRoundsLines
+          .filter((e) => hasANumberADateOrADocument({ text: cleanText(e.text ?? ''), anchoredDocumentId: e.anchoredDocumentId, documentSays: e.documentSays }))
+          .map((e) => e.checkInId),
+      );
       out.eachPerson = whereEachPersonIs(
         /*
          * AND THE MANAGER IS NOT IN THEIR OWN LIST.
@@ -878,13 +896,8 @@ export class BoardService {
                 /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
                 tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
               })),
-            /* A round with a date, a number or a document in it is one somebody else can check. */
-            /* The question as asked: did ANY turn carry a date, a number or a document. The level is a mean and a
-               reluctant person's one fact drowned in their "fine"s (adversarial run, 20 Sep 2026). */
-            saidAnythingCheckable: ((thisRound as any)?.specificityDimensions as any)?.checkable === 'specific'
-              || ((thisRound as any)?.specificityLevel
-                ? !['vague', 'managed'].includes(String((thisRound as any).specificityLevel).toLowerCase())
-                : false),
+            /* Whether the record of their check-in this round holds a number, a date or a document. */
+            thisRoundHasANumberADateOrADocument: !!thisRound && somethingToCount.has(thisRound.id),
           };
         }),
         /* The planned length, for the only honest read of pace. Without one it says nothing
@@ -907,8 +920,6 @@ export class BoardService {
           return { ...row, finding: text, hasGap: !!f.hasGap };
         });
       }
-      /* The rating of how checkable someone's answers were never reaches the lead. See the file. */
-      out.eachPerson = withoutTheRating(out.eachPerson as any[]);
     }
 
     if (has('checkInGrid')) {

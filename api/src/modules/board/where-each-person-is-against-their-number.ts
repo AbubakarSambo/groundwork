@@ -46,28 +46,56 @@ export interface PersonRow {
   roundsSoFar: number;
   /** What they have said is in their way, oldest first. */
   inTheWay: { what: string; owner: string | null; days: number; tried: Effort }[];
-  /** Whether anything they said this round could be checked against a date, a number or a document. */
-  saidAnythingCheckable: boolean;
+  /**
+   * WHETHER ANYTHING ON THE RECORD FROM THIS ROUND CARRIES A NUMBER, A DATE OR A DOCUMENT.
+   *
+   * This was `saidAnythingCheckable`, and it was worked out from the check-in's `specificityLevel`
+   * and `specificityDimensions`: the engine's rating of how checkable a person's answers were. The
+   * lead read that rating as "nothing checkable" beside the person's name (request 8 from the
+   * screens workspace, 27 Sep 2026), and CLAUDE.md says a lead never sees how anybody's answers were
+   * rated. So the board no longer asks the rating anything. It asks the record of the round, which
+   * the lead may already read: is there a number or a date in what was written down, or a document
+   * behind it. See `hasANumberADateOrADocument` below.
+   */
+  thisRoundHasANumberADateOrADocument: boolean;
 }
 
-/** Why this row is where it is. One reason, the strongest, in plain words. */
+/**
+ * Why this row is where it is. One reason, the strongest. These are keys for the order and for the
+ * screen to choose a colour by; they are never the words a lead reads about a person. What a lead
+ * reads is `says`, a full sentence about what happened. Read on the board, 27 Sep 2026: the key sat
+ * beside the name as a coloured pill, so "stuck and not chasing" read as a label on the person.
+ */
 export type Reason =
   | 'has not answered'
   | 'stuck and not chasing'
   | 'behind the pace'
-  | 'nothing checkable'
+  | 'nothing to count yet'
   | 'nothing to do';
 
-export const WHAT_THE_REASON_MEANS: Record<Reason, string> = {
-  'has not answered': 'They have not checked in for the round that is open.',
-  'stuck and not chasing': 'Something has been in their way a fortnight or more and has only been asked about.',
-  'behind the pace': 'Their count is further behind their number than the rounds gone would suggest.',
-  'nothing checkable': 'Nothing they said this round can be checked against a date, a number or a document.',
-  'nothing to do': 'Nothing here needs you this week.',
-};
-
 /** Ordered worst first. The order IS the product; a manager reads down until it stops mattering. */
-const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind the pace', 'nothing checkable', 'nothing to do'];
+const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind the pace', 'nothing to count yet', 'nothing to do'];
+
+/**
+ * A NUMBER, A DATE OR A DOCUMENT, READ OFF ONE LINE OF THE RECORD.
+ *
+ * A fact about what was written down, and nothing about the person who said it. Numbers written as
+ * words count ("forty tonnes a week" is a number: a rice miller's one fact per answer was lost the
+ * last time this was read as a digit only). "May" counts only beside a day, because on its own it is
+ * nearly always the verb.
+ */
+const NUMBER_WORDS = /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|dozen|half)\b/i;
+const A_DATE = [
+  /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i,
+  /\b\d{1,2}(?:st|nd|rd|th)?\s+may\b|\bmay\s+\d{1,2}\b/i,
+  /\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|yesterday)\b/i,
+  /\b(?:every|each|per|by|within|since|last|next|this)\s+(?:day|week|fortnight|month|quarter|year)\b/i,
+];
+export function hasANumberADateOrADocument(line: { text?: string | null; anchoredDocumentId?: string | null; documentSays?: string | null }): boolean {
+  if (line.anchoredDocumentId || (line.documentSays ?? '').trim()) return true;
+  const text = line.text ?? '';
+  return /\d/.test(text) || NUMBER_WORDS.test(text) || A_DATE.some((r) => r.test(text));
+}
 
 /**
  * BEHIND THE PACE IS A COMPARISON WITH THE CALENDAR, NOT WITH ANOTHER PERSON.
@@ -84,13 +112,65 @@ export function behindThePace(row: PersonRow, roundsPlanned: number | null): boo
   return row.count < row.target * soFar * 0.8;
 }
 
+/** Something in the way a fortnight or more that has only been asked about, oldest first. */
+function sittingUnchased(row: PersonRow) {
+  return row.inTheWay
+    .filter((b) => b.days >= A_FORTNIGHT && (b.tried === 'nothing' || b.tried === 'asked-once' || b.tried === 'asked-again'))
+    .sort((a, b) => b.days - a.days);
+}
+
 export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason {
   if (!row.answeredThisRound) return 'has not answered';
-  const stuck = row.inTheWay.some((b) => b.days >= A_FORTNIGHT && (b.tried === 'nothing' || b.tried === 'asked-once' || b.tried === 'asked-again'));
-  if (stuck) return 'stuck and not chasing';
+  if (sittingUnchased(row).length) return 'stuck and not chasing';
   if (behindThePace(row, roundsPlanned)) return 'behind the pace';
-  if (!row.saidAnythingCheckable) return 'nothing checkable';
+  if (!row.thisRoundHasANumberADateOrADocument) return 'nothing to count yet';
   return 'nothing to do';
+}
+
+/**
+ * WHAT THE LEAD READS ABOUT EACH PERSON: WHAT HAPPENED, AND WHAT WOULD CHANGE IT.
+ *
+ * One or two full sentences, with the person's name as the row already resolves it for this reader.
+ * Never a word for what somebody is. "Behind" and "not chasing" were read beside names as labels;
+ * a count against the calendar, and how long a thing has sat against what was tried, are facts the
+ * lead can do something with.
+ *
+ * Where nobody has given a name, `who` is their role, and "Head of Sales has not checked in" reads
+ * as if the role were a person. So the sentence says "the person listed as" the role. A reader the
+ * product cannot name to this reader at all is "a teammate".
+ */
+function subjectFor(row: Pick<PersonRow, 'who' | 'nameIsTheirRole'>, atTheStart: boolean): string {
+  const who = (row.who ?? '').trim();
+  if (!who || /^a teammate$/i.test(who)) return atTheStart ? 'A teammate' : 'a teammate';
+  if (row.nameIsTheirRole) return `${atTheStart ? 'The' : 'the'} person listed as ${who}`;
+  return who;
+}
+
+export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: number | null): string {
+  const start = subjectFor(row, true);
+  const mid = subjectFor(row, false);
+  switch (reason) {
+    case 'has not answered':
+      return `${start} has not checked in for this round yet.`;
+    case 'stuck and not chasing': {
+      const oldest = sittingUnchased(row)[0];
+      const days = `${oldest.days} ${oldest.days === 1 ? 'day' : 'days'}`;
+      if (oldest.tried === 'nothing') {
+        return `${start} has had something in the way for ${days}, and nobody has said yet what was tried to clear it. Finding out who could clear it, and asking them, would move it.`;
+      }
+      return `${start} has had something in the way for ${days}, and so far it has only been asked about. Chasing it, or asking someone else, would move it.`;
+    }
+    case 'behind the pace': {
+      const gone = Math.min(row.roundsSoFar, roundsPlanned ?? row.roundsSoFar);
+      const rounds = `${gone} of the ${roundsPlanned} rounds ${gone === 1 ? 'has' : 'have'} gone`;
+      return `${start} is at ${row.count} of ${row.target}, and ${rounds}. At this pace, ${row.target} would not be reached by the end.`;
+    }
+    case 'nothing to count yet':
+      return `What ${mid} said this round has no number, no date and no document with it yet, so there is nothing new to count. A number or a date for what moved would change that.`;
+    case 'nothing to do':
+    default:
+      return `${start} has checked in, and nothing here needs you this week.`;
+  }
 }
 
 export interface Ranked {
@@ -101,6 +181,8 @@ export interface Ranked {
   target: number | null;
   count: number;
   reason: Reason;
+  /** What happened and what would change it, in full sentences. The only words about the row a lead reads. */
+  says: string;
   /** What the manager can ask them to do. Null where there is nothing to ask for. */
   ask: string | null;
 }
@@ -119,15 +201,19 @@ export function whatToAskFor(row: PersonRow): string | null {
 
 export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | null): Ranked[] {
   return rows
-    .map((r) => ({
-      participantId: r.participantId,
-      who: r.who,
-      nameIsTheirRole: r.nameIsTheirRole === true,
-      target: r.target,
-      count: r.count,
-      reason: whyThisRow(r, roundsPlanned),
-      ask: whatToAskFor(r),
-    }))
+    .map((r) => {
+      const reason = whyThisRow(r, roundsPlanned);
+      return {
+        participantId: r.participantId,
+        who: r.who,
+        nameIsTheirRole: r.nameIsTheirRole === true,
+        target: r.target,
+        count: r.count,
+        reason,
+        says: whatHappened(r, reason, roundsPlanned),
+        ask: whatToAskFor(r),
+      };
+    })
     .sort((a, b) => {
       const byReason = ORDER.indexOf(a.reason) - ORDER.indexOf(b.reason);
       if (byReason !== 0) return byReason;
