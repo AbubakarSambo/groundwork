@@ -476,10 +476,17 @@ export class AuthService {
                   /* "Takes part". Never an admin: joining is not authority over the company. */
                   role: ROLE_FOR_SOMEBODY_EXPECTED as any,
                   isEmailVerified: true,
+                  /*
+                   * THE ONE MEMBERSHIP, NESTED HERE (U.3 re-review). The database client's hook
+                   * (prisma.service.ts, theMembershipFollowsTheUser) adds a membership to every user
+                   * created with an organisation, unless the create brings its own. A second, separate
+                   * create collided with it on every join against the real database. So the membership
+                   * comes with the user, carrying how they joined, and the hook leaves it alone.
+                   */
+                  memberships: { create: { organizationId: chosen.id, role: ROLE_FOR_SOMEBODY_EXPECTED as any, joinedHow: chosen.how } },
                 },
                 include: { organization: true },
               });
-              await tx.organizationMembership.create({ data: { userId: u.id, organizationId: chosen.id, role: ROLE_FOR_SOMEBODY_EXPECTED as any, joinedHow: chosen.how } });
               if (pending.draftToken) {
                 await tx.entryDraft.create({
                   data: { userId: u.id, draftToken: pending.draftToken, payload: (pending.payload ?? {}) as any, history: (pending.history ?? []) as any },

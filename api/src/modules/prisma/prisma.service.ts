@@ -35,32 +35,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    * failed sign-up is a person who cannot get in at all.
    */
   private membershipFollowsTheUser() {
-    this.$use(async (params, next) => {
-      if (params.model !== 'User' || params.action !== 'create') return next(params);
-
-      /**
-       * THE MEMBERSHIP IS ADDED TO THE CREATE, NOT WRITTEN AFTER IT.
-       *
-       * The first attempt did the obvious thing - let the user be created, then upsert the
-       * membership - and it failed on every sign-up, silently, into the log line below. Every one of
-       * the nine `user.create` calls runs inside a `$transaction`, so the user row does not exist yet
-       * on any other connection: the dependent write has nothing to point at.
-       *
-       * Nesting it into the same create means Prisma issues both inside whatever transaction the
-       * caller is already running. Found by making the fix, testing it against a real sign-up, and
-       * getting zero memberships again.
-       */
-      const data = params.args?.data;
-      const orgId = data?.organizationId ?? data?.organization?.connect?.id ?? null;
-      /** A caller that builds its own memberships is left alone rather than given two. */
-      if (data && orgId && !data.memberships) {
-        params.args.data = {
-          ...data,
-          memberships: { create: { organizationId: orgId, role: data.role ?? 'MEMBER' } },
-        };
-      }
-      return next(params);
-    });
+    this.$use(async (params, next) => next(theMembershipFollowsTheUser(params)));
   }
 
   async onModuleInit() {
@@ -122,3 +97,36 @@ export const CronLock = {
   /** The daily sweep of unredeemed Google sign-in codes. See auth/auth.cron.ts. */
   OAUTH_CODES: 920_012,
 } as const;
+
+/**
+ * THE HOOK'S OWN RULE, AS A PLAIN FUNCTION (U.3 review), so a test can put a real `user.create` through
+ * exactly what the database client does to it. `membershipFollowsTheUser` runs every create through
+ * this. A caller that wants a membership with more on it (a role or how they joined) nests its own
+ * `memberships`, and this leaves it alone, so there is one membership, never two.
+ */
+export function theMembershipFollowsTheUser<P extends { model?: string; action: string; args?: any }>(params: P): P {
+  if (params.model !== 'User' || params.action !== 'create') return params;
+
+  /**
+   * THE MEMBERSHIP IS ADDED TO THE CREATE, NOT WRITTEN AFTER IT.
+   *
+   * The first attempt did the obvious thing - let the user be created, then upsert the
+   * membership - and it failed on every sign-up, silently, into the log line below. Every one of
+   * the nine `user.create` calls runs inside a `$transaction`, so the user row does not exist yet
+   * on any other connection: the dependent write has nothing to point at.
+   *
+   * Nesting it into the same create means Prisma issues both inside whatever transaction the
+   * caller is already running. Found by making the fix, testing it against a real sign-up, and
+   * getting zero memberships again.
+   */
+  const data = params.args?.data;
+  const orgId = data?.organizationId ?? data?.organization?.connect?.id ?? null;
+  /** A caller that builds its own memberships is left alone rather than given two. */
+  if (data && orgId && !data.memberships) {
+    params.args.data = {
+      ...data,
+      memberships: { create: { organizationId: orgId, role: data.role ?? 'MEMBER' } },
+    };
+  }
+  return params;
+}

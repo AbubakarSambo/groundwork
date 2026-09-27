@@ -27,7 +27,7 @@ function service(opts: { pending: any; linkOrg?: any; domainOrgs?: any[]; room?:
     user: {
       create: jest.fn(async ({ data }: any) => {
         const u = { id: 'u-new', isActive: true, tokenEpoch: 0, organization: { id: data.organizationId, name: data.organizationId === COAMANA.id ? 'Coamana' : 'New' }, ...data };
-        made.users.push(u);
+        made.users.push(u); /* The membership now comes nested in the create (U.3 re-review). */ if (data.memberships?.create) made.memberships.push(data.memberships.create);
         return u;
       }),
     },

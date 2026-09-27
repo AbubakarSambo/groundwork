@@ -20,7 +20,7 @@ function service(opts: { linkOrg?: any; domainOrgs?: any[]; pending?: any } = {}
       create: jest.fn(async ({ data }: any) => { const o = { id: 'o-new', ...data }; made.orgs.push(o); return o; }),
       updateMany: jest.fn(async () => ({})),
     },
-    user: { create: jest.fn(async ({ data }: any) => { const u = { id: 'u-new', isActive: true, tokenEpoch: 0, organization: { id: data.organizationId, name: 'Coamana' }, ...data }; made.users.push(u); return u; }) },
+    user: { create: jest.fn(async ({ data }: any) => { const u = { id: 'u-new', isActive: true, tokenEpoch: 0, organization: { id: data.organizationId, name: 'Coamana' }, ...data }; made.users.push(u); /* The membership now comes nested in the create (U.3 re-review). */ if (data.memberships?.create) made.memberships.push(data.memberships.create); return u; }) },
     organizationMembership: { create: jest.fn(async ({ data }: any) => { made.memberships.push(data); return data; }) },
     entryDraft: { create: jest.fn(async () => ({})) },
     groundParticipant: { updateMany: jest.fn(async () => ({})) },
