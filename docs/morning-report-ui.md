@@ -82,35 +82,32 @@ that one is yours to decide (item 27.4).
 1. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
 2. Item 20.1: should the lead hold the team's report until they share it? (a privacy question)
 3. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
-4. Items 17.5 and 17.13: in a new check-in, do invitations go before or after the lead's own first
-   check-in, and should the check-in a lead does on the start screen count as their first session?
-5. Item 17 (new point): name a check-in after the person ("Daniel, the next six weeks", as the
-   prototype does) or after the topic (an earlier rule, because the name is the invitation email's subject)?
-6. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
-7. Item 22.1: the handover page, because the prototype's page and the product's handover are two
+4. Item 17.5: in a new check-in, do invitations go before or after the lead's own first check-in?
+5. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
+6. Item 22.1: the handover page, because the prototype's page and the product's handover are two
    different things (a privacy question).
-8. Item 23.1: may anyone but the person read their You board? (a privacy question)
-9. Item 24.1: which admins may read a suggestion about someone, and when? (a privacy question)
-10. Item 25.2: questions to Ask Groundwork feed the pattern detectors (a privacy question), and
+7. Item 23.1: may anyone but the person read their You board? (a privacy question)
+8. Item 24.1: which admins may read a suggestion about someone, and when? (a privacy question)
+9. Item 25.2: questions to Ask Groundwork feed the pattern detectors (a privacy question), and
     25.1: most people cannot use Ask Groundwork yet.
-11. Item 26.1: may the Company page show what new people keep asking, when it is built from their
+10. Item 26.1: may the Company page show what new people keep asking, when it is built from their
     private questions to Ask Groundwork? (a privacy question), and 26.2: priorities can only come
     in from an organisation's own systems today.
-12. Item 27.1 and 27.2: may somebody share their load with a lead, and may the team being asked
+11. Item 27.1 and 27.2: may somebody share their load with a lead, and may the team being asked
     read what another team asked of it? (both privacy questions)
-13. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
+12. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
     screen shows any; 28.3: who counts as a lead for the suites; and 28.9: onboarding's "Something
     nobody has shown them yet" is built from private questions (a privacy question); 28.18 and 28.19:
     nobody can ask for leave yet, and no screen shows a person their own; 28.25 to 28.27: the same for
     hours, and who says what each client agreed; 28.33: does a person read their manager's own words
     in their review? (a privacy question); 28.49: is one to-do list for each person their private
     load? (a privacy question)
-14. Item 29.1: may an admin connect their own WhatsApp number while Groundwork's WhatsApp is off?
+13. Item 29.1: may an admin connect their own WhatsApp number while Groundwork's WhatsApp is off?
     and 29.4: should everyone's word-for-word check-ins be deleted after a time? (a privacy question)
-15. Item 30.1: what happens to organisations already on the free plan when you turn on the one
+14. Item 30.1: what happens to organisations already on the free plan when you turn on the one
     switch for the trial and the free plan (it is off, so nothing has changed yet); 30.2: one trial
     for each organisation, or for each person?
-16. The rest of items 13, 15 to 30 are smaller, each with a recommendation.
+15. The rest of items 13, 15 to 30 are smaller, each with a recommendation.
 
 **Just finished, not ticked:** U.19, billing. Stripe works exactly as before, in test mode only: the
 same checkout, webhooks, invoices, care fee and portal. Plan and billing is the prototype's page, with
@@ -125,6 +122,26 @@ nothing about today's billing has changed. Nobody already on the free plan is cu
 
 **Next:** the waiting reviews, one at a time, oldest first: the 16 you named (U.3 to U.18), then U.19's.
 U.20 (small states and errors) starts only when all have passed, as you asked.
+
+## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
+
+`CLAUDE.md` forbids editing `docs/decisions.md`, and the kit's safety rule blocks it. So these are
+written here, for Hafsah to copy into `docs/decisions.md` when she chooses, and for every later session
+to find.
+
+- **27 September 2026: the setup is not the lead's first check-in, and the lead always does a first
+  check-in.** This keeps Hafsah's rule of 15 September (commit `2cd80f22`: "The setup does not count as a
+  leads first checkin. lead has to always do a first checkin."). The prototype agrees: after the
+  invitations go, it shows "Your own check-in, before the team's". Its sentence "What you just answered
+  becomes your first check-in once your account is made" belongs only to the "Try it on your own team"
+  box on the public home page. The product has no such box (it is part of the public site, F3, a
+  separate project), so that finding is dropped.
+- **27 September 2026: a check-in is named after the topic, in plain words, never the person and never a
+  type name** such as "Drift". The rule stays because the name is the invitation email's subject. The
+  test that guards it, `api/src/modules/grounds/a-label-is-a-subject-line.spec.ts`, stays.
+- **Earlier decisions made in this workspace** are recorded where they were made in this report: the
+  sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
+  its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
 
 ## Every module since U.2, and its review
 
@@ -842,28 +859,11 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
 - **The save card's promise** must be true, and if it cannot be true every time, the sentence is not
   shown.
 
-**Two points left as they are today, for Hafsah to decide.** Each was answered in a message that did
-not know about the earlier rule, and the sender asked for both rules to be set side by side:
-
-- **Point 13: does the lead's check-in on the start screen count as their first session?**
-  - *The prototype says:* "What you just answered becomes your first check-in once your account is
-    made."
-  - *Hafsah's rule of 15 September, in her words* (commit `2cd80f22`; it is not in `docs/decisions.md`):
-    "The setup does not count as a leads first checkin. lead has to always do a first checkin."
-  - *The reason given with it:* the setup and the check-in are different conversations. "Setup works out
-    what kind of situation this is and who is in it; the check-in asks how it is actually going." Before
-    the rule, "a lead finished setup having already given her account without being asked how anything
-    was going." What the setup produces still travels: the brief, the people, the rhythm and the targets.
-  - *Today:* the rule of 15 September holds. The check-in the lead does on the start screen does not
-    become session 1.
-- **Point 18: is a check-in named after the person or the topic?**
-  - *The prototype says:* names such as "Daniel, the next six weeks".
-  - *An earlier rule, recorded in `api/src/modules/grounds/a-label-is-a-subject-line.spec.ts`:* the name
-    becomes the invitation email's subject ("{founder} invited you to check in on: {label}"), so it "names
-    the TOPIC and never the person". A name-first label was tried and rejected because it "makes the
-    PERSON the subject of the sentence".
-  - *Today:* the check-in is named after the situation the lead picked, in plain words (for example
-    "Help someone get back on track"), and never a type such as "Drift". The review confirmed this live.
+**Decided by Hafsah on 27 September** (see "Hafsah's decisions" at the top): point 13, the setup is not
+the lead's first check-in, and the rule of 15 September stays (the prototype's sentence belongs only to
+the public site's "Try it on your own team" box, which the product does not have, so that finding is
+dropped); and point 18, check-ins are named after the topic in plain words, never the person and never a
+type name, because the name is the invitation email's subject.
 
 ### 18. Context (U.7): what needs you
 
