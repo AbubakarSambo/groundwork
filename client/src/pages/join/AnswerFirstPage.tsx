@@ -214,9 +214,11 @@ export function AnswerFirstPage() {
                 check-in's name, as the invitation says it, and when it runs. Never her description. */}
             {what.theQuestion ? (
               <>
-                <div style={{ fontSize: 11.5, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
-                  {what.askedBy ? `${what.askedBy} asked` : 'You have been asked'}
-                </div>
+                {/* A sentence, and their name as they gave it (U.6 review). It was a label in capitals,
+                    "U6G ASKED", over the question. */}
+                <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', margin: 0 }}>
+                  {what.askedBy ? `${what.askedBy} asked you this.` : 'You have been asked this.'}
+                </p>
                 <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion}</h1>
               </>
             ) : (

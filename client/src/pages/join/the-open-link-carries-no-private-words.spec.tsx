@@ -25,6 +25,21 @@ describe('the open link', () => {
     open()
     expect(await screen.findByRole('heading', { level: 1, name: 'What shipped this week?' })).toBeTruthy()
   })
+  /* Read live: a label in capitals, "U6G ASKED", over the question. */
+  it('says who asked it in a sentence, with their name as they gave it', async () => {
+    whatThisIs.mockResolvedValue({ groundLabel: 'Get updates from your team', theQuestion: 'What moved this week, and what is stuck?', askedBy: 'Amara', scenario: 'TEAM_UPDATES', schedule: null })
+    open()
+    const said = await screen.findByText('Amara asked you this.')
+    let el: HTMLElement | null = said
+    while (el) { expect(getComputedStyle(el).textTransform).not.toBe('uppercase'); el = el.parentElement }
+    expect(document.body.textContent).not.toMatch(/Amara asked(?! you this\.)/)
+    expect(screen.getByRole('heading', { level: 1, name: 'What moved this week, and what is stuck?' })).toBeTruthy()
+  })
+  it('and, with no name to give, says so in a sentence as well', async () => {
+    whatThisIs.mockResolvedValue({ groundLabel: 'Get updates from your team', theQuestion: 'What shipped this week?', askedBy: null, scenario: 'TEAM_UPDATES', schedule: null })
+    open()
+    expect(await screen.findByText('You have been asked this.')).toBeTruthy()
+  })
 })
 
 describe('"Last thing: who are you?" says what Done waits for (U.6 review)', () => {
