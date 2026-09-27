@@ -14,7 +14,8 @@ in, with every decision you made).
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
-board) and U.13 (suggestions from verdicts, and appeals). Each passed the full screen and API
+board), U.13 (suggestions from verdicts, and appeals) and U.14 (Ask Groundwork, not yet the full
+run). Each before U.14 passed the full screen and API
 suites. The latest full run, after U.13, passed 2,785 screen tests and every API test but one that is
 meant to fail until a new area is written down, which is now done. **None could be ticked, because the
 reviewer can no longer sign in as anyone** (item 14). That is the most important thing for
@@ -38,12 +39,18 @@ asks the engine to change the rule itself).
    different things (a privacy question).
 8. Item 23.1: may anyone but the person read their You board? (a privacy question)
 9. Item 24.1: which admins may read a suggestion about someone, and when? (a privacy question)
-10. The rest of items 13, 15 to 24 are smaller, each with a recommendation.
+10. Item 25.2: questions to Ask Groundwork feed the pattern detectors (a privacy question), and
+    25.1: most people cannot use Ask Groundwork yet.
+11. The rest of items 13, 15 to 25 are smaller, each with a recommendation.
 
-**In progress:** U.14 (Ask Groundwork) is next. In U.13 the product got the part of "a verdict, told
-like a signal" that is not the engine's: the lead's decision with reasons, the person's side, an
-appeal, and an admin's decision on it, each read only by the right people, enforced on the server. No
-suggestion appears anywhere until the engine writes one (request 15).
+**Just built, not ticked:** U.14 (Ask Groundwork). The speech bubble beside the Groundwork mark opens
+the panel, and "Chat" on a phone opens it as a page. Your questions are read only by you, and a
+request is done only after your own yes to it, both enforced on the server. But most people cannot
+use it yet, because it only answers people on a connected list of people (item 25.1), and the
+pattern detectors read everybody's questions (item 25.2, a privacy question). What it says, and
+checking claims and thinking it through, are the engine's (request 16).
+
+**Next:** U.15 (the Company page).
 
 ## Needs Hafsah
 
@@ -980,6 +987,65 @@ reviewed" in this report.
 11. Suggestions and appeals are not offered through Ask Groundwork. Recommendation: keep it that way,
     because they are private to the people involved.
 
+### 25. Ask Groundwork (U.14): what needs you
+
+1. **Most people cannot use Ask Groundwork yet.** The assistant answers one person on the
+   organisation's own list of people, and only a connected directory (SCIM) puts anyone on that
+   list. In an organisation that signed up through the product, nobody is on it, so the panel says
+   "Ask Groundwork can answer you once your organisation has connected its list of people to
+   Groundwork." and offers no box to type in. I did not add people to the list myself, because the
+   pattern detectors read that list (for example "nobody leads this person"), and new entries would
+   change what they find. **My recommendation:** ask the engine to let the assistant answer for a
+   signed-in account as well (request 16(b)).
+2. **Questions to Ask Groundwork feed the pattern detectors. This is a privacy question.** The rule
+   is that your questions are private and never part of your check-in or a report. But
+   `DetectorsService.run` reads everybody's questions to the assistant, alongside what they said in
+   check-ins, as material for the detectors. I could not tell from the code alone whether anything
+   built from them reaches another person, so I asked the engine to say, and to stop (request
+   16(g)). **My recommendation:** questions to Ask Groundwork are read for nothing that anybody else
+   reads, and a test says so.
+3. **"The next check-in follows it up."** The prototype says a claim made to Ask Groundwork with no
+   proof "stays the person's word, and the next check-in follows it up". That carries something
+   from the private chat into the check-in. **My recommendation:** the check-in may ask about the
+   claim (for example "Did Kariuki pay?"), but never says it came from Ask Groundwork, and never
+   quotes the question.
+4. **Two things Ask Groundwork does without a yes.** "Done: …" closes a to-do at once, and asking
+   to set an objective starts a draft at once. Everything else it offers to do is said back and
+   waits for a yes, which the server now holds to for the person who asked (a yes from anyone else,
+   or for an older request, does nothing). They also run on the developer API, which must keep
+   working exactly as now, so I left them. **My recommendation:** both should ask first; it is the
+   engine's to change (request 16(f)).
+5. **"Ask me about Sales team, Q3: a deal, a target, or what to do next."** This is the prototype's
+   opening line, with the check-in's real name. "A deal, a target" suits a sales check-in, and the
+   panel says it for every check-in. **My recommendation:** keep it until the engine writes an
+   opening line for each situation (request 16(e)).
+6. **Which check-ins "About" lists.** The ones you run or take part in, not those that have ended.
+   An admin who is in none of them sees none, even though an admin may open every check-in. **My
+   recommendation:** keep it, because your questions are about your own work.
+7. **Your questions are not in your own data file.** "Download it" on the You board gives your
+   check-ins and your side of things, but not your questions to Ask Groundwork. **My
+   recommendation:** add them, since they are yours.
+8. **Not built, and why.** The suggested questions under the opening line are about the sample data;
+   they wait for the engine (request 16(e)). Checking claims, "thinking it through", and answering
+   about the chosen check-in are the engine's (request 16(a), (c), (d)). Attaching a file (the
+   paperclip), and asking for leave, hours, spending and equipment, wait for the engine and the
+   suites (U.17). The lead's "Ask" button in a check-in's header is left out, because the speech
+   bubble opens the same panel on every page. The line "answered from your records", which the
+   developer API's panel shows under a reply, is not shown, because no prototype screen has it.
+   Suggestions are still not offered through Ask Groundwork (item 24.11).
+9. **Wording no screen shows, which I wrote with the fewest words.** "Yes" and "No" under a request
+   Ask Groundwork says back; "Close" (the name of the × button, read aloud); "Ask a question" in the
+   box when you are in no check-in; "That did not send. What you wrote is still here, so you can try
+   again."; and the name "Ask Groundwork" read aloud for the speech bubble. **What the server says
+   when it refuses:** "Only the person who asked these questions can read them.", "You are not part
+   of this check-in.", "Ask Groundwork can answer you once your organisation has connected its list
+   of people to Groundwork." and "There is nothing waiting for your yes. Ask again if you still want
+   it done."
+10. **The phone's bottom bar now has five words**, as the prototype's does: Today, Check-ins, Start,
+    Chat and More. On screens 360px wide or less the words are a little smaller, so "Check-ins" still
+    fits. The prototype's phone shows "Company" in place of "Start" for somebody who may not start a
+    check-in; that waits for the Company page (U.15).
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -1784,6 +1850,60 @@ can sign in (item 14), and the full run is still to do.
 is meant to fail whenever a new area appears: it asks whether the area can be reached through Ask
 Groundwork. Suggestions are now written down as not offered in chat, with the reason, which keeps
 today's behaviour (item 24.11). **Not ticked,** because no review can sign in (item 14).
+
+### U.14 Ask Groundwork: built and tested, not yet reviewed
+
+**What was missing, against the prototype (the gap list):** the assistant existed, but only for the
+developer API's panel, for one person on the organisation's own list of people. Nobody signed in to
+the product could reach it: there was no route, no panel, no speech bubble beside the Groundwork mark,
+no `#/chat` page and no Chat on the phone's bar. Its questions were already kept against the person
+who asked, and no screen or console read them to anyone else, but nothing tested that for a lead, an
+admin or Groundwork staff. Requests were already said back and waited for a yes, except two (item
+25.4). Answering about one check-in, checking claims, thinking it through, and the suggested
+questions are the engine's (request 16). The assistant's own words are unchanged.
+
+**What each person now reads.** On a computer, the speech bubble beside the Groundwork mark opens the
+panel beside the page, on the check-in whose page you are on:
+- **Everyone who can ask:** "Ask Groundwork", "About" with the check-ins you run or take part in,
+  "Your questions and the answers are private. Only you see them. They are never part of your
+  check-in or a report.", "Ask me about Sales team, Q3: a deal, a target, or what to do next." (with
+  the chosen check-in's name), your own earlier questions and answers, then the box "Ask about this
+  check-in" and "Send". Answers are the assistant's own words. A request it says back has "Yes" and
+  "No", and only that request is answered.
+- **Miriam** sees "Sales team, Q3" under "About". **Wairimu** sees each check-in she runs or is in.
+  **Grace**, an admin in no check-in, sees none, and the panel opens without "About".
+- **Somebody not on the organisation's list of people** reads the privacy line and "Ask Groundwork
+  can answer you once your organisation has connected its list of people to Groundwork.", with no
+  box to type in (item 25.1).
+- **On a phone,** "Chat" in the bottom bar opens `#/chat`: the heading "Chat" and the same panel.
+
+**Privacy, on the server** (`api/src/modules/ask/`): your questions are read only by you. A lead, an
+admin and Groundwork staff who name somebody else are refused ("Only the person who asked these
+questions can read them.") before anything is read, and none of them reads anybody's questions on
+their own page. A question can be about a check-in only if you run it or take part, and it has not
+ended. A yes is taken only for your own request that is still waiting; somebody else's yes, a yes to
+an older request, and a second yes do nothing. A test checks that nothing in the staff consoles reads
+anybody's questions. One thing is not yet safe, and is for the engine and you: the pattern detectors
+read everybody's questions (item 25.2).
+
+**Commits:** `56bdb487` (the route, and who may read and confirm), `66d8e78c` (the reason it cannot
+answer is the server's sentence), `b6e5752b` (the panel, `#/chat`, and Chat on the phone's bar),
+`93325584` (request 16 to the engine).
+
+**Tested:** `api/src/modules/ask/ask-groundwork-as-each-reader-reads-it.spec.ts` runs the real
+assistant with a pretend database: Miriam reads her own; Wairimu (her lead), Grace (an admin) and Sam
+(Groundwork staff) are refused and read none of hers; a request creates nothing until Miriam's own
+yes; and the staff consoles read no questions. `client/src/components/gw/ask-groundwork-as-each-reader-sees-it.spec.tsx`
+reads what Miriam, Wairimu and somebody not on the list see, that the yes names its request, that a
+refusal shows the server's words, and that no label or rating appears. **Two tests were changed,
+because Chat now exists:** `more-on-a-phone.spec.tsx` checked that Chat was left out of the phone's
+bar; `a-label-that-loses-its-start.spec.ts` checked four words each fitting a third of a 320px
+screen, and now checks the prototype's five, each fitting a fifth. The areas test asked whether the
+new area can be reached through Ask Groundwork; it is Ask Groundwork's own door, and is written down
+so. Only the tests for the changed files, the guards that read whole folders, and both type checks
+were run, as you asked. No screen could be checked signed in (item 14), so the screens were checked
+by rendering tests only. No database change. **Not ticked,** because no review can sign in (item 14),
+and the full run is still to do.
 
 ## Found on the way, for later tasks
 
