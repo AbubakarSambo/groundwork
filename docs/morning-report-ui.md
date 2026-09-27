@@ -16,11 +16,11 @@ U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page,
-the onboarding board, leave requests, time sheets, performance reviews and when someone leaves). Each up to U.16 passed
+the onboarding board, leave requests, time sheets, performance reviews, when someone leaves and the role map). Each up to U.16 passed
 the full screen and API suites; the few failures each run found came from that module and were fixed.
 The latest full run, midway through U.17 after time sheets, passed everything with no failures (2,892
-screen tests and 9,528 API tests); performance reviews and when someone leaves have passed their own
-tests since. **None could
+screen tests and 9,528 API tests); performance reviews, when someone leaves and the role map have
+passed their own tests since. **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
@@ -71,16 +71,14 @@ that one is yours to decide (item 27.4).
     in their review? (a privacy question)
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** when someone leaves, the fifth suite (U.17), for admins only. Each
-list has the four steps, handover, equipment, access and final pay, each with an owner and done or
-not, starting from the owners the organisation named. It sits beside the product's handover and
-departures, which are unchanged, and says only who took over and when, never what was handed over. A
-lead, the person leaving, a colleague and a guest are refused by the server. "Signs a team is under
-strain" waits for the engine (request 24), and is never shown if it names a person. Before that:
-performance reviews, time sheets, leave requests, the onboarding board and the Suites page. The midway
-full run passed everything (2,892 screen tests and 9,528 API tests).
+**Just finished, not ticked:** the role map, the sixth suite (U.17), for admins only. It shows every
+role, what it owns and who holds it, built from the organisation's roles, who holds each one now and the
+directory's job titles, and names each job nobody holds ("Nobody owns stock planning."). It changes
+none of them. "Give it an owner" is left out (item 28.42), and the role interview waits for the engine
+(request 25). A lead, a member and a guest are refused by the server. Before that: when someone
+leaves, performance reviews, time sheets, leave requests, the onboarding board and the Suites page.
 
-**Next:** U.17 goes on with suite 6, the role map. The ten are listed in order under U.17 below.
+**Next:** U.17 goes on with suite 7, spending and budgets. The ten are listed in order under U.17 below.
 
 ## Needs Hafsah
 
@@ -1364,6 +1362,18 @@ reviewed" in this report.
     this board.", "The suite for when someone leaves is not switched on.", "Choose somebody in your
     organisation.", "Give their last day.", "There is already a list for that person and that day.",
     "There is no step with that name." and "The owner has to be somebody in your organisation.").
+42. **"Give it an owner" is left out.** Roles and who holds them come only from the organisation's own
+    systems (through the developer API), and a new holder starts the product's onboarding window and,
+    when somebody hands over, its handover brief. A second place to change them would soon disagree
+    with the first. **My recommendation:** let "Give it an owner" start a to-do for an admin to change
+    it in their own system, or decide that Groundwork may hold roles itself, and say which wins.
+43. **What the role map is built from.** A role is one of the organisation's roles, a role somebody holds
+    now, or a job title in the directory; the same name with different capitals is one role. So a job
+    title nobody described shows with "What it owns" empty. **My recommendation:** keep this; the role
+    interview (request 25) fills them in.
+44. **Wording no screen shows, on the role map:** "No roles are known yet.", "The board did not load.",
+    and the server's refusals ("Only an admin can open this board." and "The role map suite is not
+    switched on."). The role interview's part of the page is left out until the engine can run it.
 
 
 
@@ -2693,6 +2703,45 @@ handover linked without its brief, a sign that names a person dropped, and the s
 The handover and departure tests pass unchanged. **No existing test was changed.** No screen could be
 checked signed in (item 14).
 
+#### The role map: built and tested, not yet reviewed
+
+**What was missing (the gap list):** the product already knew the roles the organisation's own systems
+gave (`roles`, with a description), who holds each one now (`role_assignments`) and each person's job
+title in the staff directory. Nothing put them together, nothing showed a role that nobody holds, and
+there was no board at `#/suite/roles`. There was no role interview, which is the engine's (request 25).
+Nothing about roles or who holds them changed: they still come only from the organisation's own
+systems, and they still feed the handover and the onboarding window.
+
+**New storage, on your computer only,** in the migration `20260927130000_the_role_map`, both empty until
+the engine writes them: `role_interview_answers` (what each person says they own, decide, depend on and
+who depends on them) and `role_gap_notes` (why a job nobody owns matters, in one sentence). It has not
+been run against any database.
+
+**What Grace, an admin, now reads:** "Open its board" on the Role map card, then "Suites / Role map",
+"Role map", "Every role, what it owns, and who holds it. It is built from your teams and people, and it
+shows jobs that nobody owns." Then a table, "Role", "What it owns", "Who holds it", with rows such as
+"Sales lead", "The sales team", "Wairimu Kamau"; "Sales rep", "Their own customers and deals", "6 people";
+and "Stock planning", "Booking freezers before customers need them", "Nobody" (in red, as the prototype
+has it). "What it owns" is the organisation's own description until the role interview says more; a job
+title nobody described has it empty. Under the table, for each role nobody holds: "Nobody owns stock
+planning.", followed by the engine's sentence once written, such as "That is why Kwame waited three
+weeks for freezers." With no roles: "No roles are known yet."
+
+**Everybody else,** a lead, a member and a guest, is refused by the server: "Only an admin can open this
+board." While the suite is off: "The role map suite is not switched on."
+
+**Privacy and access, on the server:** admins only. The map reads names and roles, never an address,
+never a handover brief, and nothing about how anybody works; a test checks it writes nothing at all. No
+labels on people.
+
+**Commits:** `7ac3f7f2` (the server), `322a6a90` (the board), `968a6936` (request 25).
+
+**Tested:** `api/src/modules/suites/the-role-map-as-each-reader-reads-it.spec.ts` (9 tests: off,
+every refusal, one row for a role however it is capitalised, an ended role not held, job titles, the
+engine's answers, no label, nothing written) and
+`client/src/pages/suites/the-role-map-as-an-admin-sees-it.spec.tsx` (10 tests, word for word). **No
+existing test was changed.** No screen could be checked signed in (item 14).
+
 **Each suite, still to do, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
 1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
@@ -2713,8 +2762,9 @@ checked signed in (item 14).
 5. **When someone leaves** (`#/suite/leaving`, admins only). **Built** (above), beside the handover and
    departures, which are unchanged. The engine's part: "Signs a team is under strain", for a team,
    never a named person (request 24).
-6. **Role map** (`#/suite/roles`, admins only). Missing entirely. The engine's part: the role
-   interview, and filling in the map from the answers.
+6. **Role map** (`#/suite/roles`, admins only). **Built** (above), from the roles, who holds them and
+   the directory's job titles, which it never changes. Still missing: "Give it an owner" (item 28.42).
+   The engine's part: the role interview, and why a job nobody owns matters (request 25).
 7. **Spending and budgets** (`#/suite/spend`, admins and leads). Groundwork's own back office has
    spending, to check for reuse. The engine's part: taking a request in chat and checking the budget.
 8. **To-dos** (`#/suite/todos`, admins and leads). Commitments exist in each check-in, and the back
