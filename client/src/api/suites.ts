@@ -71,3 +71,18 @@ export const leaveBoardApi = {
   decide: async (id: string, outcome: 'approve' | 'decline'): Promise<LeaveBoard> =>
     (await apiClient.post(`/suites/leave/requests/${id}/${outcome}`)).data,
 }
+
+/** Time sheets (GET /suites/time/board). For billing only. */
+export interface TimeWeek {
+  weekOf: string
+  clients: string[]
+  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean }[]
+}
+export interface TimeAgreement { client: string; work: string; hours: number; span: 'whole' | 'month'; usedMinutes: number }
+export interface TimeBoard { thisWeek: string; weeks: TimeWeek[]; agreements: TimeAgreement[] | null }
+
+export const timeSheetsApi = {
+  get: async (): Promise<TimeBoard> => (await apiClient.get('/suites/time/board')).data,
+  approve: async (weekOf: string, personId: string): Promise<TimeBoard> =>
+    (await apiClient.post(`/suites/time/weeks/${weekOf}/people/${personId}/approve`)).data,
+}
