@@ -24,15 +24,16 @@ vi.mock('react-router-dom', async () => {
 })
 
 describe('the save card', () => {
+  /* In full sentences, not pieces joined with a dash (U.6 review). */
   it('never says the link sends the invitations', () => {
-    expect(whatOpeningTheLinkDoes(1, null)).toBe(' - opening it saves your check-in, then shows who was invited and who has to wait')
+    expect(whatOpeningTheLinkDoes(1, null)).toBe('Opening it saves your check-in. Then you see who was invited and who has to wait.')
     expect(whatOpeningTheLinkDoes(3, null)).not.toMatch(/sends/)
   })
   it('says the one certain thing when the check-in starts later', () => {
-    expect(whatOpeningTheLinkDoes(1, '2026-11-02')).toBe(' - opening it saves your check-in, then shows who was invited and who has to wait. Nobody is invited before Monday 2 November')
+    expect(whatOpeningTheLinkDoes(1, '2026-11-02')).toBe('Opening it saves your check-in. Then you see who was invited and who has to wait. Nobody is invited before Monday 2 November.')
   })
   it('with nobody to invite, says only that it saves', () => {
-    expect(whatOpeningTheLinkDoes(0, null)).toBe(' - opening it saves your check-in')
+    expect(whatOpeningTheLinkDoes(0, null)).toBe('Opening it saves your check-in.')
   })
 })
 

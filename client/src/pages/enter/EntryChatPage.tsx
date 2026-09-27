@@ -1068,16 +1068,16 @@ export function itIsStillAskingSomething(reply: string): boolean {
  * turned into words rather than printed; else "A check-in", with the organisation when it is known.
  */
 /**
- * WHAT OPENING THE EMAILED LINK DOES, AS THE SAVE CARD SAYS IT (U.6 review). Only what it always does.
- * An invitation can wait (the check-in starts later, there is no seat for the person, an admin has to
- * accept the check-in first) or fail (an address that cannot be invited), so this never says the link
- * sends them. It says the page that opens shows who was invited and who has to wait, which that page
- * does (MagicVerifyPage), and, when the start is later, the one thing that is certain.
+ * WHAT OPENING THE EMAILED LINK DOES, AS THE SAVE CARD SAYS IT (U.6 review), in full sentences. Only
+ * what it always does. An invitation can wait (the check-in starts later, there is no seat for the
+ * person, an admin has to accept the check-in first) or fail (an address that cannot be invited), so
+ * this never says the link sends them. The page that opens shows who was invited and who has to wait
+ * (MagicVerifyPage); when the start is later, the one thing that is certain is said as well.
  */
 export function whatOpeningTheLinkDoes(people: number, startsOnLater: string | null): string {
-  if (people === 0) return ' - opening it saves your check-in'
-  const later = startsOnLater ? `. Nobody is invited before ${theDay(new Date(`${startsOnLater}T00:00:00`))}` : ''
-  return ` - opening it saves your check-in, then shows who was invited and who has to wait${later}`
+  if (people === 0) return 'Opening it saves your check-in.'
+  const later = startsOnLater ? ` Nobody is invited before ${theDay(new Date(`${startsOnLater}T00:00:00`))}.` : ''
+  return `Opening it saves your check-in. Then you see who was invited and who has to wait.${later}`
 }
 
 export function fallbackGroundName(situation?: string, where?: string): string {
@@ -4213,11 +4213,11 @@ export function EntryChatPage() {
                     quietly wrong by one: it promised to send 1 invite while two
                     people had been named.
                   */}
-                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>{(() => {
+                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>. {(() => {
                     const pending = inviteContextFor && !inviteAdded.some(e => e === inviteContextFor || e.startsWith(`${inviteContextFor} - `)) ? 1 : 0
                     const n = inviteAdded.length + pending
                     return whatOpeningTheLinkDoes(n, startsLater ? checkInBy : null)
-                  })()}. You can reopen this any time from the bar below.
+                  })()} You can reopen this any time from the bar below.
                 </div>
               </div>
             ) : closed ? null : (
