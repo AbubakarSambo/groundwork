@@ -61,3 +61,9 @@ describe('the order', () => {
     for (const s of theRollout(nothing)) expect(s.to.startsWith('/')).toBe(true);
   });
 });
+
+describe('where each step goes', () => {
+  it('sends "Connect your systems" to the Connect page’s own address, not the old one that only redirects (U.18)', () => {
+    expect(step(nothing, 'connect').to).toBe('/settings/tools');
+  });
+});

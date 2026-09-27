@@ -88,7 +88,8 @@ export function theRollout(f: RolloutFacts): Step[] {
       key: 'connect',
       title: 'Connect your systems',
       body: 'Your CRM, your HR system, your own product. Your engineers will want this page.',
-      to: '/org/integrations',
+      /* U.18: the Connect page's own address now; /org/integrations only redirects there. */
+      to: '/settings/tools',
       done: f.connected,
       optional: true,
     },

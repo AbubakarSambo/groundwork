@@ -99,6 +99,12 @@ const REACHED_FROM_OUTSIDE = [
    */
   '/org/setup',
   /**
+   * The old address of the Connect page (U.18). The links in the API-access and failed-delivery
+   * emails still carry it, and those emails must keep working exactly as now; it opens
+   * /settings/tools, "Connect your own tools", the page it always was. Nothing should link to it.
+   */
+  '/org/integrations',
+  /**
    * The Groundwork team's own back office. Reached by typing the address, like
    * the prompt tools under /admin, and deliberately not linked from the product:
    * a customer's navigation must never carry a way into our company's operating
