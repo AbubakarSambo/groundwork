@@ -51,6 +51,10 @@ People page contradict itself. The prototype says a guest from outside "takes a 
 yours, seats now follow the prototype: everyone with a Groundwork account in the organisation takes a
 seat, guests included, and people answering by link with no account take none (item 30).
 
+**One more privacy leak, found by the U.6 review and being fixed:** when a lead named someone in the
+setup conversation, the lead's private description of that person reached them on their invitation:
+"Your part in this: Daniel - Your sales manager, who you said is not meeting his agreed targets…".
+
 **Two more privacy leaks, found by the U.5 review and now fixed:** the check-ins list named, to a
 participant, the other people on a check-in whose own page hides them from each other; and the check-in's
 own read gave a participant the team's report, with the lead's whole account in it, before it had been
@@ -127,7 +131,7 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
 | U.4 People, roles and access | Yes | **Passed** on 27 September, on the fifth round |
 | U.5 Today and the check-ins list | Yes | **Passed** on 27 September, on the third round |
-| U.6 Starting a check-in | Yes, except the lead's first check-in card | Waiting |
+| U.6 Starting a check-in | Yes, except the lead's first check-in card | Sent back on 27 September; being fixed |
 | U.7 Context | Yes | Waiting |
 | U.8 The check-in screens | Yes | Waiting |
 | U.9 Reports and sharing | Yes | Waiting |
