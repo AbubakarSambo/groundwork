@@ -232,7 +232,8 @@ export function MagicVerifyPage() {
      * server does not send yet, nothing changes.
      */
     const confirmFirst = (o: VerifyOutcome): VerifyOutcome => {
-      if (!res.justCreated) return o
+      /* Somebody who came from Google confirmed no email, so they are not told they did (U.3 review). */
+      if (!res.justCreated || params.get('via') === 'google') return o
       if (o.kind === 'redirect') {
         const onward = o.to.startsWith('/set-password') ? o : (passwordStep(o.to) ?? o)
         return { kind: 'confirmed', email: res.user?.email ?? null, then: onward }

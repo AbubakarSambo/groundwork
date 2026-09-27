@@ -42,6 +42,9 @@ export function GoogleCallbackPage() {
    * be worse than the guess it replaces.
    */
   const shouldNameOrg = params.get('nameOrg') === 'true'
+  /* Where they were going before Google, handed back by the server (U.3 review). Only a path in this app. */
+  const rawNext = params.get('next')
+  const goingTo = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\') ? rawNext : null
 
   useEffect(() => {
     if (exchanged.current) return
@@ -97,6 +100,7 @@ export function GoogleCallbackPage() {
 
         /* The organisation the server just made is named on "Create an organisation" (A3, U.3). */
         if (shouldNameOrg) { navigate('/org-new?naming=1', { replace: true }); return }
+        if (goingTo) { navigate(goingTo, { replace: true }); return }
         navigate(isNewUser ? '/start' : '/', { replace: true })
       } catch {
         // Deliberately vague: the failure modes here are an expired code, a
@@ -106,7 +110,7 @@ export function GoogleCallbackPage() {
         navigate('/google-failed', { replace: true })
       }
     })()
-  }, [code, isNewUser, navigate, setAuth, shouldNameOrg])
+  }, [code, isNewUser, navigate, setAuth, shouldNameOrg, goingTo])
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>

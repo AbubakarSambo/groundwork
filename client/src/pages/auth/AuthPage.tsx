@@ -422,7 +422,8 @@ export function AuthPage() {
    * Google starts by handing the browser to Google.
    */
   const googleButton = (label: string) => methods?.google ? (
-    <Button kind="secondary" wide onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google` }}>
+    /* The place they were going rides to Google and back (U.3 review), such as the invite link. */
+    <Button kind="secondary" wide onClick={() => { window.location.href = `${API_ORIGIN}/api/v1/auth/google${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}` }}>
       <GoogleMark />
       {label}
     </Button>

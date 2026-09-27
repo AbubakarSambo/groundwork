@@ -378,6 +378,7 @@ export class AuthService {
               firstName: pending.firstName,
               lastName: pending.lastName ?? '',
               passwordHash: pending.passwordHash,
+              googleId: pending.googleId ?? undefined,
               /* Never an admin. Being listed is not authority over the company. */
               role: ROLE_FOR_SOMEBODY_EXPECTED as any,
               isEmailVerified: true,
@@ -398,7 +399,7 @@ export class AuthService {
 
         this.logger.log(`${pending.email} joined the organisation that already listed them`);
         /* This link has just made the account (U.2): the client says "Your email is confirmed". */
-        return goOnTo({ ...(await this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true }, pending.next);
+        return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true }, pending.next);
       }
 
       /*
@@ -435,6 +436,7 @@ export class AuthService {
                   firstName: pending.firstName,
                   lastName: pending.lastName ?? '',
                   passwordHash: pending.passwordHash,
+              googleId: pending.googleId ?? undefined,
                   /* "Takes part". Never an admin: joining is not authority over the company. */
                   role: ROLE_FOR_SOMEBODY_EXPECTED as any,
                   isEmailVerified: true,
@@ -453,7 +455,7 @@ export class AuthService {
             });
             this.logger.log(`${pending.email} joined ${chosen.name} ${chosen.how === 'link' ? 'by its invite link' : 'by email domain'} on confirming`);
             /* Joined, so not back to the invite link's "Join" button: on to Today. */
-            return { ...(await this.withPasswordSetup(await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true, next: '/today' };
+            return { ...(await this.readyAfter(pending, await this.buildAuthResponse(joined as unknown as UserWithOrg, 'link'), joined.id)), justCreated: true, next: '/today' };
           }
           problem = `${chosen.name} has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.`;
         }
@@ -485,6 +487,7 @@ export class AuthService {
             lastName: pending.lastName ?? '',
             /* Only the password signup path carries one. The others set a password later. */
             passwordHash: pending.passwordHash,
+              googleId: pending.googleId ?? undefined,
             role: 'ADMIN',
             // Verified by construction: this only runs because the link opened.
             isEmailVerified: true,
@@ -513,7 +516,7 @@ export class AuthService {
       });
 
       /* This link has just made the account and its organisation (U.2). */
-      return goOnTo({ ...(await this.withPasswordSetup(await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true }, pending.next);
+      return goOnTo({ ...(await this.readyAfter(pending, await this.buildAuthResponse(created as unknown as UserWithOrg, 'link'), created.id)), justCreated: true }, pending.next);
     }
 
     const tokenRecord = await this.consumeToken(dto.token, TokenType.EMAIL_VERIFICATION, { allowExpiredMessage: 'This verification link has expired. Please request a new one.' });
@@ -975,7 +978,13 @@ export class AuthService {
    */
   async findOrCreateGoogleUser(
     googleUser: { googleId: string; email: string; firstName: string; lastName: string },
-  ): Promise<{ token: string; isNewUser: boolean; needsOrgName: boolean }> {
+    /* Where in the app they were going, carried through Google as `state` (U.3 review). */
+    next?: string | null,
+  ): Promise<
+    | { token: string; isNewUser: boolean; needsOrgName: boolean; pendingToken?: never }
+    /* Nothing made yet: the browser goes to /verify-email with this token (U.3 review). */
+    | { pendingToken: string; token?: never; isNewUser?: never; needsOrgName?: never }
+  > {
     const email = googleUser.email.toLowerCase();
     let isNewUser = false;
     let needsOrgName = false;
@@ -1022,6 +1031,37 @@ export class AuthService {
           });
           if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
           return { token: this.generateToken(user, 'google'), isNewUser, needsOrgName: false };
+        }
+
+        /*
+         * FROM AN INVITE LINK, OR WITH A DOMAIN AN ORGANISATION LETS JOIN (U.3 review): the same as
+         * signing up by email. Nothing is made here. A waiting sign-up is kept, marked as proved by
+         * Google, and the browser goes to the same confirmation page with its token, where
+         * `verifyEmail` does what it does for everybody: joins an open link with a seat, or asks
+         * "Where do you work?" on a domain match or a closed or full link. One path, not a copy.
+         *
+         * The waiting sign-up is written fresh: anything an earlier, unproved sign-up for this address
+         * left on it (a password, a draft, an organisation name) was typed by somebody Google has not
+         * vouched for, so none of it is kept.
+         */
+        const where = await this.whereAWaitingSignUpMayGo(email, next);
+        if (where.cameByLink || where.offered.length > 0) {
+          const pendingToken = crypto.randomBytes(32).toString('hex');
+          const fresh = {
+            token: pendingToken,
+            firstName: googleUser.firstName || email.split('@')[0],
+            lastName: googleUser.lastName || null,
+            orgName: null,
+            passwordHash: null,
+            payload: {} as any,
+            history: [] as any,
+            draftToken: null,
+            next: aPathInThisApp(next),
+            googleId: googleUser.googleId,
+            expiresAt: expiresAtFor('choose where you work after Google'),
+          };
+          await this.prisma.pendingSignup.upsert({ where: { email }, create: { email, ...fresh }, update: fresh });
+          return { pendingToken };
         }
 
         // Nobody is expecting them. Make an organisation so they have somewhere
@@ -1133,6 +1173,14 @@ export class AuthService {
       where: { userId, type: type === 'PASSWORD_RESET' ? TokenType.PASSWORD_RESET : TokenType.PASSWORD_SETUP, usedAt: null },
       data: { usedAt: new Date() },
     });
+  }
+
+  /**
+   * The last step of a waiting sign-up becoming an account. One that Google proved (U.3 review) signs
+   * in with Google and is never sent to choose a password; every other one is, as before.
+   */
+  private async readyAfter(pending: { googleId?: string | null }, res: AuthResponseDto, userId: string): Promise<AuthResponseDto> {
+    return pending.googleId ? { ...res, needsPassword: false } : this.withPasswordSetup(res, userId);
   }
 
   private async withPasswordSetup(res: AuthResponseDto, userId: string): Promise<AuthResponseDto> {

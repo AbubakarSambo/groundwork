@@ -769,6 +769,9 @@ model PendingSignup {
   /// link ("/j/baridi-7k2p"). Only a path inside this app is ever stored (common/a-path-in-this-app),
   /// and the confirmation carries them back to it (U.3).
   next         String?  @map("next_path")
+  /// Set when Google proved the address and the person still has to choose where they work (U.3
+  /// review): the account made from this waiting sign-up signs in with Google, and needs no password.
+  googleId     String?  @map("google_id")
   expiresAt    DateTime @map("expires_at")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")

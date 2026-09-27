@@ -23,7 +23,8 @@ export type Purpose =
   | 'set a password on the screen you are already on'
   | 'reset a password'
   | 'sign in from a team invitation'
-  | 'join a check-in';
+  | 'join a check-in'
+  | 'choose where you work after Google';
 
 export const HOW_LONG: Record<Purpose, number> = {
   'verify an address': 24 * HOUR,
@@ -36,6 +37,8 @@ export const HOW_LONG: Record<Purpose, number> = {
   /* A magic sign-in link riding a team invitation, so it keeps the invitation's own week. */
   'sign in from a team invitation': 7 * 24 * HOUR,
   'join a check-in': 14 * 24 * HOUR,
+  /* Short on purpose: handed straight back to the browser that has just come from Google (U.3 review). */
+  'choose where you work after Google': 1 * HOUR,
 };
 
 export const WHICH_TYPE: Record<Purpose, TokenType> = {
@@ -46,6 +49,7 @@ export const WHICH_TYPE: Record<Purpose, TokenType> = {
   'reset a password': TokenType.PASSWORD_RESET,
   'sign in from a team invitation': TokenType.EMAIL_VERIFICATION,
   'join a check-in': TokenType.PARTICIPANT_INVITE,
+  'choose where you work after Google': TokenType.EMAIL_VERIFICATION,
 };
 
 export function expiresAtFor(purpose: Purpose, now: Date = new Date()): Date {
