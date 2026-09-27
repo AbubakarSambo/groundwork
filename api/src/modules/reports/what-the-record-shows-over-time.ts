@@ -308,18 +308,92 @@ export interface APersonsRecord {
   sessions: number;
 }
 
+/** "1 session", "none", "3 lines": a count a sentence can hold. Nought is "none", never "0". */
+const aCount = (n: number, one: string, many: string) => (n === 0 ? `no ${many}` : `${n} ${n === 1 ? one : many}`);
+
+/**
+ * WORDS THAT START A FRAGMENT OF A ROLE AND ARE NOT ANYBODY'S NAME, so they can go lower case once
+ * the fragments are one sentence. Anything else keeps the capital it was written with: "Ikeja"
+ * after a stop is a place, and a place written "ikeja" is wrong.
+ */
+const ORDINARY_STARTS = new Set([
+  'target', 'targets', 'aim', 'goal', 'goals', 'owns', 'runs', 'leads', 'manages', 'handles', 'covers',
+  'works', 'responsible', 'reports', 'based', 'expected', 'must', 'should', 'will', 'needs', 'has', 'is',
+  'was', 'joined', 'started', 'new', 'main', 'focus', 'focused', 'also', 'plus', 'the', 'a', 'an', 'to',
+  'for', 'in', 'on', 'at', 'by', 'with', 'currently', 'supports', 'sells', 'builds', 'looks', 'brings',
+  'delivers', 'oversees', 'keeps', 'makes', 'helps', 'deputy', 'acting', 'senior', 'junior', 'and',
+  /* And the verbs a remit starts with, for the first word: "is build the government relationships". */
+  'build', 'confirm', 'sell', 'find', 'grow', 'close', 'win', 'deliver', 'run', 'lead', 'own', 'manage',
+  'support', 'bring', 'get', 'hit', 'reach', 'make', 'help', 'keep', 'cover', 'handle', 'set', 'open',
+  'drive', 'recruit', 'hire', 'train', 'write', 'design', 'ship', 'launch', 'secure', 'raise', 'collect',
+]);
+
+/**
+ * THE DESCRIPTION, AS ONE SENTENCE, WITH ITS WORDS UNCHANGED.
+ *
+ * A lead describes a person in fragments: "Relationship officer, Ikeja. Target 14 approved facilities
+ * this quarter." Glued after "was taken on for:" that became "Ngozi Eze was taken on for:
+ * Relationship officer, Ikeja. Target 14 approved facilities this quarter. What the record holds
+ * about it: 1 session on reco...", a slot name, then the lead's two fragments, then another slot
+ * name (sales, run 10, eighteen times on the lead's report and eighteen on the lead's board). Only
+ * the stops between fragments change, to semicolons, so it reads as one sentence the way the lead
+ * wrote it.
+ */
+function asOneSentence(description: string): string {
+  const ordinary = (word: string) => (ORDINARY_STARTS.has(word.toLowerCase()) ? word.toLowerCase() : word);
+  return description
+    .trim()
+    .replace(/[.!?\s]+$/, '')
+    /* The first word too, since the description now continues "is ..." rather than starting one. */
+    .replace(/^([A-Za-z][\w'-]*)/, (word: string) => ordinary(word))
+    .replace(/([^\s.!?])[.!?]+\s+([A-Za-z][\w'-]*)/g, (_m, before: string, word: string) =>
+      `${before}; ${ordinary(word)}`);
+}
+
+/**
+ * A REMIT THAT STARTS WITH A VERB IS WHAT SOMEBODY IS THERE TO DO. "The role written down for Femi is
+ * covers the mainland branches" is not English; "is to cover the mainland branches" is. The third
+ * person goes back to the plain verb, from this short list only, and anything else is left alone.
+ */
+const TO_THE_PLAIN_VERB: Record<string, string> = {
+  owns: 'own', runs: 'run', leads: 'lead', manages: 'manage', handles: 'handle', covers: 'cover',
+  supports: 'support', sells: 'sell', builds: 'build', brings: 'bring', delivers: 'deliver',
+  oversees: 'oversee', keeps: 'keep', makes: 'make', helps: 'help', drives: 'drive', recruits: 'recruit',
+  trains: 'train', writes: 'write', designs: 'design', secures: 'secure', raises: 'raise', collects: 'collect',
+};
+const PLAIN_VERBS = new Set([...Object.values(TO_THE_PLAIN_VERB),
+  'confirm', 'find', 'grow', 'close', 'win', 'get', 'hit', 'reach', 'set', 'open', 'hire', 'ship', 'launch']);
+
+/** "is to cover the branches", "is Relationship officer, Ikeja": the description after "is". */
+function afterIs(sentence: string): string {
+  const m = /^([a-z]+)\b/.exec(sentence);
+  if (!m) return sentence;
+  const plain = TO_THE_PLAIN_VERB[m[1]] ?? (PLAIN_VERBS.has(m[1]) ? m[1] : null);
+  if (!plain) return sentence;
+  /* And a later fragment that is another thing they are there to do joins the first one. */
+  const rest = sentence.slice(m[1].length).replace(/; ([a-z]+)\b/g, (whole, verb: string) =>
+    (TO_THE_PLAIN_VERB[verb] ? `, and to ${TO_THE_PLAIN_VERB[verb]}` : whole));
+  return `to ${plain}${rest}`;
+}
+
+/** What the record holds, in one list a sentence can end on. */
+function whatTheRecordHolds(p: APersonsRecord): string {
+  const holds = [
+    aCount(p.sessions, 'session', 'sessions'),
+    `${aCount(p.lines, 'line', 'lines')} of what was said`,
+    `${p.checkable === 0 ? 'none' : p.checkable} with a name, a number or a date in ${p.checkable === 1 ? 'it' : 'them'}`,
+    `${p.documented === 0 ? 'none' : p.documented} backed by a document`,
+  ];
+  if (p.openCommitments) holds.push(`${aCount(p.openCommitments, 'commitment', 'commitments')} still open`);
+  if (p.owedToOthers) holds.push(`${aCount(p.owedToOthers, 'thing', 'things')} somebody else here is waiting for`);
+  return holds.length > 1 ? `${holds.slice(0, -1).join(', ')} and ${holds[holds.length - 1]}` : holds[0];
+}
+
 export function gapsOverTime(people: APersonsRecord[]): AGapOverTime[] {
   return (people ?? [])
     .filter((p) => (p.expected ?? '').trim())
     .map((p) => {
-      const holds = [
-        `${p.sessions} ${p.sessions === 1 ? 'session' : 'sessions'} on record`,
-        `${p.lines} ${p.lines === 1 ? 'line' : 'lines'} of what they said`,
-        `${p.checkable} with a name, a number or a date in them`,
-        `${p.documented} backed by a document`,
-      ];
-      if (p.openCommitments) holds.push(`${p.openCommitments} of their own commitments still open`);
-      if (p.owedToOthers) holds.push(`${p.owedToOthers} ${p.owedToOthers === 1 ? 'thing' : 'things'} somebody else here is waiting on them for`);
+      const holds = whatTheRecordHolds(p);
       /*
        * THE SENTENCE IS THE COMPARISON AND NOT A CONCLUSION FROM IT. What the role was said to be,
        * and what the record holds. A reader draws the conclusion; that is the whole point of
@@ -332,19 +406,21 @@ export function gapsOverTime(people: APersonsRecord[]): AGapOverTime[] {
        * Government Liaison Consultant", because `roleAsDescribed` is a job title and the sentence
        * assumed it was a remit. Where the only thing on record is the title, the sentence says so
        * plainly instead of reading it back as though it explained anything.
+       *
+       * AND NO SLOT NAMES. Both sentences are whole sentences, with the person's label where a name
+       * goes, so the read puts the name in (or "you", for the lead's own row).
        */
       const expected = p.expected.trim();
       const titleOnly = expected.toLowerCase().replace(/[.\s]+$/, '') === p.label.toLowerCase().replace(/[.\s]+$/, '')
         || expected.split(/\s+/).length <= 5;
-      const ended = /[.!?]$/.test(expected) ? expected : `${expected}.`;
       return {
         participantId: p.participantId,
         who: p.label,
         expected,
-        recordHolds: holds.join(', '),
+        recordHolds: holds,
         say: titleOnly
-          ? `${p.label} is down as "${expected.replace(/[.\s]+$/, '')}" and nothing on record says what that covers. What the record holds: ${holds.join(', ')}.`
-          : `${p.label} was taken on for: ${ended} What the record holds about it: ${holds.join(', ')}.`,
+          ? `${p.label} is down as "${expected.replace(/[.\s]+$/, '')}", and nothing on record says what that role covers. Since then, the record holds ${holds}.`
+          : `The role written down for ${p.label} is ${afterIs(asOneSentence(expected))}. Since then, the record holds ${holds}.`,
       };
     });
 }

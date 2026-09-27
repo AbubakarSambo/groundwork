@@ -133,11 +133,43 @@ describe('what the record shows over time', () => {
         expected: 'Build the government relationships and confirm the real approval pathway independently.',
         lines: 44, checkable: 18, documented: 0, openCommitments: 5, owedToOthers: 9, sessions: 6,
       }]);
-      expect(g.say).toContain('was taken on for: Build the government relationships');
-      expect(g.say).toContain('44 lines of what they said');
-      expect(g.say).toContain('0 backed by a document');
-      expect(g.say).toContain('9 things somebody else here is waiting on them for');
+      /* Whole sentences, no slot names: it read "was taken on for: ... What the record holds about
+         it: ..." until 27 September 2026. */
+      expect(g.say).toBe(
+        'The role written down for Marcus Oyelaran is to build the government relationships and confirm the real approval pathway independently. '
+        + 'Since then, the record holds 6 sessions, 44 lines of what was said, 18 with a name, a number or a date in them, '
+        + 'none backed by a document, 5 commitments still open and 9 things somebody else here is waiting for.',
+      );
       expect(g.say).not.toMatch(/fail|poor|should|underperform/i);
+      expect(g.say).not.toMatch(/taken on for:|What the record holds/);
+    });
+
+    /*
+     * THE LEAD'S FRAGMENTS BECOME ONE SENTENCE, IN THEIR OWN WORDS. Sales, run 10: "Ngozi Eze was
+     * taken on for: Relationship officer, Ikeja. Target 14 approved facilities this quarter. What
+     * the record holds about it: 1 session on reco...", on the lead's report and board.
+     */
+    it('reads a description written in fragments as one sentence', () => {
+      const [g] = gapsOverTime([{
+        participantId: 'ngozi', label: 'Ngozi Eze',
+        expected: 'Relationship officer, Ikeja. Target 14 approved facilities this quarter.',
+        lines: 6, checkable: 1, documented: 0, openCommitments: 1, owedToOthers: 0, sessions: 1,
+      }]);
+      expect(g.say).toBe(
+        'The role written down for Ngozi Eze is Relationship officer, Ikeja; target 14 approved facilities this quarter. '
+        + 'Since then, the record holds 1 session, 6 lines of what was said, 1 with a name, a number or a date in it, '
+        + 'none backed by a document and 1 commitment still open.',
+      );
+      /* tools/score_run.py, "role description used as a name", the same expression. */
+      expect(g.say).not.toMatch(/\. Target \d+ [a-z ]+this quarter\.|(?<=[a-z])\. Target \d+/);
+    });
+
+    it('keeps the capital on a word that may be a name, and says what a verb-first remit is there to do', () => {
+      const [g] = gapsOverTime([{
+        participantId: 'femi', label: 'Femi', expected: 'Covers the mainland branches. Ikeja and Yaba are his.',
+        lines: 1, checkable: 0, documented: 0, openCommitments: 0, owedToOthers: 0, sessions: 1,
+      }]);
+      expect(g.say).toContain('is to cover the mainland branches; Ikeja and Yaba are his.');
     });
 
     /*
@@ -150,7 +182,7 @@ describe('what the record shows over time', () => {
         participantId: 'marcus', label: 'Marcus Oyelaran', expected: 'Government Liaison Consultant',
         lines: 44, checkable: 18, documented: 0, openCommitments: 5, owedToOthers: 9, sessions: 6,
       }]);
-      expect(g.say).toContain('is down as "Government Liaison Consultant" and nothing on record says what that covers');
+      expect(g.say).toContain('is down as "Government Liaison Consultant", and nothing on record says what that role covers.');
       expect(g.say).not.toContain('taken on for: Government Liaison Consultant');
     });
 
