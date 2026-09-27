@@ -69,6 +69,7 @@ import {
 } from '../conversation/the-window-for-correcting-a-record';
 import { labelsForParties, namesVisibleTo, readsWithNamesOf, withNames, viewerLabelOf, eachSideGetsSomebody, handleOf, plainWordsForTheUnnameable, plainWordsByPerson, atTheStart, THE_LEADS_LABEL, displayName } from './party-labels';
 import { aMoveForTheReader } from './a-move-is-the-thing-to-do';
+import { praiseTheNumbersDoNotSupport } from './praise-the-numbers-do-not-support';
 import { withoutOtherPeoplesReads } from './own-reads-only';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
@@ -2246,6 +2247,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         role: (p.remitAsGiven ?? p.roleAsDescribed ?? null) as string | null,
         finding: findings.find((f) => f.participantId === p.id)?.text ?? null,
         participantId: p.id,
+        facts: theFacts.find((f) => f.participantId === p.id) ?? null,
       })),
       leadName: (parties as any[]).filter((p) => p.partyType === PartyType.INITIATOR).map((p) => labelById.get(p.id) ?? null)[0] ?? null,
       namesInThisCheckIn,
@@ -3951,7 +3953,8 @@ happened, and what is in the way.`;
   private async judgeTheAnswers(
     groundId: string,
     room?: {
-      people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string }[];
+      /* `facts` is what the record holds about them, so praise can be checked against their numbers. */
+      people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string; facts?: PersonFacts | null }[];
       leadName: string | null;
       /* Each person's label and name, so their own words reach the judgement with labels in them too. */
       namesInThisCheckIn?: ALabelAndAName[];
@@ -4184,7 +4187,7 @@ happened, and what is in the way.`;
       return false;
     };
     const grounded = asARoom ? namesSomebody : everySentenceCarriesANumber;
-    const kept = {
+    let kept = {
       ...judgement,
       whatTheNumbersSay: (judgement.whatTheNumbersSay ?? []).filter((x: any) => grounded(x?.says)),
       whatToDo: (judgement.whatToDo ?? []).filter((x: any) => grounded(x?.because) || grounded(x?.startWith) || grounded(x?.move))
@@ -4196,6 +4199,20 @@ happened, and what is in the way.`;
       + (judgement.whatToDo ?? []).length - kept.whatToDo.length;
     const parables = talksLikeAPerson([kept.theGap, ...kept.whatTheNumbersSay.map((x: any) => x.says)].join(' '));
     if (dropped) this.logger.warn(`The judgement on ${groundId}: ${dropped} finding(s) ${asARoom ? 'named nobody' : 'carried no number'} and were dropped.`);
+    /*
+     * AND IT NEVER PRAISES A CLAIM THE RECORD'S OWN NUMBERS CONTRADICT.
+     *
+     * Run 8: "Recognise Kwame Mensah for exceeding their target of 14 approved facilities", because
+     * "22 facilities were processed smoothly". His record says three approved and twenty-two
+     * applications. Praise of what somebody reached is held back wherever no figure in their record,
+     * in the target's own unit, reaches the target. Nothing is written in its place. See
+     * praise-the-numbers-do-not-support.
+     */
+    const praise = praiseTheNumbersDoNotSupport(kept, (room?.people ?? []).map((p) => ({ who: p.who, role: p.role, facts: p.facts ?? null })));
+    kept = praise.judgement;
+    if (praise.heldBack.length) {
+      this.logger.warn(`The judgement on ${groundId}: held back ${praise.heldBack.length} line(s) of praise the record's numbers do not support: ${praise.heldBack.map((x) => `"${x}"`).join(', ')}`);
+    }
     if (parables.length) this.logger.warn(`The judgement on ${groundId} used ${parables.length} phrase(s) a person would not: ${parables.join(', ')}`);
     this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
     return { judgement: kept, table };
