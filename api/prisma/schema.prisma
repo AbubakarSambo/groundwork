@@ -455,6 +455,8 @@ model Organization {
   membershipRequests MembershipRequest[]
   /// Which suites an admin has switched on, with their answers (E, U.17).
   suites             OrganizationSuite[]
+  /// Requests for time off, for the leave suite (E2, U.17).
+  leaveRequests      LeaveRequest[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2264,6 +2266,33 @@ model Resolution {
 /// person's own answer, and decides, giving a reason. The person reads the facts about their work
 /// and the decision with its reasons, and can add their side or appeal. An admin decides an appeal.
 ///
+/// A REQUEST FOR TIME OFF (E2, the leave suite, U.17). Who is off, from which day to which day, who
+/// stands in for them, and the decision: approved or declined, by whom, and when. There is no reason
+/// field, because the prototype never asks for one, and nothing here ever reaches a check-in or its
+/// report. Who reads which row is decided in suites/the-leave-board.service.ts, never on the screen.
+/// Days are whole dates, with no time of day.
+model LeaveRequest {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  userId         String    @map("user_id")
+  startsOn       DateTime  @map("starts_on") @db.Date
+  endsOn         DateTime  @map("ends_on") @db.Date
+  /// Only annual leave for now: the only kind the prototype shows.
+  kind           String    @default("annual") @db.VarChar(16)
+  standInUserId  String?   @map("stand_in_user_id")
+  /// waiting, approved or declined.
+  status         String    @default("waiting") @db.VarChar(12)
+  decidedById    String?   @map("decided_by_id")
+  decidedAt      DateTime? @map("decided_at")
+  askedAt        DateTime  @default(now()) @map("asked_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([organizationId, userId])
+  @@map("leave_requests")
+}
+
 /// THE SUITES AN ORGANISATION HAS SWITCHED ON (E, U.17). One row per suite an admin has ever switched,
 /// with the answers they gave to its first questions. No row means off. Only an admin switches one,
 /// and a lead is told only which are on (suites.service.ts). `answers` is keyed by question id; a

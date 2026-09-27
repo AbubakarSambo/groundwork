@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { stillOnboarding } from '../grounds/still-finding-their-feet';
+import { inTheLeadsTeam } from './a-leads-team';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const BOARD_REFUSED = {
@@ -66,17 +67,11 @@ export class OnboardingBoardService {
       select: { externalId: true, department: true },
     });
     if (!me) return { people: [] };
-    const myDepartment = me.department?.trim() || null;
     const theirs = await this.prisma.person.findMany({
       where: { organizationId: reader.organizationId, externalId: { in: everyone.map((p) => p.id) } },
       select: { externalId: true, department: true, managerExternalId: true },
     });
-    const mine = new Set(
-      theirs
-        .filter((p) => p.externalId !== me.externalId)
-        .filter((p) => p.managerExternalId === me.externalId || (!!myDepartment && p.department?.trim() === myDepartment))
-        .map((p) => p.externalId),
-    );
+    const mine = new Set(theirs.filter((p) => inTheLeadsTeam(me, p)).map((p) => p.externalId));
     return { people: everyone.filter((p) => mine.has(p.id)) };
   }
 
