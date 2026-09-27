@@ -3062,6 +3062,23 @@ fix. Every changed test's reason is in its own commit: each checked old, dot-joi
 defective wording, never old behaviour being removed for its own sake. Only the tests for files
 changed (`--maxWorkers=2`), both type checks, run; no server started.
 
+**Full suites afterwards found 7 more, all pinning wording the review's fixes changed - never the
+rule itself.** `one-word-for-the-thing.spec.ts` and `a-check-in-is-not-always-two-people.spec.ts`
+both pinned the literal `` `Session ${sessionNumber}` `` as their way of proving "session" stays the
+word for the thing inside a check-in, and that the mechanism does not assume two parties; both now
+pin `` `Closing session ${sessionNumber}` `` / `` `Correcting session ${correctingSession}` ``
+instead, which are the two cases that still say something about an ordinary or corrected session.
+`a-correction-says-what-it-is-correcting.spec.ts`'s "while an ordinary session still says its own
+number" is no longer true - decided honestly, per the coordinator - so it now asserts the opposite of
+that clause (no lone `` `Session ${sessionNumber}` ``) alongside what it always actually protected,
+that a correction still names which session it corrects. `the-page-does-not-deny-the-forming-report.spec.ts`
+matched the old count-shaped sentence "still to answer session"; now matches "still has/have to
+answer", which is the same fact - who is still out - said as a sentence.
+`nobody-is-late-before-it-opens.spec.ts` pinned source literals for a rendering rule (no "waiting"
+before a session opens, the tooltip says why, and both are still true once a session is open);
+rewritten to render `GroundChat` and read the words on screen instead, which is a stronger test of
+the same rule, not a different one. One commit; all five files pass, `tsc -b` clean.
+
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 
 - **The lead's judgement on the board reads as sentences.** "What this cannot tell you" and "What

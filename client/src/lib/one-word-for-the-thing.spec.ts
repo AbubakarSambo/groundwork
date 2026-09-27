@@ -164,8 +164,16 @@ describe('and the two words stay distinct', () => {
      * The half of the decision that is easy to lose. If a later sweep renames sessions to
      * check-ins as well, the product can no longer say "your check-in has three sessions" and
      * every sentence about cadence becomes ambiguous.
+     *
+     * U.8 REVIEW: the bare `Session ${sessionNumber}` this pinned is gone from the bottom bar - an
+     * ordinary session says nothing there now (docs/prototype/screens/B3-the-check-in/*.txt never
+     * print a lone session number either; see the U.8 review). The word itself did not go with it:
+     * `privacyLabel` still says "Closing session ${sessionNumber}" and "Correcting session
+     * ${correctingSession}" for the two cases that DO have something to say about the session, so
+     * this now pins one of those instead of the sentence that was removed.
      */
     const chat = readFileSync(join(SRC, 'pages/chat/ChatPage.tsx'), 'utf8')
-    expect(chat).toMatch(/Session \$\{sessionNumber\}/)
+    expect(chat).toMatch(/[Cc]losing session \$\{sessionNumber\}/)
+    expect(chat).toMatch(/[Cc]orrecting session \$\{correctingSession\}/)
   })
 })
