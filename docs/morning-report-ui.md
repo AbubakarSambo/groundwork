@@ -150,7 +150,7 @@ to find.
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
 | U.4 People, roles and access | Yes | **Passed** on 27 September, on the fifth round |
 | U.5 Today and the check-ins list | Yes | **Passed** on 27 September, on the third round |
-| U.6 Starting a check-in | Yes, except the lead's first check-in card | Sent back on 27 September; being fixed |
+| U.6 Starting a check-in | Yes, except the lead's first check-in card | Sent back three times on 27 September; the last fix, invitations waiting for a future start, is being made |
 | U.7 Context | Yes | Waiting |
 | U.8 The check-in screens | Yes | Waiting |
 | U.9 Reports and sharing | Yes | Waiting |
@@ -864,6 +864,17 @@ the lead's first check-in, and the rule of 15 September stays (the prototype's s
 the public site's "Try it on your own team" box, which the product does not have, so that finding is
 dropped); and point 18, check-ins are named after the topic in plain words, never the person and never a
 type name, because the name is the invitation email's subject.
+
+**New question, found in the final U.6 review: may the person a check-in is about read the lead's own
+setup words?** The lead's brief is shown on the check-in page under "About this check-in", and U.7
+made it readable by everyone in the check-in, following the prototype's "Your words, from setup.
+Everyone reads this before they answer." For a check-in about one person, the brief can hold the lead's
+judgement of them, for example "Daniel, a sales manager, is not meeting his targets. … Why now: Daniel
+has consistently not met targets since August…". Your decision keeps the lead's private words out of
+every invitation, but the brief is a different, deliberate part of the check-in, and rule 4 lets words
+said in a check-in be shown to the people in it. **My recommendation:** for a check-in about one person,
+show that person the brief only after the lead has read it back and chosen to share it, or show them a
+version written for them; and show the brief as it is to everyone else. I have not changed it.
 
 ### 18. Context (U.7): what needs you
 
