@@ -4,7 +4,7 @@ import { useNavigate, useParams, useLocation, useSearchParams } from 'react-rout
 import { justTheQuestion } from '@/pages/invite/the-link-opens-on-the-question'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { conversationApi, streamMessage, type CheckInBrief } from '@/api/conversation'
+import { conversationApi, streamMessage, type CheckInBrief, type TheEndCard as TheEndCardData } from '@/api/conversation'
 import { documentsApi, type DocumentAssessment } from '@/api/documents'
 import { useAuthStore } from '@/stores/auth'
 import { asTheirWords, isTheEnginesOwnNote } from '@/lib/as-their-words'
@@ -15,6 +15,8 @@ import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
+import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
+import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
@@ -215,7 +217,6 @@ export function ChatPage() {
    */
   const [declined, setDeclined]       = useState(false)
   const [confirmingDecline, setConfirmingDecline] = useState(false)
-  const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [openFailed, setOpenFailed]   = useState(false)
   const openedRef = useRef(false)
   /**
@@ -326,6 +327,17 @@ export function ChatPage() {
   /* What the product measured about their own answers, told to them rather than kept behind the
      curtain. Comes back on the completion response; see WhatYouGaveUs. */
   const [whatYouGave, setWhatYouGave] = useState<WhatYouGave | null>(null)
+  /* The end card's parts that only the engine can write, sent with the reply that closes the
+     conversation (request 7). Null until it does; the card shows what is there. */
+  const [endCard, setEndCard] = useState<TheEndCardData | null>(null)
+  /* This person's own sessions, for when the next one opens. Only while the end is on screen. */
+  const myStatus = useQuery({
+    queryKey: ['my-checkin-status', groundId, 'end'],
+    queryFn: () => groundsApi.getMyCheckinStatus(groundId!),
+    enabled: !!groundId && (done || completed),
+    retry: 2,
+    retryDelay: 1500,
+  })
 
   const complete = useMutation({
     mutationFn: () => conversationApi.complete(checkInId!),
@@ -376,7 +388,6 @@ export function ChatPage() {
        */
       if (err?.response?.data?.canContinue) {
         setDone(false)
-        setConfirmingFinish(false)
         toast.error(message || 'A little more is needed before this can close.')
         return
       }
@@ -496,6 +507,7 @@ export function ChatPage() {
             session with no turns yet still has a subject, and that is the load where it matters most.
           */
           if (t.brief) setBrief(t.brief)
+          if (t.endCard) setEndCard(t.endCard)
           if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
           /*
             AND WHICH SESSION THIS IS, FOR THE SAME REASON AS THE BAND ABOVE.
@@ -610,6 +622,7 @@ export function ChatPage() {
           setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers } : m))
           setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers } : m))
           if (r.sessionComplete) setDone(true)
+          if (r.endCard) setEndCard(r.endCard)
         },
         onError: (m) => { throw new Error(m) },
       })
@@ -625,6 +638,7 @@ export function ChatPage() {
           acknowledge()
           setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers }))
           if (res.sessionComplete) setDone(true)
+          if (res.endCard) setEndCard(res.endCard)
         } catch {
           /**
            * A MESSAGE THAT NEVER LANDED USED TO STAY ON SCREEN.
@@ -1078,62 +1092,27 @@ export function ChatPage() {
             if (loading || done || completed || declined || !opened) return null
             return <SuggestedAnswers answers={last.suggestedAnswers} onPick={quickSend} />
           })()}
-          {/* Explicit end confirmation: finishing never auto-happens. Clicking
-              "Complete session" opens a confirm step so the person can review
-              before the record locks. This is the client half of one coherent
-              close - the engine has already confirmed the timeframe and that
-              they are ready in the conversation itself (TIMEFRAME RULE); this
-              is the deliberate final action, not a second stacked prompt. */}
-          {done && !completed && !confirmingFinish && (
-            <div style={{ textAlign: 'center', padding: '10px 0' }}>
-              <button
-                onClick={() => setConfirmingFinish(true)}
-                style={{ padding: '10px 24px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Complete session ✓
-              </button>
-            </div>
-          )}
-          {!completed && confirmingFinish && (
-            <div style={{ padding: '12px 0', textAlign: 'center' }}>
-              <div style={{ maxWidth: 460, margin: '0 auto', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Ready to finish this session?</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
-                  Take a moment to look back over what you have said. Once you finish, this session's record is locked in and cross-referenced with the others. If a timeframe matters here, make sure you have confirmed it above.
-                </div>
-                {/*
-                  HALF A MINUTE OF "SAVING…" READS AS A HANG. W8-16.
-
-                  Completing runs two model calls before it answers - scoring the
-                  account, then pulling the record entries out of it. The entry
-                  flow already said what was happening during that wait; this
-                  path, which is the one everybody is on from session two, said
-                  one word and then nothing.
-                */}
-                {complete.isPending && (
-                  <div style={{ marginBottom: 12 }}>
-                    <SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. Nothing is lost if you wait." />
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <button
-                    onClick={() => complete.mutate()}
-                    disabled={complete.isPending}
-                    style={{ padding: '10px 22px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    {complete.isPending ? 'Saving…' : 'Finish session ✓'}
-                  </button>
-                  <button
-                    /* "Not yet" means not yet: the offer to finish goes away too, and comes back on the next close signal. */
-                    onClick={() => { setConfirmingFinish(false); setDone(false); taRef.current?.focus() }}
-                    disabled={complete.isPending}
-                    style={{ padding: '10px 18px', borderRadius: 8, background: 'none', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    Not yet, keep going
-                  </button>
-                </div>
-              </div>
-            </div>
+          {/*
+            THE END CARD (check-in-end-card.txt). Finishing never happens on its own: the engine
+            closing the conversation brings up this card, and only "That’s right, finish" finishes.
+            "Change something" goes back to the conversation, where they say what is wrong in their
+            own words; the card comes back on the next close.
+          */}
+          {done && !completed && !declined && (
+            <TheEndCard
+              engine={endCard}
+              leadName={whoElseAnswers(ground.data as any, user?.id)}
+              nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId)}
+              finishing={complete.isPending}
+              /*
+                HALF A MINUTE OF "SAVING…" READS AS A HANG. W8-16. Completing runs two model calls
+                before it answers - scoring the account, then pulling the record entries out of it -
+                so the wait says what is happening.
+              */
+              whileFinishing={<SlowStep steps={CLOSING_STEPS} note="This one takes about half a minute. Nothing is lost if you wait." />}
+              onFinish={() => complete.mutate()}
+              onChange={() => { setDone(false); taRef.current?.focus() }}
+            />
           )}
           {/* Manual fallback: "done" flips on the AI's close marker, or when the
               person asked to finish and the reply asked nothing (closesInOtherWords
@@ -1150,13 +1129,13 @@ export function ChatPage() {
               Seen four times in one twelve-session run. Only messages the server
               has acknowledged are counted now, so the offer appears exactly when
               the server will honour it. */}
-          {!done && !completed && !confirmingFinish && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
+          {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
             <div style={{ textAlign: 'center', padding: '6px 0' }}>
               <button
-                onClick={() => setConfirmingFinish(true)}
-                style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}
+                onClick={() => setDone(true)}
+                style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', minHeight: 32 }}
               >
-                Not seeing a wrap-up? Complete session
+                Finish my check-in now
               </button>
             </div>
           )}

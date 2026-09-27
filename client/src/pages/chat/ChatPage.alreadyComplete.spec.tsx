@@ -85,13 +85,13 @@ describe('finishing a check-in the engine already closed', () => {
     ;(conversationApi.complete as any).mockRejectedValue(alreadyCompleteError())
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Complete session/i, {}, { timeout: 4000 }))
-    fireEvent.click(await screen.findByRole('button', { name: /Finish session/i }))
+    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
+    fireEvent.click(await screen.findByRole('button', { name: /That’s right, finish/i }))
 
     // THE REGRESSION. The button lived on forever, and pressing it again only
     // produced the same refusal.
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /Finish session/i })).toBeNull()
+      expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
     })
   }, 15_000)
 
@@ -101,25 +101,25 @@ describe('finishing a check-in the engine already closed', () => {
     })
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Complete session/i, {}, { timeout: 4000 }))
-    const finish = await screen.findByRole('button', { name: /Finish session/i })
+    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
+    const finish = await screen.findByRole('button', { name: /That’s right, finish/i })
     fireEvent.click(finish)
 
     // A real refusal must keep the way forward open - the person has something
     // left to do, and hiding the button would strand them.
     await waitFor(() => expect((conversationApi.complete as any)).toHaveBeenCalled())
-    expect(await screen.findByRole('button', { name: /Finish session/i })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /That’s right, finish/i })).toBeTruthy()
   }, 15_000)
 
   it('still finishes normally when the server accepts the completion', async () => {
     ;(conversationApi.complete as any).mockResolvedValue({ status: 'completed' })
     renderChat()
 
-    fireEvent.click(await screen.findByText(/Complete session/i, {}, { timeout: 4000 }))
-    fireEvent.click(await screen.findByRole('button', { name: /Finish session/i }))
+    fireEvent.click(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 4000 }))
+    fireEvent.click(await screen.findByRole('button', { name: /That’s right, finish/i }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /Finish session/i })).toBeNull()
+      expect(screen.queryByRole('button', { name: /That’s right, finish/i })).toBeNull()
     })
   }, 15_000)
 })

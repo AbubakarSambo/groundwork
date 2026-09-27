@@ -47,7 +47,10 @@ describe('one word per object, on the screens', () => {
     expect(read(rel)).not.toContain(gone)
   })
   it('and says the right thing instead', () => {
-    expect(read('chat/ChatPage.tsx')).toContain('Ready to finish this session?')
+    /* Since U.8 the confirm panel is the prototype's end card (check-in-end-card.txt), and the one
+       press that finishes says "That’s right, finish". */
+    expect(read('chat/ChatPage.tsx')).toContain('<TheEndCard')
+    expect(readFileSync(join(__dirname, 'checkin', 'TheEndCard.tsx'), 'utf8')).toContain('That’s right, finish')
     expect(read('report/SessionReportPage.tsx')).toContain('Start a new check-in')
     expect(read('join/JoinPage.tsx')).toContain('Email me my link')
   })

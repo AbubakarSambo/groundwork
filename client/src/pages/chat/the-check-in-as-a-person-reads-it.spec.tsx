@@ -170,3 +170,82 @@ describe('the + button', () => {
     expect(await screen.findByText('You added “green-mart-quote.heic”. Only you can open it.', {}, { timeout: 5000 })).toBeTruthy()
   })
 })
+
+describe('the end card, once Groundwork has closed the conversation', () => {
+  const CLOSING = 'That’s all for today. Below is what I wrote down from your answers. Is anything wrong?'
+  function closesOnTheNextAnswer(endCard?: unknown) {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: 'Did anything else change with your sales today?', suggestedAnswers: ['I’ll visit Westgate Deli on Friday'] }],
+    })
+    ;(conversationApi.send as any).mockResolvedValue({ reply: CLOSING, sessionComplete: true, endCard })
+  }
+  async function answerTheLastQuestion() {
+    renderChat()
+    fireEvent.click(await screen.findByRole('button', { name: 'I’ll visit Westgate Deli on Friday' }, { timeout: 6000 }))
+    await screen.findByText(CLOSING, {}, { timeout: 6000 })
+  }
+
+  it('Miriam reads the header change, why answering matters, what happens next, and the two buttons', async () => {
+    closesOnTheNextAnswer()
+    await answerTheLastQuestion()
+    expect(screen.getByText('That’s everything for today')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '1. Why answering matters' })).toBeTruthy()
+    expect(screen.getByText('Wairimu also answers a check-in. The report puts the answers side by side. It shows where you agree and where you see things differently. It does not decide who is right.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '2. What happens next' })).toBeTruthy()
+    expect(screen.getByText('If you don’t want to talk about something yet, that’s fine. You can leave it for now.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'That’s right, finish' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Change something' })).toBeTruthy()
+    // The engine sent no lines for the record, so none are made up.
+    expect(screen.queryByText(/What is now in your record/)).toBeNull()
+    // Held until the question of who sees a person's words is answered (morning report, item 11).
+    expect(screen.queryByText(/Your team will see what you said today/)).toBeNull()
+    // No suggested answers under the closing message: the card has its own buttons.
+    expect(screen.queryByRole('group', { name: 'Suggested answers' })).toBeNull()
+    expect(conversationApi.complete).not.toHaveBeenCalled()
+  })
+
+  it('shows what the engine wrote down for the record, line by line, when it sends it', async () => {
+    closesOnTheNextAnswer({
+      inYourRecord: [
+        { says: 'Green Mart will buy in January', how: 'You said this. It will count next quarter, from October.', mark: 'said' },
+        { says: 'You’ll visit Westgate Deli on Friday', how: 'You said you will do this. I will ask you how it went.' },
+      ],
+      next: ['If Green Mart sends a written order, add a photo of it. Then the sale counts as proven.'],
+    })
+    await answerTheLastQuestion()
+    expect(screen.getByRole('heading', { name: '1. What is now in your record' })).toBeTruthy()
+    expect(screen.getByText('Green Mart will buy in January')).toBeTruthy()
+    expect(screen.getByText('You said this. It will count next quarter, from October.')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Only someone’s word' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '2. Why answering matters' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '3. What happens next' })).toBeTruthy()
+    expect(screen.getByText('If Green Mart sends a written order, add a photo of it. Then the sale counts as proven.')).toBeTruthy()
+  })
+
+  it('the lead answering their own check-in is not told that they also answer one', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', email: 'wairimu@x.test' }
+    ;(groundsApi.get as any).mockResolvedValue({ ...SALES, viewerIsInitiator: true })
+    closesOnTheNextAnswer()
+    await answerTheLastQuestion()
+    expect(screen.queryByText(/Why answering matters/)).toBeNull()
+    expect(screen.getByRole('heading', { name: '1. What happens next' })).toBeTruthy()
+  })
+
+  it('a lead who only manages does not answer, so the sentence is not said', async () => {
+    ;(groundsApi.get as any).mockResolvedValue({ ...SALES, participants: SALES.participants.map(p => p.partyType === 'INITIATOR' ? { ...p, managingOnly: true } : p) })
+    closesOnTheNextAnswer()
+    await answerTheLastQuestion()
+    expect(screen.queryByText(/also answers a check-in/)).toBeNull()
+  })
+
+  it('“Change something” goes back to the conversation without finishing', async () => {
+    closesOnTheNextAnswer()
+    await answerTheLastQuestion()
+    fireEvent.click(screen.getByRole('button', { name: 'Change something' }))
+    expect(screen.queryByRole('button', { name: 'That’s right, finish' })).toBeNull()
+    expect(screen.queryByText('That’s everything for today')).toBeNull()
+    expect((screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement).disabled).toBe(false)
+    expect(conversationApi.complete).not.toHaveBeenCalled()
+  })
+})
