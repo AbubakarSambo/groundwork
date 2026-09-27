@@ -14,16 +14,20 @@ import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
+import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { toast } from 'sonner'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
-const ACCEPTED_UPLOADS = ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx', '.png', '.jpg', '.jpeg', '.md']
+/* .webp and .heic too: an iPhone photo is HEIC, and the server has always read both (documents.service ALLOWED_MIME). */
+const ACCEPTED_UPLOADS = ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx', '.png', '.jpg', '.jpeg', '.webp', '.heic', '.md']
 
 interface Msg {
   id: string
   role: 'AI' | 'PERSON'
   content: string
   docAssessment?: { docId: string; docName: string; assessment: DocumentAssessment }
+  /** The engine's suggested answers for this question, when it sends them. See SuggestedAnswers. */
+  suggestedAnswers?: string[]
 }
 
 /** Shows a document's "what this suggests / what will be done with it" bullets,
@@ -92,12 +96,6 @@ function AssessmentCard({ groundId, docId, docName, assessment, onCorrected }: {
     </div>
   )
 }
-
-const QUICK_ACTIONS = [
-  { label: 'What am I missing?',        msg: 'What is missing from what I have said that would make it stronger?' },
-  { label: 'Is there a document?',      msg: 'Is there anything written down that we should look at for this?' },
-  { label: 'What do I carry forward?',  msg: 'What is the one thing I should carry into the next conversation?' },
-]
 
 const RECORD_ENTRY_LABELS: Record<string, string> = {
   SUCCESS_DEFINITION: 'What success looks like',
@@ -305,7 +303,7 @@ export function ChatPage() {
   const openSession = useMutation({
     mutationFn: () => conversationApi.open(checkInId!),
     onSuccess: res => {
-      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply }])
+      setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       if (res.brief) setBrief(res.brief)
       if (res.mayCompleteAfter) setMayCompleteAfter(res.mayCompleteAfter)
@@ -387,19 +385,28 @@ export function ChatPage() {
   })
 
   const uploadDoc = useMutation({
-    mutationFn: ({ file }: { file: File; ctx: string }) => {
+    /*
+     * WHAT THEY SAID IT IS, KEPT. The line typed in the sheet was shown back as "Context you gave"
+     * and then dropped: it never reached the server, so it was gone on the next load and the engine
+     * never read it. It goes up as the uploader's note, which the server keeps in their words and
+     * shows to them alone (what-a-document-is-for).
+     */
+    mutationFn: ({ file, ctx }: { file: File; ctx: string }) => {
       if (!groundId) throw new Error('groundId missing')
-      return documentsApi.upload(groundId, file)
+      return documentsApi.upload(groundId, file, false, ctx)
     },
     onSuccess: async (doc, { ctx }) => {
       /* Now that it has landed, the sheet can go. */
       setDocContextMode(false); setPendingDoc(null); setDocContext('')
       setPasteMode(false); setPasteText(''); setPasteLabel('')
-      const contextLine = ctx.trim() ? ` Context you gave: ${ctx.trim()}.` : ''
+      /* Said as what happened, and who can open it: the server's own answer for this file. What
+         they typed about it is not repeated back; it is kept with the file (see mutationFn). */
+      void ctx
+      const privateToThem = !doc.visibility || doc.visibility === 'OWN'
       const newMsgs: Msg[] = [{
         id: `doc-note-${Date.now()}`,
         role: 'AI',
-        content: `Document received: "${doc.name}".${contextLine}`,
+        content: `You added “${doc.name}”.${privateToThem ? ' Only you can open it.' : ''}`,
       }]
       if (doc.assessment) {
         newMsgs.push({
@@ -505,7 +512,7 @@ export function ChatPage() {
           if (typeof t.checkIn?.sessionNumber === 'number') setSessionNumber(t.checkIn.sessionNumber)
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.turns && t.turns.length > 0) {
-            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content })))
+            setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers })))
             if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true) }
             /** Reopening a session already declined must show the settled state, not the composer. */
             if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
@@ -600,8 +607,8 @@ export function ChatPage() {
         },
         onDone: (r) => {
           acknowledge()
-          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
-          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply } : m))
+          setMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers } : m))
+          setDisplayedMsgs(v => v.map(m => m.id === aiId ? { ...m, content: r.reply, suggestedAnswers: r.suggestedAnswers } : m))
           if (r.sessionComplete) setDone(true)
         },
         onError: (m) => { throw new Error(m) },
@@ -616,7 +623,7 @@ export function ChatPage() {
         try {
           const res = await conversationApi.send(checkInId, message)
           acknowledge()
-          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply }))
+          setMsgs(v => v.concat({ id: `ai-${Date.now()}`, role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers }))
           if (res.sessionComplete) setDone(true)
         } catch {
           /**
@@ -1015,16 +1022,16 @@ export function ChatPage() {
               style={{
                 maxWidth: '80%',
                 alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start',
-                background: m.role === 'PERSON' ? 'var(--gw-navy)' : 'white',
+                /* The prototype's cream for Groundwork's words (check-in-start.jpg). */
+                background: m.role === 'PERSON' ? 'var(--gw-navy)' : 'var(--gw-paper-2)',
                 color: m.role === 'PERSON' ? 'white' : 'var(--gw-text)',
-                border: m.role === 'AI' ? '1px solid var(--gw-border)' : 'none',
+                border: 'none',
                 borderRadius: m.role === 'PERSON' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                 padding: '10px 14px',
                 fontSize: 14,
                 lineHeight: 1.6,
                 whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
                 opacity: isWaiting(m) ? 0.5 : 1,
-                boxShadow: m.role === 'AI' ? '0 1px 3px rgba(0,0,0,.05)' : 'none',
               }}
             >
               {isWaiting(m) ? (
@@ -1060,6 +1067,17 @@ export function ChatPage() {
             </div>
             )
           ))}
+          {/*
+            THE ENGINE'S SUGGESTED ANSWERS, UNDER THE LATEST QUESTION ONLY (check-in-start.txt). Not
+            while its words are still arriving, and not once the conversation has closed: the end card
+            has its own two buttons. Pressing one sends it as the answer, exactly as if it were typed.
+          */}
+          {(() => {
+            const last = displayedMsgs[displayedMsgs.length - 1]
+            if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
+            if (loading || done || completed || declined || !opened) return null
+            return <SuggestedAnswers answers={last.suggestedAnswers} onPick={quickSend} />
+          })()}
           {/* Explicit end confirmation: finishing never auto-happens. Clicking
               "Complete session" opens a confirm step so the person can review
               before the record locks. This is the client half of one coherent
@@ -1277,31 +1295,12 @@ export function ChatPage() {
           )}
         </div>
 
-        {/* Quick action chips */}
-        <div style={{ padding: '8px 14px', background: 'white', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 7, flexWrap: 'wrap', flexShrink: 0 }}>
-          {/*
-            * "COMPLETE SESSION" IS AN OFFER, NOT A LOCK.
-            *
-            * `done` is set the moment the engine signals the conversation has reached a close, and
-            * it was disabling the input, the send button and every quick action. So the button
-            * appearing took the keyboard away: "once the complete session button shows up i can't
-            * seem to be able to do anything, i can't keep typing."
-            *
-            * The engine deciding it has enough is a suggestion about the conversation, not a fact
-            * about whether the person is finished - and it fires while somebody is mid-thought more
-            * often than not. What actually locks the record is `completed`, which only happens after
-            * they click the button and confirm. That is the state the input should follow.
-            */}
-          {QUICK_ACTIONS.map(a => (
-            <button key={a.label} onClick={() => quickSend(a.msg)} disabled={loading || completed || declined || !opened}
-              title={!opened ? 'Available once your session is open' : completed ? 'This session is complete' : undefined}
-              style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'var(--gw-bg)', color: 'var(--gw-sub)', cursor: (!opened || completed || declined) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: (!opened || completed || declined) ? 0.5 : 1 }}
-            >
-              {a.label}
-            </button>
-          ))}
-        </div>
-
+        {/*
+          THE THREE FIXED CHIPS ARE GONE ("What am I missing?", "Is there a document?", "What do I
+          carry forward?"). They sent the same three questions into every check-in whatever was
+          asked, and the prototype puts the engine's own suggested answers in that place, under the
+          question they answer. "What am I missing?" belongs between check-ins (between-check-ins.txt).
+        */}
 
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
@@ -1365,31 +1364,40 @@ export function ChatPage() {
           */}
           <div style={{ padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
             {groundId && attachOpen && (
-              <div style={{ position: 'absolute', bottom: 58, left: 12, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6, zIndex: 20, minWidth: 190 }}>
+              <div style={{ position: 'absolute', bottom: 58, left: 12, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6, zIndex: 20, width: 260, maxWidth: 'calc(100vw - 40px)' }}>
+                {/* A photo first, because that is what the check-in asks for: "A photo of it is
+                    enough." (check-in-end-card.txt). It is a real upload, and the server keeps it
+                    private to whoever added it until they choose otherwise. */}
                 <label htmlFor="doc-upload"
                   title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
                   onClick={() => setAttachOpen(false)}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)' }}
                 >
-                  📎 Upload a document
+                  Add a photo or a document
                 </label>
                 <button
                   onClick={() => { setAttachOpen(false); if (groundId) setPasteMode(true) }}
                   disabled={completed || declined}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)', background: 'none', border: 'none', width: '100%', textAlign: 'left', fontFamily: 'inherit' }}
                 >
-                  📋 Paste text
+                  Paste text
                 </button>
+                {/* The prototype's own sentence for a new document (U.7, Add a document), and the
+                    server's rule: a document starts private to its uploader (who-can-see-a-document). */}
+                <div style={{ padding: '6px 12px 8px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.45, borderTop: '1px solid var(--gw-border)', marginTop: 4 }}>
+                  It starts private to you. You choose who can read it.
+                </div>
               </div>
             )}
             {groundId && (
               <button
                 onClick={() => setAttachOpen(o => !o)}
-                aria-label="Add a document or paste text"
+                aria-label="Add a photo, a document or some text"
                 aria-expanded={attachOpen}
-                style={{ width: 42, height: 42, borderRadius: '50%', flexShrink: 0, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)', cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}
+                disabled={completed || declined}
+                style={{ width: 42, height: 42, borderRadius: 10, flexShrink: 0, background: 'white', border: '1.5px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}
               >
-                📎
+                +
               </button>
             )}
             <input type="file" id="doc-upload" accept={ACCEPTED_UPLOADS.join(',')} style={{ display: 'none' }} onChange={e => {
@@ -1489,10 +1497,10 @@ export function ChatPage() {
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📎 {pendingDoc.name}</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
-              What context does this document support from what you have shared so far?
+              What does it show? One line is enough; you can skip it.
             </div>
             <textarea autoFocus
-              placeholder="e.g. This is the brief I referenced when I mentioned the project scope…"
+              aria-label="What does it show?"
               value={docContext} onChange={e => setDocContext(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitDocWithContext() } }}
               style={{ width: '100%', resize: 'none', minHeight: 80, padding: '10px 12px', fontSize: 13, lineHeight: 1.55, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}

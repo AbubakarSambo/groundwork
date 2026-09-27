@@ -18,10 +18,16 @@ export interface CheckInBrief {
    */
   alsoSay?: string | null
 }
+/*
+ * SUGGESTED ANSWERS (B3): two to four short answers the person might give, under each question, such
+ * as "Sent it. They liked it but want to wait until after December." and "Not yet". They are the
+ * engine's to write and arrive with its reply. Asked of the engine workspace in
+ * docs/requests-to-engine.md, request 7; the screen draws nothing until they come.
+ */
 /** `mayCompleteAfter`: the turn floor the server holds this check-in to. The screen offers to finish at that count and not before, so the offer is never refused. */
-export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number }
-export interface SendMessageResponse { reply: string; sessionComplete?: boolean }
-export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string }
+export interface OpenCheckInResponse { reply: string; groundId?: string; brief?: CheckInBrief | null; mayCompleteAfter?: number; suggestedAnswers?: string[] }
+export interface SendMessageResponse { reply: string; sessionComplete?: boolean; suggestedAnswers?: string[] }
+export interface TranscriptTurn { id: string; role: 'AI' | 'PERSON'; content: string; suggestedAnswers?: string[] }
 export interface PriorRecordEntrySession { sessionNumber: number; entries: { type: string; text: string }[] }
 export interface TranscriptResponse { checkIn: { status: string; sessionNumber: number; groundId?: string }; turns: TranscriptTurn[]; priorTurns?: TranscriptTurn[]; priorSessionNumber?: number | null; priorRecordEntries?: PriorRecordEntrySession[]; /** What the check-in is about. On every load, not only the one that opens it. */ brief?: CheckInBrief | null; mayCompleteAfter?: number }
 

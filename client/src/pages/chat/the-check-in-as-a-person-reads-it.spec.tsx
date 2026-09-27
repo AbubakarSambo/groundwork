@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChatPage } from './ChatPage'
 import { conversationApi } from '@/api/conversation'
+import { documentsApi } from '@/api/documents'
 import { groundsApi } from '@/api/grounds'
 
 /**
@@ -108,5 +109,64 @@ describe('the header', () => {
     renderChat()
     await screen.findByText(OPENING, {}, { timeout: 5000 })
     expect(screen.queryByText(/I do not want to take part/)).toBeNull()
+  })
+})
+
+describe('suggested answers under the question', () => {
+  it('shows the engine’s suggested answers under the latest question, as buttons', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING, suggestedAnswers: ['Sent it. They liked it but want to wait until after December.', 'Not yet'] }],
+    })
+    renderChat()
+    const group = await screen.findByRole('group', { name: 'Suggested answers' }, { timeout: 6000 })
+    expect(within(group).getByRole('button', { name: 'Sent it. They liked it but want to wait until after December.' })).toBeTruthy()
+    expect(within(group).getByRole('button', { name: 'Not yet' })).toBeTruthy()
+  })
+
+  it('pressing one sends it as the answer, and the next question brings its own', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING, suggestedAnswers: ['Not yet'] }],
+    })
+    ;(conversationApi.send as any).mockResolvedValue({ reply: 'So they will buy after this quarter ends. Did they give you a date?', suggestedAnswers: ['They said January'] })
+    renderChat()
+    fireEvent.click(await screen.findByRole('button', { name: 'Not yet' }, { timeout: 6000 }))
+    await waitFor(() => expect(conversationApi.send).toHaveBeenCalledWith('ci1', 'Not yet'))
+    expect(await screen.findByRole('button', { name: 'They said January' }, { timeout: 6000 })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Not yet' })).toBeNull()
+  })
+
+  it('draws nothing when the engine sends none, and the three fixed chips are gone', async () => {
+    renderChat()
+    await screen.findByText(OPENING, {}, { timeout: 5000 })
+    expect(screen.queryByRole('group', { name: 'Suggested answers' })).toBeNull()
+    expect(screen.queryByText('What am I missing?')).toBeNull()
+    expect(screen.queryByText('What do I carry forward?')).toBeNull()
+    expect(screen.getByPlaceholderText('Type your answer')).toBeTruthy()
+  })
+})
+
+describe('the + button', () => {
+  it('offers a photo or a document, or text, and says who can read it', async () => {
+    renderChat()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a photo, a document or some text' }, { timeout: 5000 }))
+    expect(screen.getByText('Add a photo or a document')).toBeTruthy()
+    expect(screen.getByText('Paste text')).toBeTruthy()
+    expect(screen.getByText('It starts private to you. You choose who can read it.')).toBeTruthy()
+  })
+
+  it('uploads for real, with what the person said it shows, and says only they can open it', async () => {
+    ;(documentsApi.upload as any).mockResolvedValue({ id: 'd1', name: 'green-mart-quote.heic', mimeType: 'image/heic', uploadedAt: '', assessment: null, visibility: 'OWN' })
+    renderChat()
+    await screen.findByText(OPENING, {}, { timeout: 5000 })
+    const input = document.getElementById('doc-upload') as HTMLInputElement
+    const photo = new File(['x'], 'green-mart-quote.heic', { type: 'image/heic' })
+    fireEvent.change(input, { target: { files: [photo] } })
+    expect(await screen.findByText('What does it show? One line is enough; you can skip it.')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('What does it show?'), { target: { value: 'The quote I sent' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add to session' }))
+    await waitFor(() => expect(documentsApi.upload).toHaveBeenCalledWith('g1', photo, false, 'The quote I sent'))
+    expect(await screen.findByText('You added “green-mart-quote.heic”. Only you can open it.', {}, { timeout: 5000 })).toBeTruthy()
   })
 })
