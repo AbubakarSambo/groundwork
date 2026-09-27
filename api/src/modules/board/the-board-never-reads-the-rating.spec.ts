@@ -116,8 +116,8 @@ describe('the board never reads how a person’s answers were rated', () => {
     expect(served(await boardRatedAs('leastFlattering'))).toEqual([
       { who: 'Femi Adeyemi', reason: 'has not answered', says: 'Femi Adeyemi has not checked in for this round yet.' },
       { who: 'Miriam Wanjiku', reason: 'nothing to count yet', says: 'What Miriam Wanjiku said this round has no number, no date and no document with it yet, so there is nothing new to count. A number or a date for what moved would change that.' },
-      /* Somebody with no name is "A teammate", never the lead's description of them (request 36). */
-      { who: 'A teammate', reason: 'nothing to count yet', says: 'What a teammate said this round has no number, no date and no document with it yet, so there is nothing new to count. A number or a date for what moved would change that.' },
+      /* Somebody with no name is "A colleague", never the lead's description of them (request 36). */
+      { who: 'A colleague', reason: 'nothing to count yet', says: 'What a colleague said this round has no number, no date and no document with it yet, so there is nothing new to count. A number or a date for what moved would change that.' },
       { who: 'Aisha Otieno', reason: 'nothing to do', says: 'Aisha Otieno has checked in, and nothing here needs you this week.' },
     ]);
   });

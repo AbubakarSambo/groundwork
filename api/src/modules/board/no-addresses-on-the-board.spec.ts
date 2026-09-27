@@ -13,7 +13,7 @@ import { join } from 'path';
  * The client's `participantLabel` refuses the email for exactly this reason.
  *
  * The fallback used to be the role. Since request 36 (27 September 2026) it is nothing, and the
- * callers say "A teammate": the role on the row is the lead's own description of the person, which
+ * callers say "A colleague": the role on the row is the lead's own description of the person, which
  * can hold the lead's private words. See a-label-is-never-the-leads-description.spec.ts.
  */
 const SRC = readFileSync(join(__dirname, 'board.service.ts'), 'utf8')
@@ -26,7 +26,7 @@ describe('GW-BOARD-NAMES: no address is ever a label', () => {
      * Never the address - which is what this test is for. It used to fall back to the role, cut
      * short by `aNameOrNothing`; since request 36 it does not, because the role is the lead's own
      * description of the person and a short piece of it is still the lead's words. With no name the
-     * label is null and the caller says "A teammate". The organisation is appended to a name the
+     * label is null and the caller says "A colleague". The organisation is appended to a name the
      * way the report does it.
      */
     expect(SRC).toContain('const label = n || null;');

@@ -564,6 +564,49 @@ export function plainWordsForTheUnnameable(
   return out;
 }
 
+/**
+ * THE SAME PLAIN WORDS FOR SOMEBODY WITH NO NAME, BY PERSON, FOR EVERY SURFACE. Request 36.
+ *
+ * Where a person has no name, the board, the report's list of who answered, the conversation and the
+ * end-state email each used to say "a teammate", which the prototype never says. They now say what
+ * `plainWordsForTheUnnameable` says, from this one place: "a colleague" when there is one, "one
+ * colleague", "another colleague", "a third colleague" when there are several, "the lead" (or "your
+ * lead", with a reader) for a lead with no name. The order comes from `labelsForParties`, so the same
+ * person is the same phrase on every surface.
+ *
+ * `visible` is the names this reader may see, from `namesVisibleTo`. Left out, anybody with a name
+ * is named and only somebody with no name at all gets plain words. Keyed by participant id.
+ * Lower case, for inside a sentence: see `atTheStart`.
+ */
+export function plainWordsByPerson(
+  parties: LabelParty[],
+  visible?: Map<string, string> | null,
+  viewerLabel?: string | null,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  let labels: Map<string, string>;
+  try {
+    labels = labelsForParties(parties);
+  } catch {
+    for (const p of parties ?? []) if (p?.id) out.set(p.id, 'a colleague');
+    return out;
+  }
+  const named = visible ?? new Map(
+    parties.map((p) => [labels.get(p.id) ?? '', displayName(p)] as const).filter(([l, n]) => !!l && !!n) as [string, string][],
+  );
+  const phrases = plainWordsForTheUnnameable([...labels.values()], named, viewerLabel ?? null);
+  for (const [id, label] of labels) {
+    const phrase = phrases.get(label);
+    if (phrase) out.set(id, phrase);
+  }
+  return out;
+}
+
+/** The phrase with a capital, for the start of a sentence or a line of its own. */
+export function atTheStart(phrase: string): string {
+  return withACapital(phrase);
+}
+
 /** Whether the text before this point has just ended a sentence, so the phrase needs a capital. */
 function aSentenceIsStarting(whole: string, offset: number): boolean {
   const before = whole.slice(0, offset);

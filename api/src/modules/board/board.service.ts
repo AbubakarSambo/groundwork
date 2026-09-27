@@ -18,7 +18,7 @@ import {
   sectionsForARunOf,
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody } from '../reports/party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 import {
   CoverageKind,
   CoverageRead,
@@ -400,8 +400,11 @@ export class BoardService {
      * It used to fall back to the ROLE instead, on the grounds that the board shows each person
      * "against their own role in its own terms". It no longer does, because the role on the row is
      * the lead's own description of the person (request 36, below). With no name, a person is
-     * "A teammate".
+     * "A colleague" (see plainWordsByPerson).
      */
+    /* Somebody with no name, in the same plain words every surface uses: "A colleague", "Another colleague". */
+    const noName = plainWordsByPerson(ground.participants as any);
+    const aColleague = (pid: string | null | undefined) => atTheStart((pid ? noName.get(pid) : null) ?? 'a colleague');
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
       if (!p) return null;
@@ -421,7 +424,7 @@ export class BoardService {
        * is the sentence the lead typed about the person when inviting them, and it can hold the
        * lead's private words: "Daniel - Your sales manager, who you said is not meeting his agreed
        * targets" came out as "Daniel - Your sales manager", printed as a name to every reader of the
-       * board, the person included. With no name the callers say "A teammate" instead.
+       * board, the person included. With no name the callers say "A colleague" instead.
        */
       const label = n || null;
       return label && n && forWhom ? `${label} (${forWhom})` : label;
@@ -830,7 +833,7 @@ export class BoardService {
       })?.catch(() => [] as any[]) ?? [];
       out.stillUnanswered = (gapRows as any[])
         .filter((g) => g.asked >= 2)
-        .map((g) => ({ who: nameOf(g.participantId) ?? 'A teammate', what: g.what, sinceRound: g.firstRound, certain: g.certain !== false }));
+        .map((g) => ({ who: nameOf(g.participantId) ?? aColleague(g.participantId), what: g.what, sinceRound: g.firstRound, certain: g.certain !== false }));
     }
 
     if (has('checkInGrid') && runsThisGround) {
@@ -875,8 +878,8 @@ export class BoardService {
           return {
             participantId: p.id,
             /* A person whose name this reader may not resolve still has a row: the read is about
-               what to do, and "a teammate" with a three-week blocker is still worth acting on. */
-            who: nameOf(p.id) ?? 'A teammate',
+               what to do, and "a colleague" with a three-week blocker is still worth acting on. */
+            who: nameOf(p.id) ?? aColleague(p.id),
             /*
              * "Hafsah · no name given" - read on a live board, 23 September 2026, beside a report
              * that called the same person "Hafsah (Coamana)".
@@ -1935,7 +1938,7 @@ export class BoardService {
       this.prisma.groundDependency.findMany({ where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } }, select: { what: true, status: true, blockerKind: true } }),
     ]);
     const labels = labelsForParties(ground.participants as any);
-    const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A teammate') : null);
+    const nameOf = (pid: string | null) => (pid ? (labels.get(pid) ?? 'A colleague') : null);
     const report = ground.report ?? {};
     /* Who answered THIS round, against the one definition of who is expected (how-many-have-answered.ts). */
     const whoAnswered = await howManyHaveAnswered(this.prisma, groundId, openRound);
@@ -1964,7 +1967,7 @@ export class BoardService {
       theFirstBlocker: held.theFirstBlocker,
       worries: held.worries,
       theFirstWorry: held.theFirstWorry,
-      answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A teammate', isYou: false })),
+      answeredThisSession: answered.map((p: any) => ({ who: nameOf(p.id) ?? 'A colleague', isYou: false })),
       peopleInAll: whoAnswered.expected,
     });
     const question = draftTheQuestion({

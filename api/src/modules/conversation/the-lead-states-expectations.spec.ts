@@ -68,7 +68,7 @@ describe('GW-EXP-1: the interview knows who is in the room', () => {
       id: 'p9', partyType: PartyType.PARTICIPANT, email: 'chidinma@example.com',
       roleAsDescribed: null, nameGiven: null, user: null,
     } as any;
-    expect(whatToCallThem({ person: invitedOnly, peersMayBeNamed: true, fallback: 'a teammate' }))
+    expect(whatToCallThem({ person: invitedOnly, peersMayBeNamed: true, fallback: 'a colleague' }))
       .toBe('a colleague');
     /* And a name, where there is one and the check-in names people to each other. */
     expect(whatToCallThem({

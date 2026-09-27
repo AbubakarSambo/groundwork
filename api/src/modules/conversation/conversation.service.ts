@@ -65,7 +65,7 @@ import {
 import { detectFunction, detectUniversalModes } from '../board/function-detection';
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
-import { displayName } from '../reports/party-labels';
+import { displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, saidWordForWord } from '../reports/a-quote-is-what-they-said';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import {
@@ -2889,7 +2889,7 @@ export class ConversationService {
             managingOnly: true,
             roleAsDescribed: true,
             /* The name somebody typed at the end of an open-link check-in; they have no sign-in to
-               carry one, and without this they were "a teammate" to everybody. */
+               carry one, and without this they were "a teammate" (now "a colleague") to everybody. */
             nameGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
@@ -3446,8 +3446,8 @@ export class ConversationService {
         .map((p) => ({
           /* A name where this check-in names people to each other, plain words where it does not.
              Never a positional label, and never a role in an evaluation - see whatToCallThem. */
-          label: whatToCallThem({ person: p as any, peersMayBeNamed, plainWords, fallback: 'a teammate' })
-            ?? 'a teammate',
+          label: whatToCallThem({ person: p as any, peersMayBeNamed, plainWords, fallback: 'a colleague' })
+            ?? 'a colleague',
         })),
       /**
        * THE LEAD'S FRAMING OF THE SITUATION, READ BY EVERY SESSION.
@@ -3478,8 +3478,8 @@ export class ConversationService {
                 return {
                   /* The lead's own conversation, and a lead always reads their own team by name -
                      which is why this one passes `peersMayBeNamed: true` rather than the ground's rule. */
-                  label: whatToCallThem({ person: p as any, peersMayBeNamed: true, plainWords, fallback: 'a teammate' })
-                    ?? 'a teammate',
+                  label: whatToCallThem({ person: p as any, peersMayBeNamed: true, plainWords, fallback: 'a colleague' })
+                    ?? 'a colleague',
                   text: row.text.trim(),
                 };
               })
@@ -4441,8 +4441,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ];
       const nameOfParticipant = (pid: string) => {
         const p = (ground.participants ?? []).find((x: any) => x.id === pid) as any;
-        /* A name only, never the lead's description of them (request 36). "they" made "they's own account reads". */
-        return (p?.user?.firstName ?? '').trim() || (p?.nameGiven ?? '').trim() || 'A teammate';
+        /* A name only, never the lead's description of them (request 36). "they" made "they's own account reads".
+           With no name, the plain words every surface uses for them. */
+        return (p?.user?.firstName ?? '').trim() || (p?.nameGiven ?? '').trim()
+          || atTheStart(plainWordsByPerson((ground.participants ?? []) as any).get(pid) ?? 'a colleague');
       };
       if (isLead) {
         const findings = Array.isArray((ground as any).report?.findings) ? ((ground as any).report.findings as any[]) : [];

@@ -6,7 +6,7 @@ import { ReportsService } from '../reports';
 import { EmailService } from '../email/email.service';
 import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
 import { GroundStatus, PartyType } from '@prisma/client';
-import { labelsForParties, namesVisibleTo, displayName } from '../reports/party-labels';
+import { labelsForParties, namesVisibleTo, displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 
 /**
  * Resolution. A ground closes only when every ACTIVE party confirms the SAME
@@ -252,9 +252,11 @@ export class ResolutionService {
      * AND WITH NO NAME, NEITHER THE ROLE NOR THE ADDRESS. Request 36, 27 September 2026. The role on
      * the row is the lead's own description of the person, which can hold the lead's private words,
      * and this email goes to everybody else in the check-in. The address is not theirs to be shown to
-     * a peer either (see `displayName`). With no name, they are "A teammate".
+     * a peer either (see `displayName`). With no name, they are what every surface calls them
+     * (plainWordsByPerson): the one who proposes is the lead, so "The lead suggested how to wrap this up".
      */
-    const proposerLabel = displayName(participant as any) ?? 'A teammate';
+    const proposerLabel = displayName(participant as any)
+      ?? atTheStart(plainWordsByPerson([participant as any]).get(participant.id) ?? 'a colleague');
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
     /* The ground page: `/grounds/:id/resolution` has never been a client route, so both of
        these invitations to settle an end state landed on the not-found page. The panel that

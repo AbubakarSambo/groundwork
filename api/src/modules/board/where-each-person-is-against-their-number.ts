@@ -139,11 +139,19 @@ export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason
  * Where nobody has given a name, `who` was their role, and "Head of Sales has not checked in" read
  * as if the role were a person, so the sentence said "the person listed as" the role. The board no
  * longer uses the role as a name at all (request 36: it is the lead's own description of the
- * person), so somebody with no name, or one the product cannot name to this reader, is "a teammate".
+ * person), so somebody with no name is "a colleague", or "another colleague" where there are several,
+ * in the words every surface uses (plainWordsByPerson in party-labels).
  */
+/** The plain words for somebody with no name (party-labels' plainWordsByPerson), in any case. */
+const PLAIN_WORDS = /^(?:(?:a|an|one|another)\s+(?:[a-z]+\s+)?colleague|(?:your|the)\s+lead)$/i;
+
 function subjectFor(row: Pick<PersonRow, 'who' | 'nameIsTheirRole'>, atTheStart: boolean): string {
   const who = (row.who ?? '').trim();
-  if (!who || /^a teammate$/i.test(who)) return atTheStart ? 'A teammate' : 'a teammate';
+  if (!who) return atTheStart ? 'A colleague' : 'a colleague';
+  if (PLAIN_WORDS.test(who)) {
+    const lower = who.toLowerCase();
+    return atTheStart ? `${lower[0].toUpperCase()}${lower.slice(1)}` : lower;
+  }
   if (row.nameIsTheirRole) return `${atTheStart ? 'The' : 'the'} person listed as ${who}`;
   return who;
 }
@@ -221,7 +229,8 @@ const WHAT_THEY_TRIED_SAID_IN_FULL: Record<Effort, string> = {
  */
 export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null {
   const start = subjectFor(row, true);
-  const them = subjectFor(row, false).replace(/^a teammate$/, 'this teammate');
+  /* "Ask a colleague to check in" would mean anybody; the row is about one person, so "this colleague". */
+  const them = subjectFor(row, false).replace(/^(?:a|an|one|another)\s+(?:[a-z]+\s+)?colleague$/, 'this colleague');
   if (!row.answeredThisRound) return `Ask ${them} to check in.`;
   const worst = [...row.inTheWay]
     .filter((b) => b.tried !== 'escalated' && b.tried !== 'went-around')

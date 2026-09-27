@@ -5,7 +5,7 @@ import { BoardService } from '../board/board.service';
 import { ReportsService } from './reports.service';
 import { ResolutionService } from '../resolution/resolution.service';
 import { endStatesFor } from '../resolution/end-states';
-import { displayName, labelsForParties, namesVisibleTo, readsWithNamesOf, type LabelParty } from './party-labels';
+import { displayName, labelsForParties, namesVisibleTo, readsWithNamesOf, plainWordsByPerson, atTheStart, type LabelParty } from './party-labels';
 import { whatToCallThem } from '../conversation/a-colleague-in-an-interview-has-a-name';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { whatToWorkOnNext } from './what-to-work-on-next';
@@ -85,11 +85,29 @@ describe('the report\'s names, for the lead, the person themselves and a peer', 
 describe('the conversation calls them a neutral word', () => {
   it('whatever the check-in allows, it never calls them by the lead\'s words', () => {
     for (const peersMayBeNamed of [true, false]) {
-      const said = whatToCallThem({ person: NO_NAME as any, peersMayBeNamed, fallback: 'a teammate' });
+      const said = whatToCallThem({ person: NO_NAME as any, peersMayBeNamed, fallback: 'a colleague' });
       expect(holdsTheLeadsWords(said)).toBe(false);
       /* The interview's plain word for somebody it cannot name, the same one the reports use. */
       expect(said).toBe('a colleague');
     }
+  });
+});
+
+describe('the plain word is "a colleague", numbered the same way everywhere', () => {
+  it('one person with no name is "a colleague"', () => {
+    expect(plainWordsByPerson(PARTIES).get('p-noname')).toBe('a colleague');
+    expect(plainWordsByPerson(PARTIES).has('p-aisha')).toBe(false);
+  });
+
+  it('two are "one colleague" and "another colleague", in the order the report gives them', () => {
+    const second = { ...NO_NAME, id: 'p-noname-2', userId: 'u-noname-2', email: 'x2@baridi.test', createdAt: new Date('2026-09-01T12:00:00Z') };
+    const words = plainWordsByPerson([...PARTIES, second as any]);
+    expect(words.get('p-noname')).toBe('one colleague');
+    expect(words.get('p-noname-2')).toBe('another colleague');
+  });
+
+  it('a capital only at the start', () => {
+    expect(atTheStart('another colleague')).toBe('Another colleague');
   });
 });
 
@@ -179,6 +197,14 @@ describe('the board, as each reader is served it', () => {
       expect(row.name).toBeNull();
     });
   }
+
+  it('the lead reads them as "A colleague" where the board says who, never "teammate"', async () => {
+    const b = await boardFor('u-wairimu');
+    const row = (b.eachPerson ?? []).find((r: any) => r.participantId === 'p-noname');
+    expect(row).toBeDefined();
+    expect(row.who).toBe('A colleague');
+    expect(JSON.stringify(b)).not.toMatch(/teammate/i);
+  });
 
   it('the lead may still read their own description where it is the role, not the name', async () => {
     const row = ((await boardFor('u-wairimu')).participants ?? []).find((p: any) => p.id === 'p-noname');
@@ -272,8 +298,8 @@ describe('the person\'s own coaching note does not say the lead\'s words back to
 
 /* ---- The email the others get when the lead suggests how it ends. ---- */
 
-describe('the end-state email names the lead, or says "A teammate"', () => {
-  it('a lead with no name is "A teammate", never their description or their address', async () => {
+describe('the end-state email names the lead, or says "The lead"', () => {
+  it('a lead with no name is "The lead", never their description or their address', async () => {
     const lead = { ...LEAD, user: { firstName: '', lastName: '', email: 'w@baridi.test' }, roleAsDescribed: DESCRIPTION };
     const sent: string[] = [];
     const prisma: any = new Proxy({
@@ -306,7 +332,7 @@ describe('the end-state email names the lead, or says "A teammate"', () => {
     const svc = new ResolutionService(prisma, {} as any, {} as any, email, { get: () => 'http://localhost:5173' } as any);
     const endState = endStatesFor(GroundScenario.OKR_ALIGNMENT)[0].value;
     await svc.counterPropose('g-sales', 'u-wairimu', endState).catch(() => undefined);
-    expect(sent).toEqual(['A teammate']);
+    expect(sent).toEqual(['The lead']);
   });
 });
 
