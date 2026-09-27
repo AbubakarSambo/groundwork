@@ -691,7 +691,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               above the detail, the way every other read on this page is arranged.
             */}
             <Sec title="What the answers say" src="from everybody who has answered so far" />
-            <TheJudgement it={(b as any).theJudgement} table={(b as any).theTable} />
+            <TheJudgement it={(b as any).theJudgement} />
             {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
           </>
         )}

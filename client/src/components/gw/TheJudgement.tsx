@@ -16,8 +16,6 @@
  * finding that does not carry one before this ever sees it. That is what makes this a judgement
  * rather than an impression, and the last report was thrown out for being an impression.
  */
-import { useState } from 'react'
-
 export interface TheJudgementRead {
   theGap?: string
   whatTheNumbersSay?: { fieldId?: string; says: string; soWhat?: string }[]
@@ -32,8 +30,28 @@ const Head = ({ children }: { children: React.ReactNode }) => (
   </div>
 )
 
-export function TheJudgement({ it, table }: { it: TheJudgementRead | null | undefined; table?: string | null }) {
-  const [showTable, setShowTable] = useState(false)
+/**
+ * TWO PIECES ARE TWO LINES, NEVER ONE LINE WITH A COLON (U.9).
+ *
+ * "What this cannot tell you" drew "**The renewals target**: nobody said who set it." and "What the
+ * check-ins did not get to" drew "How they vet people: 2 conversations never reached it". Both read
+ * as a table row. The engine writes `about` and `why` as full sentences, so each goes on its own
+ * line, and the count is a sentence of its own under what it counts.
+ *
+ * The table ("See the counts behind this") is gone: the server no longer sends it to anybody.
+ */
+export function howManyNeverReachedIt(n: number): string {
+  if (n === 1) return 'One conversation never reached this.'
+  return `${n} conversations never reached this.`
+}
+
+/** "Start with: Aisha" was a label and a colon. `startWith` is who to begin with, so it becomes one sentence. */
+export function startWith(who: string): string {
+  const w = who.trim().replace(/^start with\s+/i, '').replace(/^(The|A|An|Each|Every|All|Any)\b/, (d) => d.toLowerCase())
+  return `Start with ${w}${/[.!?]$/.test(w) ? '' : '.'}`
+}
+
+export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }) {
   if (!it?.theGap && !it?.whatToDo?.length) return null
   return (
     <div style={{ maxWidth: 760 }}>
@@ -83,7 +101,7 @@ export function TheJudgement({ it, table }: { it: TheJudgementRead | null | unde
                 </div>
                 {m.startWith && (
                   <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginTop: 3, paddingLeft: 28 }}>
-                    <span style={{ color: 'var(--gw-sub)' }}>Start with: </span>{m.startWith}
+                    {startWith(m.startWith)}
                   </div>
                 )}
               </div>
@@ -99,7 +117,8 @@ export function TheJudgement({ it, table }: { it: TheJudgementRead | null | unde
           <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0' }}>
             {it.whatThisCannotTellYou.map((w, i) => (
               <div key={i} style={{ padding: '9px 14px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55 }}>
-                <b style={{ fontWeight: 600 }}>{w.about}</b>{w.why ? `: ${w.why}` : ''}
+                <div style={{ fontWeight: 600 }}>{w.about}</div>
+                {w.why && <div style={{ marginTop: 2 }}>{w.why}</div>}
                 {w.toKnow && <div style={{ color: 'var(--gw-sub)', marginTop: 2 }}>{w.toKnow}</div>}
               </div>
             ))}
@@ -117,33 +136,15 @@ export function TheJudgement({ it, table }: { it: TheJudgementRead | null | unde
           <Head>What the check-ins did not get to</Head>
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
             {it.whatWeFailedToAsk.map((w, i) => (
-              <div key={i}>
-                {w.about}
-                {typeof w.howManyMissedIt === 'number' && `: ${w.howManyMissedIt} conversation${w.howManyMissedIt === 1 ? '' : 's'} never reached it`}
+              <div key={i} style={{ marginTop: i === 0 ? 0 : 6 }}>
+                <div style={{ color: 'var(--gw-text)' }}>{w.about}</div>
+                {typeof w.howManyMissedIt === 'number' && <div>{howManyNeverReachedIt(w.howManyMissedIt)}</div>}
               </div>
             ))}
           </div>
         </>
       )}
 
-      {/* The counts themselves, for whoever wants to check a sentence against them. */}
-      {table && (
-        <>
-          <button
-            onClick={() => setShowTable((v) => !v)}
-            style={{ marginTop: 14, background: 'none', border: 'none', padding: 0, fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-          >
-            {showTable ? 'Hide the counts' : 'See the counts behind this'}
-          </button>
-          {showTable && (
-            <pre style={{
-              marginTop: 8, padding: '12px 14px', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)',
-              borderRadius: 8, fontSize: 11.5, lineHeight: 1.6, overflowX: 'auto', whiteSpace: 'pre',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: 'var(--gw-text)',
-            }}>{table}</pre>
-          )}
-        </>
-      )}
     </div>
   )
 }
