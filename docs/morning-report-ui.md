@@ -2400,7 +2400,8 @@ The review, signed in with its own `@example.test` accounts, sent U.5 back. Fixe
    the team). Now, to anyone who does not run the check-in, the report is only its dates until it is
    released, then the shared picture and its opening, never the raw agreements and differences. The
    list does the same for the latest round's summary. The report still says "the initiator"; that is
-   the engine's wording, asked of them (request 31).
+   the engine's wording, asked of them (request 31). The commit message of `abb6f3b8` calls it
+   "row 4"; it was renumbered to 31, the next free row, because 4 was already taken.
 3. **Today holds only this organisation's needs,** so "Today 3" and "3 new" agree. Another
    organisation's needs show as its "N new" on Choose an organisation.
 4. **An admin approves where Today sends them.** On a check-in waiting for approval an admin now reads
@@ -2408,7 +2409,9 @@ The review, signed in with its own `@example.test` accounts, sent U.5 back. Fixe
    yet. Nothing goes out until you say so.", with Approve and Not this one, instead of the lead's
    banner. On the list the admin's row says "Yours to approve".
 5. **"You are in."** for someone who may open check-ins and has none: "You have no check-ins yet.
-   Start one, or when someone adds you to one, you will see it here."
+   Start one, or when someone adds you to one, you will see it here." Decided as the Start button
+   is: shown unless the server says no (`mayOpenCheckIns !== false`), so an older session that does
+   not carry the answer reads it too.
 6. **Your own turn has the prototype's second line:** "About two minutes. Everyone else's answers are
    read against yours." on the lead's own first check-in, "About two minutes." otherwise. "It closes at
    6pm" is never said, because nothing in the product holds a closing time.

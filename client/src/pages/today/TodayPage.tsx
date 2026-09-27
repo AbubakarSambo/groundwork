@@ -51,7 +51,7 @@ export function TodayPage() {
     <div className="gw-today">
       <div className="gw-today-main">
         {params.get('welcome') === '1' && (
-          <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns === true} />
+          <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
         )}
         <AdminFirstRun />
 

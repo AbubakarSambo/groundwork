@@ -162,7 +162,7 @@ export function GroundsListPage() {
       </div>
 
       {justSetUp && (
-        <YouAreIn checkIns={isLoading || isError ? null : grounds.length} mayStart={user?.mayOpenCheckIns === true} />
+        <YouAreIn checkIns={isLoading || isError ? null : grounds.length} mayStart={user?.mayOpenCheckIns !== false} />
       )}
 
       {isAdmin && awaiting.length > 0 && (

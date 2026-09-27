@@ -16,7 +16,8 @@ vi.mock('@/api/grounds', () => ({ groundsApi: { list: vi.fn() } }))
 import { todayApi } from '@/api/today'
 import { groundsApi } from '@/api/grounds'
 
-const AMA = { id: 'u-a', firstName: 'Ama', role: 'MEMBER', organizationName: 'Coamana' }
+/* Ama may not open check-ins herself: the server says so (mayOpenCheckIns: false). */
+const AMA = { id: 'u-a', firstName: 'Ama', role: 'MEMBER', organizationName: 'Coamana', mayOpenCheckIns: false }
 
 function open(grounds: any[], user: any = AMA) {
   ;(todayApi.get as any).mockResolvedValue({ count: 0, line: null, needs: [], comingUp: [] })
@@ -39,6 +40,13 @@ describe('"You are in." on Today', () => {
 
   it('to someone who may open check-ins, with none yet, says they can start one (U.5 review)', async () => {
     open([], { ...AMA, role: 'LEAD', mayOpenCheckIns: true })
+    await vi.waitFor(async () => expect(await said()).toBe('You are in. You have no check-ins yet. Start one, or when someone adds you to one, you will see it here.'))
+  })
+
+  it('a session that does not carry the answer is told it can start one, as the Start button is shown to it', async () => {
+    /* The rule in nobody-sees-a-button-that-refuses-them.spec.ts: \`!== false\`, never \`=== true\`. */
+    const { mayOpenCheckIns: _gone, ...older } = AMA
+    open([], older)
     await vi.waitFor(async () => expect(await said()).toBe('You are in. You have no check-ins yet. Start one, or when someone adds you to one, you will see it here.'))
   })
 
