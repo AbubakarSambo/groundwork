@@ -14,9 +14,10 @@ in, with every decision you made).
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
-board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page)
-and U.16 (links between check-ins, and each person's load). Each passed the full screen and API
-suites; the few failures each run found came from that module and were fixed. The latest full run,
+board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
+U.16 (links between check-ins, and each person's load) and the first part of U.17 (the Suites page).
+Each up to U.16 passed the full screen and API suites; the few failures each run found came from that
+module and were fixed. The Suites page has passed its own tests, and its full run is still to do. The latest full run,
 after U.16, passed everything with no failures (2,831 screen tests and 9,465 API tests). **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
@@ -60,18 +61,21 @@ that one is yours to decide (item 27.4).
     in from an organisation's own systems today.
 12. Item 27.1 and 27.2: may somebody share their load with a lead, and may the team being asked
     read what another team asked of it? (both privacy questions)
-13. The rest of items 13, 15 to 27 are smaller, each with a recommendation.
+13. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
+    screen shows any; and 28.3: who counts as a lead for the suites.
+14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** U.16 (links between check-ins, and each person's load). Your own
-You page now shows "Everything asked of you this week": every request still open on you, from every
-check-in you are in, served to you alone. Nothing shares it yet, because who may read a shared load
-is yours to decide (item 27.1). An admin reads only how many check-ins someone is in. A handoff can
-now say which other team's check-in it waits on, and the board shows "Waiting on other teams" and
-"Asked of ... by other teams", but only from check-ins the reader may already open. Which check-in a
-handoff waits on is the engine's to spot (request 18), so nothing is linked until it does. Before
-that: U.15 (the Company page), which passed its full run.
+**Just finished, not ticked:** the Suites page (the first part of U.17). An admin reads every suite in
+three groups, People, Money and Work, with a switch for each, and answers a suite's first questions
+before it switches on. A lead reads only the suites that are on, with no switches. A member and a
+guest are refused by the server. "Already part of Groundwork" links to where each of those things
+lives. "Suites" is in the sidebar for an admin and a lead, and on the new admin's welcome card. No
+suite's board is built yet, so no "Open its board" door is shown. The questions are mine, because no
+screen shows any (item 28.1). Before that: U.16 (links between check-ins, and each person's load),
+which passed its full run.
 
-**Next:** U.17 (the Suites page, then each suite, one at a time).
+**Next:** U.17 goes on, one suite at a time, starting with onboarding. The ten are listed in order
+under U.17 below.
 
 ## Needs Hafsah
 
@@ -1180,6 +1184,58 @@ reviewed" in this report.
    nullable, in the migration `20260927070000_links_between_check_ins`. Nothing existing changes. It
    has not been run against any database here.
 
+### 28. The Suites page (U.17): what needs you
+
+1. **The first questions are mine. No prototype screen shows any.** `docs/modules.md` says an admin
+   answers "two or three questions" before a suite switches on. I asked only for what each suite's
+   board, as the prototype draws it, cannot work without, in the fewest words. They live in one place
+   on the server (`api/src/modules/suites/the-ten-suites.ts`), and nothing uses the answers until each
+   board is built. **My recommendation:** read them, and change any you want before the boards come.
+   - Onboarding: "Who sets up a new person’s pay and papers?" and "Who gives a new person their laptop
+     and phone?" (each a person).
+   - Leave requests: "How many days of leave does each person have in a year?" and "Who approves a
+     request for time off?" ("Their manager" or "An admin").
+   - Time sheets: "Which clients or projects do people give their hours for? Write one on each line."
+     and "Who approves each week’s hours?" ("Their manager" or "An admin").
+   - Performance reviews: "How often is each person reviewed?" ("Every 6 months" or "Every 12
+     months") and "Who writes each review with the person?" ("Their manager" or "An admin").
+   - When someone leaves: "Who removes a person’s access on their last day?" and "Who works out their
+     final pay?" (each a person).
+   - Spending and budgets: "What is the most a manager may approve on their own?" (a number) and "Who
+     approves anything above that?" (a person).
+   - Equipment: "Who looks after equipment and repairs?" (a person).
+   - Role map, To-dos, and Customers and deals ask nothing, and switch on at one press.
+2. **"Open its board" is left out** until each suite's board exists, so no door leads nowhere. Each
+   suite's board will bring it back.
+3. **Who counts as a lead here?** The server gives the lead's page to people whose role is "Lead",
+   the same rule as the Boards page. In the prototype, Wairimu's card says "Member", yet she has
+   Suites, because she runs check-ins. **My recommendation:** keep the role "Lead", because the boards
+   behind the suites will hold other people's leave, hours and spending. If you want anybody who runs
+   a check-in to have it, say so, and it is one line on the server.
+4. **"Only admins see this page."** is the prototype's sentence for the admin, though a lead has her
+   own version of the page. I kept it, because only admins see the switches. **My recommendation:**
+   keep it.
+5. **Wording no screen shows, which I wrote with the fewest words:** "Off"; "Answer these first, and
+   it switches on."; "Choose somebody"; "Choose one"; "Switch it on"; "Cancel"; "None are switched on
+   yet."; "The suites did not load."; and the server's refusals: "Only an admin or a lead can open the
+   suites.", "Only an admin can switch a suite on or off.", "There is no suite with that name." and
+   "Answer every question before you switch it on." A switch that fails says the product's own "That
+   did not go through, and nothing has changed. Try again."
+6. **The welcome card's Suites door** says "Leave, spending and onboarding, switched on as needed", the
+   prototype's words, as you decided for the welcome card. No screen shows it, and it is a clipped
+   phrase, like the other doors. **My recommendation:** keep it with the others, or change all four
+   together.
+7. **"On" is a plain tag, not green.** The design system keeps green for what is proven, and a suite
+   being on is not proof.
+8. **Switching a suite off keeps the admin's answers,** so switching it on again starts from them.
+   Nothing is deleted.
+9. **For later, a privacy question: onboarding's "Something nobody has shown them yet".** The
+   prototype builds it from what a new person asked Groundwork, and those questions are private always.
+   **My recommendation:** decide before the onboarding board is built. For example, the new person
+   could be asked first whether their question may go to the person whose job it is.
+10. **One new table, on your computer only** (`organization_suites`, migration
+    `20260927080000_the_suites_an_organisation_has_on`). It has not been run against any database.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -2174,6 +2230,104 @@ still to do.
 
 **The full run passed with no failures:** 2,831 screen tests, 9,465 API tests, and the build. **Not
 ticked,** because no review can sign in (item 14).
+
+### U.17 The Suites page: built and tested, not yet reviewed. Each suite is still to do
+
+This run built only the Suites page itself, as you asked: the list, switching a suite on or off, the
+questions an admin answers first, "Already part of Groundwork", and the sidebar's "Suites". No suite's
+board is built yet.
+
+**What was missing, against the prototype (the gap list):**
+- Nowhere to keep which suites an organisation has switched on, or the admin's answers.
+- No way for the server to say who may read the suites and who may switch them.
+- No Suites page at `#/settings/suites`, for an admin or for a lead.
+- No "Suites" in the sidebar, and no Suites door on the new admin's welcome card (U.1 and U.3 left
+  both out until the page existed).
+- The questions an admin answers before a suite switches on. `docs/modules.md` says there are "two or
+  three", but no prototype screen shows them (item 28.1).
+
+**What each person now reads:**
+- **Grace, an admin,** in the sidebar under "Baridi Appliances": "People", "Connections", "Suites",
+  "Plan and billing". On the page: "Baridi Appliances", "Suites", and "Ready-made tools for other kinds
+  of team work. Switch on only what you need. Each one adds a single board, and people use it by
+  talking to Groundwork, not by filling in forms. Only admins see this page." Then "People",
+  "Money" and "Work", with each suite's name and line in the prototype's words, "On" or "Off", and a
+  switch. For example: "Leave requests", "People ask for time off in a check-in or chat. Groundwork
+  checks their days left and who else is off.", "Off". Pressing the switch on a suite with questions
+  shows "Answer these first, and it switches on.", the questions, "Switch it on" and "Cancel". "Switch
+  it on" works only once each question is answered. Then "Already part of Groundwork", "These don’t
+  need switching on. Here is where each one lives.", and seven rows, each with its link: "Goals and
+  targets" and "Commitments" to "Each check-in" (the check-ins list), "Teams and who reports to whom"
+  and "Roles and permissions" to "People", "Company documents" to "Company context", and "Numbers from
+  other systems" and "Slack or Teams" to "Connections".
+- **Grace, on her welcome card,** a fourth door: "Suites", "Leave, spending and onboarding, switched on
+  as needed", in the prototype's place between Connections and Plan and billing.
+- **Wairimu, a lead,** "Suites" straight after "You" in the sidebar. On the page: "The team tools your
+  organisation has switched on. An admin switches them on or off.", then only the suites that are on,
+  each with its name and line, and no switches. While none is on: "None are switched on yet." She never
+  reads the three suites that are for admins only, or the admin's answers.
+- **Miriam, a member, and a guest from another company:** no "Suites" in the sidebar. If they type the
+  address, they read "Only an admin or a lead can open the suites."
+- **Nobody** reads "Open its board" yet, because no board exists (item 28.2).
+
+**Privacy and access, on the server:** `GET /suites` gives an admin every suite, with its questions,
+their answers, and the organisation's own people by name only (no addresses, no guests), for the
+questions that ask for a person. It gives a lead only the suites that are on, of the seven for leads,
+with nothing else. It refuses a member and a guest. `PUT /suites/:key` is for admins only: a lead, a
+member, a guest and somebody from another organisation are each refused, and nothing changes. A suite
+switches on only when every answer is one its question allows; a question that asks for a person can
+only name somebody in the organisation. Access comes from the role only, never a title. No labels on
+people, and no scores.
+
+**New storage, on your computer only:** the table `organization_suites`, in the migration
+`20260927080000_the_suites_an_organisation_has_on`: one row per suite an admin has switched, with
+their answers. No row means off. Nothing existing changes. It has not been run against any database
+here.
+
+**Commits:** `1288237e` (the server), `00571b94` (the page), `906be170` (the sidebar and the welcome
+card door).
+
+**Tested:** `api/src/modules/suites/the-suites-as-each-reader-reads-them.spec.ts` (Grace switches and
+reads everything; Wairimu, Miriam, a guest and somebody from another organisation are each refused a
+switch; Wairimu reads only what is on and for leads; Miriam and the guest are refused the page; a
+person question never names a guest), and
+`client/src/pages/suites/the-suites-page-as-each-reader-sees-it.spec.tsx` (what Grace, Wairimu and
+Miriam each read, word for word). **Tests changed, and why:** `the-org-is-not-a-ground.spec.ts` and
+`get-your-organisation-going.spec.tsx` listed the doors without Suites, because Suites was left out
+until its page existed. They now expect it where the prototype has it. `the-sidebar-as-each-reader-
+sees-it.spec.tsx` gained checks for the new door. Only the tests for the changed files, the tests that
+read whole folders, and both type checks were run, as you asked. No screen could be checked signed in
+(item 14), so the page was checked by rendering tests only. **Not ticked:** no review can sign in
+(item 14), the full run is still to do, and the ten suites are still to build.
+
+**Each suite, still to do, in the order of the task.** Each one adds its own board at
+`#/suite/<name>`, its "Open its board" door, and its own tests.
+1. **Onboarding** (`#/suite/onboard`, admins and leads). The steps for each role exist. Missing: each
+   helper's list, and "Something nobody has shown them yet". The engine's part: spotting what nobody
+   has shown a new person. That is built from their questions to Ask Groundwork, which are private
+   always (item 28.9).
+2. **Leave requests** (`#/suite/leave`, admins and leads). Missing: leave days, requests, a stand-in,
+   and approve or decline. The engine's part: taking a request in a check-in or chat, and saying it
+   back to be confirmed before it is sent.
+3. **Time sheets** (`#/suite/time`, admins and leads). Missing: hours by client or project, weekly
+   approval, and what each client agreed. The engine's part: taking hours from check-ins and chat.
+   Hours are for billing only and must never reach a report (decisions rule 10).
+4. **Performance reviews** (`#/suite/reviews`, admins and leads). A daily reminder of reviews exists.
+   Missing: the review page. The engine's part: the review built from proof, with a suggestion told
+   like a signal (decisions rule 6).
+5. **When someone leaves** (`#/suite/leaving`, admins only). Handover and departures exist. Missing:
+   the checklist with an owner for each step. The engine's part: "Signs a team is under strain", for
+   a team, never a named person.
+6. **Role map** (`#/suite/roles`, admins only). Missing entirely. The engine's part: the role
+   interview, and filling in the map from the answers.
+7. **Spending and budgets** (`#/suite/spend`, admins and leads). Groundwork's own back office has
+   spending, to check for reuse. The engine's part: taking a request in chat and checking the budget.
+8. **To-dos** (`#/suite/todos`, admins and leads). Commitments exist in each check-in, and the back
+   office has to-dos, to check for reuse. The engine's part: "Remind me" in chat.
+9. **Customers and deals** (`#/suite/customers`, admins and leads). The back office has a sales
+   pipeline, to check for reuse. The engine's part: the sales check-ins keeping the list up to date.
+10. **Equipment** (`#/suite/equipment`, admins only). Missing entirely. The engine's part: updates
+    people give by telling Groundwork.
 
 ## Found on the way, for later tasks
 
