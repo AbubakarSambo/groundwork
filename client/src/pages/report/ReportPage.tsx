@@ -36,7 +36,7 @@ type ViewTab = 'shared' | 'own'
  */
 type ResolutionStatus = ResolutionState & { groundStatus: string }
 
-function ResolutionSection({ groundId, resolutionState }: { groundId: string; resolutionState?: string | null }) {
+export function ResolutionSection({ groundId, resolutionState }: { groundId: string; resolutionState?: string | null }) {
   const { data } = useQuery({
     queryKey: ['resolution', groundId],
     queryFn: () => apiClient.get<ResolutionStatus>(`/grounds/${groundId}/resolution`).then(r => r.data),
@@ -95,8 +95,15 @@ function ResolutionSection({ groundId, resolutionState }: { groundId: string; re
           <span style={{ fontSize: 10.5, letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 6 }}>Current status</span>
           {isClosed && data.resolution ? (
             <div style={{ background: 'var(--gw-green-bg)', borderRadius: 8, padding: '10px 12px' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)' }}>Closed: {data.resolution.endState}</div>
+              {/* U.11: the outcome by its name, never its stored code ("Closed: KEEP"), and the
+                  lead's reason, which the server serves only to whoever may read this. */}
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-green-t)' }}>
+                {data.options.find((o) => o.value === data.resolution!.endState)?.label ?? data.resolution.endState}
+              </div>
               <div style={{ fontSize: 12, color: 'var(--gw-green-t-soft)', marginTop: 2 }}>{closedByLine(data)}</div>
+              {data.resolution.reason && (
+                <div style={{ fontSize: 13, color: 'var(--gw-text)', marginTop: 8, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{data.resolution.reason}</div>
+              )}
             </div>
           ) : (
             <div>
