@@ -14,8 +14,8 @@ in, with every decision you made).
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
-board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork) and U.15 (the Company
-page). Each passed the full screen and API suites; the few failures each run found came from that
+board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company
+page) and U.16 (links between check-ins, and each person's load). Each up to U.15 passed the full screen and API suites (U.16's full run is still to do); the few failures each run found came from that
 module and were fixed. The latest full run, after U.15, passed everything with no failures (2,818
 screen tests and 9,438 API tests). **None could be ticked, because the reviewer can no longer sign in
 as anyone** (item 14). That is the most important thing for you to unblock.
@@ -51,20 +51,20 @@ memory must keep working exactly as now, so I have not changed it without you (i
 11. Item 26.1: may the Company page show what new people keep asking, when it is built from their
     private questions to Ask Groundwork? (a privacy question), and 26.2: priorities can only come
     in from an organisation's own systems today.
-12. The rest of items 13, 15 to 26 are smaller, each with a recommendation.
+12. Item 27.1 and 27.2: may somebody share their load with a lead, and may the team being asked
+    read what another team asked of it? (both privacy questions)
+13. The rest of items 13, 15 to 27 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** U.15 (the Company page), which passed its full run. Company is in the sidebar between Today and You,
-in "Jump to", on More, and on the phone's bar in place of Start for somebody who may not start a
-check-in. `#/company` shows the organisation's priorities, who owns each and which check-ins feed
-them, and `#/company/context` shows the priorities with what success looks like (admins only) and
-the organisation's handbook and memory. The server decides what each reader gets, from their role and
-the check-ins they may open, never a title. A guest from another company is refused. Most of what
-the prototype's page says is the engine's to write (request 17), and "What new people keep asking"
-waits for you (item 26.1). Priorities only come in from an organisation's own systems today, so an
-organisation that signed up through the product sees "No priorities have come in from your
-organisation’s own systems yet." (item 26.2).
+**Just finished, not ticked:** U.16 (links between check-ins, and each person's load). Your own
+You page now shows "Everything asked of you this week": every request still open on you, from every
+check-in you are in, served to you alone. Nothing shares it yet, because who may read a shared load
+is yours to decide (item 27.1). An admin reads only how many check-ins someone is in. A handoff can
+now say which other team's check-in it waits on, and the board shows "Waiting on other teams" and
+"Asked of ... by other teams", but only from check-ins the reader may already open. Which check-in a
+handoff waits on is the engine's to spot (request 18), so nothing is linked until it does. Before
+that: U.15 (the Company page), which passed its full run.
 
-**Next:** U.16 (links between check-ins, and each person's load).
+**Next:** U.17 (the Suites page, then each suite, one at a time).
 
 ## Needs Hafsah
 
@@ -1128,6 +1128,51 @@ reviewed" in this report.
     you are" (read aloud for the way back from company context). **What the server says when it
     refuses:** "Only people in this organisation can read its company page."
 
+### 27. Links between check-ins, and each person's load (U.16): what needs you
+
+1. **"Share with your lead" is not built. This is a privacy question.** Your load across check-ins is
+   yours alone (decisions rule 4 says "unless they share it"). Nobody has said who "your lead" is when
+   you are in several check-ins, what they would read, or for how long. So nothing shares it, and the
+   page says only "Only you see this." **My recommendation:** let the person choose one lead at a
+   time, show them exactly what that lead will read, and let them stop sharing at any moment, with
+   the server refusing the lead the moment they do.
+2. **Should the team being asked see the request? This is a privacy question.** The prototype says
+   "These show on their boards too", so Operations would read what Sales asked of it. I kept the rule
+   you gave: a request from Sales shows on the Operations board only to somebody who may open the
+   Sales check-in too (Wairimu, who is in both, or an admin). Fatuma, who runs Operations, reads
+   nothing of it. So the sentence "These show on their boards too" is left out. **My recommendation:**
+   let the lead of the check-in being asked read the request's words and the name of the check-in that
+   asked, without who asked, because the request was made to their team.
+3. **The board names who is waiting on you, even where people do not see each other.** On a check-in
+   where people give their accounts without seeing each other, the board still shows you each handoff
+   on you with the name of the person waiting (`onlyHandoffsTheyAreIn` in
+   `api/src/modules/board/the-board-keeps-the-same-wall.ts`). The You page leaves the name out there.
+   The board is the engine workspace's, so I did not change it. **My recommendation:** leave the name
+   out on the board too, in that kind of check-in.
+4. **The developer API reads each person's handoffs across check-ins.** `grounds-by-api.service.ts`
+   serves both sides of one person's handoffs, across every check-in, to whoever holds the
+   organisation's developer key. That is each person's load across check-ins. The developer API must
+   keep working exactly as now, so I did not change it. **My recommendation:** decide whether an
+   organisation's key may read it, and say so in the API's own documentation either way.
+5. **"This week" is the prototype's heading, but the list holds every request still open.** A request
+   from three weeks ago that nobody has answered is still on you, so it stays. **My recommendation:**
+   keep the heading, or say "Everything asked of you now".
+6. **Nothing is linked yet.** Which check-in a handoff waits on can only be told from what was said,
+   which is the engine's work (request 18). Until the engine writes it, "Waiting on other teams" and
+   "Asked of ... by other teams" never appear. "Where the blocker started" and "See where it started"
+   are not built, and the line after "Asked", such as "Not decided.", is the engine's too.
+7. **Prototype lines I shortened, because the rest would not be true yet.** "Only you see this unless
+   you share it" is "Only you see this."; one person's page says "1 check-in. What’s asked of them is
+   on their own You page." without "they choose who else sees it" (and "1 check-in", not the
+   prototype's "1 check-ins"). "These show on their boards too" is left out (point 2).
+8. **Wording no screen shows, which I wrote with the fewest words.** On the You page, each request
+   says "Asked 16 Sept.", the board's own words. Where you may not see who asked, the row shows only
+   the check-in. When a check-in has no name, its part says "Asked of this check-in by other teams".
+   "1 request from 1 person across 1 check-in." and "0 check-ins." follow the prototype's sentences.
+9. **One new column, on your computer only.** `ground_dependencies.waiting_on_ground_id`, empty and
+   nullable, in the migration `20260927070000_links_between_check_ins`. Nothing existing changes. It
+   has not been run against any database here.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -2058,6 +2103,67 @@ checked by rendering tests only. No database change. **Not ticked,** because no 
 
 **The full run passed with no failures:** 2,818 screen tests, 9,438 API tests, and the build. **Not
 ticked,** because no review can sign in (item 14).
+
+### U.16 Links between check-ins, and each person's load: built and tested, not yet reviewed
+
+**What was missing, against the prototype (the gap list):**
+- "Everything asked of you this week" on the You page, with its count ("3 requests from 2 people
+  across 2 check-ins."), and "Share with your lead". The product held handoffs (somebody waiting on
+  somebody) in each check-in, but nothing put the ones on you together.
+- "Across check-ins" on one person's page, for an admin: how many check-ins they are in, and nothing
+  more.
+- Check-ins linked to each other as records. A handoff could say "Finance" in words, but not which
+  check-in. So "Waiting on other teams" on the Sales board, "Asked of Operations by other teams" on
+  the Operations board, and "Where the blocker started" had nothing to be built from.
+- The engine's parts: spotting which check-in a handoff waits on, the line after "Asked", the due
+  word, and the whole "Where the blocker started" (request 18).
+
+**What each person now reads:**
+- **Miriam, on her own You page,** after her turn and before "What you said you’d do": "Everything
+  asked of you this week", "From every check-in you’re in. Only you see this.", then one row for each
+  request still open on her, such as "Wairimu Kamau", "Sales team, Q3", "What would get Westgate’s
+  deposit", "Asked 16 Sept.", and under them "3 requests from 3 people across 3 check-ins." In Kwame's
+  check-in, where people do not see each other, the row says only "Kwame, first 90 days", the request
+  and the date, not who asked.
+- **Wairimu, on her own You page,** only what is asked of her. Nothing of Miriam's.
+- **Grace, an admin, on Miriam's page:** "Across check-ins" and "1 check-in. What’s asked of them is on
+  their own You page." Never the requests themselves.
+- **Wairimu, on the Sales board, once the engine links a handoff:** "Waiting on other teams", then
+  "Distribution operations: stock for Green Mart’s January order", "Asked 16 Sept." and "Open in
+  Distribution operations" (she is in it), and "Finance: credit terms for Westgate Deli", "Asked 14
+  Sept.", with no way in, because she is not in Finance. Brian reads the same lines with the team only
+  as it was said in Sales ("Operations: ...") and no way in to either.
+- **Wairimu, on the Operations board:** "Asked of Distribution operations by other teams", then "Sales
+  team, Q3: stock for Green Mart’s January order", "Asked by Wairimu, 16 Sept." and "Open in Sales team,
+  Q3". Fatuma, who runs Operations but is in no asking check-in, reads nothing of it (item 27.2).
+- **Anybody with nothing linked** sees no heading and no empty sentence.
+
+**Privacy, on the server:** each person's load is served only on `GET /you`, which refuses anybody
+else before anything is read; a lead, an admin and colleagues are each refused, with a test for each.
+`GET /grounds/:id/links` works out which check-ins the reader may open from the one rule
+(`GroundsService.list()`); a check-in they may not open is "Check-in not found", and a link to or from
+one gives them nothing of it: not its name, its people or its words. Who asked is named only where
+that check-in lets its people see each other, or the reader runs it. No ratings, no labels.
+
+**Commits:** `cb5d26e1` (everything asked of you, on the server), `29682dba` (on the You page),
+`9b181672` (Across check-ins on one person's page), `62b41f81` (the link column and
+`GET /grounds/:id/links`), `76d39488` (the two parts of the board), `5a347cf1` (request 18 to the
+engine).
+
+**Tested:** new tests read what each person is served and sees:
+`api/src/modules/grounds/everything-asked-of-you-as-each-reader-reads-it.spec.ts` (Miriam served her
+load; Wairimu, Grace, Brian and Kwame each refused hers and given only their own),
+`api/src/modules/grounds/links-between-check-ins-as-each-reader-reads-them.spec.ts` (Wairimu, Miriam,
+Brian, Fatuma, Grace, and Omar from another company),
+`client/src/pages/board/links-between-check-ins-as-each-reader-sees-them.spec.tsx`, and new tests in
+`the-you-board-as-each-reader-sees-it.spec.tsx` and `OnePersonPage.spec.tsx`. **Tests changed, and
+why:** `the-you-board-as-each-reader-reads-it.spec.ts` gained an empty table in its fake database,
+because the You board now reads handoffs; one comment in `the-you-board-as-each-reader-sees-it.spec.tsx`
+now gives the right reason its check holds. No assertion changed. Only the tests for the changed files,
+the tests that read whole folders (the schema and migration guards among them) and both type checks
+were run, as you asked. No screen could be checked signed in (item 14), so the pages were checked by
+rendering tests only. **Not ticked,** because no review can sign in (item 14), and the full run is
+still to do.
 
 ## Found on the way, for later tasks
 
