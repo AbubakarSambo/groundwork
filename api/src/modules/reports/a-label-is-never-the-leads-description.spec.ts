@@ -109,7 +109,7 @@ const GROUND: any = {
     createdAt: new Date('2026-09-20T09:00:00Z'), updatedAt: new Date('2026-09-23T15:02:00Z'),
   },
   objectives: [
-    { id: 'o-daniel', name: 'Pipeline', target: 5, count: 2, prevCount: 1, ownerParticipantId: 'p-noname', sortOrder: 0,
+    { id: 'o-pipeline', name: 'Pipeline', target: 5, count: 2, prevCount: 1, ownerParticipantId: 'p-noname', sortOrder: 0,
       assumes: [], createdAt: new Date('2026-09-01T09:00:00Z'), updatedAt: new Date('2026-09-02T09:00:00Z') },
   ],
   dependencies: [],
@@ -177,6 +177,28 @@ describe('the board, as each reader is served it', () => {
   it('the lead may still read their own description where it is the role, not the name', async () => {
     const row = ((await boardFor('u-wairimu')).participants ?? []).find((p: any) => p.id === 'p-noname');
     expect(row.role).toBe(DESCRIPTION);
+  });
+
+  it('the person and a peer never receive any part of the description, anywhere on the board', async () => {
+    /* The whole served response, not only the name fields: `contribution[].remit` carried it. */
+    for (const who of ['u-noname', 'u-aisha']) {
+      const served = JSON.stringify(await boardFor(who));
+      expect(PIECES.filter((p) => p.test(served)).map(String)).toEqual([]);
+    }
+  });
+
+  it('the lead still reads it, as the remit on the contribution read', async () => {
+    const b = await boardFor('u-wairimu');
+    const row = (b.contribution ?? []).find((r: any) => r.participantId === 'p-noname');
+    expect(row).toBeDefined();
+    expect(row.remit).toBe(DESCRIPTION);
+  });
+
+  it('and a peer is still told a role was given, with nothing of what it says', async () => {
+    const row = ((await boardFor('u-aisha')).contribution ?? []).find((r: any) => r.participantId === 'p-noname');
+    expect(row).toBeDefined();
+    expect(row.remit).toBeNull();
+    expect(row.remitDefined).toBe(true);
   });
 
   it('nobody but the lead is given the description as the role either', async () => {

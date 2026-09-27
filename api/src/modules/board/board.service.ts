@@ -1095,7 +1095,19 @@ export class BoardService {
     // queries a second time to produce the same answer.
     if (has('contribution') || has('coverage')) {
       const readInput = await this.loadReadInput(ground);
-      if (has('contribution')) out.contribution = buildContribution(readInput, nameOf);
+      /*
+       * THE REMIT IS THE LEAD'S WORDS, SO IT GOES ONLY TO WHOEVER RUNS THE CHECK-IN. Request 36.
+       *
+       * `remit` is `roleAsDescribed`, the sentence the lead typed about the person when inviting
+       * them. It reached every reader of the board: on a live-shaped board, the person and a peer
+       * both read "Daniel - Your sales manager, who you said is not meeting his agreed targets".
+       * The same rule as the roster's `role` above: the lead or an admin reads it, nobody else.
+       * `remitDefined` stays, because it says only that a role was given, not what it says.
+       */
+      if (has('contribution')) {
+        out.contribution = buildContribution(readInput, nameOf)
+          .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, runsThisGround) }));
+      }
       if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
       /*
        * THE REASON LINES, WORDED. Seventeen interpolated sentences in reads.ts read identically on
