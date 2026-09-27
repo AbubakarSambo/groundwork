@@ -2838,6 +2838,25 @@ Now:
   reads "Groundwork wrote this from your words.", as the lead is told.
 - A question for you about what Juma reads is item 31.4.
 
+**After the third review (27 September).**
+
+- **Privacy.** The check-ins list (GET /grounds) sent every reader the brief as it is stored. Aisha,
+  the person on probation, received the lead's setup answers about her, including "Aisha is often
+  late with stock counts". This leak was older than the U.7 fixes: the list has always sent the
+  whole row. Now the list follows the same rule as the check-in's own page. Whoever runs the
+  check-in gets the brief. Everyone else gets the short version Groundwork writes for them, or, where
+  that is missing, only the sentences about the situation, never the lead's answers. I checked the
+  other routes that serve a check-in, and none of them sends the brief to a participant. The
+  participant's own session can still fall back to the brief in the engine's code, so I asked the
+  engine to use the same rule (request 41).
+- **The setup text no longer quotes anyone.** Each answer follows the question it answered, as
+  Groundwork understood it: "When asked why this matters now, the answer was taken to mean this.
+  Decide whether to confirm Aisha for her role in the warehouse team." There are no quotation marks
+  and no names.
+- **The lead's own words.** When her own words from setup are kept, the lead reads only those, under
+  "What you wrote". "What Groundwork put together from your answers" appears only on older check-ins
+  without them, and for an admin, who can rewrite it.
+
 **The full run:** every screen test (2,681) and the build passed. In the API suite, U.7's own new test
 read a source file without removing comments first, and the comment guard caught it; that is fixed.
 After merging the engine workspace's latest, the only failure left is that same guard naming four of
