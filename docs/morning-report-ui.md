@@ -1266,6 +1266,13 @@ folders, and the screens' type check were run, as you asked. **No screen could b
 (item 14), so the screens were checked only by rendering them in tests. **Not ticked,** because no
 review can sign in.
 
+**The full run:** every screen test (2,732) and the build passed. Two API failures came from U.9. The
+server's date formatter lacked the new short date the screens use; it is added, so the two match again.
+The other is a test in the engine workspace's own report module that still expects the "counts behind
+this" part, which the engine workspace itself asked us to remove. It is theirs to update (request 10).
+The only other failure is the engine's own comment guard (request 4). **Not ticked,** because no
+review can sign in (item 14).
+
 ## Found on the way, for later tasks
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
