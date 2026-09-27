@@ -1641,6 +1641,15 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
 
 ### 30. Billing (U.19): what needs you
 
+0. **Please confirm: seats now follow the prototype** (U.4 re-review, commit `f7e2bb71`). A guest
+   with a Groundwork account takes a seat, as A4 says ("They take a seat; you have 73 free.") and F2
+   says ("Every person with a Groundwork account at Baridi Appliances. Guests with no account
+   don't."). Only someone answering by link without an account takes none. U.19 had counted guests
+   out without a decision from you. A guest added when there is no seat is held: they read "No seat
+   on your plan", they are on the no-seat card, and they are offered no check-in until a seat is
+   freed and their invitation goes. Plan and billing and People now say "Guests with no account
+   don't." **My recommendation:** keep the prototype's rule.
+
 1. **What happens when you turn on the one switch.** You decided that the free trial's setting
    (`pricing.freeTrial`) is one switch for the trial and the free plan. It is **off**, and while it is
    off billing is exactly as today. Nothing has been switched on. When you turn it on, the server
@@ -2257,8 +2266,24 @@ opens a page with no Approve button, and shows the lead's own words to the admin
 **Still open from U.4, for later:**
 - Changing the role or number of someone currently looking at another organisation says "User not
   found".
-- The seat count counts a guest who has switched in, in the organisation they switched to. This
-  belongs to billing.
+- ~~The seat count counts a guest who has switched in~~: seats now follow the prototype, see below.
+
+**U.4 re-review (27 September).** The five fixes above passed live. Two defects came back, and each is
+fixed in its own commit, with tests:
+- **Guests and seats** (`f7e2bb71`). Decided the prototype's way: a guest with an account takes a
+  seat. A guest added when the plan is full is held: "No seat on your plan", on the no-seat card, not
+  counted, and not offered the check-in. Opening the link anyway reads "This check-in cannot start for
+  you yet, because there is no seat for you on the plan. You will get your invitation as soon as there
+  is one." Plan and billing and People say "Guests with no account don't." For you to confirm, in
+  item 30.
+- **"Added by" names who added them** (`4db3719a`). It named the lead even when an admin had added the
+  person. The card now reads, for example, "Nadia Owino added them and your plan is full, …", or
+  "Someone on your team added them …" when several people did.
+- **Known, not fixed:** Baraka was added before the guest-membership fix, so he still has no guest
+  membership. The fix applies to people added from now on. Adding him again, or his accepting the
+  invitation, writes it.
+- **For U.5's review:** a lead with no check-ins, who can open them, reads "…When someone adds you to
+  one, you will see it here." That speaks only to someone who cannot open one.
 
 ### U.5 Today and the check-ins list: built and tested, not yet reviewed
 
