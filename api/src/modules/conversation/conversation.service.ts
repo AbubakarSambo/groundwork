@@ -71,6 +71,7 @@ import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, saidWordForWord } from '../reports/a-quote-is-what-they-said';
+import { theirQuotationMarksBack } from './their-quotation-marks-are-theirs';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import {
   plainWordsForEveryoneElse,
@@ -6557,7 +6558,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     let written = 0;
     let again = 0;
-    for (const c of keep) {
+    for (const kept of keep) {
+      /* Their quotation marks, as in the record. See their-quotation-marks-are-theirs. */
+      const c = { ...kept, action: theirQuotationMarksBack(kept.action, said), when: kept.when ? theirQuotationMarksBack(kept.when, said) : kept.when };
       const same = (theirs as any[]).find((h) => theSameMeasure(h.text ?? '', c.action));
       if (same) {
         /* Already settled by a person: saying it again does not reopen it and is not counted. */
@@ -7152,6 +7155,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const whatTheyTyped = theirs.map((t) => String(t.content ?? ''));
     await this.prisma.recordEntry.createMany({
       data: valid.map((e) => {
+        /* Their quotation marks, where the marks are all the reader changed: the words are theirs, and
+           the marks are part of them. See their-quotation-marks-are-theirs. */
+        const line = theirQuotationMarksBack(theLineWithoutItsDanglingJoin(e.text), whatTheyTyped);
         const v = VALID_VERIFIABILITY.includes(e.verifiability) ? e.verifiability : 'LOW';
         /* "November 12 2026" came back typed COMMITMENT and sat under Commitments on the shared
            report. A line that is nothing but a date is a timeframe, whatever the extractor called it. */
@@ -7163,10 +7169,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           verifiability: v as any,
           /* A half sentence that kept its "and" is not a line anybody should read under a heading.
              See half-a-sentence-is-not-a-line-in-a-report. */
-          text: theLineWithoutItsDanglingJoin(e.text),
+          text: line,
           /* Whether the line as stored is their own words or the reader's tidied version. Only the
              first may ever be quoted to anybody. See reports/a-quote-is-what-they-said. */
-          saidWordForWord: saidWordForWord(theLineWithoutItsDanglingJoin(e.text), whatTheyTyped),
+          saidWordForWord: saidWordForWord(line, whatTheyTyped),
         };
       }),
     });

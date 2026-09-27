@@ -1661,6 +1661,8 @@ ${EVERY_VERB_KEEPS_ITS_SUBJECT}`;
 
 export const RECORD_EXTRACTION_PROMPT = `You are extracting structured record entries from ONE party's check-in transcript. THE RECORD IS IN ENGLISH whatever language the transcript is in: write every entry in English, keeping every name, number, date and place exactly as written. Use the person's own words wherever possible - quote, do not paraphrase.
 
+THEIR PUNCTUATION AND THEIR QUOTATION MARKS ARE PART OF THEIR WORDS. Keep every quotation mark exactly as they typed it. Never put quotation marks round words they did not put in marks, never take away the marks they used, and never change double marks to single ones or single to double. If they typed On track, for me, meant no escalations, the entry is On track, for me, meant no escalations, with no marks added. If they typed I haven't said "get me out of these meetings." the entry keeps those double marks.
+
 INFERENCE RULE: If a claim is directly stated, record it as-is. If you must make a reasonable inference to complete the picture (e.g. the person's words imply something they did not state explicitly), you MAY include it - but you MUST mark it with [INFERRED: <brief reason>] appended to the text. Example: "They took full ownership of the client relationship [INFERRED: implied by 'I handled everything on that account']". If something was not said and cannot reasonably be inferred, do not record it at all.
 
 Classify each entry as exactly one of:

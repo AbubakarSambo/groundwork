@@ -286,7 +286,11 @@ describe('whether a record line is their own words, stamped when it is written',
     const src = fs.readFileSync(path.join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     expect(src).toMatch(/const whatTheyTyped = theirs\.map\(/);
-    expect(src).toMatch(/saidWordForWord: saidWordForWord\(theLineWithoutItsDanglingJoin\(e\.text\), whatTheyTyped\)/);
+    /* The stamp is made on the line as it is stored: the reader's line with the person's own quotation
+       marks put back (see conversation/their-quotation-marks-are-theirs). */
+    expect(src).toMatch(/const line = theirQuotationMarksBack\(theLineWithoutItsDanglingJoin\(e\.text\), whatTheyTyped\);/);
+    expect(src).toMatch(/text: line,/);
+    expect(src).toMatch(/saidWordForWord: saidWordForWord\(line, whatTheyTyped\)/);
   });
 });
 
