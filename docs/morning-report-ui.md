@@ -2386,6 +2386,45 @@ workspace's own new tests, which I have asked them to fix (request 4). After mer
 latest, its report tests passed again (1,258). **Not ticked,** because no review can sign in (item
 14).
 
+#### U.5 review fixes (27 September)
+
+The review, signed in with its own `@example.test` accounts, sent U.5 back. Fixed, one commit each:
+
+1. **Privacy: the list now follows the peer rule.** Where people are not named to each other, a
+   participant's check-in page showed only herself, but the check-ins list gave her everybody's name,
+   each person's session statuses, what was owed between others, and the raw latest round. Now the
+   list gives her only her own row, her own sessions and nothing counted about anybody else. Today and
+   "N new" read the list, so they follow. The lead and an admin still see everyone.
+2. **Privacy: no report text for a participant before it is shared.** The check-in's own read gave a
+   participant the report's shared picture while it was not yet released (the lead's whole account of
+   the team). Now, to anyone who does not run the check-in, the report is only its dates until it is
+   released, then the shared picture and its opening, never the raw agreements and differences. The
+   list does the same for the latest round's summary. The report still says "the initiator"; that is
+   the engine's wording, asked of them (request 31).
+3. **Today holds only this organisation's needs,** so "Today 3" and "3 new" agree. Another
+   organisation's needs show as its "N new" on Choose an organisation.
+4. **An admin approves where Today sends them.** On a check-in waiting for approval an admin now reads
+   "This check-in is waiting for you to approve it", "Omar Ali set it up. Nobody has been invited to it
+   yet. Nothing goes out until you say so.", with Approve and Not this one, instead of the lead's
+   banner. On the list the admin's row says "Yours to approve".
+5. **"You are in."** for someone who may open check-ins and has none: "You have no check-ins yet.
+   Start one, or when someone adds you to one, you will see it here."
+6. **Your own turn has the prototype's second line:** "About two minutes. Everyone else's answers are
+   read against yours." on the lead's own first check-in, "About two minutes." otherwise. "It closes at
+   6pm" is never said, because nothing in the product holds a closing time.
+7. **One count for one session.** Today now counts the people the check-in waits on, as the list row
+   does, so both say "1 of 2" before someone has joined, and name the same people.
+8. **Coming up** reads "Session 2 of Sales team, Q3 opens." An admin who runs none and is in none reads
+   "You do not run any check-ins, and you are not in any yet." above the organisation's other ones.
+
+**Noted by the review, not fixed here:** the greeting uses the whole name typed at sign-up (A2, U.2);
+the engine said "Your report is ready now. Speak soon." while holding the close (engine); the Done
+page (U.8) showed "0 of 5" after a lead gave a target and dates, and a name made from an email
+("U5r Omar"); the invitation page says "You make your account afterwards" to someone who already has
+an account (U.3). **Also for later:** the board's header summary uses the latest round's picture for
+every reader; whether a participant should see it before the report is shared belongs to the board
+(U.10).
+
 ### U.6 Starting a check-in: built and tested except one card, not yet reviewed
 
 - **The first screen, from the prototype.** Signed out: "What do you need updates on, or want to
