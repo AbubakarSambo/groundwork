@@ -1,4 +1,4 @@
-import { PLAIN_WORDS, WRITTEN_ONCE_FOR_SEVERAL_READERS } from '../conversation/plain-words';
+import { PLAIN_WORDS, WRITTEN_ONCE_FOR_SEVERAL_READERS, EVERY_VERB_KEEPS_ITS_SUBJECT } from '../conversation/plain-words';
 /**
  * A HUNDRED ACCOUNTS ARE NOT TWO.
  *
@@ -240,5 +240,7 @@ export function theNetworkInstruction(howManyAnswered: number, theQuestionAsked:
     PLAIN_WORDS,
     '',
     WRITTEN_ONCE_FOR_SEVERAL_READERS,
+    '',
+    EVERY_VERB_KEEPS_ITS_SUBJECT,
   ].join('\n');
 }

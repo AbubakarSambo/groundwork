@@ -126,13 +126,29 @@ AND DO NOT REFER BACK TO A PERSON WITH A PRONOUN. Write the label again instead 
 that agreed with the label no longer agrees with what replaces it, and "Participant A says they were
 told the target was five" is served as "You say they were told the target was five".
 
-Write "Participant A says Participant A was told the target was five renewals, and Participant A
-has completed six." It reads repetitively to you. It is served as "You say you were told the target
-was five renewals, and you have completed six", which is what the person actually reads.
+Write "Participant A says Participant A was told the target was five renewals, and has completed
+six." It reads repetitively to you. It is served as "You say you were told the target was five
+renewals, and have completed six", which is what the person actually reads.`;
 
-AND EVERY VERB KEEPS ITS SUBJECT. "The initiator expects Participant A to take on the renewals, but
-has not said so" is served to the lead as "You expect ..., but has not said so". Write "but the
-initiator has not said so".`;
+/**
+ * EVERY VERB KEEPS ITS SUBJECT.
+ *
+ * Check-1 and check-2, the lead's judgement: "You expect Tobi Adewale to take on ..., but has not
+ * communicated this." The model wrote "The initiator expects Participant A to ..., but has not ...",
+ * a second verb with no subject, and a label turned into "you" leaves it in the wrong person. No rule
+ * at the read can fix it safely (see a-line-a-person-can-read), so the model is told.
+ *
+ * WHERE IT GOES, decided by Hafsah, 27 September 2026: into the stored prompt the normal way, so a
+ * report's promptVersionId shows it. So it is part of REPORT_SYNTHESIS's text, seeded into
+ * PromptVersion, and it is NOT appended after the stored prompt in code. The prompts built in code,
+ * which have no PromptVersion row (the picture, the judgement over a room and over the answers, the
+ * population judgement, the one-call rewrite), carry it in their code, which is the normal way for them.
+ */
+export const EVERY_VERB_KEEPS_ITS_SUBJECT = `AND EVERY VERB KEEPS ITS SUBJECT. A second verb after "and" or "but" gets its own subject, the
+label again: not "The initiator expects Participant A to take on the renewals, but has not said so",
+which is served to the lead as "You expect ..., but has not said so", but "The initiator expects
+Participant A to take on the renewals, but the initiator has not said so." The same goes for "and is
+waiting": write "and the initiator is waiting".`;
 
 /**
  * THE BEFORE SET, from the run of 25 September 2026.

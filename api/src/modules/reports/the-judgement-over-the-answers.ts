@@ -40,7 +40,7 @@
  * themselves - full sentences, plain words, no labels on people - hold either way, so those go in
  * and the naming stays where it already is.
  */
-import { PLAIN_WORDS } from '../conversation/plain-words';
+import { PLAIN_WORDS, EVERY_VERB_KEEPS_ITS_SUBJECT } from '../conversation/plain-words';
 import type { AField } from '../conversation/what-a-complete-answer-holds';
 import type { AFittedAnswer } from './fitting-an-answer-into-the-frame';
 
@@ -377,6 +377,8 @@ export function theJudgementInstruction(whoIsReading: string, whatTheyAreDecidin
     '5. WHAT WE FAILED TO ASK. Every field marked WE_NEVER_ASKED, with the number of conversations that missed it. This is our failure, said plainly, and it is the instruction for the next round.',
     '',
     PLAIN_WORDS,
+    '',
+    EVERY_VERB_KEEPS_ITS_SUBJECT,
   ].join('\n');
 }
 
@@ -529,6 +531,8 @@ export function theJudgementOverARoom(whoIsReading: string, whatTheyAreDeciding:
     '5. WHAT WE FAILED TO ASK. Anything the check-in should have asked and did not. Ours to own.',
     '',
     PLAIN_WORDS,
+    '',
+    EVERY_VERB_KEEPS_ITS_SUBJECT,
   ].filter(Boolean).join('\n');
 }
 
