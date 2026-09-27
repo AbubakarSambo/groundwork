@@ -25,7 +25,7 @@ export function SettingsPage() {
    * for half the people there was genuinely no name to show, and no way to give one.
    *
    * Fixing the display without this would have been the more dishonest half of the job: the columns
-   * would agree, and half of them would still say "a teammate".
+   * would agree, and half of them would still say "a colleague".
    */
   const [firstName, setFirstName] = useState(user?.firstName ?? '')
   const [lastName, setLastName] = useState(user?.lastName ?? '')

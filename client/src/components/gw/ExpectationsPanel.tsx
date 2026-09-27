@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { personLabel } from '@/lib/utils'
+import { peopleLabels, atTheStart } from '@/lib/utils'
 import { scrollToId } from '@/lib/scroll-to'
 import { toast } from 'sonner'
 import { whereItStands } from './where-a-promise-stands'
@@ -360,6 +360,13 @@ export function ExpectationsPanel({
         : (p.objective?.text?.trim() ? [p.objective] : []),
     }))
     .filter((row) => row.items.length > 0)
+  /* Never the lead's note as the name (request 36). Several with no name are "one colleague",
+     "another colleague", counted the same way on every screen. */
+  const everybody = (parties ?? []).filter((p) => !p.managingOnly)
+  const labels = peopleLabels(everybody as any[], {
+    forTheLead: true,
+    readerId: everybody.find((p) => !!viewerUserId && p.userId === viewerUserId)?.id ?? null,
+  })
 
   const markShown = useMutation({
     mutationFn: () => groundsApi.markMyExpectationShown(groundId),
@@ -432,7 +439,7 @@ export function ExpectationsPanel({
             >
               <div style={{ display: bare ? 'none' : 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>
-                  {isMine ? 'You' : personLabel(p as any)}
+                  {isMine ? 'You' : atTheStart(labels.get(p.id) ?? 'a colleague')}
                 </span>
                 {o.authoredBy === 'self' && (
                   /** Rows from before one person owned expectations. Their own words are stronger, not weaker. */

@@ -20,7 +20,7 @@ import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
-import { personLabel } from '@/lib/utils'
+import { personLabel as onePersonsLabel, peopleLabels, atTheStart } from '@/lib/utils'
 import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
 import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { alignmentLabel } from '@/lib/alignment'
@@ -396,6 +396,17 @@ export function GroundAdminPage() {
     .filter((c: any) => ((ground as any)?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
     .sort((a: any, b: any) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
 
+  /*
+   * EVERYBODY ON THIS PAGE, NAMED ONCE (request 36). Their name, else the address the lead typed,
+   * never the lead's note about them; with no name "a colleague", or "one colleague", "another
+   * colleague", "a third colleague" when there are several, the same words the engine uses. The note
+   * is still shown, beside the name, as the lead's own ("Your note: ...").
+   */
+  const labelsHere = peopleLabels((ground as any)?.participants ?? [], { forTheLead: true })
+  const labelInASentence = (p: any): string => labelsHere.get(p?.id) ?? onePersonsLabel(p)
+  /** At the start of a line: "Another colleague". */
+  const personLabel = (p: any): string => atTheStart(labelInASentence(p))
+
   /**
    * ONE ROW PER SESSION, AND WHO EACH ROW IS COUNTING.
    *
@@ -430,7 +441,7 @@ export function GroundAdminPage() {
         answered: parties.filter((p) => answeredIds.has(p.id)).length,
         total: parties.length,
         closed: (((ground as any)?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n),
-        waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => personLabel(p)),
+        waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => labelInASentence(p)),
         /* When this session opened, for the row's "Wed, 23 Sept" (U.9). The earliest opening, or
            the first answer when no opening time was kept. */
         opened: (() => {
@@ -514,7 +525,7 @@ export function GroundAdminPage() {
     if (!participantId) return null
     const p: any = (ground?.participants ?? []).find((x: any) => x.id === participantId)
     if (!p) return null
-    return personLabel(p)
+    return labelInASentence(p)
   }
 
   /**
@@ -1799,7 +1810,7 @@ export function GroundAdminPage() {
                   const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
                   const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
                   return {
-                    name: nameOfParticipant(p.id) ?? 'A participant',
+                    name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
                     done: hasDoneThisSession(theirs, current),
                     isSelf: p.userId === user?.id,
                   }
@@ -1877,7 +1888,7 @@ export function GroundAdminPage() {
                 waitingOn: (ground.participants ?? [])
                   .filter((p: any) => !p.managingOnly && p.userId !== user?.id)
                   .filter((p: any) => !(((p as any).checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
-                  .map((p: any) => personLabel(p)),
+                  .map((p: any) => labelInASentence(p)),
                 /* The lead's page does not fetch the shared report, and these two rows are about
                    what it can say. Left null, so they read as not-yet rather than as absent. */
                 corroborated: null,
@@ -1980,13 +1991,13 @@ export function GroundAdminPage() {
                         <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
                         <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                         <div style={{ flex: 1 }}>
-                          {/* `participantLabel` gives "a teammate" to anybody who has not signed
-                              in yet, so a lead who invited three people saw three rows all called
-                              "a teammate". This is the lead's own roster - they invited these
-                              people by typing the addresses - so `personLabel`, which falls back
-                              to the address, is both truthful and useful here. */}
+                          {/* This is the lead's own roster - they invited these people by typing
+                              the addresses - so `personLabel`, which falls back to the address, is
+                              both truthful and useful here. With no address either, the engine's
+                              words: "one colleague", "another colleague". Never the lead's note,
+                              which is shown below as theirs. */}
                           <div style={{ fontSize: 13, fontWeight: 600 }}>{personLabel(p)}</div>
-                          {personLabel(p) !== p.email && (
+                          {labelInASentence(p) !== p.email && (
                             <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
                           )}
                           {editingRoleId === p.id ? (

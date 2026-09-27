@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { boardApi } from '@/api/board'
-import { personLabel } from '@/lib/utils'
+import { firstNameOrLabel, atTheStart } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 
 /**
@@ -30,7 +30,8 @@ export interface Target {
   notSettled?: string | null
 }
 
-const first = (p: any) => personLabel(p).split(' ')[0]
+/* A first name, or the plain words whole ("a colleague", "the lead"), never a lead's note (request 36). */
+const first = (p: any) => firstNameOrLabel(p)
 
 export function TargetsBand({
   groundId,
@@ -83,7 +84,7 @@ export function TargetsBand({
   const whose = (t: Target): string => {
     if (!t.ownerParticipantId) return 'The whole team'
     const owner = personOf(t.ownerParticipantId)
-    return owner ? first(owner) : 'Someone'
+    return owner ? atTheStart(first(owner)) : 'Someone'
   }
 
   const theTeams = targets.filter((t) => !t.ownerParticipantId)

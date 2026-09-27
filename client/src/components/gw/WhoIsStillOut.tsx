@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { groundsApi } from '@/api/grounds'
 import { conversationApi } from '@/api/conversation'
-import { personLabel } from '@/lib/utils'
+import { peopleLabels, atTheStart } from '@/lib/utils'
 
 /**
  * WHO HAS ANSWERED AND WHO HAS NOT, AT THE END OF THE LEAD'S OWN SESSION.
@@ -32,6 +32,8 @@ export function WhoIsStillOut({ groundId, sessionNumber }: { groundId: string; s
   const people = ((ground as any)?.participants ?? []) as any[]
   if (people.length < 2) return null
 
+  /* The lead's own list: two people with no name are "one colleague" and "another colleague". */
+  const labels = peopleLabels(people, { forTheLead: true })
   const rows = people.map((p) => {
     const theirs = (((ground as any)?.checkIns ?? []) as any[]).filter(
       (c) => c.participantId === p.id && c.sessionNumber === sessionNumber,
@@ -41,7 +43,7 @@ export function WhoIsStillOut({ groundId, sessionNumber }: { groundId: string; s
     const open = theirs.find((c) => c.status !== 'COMPLETED')
     return {
       id: p.id,
-      name: personLabel(p),
+      name: atTheStart(labels.get(p.id) ?? 'a colleague'),
       joined: !!p.userId,
       done,
       state: done ? 'Answered' : going ? 'Part way through' : !p.userId ? 'Not joined yet' : 'Not started',

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
-import { personLabel } from '@/lib/utils'
+import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { scrollToId } from '@/lib/scroll-to'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -294,6 +294,9 @@ export function ContextPage({
    */
 
   /** What people are down as doing. Unowned first: it is the fact a lead can act on. */
+  /* Everybody's label at once, so two people with no name are "one colleague" and "another colleague"
+     (request 36). Never the lead's note. */
+  const labelsHere = peopleLabels(ground.participants ?? [], { forTheLead: true })
   const commitments = [...((ground as any).commitments ?? [])].sort(
     (a: any, b: any) => (a.participantId ? 1 : 0) - (b.participantId ? 1 : 0),
   )
@@ -322,7 +325,7 @@ export function ContextPage({
   const theBrief: string = ((ground as any).brief ?? '').trim()
   /** Whose words the brief is, for everybody but the lead. */
   const theLeadsFirstName: string =
-    personLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')).split(' ')[0] || 'The lead'
+    atTheStart(firstNameOrLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') ?? { partyType: 'INITIATOR' }))
   const objectives: any[] = (ground as any).objectives ?? []
 
 
@@ -1065,7 +1068,7 @@ export function ContextPage({
                     return (
                       <div key={c.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: c.participantId ? 'var(--gw-dark)' : 'var(--gw-amber-t)', minWidth: 120 }}>
-                          {c.participantId ? personLabel(p) : 'nobody owns this'}
+                          {c.participantId ? atTheStart((p && labelsHere.get(p.id)) ?? 'a colleague') : 'Nobody owns this'}
                         </span>
                         <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 200 }}>{c.text}</span>
                         {c.whenSaid && <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{c.whenSaid}</span>}

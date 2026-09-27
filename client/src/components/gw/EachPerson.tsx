@@ -21,7 +21,7 @@
  */
 import { theLeadsNote } from '@/lib/the-leads-note'
 import { useState } from 'react'
-import { personLabel } from '@/lib/utils'
+import { peopleLabels, atTheStart } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
 
@@ -118,6 +118,10 @@ export function EachPerson({
   /* Your own row first, then a few, then the count - at a hundred people a stack of cards is a wall
      however small each card is. See a-long-list-is-not-a-page. */
   const inOrder = mine ? [mine, ...rows.filter((p) => p.id !== mine.id)] : rows
+  /* Never the lead's note as the name (request 36): two people with no name are "one colleague" and
+     "another colleague", and you are "You". */
+  const labels = peopleLabels(rows as any[], { forTheLead: true, readerId: mine?.id ?? null })
+  const labelOf = (p: APersonOnTheCard) => labels.get(p.id) ?? 'a colleague'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
@@ -165,7 +169,7 @@ export function EachPerson({
                 display: 'inline-block', width: 10,
                 transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .12s ease',
               }}>&#9654;</span>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{isMe ? 'You' : personLabel(p as any)}</span>
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{isMe ? 'You' : atTheStart(labelOf(p))}</span>
               {p.roleAsDescribed && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
               <span style={{ flex: 1 }} />
               <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{summary}</span>
@@ -202,7 +206,7 @@ export function EachPerson({
                       </Empty>
                     )}
                   {isLead && onChangeInChat && (
-                    <Small onClick={() => onChangeInChat(`Change what I expect of ${personLabel(p as any)} to `)}>Change this in the chat</Small>
+                    <Small onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `)}>Change this in the chat</Small>
                   )}
                 </Part>
 
