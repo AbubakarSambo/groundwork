@@ -16,6 +16,19 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 Everything else, phase 2 included, waits until after deployment.
 
+### Sales: a judgement never praises a claim the record's own numbers contradict
+
+- **`6628e6b6` and `7d5c36dc`: a check in code, not in the prompt,** because a prompt line had already lost on this scenario. Before the judgement is stored, every section of it is checked, along with each person's finding, the opening and the picture. The check holds back three kinds of sentence:
+  - a move that praises someone for reaching a figure;
+  - a claim that someone exceeded, beat, met or is ahead of a target, where no figure in the record, in the target's own unit, reaches it;
+  - a figure called approved, completed or successful where the record says otherwise.
+
+  A figure in a different unit never counts. 22 in the pipeline, or 22 applications, does not meet a target of 14 approved facilities. Nothing is written in place of what is held back, and no field is left blank.
+- **On run-8's stored judgement it holds back exactly three lines**, all about Kwame and all contradicted by his record of three approved and 22 applications. For example: "Ask Participant C how they achieved 22 approved facilities when their target was 14."
+- **Tested live on two sales runs.** Neither judgement praises Kwame. The first run's finding is exactly right: "Kwame has 22 applications, of which three have been approved and disbursed for N8 million."
+- **The live test caught the check being too eager, fixed in `2d1610ec`.** It had held back statements of goals, such as "Participant B is working to achieve 14 approved facilities" and "The initiator's goal is 40 approved facilities". It had also held back one true sentence, "Participant C has three approvals". A goal is not a claim, and a figure the record supports is never held back. On the two new runs it now holds back nothing, and on run-8 it holds back only the three Kwame lines.
+- **Not yet run live on `2d1610ec` itself.** That happens with task 1.6's test runs, so that one build carries both.
+
 ### Hafsah's decision on the bar for task 1.5
 
 **Task 1.5 is met when, in two full runs in a row, at least 20 of the 24 scenarios can be tested, and at least 90% of those are clearly right.**
