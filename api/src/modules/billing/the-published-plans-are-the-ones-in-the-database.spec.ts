@@ -20,7 +20,8 @@ function theTableAfterEveryMigration() {
     let sql: string;
     try { sql = readFileSync(join(DIR, dir, 'migration.sql'), 'utf8'); } catch { continue; }
     if (!sql.includes('pricing_plans')) continue;
-    sql = sql.replace(/--.*$/gm, '');
+    /* Comments stripped first, block and line, so a commented-out INSERT can never satisfy this. */
+    sql = sql.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*$/gm, '');
     for (const ins of sql.matchAll(/INSERT INTO "pricing_plans" \(([^)]*)\)\s*VALUES([\s\S]*?)(?:ON CONFLICT[\s\S]*?)?;/g)) {
       const cols = ins[1].split(',').map((c) => c.trim().replace(/"/g, ''));
       for (const row of ins[2].matchAll(/\(([^()]*(?:\([^()]*\))?[^()]*)\)/g)) {
