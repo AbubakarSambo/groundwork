@@ -13,16 +13,18 @@ in, with every decision you made).
 
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
-screens) and U.9 (reports and sharing). Each passed the full screen and API suites, apart from failures
-in the engine workspace's own files, which I have asked them to fix. **None could be ticked, because
+screens), U.9 (reports and sharing) and U.10 (the board). U.3 to U.9 each passed the full screen and
+API suites, apart from failures in the engine workspace's own files, which I have asked them to fix.
+U.10 has passed the tests for the files it changed; the full suites have not been run on it yet. **None could be ticked, because
 the reviewer can no longer sign in as anyone** (item 14). That is the most important thing for you to
 unblock.
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
 addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
 others' email addresses and a report's findings before release (U.5); and every person's rating of
-how checkable their answers were went to the lead and admins (U.8). The engine's board still uses that
-rating to tell a lead someone said "nothing checkable"; that is engine code, so it is request 8.
+how checkable their answers were went to the lead and admins (U.8). The board still turned that
+rating into "nothing checkable" for the lead; since U.10 the server no longer serves it (request 8
+asks the engine to change the rule itself).
 
 **What needs you most, in order:**
 1. Item 14: let the reviewer sign in (my recommendation: allow reading the local test password).
@@ -30,9 +32,10 @@ rating to tell a lead someone said "nothing checkable"; that is engine code, so 
 3. Item 20.1: should the lead hold the team's report until they share it? (a privacy question)
 4. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
 5. Item 17.5: in a new check-in, do invitations go before or after the lead's own first check-in?
-6. The rest of items 13, 15 to 20 are smaller, each with a recommendation.
+6. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
+7. The rest of items 13, 15 to 21 are smaller, each with a recommendation.
 
-**In progress:** U.10 (the board) is next.
+**In progress:** U.11 (ending a check-in) is next.
 
 ## Needs Hafsah
 
@@ -741,6 +744,54 @@ reviewed" in this report.
    heading: "Everything about this session, on 23 September. Your report first, then the team’s
    report."
 
+### 21. The board (U.10): what needs you
+
+1. **A participant reads the board's read on each colleague. This is a privacy question.** Where
+   people in a check-in can see each other, a participant's board still carries "Contribution against
+   role" (a read of what the record holds about each colleague's work, with why) and "Where work is
+   landing" (for example "Landing with others" beside a colleague's name). The prototype's
+   participant board shows only the team's picture once it is shared and the person's own part in
+   full. Taking these away from participants would change who reads what, so I have not done it.
+   **My recommendation:** serve both only to whoever runs the check-in, and to each person their own
+   row, enforced on the server, with a privacy test for the participant.
+2. **"Today’s team picture isn’t shared yet" and "Today’s report shares itself at 6:30pm" are held.**
+   Both wait for item 20.1 (does the lead hold the team's report until they share it). Today a
+   participant's board shows the team's differences and quick read from the report as it forms.
+   **My recommendation:** decide 20.1; the board then follows the same rule as the report.
+3. **The check-in's own header and tabs are not built.** The prototype's board sits under the
+   check-in's name, "Daily on weekdays, from 4pm. Session 38 of 65. Runs until 30 September.", and
+   the tabs "Your check-in", "Ask", "Board", "Check-in", "Context", "My work", "People and setup" and
+   "Views". The product has no shared tab bar for a check-in; each page stands alone. **My
+   recommendation:** build it once, as its own task, for every page of a check-in, with the "Views"
+   menu only for the person who runs it. The board's look is also not yet the prototype's: it is
+   still grey-blue with a dark header, not cream. I left the look alone so this change stays small.
+4. **The switchboard is not yet the prototype's table.** The server chooses the board's sections by
+   the kind of check-in (five families in `board-families.ts`), not by the 30 sections for each of
+   the 24 situations in `docs/modules.md` (G2). Mapping them changes what every board shows. **My
+   recommendation:** write the G2 table as a test first, matching each of its sections to the
+   backend's section with the same purpose, then switch sections on and off by situation, and build
+   the missing sections one at a time, starting with "What the target assumes" (done now) and
+   "Blockers".
+5. **"Where this is heading" and "Record the decision" need somewhere to keep a decision with its
+   reason.** Nothing in the product holds one yet (`docs/modules.md`, B5: "Missing: a decision with a
+   reason"). **My recommendation:** build it with U.11 (ending a check-in), lead only, kept on the
+   check-in's record so the board reads it.
+6. **Not built, and why.** "Will we reach 25 sales…", "To close the gap", "The team today", the
+   blockers' history, "What keeps coming up" in two halves, "Help nobody mentioned" as the prototype
+   means it, and "Open issues" with the path from unclear to checked: all are the engine's text
+   (request 11). "Every deal, day by day", "Reported vs criteria met" and "Your deals" need deals as
+   records (U.17, customers and deals) and each line's mark (request 2). "Waiting on other teams" and
+   "Where the blocker started" need check-ins linked as records (U.16). One person's page
+   (#/c/sales/person/miriam) with "Ask her something" and the lead's notes is not built yet. "Your
+   share" on the participant's board needs how many of their sales are paid, which only proof can
+   say.
+7. **Wording no screen shows, which I wrote with the fewest words.** When the record holds no time
+   yet, the board says only "The board only changes when something new comes in, such as a check-in,
+   a report, a decision or a number from another system." When nobody can be named as running the
+   check-in, an admin reads only "You can read this check-in’s board and reports." A target with no
+   number reads "What Sales assumes" (the target's name). A side of a difference whose label nobody
+   could resolve reads "A colleague".
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -1302,6 +1353,57 @@ The other is a test in the engine workspace's own report module that still expec
 this" part, which the engine workspace itself asked us to remove. It is theirs to update (request 10).
 The only other failure is the engine's own comment guard (request 4). **Not ticked,** because no
 review can sign in (item 14).
+
+### U.10 The board: built and tested, not yet reviewed
+
+**What was missing, against the prototype's board (the gap list):** the line saying when the board
+last changed; the note telling an admin who only reads who runs the check-in; what each target
+assumes; "What needs you in this check-in"; and, found on the way, three things that were wrong
+rather than missing. Opening the board could ask the model to word lines; the lead still read, as
+"nothing checkable", the rating of how checkable a person's answers were; and "Where people differ"
+printed the engine's own label for a person where it could not resolve a name. The footer said
+"Everyone on this check-in sees the same board. It regenerates as people check in each session.",
+and neither is true. Everything else on the prototype's board is the engine's text, or waits for
+another module, and is listed in item 21.
+
+**What each person now reads:**
+- **Everyone** (Wairimu, Miriam, Grace), under the board's heading: "Last updated on Wednesday 23
+  September at 6pm. The board only changes when something new comes in, such as a check-in, a
+  report, a decision or a number from another system." The time is the newest thing in the record
+  the board is built from: a finished check-in, the report being rewritten, a target, something
+  someone is waiting on, or a document everyone may read. A private document is left out, because
+  its time would tell others something they cannot see. Opening the board does not move it.
+- **Grace, an admin who neither runs nor takes part:** "You can read this check-in’s board and
+  reports. Wairimu Kamau runs it." Wairimu and Miriam read no note. The old "Generated from the
+  check-in. Only the meeting poll is editable." is gone.
+- **Under each target, for whoever may read it:** "What the target of 25 assumes", the lead's lines,
+  and "If one of these stops being true, the target needs a second look." Miriam reads the team
+  target's lines and nothing about Aisha's number; the server sends her only what she may read.
+- **Wairimu only:** "What needs you in this check-in", with Today's items for this check-in, from
+  the same server read as Today, so the two cannot disagree.
+- **Wairimu no longer reads a rating.** A row that said "nothing checkable" now reads as "nothing
+  to do", in the place it would have had without that reason, so the order cannot give it away.
+  This is done on the server. The rule itself is the engine's (requests 8 and 11).
+- **Each side of a difference** is printed by who it is, or "A colleague", never "Participant A".
+
+**Opening the board rebuilds nothing.** Only the warm-up that runs when a check-in comes in may ask
+the model to word a line. Every open serves the lines already worded and writes nothing. A new test
+checks that opening the board, as the lead or a participant, writes nothing to the record, writes
+no report, and asks the model for nothing.
+
+**Commits:** `780629fb` (the server: when it last changed, the read-only note, what targets assume,
+no rating, opening rebuilds nothing), `9041f46a` (the screen: the line, the note, the assumptions,
+the footer removed), `2980d251` ("What needs you in this check-in"), `8d572c80` (who each side of a
+difference is), `bea6c34c` (request 11 to the engine).
+
+**Tested:** new tests read what each person is served and what each person sees:
+`api/src/modules/board/the-board-as-each-reader-reads-it.spec.ts` and
+`client/src/pages/board/the-board-as-each-reader-reads-it.spec.tsx`, as Wairimu, Miriam and Grace.
+**One test changed:** `the-board-answers-its-own-question.spec.ts` asked the board to print
+`pos.participantLabel`, which must never be printed; it now asks for `pos.who`. Only the tests for
+the changed files and both type checks were run, as you asked. The only failures in those runs are
+in the engine workspace's own files (requests 4 and 10). No screen could be checked signed in (item
+14), so the screens were checked by rendering tests only. Item 21 lists what needs you.
 
 ## Found on the way, for later tasks
 
