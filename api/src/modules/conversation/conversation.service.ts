@@ -174,7 +174,7 @@ import { oneThingBack } from './one-thing-back-not-three';
 import { whatFiredThisTurn, oneLine } from './which-blocks-actually-fire';
 import { isAVerdictAboutSomebodyElse, HERS_TO_DRAW } from './a-verdict-is-not-a-question';
 import { isAnEssay, howManyWords, SAY_IT_SHORTER, A_CLOSE_IS_THREE_SENTENCES, A_REPLY_IS_ABOUT } from './a-reply-is-not-an-essay';
-import { asksItAgainAfterTheAnswer, theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, doNotSayItBack, withoutTheSentenceThatSaysItBack, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY, withoutTheQuestionAskedAgain } from './asked-twice-and-told-no-twice';
+import { asksItAgainAfterTheAnswer, anAnsweredQuestionAskedAgain, theyPushedBackOnTheQuestions, asksTheSameThingAgain, THEY_ALREADY_SAID_NO, opensByRepeatingThem, doNotSayItBack, withoutTheSentenceThatSaysItBack, alreadyAskedTwice, ASKED_IT_TWICE_ALREADY, withoutTheQuestionAskedAgain } from './asked-twice-and-told-no-twice';
 import { totalSessionsFor } from '../grounds/session-count';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABOUT } from './when-this-is-over';
@@ -1676,20 +1676,26 @@ export class ConversationService {
        * doing to keep them healthy" - "Vaccinating them" - "what are you doing to keep your 260 hens
        * healthy" (run 11). Once more with the answer named; if it asks again, the question comes out.
        * See asksItAgainAfterTheAnswer.
+       *
+       * AND ANY EARLIER QUESTION THEY ANSWERED, word for word. Hana was asked "What just happened with
+       * Meridian, as you understand it?" again two turns after she answered it (run 9, shock). See
+       * anAnsweredQuestionAskedAgain.
        */
       {
-        const lastAskHere = earlierAsks[earlierAsks.length - 1] ?? '';
-        const theyAnswered = !theyDeclined(message) && !theyPushedBackOnTheQuestions(message) && (message ?? '').trim().length >= 3;
-        if (lastAskHere && theyAnswered && asksItAgainAfterTheAnswer(lastAskHere, screened.text)) {
+        const aRealAnswer = (said: string) => !theyDeclined(said) && !theyPushedBackOnTheQuestions(said) && (said ?? '').trim().length >= 3;
+        const soFar = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'AI' as const : 'PERSON' as const, content: t.content ?? '' }));
+        const again = anAnsweredQuestionAskedAgain(soFar, screened.text, aRealAnswer);
+        if (again) {
+          const lastAskHere = again.ask;
           const askedSentence = lastAskHere.split(/(?<=[.!?])\s+/).find((x) => /\?\s*$/.test(x)) ?? lastAskHere;
-          this.logger.warn(`Check-in ${checkIn.id}: asked the last question again after it was answered; asking for another turn.`);
+          this.logger.warn(`Check-in ${checkIn.id}: asked a question again after it was answered; asking for another turn.`);
           const moved = await this.anthropic
-            .respond(`${fullSystem}\n\n${theyAlreadyAnsweredThat(`this - ${JSON.stringify(askedSentence.slice(0, 160))}`, message)}`, history)
+            .respond(`${fullSystem}\n\n${theyAlreadyAnsweredThat(`this - ${JSON.stringify(askedSentence.slice(0, 160))}`, again.answer)}`, history)
             .catch(() => '');
           const second = moved.trim()
             ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
             : null;
-          if (second?.text && !second.hits.length && !asksItAgainAfterTheAnswer(lastAskHere, second.text)) {
+          if (second?.text && !second.hits.length && !anAnsweredQuestionAskedAgain(soFar, second.text, aRealAnswer)) {
             screened = second;
           } else {
             const withoutIt = withoutTheQuestionAskedAgain(screened.text, [lastAskHere]);
