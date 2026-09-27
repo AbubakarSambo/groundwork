@@ -357,22 +357,40 @@ export function ContextPage({
    * text is the lead's own and nobody else has changed it; the name of whoever changed it, where the
    * server knows who; Groundwork, where it wrote the text people read from the lead's words.
    */
-  const briefChangedBy = (ground as any).briefChangedBy as { isTheLead: boolean } | null | undefined
-  const theLeadWroteTheseWords = isTheLead && !(briefChangedBy && !briefChangedBy.isTheLead)
+  const changedBy = (ground as any).briefChangedBy as { firstName: string | null; isYou: boolean; isTheLead: boolean } | null | undefined
+  /* Whether what everyone reads is the stored brief itself, or Groundwork's short read of it. */
+  const shownIsTheBrief = !!theBrief && whatEveryoneReads === theBrief
   const whoseWords: string | null = (() => {
-    const changedBy = (ground as any).briefChangedBy as { firstName: string | null; isYou: boolean; isTheLead: boolean } | null | undefined
     const ownWords = (ground as any).briefIsTheLeadsOwnWords === true
     if (changedBy && !changedBy.isTheLead) {
-      if (changedBy.isYou) return 'You changed this.'
-      return changedBy.firstName ? `${changedBy.firstName} changed this.` : 'Someone else changed this.'
+      /* U.7 re-check: above text Groundwork rewrote from an admin's words, he is told so, as the lead is. */
+      if (changedBy.isYou) return shownIsTheBrief ? 'You changed this.' : 'Groundwork wrote this from your words.'
+      if (!changedBy.firstName) return shownIsTheBrief ? 'Someone else changed this.' : 'Someone else changed this, and Groundwork wrote it from their words.'
+      return shownIsTheBrief ? `${changedBy.firstName} changed this.` : `Groundwork wrote this from ${changedBy.firstName}\u2019s words.`
     }
     if (ownWords) {
       if (isTheLead) return changedBy ? 'Your words.' : 'Your words, from setup.'
       return changedBy ? `${theLeadsFirstName}\u2019s words.` : `${theLeadsFirstName}\u2019s words, from setup.`
     }
     if (isTheLead) return 'Groundwork wrote this from your words.'
-    if (isLead && !changedBy) return `Groundwork wrote this from ${theLeadMidSentence}\u2019s words.`
+    if (isLead) return `Groundwork wrote this from ${theLeadMidSentence}\u2019s words.`
     return null
+  })()
+  /*
+   * THE FOLDS UNDER IT, HEADED FOR WHAT THEY ARE (U.7 re-check). "What you wrote" held the brief that
+   * setup put together from her answers ("It matters now because whether to confirm him."), which
+   * was not what she wrote. Now:
+   *   - "What you wrote" is her own messages from setup, which the server sends to her alone;
+   *   - the brief is "What Groundwork put together from your answers" while it is still setup's, and
+   *     "What you wrote" (or whoever wrote it) once somebody has rewritten it.
+   */
+  const herSetupWords: string = ((ground as any).leadsOwnSetupWords ?? '').trim()
+  const theBriefIsSetups = (ground as any).briefPutTogetherBySetup === true && !changedBy
+  const theBriefFoldTitle: string = (() => {
+    if (changedBy?.isYou) return 'What you wrote'
+    if (changedBy && !changedBy.isTheLead) return changedBy.firstName ? `What ${changedBy.firstName} wrote` : 'What someone else wrote'
+    if (theBriefIsSetups) return isTheLead ? 'What Groundwork put together from your answers' : `What Groundwork put together from ${theLeadMidSentence}\u2019s answers`
+    return isTheLead ? 'What you wrote' : `What ${theLeadMidSentence} wrote`
   })()
   const objectives: any[] = (ground as any).objectives ?? []
 
@@ -456,10 +474,17 @@ export function ContextPage({
                     </button>
                   )}
                 </div>
-                {/* The words it was written from, where they differ from what everyone reads. */}
-                {isLead && theBrief && theBrief !== whatEveryoneReads && (
-                  <details style={{ marginTop: 8 }}>
-                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{theLeadWroteTheseWords ? 'What you wrote' : 'The words this was written from'}</summary>
+                {/* Her own words from setup, to her alone, while the brief is still setup's. */}
+                {isTheLead && herSetupWords && !changedBy && (
+                  <details data-gw-brief-fold style={{ marginTop: 8 }}>
+                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>What you wrote</summary>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{herSetupWords}</div>
+                  </details>
+                )}
+                {/* The stored brief, where what everyone reads is Groundwork's short read of it. */}
+                {isLead && theBrief && !shownIsTheBrief && (
+                  <details data-gw-brief-fold style={{ marginTop: 8 }}>
+                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{theBriefFoldTitle}</summary>
                     <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{theBrief}</div>
                   </details>
                 )}

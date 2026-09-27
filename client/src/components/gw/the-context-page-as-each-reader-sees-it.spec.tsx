@@ -295,3 +295,56 @@ describe('the lines under each band', () => {
   })
 })
 
+/*
+ * U.7 RE-CHECK: "WHAT YOU WROTE" IS WHAT SHE WROTE. The fold held the brief setup put together from
+ * her answers ("It matters now because whether to confirm him."). Her own words from setup are sent
+ * to her alone, and the brief is headed for what it is.
+ */
+describe('Juma’s check-in: what the lead wrote, and what Groundwork put together', () => {
+  const HER_WORDS = 'Juma joined our warehouse team in January and his probation ends in March. I need to decide whether to confirm him. He is often late with the stock counts.'
+  const PUT_TOGETHER = 'Juma’s performance during his probation with the warehouse team needs review. Asked who is part of this, Wairimu said “Juma and the warehouse team”. Asked why this matters now, Wairimu said “whether to confirm him”. Asked what the questions should focus on, Wairimu said “he is often late with the stock counts”.'
+  const TOLD = 'This check-in looks at how Juma’s first months in the warehouse have gone.'
+  const juma = { brief: PUT_TOGETHER, briefAsEveryoneReadsIt: TOLD, briefIsTheLeadsOwnWords: false, briefPutTogetherBySetup: true, briefChangedBy: null }
+  const folds = () => [...document.querySelectorAll('[data-gw-brief-fold]')].map((d) => ({
+    title: d.querySelector('summary')?.textContent,
+    text: (d.textContent ?? '').replace(d.querySelector('summary')?.textContent ?? '', ''),
+  }))
+
+  it('Wairimu reads what everyone reads, her own words under "What you wrote", and the rest named for what it is', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([])
+    draw('lead', 'u-lead', { ...juma, leadsOwnSetupWords: HER_WORDS })
+    expect(screen.getByText(`“${TOLD}”`)).toBeTruthy()
+    expect(whose()).toEqual(['Groundwork wrote this from your words. This is what everyone in this check-in reads before they answer.'])
+    expect(folds()).toEqual([
+      { title: 'What you wrote', text: HER_WORDS },
+      { title: 'What Groundwork put together from your answers', text: PUT_TOGETHER },
+    ])
+  })
+
+  it('an admin reads no setup words of hers, and the brief headed as put together from Wairimu’s answers', async () => {
+    draw('admin', 'u-otieno', juma)
+    expect(folds()).toEqual([{ title: 'What Groundwork put together from Wairimu’s answers', text: PUT_TOGETHER }])
+    expect(whose()).toEqual(['Groundwork wrote this from Wairimu’s words. This is what everyone in this check-in reads before they answer.'])
+  })
+
+  it('an admin who rewrote it, where Groundwork wrote what everyone reads from his words, is told so', async () => {
+    draw('admin', 'u-otieno', { ...juma, brief: 'Decide by March whether Juma is confirmed.', briefChangedBy: { firstName: 'Otieno', isYou: true, isTheLead: false } })
+    expect(whose()).toEqual(['Groundwork wrote this from your words. This is what everyone in this check-in reads before they answer.'])
+    expect(folds()).toEqual([{ title: 'What you wrote', text: 'Decide by March whether Juma is confirmed.' }])
+  })
+
+  it('and Wairimu, after he did, reads his name on both', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([])
+    draw('lead', 'u-lead', { ...juma, leadsOwnSetupWords: HER_WORDS, brief: 'Decide by March whether Juma is confirmed.', briefChangedBy: { firstName: 'Otieno', isYou: false, isTheLead: false } })
+    expect(whose()).toEqual(['Groundwork wrote this from Otieno’s words. This is what everyone in this check-in reads before they answer.'])
+    expect(folds()).toEqual([{ title: 'What Otieno wrote', text: 'Decide by March whether Juma is confirmed.' }])
+  })
+
+  it('Aisha reads only what everyone reads, and no fold', async () => {
+    ;(documentsApi.list as any).mockResolvedValue(aishasDocs)
+    draw('party', 'u-aisha', { brief: TOLD, briefIsTheLeadsOwnWords: false })
+    expect(whose()).toEqual(['This is what everyone in this check-in reads before they answer.'])
+    expect(folds()).toEqual([])
+  })
+})
+
