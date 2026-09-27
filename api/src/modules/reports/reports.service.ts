@@ -122,7 +122,8 @@ import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferra
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence, Prisma } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
-import { patternsAsServed } from '../patterns/patterns-are-served';
+import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
+import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen } from '../patterns/who-reads-a-pattern';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
@@ -3115,26 +3116,25 @@ Close the report by framing - neutrally, without recommending one - the choice n
       windowDays: window,
     });
 
-    /* Surfaced detections, computed once: the section renders them and the picture draft reads them.
-       None while patterns are not served, so neither the section nor the picture carries one. See
-       patterns/patterns-are-served. */
-    const patternsForPage = patternsAsServed(await this.prisma.patternDetection.findMany({
-      where: { groundId, status: PatternStatus.SURFACED },
-      orderBy: [{ periodsObserved: 'desc' }, { lastSeenAt: 'desc' }],
-      select: { participantId: true, code: true, periodsObserved: true },
-    }))
-      .filter((r) => !ALIGNMENT_FEED_ONLY_CODES.has(r.code) && patternCatalogue().has(r.code))
-      .map((r) => {
-        const lib = patternCatalogue().get(r.code)!;
-        return {
-          who: whoOf(r.participantId) ?? (me && r.participantId === me.id ? 'You' : 'Somebody'),
-          isYou: !!me && r.participantId === me.id,
-          signal: lib.signal,
-          positive: isPositiveCode(r.code),
-          carrying: isCarryingCode(r.code),
-          periodsObserved: r.periodsObserved,
-        };
-      });
+    /*
+     * WHAT KEEPS COMING UP, FOR THIS READER ONLY. See patterns/who-reads-a-pattern.
+     *
+     * This read every SURFACED row on the ground and served it to every reader of the report, "who"
+     * and all, and handed the same list to the picture, which everybody in the check-in reads. Now
+     * the section carries the reader's own patterns, or everybody's for whoever runs the check-in,
+     * after three periods, in plain words; and the picture carries none, because it is shared and a
+     * pattern never is. Nothing at all while patterns are not served, and then not even the read.
+     */
+    const patternsForPage = PATTERNS_ARE_SERVED
+      ? servedPatterns(
+          await this.prisma.patternDetection.findMany({
+            where: { groundId },
+            orderBy: [{ lastSeenAt: 'desc' }],
+            select: { id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true },
+          }) as any,
+          { participantId: me?.id ?? null, runsIt: viewerIsLead },
+        )
+      : [];
     /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */
     const started = <T,>(f: () => Promise<T>, fallback: T): Promise<T> => Promise.resolve().then(f).catch(() => fallback);
     const [mentionRows, depRows] = await Promise.all([
@@ -3382,7 +3382,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
           ofPeople: whoAnswered.expected,
           confidence: shape.confidence,
           tiles: shape.atAGlance,
-          patterns: patternsForPage,
+          /* The picture is read by everybody in the check-in, and a pattern is never shared. */
+          patterns: [],
           coverage,
           contribution,
           blockers: currentDeps.map((d: any) => ({
@@ -4128,10 +4129,13 @@ happened, and what is in the way.`;
         where: { groundId, status: 'UNKNOWN' },
         select: { text: true, participantId: true },
       }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
-      const seen = await (this.prisma.patternDetection?.findMany?.({
-        where: { groundId, status: 'SURFACED' },
-        select: { code: true, observationText: true, seenInSessions: true, participantId: true },
-      }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+      /* Only what the lead may already read, in plain words: see patterns/who-reads-a-pattern. None, and no read, while patterns are not served. */
+      const seen = PATTERNS_ARE_SERVED
+        ? servedPatterns(await (this.prisma.patternDetection?.findMany?.({
+          where: { groundId },
+          select: { id: true, code: true, observationText: true, seenInSessions: true, periodsObserved: true, participantId: true },
+        }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]) as any, { participantId: null, runsIt: true })
+        : [];
       const sessions = Math.max(0, ...rows.map((r: any) => r.sessionNumber ?? 0));
       /*
        * AND WHAT MORE THAN ONE PERSON'S RECORD NAMES, WHICH NOBODY IN THE CHECK-IN CAN SEE.
@@ -4184,9 +4188,9 @@ happened, and what is in the way.`;
            */
           /* None while patterns are not served: the lead reads the judgement on the board, and the
              model wrote the names it was given into it. See patterns/patterns-are-served. */
-          patterns: patternsAsServed(seen as any[])
-            .filter((x) => x.participantId === p.participantId && !ALIGNMENT_FEED_ONLY_CODES.has(x.code) && (x.observationText ?? '').trim())
-            .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
+          patterns: seen
+            .filter((x) => x.participantId === p.participantId && !!x.whatHappened)
+            .map((x) => ({ name: x.heading, observation: x.whatHappened as string, seenInSessions: x.sessions })),
           openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => theirWords(String(c.text))),
         })),
         room!.differences,
@@ -4949,11 +4953,14 @@ happened, and what is in the way.`;
 
   private async whatTheRecordHoldsFor(groundId: string, ground: any) {
     const [detections, dependencies, entries, docs, sessions] = await Promise.all([
-      this.prisma.patternDetection.findMany({
-        where: { groundId, status: PatternStatus.SURFACED },
-        orderBy: { lastSeenAt: 'desc' },
-        select: { participantId: true, code: true, periodsObserved: true },
-      }),
+      /* Not even read while patterns are not served. */
+      PATTERNS_ARE_SERVED
+        ? this.prisma.patternDetection.findMany({
+          where: { groundId },
+          orderBy: { lastSeenAt: 'desc' },
+          select: { id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true },
+        })
+        : Promise.resolve([] as { id: string; participantId: string; code: string; observationText: string | null; periodsObserved: number; seenInSessions: number[] }[]),
       this.prisma.groundDependency.findMany({
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
         select: {
@@ -4975,9 +4982,9 @@ happened, and what is in the way.`;
       }),
     ]);
     const wholeDays = (d: Date) => Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
-    /* The coaching note and the probe list are both read by a person, so neither is built from a
-       pattern while patterns are not served. See patterns/patterns-are-served. */
-    return { detections: patternsAsServed(detections), dependencies, entries, docs, sessions, wholeDays, ground };
+    /* Every row, for the two builders to narrow to their reader: the coaching note to the person's own,
+       the probe list to what the lead may read. See patterns/who-reads-a-pattern. */
+    return { detections, dependencies, entries, docs, sessions, wholeDays, ground };
   }
 
   /**
@@ -5022,9 +5029,9 @@ happened, and what is in the way.`;
     const theirOwnNumber = theOwnedNumbers.find((o: any) => o.ownerParticipantId === participant.id);
 
     const note = whatToWorkOnNext({
-      patterns: held.detections
-        .filter((d) => d.participantId === participant.id)
-        .map((d) => ({ code: d.code, periodsObserved: d.periodsObserved })),
+      /* Their own, after three periods, and nobody else's. See patterns/who-reads-a-pattern. */
+      patterns: patternRowsThisReaderMayRead(held.detections, { participantId: participant.id, runsIt: false })
+        .map((d) => ({ code: d.code, periodsObserved: periodsSeen(d) })),
       role: participant.roleAsDescribed ?? null,
       /* Said to this person only in their own words, never the lead's sentence about them (request 36). */
       roleToSay: aRoleInTheirOwnWords(participant as any),
@@ -5231,13 +5238,14 @@ happened, and what is in the way.`;
           participantId: p.id,
           role: p.roleAsDescribed ?? null,
           answeredThisSession: answered,
-          patterns: held.detections
+          /* What the lead may read of this person's, and nothing sooner. See patterns/who-reads-a-pattern. */
+          patterns: patternRowsThisReaderMayRead(held.detections, { participantId: null, runsIt: true })
             .filter((d) => d.participantId === p.id)
             .map((d) => {
               const lib = patternCatalogue().get(d.code);
               return {
                 code: d.code,
-                periodsObserved: d.periodsObserved,
+                periodsObserved: periodsSeen(d),
                 signal: lib?.signal ?? d.code,
                 probe: lib?.probe,
               };

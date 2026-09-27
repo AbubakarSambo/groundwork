@@ -192,22 +192,27 @@ describe('no board carries a pattern while patterns are not served', () => {
   });
 });
 
-describe('and the fixture is not empty: with the switch on, the same board does carry them', () => {
-  it('the lead’s board carries the pattern section, the internal names and the question built from one', async () => {
+/*
+ * WITH THE SWITCH ON, UNDER THE RULES. This used to prove the fixture was not empty by finding the
+ * internal name "Blame Shifting" and the question built from a pattern on the lead's board with the
+ * switch on, which was the old defect. The switch now means "serve patterns under Hafsah's rules"
+ * (patterns/who-reads-a-pattern), so with it on the lead's board has a pattern section, in plain
+ * words, and still no internal name, no code and nothing from the stored record over time.
+ */
+describe('and the fixture is not empty: with the switch on, the board serves them under the rules', () => {
+  it('the lead’s board carries the pattern section in plain words, and no internal name', async () => {
     let mods: any;
     jest.isolateModules(() => {
-      jest.doMock('../patterns/patterns-are-served', () => ({
-        PATTERNS_ARE_SERVED: true,
-        patternsAsServed: (rows: any) => [...(rows ?? [])],
-      }));
+      jest.doMock('../patterns/patterns-are-served', () => ({ PATTERNS_ARE_SERVED: true }));
       mods = real();
     });
     const board = await boardFor(mods, 'u-tunde', 'MEMBER', groundWith(GROUNDS[0][1]));
     const found = whatOfAPatternIsIn(board);
     expect(found).toContain('a "patterns" section');
-    expect(found).toContain('the internal name "Blame Shifting"');
-    expect(found).toContain('patterns in the record over time');
-    expect(found).toContain('a question built from a pattern');
+    expect(board.patterns.map((p: any) => p.heading)).toContain('Problems are always put down to something outside');
+    expect(found.filter((f) => f.startsWith('the internal name') || f.startsWith('the code'))).toEqual([]);
+    expect(found).not.toContain('patterns in the record over time');
+    expect(found).not.toContain('a question built from a pattern');
     jest.dontMock('../patterns/patterns-are-served');
   });
 });

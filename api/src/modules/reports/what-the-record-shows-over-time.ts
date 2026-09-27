@@ -25,7 +25,6 @@
  * is unreliable" is a judgement about a person, and this file does not produce one.
  */
 
-import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 
 export interface ACommitmentOverTime {
   participantId: string | null;
@@ -515,17 +514,19 @@ export function toSettleFirst(o: {
 export const A_QUESTION_BUILT_FROM_A_PATTERN_ENDS = ' what they have changed about it since the first time.';
 
 /**
- * AND NO PATTERN IN IT AT ALL, FOR ANY READER, WHILE PATTERNS ARE NOT SERVED.
+ * AND NO PATTERN IN IT AT ALL, FOR ANY READER, WHETHER PATTERNS ARE SERVED OR NOT.
  *
  * This is the read the capability check found on the lead's board, 27 September 2026: "Seen once or
  * twice, not yet a pattern", fourteen lines like "You · Claimed Work Inflation · Seen in sessions…",
  * after two sessions. The record over time is still built and kept whole on the report, because
- * detection keeps running; what is served leaves out the patterns and the questions made from them.
- * See patterns/patterns-are-served for what has to be true before they come back.
+ * detection keeps running. But what is stored here was written at synthesis, with the internal name,
+ * the person's name beside it and patterns seen once, and before the person it is about had read it,
+ * so it can never be served under Hafsah's rules. Patterns reach a page only through
+ * patterns/who-reads-a-pattern, read live from the rows; this read leaves out the patterns and the
+ * questions made from them, with the switch on or off.
  */
 export function overTimeAsServed(it: WhatTheRecordShowsOverTime | null | undefined): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
-  if (PATTERNS_ARE_SERVED) return it;
   return {
     ...it,
     patterns: [],

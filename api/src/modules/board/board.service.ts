@@ -52,8 +52,8 @@ import {
   whatThePlaceIsWaitingOn,
   whoIsBeingWaitedOn,
 } from './what-the-whole-place-is-waiting-on';
-import { PATTERN_NAME_BY_CODE, whatToAskAbout } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
+import { servedPatterns } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
@@ -1243,40 +1243,23 @@ export class BoardService {
     }
 
     if (has('patterns')) {
-      // WORK patterns only. Patterns that judge a PERSON - arc concentration
-      // and collusion risk - are computed but stay in the private report for the
-      // lead. Putting a collusion flag on a surface everyone reads would be
-      // public accusation. Non-negotiable.
+      /*
+       * WHAT KEEPS COMING UP, UNDER HAFSAH'S RULES AND NO OTHER. See patterns/who-reads-a-pattern.
+       *
+       * This section used to serve every SURFACED row on the ground to every reader, with its
+       * internal name as `label` and the library's question as `askThem`: "Blame Shifting" beside
+       * Ngozi's work on Femi's own board, and "Named Collaborator" on the lead's after one session.
+       * Now the reader's own patterns, or everybody's for whoever runs the check-in, after three
+       * periods, in plain words, and nothing else. The person-judging codes (collusion, arc
+       * concentration, E4, F5) have no plain name, so they never reach it.
+       */
       const detections = await this.prisma.patternDetection.findMany({
-        where: { groundId, status: 'SURFACED' },
-        select: { code: true, observationText: true, periodsObserved: true },
-        orderBy: { createdAt: 'desc' },
-        take: 12,
+        where: { groundId },
+        select: { id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true },
+        orderBy: { lastSeenAt: 'desc' },
+        take: 60,
       });
-      out.patterns = detections
-        .filter((d) => !PERSON_JUDGING_CODES.has(d.code))
-        .map((d) => ({
-          code: d.code,
-          // Only label a code this library actually knows. The model sometimes
-          // invents codes ("k5"), and a raw key on a shared board reads like a
-          // system leak - the observation text carries the meaning anyway.
-          label: PATTERN_NAME_BY_CODE.get(d.code) ?? null,
-          text: d.observationText,
-          periods: d.periodsObserved,
-          /*
-           * AND WHAT TO DO ABOUT IT, which the board was leaving in the library.
-           *
-           * "i would expect a coaching line or an assessment after, what do i do with this" - about
-           * "Direct questions about deliverables were met with unrelated statements about needs and
-           * blockers." Every pattern has carried a `probe` since the library was written: the
-           * question to put to somebody once the pattern has been seen, which is the entire reason
-           * a pattern is worth naming. It just never left the file.
-           *
-           * A question, not a verdict. A pattern is something the record has noticed more than
-           * once; the next move is asking the person about it.
-           */
-          askThem: whatToAskAbout(d.code),
-        }));
+      out.patterns = servedPatterns(detections as any, { participantId: me?.id ?? null, runsIt: runsThisGround });
     }
 
     if (has('poll')) {
@@ -1313,6 +1296,7 @@ export class BoardService {
       }
       out.whoOwnsWhat = onlyWhatThisReaderMaySee(out.whoOwnsWhat as any, whoMaySee);
       out.managerAlignment = onlyWhatThisReaderMaySee(out.managerAlignment as any, whoMaySee);
+      /* servedPatterns already serves a participant only their own; the wall stays round it as well. */
       if (out.patterns) out.patterns = onlyWhatThisReaderMaySee(out.patterns as any, whoMaySee);
       out.dependencies = onlyHandoffsTheyAreIn(out.dependencies as any, whoMaySee);
       if (out.checkInGrid) {
@@ -2042,13 +2026,3 @@ export class BoardService {
 
 }
 
-/**
- * Codes that judge a PERSON rather than the work. Computed, kept in the private
- * report for the lead, NEVER rendered on the shared board. Same principle as the
- * existing arc-signals lead-only gate.
- */
-const PERSON_JUDGING_CODES = new Set([
-  'COLLUSION_RISK',
-  'F5', 'E4', 'LOW_SPEC_MULTI_DIM',
-  'ARC_CONCENTRATED_FINISH',
-]);

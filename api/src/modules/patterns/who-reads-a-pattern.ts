@@ -1,4 +1,4 @@
-import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from './pattern-library';
+import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, whatToAskAbout } from './pattern-library';
 import { PATTERNS_ARE_SERVED } from './patterns-are-served';
 import { plainNameOf, type PlainKind } from './plain-pattern-names';
 import { plainVoice } from './plain-voice';
@@ -55,7 +55,7 @@ export interface APatternReader {
 export interface AServedPattern {
   id: string;
   /** Whose work it is about, for the page to place under that person. Never joined to a name here. */
-  aboutParticipantId: string;
+  participantId: string;
   /** True when the reader is the person it is about. */
   yours: boolean;
   kind: PlainKind;
@@ -63,8 +63,16 @@ export interface AServedPattern {
   heading: string;
   /** The engine's own sentence about the work, when it holds no internal name or code. */
   whatHappened: string | null;
+  /** The sessions it came up in, in order. */
+  sessions: number[];
   /** How often, as a sentence. */
   howOften: string;
+  /**
+   * For whoever runs the check-in, the library's question to put to the person, which is the next
+   * move a pattern is worth: asking, never deciding. Null for the person themselves, who is asked
+   * what is behind it instead.
+   */
+  askThem: string | null;
 }
 
 /** The headings the page puts over the list, from the prototype's screens. */
@@ -119,33 +127,48 @@ export function howOftenItCameUp(row: Pick<APatternRow, 'seenInSessions' | 'peri
 }
 
 /**
- * The patterns this reader may read, in the form they may read them. Nothing at all while
- * PATTERNS_ARE_SERVED is off; `on` exists for tests of the rules, and nothing else passes it.
+ * The stored rows this reader may read, for a builder that needs the code to look up the library's
+ * own sentence (the coaching note, the lead's probe list). Everything else serves `servedPatterns`.
+ * Nothing at all while PATTERNS_ARE_SERVED is off; `on` exists for tests of the rules, and nothing
+ * else passes it.
  */
+export function patternRowsThisReaderMayRead<T extends APatternRow>(
+  rows: readonly T[] | null | undefined,
+  reader: APatternReader,
+  opts: { on?: boolean } = {},
+): T[] {
+  if (!(opts.on ?? PATTERNS_ARE_SERVED)) return [];
+  return (rows ?? []).filter((row) => {
+    if (!row?.participantId || ALIGNMENT_FEED_ONLY_CODES.has(row.code)) return false;
+    if (!plainNameOf(row.code)) return false;
+    if (!hasBeenSeenInThreePeriods(row)) return false;
+    const yours = !!reader.participantId && row.participantId === reader.participantId;
+    /* A participant reads their own and nobody else's. */
+    return yours || reader.runsIt;
+  });
+}
+
+/** The patterns this reader may read, in the form they may read them. */
 export function servedPatterns(
   rows: readonly APatternRow[] | null | undefined,
   reader: APatternReader,
   opts: { on?: boolean } = {},
 ): AServedPattern[] {
-  if (!(opts.on ?? PATTERNS_ARE_SERVED)) return [];
-  const out: AServedPattern[] = [];
-  for (const row of rows ?? []) {
-    if (!row?.participantId || ALIGNMENT_FEED_ONLY_CODES.has(row.code)) continue;
-    const plain = plainNameOf(row.code);
-    if (!plain) continue;
-    if (!hasBeenSeenInThreePeriods(row)) continue;
-    const yours = !!reader.participantId && row.participantId === reader.participantId;
-    /* A participant reads their own and nobody else's. */
-    if (!yours && !reader.runsIt) continue;
-    out.push({
-      id: row.id,
-      aboutParticipantId: row.participantId,
-      yours,
-      kind: plain.kind,
-      heading: plain.name,
-      whatHappened: whatHappenedIn(row.observationText),
-      howOften: howOftenItCameUp(row, yours),
-    });
-  }
-  return out.sort((a, b) => Number(b.yours) - Number(a.yours));
+  return patternRowsThisReaderMayRead(rows, reader, opts)
+    .map((row) => {
+      const plain = plainNameOf(row.code)!;
+      const yours = !!reader.participantId && row.participantId === reader.participantId;
+      return {
+        id: row.id,
+        participantId: row.participantId,
+        yours,
+        kind: plain.kind,
+        heading: plain.name,
+        whatHappened: whatHappenedIn(row.observationText),
+        sessions: [...new Set(row.seenInSessions ?? [])].sort((a, b) => a - b),
+        howOften: howOftenItCameUp(row, yours),
+        askThem: yours ? null : whatToAskAbout(row.code),
+      };
+    })
+    .sort((a, b) => Number(b.yours) - Number(a.yours));
 }

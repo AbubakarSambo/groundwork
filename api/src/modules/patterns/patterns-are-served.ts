@@ -41,12 +41,3 @@
  */
 export const PATTERNS_ARE_SERVED = false;
 
-/**
- * Pattern rows on their way to something a person reads: the rows while the switch is on, and none
- * while it is off. Everything that turns `pattern_detections` into a page goes through this, so the
- * switch is one line rather than a rule each builder has to remember.
- */
-export function patternsAsServed<T>(rows: readonly T[] | null | undefined): T[] {
-  if (!PATTERNS_ARE_SERVED) return [];
-  return [...(rows ?? [])];
-}

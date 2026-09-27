@@ -441,8 +441,12 @@ export interface SomebodyInTheRoom {
   role: string | null;
   /** The product's own paragraph about them: what they said it was for, where they stand, what is in the way. */
   finding: string | null;
-  /** Behaviours seen often enough to be a pattern, in the engine's words. Never a verdict. */
-  patterns: { code: string; name: string; observation: string; seenInSessions: number[] }[];
+  /**
+   * Behaviours seen often enough to be a pattern, under their PLAIN name and never the internal one
+   * or the code: the lead reads the judgement, and the model writes the names it is given into it.
+   * Only the ones the lead may already read. See patterns/who-reads-a-pattern. Never a verdict.
+   */
+  patterns: { name: string; observation: string; seenInSessions: number[] }[];
   /** What they said they would do and nobody has closed. */
   openCommitments: string[];
 }
@@ -465,7 +469,7 @@ export function theRoom(
     if (p.role) lines.push(`    taken on for: ${p.role}`);
     if (p.finding) lines.push(`    what the record holds: ${p.finding}`);
     for (const x of p.patterns) {
-      lines.push(`    seen in sessions ${x.seenInSessions.join(', ')} [${x.code} ${x.name}]: ${x.observation}`);
+      lines.push(`    seen in sessions ${x.seenInSessions.join(', ')} (${x.name}): ${x.observation}`);
     }
     for (const c of p.openCommitments.slice(0, 6)) lines.push(`    said they would, nobody has closed it: "${c}"`);
     lines.push('');

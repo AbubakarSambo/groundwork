@@ -53,16 +53,19 @@ describe('who reads a pattern', () => {
     const [mine] = servedPatterns(ROWS, NGOZI, on);
     expect(mine).toEqual({
       id: 'pd1',
-      aboutParticipantId: 'p-ngozi',
+      participantId: 'p-ngozi',
       yours: true,
       kind: 'attention',
       heading: 'Problems are always put down to something outside',
       whatHappened: 'The failure to secure approvals is attributed entirely to the credit committee not clearing submitted files.',
+      sessions: [1, 2, 4],
       howOften: 'This came up in 3 of your check-ins, in sessions 1, 2 and 4.',
+      askThem: null,
     });
     const served = JSON.stringify(servedPatterns(ROWS, LEAD, on));
     for (const name of EVERY_INTERNAL_NAME) expect(served).not.toContain(name);
     expect(served).not.toMatch(/"(?:code|label|who|name)"|"B11"|"B3"/);
+    expect(servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd1')?.askThem).toBe('What was within your control in this situation?');
     expect(servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd2')?.howOften).toBe('This came up in 3 check-ins, in sessions 1, 2 and 3.');
   });
 

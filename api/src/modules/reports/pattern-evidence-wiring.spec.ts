@@ -206,8 +206,12 @@ describe('GW-PATTERN-WIRE-B: patterns do not reach the synthesis prompt at all',
   it('and the excluded codes reach nobody on the route that does exist', async () => {
     /* The section filters ALIGNMENT_FEED_ONLY_CODES before anything is named. Pinned on the source,
        because the mock above cannot reach sessionReport's own read. */
+    /* Through patterns/who-reads-a-pattern since 28 September 2026, where the filter now lives. */
     const src = require('fs').readFileSync(__dirname + '/reports.service.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    const at = src.indexOf('const patternsForPage = patternsAsServed(await this.prisma.patternDetection.findMany(');
-    expect(src.slice(at, at + 1200)).toContain('ALIGNMENT_FEED_ONLY_CODES.has(r.code)');
+    const at = src.indexOf('const patternsForPage = PATTERNS_ARE_SERVED');
+    expect(at).toBeGreaterThan(-1);
+    expect(src.slice(at, at + 1200)).toContain('servedPatterns(');
+    const rules = require('fs').readFileSync(__dirname + '/../patterns/who-reads-a-pattern.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(rules).toContain('ALIGNMENT_FEED_ONLY_CODES.has(row.code)');
   });
 });

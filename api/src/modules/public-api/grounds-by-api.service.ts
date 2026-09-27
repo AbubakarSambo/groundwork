@@ -13,7 +13,6 @@ import { Objective, senseCheck } from '../detectors/nobody-checked-the-managemen
 import { BoardService } from '../board/board.service';
 import { ConfigService } from '@nestjs/config';
 import { SeedInput, normalise, missingOwedTo, NOT_A_KIND } from './what-was-already-agreed';
-import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 
 /*
  * THE SITUATIONS AND MOMENTS WE HAVE, taken from the enum rather than typed out here.
@@ -867,9 +866,10 @@ export class GroundsByApiService {
         },
       }),
       this.prisma.detectorResult.findMany({
-        /* Not a pattern mirrored from a check-in while patterns are not served: this read is about
-           one named person, and it printed the code as "A B5 finding". See patterns/patterns-are-served. */
-        where: { organizationId, personExternalId, resolvedAt: null, ...(PATTERNS_ARE_SERVED ? {} : { sourcePatternDetectionId: null }) },
+        /* Never a pattern mirrored from a check-in, served or not: this read is about one named person,
+           it printed the code as "A B5 finding", and it is mirrored after one session, before the person
+           has read it. People read patterns only through patterns/who-reads-a-pattern. */
+        where: { organizationId, personExternalId, resolvedAt: null, sourcePatternDetectionId: null },
         select: { key: true, evidence: true, subjectExternalId: true, firstSeenAt: true },
       }),
       this.prisma.contribution.findMany({

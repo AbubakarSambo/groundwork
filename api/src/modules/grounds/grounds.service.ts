@@ -2,8 +2,8 @@ import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
-import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
-import { patternsAsServed } from '../patterns/patterns-are-served';
+import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
+import { servedPatterns, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
@@ -1522,9 +1522,9 @@ export class GroundsService {
          */
         resolution: { select: RESOLUTION_ON_THE_GROUND },
         patternDetections: {
-          select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
+          select: { id: true, participantId: true, code: true, periodsObserved: true, seenInSessions: true, status: true, observationText: true, createdAt: true },
+          orderBy: { lastSeenAt: 'desc' },
+          take: 60,
         },
       },
     });
@@ -1567,9 +1567,9 @@ export class GroundsService {
             roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
             resolution: { select: RESOLUTION_ON_THE_GROUND },
             patternDetections: {
-              select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
-              orderBy: { createdAt: 'desc' },
-              take: 10,
+              select: { id: true, participantId: true, code: true, periodsObserved: true, seenInSessions: true, status: true, observationText: true, createdAt: true },
+              orderBy: { lastSeenAt: 'desc' },
+              take: 60,
             },
           },
         });
@@ -1624,38 +1624,19 @@ export class GroundsService {
     const rawBrief = (ground as any).brief ?? null;
     const brief = typeof rawBrief === 'string' ? notTheWordParty(rawBrief) : rawBrief;
 
-    /* The board's alignment feed. Codes on ALIGNMENT_FEED_ONLY_CODES are the engine talking to
-       itself ("Session 2 will use a different approach") and never reach a person; only SURFACED
-       detections do, the same rule as the report. */
-    /* NOT A TEXT. The feed used to print the model's own observation sentence, which is how "the
-       individual" reached a shared board. It prints the pattern library's fixed sentence for the code,
-       the same words every time the same pattern appears, plus how many sessions it was seen across,
-       which is the fact that makes it a pattern. The model's sentence stays on the row for admin. */
-    const catalogue = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]));
-    /* And none at all while patterns are not served: this feed is on the board page, beside the
-       names. See patterns/patterns-are-served. */
-    const signals = patternsAsServed(ground.patternDetections)
-      .filter((pd) => !ALIGNMENT_FEED_ONLY_CODES.has(pd.code) && (pd as any).status !== 'CANDIDATE' && catalogue.has(pd.code))
-      .map((pd) => ({
-        id: pd.id,
-        groundId: id,
-        code: pd.code,
-        sessionNum: pd.periodsObserved,
-        periodsObserved: pd.periodsObserved,
-        /*
-         * THREE ANSWERS, BECAUSE THERE ARE THREE KINDS. A code saying somebody is carrying what
-         * nobody else picked up is not a good sign and is not a pattern in them; badged as either
-         * it says something untrue. See WHAT_A_CARRYING_CODE_IS_CALLED.
-         */
-        type: (isPositiveCode(pd.code)
-          ? 'Good sign'
-          : isCarryingCode(pd.code)
-            ? WHAT_A_CARRYING_CODE_IS_CALLED
-            : 'Pattern') as 'Good sign' | 'Pattern' | 'Carrying',
-        text: catalogue.get(pd.code)!.signal,
-        confidenceDelta: null,
-        createdAt: pd.createdAt.toISOString(),
-      }));
+    /*
+     * WHAT KEEPS COMING UP, ON THE CHECK-IN'S OWN PAGE, UNDER THE SAME RULES AS THE BOARD.
+     *
+     * This feed served the ten latest SURFACED rows on the ground to every reader of the page, with
+     * the code and a "Pattern" badge, so a participant read a colleague's pattern and anybody read
+     * good news seen once. It is now the reader's own patterns, or everybody's for whoever runs the
+     * check-in, after three periods, in plain words, built by patterns/who-reads-a-pattern. Nothing
+     * at all while patterns are not served, and then not even the reader lookup is made.
+     */
+    const signals = PATTERNS_ARE_SERVED
+      ? servedPatterns(ground.patternDetections as any, await this.patternReaderOf(ground as any, requestingUserId))
+          .map((p) => ({ ...p, groundId: id }))
+      : [];
 
     // Extract context notes from groundAuditLog (stored under key contextNotes).
     const rawLog = (ground as any).groundAuditLog;
@@ -4886,6 +4867,24 @@ export class GroundsService {
    * answers it: NotFound rather than Forbidden, so a stranger cannot tell a real id from a guess.
    */
   /** The one rule (who-may-read-this-check-in.ts), asked with the viewer's and the lead's departments resolved. */
+  /**
+   * WHO THIS READER IS, FOR A PATTERN. Their own row when they take part, and whether they run the
+   * check-in: its lead, whoever set it up, or an admin of the organisation it belongs to. A lead of
+   * a department who may open the check-in does not run it, and reads no pattern about anybody.
+   */
+  private async patternReaderOf(
+    ground: { organizationId: string; initiatorId: string | null; createdByUserId?: string | null; participants?: { id: string; userId: string | null }[] },
+    userId: string | undefined,
+  ): Promise<APatternReader> {
+    if (!userId) return { participantId: null, runsIt: false };
+    const mine = (ground.participants ?? []).find((p) => p.userId === userId) ?? null;
+    if (ground.initiatorId === userId || (!!ground.createdByUserId && ground.createdByUserId === userId)) {
+      return { participantId: mine?.id ?? null, runsIt: true };
+    }
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
+    return { participantId: mine?.id ?? null, runsIt: adminsThisOrg(user as any, ground) };
+  }
+
   private async assertMaySeeGround(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -6419,7 +6418,7 @@ export class GroundsService {
     sessions: { sessionNumber: number; completedAt: Date | null; status: string }[];
     specificity: { scores: number[]; avg: number; label: string } | null;
     confidence: { score: number; label: string; description: string } | null;
-    patterns: { observation: string; sessionNumber: number | null }[] | null;
+    patterns: AServedPattern[] | null;
     insightsLocked: boolean;
   }> {
     const participant = await this.prisma.groundParticipant.findFirst({
@@ -6428,8 +6427,7 @@ export class GroundsService {
         id: true,
         specificityHistory: true,
         patternDetections: {
-          where: { status: 'SURFACED' },
-          select: { observationText: true, lastPeriodNumber: true, code: true },
+          select: { id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true },
           orderBy: { lastSeenAt: 'desc' },
         },
         checkIns: {
@@ -6470,22 +6468,12 @@ export class GroundsService {
         : 'Your record is just beginning. One more session will start to show the full picture.';
 
     /*
-     * Diplomatic pattern observations - never name the code, never frame as a verdict.
-     *
-     * This held its own `new Set(['R3'])`, shadowing the imported POSITIVE_CODES, so it was a
-     * second answer to "which codes are good news" that could not follow the first. It did not
-     * matter while R3 was the only one; the moment seven more arrived it would have run every one
-     * of them through the softening meant for bad news, which is how a compliment ends up
-     * phrased as a concern.
+     * THEIR OWN PATTERNS, AND NOBODY ELSE'S, after three periods and in plain words. See
+     * patterns/who-reads-a-pattern. This page wrapped the engine's sentence in "Your record across
+     * sessions shows something worth noticing", served every SURFACED row including good news seen
+     * once, and gave no way to answer. None at all while patterns are not served.
      */
-    /* None while patterns are not served: the person cannot yet answer one. See patterns/patterns-are-served. */
-    const patterns = patternsAsServed(participant.patternDetections).map(d => ({
-      /* Carrying is not bad news about them either, so it is not softened as though it were. */
-      observation: isPositiveCode(d.code) || isCarryingCode(d.code)
-        ? d.observationText ?? ''
-        : diplomaticObservation(d.observationText ?? ''),
-      sessionNumber: d.lastPeriodNumber,
-    })).filter(p => p.observation.length > 0);
+    const patterns = servedPatterns(participant.patternDetections as any, { participantId: participant.id, runsIt: false });
 
     return {
       sessions,
@@ -6580,18 +6568,6 @@ export class GroundsService {
    * stamped, so the shared report surfaces it as a flagged update rather than
    * silently blending it in as if it had always been there. No undo in v1.
    */
-}
-
-/**
- * Rewrites a raw pattern observation into a diplomatic first-person reflection.
- * The original observation describes a behaviour; this wraps it so the contributor
- * reads it as something worth noticing in their own record - not a verdict.
- */
-function diplomaticObservation(raw: string): string {
-  if (!raw.trim()) return '';
-  // Strip any period tags from the three-period rule bookkeeping
-  const cleaned = raw.replace(/^\[period=\d+\]\s*/i, '').trim();
-  return `Your record across sessions shows something worth noticing: ${cleaned.charAt(0).toLowerCase()}${cleaned.slice(1)} It is worth being aware of as the record builds.`;
 }
 
 /**
