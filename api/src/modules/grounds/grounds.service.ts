@@ -1888,9 +1888,16 @@ export class GroundsService {
      * `leadAnswersToo` carries the one other fact those sentences need and the filtered list can no
      * longer supply: whether the lead is a party who answers a check-in herself, or manages without
      * one (`managingOnly`). Read here, off the RAW participants, before the peer filter runs.
+     *
+     * ONLY HER FIRST WORD (U.8 fifth review). Signup asks for "Your name" in one field and stores
+     * whatever was typed as `firstName` (AuthPage.tsx, auth.service.ts), so a lead who signed up as
+     * "Rukia Otieno" had that whole string sitting in a field called `leadFirstName` - which is not
+     * what it says it is, and prints her surname in a sentence ("Rukia Otieno also answers a
+     * check-in.") that the prototype never puts a surname in. Trimmed to one word here, at the one
+     * place this field is built, rather than by every reader of it.
      */
     const leadParticipantRaw = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') as any;
-    const leadFirstName = leadParticipantRaw?.user?.firstName ?? null;
+    const leadFirstName = (leadParticipantRaw?.user?.firstName ?? '').trim().split(/\s+/)[0] || null;
     const leadAnswersToo = !!leadParticipantRaw?.userId && !leadParticipantRaw?.managingOnly;
 
     const participantsWithCheckIns = (ground.participants ?? [])

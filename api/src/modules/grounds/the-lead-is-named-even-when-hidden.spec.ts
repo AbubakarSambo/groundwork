@@ -73,3 +73,54 @@ describe('Amani, a participant on a check-in that hides everyone else from each 
     expect(res.leadAnswersToo).toBe(true);
   });
 });
+
+/**
+ * ONLY THE FIRST WORD (U.8 fifth review). Signup stores "Your name" whole as `firstName`
+ * (AuthPage.tsx, auth.service.ts), so a lead who typed "Rukia Otieno" has that whole string sitting
+ * in `user.firstName`. `leadFirstName` is meant to be, and say it is, her FIRST name alone.
+ */
+function serviceForWholeName(leadWholeName: string) {
+  const participants = [
+    { id: 'pAmani', userId: 'userAmani', email: 'amani@example.test', partyType: 'PARTICIPANT', roleAsDescribed: null, user: { firstName: 'Amani', lastName: 'Juma' }, createdAt: new Date('2026-09-01') },
+    {
+      id: 'pLead', userId: 'userLead', email: 'lead@example.test', partyType: 'INITIATOR', roleAsDescribed: null,
+      managingOnly: false, user: { firstName: leadWholeName, lastName: '' }, createdAt: new Date('2026-08-31'),
+    },
+  ];
+  const ground: any = {
+    id: 'g1', organizationId: 'org1', initiatorId: 'userLead', createdAt: new Date(), scenario: 'NEW_HIRE',
+    peersVisibleToEachOther: false, timelineDays: null, restrictExternalVisibility: true,
+    participants,
+    checkIns: [{ id: 'cAmani', participantId: 'pAmani', sessionNumber: 1, status: 'NOT_STARTED' }],
+    resolution: null, patternDetections: [], report: null,
+  };
+  const prisma: any = {
+    groundBaseline: { findFirst: jest.fn(async () => null) },
+    personObjective: { findMany: jest.fn(async () => []) },
+    ground: { findFirst: async () => ground, findUnique: async () => ground },
+    user: { findUnique: jest.fn(async () => ({ role: 'MEMBER', organizationId: 'org1' })) },
+    groundParticipant: { findFirst: async () => null, findMany: async () => [] },
+    organization: { findUnique: async () => ({ subscriptionPlan: 'FREE', subscriptionStatus: 'ACTIVE', freeExtensionUsed: false }) },
+    leadContextNote: { findMany: async () => [] },
+    checkIn: { aggregate: async () => ({ _max: { sessionNumber: 1 } }), findMany: async () => [], count: async () => 0 },
+  };
+  return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { respond: async () => '' } as any, undefined);
+}
+
+describe('leadFirstName holds only the first word, whatever signup stored', () => {
+  it('trims a whole name typed at signup down to its first word', async () => {
+    const res: any = await serviceForWholeName('Rukia Otieno').get('g1', 'org1', 'userAmani');
+    expect(res.leadFirstName).toBe('Rukia');
+    expect(JSON.stringify(res.leadFirstName)).not.toMatch(/Otieno/);
+  });
+
+  it('leaves an already-single first name untouched', async () => {
+    const res: any = await serviceForWholeName('Rukia').get('g1', 'org1', 'userAmani');
+    expect(res.leadFirstName).toBe('Rukia');
+  });
+
+  it('is null, not an empty string, when there is nothing to trim', async () => {
+    const res: any = await serviceForWholeName('   ').get('g1', 'org1', 'userAmani');
+    expect(res.leadFirstName).toBeNull();
+  });
+});
