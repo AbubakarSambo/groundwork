@@ -8,6 +8,7 @@ import { BOARD_MUTED_INK, BOARD_BODY_INK, BOARD_ACCENT_INK } from '@/components/
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { CheckInLinks } from './CheckInLinks'
 import { boardApi, type BoardPresent, type CoverageVariant } from '@/api/board'
 import { groundsApi } from '@/api/grounds'
 import { plannedSessionsFor } from '@/lib/sessionCount'
@@ -1261,6 +1262,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             </Card>
           </>
         )}
+
+        {/* Links between check-ins (D3, U.16): drawn only when the server serves this reader any. */}
+        {id && <CheckInLinks groundId={id} label={(groundForSignals as any)?.label ?? null} />}
 
         {shown.checkInGrid && b.checkInGrid && (() => {
           /** Does any row have a role worth a column of its own? */
