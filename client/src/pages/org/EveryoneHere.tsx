@@ -113,7 +113,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
           */}
           <span>{howManyHere(status.data?.people?.count ?? everybody.length, status.data?.subscription?.plan ?? status.data?.onTheHouse?.plan, status.data?.people?.cap)}</span>
           {status.data?.people && everybody.some((m) => m.role === 'GUEST') && (
-            <span>Guests with no account don’t.</span>
+            <span>Guests with no account don’t take a seat.</span>
           )}
         </div>
         <div className="gw-people-filters">
