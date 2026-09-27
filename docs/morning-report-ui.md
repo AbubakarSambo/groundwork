@@ -149,6 +149,10 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **27 September: to go faster, a module gets a full review only in its first round; a re-review checks
+  only what was found, plus one quick click-through of the main path. The builder fixes all findings in
+  one round. One helper at a time, full suites once per module. The builder and tester run on Sonnet 5,
+  the reviewer on Opus 5.5.**
 
 ## Every module since U.2, and its review
 
@@ -276,6 +280,38 @@ this work. Now everyone who does not run a check-in gets only the short version 
 the people in it, from one rule used by both the list and the single check-in. A participant's own
 check-in conversation can still fall back to the lead's brief when the short version is missing; that
 is the engine's code, so I have asked the engine workspace (request 41).
+
+### 0c. Every reader of a report gets everyone's rating, not only their own, and the Done page's "Only you see it" is not true yet
+
+**Found by the U.8 review on 27 September.** CLAUDE.md's rule is plain: "Leads never see how a
+person's answers were rated." Two places in the engine's own code disagree with it. `own-reads-only.ts`,
+the file that is supposed to enforce exactly this rule, strips a participant's report down to their own
+rating before it reaches them, but for a lead or an org admin it hands back every participant's rating
+untouched (`if (viewerIsLead) return withoutGuides;`, before the stripping that follows for everyone
+else) - `specificityNotes`, `specificitySignal`, `pictureConfidence`, `specificityCauses`, and the
+per-party `specificityLabel`, for every person in the check-in. And a report that is still forming - the
+one a participant reads once they have answered but before everyone has - skips that stripping function
+entirely for a participant too, in `reports.service.ts` around line 5666, unlike the two other places in
+the same file that call it. So today, a lead reads how every one of their reports rated everyone's
+answers, and a participant who answers early can read the same about their colleagues on the forming
+report.
+
+**Who this reaches.** Leaks to a lead or admin, and, on a forming report, to a participant who has
+already answered - never to a participant who has not answered yet (a different rule keeps the whole
+report from them until they have).
+
+**The Done page says "This is about the check-in. Only you see it."** on "How checkable today's
+check-in was". That sentence is true for the specific five-things read it sits under (that one genuinely
+never left this file), but false as a description of the report as a whole, since the report the person
+is being told is theirs alone in fact carries everyone's ratings to their lead. I have left the Done
+page's wording exactly as it is rather than rewrite around an engine bug - see request 43 in
+`docs/requests-to-engine.md`, written URGENT, with a privacy test asked as lead, participant and admin
+on both the forming and the released report.
+
+**This is very likely in the live product too.** `own-reads-only.ts` and the relevant part of
+`reports.service.ts` are engine code, and this branch has not touched either file; nothing about this
+defect is specific to `wip/prototype-ui`. **My recommendation:** treat request 43 as urgent on the live
+product as well, not only on this branch.
 
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
@@ -2950,6 +2986,74 @@ passed again (2,292). The privacy leak U.8 closed has a second half in the engin
 still tells a lead a person said "nothing checkable" from the same rating. That is engine code, so it
 is request 8 to the engine workspace. **Not ticked,** because no review can sign in (item 14).
 
+### U.8 The check-in screens: first review's findings, all fixed in one round
+
+The first review of U.8 found eight things, on the test check-in "Sales team, Q3" at Kilima Traders
+U8 (lead Rukia Otieno, participants Baraka and Neema). All eight are fixed, in one commit each:
+
+- **The most serious: every reader of a report gets everyone's rating, not only their own.** This is
+  the engine's own code (`own-reads-only.ts`, `reports.service.ts`), so nothing on the screens changed
+  for it - see item 0c above and request 43, written URGENT. The Done page's "This is about the
+  check-in. Only you see it." is left exactly as it reads until the engine fixes this; changing the
+  words now would hide a real leak behind a truer-sounding sentence.
+- **"How checkable today's check-in was" no longer says something was missing when it was given.**
+  "This was not there yet." became "Groundwork did not pick this up this time." for the reader who
+  cannot see it, and "Groundwork found this." for the reader who can (both screen-reader-only text).
+  The read itself still misses real content on the check-in this was found on; asked of the engine
+  as request 45.
+- **First names, where the prototype writes one.** Signup keeps storing whatever name somebody
+  typed, whole, in `firstName` - that has not changed. "Done. Thanks, Rukia." and "Rukia also answers
+  a check-in." now take only the first word of it, through one small helper
+  (`the-first-word-of-a-name.ts`), matching the prototype's own "Done. Thanks, Miriam."
+- **The lead's Done-page roster reads as sentences.** "Rukia Otieno Answered" / "Baraka U8 Not
+  joined yet" is now "You have answered.", "Baraka has not joined yet.", "Neema has not joined yet.",
+  with a header naming who still has to answer ("Baraka and Neema still have to answer.") instead of
+  a count next to the word "session".
+- **No more names joined to a status word with a dot.** The check-in's roster read "Baraka · checked
+  in" / "You · waiting"; now "Baraka has checked in." / "You have not checked in yet." The
+  check-in-list header's "· Session 1 of 12", "· 76 days remaining" and "· Next session opens 4
+  October" are now "This is session 1 of 12.", "76 days are left." and "The next session opens on 4
+  October."
+- **Opening a session says the wait can be long, once it has gone on a few seconds.** It can
+  genuinely take up to a minute (several model calls in `ConversationService.open`); after four
+  seconds the screen now also says "Getting your first question ready. This can take up to a
+  minute." Asked of the engine whether the calls can be fewer or faster (request 44).
+- **The Paste text panel speaks plainly, and says it starts private.** "Paste an email, Slack
+  thread, meeting notes, or any text that supports what you are describing. The tool will use it to
+  ask sharper questions." is now "Paste an email, a message or your notes. It starts private to
+  you.", with "What is it? You can skip this." and "Add it". Checked against the server: pasted text
+  goes up through the same upload endpoint as a file, so it already carries the same private-by-default
+  rule as any upload (`who-can-see-a-document.ts`) - the words now say what was already true. The lone
+  "Session 1" that sat at the bottom left of an ordinary session's composer is gone; the prototype
+  never prints a bare session number there.
+- **Smaller finds, all fixed:**
+  - A participant's end card no longer claims a next session is "open now" when it has not even been
+    scheduled yet (a real bug, not only wording - `whenTheNextOneOpens` treated no date the same as a
+    past date).
+  - The setup-to-check-in seam reads as sentences: "Setup is done. Your check-in starts here.", "End
+    session" with no arrow, "This is session 1. It is your private report." / "…You set the context
+    here.", "You gave 2 answers. More answers make the report stronger." Whether the setup conversation
+    itself should be the lead's first check-in is a bigger question than wording (Hafsah decided
+    setup is not the lead's first check-in - item 17, point 13); recorded here rather than changed.
+  - Neema's organisation switcher read "Your organisation" / "Takes part" instead of "Kilima Traders
+    U8". The actual fault: `teamInvite()` gave a newly invited person's `User` row an `organizationId`
+    but never wrote the matching `OrganizationMembership` row, which `myOrganizations()`'s self-healing
+    branch was papering over on read. Fixed at the source (`auth.service.ts`), not by working around it
+    on the screen.
+  - The board's engine-written line naming a specific private file ("The attached team-plan.txt
+    document confirms the split…") to people who cannot open it is engine text; added to request 46
+    and to Needs Hafsah, since it touches a privacy default.
+
+**Tests:** each fixed screen rendered as the lead, a participant and (where it applies) an admin, and
+the exact words checked - `WhoIsStillOut.spec.tsx` (new), `who-is-in-this.spec.tsx`,
+`the-check-in-as-a-person-reads-it.spec.tsx`, `ChatPage.openIsSlow.spec.tsx` (new),
+`what-the-end-of-a-check-in-can-say.spec.ts`, `a-number-is-a-measurement.spec.ts`,
+`one-press-is-one-call.spec.tsx`, `the-page-says-what-it-is-doing.spec.ts`, and
+`team-invite-member-cap.spec.ts` / `inviting-with-a-role-and-a-name.spec.ts` on the API side for the
+organisation-switcher fix. Every changed test's reason is in its own commit: each checked old, dot-joined
+or otherwise defective wording, never old behaviour being removed for its own sake. Only the tests for
+files changed (`--maxWorkers=2`), both type checks, run; no server started.
+
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 
 - **The lead's judgement on the board reads as sentences.** "What this cannot tell you" and "What
@@ -4263,8 +4367,8 @@ none of them changed. **Not ticked,** until its review.
 
 ## Found on the way, for later tasks
 
-- **For U.8 (the check-in screens):** the check-in page reads "You · waiting" and "U6g · waiting", pieces joined with dots.
-- **Also for U.8:** an invited person who opens their link is signed in and then waits on "Opening your session…" for more than 13 seconds, with no server error. It happened for two people in the U.6 reviews. Someone waiting that long may give up.
+- **For U.8 (the check-in screens): fixed in the first review round.** The check-in page read "You · waiting" and "U6g · waiting", pieces joined with dots. Now full sentences ("You have not checked in yet."); see the U.8 first-review section above.
+- **Also for U.8: fixed in the first review round.** An invited person who opens their link is signed in and then waits on "Opening your session…" for more than 13 seconds, with no server error. It happened for two people in the U.6 reviews. The screen now says, after four seconds, that the wait can take up to a minute; the underlying wait itself is asked of the engine (request 44).
 - **For U.5 (Today):** "A decision for you." sits over a first check-in on Today, which is not a decision.
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
