@@ -593,6 +593,13 @@ read the local test password for local reviews, can only be given by you. A simp
 2 may also work: you ask in chat for the reviewer to make throwaway local accounts with an
 `@example.test` address and sign in through the browser, as the U.2 reviews did.
 
+**Answered by you on 27 September: the simpler way.** The reviewer creates its own throwaway
+`@example.test` accounts on the local database (`groundwork_dev` only), by signing up with a password
+through the browser, and signs in through the browser, as the U.2 reviews did. It never writes a
+password into a file or passes one on the command line, and no safety setting changes. When U.19 is
+built and tested, the 16 waiting reviews run one module at a time, oldest first, each followed by its
+fixes, a commit, this report and a push. U.20 starts only when all 16 have passed.
+
 ### 15. People, roles and access (U.4): what needs you
 
 1. **Admins and performance plans. A privacy question.** Today the backend lets every admin read and
