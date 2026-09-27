@@ -515,7 +515,8 @@ export class GroundsService {
            a-cohort-is-not-a-payroll. */
         freeParticipantCap: dto.freeParticipantCap ?? howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
         isFreeGround,
-        sessionsBalance: 1,
+        /* One session in hand, unless the free plan has stopped for this organisation (U.19). */
+        sessionsBalance: canCreate.sessionsToStart ?? 1,
         ...(canCreate.freeReason === 'ACCESS_CODE' && canCreate.codeId
           ? { accessCodeId: canCreate.codeId, freeReason: 'ACCESS_CODE' }
           : canCreate.freeReason === 'FREE_TIER'
@@ -708,7 +709,7 @@ export class GroundsService {
           joinToken: crypto.randomBytes(24).toString('hex'),
           freeParticipantCap: howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
           isFreeGround,
-          sessionsBalance: 1,
+          sessionsBalance: canCreate.sessionsToStart ?? 1,
           ...(canCreate.freeReason === 'FREE_TIER' ? { freeReason: 'FREE_TIER' } : {}),
         } as any,
       });

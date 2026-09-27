@@ -4,7 +4,7 @@ import { Cron } from '@nestjs/schedule';
 import type Stripe from 'stripe';
 import { PrismaService, CronLock } from '../prisma/prisma.service';
 import { StripeService } from './stripe.service';
-import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT } from './pricing.service';
+import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT, freePlanApplies } from './pricing.service';
 
 /**
  * WHAT SOMEBODY READS WHEN THEY RUN OUT OF SEATS.
@@ -19,6 +19,15 @@ import { PricingService, PLAN_LABELS, DEFAULT_FREE_GROUND_LIMIT } from './pricin
 export function freeSeatLimitMessage(limit: number): string {
   return `The free plan covers ${limit} people, including you, so you can invite ${limit - 1} others. Subscribe to add more people.`;
 }
+
+/**
+ * WHAT A NEW ORGANISATION WITH NO PLAN READS, once the free trial's switch is on and the free plan has
+ * stopped for new organisations (Hafsah, 27 September). Never read while the switch is off.
+ */
+export const NO_PLAN_TO_OPEN = 'Your organisation has no plan yet. Choose one on Plan and billing to open a check-in.';
+export const NO_PLAN_TO_ADD = 'Your organisation has no plan yet. Choose one on Plan and billing to add people.';
+/* The prototype's words (upgrade.txt), for anybody in a check-in whose organisation has no plan. */
+export const PAUSED_UNTIL_THEY_SUBSCRIBE = 'This check-in is paused until your team subscribes. Only an admin can do that, and your answers so far are kept.';
 
 export function paidSeatLimitMessage(planLabel: string, cap: number): string {
   return `Your ${planLabel} plan covers ${cap} people, including you. Move to a larger plan to add more.`;
@@ -64,6 +73,24 @@ export class BillingService {
   ) {}
 
   /**
+   * WHETHER THE FREE PLAN APPLIES TO THIS ORGANISATION. Always yes while the free trial's switch is
+   * off, so nothing about today's billing changes; once it is on, only for an organisation that was
+   * already here (see `freePlanApplies`). Read defensively: a pricing read that fails means "yes",
+   * never a team cut off.
+   */
+  private async theFreePlanAppliesTo(org: { createdAt?: Date | null } | null | undefined): Promise<boolean> {
+    const trial = typeof (this.pricing as any)?.getFreeTrial === 'function'
+      ? await this.pricing.getFreeTrial().catch(() => null)
+      : null;
+    return freePlanApplies(trial, org?.createdAt ?? null);
+  }
+
+  /** The seat limit of somebody with no cover: the free plan's, or only the person who created it. */
+  private async theUncoveredSeatLimit(org: { createdAt?: Date | null } | null | undefined): Promise<number> {
+    return (await this.theFreePlanAppliesTo(org)) ? this.pricing.getFreeMemberLimit() : 1;
+  }
+
+  /**
    * Session balance gate. Returns allowed: true when the ground has at least one
    * session remaining, or the org has an active subscription (unlimited sessions).
    */
@@ -90,6 +117,7 @@ export class BillingService {
           subscriptionPlan: true, subscriptionStatus: true, freeSessionsUsed: true, freeExtensionUsed: true,
           /* A free run covers exactly what the plan it was given covers - see whatCoversThem. */
           freeUntil: true, freePlan: true,
+          createdAt: true,
         },
       });
       if (org && isCovered(org)) {
@@ -98,6 +126,11 @@ export class BillingService {
 
       const balance = ground?.sessionsBalance ?? 0;
       if (balance > 0) return { allowed: true, sessionsBalance: balance };
+
+      /* Once the free plan has stopped for this organisation, there is nothing free left to offer. */
+      if (org && !(await this.theFreePlanAppliesTo(org))) {
+        return { allowed: false, reason: PAUSED_UNTIL_THEY_SUBSCRIBE, sessionsBalance: 0, freeExtensionAvailable: false };
+      }
 
       return {
         allowed: false,
@@ -135,16 +168,24 @@ export class BillingService {
   async canCreateGround(
     organizationId: string,
     accessCode?: string,
-  ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FREE_TIER' | 'ACCESS_CODE'; codeId?: string; groundsUsed?: number }> {
+  ): Promise<{ allowed: boolean; reason?: string; freeReason?: 'FREE_TIER' | 'ACCESS_CODE'; codeId?: string; groundsUsed?: number; noPlan?: true; sessionsToStart?: number }> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true, freeUntil: true, freePlan: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, careFeeStatus: true, freeUntil: true, freePlan: true, createdAt: true },
     });
     if (!org) return { allowed: false, reason: 'Organization not found' };
 
+    /*
+     * THE FREE FIRST SESSION GOES WITH THE FREE PLAN. A check-in opened under cover starts with one
+     * session in hand, which is the session it may still run after the cover ends. Once the free
+     * trial's switch is on, an organisation the free plan no longer applies to starts with none.
+     */
+    const freePlan = await this.theFreePlanAppliesTo(org);
+    const noFreeSession = freePlan ? {} : { sessionsToStart: 0 };
+
     // 1. Paying, or inside a free run we gave them: unlimited grounds either way.
     if (isCovered(org)) {
-      return { allowed: true };
+      return { allowed: true, ...noFreeSession };
     }
 
     // 1b. Org is on legacy active care fee plan. Deliberately does NOT return
@@ -173,6 +214,12 @@ export class BillingService {
         return { allowed: false, reason: 'Access code has already been fully redeemed' };
       }
       return { allowed: true, freeReason: 'ACCESS_CODE', codeId: code.id };
+    }
+
+    // 3a. No free plan for this organisation (the free trial's switch is on, and it is new): pay first.
+    if (!freePlan) {
+      if (careFeeCovers) return { allowed: true, ...noFreeSession };
+      return { allowed: false, reason: NO_PLAN_TO_OPEN, noPlan: true };
     }
 
     // 3. Free tier: up to the limit a platform admin has set, defaulting to what we shipped.
@@ -267,7 +314,7 @@ export class BillingService {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: {
-        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true,
+        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true, createdAt: true,
       },
     });
     if (!org) return null;
@@ -275,7 +322,7 @@ export class BillingService {
     const covered = whatCoversThem(org);
     const cap = covered.plan
       ? await this.pricing.memberCapFor(covered.plan as any)
-      : await this.pricing.getFreeMemberLimit();
+      : await this.theUncoveredSeatLimit(org);
     if (cap === null || cap === undefined) return null;
     /* Never negative: an organisation already over its cap has no room, not room owed back. */
     return Math.max(0, cap - (await this.seatsTaken(organizationId)));
@@ -291,13 +338,13 @@ export class BillingService {
   async seatsIncludedFor(organizationId: string): Promise<number | null> {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true, createdAt: true },
     });
     if (!org) return null;
     const covered = whatCoversThem(org);
     const cap = covered.plan
       ? await this.pricing.memberCapFor(covered.plan as any)
-      : await this.pricing.getFreeMemberLimit();
+      : await this.theUncoveredSeatLimit(org);
     return cap ?? null;
   }
 
@@ -305,7 +352,7 @@ export class BillingService {
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       select: {
-        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true,
+        subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true, createdAt: true,
       },
     });
     if (!org) return { allowed: true };
@@ -327,9 +374,12 @@ export class BillingService {
      * stopped from adding more.
      */
     if (!subscribed) {
-      const freeLimit = await this.pricing.getFreeMemberLimit();
+      /* The same limit the billing page reports: the free plan's, or, once the free plan has stopped
+         for this organisation, nobody but the person who created it until it pays. */
+      const freeLimit = await this.theUncoveredSeatLimit(org);
       if (count >= freeLimit) {
-        return { allowed: false, reason: freeSeatLimitMessage(freeLimit) };
+        const free = await this.theFreePlanAppliesTo(org);
+        return { allowed: false, reason: free ? freeSeatLimitMessage(freeLimit) : NO_PLAN_TO_ADD };
       }
       return { allowed: true };
     }
@@ -385,9 +435,11 @@ export class BillingService {
     if (ground.isFreeGround) throw new ForbiddenException('This check-in has unlimited free sessions - nothing to extend.');
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { freeExtensionUsed: true },
+      select: { freeExtensionUsed: true, createdAt: true },
     });
     if (!org) throw new NotFoundException('Organization not found');
+    /* The free extension is part of the free plan: none for an organisation it no longer applies to. */
+    if (!(await this.theFreePlanAppliesTo(org))) throw new ForbiddenException(NO_PLAN_TO_OPEN);
     if (org.freeExtensionUsed) throw new ForbiddenException('Your organisation has already used its one free extension. This does not reset; subscribing is the way to keep going.');
 
     const now = new Date();
@@ -833,6 +885,11 @@ export class BillingService {
     };
     people: { count: number; cap: number | null };
     /**
+     * True when nothing covers the organisation and the free plan applies to it. False when it has no
+     * plan and the free plan has stopped for it (the free trial's switch is on and it is new).
+     */
+    onTheFreePlan: boolean;
+    /**
      * Set while an organisation is inside a free run we gave them, so the page can say it plainly:
      * what it covers and the day it ends. Null when they are paying or on the free tier.
      */
@@ -858,6 +915,7 @@ export class BillingService {
         freeUntil: true,
         freePlan: true,
         freeTrialStartedAt: true,
+        createdAt: true,
       },
     });
     if (!org) throw new NotFoundException('Organization not found');
@@ -868,10 +926,11 @@ export class BillingService {
      * number on this page and the number that refuses an invitation cannot be different numbers.
      */
     const covers = whatCoversThem(org);
+    const onTheFreePlan = !covers.plan && (await this.theFreePlanAppliesTo(org));
     const peopleCap =
       covers.plan
         ? await this.pricing.memberCapFor(covers.plan as any)
-        : await this.pricing.getFreeMemberLimit();
+        : await this.theUncoveredSeatLimit(org);
 
     /* Three counts, in parallel with each other and cheap - all indexed by organisation. */
     const [everyGround, reportsOut, tookPart] = await Promise.all([
@@ -935,6 +994,7 @@ export class BillingService {
        * and showing no ceiling to the only people who have one is how person six got added.
        */
       people: { count: peopleCount, cap: peopleCap },
+      onTheFreePlan,
       /* Said plainly, with the day it ends, because a free run nobody can see ends as a surprise. */
       onTheHouse: covers.covers === 'on the house' && covers.until && org.freePlan
         /* `freeTrial` says these are the free trial's months (U.19), not a free run we gave by hand. */
