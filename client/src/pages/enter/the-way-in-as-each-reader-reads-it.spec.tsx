@@ -142,16 +142,26 @@ describe('the list itself', () => {
   })
 })
 
-describe('a name, never a type (U.6 review)', () => {
-  /* Read live: a check-in about Daniel was saved as "Drift". */
-  it('names it from the person and how long it runs', async () => {
-    const { aNameForIt } = await import('./EntryChatPage')
-    expect(aNameForIt({ peopleNamed: ['Daniel'], timelineDays: 42 })).toBe('Daniel, the next six weeks')
-    expect(aNameForIt({ peopleNamed: ['Daniel (sales manager)'], endsOn: '2026-11-06' })).toBe('Daniel, until 6 November')
-    expect(aNameForIt({ peopleNamed: ['Faith'], timelineDays: 90 })).toBe('Faith, the next 90 days')
-    expect(aNameForIt({ peopleNamed: ['Daniel'] })).toBe('Daniel')
-    expect(aNameForIt({ firstDescription: 'our sales targets this quarter' })).toBe('Our sales targets this quarter')
-    expect(aNameForIt({})).toBe('Untitled')
+describe('a name, never the classifier\'s type (U.6 review)', () => {
+  /* Read live: set up as "Help someone get back on track", classified as DRIFT, saved as "Drift". The
+     name is the topic the LEAD picked, in plain words (a-label-is-a-subject-line.spec.ts keeps it the
+     topic and never the person). */
+  it('says the situation the lead picked in plain words, or her own words', async () => {
+    const { fallbackGroundName } = await import('./EntryChatPage')
+    const { SCENARIO_LABELS } = await import('@/lib/scenario-catalog')
+    expect(fallbackGroundName('PIP')).toBe('Help someone get back on track')
+    expect(fallbackGroundName(SCENARIO_LABELS.PIP)).toBe('Help someone get back on track')
+    expect(fallbackGroundName('Connect Goals Across the Team')).toBe('Connect goals across the team')
+    expect(fallbackGroundName(undefined, 'our sales targets this quarter')).toBe('Our sales targets this quarter')
+    expect(fallbackGroundName()).toBe('Untitled')
+    expect(fallbackGroundName('PIP')).not.toMatch(/Drift|Pip/)
+  })
+  it('is handed the lead\'s pick, never the classified situation', async () => {
+    const { readFileSync } = await import('fs')
+    const { join } = await import('path')
+    const src = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
+    expect(src.match(/groundLabel: groundName\.trim\(\) \|\| fallbackGroundName\(theSituationTheLeadPicked\(\), onboardingSelections\.initial\),/g)).toHaveLength(2)
+    expect(src).not.toMatch(/fallbackGroundName\(onboardingSelections\.classifiedScenario/)
   })
 })
 

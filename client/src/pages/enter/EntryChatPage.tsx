@@ -1055,26 +1055,29 @@ export function itIsStillAskingSomething(reply: string): boolean {
 }
 
 /*
- * A NAME, NEVER A TYPE (U.6 review). This returned the classified scenario as the name when the lead
- * gave none, so a check-in about Daniel was called "Drift" in the sidebar, on his invitation and on
- * the board. A situation is what kind of check-in it is; its name says who and when, as the
- * prototype names them ("Daniel, the next six weeks", "Faith, first 90 days"). So: the first person
- * the lead named and how long it runs, from the end they chose or the length they said; the person
- * alone when nothing says how long; the lead's own first words when nobody was named. Never the type.
+ * THE NAME WHEN THE LEAD GAVE NONE: THE TOPIC SHE CHOSE, IN PLAIN WORDS (U.6 review).
+ *
+ * A check-in's label is the subject line of the invitation email ("{founder} invited you to check in
+ * on: {label}"), so it names the topic and never the person: see a-label-is-a-subject-line.spec.ts.
+ * The prototype names check-ins after the person ("Daniel, the next six weeks"); that disagreement is
+ * Hafsah's to settle (item 17 of docs/morning-report-ui.md), and until then this rule stands.
+ *
+ * Read live: a check-in the lead set up as "Help someone get back on track" was named "Drift", because
+ * this was handed the CLASSIFIER's situation, which had switched it. It is handed the situation the
+ * LEAD picked now (theSituationTheLeadPicked), and a known situation is said in its plain words from
+ * the catalogue. The underscore rule below stays for a key the catalogue does not know.
  */
-const SMALL_NUMBERS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-export function aNameForIt(a: { peopleNamed?: string[]; endsOn?: string; timelineDays?: number | null; firstDescription?: string }): string {
-  const person = (a.peopleNamed ?? []).map((p) => p.trim().split(/[\s,(]+/)[0]?.replace(/[^\p{L}'-]/gu, '')).find(Boolean) ?? ''
-  const period = (() => {
-    if (a.endsOn) { const d = new Date(`${a.endsOn}T00:00:00`); return `until ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}` }
-    const days = a.timelineDays ?? 0
-    if (days <= 0) return ''
-    if (days % 7 === 0 && days / 7 <= 12) { const w = days / 7; return w === 1 ? 'the next week' : `the next ${SMALL_NUMBERS[w]} weeks` }
-    return `the next ${days} days`
-  })()
-  if (person) return period ? `${person}, ${period}` : person
-  const said = (a.firstDescription ?? '').trim().replace(/\s+/g, ' ')
+export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
+  const known = classifiedScenario ? (SCENARIO_LABELS as Record<string, string>)[classifiedScenario] : undefined
+  if (known) return sentenceCase(known)
+  const fromScenario = (classifiedScenario ?? '')
+    .trim()
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/^\w/, (c) => c.toUpperCase())
+  if (fromScenario) return fromScenario
+
+  const said = (firstDescription ?? '').trim().replace(/\s+/g, ' ')
   if (said) {
     const clipped = said.length > 60 ? said.slice(0, 57).trimEnd() + '...' : said
     return clipped.replace(/^\w/, (c) => c.toUpperCase())
@@ -2095,7 +2098,7 @@ export function EntryChatPage() {
    */
   function buildCommitPayload() {
     return {
-        groundLabel: groundName.trim() || aNameForIt({ peopleNamed: onboardingSelections.peopleNamed, endsOn: lastCheckInBy, timelineDays: plannedFrom?.timelineDays, firstDescription: onboardingSelections.initial }),
+        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked(), onboardingSelections.initial),
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
@@ -2377,7 +2380,7 @@ export function EntryChatPage() {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
       const patch = {
-        groundLabel: groundName.trim() || aNameForIt({ peopleNamed: onboardingSelections.peopleNamed, endsOn: lastCheckInBy, timelineDays: plannedFrom?.timelineDays, firstDescription: onboardingSelections.initial }),
+        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked(), onboardingSelections.initial),
         orgName: orgName.trim() || undefined,
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
@@ -2509,6 +2512,19 @@ export function EntryChatPage() {
     const gap = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[cadence]
     return days && gap ? Math.max(1, Math.floor(days / gap)) : sessions
   })()
+  /*
+   * THE SITUATION THE LEAD PICKED, not the one the classifier moved it to (U.6 review): the card she
+   * pressed, found again from its sentence after a reload, or a known ?scenario= she arrived with.
+   * Nothing when she described it herself, so the name falls back to her own words.
+   */
+  function theSituationTheLeadPicked(): string | undefined {
+    /* The card's own name where there is one, so "Connect goals across the team" is not named after
+       the situation it shares. fallbackGroundName says it in sentence case. */
+    if (pickedSituation && pickedSituation !== 'other') return pickedSituation
+    const card = SITUATION_CARDS.find((c) => onboardingHistory.some((m) => m.role === 'user' && m.content === c.message))
+    if (card) return card.label
+    return scenario && (SCENARIO_LABELS as Record<string, string>)[scenario] ? scenario : undefined
+  }
   const atTheDoor = phase === 'onboarding' && onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation
   /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
   function describeItInYourOwnWords(text: string) {

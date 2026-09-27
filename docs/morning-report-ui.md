@@ -802,9 +802,14 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
     check-in with no end chosen still runs the situation's usual length. **My recommendation:** send
     that length with the save.
 17. **Wording I wrote in the review fixes:** the plain "For example" sentences for every situation but
-    one (in `client/src/pages/enter/the-way-in.ts`), "People check in when the lead chooses." on the
-    admin's approval card, and the names made by `aNameForIt` ("Daniel, the next six weeks", "Daniel,
-    until 6 November", the person alone, or the lead's first words).
+    one (in `client/src/pages/enter/the-way-in.ts`), and "People check in when the lead chooses." on
+    the admin's approval card.
+
+18. **Naming a check-in after the person or the topic.** The prototype names check-ins after the
+    person ("Daniel, the next six weeks"). An earlier rule, recorded in a test, says the name becomes
+    the invitation email's subject, so it must name the topic and never the person. Until you decide,
+    check-ins are named after the topic the lead chose, in plain words. **My recommendation:** keep the
+    topic in the email subject, and show the person's name only inside the product, to the lead.
 
 ### 18. Context (U.7): what needs you
 
