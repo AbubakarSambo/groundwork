@@ -110,7 +110,10 @@ describe('and it reaches the board', () => {
   });
 
   it('and renders above what people said, not instead of it', () => {
-    expect(PAGE).toMatch(/<TheJudgement it=\{\(b as any\)\.theJudgement\} table=\{\(b as any\)\.theTable\} \/>/);
+    /* No table prop since the screens workspace dropped it (requests-to-engine.md, request 10): the
+       judgement is shown without the table it was built from. */
+    expect(PAGE).toMatch(/<TheJudgement it=\{\(b as any\)\.theJudgement\} \/>/);
+    expect(PAGE.indexOf('<WhatTheNetworkSaid')).toBeGreaterThan(-1);
     expect(PAGE.indexOf('<TheJudgement')).toBeLessThan(PAGE.indexOf('<WhatTheNetworkSaid'));
   });
 
