@@ -42,16 +42,15 @@ describe('what the lead is told before everyone has answered', () => {
   })
 
   it('and every session row says how many answered, and whether it is final', () => {
-    expect(LIST).toContain('{r.answered} of {r.total} answered')
+    /* U.9: the prototype's row, "6 of 6 checked in" and "Shared" or "Not shared" (sessions.txt). */
+    expect(LIST).toContain('checkedIn(r.answered, r.total)')
     /* 'Final' read as 'the last session' on every released row. It means the report is out. */
     /* A round everybody has answered is not forming, it is waiting for the lead - see
        a-round-everybody-answered-is-not-forming. The three states are still the three states. */
-    expect(LIST).toContain("r.closed ? 'Released'")
-    expect(LIST).toContain("'Ready to release'")
-    expect(LIST).toContain("'Forming'")
+    expect(LIST).toContain('r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared')
   })
 
   it('and names who is still being waited on, rather than a number alone', () => {
-    expect(LIST).toContain('waiting on')
+    expect(LIST).toContain('stillToCheckIn(r.waitingOn)')
   })
 })

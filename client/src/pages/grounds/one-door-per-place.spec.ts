@@ -41,7 +41,8 @@ describe('the board still exists and is still reachable', () => {
   })
 
   it('and the report is what opens it - the first row of the session list', () => {
-    expect(LIST).toContain('Open the team board')
+    /* U.9: the board's row reads "The board", the prototype's words (sessions.txt). */
+    expect(LIST).toContain('{EVERY_SESSION.board}')
     expect(ADMIN).toMatch(/onOpenBoard=\{\(\) => navigate\(`\/grounds\/\$\{ground\.id\}\/board`\)\}/)
   })
 
@@ -60,7 +61,7 @@ describe('but only once', () => {
      */
     expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(1)
     /* The prop, its type and its one use. What matters is that the component renders ONE button. */
-    expect((LIST.match(/Open the team board/g) ?? [])).toHaveLength(1)
+    expect((LIST.match(/\{EVERY_SESSION\.board\}/g) ?? [])).toHaveLength(1)
     expect(ADMIN).not.toContain('Team board →')
   })
 })

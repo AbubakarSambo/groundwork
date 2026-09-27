@@ -43,7 +43,8 @@ const SESSION_VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw'
 
 describe('the report tab is a list of sessions', () => {
   it('opens with the team board', () => {
-    const board = LIST.indexOf('Open the team board')
+    /* U.9: the prototype's words, "The board" and "Everything so far" (sessions.txt). */
+    const board = LIST.indexOf('{EVERY_SESSION.board}')
     expect(board).toBeGreaterThan(-1)
     /* Before the rows, which is the whole of "first item on the page". */
     expect(board).toBeLessThan(LIST.indexOf('Session {r.sessionNumber}'))
@@ -63,8 +64,9 @@ describe('the report tab is a list of sessions', () => {
   })
 
   it('and every row says who it is counting, before you click', () => {
-    expect(LIST).toContain('{r.answered} of {r.total} answered')
-    expect(LIST).toContain('waiting on')
+    /* U.9: "6 of 6 checked in", and who it waits for as a sentence ("Omar has not checked in yet."). */
+    expect(LIST).toContain('checkedIn(r.answered, r.total)')
+    expect(LIST).toContain('stillToCheckIn(r.waitingOn)')
   })
 
   it('the forming picture is still shown, on the session it is forming for', () => {

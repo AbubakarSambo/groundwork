@@ -429,6 +429,14 @@ export function GroundAdminPage() {
         total: parties.length,
         closed: (((ground as any)?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n),
         waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => personLabel(p)),
+        /* When this session opened, for the row's "Wed, 23 Sept" (U.9). The earliest opening, or
+           the first answer when no opening time was kept. */
+        opened: (() => {
+          const these = checkIns.filter((c) => c.sessionNumber === n)
+          const times = these.map((c) => c.availableFrom).filter(Boolean)
+          const pick = times.length ? times : these.map((c) => c.completedAt).filter(Boolean)
+          return pick.length ? pick.map((t: string) => new Date(t)).sort((a: Date, b: Date) => a.getTime() - b.getTime())[0].toISOString() : null
+        })(),
       }
     })
   })()

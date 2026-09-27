@@ -91,7 +91,7 @@ describe('finding the team board', () => {
     expect(screen.queryByRole('button', { name: 'Team board' })).toBeNull()
     /** It is on Report, because that is where somebody is when they want it. */
     fireEvent.click(screen.getByRole('button', { name: 'Report' }))
-    await waitFor(() => expect(document.body.textContent).toContain('Open the team board'))
+    await waitFor(() => expect(document.body.textContent).toContain('Everything so far'))
   })
 
   it('is not offered on a check-in the server says has no board', async () => {
@@ -103,7 +103,7 @@ describe('finding the team board', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sessions' })).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Report' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sessions' })).toBeTruthy())
-    expect(document.body.textContent).not.toContain('Open the team board')
+    expect(document.body.textContent).not.toContain('Everything so far')
   })
 
   it('leaves the other tabs alone', async () => {
