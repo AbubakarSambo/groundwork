@@ -469,6 +469,9 @@ model Organization {
   /// The role map: the role interview's answers, and why a job nobody owns matters (E6, U.17).
   roleInterviews     RoleInterviewAnswer[]
   roleGapNotes       RoleGapNote[]
+  /// Spending and budgets: requests to spend, and each team's budget for a month (E7, U.17).
+  spendRequests      SpendRequest[]
+  teamBudgets        TeamBudget[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2367,6 +2370,46 @@ model RoleGapNote {
 
   @@index([organizationId, roleName])
   @@map("role_gap_notes")
+}
+
+/// A REQUEST TO SPEND (E7, the spending and budgets suite, U.17): who asks, how much, for what, and
+/// the team it counts against (the person's department when they asked). Waiting until the one who
+/// approves it says yes or no; kept with who decided and when. People ask by telling Groundwork, which
+/// is the engine's part (docs/requests-to-engine.md, request 26). Who reads and decides it is decided
+/// in suites/the-spending.service.ts. Nothing here reaches a check-in or its report.
+model SpendRequest {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  userId         String    @map("user_id")
+  amount         Decimal   @db.Decimal(14, 2)
+  what           String    @db.VarChar(300)
+  team           String?   @db.VarChar(120)
+  status         String    @default("waiting") @db.VarChar(16)
+  decidedById    String?   @map("decided_by_id")
+  decidedAt      DateTime? @map("decided_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@map("spend_requests")
+}
+
+/// ONE TEAM'S BUDGET FOR ONE MONTH (E7, U.17), set by an admin. `month` is the first day of it.
+model TeamBudget {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  team           String   @db.VarChar(120)
+  month          DateTime @db.Date
+  amount         Decimal  @db.Decimal(14, 2)
+  setById        String   @map("set_by_id")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, team, month])
+  @@map("team_budgets")
 }
 
 /// ONE PERFORMANCE REVIEW (E4, the reviews suite, U.17), started for a review that falls due

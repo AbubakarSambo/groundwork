@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
 import { SuitesService } from './suites.service';
 import { OnboardingBoardService } from './the-onboarding-board.service';
@@ -9,6 +9,7 @@ import { TimeSheetsService } from './the-time-sheets.service';
 import { ReviewsService } from './the-reviews.service';
 import { LeavingBoardService } from './the-leaving-board.service';
 import { RoleMapService } from './the-role-map.service';
+import { SpendingService } from './the-spending.service';
 
 class SwitchDto {
   @IsBoolean() on!: boolean;
@@ -34,6 +35,11 @@ class LeavingStepDto {
   @IsOptional() @IsBoolean() done?: boolean;
 }
 
+class BudgetDto {
+  @IsString() @MaxLength(120) team!: string;
+  @IsNumber() amount!: number;
+}
+
 class AgreementsDto {
   @IsArray() agreements!: unknown[];
 }
@@ -54,6 +60,7 @@ export class SuitesController {
     private readonly reviews: ReviewsService,
     private readonly leaving: LeavingBoardService,
     private readonly roles: RoleMapService,
+    private readonly spend: SpendingService,
   ) {}
 
   @Get()
@@ -174,6 +181,30 @@ export class SuitesController {
   @ApiOperation({ summary: 'The role map: every role, what it owns, and who holds it. Admins only.' })
   roleMap(@CurrentUser() user: CurrentUserData) {
     return this.roles.board({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Get('spend/board')
+  @ApiOperation({ summary: 'Spending and budgets, while the suite is on, for an admin or the lead of the team' })
+  spendBoard(@CurrentUser() user: CurrentUserData) {
+    return this.spend.board({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('spend/requests/:id/approve')
+  @ApiOperation({ summary: 'The one who approves a request to spend says yes' })
+  approveSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.spend.decide({ userId: user.id, organizationId: user.organizationId }, id, 'approved');
+  }
+
+  @Post('spend/requests/:id/decline')
+  @ApiOperation({ summary: 'The one who approves a request to spend says no' })
+  declineSpend(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.spend.decide({ userId: user.id, organizationId: user.organizationId }, id, 'declined');
+  }
+
+  @Put('spend/budgets')
+  @ApiOperation({ summary: 'An admin sets one team’s budget for this month' })
+  setBudget(@CurrentUser() user: CurrentUserData, @Body() dto: BudgetDto) {
+    return this.spend.setBudget({ userId: user.id, organizationId: user.organizationId }, dto);
   }
 
   @Put(':key')

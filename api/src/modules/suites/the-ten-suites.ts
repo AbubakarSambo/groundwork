@@ -37,6 +37,8 @@ export interface Suite {
 }
 
 const WHO_APPROVES = ['Their manager', 'An admin'];
+/** The currencies spending may be in, by their short names, as the prototype writes "KES 18,000" (item 28). */
+export const CURRENCIES = ['KES', 'UGX', 'TZS', 'RWF', 'ETB', 'NGN', 'GHS', 'ZAR', 'USD', 'EUR', 'GBP'];
 
 export const SUITES: readonly Suite[] = [
   {
@@ -88,6 +90,7 @@ export const SUITES: readonly Suite[] = [
     key: 'spend', group: 'Money', name: 'Spending and budgets', forLeads: true,
     line: 'People ask to spend in chat. Groundwork checks the budget and sends it to the right person. Shows each team’s budget against what was spent.',
     questions: [
+      { id: 'currency', kind: 'choice', ask: 'Which currency do people spend in?', options: CURRENCIES },
       { id: 'limit', kind: 'number', ask: 'What is the most a manager may approve on their own?', min: 0, max: 1_000_000_000 },
       { id: 'above', kind: 'person', ask: 'Who approves anything above that?' },
     ],
