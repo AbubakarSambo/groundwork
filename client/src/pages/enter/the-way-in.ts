@@ -100,3 +100,49 @@ export function orderWithinGroup(cardKey: string): number {
   const at = Object.keys(THE_ONE_LINE).indexOf(cardKey)
   return at === -1 ? 1000 : at
 }
+
+/**
+ * "For example", in the "You picked" panel (U.6 review). The catalogue's examples are written for
+ * scanning and several are broken sentences or jargon ("A capability concern where you want a fair
+ * record, not a he-said-she-said.", "...re-litigate afterwards."). This panel shows two per situation
+ * in plain full sentences: the prototype's own where it has them (all-situations.txt shows them for
+ * "Help someone get back on track"), and otherwise the catalogue's, rewritten plainly where needed.
+ */
+export const FOR_EXAMPLE: Record<string, [string, string]> = {
+  NEW_HIRE: ['You hired a sales lead, and they start on Monday.', 'Someone starts on Monday and you want to be sure you both mean the same thing by “doing well”.'],
+  ROLE_HANDOVER: ['Someone is leaving in four weeks and their replacement has already started.', 'A role is moving between two people and nobody has written down what the first one was carrying.'],
+  NEW_PROJECT: ['You are starting a six-month build with four people on it.', 'You want the scope and what “done” means agreed before anyone starts.'],
+  NEW_COFOUNDER: ['You and your co-founder are splitting equity next week.', 'A new equal partner is joining the founding team.'],
+  NEW_MANAGER: ['A new manager is taking over a team of eight in the middle of a project.', 'An interim leader is stepping into a team for six months.'],
+  NEW_ADVISOR: ['An advisor is joining for 1% and you want their year set out before they start.', 'A new board member is joining and you each want to write down what you expect.'],
+  CONTRACT_REVIEW: ['You are two weeks from signing and both sides think it is clear.', 'You share revenue with a partner, and neither of you has said out loud what the percentage applies to.'],
+  OKR_ALIGNMENT: ['The quarter starts in two weeks and six people would name different priorities.', 'Two teams depend on each other’s goals and you are not sure the handover between them is agreed.'],
+  OKR_CASCADE: ['Three departments each write their own results under one company target.', 'Each team’s goals look sensible, and you are not sure they add up to the goal at the top.'],
+  WORKPLAN_BUDGET: ['Two teams have each budgeted for the same hire.', 'The plan looks fine, but you think its budget was assumed and never approved.'],
+  BOARD_STRATEGY: ['The board agreed the strategy in the room, and two of them have since told you privately they disagree.', 'Before a strategy day, you want each leader’s real view so quiet disagreement shows up early.'],
+  CRISIS_ALIGNMENT: ['You are deciding this month whether to close a product line.', 'Everyone will agree in the meeting, and you expect them to argue about it again afterwards.'],
+  TEAM_UPDATES: ['What shipped this week, and what slipped?', 'What is the one thing you need from me before Friday?'],
+  PULSE_CHECK: ['You want to know what your team is actually doing, every week.', 'You want a short, regular update without calling a meeting.'],
+  SNAPSHOT: ['You want one honest read from everyone this week.', 'Something feels wrong across the team and you want a read before deciding whether it needs watching.'],
+  COHORT_CHECK: ['You have twenty field officers, and you only hear from the three who call.', 'You run a training group and want to see who is on track and who is stuck, without them influencing each other.'],
+  COHORT_ONBOARDING: ['Six new managers started this month, each running a different branch.', 'You need to know by the second month, not the third, which new starters need help.'],
+  DISCOVERY: ['Where should we grow next, and what would we need to know to do it?', 'What is stopping our customers from growing?'],
+  IMPLEMENTATION_TRACKING: ['The contract has been running for eight months and neither side has looked at it since.', 'What you do has quietly drifted from what was signed, and both sides half know it.'],
+  PIP: ['A senior hire’s delivery is slipping and you both want the real picture before the conversation.', 'You’re putting someone on a formal plan and want both sides on the concern and what good looks like.'],
+  RECOGNITION: ['Someone asked for a raise on Friday.', 'Someone is up for promotion and you want their record and your view to match before you talk.'],
+  CONTRACT_RENEWAL: ['An agency contract ends in six weeks and you are not sure what you got.', 'A contractor’s term is ending and you are deciding whether to renew it.'],
+  DRIFT: ['The project is eight weeks late and everyone has a different reason.', 'Money is tight and you need everyone to see the same runway and what has to change.'],
+  REALIGN_TEAM: ['You and your operations lead have stopped agreeing on what matters.', 'Priorities changed and everyone is working from a different idea of what matters now.'],
+  ACUTE_SHOCK: ['Your biggest client left on Tuesday and you want them back.', 'Something stopped working and people are rushing to understand what happened.'],
+}
+
+/**
+ * all-situations.txt's line under the name, for "Help someone get back on track": "You put their side
+ * and yours written down before you talk. Neither of you sees the other’s answers until you both have
+ * answered." Only the first sentence is shown. Nothing on the server holds one person's answers back
+ * until the other has answered (people in a check-in may read each other's words, and the lead reads
+ * the person's), so the second would not be true. See item 17 of docs/morning-report-ui.md.
+ */
+export const HOW_IT_WORKS: Record<string, string> = {
+  PIP: 'You put their side and yours written down before you talk.',
+}

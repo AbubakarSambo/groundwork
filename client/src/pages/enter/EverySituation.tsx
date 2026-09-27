@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { scrollTo } from '@/lib/scroll-to'
 import { SCENARIOS, groupOfCard, type ScenarioCard } from '@/pages/grounds/CreateGroundPage'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
-import { EVERY_SITUATION, THE_DOOR_SIGNED_OUT, THE_GROUPS_IN_ORDER, THE_ONE_LINE, orderWithinGroup } from './the-way-in'
+import { EVERY_SITUATION, FOR_EXAMPLE, HOW_IT_WORKS, THE_DOOR_SIGNED_OUT, THE_GROUPS_IN_ORDER, THE_ONE_LINE, orderWithinGroup } from './the-way-in'
 
 /*
  * EVERY SITUATION IN ONE LIST (U.6, B1): #/start/all.
@@ -110,10 +110,13 @@ export function EverySituation({
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>{EVERY_SITUATION.youPicked}</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{sentenceCase(picked.label)}</div>
           <p style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 12px' }}>{theOneLine(picked)}</p>
-          {!!picked.examples?.length && (
+          {HOW_IT_WORKS[picked.cardKey] && (
+            <p style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 12px' }}>{HOW_IT_WORKS[picked.cardKey]}</p>
+          )}
+          {!!FOR_EXAMPLE[picked.cardKey] && (
             <>
               <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 4 }}>{EVERY_SITUATION.forExample}</div>
-              {picked.examples.map((e) => (
+              {FOR_EXAMPLE[picked.cardKey].map((e) => (
                 <p key={e} style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.5, margin: '0 0 8px' }}>{e}</p>
               ))}
             </>

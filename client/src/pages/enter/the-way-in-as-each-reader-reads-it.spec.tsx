@@ -154,3 +154,30 @@ describe('a name, never a type (U.6 review)', () => {
     expect(aNameForIt({})).toBe('Untitled')
   })
 })
+
+describe('"You picked", in plain words (U.6 review)', () => {
+  it('"Help someone get back on track" reads the prototype’s lines and examples', () => {
+    render(<EverySituation signedIn={false} openerFor={() => 'A sentence.'} onSend={() => {}} onStart={() => {}} onDescribe={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Help someone get back on track/ }))
+    const panel = screen.getByRole('complementary', { name: 'You picked' })
+    expect(within(panel).getByText('You put their side and yours written down before you talk.')).toBeTruthy()
+    expect(within(panel).getByText('A senior hire’s delivery is slipping and you both want the real picture before the conversation.')).toBeTruthy()
+    expect(within(panel).getByText('You’re putting someone on a formal plan and want both sides on the concern and what good looks like.')).toBeTruthy()
+    /* Not true on the server, so not said. */
+    expect(panel.textContent).not.toContain('Neither of you sees the other’s answers')
+    for (const old of ['he-said-she-said', 'letting them go', 'capability concern']) expect(panel.textContent).not.toContain(old)
+  })
+
+  it('every situation has two examples, each a full sentence, with none of the old jargon', async () => {
+    const { FOR_EXAMPLE } = await import('./the-way-in')
+    const { SCENARIOS } = await import('@/pages/grounds/CreateGroundPage')
+    for (const card of SCENARIOS.filter((c) => c.scenario !== 'OPEN_READ')) {
+      const two = FOR_EXAMPLE[card.cardKey]
+      expect(two, card.cardKey).toHaveLength(2)
+      for (const e of two) {
+        expect(e, card.cardKey).toMatch(/^[A-Z].*[.?]$/)
+        expect(e).not.toMatch(/re-litigate|he-said-she-said|offsite|lightweight|signal/)
+      }
+    }
+  })
+})
