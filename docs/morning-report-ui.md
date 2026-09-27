@@ -2428,6 +2428,28 @@ an account (U.3). **Also for later:** the board's header summary uses the latest
 every reader; whether a participant should see it before the report is shared belongs to the board
 (U.10).
 
+#### U.5 re-review (27 September)
+
+All eight fixes passed live. The re-review found one thing the first privacy fix introduced: after the
+report was shared, a participant read its opening as stored, in labels ("the initiator's plan counts
+on 4 sales from Participant A"). **Fixed** (`f6f09336`): the check-in's own read and the list now
+serve report text only through the report's own naming door, the one the board uses, which also keeps
+colleagues unnamed where people are not named to each other and follows a send without names. A
+participant now reads, for example, "Wairimu Kamau reports 18 sales. Blair Kane is responsible for
+closing 4 sales.", or "A colleague is responsible …" where colleagues are not named. If the door cannot
+be reached, no report text is served at all. The engine's own sentence can still read "…from you, but
+you forecasts 2", which is the engine's grammar when the reader is the person named.
+
+**For later modules, confirmed live:**
+- **The board (U.10):** its header shows a participant the latest session's shared picture before the
+  report is shared.
+- **Small notes for U.5's follow-up:** an admin in no check-in reads "You will see your check-ins and
+  reports here. Open one to take part." on "You are in.", which does not fit someone with nothing of
+  their own to open; Wairimu's Sales row has an empty "Needs you" where the prototype says "Waiting on
+  Omar" (the list names who it waits on only from the session's own rows, and her row had none
+  waiting by that count); and nothing confirms an approval after "Approve" on the check-in page beyond
+  a short toast.
+
 ### U.6 Starting a check-in: built and tested except one card, not yet reviewed
 
 - **The first screen, from the prototype.** Signed out: "What do you need updates on, or want to
