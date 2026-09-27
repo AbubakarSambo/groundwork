@@ -53,6 +53,8 @@ import {
   whoIsBeingWaitedOn,
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERN_NAME_BY_CODE, whatToAskAbout } from '../patterns/pattern-library';
+import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
+import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -290,7 +292,13 @@ export class BoardService {
     (ground as any).dependencies = oneBlockerPerThingWaitedOn(dedupeDependencies(ground.dependencies as any));
 
     /* What this run can actually show: a one-round read has no across-rounds sections. See sectionsForARunOf. */
-    const sections = sectionsForARunOf(ground.scenario, totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null);
+    /*
+     * NO PATTERN SECTION WHILE PATTERNS ARE NOT SERVED. The family still lists it, so turning the
+     * switch on brings it back where it was; off, the board neither builds it nor tells the page it
+     * has one. See patterns-are-served.
+     */
+    const sections = sectionsForARunOf(ground.scenario, totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null)
+      .filter((s) => PATTERNS_ARE_SERVED || s !== 'patterns');
     const has = (s: BoardSection) => sections.includes(s);
     const family = familyFor(ground.scenario);
 
@@ -558,7 +566,8 @@ export class BoardService {
        * something, and because three of these were empty in the report on the one engagement that
        * was entirely about them. See what-the-record-shows-over-time.
        */
-      overTime: isInitiator ? ((ground as any).report?.overTime ?? null) : null,
+      /* Without its patterns while they are not served, or the lines built from them. See patterns-are-served. */
+      overTime: isInitiator ? overTimeAsServed((ground as any).report?.overTime ?? null) : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it
@@ -1279,7 +1288,7 @@ export class BoardService {
       out.coverage = onlyWhatThisReaderMaySee(out.coverage as any, whoMaySee);
       out.whoOwnsWhat = onlyWhatThisReaderMaySee(out.whoOwnsWhat as any, whoMaySee);
       out.managerAlignment = onlyWhatThisReaderMaySee(out.managerAlignment as any, whoMaySee);
-      out.patterns = onlyWhatThisReaderMaySee(out.patterns as any, whoMaySee);
+      if (out.patterns) out.patterns = onlyWhatThisReaderMaySee(out.patterns as any, whoMaySee);
       out.dependencies = onlyHandoffsTheyAreIn(out.dependencies as any, whoMaySee);
       if (out.checkInGrid) {
         out.checkInGrid = {

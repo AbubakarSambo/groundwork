@@ -26,8 +26,14 @@ const whole: any = {
 };
 
 describe('the longitudinal read belongs to the lead', () => {
-  it('gives the lead all of it', () => {
-    expect(overTimeForThisReader(whole, { isLead: true, participantId: 'anyone' })).toBe(whole);
+  /*
+   * ALL OF IT EXCEPT THE PATTERNS, since 27 September 2026: patterns are served to nobody until
+   * they are done properly (patterns/patterns-are-served). Everything else still reaches the lead
+   * whole, and every participant rule below is unchanged.
+   */
+  it('gives the lead all of it, except the patterns while they are not served', () => {
+    const lead = overTimeForThisReader(whole, { isLead: true, participantId: 'anyone' })!;
+    expect(lead).toEqual({ ...whole, patterns: [] });
   });
 
   it('gives a participant their own commitments and nobody else\'s', () => {

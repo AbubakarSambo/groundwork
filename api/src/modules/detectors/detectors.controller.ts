@@ -8,6 +8,7 @@ import { DetectorsService } from './detectors.service';
 import { RolesService, RoleInput, ActionInput } from './roles-and-their-action.service';
 import { ScenariosService } from './scenarios.service';
 import { IMPLEMENTED, GENUINELY_NEW } from './one-vocabulary-two-scopes';
+import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 
 /**
  * FINDINGS, AND WHAT THE SERIALISER REFUSES TO CARRY.
@@ -73,7 +74,9 @@ export class DetectorsController {
   @ApiOperation({ summary: 'Findings held for this organisation, evidence only' })
   async findings(@Req() req: { machine: MachineCaller }) {
     const all = await this.prisma.detectorResult.findMany({
-      where: { organizationId: req.machine.organizationId, resolvedAt: null },
+      /* A pattern mirrored from a check-in is a finding about a named person, so it stays out while
+         patterns are not served. See patterns/patterns-are-served. */
+      where: { organizationId: req.machine.organizationId, resolvedAt: null, ...(PATTERNS_ARE_SERVED ? {} : { sourcePatternDetectionId: null }) },
       orderBy: [{ severity: 'desc' }, { lastSeenAt: 'desc' }],
       take: 200,
     });

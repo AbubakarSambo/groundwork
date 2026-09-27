@@ -25,6 +25,8 @@
  * is unreliable" is a judgement about a person, and this file does not produce one.
  */
 
+import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
+
 export interface ACommitmentOverTime {
   participantId: string | null;
   who: string;
@@ -496,13 +498,39 @@ export function toSettleFirst(o: {
 
   const surfaced = o.patterns.filter((p) => String(p.status).toUpperCase() === 'SURFACED');
   for (const p of surfaced.slice(0, 2)) {
-    out.push(`${p.observation} Seen in ${p.seenInSessions.length} sessions. Ask ${p.who} what they have changed about it since the first time.`);
+    out.push(`${p.observation} Seen in ${p.seenInSessions.length} sessions. Ask ${p.who}${A_QUESTION_BUILT_FROM_A_PATTERN_ENDS}`);
   }
 
   const noRole = o.commitments.length === 0;
   if (noRole) out.push('Nobody has said in a check-in what they would do next. Ask for one thing, with a date, from each person.');
 
   return out;
+}
+
+/**
+ * How the one question in `toSettleFirst` that is built from a pattern ends. It is the product's own
+ * fixed sentence, so a stored read can be told apart from the questions around it without guessing -
+ * see overTimeAsServed, which has to take it out of reports kept before patterns stopped being served.
+ */
+export const A_QUESTION_BUILT_FROM_A_PATTERN_ENDS = ' what they have changed about it since the first time.';
+
+/**
+ * AND NO PATTERN IN IT AT ALL, FOR ANY READER, WHILE PATTERNS ARE NOT SERVED.
+ *
+ * This is the read the capability check found on the lead's board, 27 September 2026: "Seen once or
+ * twice, not yet a pattern", fourteen lines like "You · Claimed Work Inflation · Seen in sessions…",
+ * after two sessions. The record over time is still built and kept whole on the report, because
+ * detection keeps running; what is served leaves out the patterns and the questions made from them.
+ * See patterns/patterns-are-served for what has to be true before they come back.
+ */
+export function overTimeAsServed(it: WhatTheRecordShowsOverTime | null | undefined): WhatTheRecordShowsOverTime | null {
+  if (!it) return null;
+  if (PATTERNS_ARE_SERVED) return it;
+  return {
+    ...it,
+    patterns: [],
+    toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)),
+  };
 }
 
 export function theRecordOverTime(o: {
@@ -554,7 +582,7 @@ export function overTimeForThisReader(
   viewer: { isLead: boolean; participantId: string | null },
 ): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
-  if (viewer.isLead) return it;
+  if (viewer.isLead) return overTimeAsServed(it);
   const mine = viewer.participantId;
   if (!mine) return null;
   return {

@@ -37,8 +37,10 @@ describe('one route for patterns', () => {
   });
 
   it('the session report reads surfaced detections as its own field', () => {
-    /* Computed once above the return, so the section and the picture draft read the same rows. */
-    const at = SERVICE.indexOf('const patternsForPage = (await this.prisma.patternDetection.findMany(');
+    /* Computed once above the return, so the section and the picture draft read the same rows.
+       Through patternsAsServed since 27 September 2026, so it is empty while patterns are not
+       served; the filters on the rows are unchanged and still pinned here. */
+    const at = SERVICE.indexOf('const patternsForPage = patternsAsServed(await this.prisma.patternDetection.findMany(');
     expect(at).toBeGreaterThan(-1);
     const block = SERVICE.slice(at, at + 1200);
     expect(block).toContain('PatternStatus.SURFACED');

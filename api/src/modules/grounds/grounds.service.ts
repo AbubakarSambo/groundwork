@@ -3,6 +3,7 @@ import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
+import { patternsAsServed } from '../patterns/patterns-are-served';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
@@ -1630,7 +1631,9 @@ export class GroundsService {
        the same words every time the same pattern appears, plus how many sessions it was seen across,
        which is the fact that makes it a pattern. The model's sentence stays on the row for admin. */
     const catalogue = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]));
-    const signals = (ground.patternDetections ?? [])
+    /* And none at all while patterns are not served: this feed is on the board page, beside the
+       names. See patterns/patterns-are-served. */
+    const signals = patternsAsServed(ground.patternDetections)
       .filter((pd) => !ALIGNMENT_FEED_ONLY_CODES.has(pd.code) && (pd as any).status !== 'CANDIDATE' && catalogue.has(pd.code))
       .map((pd) => ({
         id: pd.id,
@@ -6464,7 +6467,8 @@ export class GroundsService {
      * of them through the softening meant for bad news, which is how a compliment ends up
      * phrased as a concern.
      */
-    const patterns = (participant.patternDetections ?? []).map(d => ({
+    /* None while patterns are not served: the person cannot yet answer one. See patterns/patterns-are-served. */
+    const patterns = patternsAsServed(participant.patternDetections).map(d => ({
       /* Carrying is not bad news about them either, so it is not softened as though it were. */
       observation: isPositiveCode(d.code) || isCarryingCode(d.code)
         ? d.observationText ?? ''

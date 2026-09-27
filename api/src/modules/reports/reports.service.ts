@@ -122,6 +122,7 @@ import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferra
 import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence, Prisma } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
+import { patternsAsServed } from '../patterns/patterns-are-served';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
@@ -3114,8 +3115,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
       windowDays: window,
     });
 
-    /* Surfaced detections, computed once: the section renders them and the picture draft reads them. */
-    const patternsForPage = (await this.prisma.patternDetection.findMany({
+    /* Surfaced detections, computed once: the section renders them and the picture draft reads them.
+       None while patterns are not served, so neither the section nor the picture carries one. See
+       patterns/patterns-are-served. */
+    const patternsForPage = patternsAsServed(await this.prisma.patternDetection.findMany({
       where: { groundId, status: PatternStatus.SURFACED },
       orderBy: [{ periodsObserved: 'desc' }, { lastSeenAt: 'desc' }],
       select: { participantId: true, code: true, periodsObserved: true },
@@ -4179,7 +4182,9 @@ happened, and what is in the way.`;
            * judgement started running on grounds that used to return early. It was true on every
            * ground that already had a frame; the change only made it visible.
            */
-          patterns: (seen as any[])
+          /* None while patterns are not served: the lead reads the judgement on the board, and the
+             model wrote the names it was given into it. See patterns/patterns-are-served. */
+          patterns: patternsAsServed(seen as any[])
             .filter((x) => x.participantId === p.participantId && !ALIGNMENT_FEED_ONLY_CODES.has(x.code) && (x.observationText ?? '').trim())
             .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
           openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => theirWords(String(c.text))),
@@ -4970,7 +4975,9 @@ happened, and what is in the way.`;
       }),
     ]);
     const wholeDays = (d: Date) => Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 86400000));
-    return { detections, dependencies, entries, docs, sessions, wholeDays, ground };
+    /* The coaching note and the probe list are both read by a person, so neither is built from a
+       pattern while patterns are not served. See patterns/patterns-are-served. */
+    return { detections: patternsAsServed(detections), dependencies, entries, docs, sessions, wholeDays, ground };
   }
 
   /**
