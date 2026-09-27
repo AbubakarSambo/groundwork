@@ -1054,15 +1054,27 @@ export function itIsStillAskingSomething(reply: string): boolean {
   return lastSentence.trim().endsWith('?')
 }
 
-export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
-  const fromScenario = (classifiedScenario ?? '')
-    .trim()
-    .replace(/_/g, ' ')
-    .toLowerCase()
-    .replace(/^\w/, (c) => c.toUpperCase())
-  if (fromScenario) return fromScenario
-
-  const said = (firstDescription ?? '').trim().replace(/\s+/g, ' ')
+/*
+ * A NAME, NEVER A TYPE (U.6 review). This returned the classified scenario as the name when the lead
+ * gave none, so a check-in about Daniel was called "Drift" in the sidebar, on his invitation and on
+ * the board. A situation is what kind of check-in it is; its name says who and when, as the
+ * prototype names them ("Daniel, the next six weeks", "Faith, first 90 days"). So: the first person
+ * the lead named and how long it runs, from the end they chose or the length they said; the person
+ * alone when nothing says how long; the lead's own first words when nobody was named. Never the type.
+ */
+const SMALL_NUMBERS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+export function aNameForIt(a: { peopleNamed?: string[]; endsOn?: string; timelineDays?: number | null; firstDescription?: string }): string {
+  const person = (a.peopleNamed ?? []).map((p) => p.trim().split(/[\s,(]+/)[0]?.replace(/[^\p{L}'-]/gu, '')).find(Boolean) ?? ''
+  const period = (() => {
+    if (a.endsOn) { const d = new Date(`${a.endsOn}T00:00:00`); return `until ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}` }
+    const days = a.timelineDays ?? 0
+    if (days <= 0) return ''
+    if (days % 7 === 0 && days / 7 <= 12) { const w = days / 7; return w === 1 ? 'the next week' : `the next ${SMALL_NUMBERS[w]} weeks` }
+    return `the next ${days} days`
+  })()
+  if (person) return period ? `${person}, ${period}` : person
+  const said = (a.firstDescription ?? '').trim().replace(/\s+/g, ' ')
   if (said) {
     const clipped = said.length > 60 ? said.slice(0, 57).trimEnd() + '...' : said
     return clipped.replace(/^\w/, (c) => c.toUpperCase())
@@ -1392,8 +1404,9 @@ export function EntryChatPage() {
    * behaviour, which is right for a link we did not write.
    */
   useEffect(() => {
-    const known = SITUATION_CARDS.find((c) => c.scenario === scenario)
-    setGroundName(known ? known.label : scenario ? scenario.replace(/\+/g, ' ') : '')
+    /* U.6 review: a situation is not a name, so arriving with ?scenario= no longer names the check-in
+       after its type. It stays unnamed until the lead names it, or aNameForIt does at the save. */
+    setGroundName('')
     setSessions(1)
   }, [])
 
@@ -2082,7 +2095,7 @@ export function EntryChatPage() {
    */
   function buildCommitPayload() {
     return {
-        groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
+        groundLabel: groundName.trim() || aNameForIt({ peopleNamed: onboardingSelections.peopleNamed, endsOn: lastCheckInBy, timelineDays: plannedFrom?.timelineDays, firstDescription: onboardingSelections.initial }),
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
@@ -2364,7 +2377,7 @@ export function EntryChatPage() {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
       const patch = {
-        groundLabel: groundName || scenario || fallbackGroundName(onboardingSelections.classifiedScenario, onboardingSelections.initial),
+        groundLabel: groundName.trim() || aNameForIt({ peopleNamed: onboardingSelections.peopleNamed, endsOn: lastCheckInBy, timelineDays: plannedFrom?.timelineDays, firstDescription: onboardingSelections.initial }),
         orgName: orgName.trim() || undefined,
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */

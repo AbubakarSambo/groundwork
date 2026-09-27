@@ -34,11 +34,16 @@ describe('a check-in is not named after a database value', () => {
      * CLASSIFIED from what the person said, then the first thing they actually typed, and only then
      * "Untitled". A raw enum value never reaches the label, which is what this file is about.
      */
+    /*
+     * U.6 REVIEW: THE CLASSIFIED SITUATION IS NO LONGER A NAME EITHER. "NEW_HIRE" turned into words
+     * was still a type: a check-in about Daniel was called "Drift". The fallback is aNameForIt now:
+     * the person named and how long it runs, then the lead's own first words, then "Untitled". What
+     * this file is about still holds: no raw enum value, and now no type at all, reaches the label.
+     */
     const chat = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
-    expect(chat).toMatch(/export function fallbackGroundName\(/)
-    expect(chat).toMatch(/fallbackGroundName\(onboardingSelections\.classifiedScenario, onboardingSelections\.initial\)/)
-    /* And the raw key is turned into words rather than printed: "NEW_HIRE" is not a name. */
-    expect(chat).toMatch(/\.replace\(\/_\/g, ' '\)/)
+    expect(chat).toMatch(/export function aNameForIt\(/)
+    expect(chat).not.toMatch(/fallbackGroundName/)
+    expect(chat).not.toMatch(/groundLabel: groundName \|\| scenario/)
   })
 
   it('and does NOT put the person in front of it, which this used to require', () => {

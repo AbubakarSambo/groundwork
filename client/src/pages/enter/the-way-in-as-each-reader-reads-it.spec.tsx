@@ -141,3 +141,16 @@ describe('the list itself', () => {
     expect([...listed].sort()).toEqual(SCENARIOS.map((c) => c.cardKey).sort())
   })
 })
+
+describe('a name, never a type (U.6 review)', () => {
+  /* Read live: a check-in about Daniel was saved as "Drift". */
+  it('names it from the person and how long it runs', async () => {
+    const { aNameForIt } = await import('./EntryChatPage')
+    expect(aNameForIt({ peopleNamed: ['Daniel'], timelineDays: 42 })).toBe('Daniel, the next six weeks')
+    expect(aNameForIt({ peopleNamed: ['Daniel (sales manager)'], endsOn: '2026-11-06' })).toBe('Daniel, until 6 November')
+    expect(aNameForIt({ peopleNamed: ['Faith'], timelineDays: 90 })).toBe('Faith, the next 90 days')
+    expect(aNameForIt({ peopleNamed: ['Daniel'] })).toBe('Daniel')
+    expect(aNameForIt({ firstDescription: 'our sales targets this quarter' })).toBe('Our sales targets this quarter')
+    expect(aNameForIt({})).toBe('Untitled')
+  })
+})
