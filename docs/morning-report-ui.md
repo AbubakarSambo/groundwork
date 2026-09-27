@@ -3036,10 +3036,18 @@ U8 (lead Rukia Otieno, participants Baraka and Neema). All eight are fixed, in o
     itself should be the lead's first check-in is a bigger question than wording (Hafsah decided
     setup is not the lead's first check-in - item 17, point 13); recorded here rather than changed.
   - Neema's organisation switcher read "Your organisation" / "Takes part" instead of "Kilima Traders
-    U8". The actual fault: `teamInvite()` gave a newly invited person's `User` row an `organizationId`
-    but never wrote the matching `OrganizationMembership` row, which `myOrganizations()`'s self-healing
-    branch was papering over on read. Fixed at the source (`auth.service.ts`), not by working around it
-    on the screen.
+    U8". **My first fix here was wrong and the coordinator reverted it** (`27c3cf71` reverted by
+    `1de9f174`): I added a second `organizationMembership.create` to `teamInvite()`, not realising
+    `theMembershipFollowsTheUser` (`prisma.service.ts`) already nests one into every `User.create` -
+    the mocked test could not see that hook, so it passed while the real path would have written two
+    rows and crashed every team invite on the unique key. **The real cause**, found by a read-only
+    query of `groundwork_dev` (`neema.u8@example.test`'s `User` row and her `OrganizationMembership`
+    row both existed, correctly, active, for Kilima Traders U8 - the data was never missing) and then
+    reading the sign-in paths: `JoinConfirmPage.tsx` signs somebody in against a placeholder user
+    (`organizationName` absent, `role: 'MEMBER'` - exactly "Your organisation" and "Takes part") and
+    tries once to overwrite it with the real profile from `authApi.me()`. Nothing else in the app ever
+    calls `/auth/me` again after this page, so one dropped request there left the placeholder standing
+    through every reload. Now retried a few times before falling back.
   - The board's engine-written line naming a specific private file ("The attached team-plan.txt
     document confirms the split…") to people who cannot open it is engine text; added to request 46
     and to Needs Hafsah, since it touches a privacy default.
@@ -3049,10 +3057,10 @@ the exact words checked - `WhoIsStillOut.spec.tsx` (new), `who-is-in-this.spec.t
 `the-check-in-as-a-person-reads-it.spec.tsx`, `ChatPage.openIsSlow.spec.tsx` (new),
 `what-the-end-of-a-check-in-can-say.spec.ts`, `a-number-is-a-measurement.spec.ts`,
 `one-press-is-one-call.spec.tsx`, `the-page-says-what-it-is-doing.spec.ts`, and
-`team-invite-member-cap.spec.ts` / `inviting-with-a-role-and-a-name.spec.ts` on the API side for the
-organisation-switcher fix. Every changed test's reason is in its own commit: each checked old, dot-joined
-or otherwise defective wording, never old behaviour being removed for its own sake. Only the tests for
-files changed (`--maxWorkers=2`), both type checks, run; no server started.
+`JoinConfirmPage.spec.tsx` (new, no test existed for this page before) for the organisation-switcher
+fix. Every changed test's reason is in its own commit: each checked old, dot-joined or otherwise
+defective wording, never old behaviour being removed for its own sake. Only the tests for files
+changed (`--maxWorkers=2`), both type checks, run; no server started.
 
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 
