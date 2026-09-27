@@ -14,6 +14,7 @@ import { whenItAsks } from './when-it-asks';
 import { inviteExpiryFrom } from './how-long-an-invite-lasts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { AuthService } from '../auth/auth.service';
 import { CheckInStatus, TokenType, Cadence, PartyType, GroundScenario } from '@prisma/client';
 
 /**
@@ -34,6 +35,7 @@ export class ParticipantsService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private email: EmailService,
+    private auth: AuthService,
   ) {}
 
   /** Preview an invite from its token - shown before the participant accepts. */
@@ -440,14 +442,13 @@ export class ParticipantsService {
 
     return {
       accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        organizationId: user.organizationId,
-      },
+      /**
+       * THE SAME SHAPE EVERY OTHER SIGN-IN DOOR SENDS (U.8 re-review), including `organizationName` -
+       * this used to be a hand-built subset (id, email, name, role, organizationId only), so the
+       * organisation switcher had nothing to show until the app-wide `/auth/me` safety net's request
+       * landed. `userShapeFor` is the one builder `/auth/me` itself uses.
+       */
+      user: await this.auth.userShapeFor(user.id),
       groundId: ground.id,
       checkInId: checkIn?.id ?? null,
       existingAccount,

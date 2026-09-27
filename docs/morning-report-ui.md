@@ -3045,9 +3045,26 @@ U8 (lead Rukia Otieno, participants Baraka and Neema). All eight are fixed, in o
     row both existed, correctly, active, for Kilima Traders U8 - the data was never missing) and then
     reading the sign-in paths: `JoinConfirmPage.tsx` signs somebody in against a placeholder user
     (`organizationName` absent, `role: 'MEMBER'` - exactly "Your organisation" and "Takes part") and
-    tries once to overwrite it with the real profile from `authApi.me()`. Nothing else in the app ever
-    calls `/auth/me` again after this page, so one dropped request there left the placeholder standing
-    through every reload. Now retried a few times before falling back.
+    tries once to overwrite it with the real profile from `authApi.me()`, now retried a few times
+    before falling back.
+
+    **Correction (U.8 re-review): the claim above that "nothing else in the app ever calls `/auth/me`
+    again after this page" was false, and I have removed it rather than let it stand.** The live cause
+    was never reproduced - the composer failure below stopped that before it reached the real join
+    flow - so what follows is what the re-review found by reading every sign-in path, not a confirmed
+    live reproduction. Neema actually came through `/invite` (`InvitePage.tsx`), not `JoinConfirmPage`.
+    Its `setAuth` call relies entirely on the app-wide `useWhoTheServerSaysYouAre` hook
+    (`client/src/lib/who-the-server-says-you-are.ts`, mounted in `App.tsx`) to fill in what its own
+    response left out - and `POST /participants/accept`'s response (`participants.service.ts`
+    `accept()`) built its own, smaller `user` object by hand: id, email, name, role, organizationId,
+    and no `organizationName`, unlike every door inside `AuthService` (sign-in, verify-email,
+    set-password, switch-organisation), which all share one builder (`theUserShape`). So the switcher
+    had nothing to show until that follow-up `/auth/me` request landed - a real, if narrower, gap than
+    the one first claimed, and now fixed at the source: `AuthService` exposes that same builder as a
+    public `userShapeFor(userId)`, and `accept()` (and `AuthService.switchOrganization`, which had the
+    identical gap) now return that shape instead of a hand-built subset. `JoinConfirmPage`'s retry, and
+    `AppShell.tsx` / `OrganisationChoices.tsx` / `MorePage.tsx` showing nothing until `organizationName`
+    actually arrives, both stay as safety nets.
 
     **Hafsah then asked me to find the real cause before adding retries: reproduce the emailed join
     link once with the local servers running, and record the profile request's actual status and
@@ -3121,6 +3138,73 @@ answer", which is the same fact - who is still out - said as a sentence.
 before a session opens, the tooltip says why, and both are still true once a session is open);
 rewritten to render `GroundChat` and read the words on screen instead, which is a stronger test of
 the same rule, not a different one. One commit; all five files pass, `tsc -b` clean.
+
+### U.8 The check-in screens: second review's findings, all fixed in one round
+
+- **Finishing, refused, said in the conversation.** Rukia gave three short answers, the engine closed
+  the session, the end card came up, and "That's right, finish" was refused by the server ("the
+  record is still thin"). The end card already came down on that refusal; the only explanation was a
+  toast carrying the server's own words, gone in a few seconds. Now a plain, permanent line is added
+  to the conversation itself - "Groundwork needs one or two more answers before this can finish. Say
+  a little more and then finish again." - and the answer box gets focus back. Two things asked of the
+  engine workspace instead of fixed here, since both are engine logic: the closing message and the
+  completion gate use two different, disagreeing heuristics for "is this record done" (the engine
+  said "ready" while the same server refused to close it); and the closing message was seen arriving
+  twice for two people, which a read of the client's whole send path found no client-side cause for.
+- **The five things Groundwork checks for are said out loud, and the "n of 5" score is off.**
+  `TheFiveThingsThatMakeItCheckable` and `TheDonePage` both showed only a tick or an empty circle
+  beside the same noun phrase either way - a sighted reader could not tell "Groundwork found this"
+  from "Groundwork did not pick this up this time," because that sentence existed only in a
+  screen-reader-only span. Both now say it out loud for every reader, and both add "Groundwork looked
+  for these five things. It may have missed some of what you said." The Done page's "n of 5" count and
+  bar are hidden behind a flag until request 45 (why the read misses real content) is answered - a
+  score built on a read known to undercount should not be shown as if it were reliable.
+- **A colleague picked from the list keeps her own name.** Rukia added Amani from the colleague list,
+  not by typing her address - `addParticipant` looked her account up only for the address and threw
+  the rest away, so the row was as bare as a stranger's typed email and every screen guessed a name
+  from it ("Amani U8" for an account named Amani Wekesa). The add path now writes her real name onto
+  the row (`nameGiven`, the field every reader already prefers over a guess); `userId` still stays
+  null until she actually accepts, so "has not joined yet" keeps meaning what it always meant. The
+  check-in's own roster now says that sentence too, matching the Done page's `WhoIsStillOut`.
+- **The session divider is one phrase.** "Session 1 · 27 Sept 2026" is now "Session 1, on 27
+  September 2026", using the shared date formatter's full month rather than two pieces stuck
+  together with a dot.
+- **The organisation switcher, the real cause this time.** The claim in the section above - that
+  nothing else in the app calls `/auth/me` again after `JoinConfirmPage` - was false, and has been
+  removed there rather than left standing (see the correction inline, above). Neema actually came
+  through `/invite`, not `JoinConfirmPage`: `POST /participants/accept`'s response built its own
+  smaller `user` object by hand, with no `organizationName`, unlike every door inside `AuthService`
+  which all share one builder. Fixed at the source - `AuthService` now exposes that builder as
+  `userShapeFor(userId)`, and `accept()` and `AuthService.switchOrganization` (which had the identical
+  gap) both use it. `JoinConfirmPage`'s retry and the blank-until-known screens both stay, as safety
+  nets rather than the fix itself.
+- **"Almost in" says the true reason.** Faraji has Kilima Traders U8's own address - he is not a
+  stranger to it - but the plan had no free seat, and the page said "You're from outside Kilima
+  Traders U8" regardless, because the rule that decided he had to wait is asked before his account
+  exists and cannot yet tell "a stranger" from "one of ours with nowhere to sit". The server now also
+  checks the organisation's own seat count when someone is waiting, and the page says "Kilima Traders
+  U8 has no free seat right now, so an admin there has to make room before you can start." when that
+  is the true reason.
+- **Engine wording, requests only** (added to existing requests where one fit): "The objectives on
+  record:", "Against the person who holds it:", "Dates it sets:" (request 40); a doubled word,
+  "Amani Wekesa: cookers delivered, 3, by by 9 October"; and "And that's Rukia's part of the record"
+  said to Rukia about her own answers.
+- **Found on the way, noted for U.5's own review rather than fixed here:** after setup, the lead's
+  check-in still shows the old chips ("Check in / My report / What am I missing? / Review my goals /
+  Patterns", "End session") and reads "0 of 1 checked in for session 1" and "Nothing on record yet"
+  although she answered in setup. The Paste text label field had no accessible name; given `aria-label
+  "What is it?"` now.
+
+**Tests:** `ChatPage.thinRecordRefusal.spec.tsx` (new), `TheDonePage`'s tests inside
+`the-check-in-as-a-person-reads-it.spec.tsx` (updated: the old "4 of 5" pinned a count now known to
+undercount and hidden on purpose), `GroundChat.spec.tsx` (updated: the divider's date format
+changed), `colleagues.spec.ts` (updated source match) plus two new specs
+(`a-colleague-added-keeps-their-name.spec.ts`, `GroundAdminPage.notJoinedSentence.spec.tsx`,
+`accepting-an-invite-names-the-organisation.spec.ts`), and `switching-organisation-cannot-grant-you-anything.spec.ts`
+/ `a-held-guest-is-not-shown-the-organisation.spec.ts` / `creating-an-organisation.spec.ts` /
+`joining-by-email-domain.spec.ts` (updated: their prisma doubles needed the fuller user-with-org shape
+`userShapeFor` now reads), and `almost-in-names-the-admin-after-a-real-invitation.spec.ts` (extended
+for the seat check). Only the tests for files changed run (`--maxWorkers=2`), both type checks clean.
 
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 

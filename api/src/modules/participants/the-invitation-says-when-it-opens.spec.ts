@@ -10,7 +10,7 @@ function previewWith(startsAt: Date | null, participantStartsAt: Date | null = n
     ground: { findUnique: jest.fn(async () => ({ id: 'g1', label: 'Help someone get back on track', scenario: 'PIP', cadence: 'WEEKLY', cadenceAnchorDay: null, workingDays: [], endsAt: null, startsAt, initiator: { firstName: 'Hafsah', lastName: 'J' }, organization: { name: 'Coamana' } })) },
     checkIn: { count: jest.fn(async () => 0) },
   };
-  return new ParticipantsService(prisma, {} as any, {} as any).preview('tok') as Promise<any>;
+  return new ParticipantsService(prisma, {} as any, {} as any, {} as any).preview('tok') as Promise<any>;
 }
 
 describe('the invitation says when the first check-in opens', () => {

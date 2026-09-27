@@ -1215,6 +1215,27 @@ export class AuthService {
     return { ...this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere), orgCode: user.organization.slug, emailNotifications: user.emailNotifications };
   }
 
+  /**
+   * THE SAME SHAPE `/auth/me` SENDS, CALLABLE FROM OUTSIDE THIS SERVICE (U.8 re-review).
+   *
+   * Every door that signs somebody in inside this service already goes through `buildAuthResponse`
+   * / `theUserShape`, so all of them carry `organizationName` and the rest. A door outside this
+   * service - `participants.service.ts`'s `accept()`, when somebody follows an emailed invite - built
+   * its own, smaller `user` object by hand: id, email, name, role, organizationId, and no
+   * `organizationName`. The app-wide safety net (`useWhoTheServerSaysYouAre`) papers over that with a
+   * follow-up `/auth/me`, but only once that request lands - so between accepting and that request
+   * landing, the switcher had nothing to say and showed nothing, or the wrong thing, until then.
+   *
+   * Rather than teach every other door to remember the same fetch-and-cast dance `getProfile` does,
+   * this is that dance, exposed once.
+   */
+  async userShapeFor(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { organization: true } });
+    if (!user) throw new BadRequestException('User not found');
+    const belongsElsewhere = await this.belongsElsewhere(user.id, user.organizationId);
+    return this.theUserShape(user as unknown as UserWithOrg, belongsElsewhere);
+  }
+
   // --- helpers ---
 
   /**
@@ -1570,16 +1591,23 @@ export class AuthService {
       throw new ForbiddenException('You are not a member of that organisation');
     }
 
-    const user = await this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { organizationId, role: membership.role },
-      select: { id: true, email: true, firstName: true, lastName: true, organizationId: true, role: true, isPlatformAdmin: true },
+      select: { id: true, email: true, organizationId: true, role: true, tokenEpoch: true },
     });
 
+    /*
+     * THE FULL SHAPE, NOT A HAND-BUILT SUBSET (U.8 re-review). This used to select only id, email,
+     * name, role, organizationId, isPlatformAdmin - missing `organizationName`, which is the one
+     * field the switcher itself reads. `organization` below carried the name, but the client's
+     * setAuth call only ever reads `res.user`, so it went nowhere. One shape, from one builder,
+     * used by every door - see `userShapeFor`.
+     */
     return {
       /* Carried through: a Google-signed-in staff member switching organisation kept back-office access (B16, P2-024). */
-      accessToken: this.generateToken(user, via),
-      user,
+      accessToken: this.generateToken(updated, via),
+      user: await this.userShapeFor(userId),
       organization: membership.organization,
     };
   }

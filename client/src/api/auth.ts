@@ -68,6 +68,8 @@ export type MyWaiting =
       admin: { name: string; firstName: string } | null
       inviterFirstName: string | null
       canRemindFrom: string
+      /** The true reason, when it is this: the plan has no free seat, not that this person is a stranger. */
+      heldForASeat?: boolean
     }
 
 export const authApi = {

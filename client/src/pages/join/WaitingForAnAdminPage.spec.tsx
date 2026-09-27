@@ -68,6 +68,15 @@ describe('after a real invitation', () => {
   })
 })
 
+describe('when the true reason is that the plan has no free seat (U.8 re-review)', () => {
+  it('says the true reason, not that Faraji is a stranger to his own organisation', async () => {
+    ;(authApi.myWaiting as any).mockResolvedValue({ ...AFTER_AN_INVITATION, heldForASeat: true })
+    open()
+    expect(await screen.findByText('Baridi Appliances has no free seat right now, so an admin there has to make room before you can start. We’ve asked Grace Achieng.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/You’re from outside/)
+  })
+})
+
 describe('after a link shared with many people', () => {
   it('names nobody and offers no reminder', async () => {
     ;(authApi.myWaiting as any).mockResolvedValue({ ...AFTER_AN_INVITATION, admin: null, inviterFirstName: null })
