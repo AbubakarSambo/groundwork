@@ -19,10 +19,11 @@ describe('no total means no total', () => {
   it('the participant page no longer guesses six, and prints the session alone when the total is unknown', () => {
     expect(page).not.toMatch(/\?\? 6\b/)
     expect(page).toMatch(/const totalSessions: number \| null =/)
-    expect(page).toMatch(/<span>· Session \{completedCheckIns\.length \+ 1\}<\/span>/)
+    /* Full sentence, no dot (U.8 review): "This is session {n}.", not "· Session {n}". */
+    expect(page).toMatch(/<span>This is session \{completedCheckIns\.length \+ 1\}\.<\/span>/)
   })
   it('and a session that opens later is dated, not numbered as current', () => {
-    expect(page).toMatch(/opensLater \? \(\s*<span>· Next session opens/)
+    expect(page).toMatch(/opensLater \? \(\s*<span>The next session opens on/)
   })
   it('the resolution gate stays closed on an unknown total', () => {
     expect(code('../components/gw/MyRecord.tsx')).toMatch(/totalSessions != null && completedCount >= totalSessions - 1/)
@@ -52,7 +53,10 @@ describe('the label says what is counted', () => {
     expect(entry).not.toContain('Specificity: {label}')
     expect(entry).not.toMatch(/\[1,2,3,4,5\]\.map\(n =>/)
     expect(entry).not.toContain('How concrete and specific your answers were')
-    expect(entry).toContain('Depth: {turns}')
+    /* "Depth: {turns} ..." became a full sentence in the U.8 review (no label, no dot-joined
+       clause): "You gave {turns} answer(s)." with "More answers make the report stronger."
+       appended below four. Still labels the turn count as depth of participation, not specificity. */
+    expect(entry).toContain('You gave ${turns} ${turns === 1 ? \'answer\' : \'answers\'}.')
     expect(entry).toMatch(/from \$\{plannedFrom\.timelineDays\} days, \$\{plannedFrom\.cadence\.toLowerCase\(\)\}\. Click to change\./)
     expect(entry).not.toContain('does not\n                yet extract cadence')
   })
