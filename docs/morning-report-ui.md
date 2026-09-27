@@ -15,9 +15,10 @@ in, with every decision you made).
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
-U.16 (links between check-ins, and each person's load) and the first part of U.17 (the Suites page).
-Each up to U.16 passed the full screen and API suites; the few failures each run found came from that
-module and were fixed. The Suites page has passed its own tests, and its full run is still to do. The latest full run,
+U.16 (links between check-ins, and each person's load) and the first parts of U.17 (the Suites page
+and the onboarding board). Each up to U.16 passed the full screen and API suites; the few failures each
+run found came from that module and were fixed. The U.17 parts have passed their own tests, and their
+full run is still to do. The latest full run,
 after U.16, passed everything with no failures (2,831 screen tests and 9,465 API tests). **None could
 be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
@@ -62,20 +63,18 @@ that one is yours to decide (item 27.4).
 12. Item 27.1 and 27.2: may somebody share their load with a lead, and may the team being asked
     read what another team asked of it? (both privacy questions)
 13. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
-    screen shows any; and 28.3: who counts as a lead for the suites.
+    screen shows any; 28.3: who counts as a lead for the suites; and 28.9: onboarding's "Something
+    nobody has shown them yet" is built from private questions (a privacy question).
 14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** the Suites page (the first part of U.17). An admin reads every suite in
-three groups, People, Money and Work, with a switch for each, and answers a suite's first questions
-before it switches on. A lead reads only the suites that are on, with no switches. A member and a
-guest are refused by the server. "Already part of Groundwork" links to where each of those things
-lives. "Suites" is in the sidebar for an admin and a lead, and on the new admin's welcome card. No
-suite's board is built yet, so no "Open its board" door is shown. The questions are mine, because no
-screen shows any (item 28.1). Before that: U.16 (links between check-ins, and each person's load),
-which passed its full run.
+**Just finished, not ticked:** the onboarding board, the first suite (U.17). An admin reads each new
+person still being set up, with their to-do list and how far they are; a lead only the new people in
+their own team; the new person, a colleague and a guest are refused; and nobody while the suite is off.
+It is built only from what the product already keeps, and it is read-only. "Something nobody has shown
+them yet" and "Who helps set ... up" are left out (items 28.9 and 28.12). Before that: the Suites page
+itself, where an admin switches each suite on or off after its first questions (item 28.1).
 
-**Next:** U.17 goes on, one suite at a time, starting with onboarding. The ten are listed in order
-under U.17 below.
+**Next:** U.17 goes on with suite 2, leave requests. The ten are listed in order under U.17 below.
 
 ## Needs Hafsah
 
@@ -1237,6 +1236,29 @@ reviewed" in this report.
     `20260927080000_the_suites_an_organisation_has_on`). It has not been run against any database.
 11. Switching suites on or off is not offered through Ask Groundwork; only an admin does it on the
     Suites page. Recommendation: keep it that way.
+12. **"Who helps set ... up" is not built.** Nothing records who helps with which step, so each
+    helper's own list cannot be made from what exists. **My recommendation:** let each step name who
+    helps with it, when the steps for a role are set up. The two onboarding questions (who sets up pay
+    and papers, who gives out the laptop and phone) could fill that in for the matching steps.
+13. **"Her work is in her own check-in, Faith, first 90 days." is left out,** because nothing links a
+    new person to their work check-in yet. **My recommendation:** link them when a check-in about a new
+    person is started, and then show the sentence with its link on both.
+14. **Steps are marked where they always were,** through the developer API, and not on the board. The
+    board is read-only, so no admin can tick off a new person's own to-do for them (audit B13). Request
+    20 asks the engine to let the person say a step is done in their own check-in or chat, said back
+    and confirmed first. "2 of 4 done" counts a step that was let through ("Not needed") as done.
+15. **The prototype's board is one person's; this one has a part for each new person** (audit A27),
+    under the heading "Onboarding". Each part is headed with the prototype's sentence, "Faith Kerubo is
+    getting set up". The prototype's "her" is the person's first name, because the product does not
+    know anyone's pronouns: "It is never used to judge Faith’s work." The prototype's "papers,
+    equipment, training and meeting people" is left out, because each organisation sets its own steps.
+16. **Wording no screen shows, on the board:** "Onboarding" as its heading, "Done", "Not needed",
+    "Optional", "Nobody is being set up right now.", "The board did not load.", and the server's
+    "The onboarding suite is not switched on." and "Only an admin or a lead can open this board."
+17. **Who is a lead's team, for this board:** a new person whose directory entry names the lead as
+    their manager, or shares the lead's department. That is the product's own rule for what a lead may
+    read (their department), with the manager added. **My recommendation:** keep it.
+
 
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
@@ -2302,12 +2324,57 @@ read whole folders, and both type checks were run, as you asked. No screen could
 (item 14), so the page was checked by rendering tests only. **Not ticked:** no review can sign in
 (item 14), the full run is still to do, and the ten suites are still to build.
 
+#### The onboarding board: built and tested, not yet reviewed
+
+**What was missing (the gap list):** a board at `#/suite/onboard`, and the rule on the server for who
+reads it. What the product already kept, and nothing more, is what it is built from: the steps for
+each role, who holds which role and since when, and where each person has got to on each step. It did
+not keep who helps with which step, which check-in is a new person's work check-in, or who marked a
+step done. Those parts of the prototype are left out (item 28.12 to 28.14).
+
+**What each person now reads:**
+- **Grace, an admin,** on the Suites page, once onboarding is on: "Open its board" on the Onboarding
+  card. On the board: "Suites / Onboarding" (the way back), "Onboarding", and a part for each new
+  person still being set up. For Faith: "Faith Kerubo is getting set up", "Faith started on 21
+  September. This board is only about getting Faith set up. It is never used to judge Faith’s work.",
+  then "Faith’s to-do list", "2 of 4 done", and each step for her role, such as "Send your ID and tax
+  PIN to Grace" with "Done", "Collect your laptop and phone from Kamau" with "Not needed", "Finish the
+  security training" with "About 30 minutes" under it, and "Meet Wairimu about your first 90 days"
+  with "Optional". With nobody being set up: "Nobody is being set up right now."
+- **Wairimu, a lead,** "Open its board" on Onboarding on her Suites page, and on the board only the new
+  people in her own team: those whose directory entry names her as their manager, or who share her
+  department. She never reads a new person in another team.
+- **Faith herself, Miriam (a colleague) and a guest** are refused by the server: "Only an admin or a
+  lead can open this board."
+- **Everybody, while the suite is off:** "The onboarding suite is not switched on."
+- **Nobody** reads "Something nobody has shown them yet" or "Who helps set ... up" (item 28.9 and
+  28.12), and nothing on the board can be ticked.
+
+**Privacy and access, on the server:** `GET /suites/onboard/board` refuses everybody while the suite is
+off, and refuses anybody but an admin or a lead. A lead is given only the new people in their own team.
+Nothing about anybody's work, no rating and no label is served, and no email address. The board is
+read-only, so nobody can tick off a new person's own to-do for them (audit B13). Getting set up stays
+apart from work (decisions rule 9). Nothing new is stored.
+
+**Commits:** `388ec7da` (the server), `487039b0` (the board and "Open its board"), `d9bd60e3`
+(request 20 to the engine: a new person says a step is done, it is said back and confirmed, then
+marked).
+
+**Tested:** `api/src/modules/suites/the-onboarding-board-as-each-reader-reads-it.spec.ts` (Grace reads
+everybody still being set up, with each step; Wairimu only her own report, by manager; Kamau only his
+own department; a lead with no team nobody; Faith, Miriam, a guest and an outsider refused; nobody
+while the suite is off) and `client/src/pages/suites/the-onboarding-board-as-each-reader-sees-it.spec.tsx`
+(what Grace, Wairimu and Faith each read, word for word), with new tests in
+`the-suites-page-as-each-reader-sees-it.spec.tsx` for "Open its board". **No existing test was
+changed.** Only the tests for the changed files, the tests that read whole folders, and both type
+checks were run. No screen could be checked signed in (item 14).
+
 **Each suite, still to do, in the order of the task.** Each one adds its own board at
 `#/suite/<name>`, its "Open its board" door, and its own tests.
-1. **Onboarding** (`#/suite/onboard`, admins and leads). The steps for each role exist. Missing: each
-   helper's list, and "Something nobody has shown them yet". The engine's part: spotting what nobody
-   has shown a new person. That is built from their questions to Ask Groundwork, which are private
-   always (item 28.9).
+1. **Onboarding** (`#/suite/onboard`, admins and leads). **Built** (above), from what exists. Still
+   missing: each helper's list, the link to the new person's work check-in, and "Something nobody has
+   shown them yet" (item 28.9, 28.12 and 28.13). The engine's part: a new person saying a step is done
+   (request 20).
 2. **Leave requests** (`#/suite/leave`, admins and leads). Missing: leave days, requests, a stand-in,
    and approve or decline. The engine's part: taking a request in a check-in or chat, and saying it
    back to be confirmed before it is sent.
