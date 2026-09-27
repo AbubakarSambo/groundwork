@@ -2,9 +2,11 @@ import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { yourBoard, type YourBoard } from './your-board';
+import { isShut } from './a-ground-that-has-ended';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
+import { askedOfYou, type AskedOfYou } from './asked-of-you';
 
 /** Said to anybody who asks for a You board that is not their own. */
 export const NOT_YOURS = 'Only the person whose page this is can read it.';
@@ -29,7 +31,7 @@ export class YourBoardService {
   async forReader(
     reader: { userId: string; email: string; organizationId: string; role: string },
     askedFor?: string | null,
-  ): Promise<YourBoard & { suggestionsAboutYou?: ForThePerson[] }> {
+  ): Promise<YourBoard & { suggestionsAboutYou?: ForThePerson[]; askedOfYou?: AskedOfYou }> {
     if (askedFor && askedFor !== reader.userId) throw new ForbiddenException(NOT_YOURS);
 
     const list = ((await this.grounds.list(reader.organizationId, reader.userId, reader.email, reader.role)) ?? []) as any[];
@@ -42,7 +44,7 @@ export class YourBoardService {
     const participantIds = mine.flatMap((g) => (g.participants ?? []).filter((p: any) => p.userId === reader.userId).map((p: any) => p.id));
 
     const none = Promise.resolve([] as any[]);
-    const [objectives, ownedTargets, commitments, coaching, todos] = await Promise.all([
+    const [objectives, ownedTargets, commitments, coaching, todos, onYou] = await Promise.all([
       participantIds.length
         ? this.prisma.personObjective.findMany({
             where: { groundId: { in: groundIds }, participantId: { in: participantIds } },
@@ -71,6 +73,24 @@ export class YourBoardService {
           })
         : none,
       this.myTodos(reader.organizationId, reader.email),
+      /* Everything asked of you (D3, U.16): open handoffs on your own place in your own check-ins. */
+      participantIds.length
+        ? this.prisma.groundDependency.findMany({
+            where: {
+              groundId: { in: groundIds },
+              onParticipantId: { in: participantIds },
+              status: { in: ['WAITING', 'BLOCKING'] as any },
+              clearedAt: null,
+            },
+            select: {
+              id: true, groundId: true, fromParticipantId: true, onParticipantId: true, onLabel: true,
+              what: true, status: true, namedTheThing: true, createdAt: true,
+              fromParticipant: { select: { userId: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+              ground: { select: { label: true, initiatorId: true, scenario: true, peersVisibleToEachOther: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          })
+        : none,
     ]);
 
     /* Groundwork's suggestions about you, in the shape the person it is about may read (facts and
@@ -84,7 +104,14 @@ export class YourBoardService {
       coaching: coaching as any,
       todos: todos as any,
     });
-    return aboutYou.length ? { ...board, suggestionsAboutYou: aboutYou } : board;
+    /* Only the check-ins still running: a request in a check-in that has ended, or not begun, is not on you now. */
+    const running = new Set(mine.filter((g) => !isShut(g.status) && !['AWAITING_APPROVAL', 'DECLINED'].includes(g.status) && !g.closedAt && !g.resolvedAt).map((g) => g.id));
+    const asked = askedOfYou(onYou as any, reader, { groundIds: running, participantIds: new Set(participantIds) });
+    return {
+      ...board,
+      ...(aboutYou.length ? { suggestionsAboutYou: aboutYou } : {}),
+      ...(asked ? { askedOfYou: asked } : {}),
+    };
   }
 
   /**

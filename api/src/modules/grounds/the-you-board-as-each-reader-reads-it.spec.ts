@@ -73,6 +73,8 @@ const rows = {
     { id: 'd-m1', organizationId: ORG, personExternalId: 'x-miriam', text: 'Send a photo of Green Mart’s written order.', dueSaid: null, state: 'OPEN' },
     { id: 'd-b1', organizationId: ORG, personExternalId: 'x-brian', text: 'BRIAN-TODO', dueSaid: null, state: 'OPEN' },
   ],
+  /* Everything asked of you (U.16) has its own spec: everything-asked-of-you-as-each-reader-reads-it. */
+  groundDependency: [] as any[],
 };
 
 /** Just enough of Prisma's `where` to filter by `in` lists and plain values. */
@@ -96,6 +98,7 @@ function setup() {
     coachingState: table('coachingState'),
     person: table('person'),
     todo: table('todo'),
+    groundDependency: table('groundDependency'),
   };
   const grounds: any = {
     list: jest.fn(async (_org: string, userId: string, _email: string, role: string) =>
