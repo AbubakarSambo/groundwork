@@ -31,16 +31,16 @@ function ground(): any {
   };
 }
 
-function serviceFor() {
+function serviceFor(over: any = {}) {
   const prisma: any = {
-    ground: { findMany: jest.fn().mockResolvedValue([ground()]) },
+    ground: { findMany: jest.fn().mockResolvedValue([{ ...ground(), ...over }]) },
     groundParticipant: { updateMany: jest.fn().mockResolvedValue({ count: 0 }), findMany: jest.fn().mockResolvedValue([]) },
   };
   return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
 }
 
-async function listAs(userId: string, role: string) {
-  const [row] = (await serviceFor().list('org1', userId, `${userId}@baridi.test`, role)) as any[];
+async function listAs(userId: string, role: string, over: any = {}) {
+  const [row] = (await serviceFor(over).list('org1', userId, `${userId}@baridi.test`, role)) as any[];
   return row;
 }
 
@@ -68,5 +68,50 @@ describe('the check-ins list, as each reader gets it', () => {
     const row = await listAs(ADMIN, 'ADMIN');
     expect(row.joinToken).toBe('secret-join-token');
     expect(row.participants.filter((p: any) => p.email).length).toBe(0);
+  });
+});
+
+/*
+ * U.5 REVIEW: THE PEER RULE, AND THE TEAM'S REPORT BEFORE RELEASE. Where people are not named to each
+ * other, the check-in's own page shows a participant only herself; the list showed everybody, with
+ * each person's session rows. And the latest round's summary is report text, given to somebody who
+ * does not run the check-in only once the report is released.
+ */
+describe('the list, where people are not named to each other', () => {
+  const hidden = {
+    peersVisibleToEachOther: false,
+    checkIns: [
+      { id: 'c-m', participantId: 'p-part', sessionNumber: 1, status: 'COMPLETED', createdAt: new Date(), completedAt: new Date() },
+      { id: 'c-o', participantId: 'p-omar', sessionNumber: 1, status: 'NOT_STARTED', createdAt: new Date(), completedAt: null },
+    ],
+    dependencies: [{ what: 'the deck', status: 'OPEN', createdAt: new Date(), fromParticipantId: 'p-omar', onParticipantId: 'p-lead', onLabel: 'Wairimu' }],
+    reportRounds: [{ sessionNumber: 1, finding: 'Omar is behind', sharedPicture: 'Omar has not closed anything.' }],
+  };
+
+  it('a participant is given only herself: her row, her sessions, nothing owed between others', async () => {
+    const row = await listAs(PART, 'MEMBER', hidden);
+    expect(row.peersVisibleEffective).toBe(false);
+    expect(row.participants.map((p: any) => p.id)).toEqual(['p-part']);
+    expect(row.checkIns.map((c: any) => c.id)).toEqual(['c-m']);
+    expect(row.dependencies).toEqual([]);
+    expect(row.glance.progress).toMatchObject({ answeredThisRound: 0, ofPeople: 0 });
+    expect(row.reportRounds).toBeUndefined();
+    expect(JSON.stringify(row)).not.toMatch(/Omar/);
+  });
+
+  it('the lead and an admin still see everyone', async () => {
+    for (const [who, role] of [[LEAD, 'MEMBER'], [ADMIN, 'ADMIN']] as const) {
+      const row = await listAs(who, role, hidden);
+      expect(row.participants.map((p: any) => p.id)).toEqual(['p-lead', 'p-part', 'p-omar']);
+      expect(row.checkIns.map((c: any) => c.id)).toEqual(['c-m', 'c-o']);
+      expect(row.latestSummary).toBe('Omar has not closed anything.');
+    }
+  });
+
+  it('a participant is given the latest summary only once the report is released', async () => {
+    const shown = { reportRounds: [{ sessionNumber: 1, finding: 'Deals moved', sharedPicture: 'Three deals moved.' }] };
+    expect((await listAs(PART, 'MEMBER', shown)).latestSummary).toBeNull();
+    const released = await listAs(PART, 'MEMBER', { ...shown, report: { releasedAt: new Date(), agreements: [], divergences: [] } });
+    expect(released.latestSummary).toBe('Three deals moved.');
   });
 });

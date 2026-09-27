@@ -1339,19 +1339,59 @@ export class GroundsService {
          *     needs them to count, and the count (`alignment`) is already worked out above.
          * The audit log goes too: nothing on any screen reads it from here.
          */
-        const { joinToken, groundAuditLog: _log, report: fullReport, participants: allParticipants, ...safe } = rest;
-        const mayShareTheLink = isInitiator || (userRole === 'ADMIN' && g.organizationId === organizationId);
+        const {
+          joinToken, groundAuditLog: _log, report: fullReport, participants: allParticipants,
+          checkIns: allCheckIns, dependencies: allDependencies, reportRounds: _rounds, ...safe
+        } = rest;
+        /* Whoever runs it: the lead, or an admin of the organisation it belongs to. Same test as get(). */
+        const runsIt = isInitiator || (userRole === 'ADMIN' && g.organizationId === organizationId);
         const hideContact = !!(rest as any).restrictExternalVisibility;
-        const participants = ((allParticipants ?? []) as any[]).map((p) => ({
-          ...p,
-          email: hideContact && !isInitiator && !(userId && p.userId === userId) ? null : p.email,
-        }));
+        /*
+         * AND THE PEER RULE, THE SAME ONE get() APPLIES (U.5 review). Where people are not named to
+         * each other, a participant was shown nobody else on the check-in's own page and everybody,
+         * with each person's session rows and statuses, here. Now the list gives them only
+         * themselves: their own row, their own sessions, and only what is owed to or by them.
+         * Today and "N new" read this list, so they follow.
+         */
+        const peersVisibleEffective = peersAreNamedOn(rest as any);
+        const hidePeers = !peersVisibleEffective && !runsIt;
+        const isMe = (p: any) => !!userId && p.userId === userId;
+        const participants = ((allParticipants ?? []) as any[])
+          .filter((p) => !hidePeers || isMe(p))
+          .map((p) => ({
+            ...p,
+            email: hideContact && !isInitiator && !isMe(p) ? null : p.email,
+          }));
+        const shown = new Set(participants.map((p: any) => p.id));
+        const checkInsShown = hidePeers
+          ? ((allCheckIns ?? []) as any[]).filter((c) => shown.has(c.participantId))
+          : allCheckIns;
+        const dependenciesShown = hidePeers
+          ? ((allDependencies ?? []) as any[]).filter((d) => shown.has(d.fromParticipantId) || shown.has(d.onParticipantId))
+          : allDependencies;
+        /*
+         * THE TEAM'S REPORT ONLY ONCE IT IS RELEASED (U.5 review). The latest round's summary and
+         * finding are report text; somebody who does not run the check-in is given them only after
+         * the report has been released, the same as the report itself.
+         */
+        const mayReadTheReport = runsIt || !!fullReport?.releasedAt;
         return {
           ...safe,
           participants,
-          ...(mayShareTheLink ? { joinToken } : {}),
+          checkIns: checkInsShown,
+          dependencies: dependenciesShown,
+          peersVisibleEffective,
+          ...(runsIt ? { joinToken } : {}),
           report: fullReport ? { releasedAt: fullReport.releasedAt ?? null } : null,
-          alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName, latestFinding, latestSummary, hasBoard, glance,
+          alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
+          latestFinding: mayReadTheReport ? latestFinding : null,
+          latestSummary: mayReadTheReport ? latestSummary : null,
+          hasBoard,
+          /* No count of other people either, where they are not named to this reader: not how many
+             answered, nor what is holding them up. Their own turn still shows from their own rows. */
+          glance: hidePeers
+            ? { ...glance, progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0 }, inTheWay: { count: 0, oldest: null, daysWaiting: null } }
+            : glance,
         };
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
@@ -2021,16 +2061,42 @@ export class GroundsService {
        * screen, because it arrives by this field as well. Names stay unresolved here for the same
        * reason as the brief: entitlement to a name is decided with a viewer in hand.
        */
+      /*
+       * AND ONLY TO WHOEVER MAY READ IT YET (U.5 review). A participant was sent the report's shared
+       * picture while `releasedAt` was still null: the lead's whole account of the team, before the
+       * report was shared with them. Somebody who does not run the check-in now gets nothing of the
+       * report's text until it is released, and never the raw agreements and differences, which the
+       * report page serves them through the reports service in the form they may read.
+       */
       report: (rest as any).report
-        ? {
-            ...(rest as any).report,
-            sharedPicture:
-              typeof (rest as any).report.sharedPicture === 'string'
-                ? notTheWordParty((rest as any).report.sharedPicture)
-                : (rest as any).report.sharedPicture,
-          }
+        ? viewerRunsThisGround
+          ? {
+              ...(rest as any).report,
+              sharedPicture:
+                typeof (rest as any).report.sharedPicture === 'string'
+                  ? notTheWordParty((rest as any).report.sharedPicture)
+                  : (rest as any).report.sharedPicture,
+            }
+          : {
+              id: (rest as any).report.id,
+              releasedAt: (rest as any).report.releasedAt ?? null,
+              createdAt: (rest as any).report.createdAt,
+              ...((rest as any).report.releasedAt
+                ? {
+                    sharedPicture:
+                      typeof (rest as any).report.sharedPicture === 'string'
+                        ? notTheWordParty((rest as any).report.sharedPicture)
+                        : (rest as any).report.sharedPicture,
+                    theOpening: (rest as any).report.theOpening ?? null,
+                  }
+                : {}),
+            }
         : (rest as any).report,
       joinToken: mayShareJoinLink ? (rest as any).joinToken ?? null : null,
+      /* The session rows follow the peer rule too, so a hidden colleague's statuses do not come by the back door. */
+      checkIns: hidePeers
+        ? ((rest as any).checkIns ?? []).filter((c: any) => participantsWithCheckIns.some((p: any) => p.id === c.participantId))
+        : (rest as any).checkIns,
       participants: participantsWithCheckIns,
       /**
        * WHAT THE PEER RULE IS ACTUALLY DOING, not what is stored. W14-4.
