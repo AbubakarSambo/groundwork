@@ -92,6 +92,9 @@ export function MagicVerifyPage() {
   const lastAttempt = useRef<{ token: string; payload: any; user: { jobTitle?: string | null; role?: string } } | null>(null)
 
   function applyOutcome(outcome: VerifyOutcome) {
+    /* "Where do you work?" is answered once any other outcome arrives, or its screen stays on top of
+       the one that follows (U.6 review: the saved check-in's confirmation sat under it). */
+    if (outcome.kind !== 'whereDoYouWork') setChoosing(null)
     if (outcome.kind === 'success') {
       setPasswordSetupToken(outcome.passwordSetupToken ?? null)
       setFailedInvites(outcome.failedInvites)
@@ -252,7 +255,15 @@ export function MagicVerifyPage() {
      * is checked here too: only a path inside this app.
      */
     const goingTo = [fromParam, res.next].find(p => typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') && !p.startsWith('/\\'))
-    if (goingTo) {
+    /*
+     * HOME IS NOT A DESTINATION THAT SKIPS THE SAVE (U.6 review). After "Where do you work?" the
+     * server says "go on to Today", and this took that as a place to go instead of saving: the set-up
+     * check-in was never made and nobody was invited, while the save card had promised "opening it
+     * saves your check-in and sends the invite". So a way home still commits first; only a real
+     * destination (a link to one check-in, an invitation) goes straight there.
+     */
+    const home = goingTo === '/today' || goingTo === '/grounds' ? goingTo : null
+    if (goingTo && !home) {
       return confirmFirst(passwordStep(goingTo) ?? { kind: 'redirect', to: goingTo })
     }
     // ALWAYS attempt the commit. The server merges whatever this browser
@@ -279,6 +290,8 @@ export function MagicVerifyPage() {
       /** Shown, not skipped. The button out of the confirmation goes via the password step. */
       return confirmFirst({ ...outcome, passwordSetupToken: res.passwordSetupToken })
     }
+    /* Nothing to save after all, on the way home: the same password step the home link always had. */
+    if (outcome.kind === 'redirect' && home && outcome.to === '/grounds') return confirmFirst(passwordStep(home) ?? { kind: 'redirect', to: home })
     return confirmFirst(outcome)
   }
 
