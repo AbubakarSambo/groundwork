@@ -869,24 +869,10 @@ export class AuthService {
           this.signedUp(org, lower);
           organizationId = org.id;
         }
-        const grantedRole = inviterOrganizationId ? role : 'MEMBER';
         const u = await tx.user.create({
-          /* The role the admin chose here (U.4). */
-          data: { organizationId, email: lower, firstName, lastName, role: grantedRole, isEmailVerified: false },
+          /* The role the admin chose here (U.4); the membership row the middleware makes copies it. */
+          data: { organizationId, email: lower, firstName, lastName, role: inviterOrganizationId ? role : 'MEMBER', isEmailVerified: false },
         });
-        /*
-         * AND THE MEMBERSHIP ROW OF THE HOME ORGANISATION THIS JUST GAVE THEM.
-         *
-         * `user.organizationId` was set above and nothing wrote the matching
-         * `OrganizationMembership` row - a gap `myOrganizations`'s self-healing branch was
-         * quietly papering over on every read, and the reason a freshly invited person's own
-         * organisation switcher could read "Your organisation" and "Takes part" instead of its
-         * name: with no membership row, the client either waited on the self-heal or, on the
-         * screens where it is not applied, fell back to nothing. Written here, at the moment the
-         * organisation is decided, so it exists from their very first sign-in rather than being
-         * reconstructed by a reader every time.
-         */
-        await tx.organizationMembership.create({ data: { userId: u.id, organizationId, role: grantedRole } });
         /*
          * ONLY WHERE WE JUST MADE THE WORKSPACE FOR THEM. This branch also runs for somebody being
          * invited INTO an existing organisation, and claiming that one for the invitee would hand a
