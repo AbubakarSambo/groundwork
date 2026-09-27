@@ -21,6 +21,8 @@
  * alone is merely stiff, and one it mangles is wrong.
  */
 
+import { theShortNameOf } from './a-title-is-not-a-first-name';
+
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
@@ -94,15 +96,18 @@ export function theReaderIsNotThey(text: string): string {
  */
 export function fullNameOnce(text: string, names: Iterable<string>): string {
   const all = [...names].map((n) => (n ?? '').trim()).filter((n) => n.includes(' '));
+  /* The first name is the first word that is not a title: "Dr Amina Bello" was cut to "Dr" (seniorhire,
+     run 10). "Dr Bello" has no first name to cut to, so it stays whole. See a-title-is-not-a-first-name. */
   const firsts = new Map<string, number>();
   for (const n of all) {
-    const first = n.split(/\s+/)[0].toLowerCase();
+    const first = theShortNameOf(n).toLowerCase();
     firsts.set(first, (firsts.get(first) ?? 0) + 1);
   }
 
   let out = text;
   for (const full of all) {
-    const first = full.split(/\s+/)[0];
+    const first = theShortNameOf(full);
+    if (first === full) continue;
     if ((firsts.get(first.toLowerCase()) ?? 0) > 1) continue;
     const re = new RegExp(`\\b${escapeRe(full)}\\b`, 'g');
     let seen = false;
