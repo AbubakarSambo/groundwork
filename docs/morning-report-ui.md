@@ -1209,8 +1209,9 @@ reviewed" in this report.
      months") and "Who writes each review with the person?" ("Their manager" or "An admin").
    - When someone leaves: "Who removes a person’s access on their last day?" and "Who works out their
      final pay?" (each a person).
-   - Spending and budgets: "What is the most a manager may approve on their own?" (a number) and "Who
-     approves anything above that?" (a person).
+   - Spending and budgets: "Which currency do people spend in?" (a choice, added with its board, item
+     45), "What is the most a manager may approve on their own?" (a number) and "Who approves anything
+     above that?" (a person).
    - Equipment: "Who looks after equipment and repairs?" (a person).
    - Role map, To-dos, and Customers and deals ask nothing, and switch on at one press.
 2. **"Open its board" is left out** until each suite's board exists, so no door leads nowhere. Each
