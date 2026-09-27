@@ -1,4 +1,5 @@
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
+import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
@@ -4362,11 +4363,18 @@ export class GroundsService {
      * check-in is a real fact about this person, and the lead is the one who has to know it - they
      * are the one who will wonder why this person cannot see the rest of the workspace.
      */
-    const theirHome = await this.prisma.user.findUnique({
+    /* Their home from their memberships, not the organisation they last switched to (U.4 third review). */
+    const account = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase() },
-      select: { organizationId: true, organization: { select: { name: true } } },
+      select: {
+        id: true,
+        memberships: { select: { organizationId: true, role: true, createdAt: true, organization: { select: { name: true, ownerUserId: true } } } },
+      },
     });
-    const fromAnotherOrg = !!theirHome && theirHome.organizationId !== organizationId;
+    const theirMemberships = account?.memberships ?? [];
+    const home = account ? theirHome(account.id, theirMemberships as any) : null;
+    const belongsHere = theirMemberships.some((m) => m.organizationId === organizationId && m.role !== 'GUEST');
+    const fromAnotherOrg = !!account && !belongsHere && !!home && home.id !== organizationId;
     /*
      * "NOT INVITED YET" IS THREE DIFFERENT FACTS. The start date is ahead, there is no seat, or the
      * mail did not send - and the screen read them all as one null and told the lead "invited on the
@@ -4391,7 +4399,7 @@ export class GroundsService {
       /* Named, because "somebody from another organisation" is not something a lead can act on and
          a company name is. Never the person's other colleagues, only where they belong. */
       ...(fromAnotherOrg
-        ? { guestFrom: theirHome!.organization?.name ?? 'another organisation' }
+        ? { guestFrom: home?.name ?? 'another organisation' }
         : {}),
     };
   }
