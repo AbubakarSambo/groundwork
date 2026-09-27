@@ -2036,6 +2036,21 @@ export class GroundsService {
     const requestingUserIsMissing = !!(
       sessionProgress && requestingParticipant && sessionProgress.missingParticipantIds.includes(requestingParticipant.id)
     );
+    /**
+     * WHETHER THIS ROUND ALREADY HAS TWO PEOPLE COUNTED IN IT - A YES/NO, NOT A COUNT (U.8 fifth
+     * review). GroundParticipantPage's Report tab says "The shared report compares two accounts...
+     * It will build once the person running this check-in adds somebody" from
+     * `whoIsInRound(ground.participants, ...).length < 2` - the same `ground.participants` a hidden
+     * check-in reduces to the reader's own row alone, so a real team of four read that notice
+     * forever. Read here off the RAW participants, with the same rule the client's `countsInRound`
+     * uses (a managing-only lead counts in round one, unless the scenario is one where the lead
+     * only asks and never answers - `waitsOnAManagingOnlyLead`), so this agrees with the client's own
+     * rule rather than a cruder count.
+     */
+    const roundSessionNumber = sessionProgress?.sessionNumber ?? 1;
+    const atLeastTwoInThisRound = (ground.participants ?? []).filter((p: any) =>
+      !p.managingOnly || waitsOnAManagingOnlyLead((ground as any).scenario, roundSessionNumber),
+    ).length > 1;
 
     // Read-back of private lead-context notes: ONLY the initiator who wrote them
     // sees them. They are never returned to any other party (that is the private
@@ -2237,6 +2252,8 @@ export class GroundsService {
       leadAnswersToo,
       /** Whether more than one party answers this check-in - a yes/no, not a count. See the note above. */
       aTeamReportComes,
+      /** Whether this round already has two people counted in it - a yes/no. See the note above. */
+      atLeastTwoInThisRound,
       /**
        * WHAT THE PEER RULE IS ACTUALLY DOING, not what is stored. W14-4.
        *

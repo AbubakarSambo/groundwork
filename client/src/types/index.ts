@@ -215,6 +215,11 @@ export interface Ground {
    * Read from the raw participants, unaffected by that filter, unlike the old `howManyAnswer(ground) > 1`.
    */
   aTeamReportComes?: boolean
+  /**
+   * Whether this round already has two people counted in it - a plain yes/no, from the same raw
+   * participants as `aTeamReportComes`, unaffected by the peer-hiding filter (U.8 fifth review).
+   */
+  atLeastTwoInThisRound?: boolean
   leadContextNotes?: LeadContextNote[]
   /**
    * WHAT PEOPLE ARE DOWN AS DOING. `participantId` null means nobody owns it, which is most of what

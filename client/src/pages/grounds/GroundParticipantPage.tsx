@@ -1,7 +1,6 @@
 import { howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { OutOfTime } from './OutOfTime'
 import { plannedSessionsFor } from '@/lib/sessionCount'
-import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -723,8 +722,17 @@ export function GroundParticipantPage() {
               coverage={{
                 iHaveCheckedIn: completedCheckIns.length > 0,
                 answered: (ground as any)?.sessionProgress?.completed ?? completedCheckIns.length,
+                /*
+                 * `sessionProgress` GOES NULL ONCE THE REPORT RELEASES, and the fallback used to
+                 * count `ground.participants` - the array a hidden check-in reduces to this reader's
+                 * own row alone, so it read "1" for a real team of four the moment its report
+                 * released (U.8 fifth review, same bug as `aTeamReport` on the Done page).
+                 * `aTeamReportComes` is a plain yes/no read off the raw participants, so falling back
+                 * to "2" rather than the true count still tells the truth about whether this is a
+                 * team at all, without this field learning its own exact size from a boolean.
+                 */
                 parties: (ground as any)?.sessionProgress?.total
-                  ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+                  ?? ((ground as any)?.aTeamReportComes ? 2 : 1),
                 /* Empty where peers are hidden, and the component says "one person" instead. A page
                    being private to its reader does not make somebody else's name theirs to know. */
                 waitingOn: (ground as any)?.peersVisibleEffective === false
@@ -788,7 +796,14 @@ export function GroundParticipantPage() {
               can never release one - the rule refuses outright below two - and the page said
               "forming" for ever. The truth, and who can change it (fix plan B17).
             */}
-            {whoIsInRound((ground.participants ?? []) as any[], (ground as any).sessionProgress?.sessionNumber ?? 1, (ground as any).scenario).length < 2 && (
+            {/*
+              READ FROM `ground.atLeastTwoInThisRound`, NOT `whoIsInRound(ground.participants, ...)`
+              (U.8 fifth review). `ground.participants` is reduced to this reader's own row alone on
+              a check-in that hides peers from each other, so this always counted as one - a real
+              team of four read "It will build once somebody is added" for ever. The server sends
+              the same rule's answer, computed off the raw participants before that filter runs.
+            */}
+            {!(ground as any).atLeastTwoInThisRound && (
               <div role="status" style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
                 The shared report compares two accounts. {isInitiator ? 'Add somebody and this will build.' : 'It will build once the person running this check-in adds somebody.'} Your own record is yours to read in the meantime.
               </div>
