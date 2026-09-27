@@ -2227,6 +2227,9 @@ model Resolution {
   groundId       String    @unique @map("ground_id")
   endState       String    @map("end_state") // latest leading proposal; the agreed end state once closed
   decisionRights Json?     @map("decision_rights")
+  /// Why the lead chose this outcome, in their own words (rule 6: a person decides, giving a reason).
+  /// Read with the outcome by the people in the check-in and by an admin. Never by anyone else.
+  reason         String?   @db.Text
   closedAt       DateTime? @map("closed_at")
   createdAt      DateTime  @default(now()) @map("created_at")
 

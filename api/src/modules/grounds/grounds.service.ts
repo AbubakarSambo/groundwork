@@ -279,6 +279,12 @@ export function isMultiPartyScenario(_scenario: GroundScenario): boolean {
   return true;
 }
 
+/**
+ * WHAT THE CHECK-IN'S OWN READ CARRIES OF HOW IT ENDED (U.11): the outcome and when, never the
+ * lead's reason. The reason is served by the resolution read, which checks who is asking.
+ */
+export const RESOLUTION_ON_THE_GROUND = { id: true, endState: true, closedAt: true, createdAt: true } as const;
+
 // Fields safe to expose on a participant to anyone who can view the ground.
 // Trust-critical: NEVER serialize inviteToken (magic link → account takeover),
 // soloArtifact (the AI summary of this party's PRIVATE record), specificityHistory
@@ -1394,7 +1400,12 @@ export class GroundsService {
          * second screen wanting the same answer would have had to implement it again.
          */
         roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
-        resolution: true,
+        /*
+         * THE OUTCOME, NOT THE WHOLE ROW (U.11). The row now holds the lead's reason, which is read
+         * through the resolution read only, where who may read it is checked. Passing the row through
+         * here would hand it to every reader of the check-in.
+         */
+        resolution: { select: RESOLUTION_ON_THE_GROUND },
         patternDetections: {
           select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
           orderBy: { createdAt: 'desc' },
@@ -1439,7 +1450,7 @@ export class GroundsService {
             /* Same include as the primary query above. TypeScript refused the two shapes when this
                was added to only one of them, which is the check the comment above wishes it had. */
             roundCompletions: { select: { sessionNumber: true, completedAt: true }, orderBy: { sessionNumber: 'asc' } },
-            resolution: true,
+            resolution: { select: RESOLUTION_ON_THE_GROUND },
             patternDetections: {
               select: { id: true, code: true, periodsObserved: true, status: true, observationText: true, createdAt: true },
               orderBy: { createdAt: 'desc' },

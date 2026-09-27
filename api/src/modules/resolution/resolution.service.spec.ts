@@ -12,6 +12,8 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
   const OTHER_ID = 'p2';
   const RESOLUTION_ID = 'r1';
   const USER_ID = 'u1';
+  /* A decision is never recorded without why (U.11, decisions rule 6), so every close says one. */
+  const REASON = 'We agreed the partnership works as it is.';
 
   /**
    * A COFOUNDER ground, deliberately.
@@ -88,7 +90,7 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
     const config: any = { get: jest.fn(() => 'http://localhost:5173') };
     const service = new ResolutionService(prisma, intelligence, reports, email, config);
 
-    await service.propose(GROUND_ID, USER_ID, 'CONTINUE');
+    await service.propose(GROUND_ID, USER_ID, 'CONTINUE', REASON);
 
     expect(deleted).toHaveLength(1);
     expect(deleted[0]).toMatchObject({
@@ -105,7 +107,7 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
     const config: any = { get: jest.fn(() => 'http://localhost:5173') };
     const service = new ResolutionService(prisma, intelligence, reports, email, config);
 
-    await service.propose(GROUND_ID, USER_ID, 'CONTINUE');
+    await service.propose(GROUND_ID, USER_ID, 'CONTINUE', REASON);
 
     expect(deleted).toHaveLength(0);
   });
@@ -119,7 +121,7 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
     const config: any = { get: jest.fn(() => 'http://localhost:5173') };
     const service = new ResolutionService(prisma, intelligence, reports, email, config);
 
-    await service.propose(GROUND_ID, USER_ID, 'CONTINUE');
+    await service.propose(GROUND_ID, USER_ID, 'CONTINUE', REASON);
 
     expect(deleted).toHaveLength(0);
   });

@@ -59,7 +59,7 @@ export class ResolutionService {
    * they all chose the same end state. If they diverge, the divergence is
    * surfaced (in the returned state) and the ground stays open.
    */
-  async propose(groundId: string, userId: string, endState: string) {
+  async propose(groundId: string, userId: string, endState: string, reason?: string) {
     const { ground, participant } = await this.assertParty(groundId, userId);
 
     if (ground.status === GroundStatus.CLOSED || ground.status === GroundStatus.RESOLVED) {
@@ -90,6 +90,21 @@ export class ResolutionService {
       );
     }
 
+    /**
+     * A PERSON DECIDES, GIVING A REASON (decisions rule 6, U.11).
+     *
+     * The lead's answer closes the check-in, so it is the decision, and a decision is never recorded
+     * without why. The people in the check-in read the reason with the outcome ("Kwame reads this
+     * with the outcome."). Checked here, not only on the screen, so no other way in can close a
+     * check-in on a bare outcome.
+     */
+    const why = (reason ?? '').trim();
+    if (!why) {
+      throw new BadRequestException(
+        'Say why, in a sentence or two. The people in this check-in read it with the outcome.',
+      );
+    }
+
     // GW-16: detect a proposal change BEFORE upserting so we can clear stale
     // confirmations. Silent stale confirmations on a superseded end state would
     // produce a false consensus - any party that already confirmed must re-confirm
@@ -104,8 +119,8 @@ export class ResolutionService {
     // live in ResolutionConfirmation.
     const resolution = await this.prisma.resolution.upsert({
       where: { groundId },
-      create: { groundId, endState },
-      update: { endState },
+      create: { groundId, endState, reason: why },
+      update: { endState, reason: why },
     });
 
     if (endStateIsChanging) {
@@ -164,7 +179,7 @@ export class ResolutionService {
       this.logger.warn(`Resolution on ${groundId} did not close: ${chosenStates.size} state(s) from ${confirmations.length} answer(s).`);
     }
 
-    return this.buildState(groundId);
+    return this.buildState(groundId, userId);
   }
 
   /**
@@ -373,8 +388,20 @@ export class ResolutionService {
     });
 
     return {
+      /**
+       * The outcome, and why, once it is decided (U.11). `reason` is the lead's own words, written
+       * for the people in the check-in to read with the outcome (decisions rule 6). This read is
+       * served only to a party or an admin of the organisation - see `get` - so nobody else reads it.
+       * The label and the name are the screen's: this carries the stored value and the reason only.
+       */
       resolution: resolution
-        ? { id: resolution.id, groundId, endState: resolution.endState, closedAt: resolution.closedAt }
+        ? {
+            id: resolution.id,
+            groundId,
+            endState: resolution.endState,
+            closedAt: resolution.closedAt,
+            reason: resolution.closedAt ? (resolution.reason ?? null) : null,
+          }
         : null,
       confirmations,
       confirmedCount: confirmations.filter((c) => c.confirmed).length,
@@ -392,6 +419,11 @@ export class ResolutionService {
        */
       leadDecides: !closingNeedsEveryone(ground.scenario),
       viewerIsLead: viewerUserId ? ground.initiatorId === viewerUserId : false,
+      /**
+       * Whether the reader is in the check-in at all. An admin who only reads it has no account of
+       * their own on it, so the screen must not tell them "your account is kept".
+       */
+      viewerIsParty: !!viewer,
     };
   }
 

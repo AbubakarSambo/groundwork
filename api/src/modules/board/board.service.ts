@@ -576,6 +576,7 @@ export class BoardService {
           take: 1,
           select: { createdAt: true },
         })?.catch?.(() => []) ?? [],
+        decidedAt: (ground as any).closedAt ?? null,
       }),
       participants: ground.participants.map((p) => ({
         id: p.id,

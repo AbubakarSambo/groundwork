@@ -19,6 +19,8 @@ export interface WhatTheBoardIsBuiltFrom {
   objectives?: { updatedAt?: Date | string | null; createdAt?: Date | string | null }[];
   dependencies?: { updatedAt?: Date | string | null; createdAt?: Date | string | null }[];
   documentsEveryoneMayRead?: { createdAt?: Date | string | null }[];
+  /** When the lead decided how the check-in ends (U.11). A decision is something new coming in. */
+  decidedAt?: Date | string | null;
 }
 
 export function whenTheBoardLastChanged(from: WhatTheBoardIsBuiltFrom): string | null {
@@ -28,6 +30,7 @@ export function whenTheBoardLastChanged(from: WhatTheBoardIsBuiltFrom): string |
     ...(from.objectives ?? []).map((o) => o.updatedAt ?? o.createdAt),
     ...(from.dependencies ?? []).map((d) => d.updatedAt ?? d.createdAt),
     ...(from.documentsEveryoneMayRead ?? []).map((d) => d.createdAt),
+    from.decidedAt,
   ];
   let newest: number | null = null;
   for (const t of times) {
