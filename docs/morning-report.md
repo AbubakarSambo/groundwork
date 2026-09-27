@@ -53,6 +53,19 @@ This section is kept up to date as I go. If it stops partway, that is where I go
 
 **Run-9, the first full run today, started at about 17:50 on `bde4f419`.** It includes everything above.
 
+### Run-9: 18 clearly right of the 19 that count, and 18 of all 24
+
+- **The judgements.**
+  - **Clearly right (18):** board, cofounder, contractreview, discovery, drift, handover, implementation, newmanager, pip, project, pulse, realign, recognition, renewal, seniorhire, snapshot, updates and workplan.
+  - **Couldn't be tested (3):** advisor, openread and shock. The reasons are in the table below.
+  - **Report incomplete (2):** crisis and loans. Crisis's gap reads as right ("the rota they used is known to be wrong"), but it cannot count.
+  - **Not right (1):** sales. Kwame says "I've got 22 in the pipeline right now. So I'm ahead of schedule!" against a target of 14 approvals. The judgement still does not say he is counting applications.
+- **Drift, pulse and snapshot, the three the names change was for, are all right.**
+- **Is task 1.5 met?** On all 24 it is 18, and the bar is 20. Leaving out the runs that couldn't be tested and the incomplete reports, it is 18 of 19. **Which count the bar uses is your call, so I have not ticked 1.5 and have not started 1.6.**
+- **Every quote is from the record.** The checker read all 496 quotes served across the 24 scenarios. All 496 are word for word in the record.
+- **The checker says nothing is worse than the baseline.** Jargon in reports and boards fell from 124 to 84, and in Groundwork's turns from 15 to 13.
+- **One number to watch.** "Blocker checked" is 35, against a baseline of 37. The checker allows a 10 per cent drop, so it passes, but it has gone 42, 46, 38 and now 35 across runs 6 to 9. It counts Groundwork's own conversation turns. Today's changes are all in reports, the board and names, apart from the situation-name line the conversation reads. I have not found a cause.
+
    - **Next for loans and shock:** one rule in the judgement's instruction. When several people give the same cause, say it once and name everyone it applies to. When several people each hold part of the same story, put the parts in order of when they happened. This waits until the middle way is finished, because both touch the judgement files. I will test it twice on each.
 
 ### The situation names, side by side, for you to decide
@@ -73,51 +86,56 @@ These are the eight names the screens workspace asked about (their request 5), p
 If you agree, the table's names change in the engine, and the screens workspace changes its list in the same step so their parity test stays green.
 
 
-### How often each scenario was clearly right, across runs 6, 7 and 8
+### How often each scenario was clearly right, across runs 6, 7, 8 and 9
 
-These are the three full runs I have, graded against each scenario's right answer. I started no new run for this. Run-6 came before any of last night's changes, run-7 came after the first seven, and run-8 came after all of them.
+Graded against each scenario's right answer. Run-6 came before last night's changes, run-7 after the first seven, run-8 after all of them, and run-9 after today's.
 
-**Two counts, as you asked.** A run is marked "couldn't be tested" for a scenario when the simulated people never said the fact that scenario depends on. The first count leaves those runs out. The second counts all 24, as before.
+**Two counts.** A run is marked "couldn't be tested" for a scenario when the simulated people never said the fact that scenario depends on. It is marked "report incomplete" when the runner itself says the report is not usable. The first count leaves both out. The second counts all 24, as before.
 
-| Scenario | Run-6 | Run-7 | Run-8 | Right, of the runs that could be tested | Right, of all three |
-| --- | --- | --- | --- | --- | --- |
-| cofounder | right | right | right | 3 of 3 | 3 of 3 |
-| contractreview | right | right | right | 3 of 3 | 3 of 3 |
-| crisis | right | right | right | 3 of 3 | 3 of 3 |
-| discovery | right | right | right | 3 of 3 | 3 of 3 |
-| implementation | right | right | right | 3 of 3 | 3 of 3 |
-| newmanager | right | right | right | 3 of 3 | 3 of 3 |
-| pip | right | right | right | 3 of 3 | 3 of 3 |
-| realign | right | right | right | 3 of 3 | 3 of 3 |
-| renewal | right | right | right | 3 of 3 | 3 of 3 |
-| seniorhire | right | right | right | 3 of 3 | 3 of 3 |
-| workplan | right | right | right | 3 of 3 | 3 of 3 |
-| board | couldn't be tested | right | right | 2 of 2 | 2 of 3 |
-| advisor | right | couldn't be tested | couldn't be tested | 1 of 1 | 1 of 3 |
-| openread | couldn't be tested | couldn't be tested | right | 1 of 1 | 1 of 3 |
-| handover | - | right | right | 2 of 3 | 2 of 3 |
-| project | right | right | - | 2 of 3 | 2 of 3 |
-| updates | right | - | right | 2 of 3 | 2 of 3 |
-| pulse | right | - | - | 1 of 3 | 1 of 3 |
-| recognition | - | - | right | 1 of 3 | 1 of 3 |
-| sales | right | - | - | 1 of 3 | 1 of 3 |
-| snapshot | right | - | - | 1 of 3 | 1 of 3 |
-| drift | - | - | - | 0 of 3 | 0 of 3 |
-| loans | - | - | - | 0 of 3 | 0 of 3 |
-| shock | couldn't be tested | - | couldn't be tested | 0 of 1 | 0 of 3 |
-| **Total** | **17 of 21** | **14 of 22** | **16 of 22** | | |
+| Scenario | Run-6 | Run-7 | Run-8 | Run-9 | Right, of the runs that count | Right, of all four |
+| --- | --- | --- | --- | --- | --- | --- |
+| cofounder | right | right | right | right | 4 of 4 | 4 of 4 |
+| contractreview | right | right | right | right | 4 of 4 | 4 of 4 |
+| discovery | right | right | right | right | 4 of 4 | 4 of 4 |
+| implementation | right | right | right | right | 4 of 4 | 4 of 4 |
+| newmanager | right | right | right | right | 4 of 4 | 4 of 4 |
+| pip | right | right | right | right | 4 of 4 | 4 of 4 |
+| realign | right | right | right | right | 4 of 4 | 4 of 4 |
+| renewal | right | right | right | right | 4 of 4 | 4 of 4 |
+| seniorhire | right | right | right | right | 4 of 4 | 4 of 4 |
+| workplan | right | right | right | right | 4 of 4 | 4 of 4 |
+| board | couldn't be tested | right | right | right | 3 of 3 | 3 of 4 |
+| crisis | right | right | right | report incomplete | 3 of 3 | 3 of 4 |
+| advisor | right | couldn't be tested | couldn't be tested | couldn't be tested | 1 of 1 | 1 of 4 |
+| openread | couldn't be tested | couldn't be tested | right | couldn't be tested | 1 of 1 | 1 of 4 |
+| handover | - | right | right | right | 3 of 4 | 3 of 4 |
+| project | right | right | - | right | 3 of 4 | 3 of 4 |
+| updates | right | - | right | right | 3 of 4 | 3 of 4 |
+| pulse | right | - | - | right | 2 of 4 | 2 of 4 |
+| recognition | - | - | right | right | 2 of 4 | 2 of 4 |
+| snapshot | right | - | - | right | 2 of 4 | 2 of 4 |
+| drift | - | - | - | right | 1 of 4 | 1 of 4 |
+| sales | right | - | - | - | 1 of 4 | 1 of 4 |
+| loans | - | - | - | report incomplete | 0 of 3 | 0 of 4 |
+| shock | couldn't be tested | - | couldn't be tested | couldn't be tested | 0 of 1 | 0 of 4 |
+| **Total** | **17 of 21** | **14 of 22** | **16 of 22** | **18 of 19** | | |
 
-**On all 24, as before:** 17 on run-6, 14 on run-7 and 16 on run-8.
+**On all 24, as before:** 17 on run-6, 14 on run-7, 16 on run-8 and **18 on run-9**.
 
-**The runs that couldn't be tested, and why:**
+**The runs left out, and why:**
 
-- **advisor, run-7:** Peter never says he has no relationship at KCB or Co-operative Bank.
-- **advisor, run-8:** Peter never says he has no relationship at KCB or Co-operative Bank.
-- **board, run-6:** Wanjiru never gives a timeline for the licence, only that there is none yet.
-- **openread, run-6:** Kofi says it is "not a freeze problem", so the two engineers never agree.
-- **openread, run-7:** Kofi says it is "a scheduling problem, not a problem with the actual freezes".
-- **shock, run-6:** nobody says first-hand that the quarterly reviews were missed.
-- **shock, run-8:** nobody says first-hand that the quarterly reviews were missed.
+- **advisor, run-7, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **advisor, run-8, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **advisor, run-9, couldn't be tested:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **board, run-6, couldn't be tested:** Wanjiru never gives a timeline for the licence, only that there is none yet.
+- **crisis, run-9, report incomplete:** 2 findings for 3 people.
+- **loans, run-9, report incomplete:** 8 findings for 9 people.
+- **openread, run-6, couldn't be tested:** Kofi says it is "not a freeze problem", so the two engineers never agree.
+- **openread, run-7, couldn't be tested:** Kofi says it is "a scheduling problem, not a problem with the actual freezes".
+- **openread, run-9, couldn't be tested:** Kofi says "I don't think it's about a freeze or anything like that".
+- **shock, run-6, couldn't be tested:** nobody says first-hand that the quarterly reviews were missed.
+- **shock, run-8, couldn't be tested:** nobody says first-hand that the quarterly reviews were missed.
+- **shock, run-9, couldn't be tested:** nobody mentions the champion leaving; only the cancelled reviews and the tickets are said.
 
 **A correction to last night's report.** I wrote that on run-7 Daniel never said that Priti was the one he was waiting on. That was wrong. He said "Priti can grant that access." So updates on run-7 could be tested, and the judgement missed it.
 
