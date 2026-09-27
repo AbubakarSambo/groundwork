@@ -2199,6 +2199,60 @@ every screen test and every API test passed (2,612 and 9,264), and the build is 
 the engine workspace's latest, its conversation and report tests passed again (3,532). **Not ticked,**
 because no review can sign in (item 14).
 
+#### U.4 review fixes (27 September)
+
+The reviewer checked U.4 live, with its own `@example.test` accounts. The privacy rules held:
+colleagues gave only id, name, role and team; a person waiting to be let in got only the people on
+their own check-in; and People was refused to a lead and to a member. It sent U.4 back for five
+things. There is one commit for each, with tests of what a person reads. Only the tests for the
+files changed were run, with the type checks; the full run is the tester's.
+
+1. **Someone added by name now reads as invited to that check-in** (`6a09be4f`). Before, they read
+   "Signed in, not on a check-in", and the check-in was missing. People now also finds check-ins by
+   the address the invitation went to, until it is accepted, so the row reads "Invited, not opened"
+   and "Sales team, Q3". **Done differently from the suggestion, on purpose:** the row is not linked
+   to the account when someone is added. Accepting treats a linked row as already accepted, so the
+   first click on the invitation would stop signing the person in and send a second email instead.
+2. **Someone from another organisation is a guest from the moment they are added** (`e4cd7a3a`).
+   Before, the guest membership was written only when they clicked the invitation. So they were on
+   no row, "Guests" showed nobody, and switching to the host organisation was refused. Now adding
+   them writes the same "Guest" membership, after every refusal, both when a lead adds them and when
+   an admin sets a check-in up for a lead. The rule that nobody joins your company by being invited
+   to a check-in is kept, because a guest is not a member:
+   - they are "Guest", never "Takes part";
+   - they hold no keys and no seat;
+   - no account is created;
+   - they see only the people on their own check-in.
+
+   A guest calling from inside the host before accepting sees only those people (tested).
+3. **The people count keeps up** (`68457e1e`). "27 people, on the Growth plan, which is for up to
+   100." is read again after "Send their invitations", "Let them in" or sending held invitations.
+4. **Plain words** (`c5084105`):
+   - A lead or member opening People reads "Only an admin can open People." and "Your role here is
+     not an admin’s. An admin can change it."
+   - Changing a role says "Amina’s role has changed."
+   - The admin's email subject reads "Peter Ouma is waiting to be let into Baridi Appliances.", or
+     the address when the person gave no name.
+   - **Kept, and why:** someone waiting to be let in shows "Takes part", not the prototype's
+     "Guest". Here they are a new account being made one of the organisation's people. Once let in,
+     they hold a seat and see their colleagues, which a guest does not. Their status says "Waiting
+     to be let in".
+5. **An invited person goes where the invitation leads** (`61dbd3da`). Before, after setting their
+   password, they landed on "Where do you work?", offered another organisation by their email
+   domain. That page now opens by itself only for someone who belongs nowhere yet: every
+   organisation they are in was just made for them, has nobody else in it and has no check-in.
+   Anyone invited lands on Today in the organisation that invited them. Joining by link or domain
+   still makes no organisation.
+
+**For U.5's review (noted, not fixed):** on Today, "Look at it" for a check-in waiting for approval
+opens a page with no Approve button, and shows the lead's own words to the admin.
+
+**Still open from U.4, for later:**
+- Changing the role or number of someone currently looking at another organisation says "User not
+  found".
+- The seat count counts a guest who has switched in, in the organisation they switched to. This
+  belongs to billing.
+
 ### U.5 Today and the check-ins list: built and tested, not yet reviewed
 
 - **A privacy leak closed.** The check-ins list used to send every participant the whole record for
