@@ -15,8 +15,8 @@ import { useJumpStore } from '@/stores/jump'
  * out. Phones had no way to switch organisation or sign out before this page.
  *
  * Every door comes out of `navItemsFor`, the same gate the sidebar uses, so a phone offers exactly
- * the pages a computer does to the same person. You is on it since U.12; Company joins it when
- * that page exists; "Join or create an organisation" joins it when that flow exists (A3).
+ * the pages a computer does to the same person. You is on it since U.12, and Company since U.15;
+ * "Join or create an organisation" joins it when that flow exists (A3).
  */
 export function MorePage() {
   const user = useAuthStore(s => s.user)
