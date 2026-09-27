@@ -2361,7 +2361,7 @@ apart from work (decisions rule 9). Nothing new is stored.
 marked).
 
 **Tested:** `api/src/modules/suites/the-onboarding-board-as-each-reader-reads-it.spec.ts` (Grace reads
-everybody still being set up, with each step; Wairimu only her own report, by manager; Kamau only his
+everybody still being set up, with each step; Wairimu only Faith, whose manager she is; Kamau only his
 own department; a lead with no team nobody; Faith, Miriam, a guest and an outsider refused; nobody
 while the suite is off) and `client/src/pages/suites/the-onboarding-board-as-each-reader-sees-it.spec.tsx`
 (what Grace, Wairimu and Faith each read, word for word), with new tests in
