@@ -23,7 +23,8 @@ const CARD = readFileSync(join(__dirname, 'TheCheckInYouJustFinished.tsx'), 'utf
 
 describe('a report you cannot argue with', () => {
   it('offers the correction where the report is read', () => {
-    expect(CARD).toContain('Something here is wrong')
+    /* U.9: the prototype's words, "Something here isn’t right" (own-report.txt). */
+    expect(CARD).toContain('Something here isn’t right')
     expect(CARD).toMatch(/reportsApi\.startSelfCorrection\(groundId, sessionNumber\)/)
   })
 

@@ -132,8 +132,8 @@ export default function SessionReportPage() {
       */}
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
         {data?.finishedAt
-          ? `Everything about this session, on ${whenItWas(data.finishedAt, 'dayAndMonthLong')}. Yours first, then everybody's.`
-          : "Everything about this session. Yours first, then everybody's."}
+          ? `Everything about this session, on ${whenItWas(data.finishedAt, 'dayAndMonthLong')}. Your report first, then the team’s report.`
+          : 'Everything about this session. Your report first, then the team’s report.'}
       </div>
 
       {isLoading && (
@@ -201,8 +201,9 @@ export default function SessionReportPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>Your own report</h2>
-            <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>Yours alone</span>
+            {/* U.9: the prototype's words for this report, "Your report" and "Only you" (own-report.txt). */}
+            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>Your report</h2>
+            <span style={{ fontSize: 12, color: 'var(--gw-sub)', flexShrink: 0 }}>Only you</span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '2px 0 16px', lineHeight: 1.55, maxWidth: '68ch' }}>
             What you said this session, and what to do with it.
@@ -366,7 +367,7 @@ export default function SessionReportPage() {
             `shape` carries it because the report is what the window is about.
           */}
           <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '13px 15px', marginTop: 6 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Something here is wrong?</div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 3 }}>Something here isn’t right</div>
             {/* The inferred claims themselves, each with its own "Correct this". */}
             {Array.isArray((groundReport as any)?.inferences) && (groundReport as any).inferences.length > 0 && (
               <div style={{ marginBottom: 14 }}>
@@ -442,8 +443,8 @@ export default function SessionReportPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>The shared report</h2>
-            <span style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>Everybody's</span>
+            {/* U.9: "The team’s report", the prototype's name for it (own-report.txt, team-report.txt). */}
+            <h2 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>The team’s report</h2>
           </div>
           {/*
             "IT NEVER QUOTES ANYONE" SAT DIRECTLY ABOVE VERBATIM SENTENCES FROM THREE PEOPLE.

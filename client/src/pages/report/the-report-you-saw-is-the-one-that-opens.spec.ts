@@ -70,8 +70,9 @@ describe('the report that opens is the report they read', () => {
 
   it('and each half says whose it is', () => {
     /* Two reports on one page is fine. Two reports on one page both called "report" is not. */
-    expect(PAGE).toContain('Your own report')
-    expect(PAGE).toContain('The shared report')
+    /* U.9: the prototype's names, "Your report" and "The team’s report" (own-report.txt). */
+    expect(PAGE).toContain('>Your report<')
+    expect(PAGE).toContain('>The team’s report<')
   })
 
   it('can be corrected from the page that shows it', () => {

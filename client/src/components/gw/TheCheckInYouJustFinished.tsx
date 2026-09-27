@@ -495,7 +495,7 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
                 minHeight: 36, display: 'inline-flex', alignItems: 'center', textAlign: 'left',
               }}
             >
-              {correct.isPending ? 'Opening…' : 'Something here is wrong - correct it'}
+              {correct.isPending ? 'Opening…' : 'Something here isn’t right'}
             </button>
             <div className="gw-mini" style={{ color: 'var(--gw-sub)', marginTop: 3, maxWidth: '68ch' }}>
               This opens a short session to correct or add to what you said. Nothing is overwritten -
