@@ -25,7 +25,9 @@ const BOARD = strip(
 describe('where accounts differ', () => {
   it('prints what each account said', () => {
     expect(BOARD).toContain('d.positions.map(');
-    expect(BOARD).toContain('pos.participantLabel');
+    /* `who`, not `.participantLabel`, which must never be printed (docs/answers-from-engine.md, U.10). */
+    expect(BOARD).toContain('pos.who');
+    expect(BOARD).not.toContain('pos.participantLabel');
     expect(BOARD).toContain('pos.view');
   });
 

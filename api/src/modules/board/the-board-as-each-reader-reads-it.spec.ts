@@ -48,7 +48,11 @@ const GROUND: any = {
   checkIns: CHECK_INS,
   report: {
     releasedAt: new Date('2026-09-23T17:00:00Z'), sharedAs: null, theOpening: null, networkPicture: null,
-    sharedPicture: 'Both have checked in.', agreements: [], divergences: [], centralQuestion: null,
+    sharedPicture: 'Both have checked in.', agreements: [],
+    divergences: [{ topic: 'Whether a price range counts as a budget', positions: [
+      { participantLabel: 'Participant A', view: 'A range is a budget.' },
+      { participantLabel: 'Participant Z', view: 'Only a figure is a budget.' },
+    ] }], centralQuestion: null,
     engagement: {}, findings: [],
     createdAt: new Date('2026-09-20T09:00:00Z'), updatedAt: new Date('2026-09-23T15:02:00Z'),
   },
@@ -204,5 +208,21 @@ describe('the lead never reads how a person’s answers were rated', () => {
     expect(withoutTheRating(rows).map((r) => `${r.who} ${r.reason}`)).toEqual([
       'Brian behind the pace', 'Aisha nothing to do', 'Miriam nothing to do',
     ]);
+  });
+});
+
+describe('where people see it differently names each side, never with an internal label', () => {
+  it('every side carries who to print, and no reader is served "Participant" or "the initiator" there', async () => {
+    let seen = 0;
+    for (const [who, role] of [['u-wairimu', 'MEMBER'], ['u-miriam', 'MEMBER'], ['u-grace', 'ADMIN']] as const) {
+      const b = await boardFor(who, role).board;
+      const sides = (b.divergence?.items ?? []).flatMap((d: any) => d.positions ?? []);
+      seen += sides.length;
+      for (const s of sides) {
+        expect(typeof s.who).toBe('string');
+        expect(s.who).not.toMatch(/participant [a-z0-9]+|initiator/i);
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
   });
 });

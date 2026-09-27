@@ -616,7 +616,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
                           {d.positions.map((pos: any, j: number) => (
                             <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
-                              <span style={{ fontWeight: 700 }}>{pos.participantLabel}</span>
+                              <span style={{ fontWeight: 700 }}>{pos.who ?? 'A colleague'}</span>
                               <span style={{ color: 'var(--gw-sub)' }}>{pos.view ? ` - ${pos.view}` : ''}</span>
                             </div>
                           ))}

@@ -130,3 +130,24 @@ describe('the board, as each reader reads it', () => {
     expect(await screen.findByText('The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.')).toBeTruthy()
   })
 })
+
+describe('where people see it differently', () => {
+  it('prints who each side is, never the engine’s label', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({
+      ...AS_THE_LEAD,
+      sections: ['objectives', 'divergence'],
+      divergence: {
+        agreements: [],
+        items: [{ topic: 'Whether a price range counts as a budget', positions: [
+          { participantLabel: 'Participant A', who: 'Miriam Wanjiku', view: 'A range is a budget.' },
+          { participantLabel: 'Participant B', who: 'A colleague', view: 'Only a figure is a budget.' },
+        ] }],
+      },
+    })
+    expect(await screen.findByText('Whether a price range counts as a budget')).toBeTruthy()
+    expect(screen.getAllByText('Miriam Wanjiku').length).toBeGreaterThan(0)
+    expect(screen.getByText('A colleague')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/Participant [AB]/)
+  })
+})

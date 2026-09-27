@@ -19,7 +19,7 @@ const CITE: React.CSSProperties = {
   color: 'var(--gw-sub-d)', marginBottom: 6,
 }
 
-export interface APosition { participantLabel?: string | null; view?: string | null }
+export interface APosition { participantLabel?: string | null; who?: string | null; view?: string | null }
 export interface ADifference {
   topic?: string | null
   positions?: APosition[] | null
@@ -59,7 +59,7 @@ export function TwoAccountsSideBySide({ difference }: { difference: ADifference 
       >
         {sides.map((p, i) => (
           <div key={i}>
-            <div style={CITE}>{(p.participantLabel ?? 'One account').toString()}</div>
+            <div style={CITE}>{(p.who ?? p.participantLabel ?? 'One account').toString()}</div>
             <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--gw-text)', maxWidth: '68ch' }}>{p.view}</div>
           </div>
         ))}

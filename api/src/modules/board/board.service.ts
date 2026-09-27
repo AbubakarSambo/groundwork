@@ -752,10 +752,21 @@ export class BoardService {
          */
         items: Array.isArray(reportSafe.divergences)
           ? (reportSafe.divergences as any[]).map((d) => {
-              const named = (side: any) => ({
-                ...side,
-                participantLabel: visibleNames.get(String(side?.participantLabel ?? '')) ?? side?.participantLabel,
-              });
+              const named = (side: any) => {
+                const resolved = visibleNames.get(String(side?.participantLabel ?? '')) ?? side?.participantLabel;
+                return {
+                  ...side,
+                  participantLabel: resolved,
+                  /*
+                   * WHAT THE SCREEN PRINTS (U.10). `.participantLabel` must never be printed: a label
+                   * nobody could resolve is the engine's own ("Participant A", "the initiator"), and
+                   * those read as "a colleague". See docs/answers-from-engine.md.
+                   */
+                  who: /^(participant\s+[a-z0-9]+|the initiator|initiator)$/i.test(String(resolved ?? '').trim())
+                    ? 'A colleague'
+                    : (String(resolved ?? '').trim() || 'A colleague'),
+                };
+              };
               /* A label the model invented - "Person", twice, on a live three-person report - is
                  matched to somebody by position before any name is looked up. See
                  eachSideGetsSomebody. */
