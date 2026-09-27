@@ -10,6 +10,16 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 This section is kept up to date as I go. If it stops partway, that is where I got to.
 
+### Request 36, privacy: a person's label could be the lead's private description of them
+
+**What was wrong.** When a person had no name, several places used the sentence the lead typed about them as their name. That sentence can hold the lead's private words, for example "Daniel - Your sales manager, who you said is not meeting his agreed targets". So the person, or a colleague, could read it on the board, in an email, or in the check-in itself.
+
+**Fixed the simple way, as you said (`a75b13ac`).** A person's label is now their name. With no name it is "A teammate", the neutral word the board and the report's list of who answered already use. Nine places built a label from the description. All nine are changed: the board, what the board tells the model the room is about, the end-state email, the interview's name for a colleague, and four places in the conversation. The end-state email also no longer falls back to an email address. A new test runs every one of these, including the served board as the lead, as the person and as a colleague, and proves no part of the description appears as anyone's label. Six of its tests fail with the old code put back. The answer is in `docs/answers-from-engine.md` (`d062243a`).
+
+**The same leak by other routes, being closed now.**
+- **The board's `remit` field.** It served the lead's full description to every reader, and I confirmed Daniel and a colleague both received it. It will reach only the person who runs the check-in.
+- **Two routes being checked.** The report's `people[].role`, and the person's own check-in instruction, which hands the model the lead's description of them.
+
 ### Your decisions at midday
 
 - **Situation names: agreed.** The prototype's names for six of the eight. Keep "contract" and "recognition" in the other two. I had an error in my own table: it also bolded a third change, "Make sense of something serious that happened". I am following your words, so that one takes the prototype's name, "Make sense of something serious".
