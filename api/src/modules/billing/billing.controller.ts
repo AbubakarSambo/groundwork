@@ -8,6 +8,25 @@ import { PricingService } from './pricing.service';
 import { CurrentUser, Roles, Role, Public } from '../../common';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
 
+/**
+ * WHAT EACH READER IS SERVED FROM GET /billing/status (U.19). Only an admin manages billing, so only
+ * an admin is served the card, the renewal and ending dates, the check-ins' balances and the usage.
+ *
+ * A lead or somebody who takes part is served the seat count, the plan and a free run's plan and end,
+ * because the People page and the check-in page warn them that the plan is full before they add
+ * somebody. A guest, who is from outside and only in one check-in, is served nothing: how many people
+ * this organisation has, and what it pays, is none of their business.
+ */
+export function theStatusAsTheyMayReadIt(status: Awaited<ReturnType<BillingService['getStatus']>>, role: string) {
+  if (role === 'ADMIN') return status;
+  if (role === 'GUEST') return {};
+  return {
+    subscription: { plan: status.subscription.plan, status: status.subscription.status },
+    people: status.people,
+    onTheHouse: status.onTheHouse ? { plan: status.onTheHouse.plan, until: status.onTheHouse.until } : null,
+  };
+}
+
 @ApiTags('Billing')
 @Controller('billing')
 export class BillingController {
@@ -67,7 +86,7 @@ export class BillingController {
      * organisation has run, how many reports went out, how many people take part - which is nobody's
      * business but the admin's. So the counts are the part that is gated, not the route.
      */
-    return this.billing.getStatus(organizationId, role === 'ADMIN');
+    return theStatusAsTheyMayReadIt(await this.billing.getStatus(organizationId, role === 'ADMIN'), role);
   }
 
   @Delete('account')
