@@ -20,12 +20,15 @@ export interface CadenceOption {
   days: number | null
 }
 
+/* U.6 review: ONE SET OF NAMES FOR HOW OFTEN, the prototype's (setup.txt), used by the setup before
+   saving and by the check-in's own Setup alike. They were "Daily", "Weekly" and so on here and
+   "Every day", "Every week" on the setup. "When I choose" is read by the lead, who runs it. */
 export const CADENCES: CadenceOption[] = [
-  { cadence: 'DAILY', label: 'Daily', days: 1 },
-  { cadence: 'WEEKLY', label: 'Weekly', days: 7 },
+  { cadence: 'DAILY', label: 'Every day', days: 1 },
+  { cadence: 'WEEKLY', label: 'Every week', days: 7 },
   { cadence: 'FORTNIGHTLY', label: 'Every 2 weeks', days: 14 },
-  { cadence: 'MONTHLY', label: 'Monthly', days: 30 },
-  { cadence: 'SEQUENTIAL', label: 'When the lead checks in', days: null },
+  { cadence: 'MONTHLY', label: 'Every month', days: 30 },
+  { cadence: 'SEQUENTIAL', label: 'When I choose', days: null },
   /**
    * A single round, and no follow-up is ever scheduled.
    *
@@ -34,7 +37,7 @@ export const CADENCES: CadenceOption[] = [
    * no rhythm to choose. That was wrong once a situation recommended it: the control could not display
    * its own recommendation, and the screen showed "Daily" for a ground the product had set to one round.
    */
-  { cadence: 'ONE_TIME', label: 'One time, no follow-up', days: null },
+  { cadence: 'ONE_TIME', label: 'Once', days: null },
 ]
 
 /** The cadences offered when someone is choosing a regular rhythm. */

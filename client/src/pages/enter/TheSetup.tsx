@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { whenTheCheckInsLand, type Cadence } from '@/components/gw/when-the-check-ins-land'
+import { cadenceLabel } from '@/lib/cadence'
 
 /*
  * THE SCHEDULE, BEFORE IT IS SAVED (U.6, B1): #/new/setup.
@@ -26,14 +27,9 @@ export const THE_SETUP = {
   whenIEndIt: 'When I end it',
 } as const
 
-export const HOW_OFTEN: [Cadence, string][] = [
-  ['ONE_TIME', 'Once'],
-  ['DAILY', 'Every day'],
-  ['WEEKLY', 'Every week'],
-  ['FORTNIGHTLY', 'Every 2 weeks'],
-  ['MONTHLY', 'Every month'],
-  ['SEQUENTIAL', 'When I choose'],
-]
+/* The product's one set of names for how often (lib/cadence.ts), in the prototype's order. */
+export const HOW_OFTEN: [Cadence, string][] = (['ONE_TIME', 'DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'SEQUENTIAL'] as Cadence[])
+  .map((c) => [c, cadenceLabel(c as never)])
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
