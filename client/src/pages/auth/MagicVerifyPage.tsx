@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { queryClient } from '@/lib/queryClient'
 import { authApi, type VerifyEmailResponse, type WhereDoYouWorkFirst } from '@/api/auth'
 import { WhereDoYouWork } from '@/pages/org/WhereDoYouWork'
+import { thePasswordKey, forgetThePasswordKey } from './the-password-key'
 import { entryApi } from '@/api/entry'
 import { groundsApi } from '@/api/grounds'
 import { Arrival } from '@/components/gw/Arrival'
@@ -304,7 +305,10 @@ export function MagicVerifyPage() {
       flow = (async (): Promise<VerifyOutcome> => {
         let res: Awaited<ReturnType<typeof authApi.verifyEmail>>
         try {
-          res = await authApi.verifyEmail(token)
+          /* Only with a key when this browser chose a password at sign-up; otherwise exactly as before. */
+          const passwordKey = thePasswordKey()
+          res = passwordKey ? await authApi.verifyEmail(token, undefined, passwordKey) : await authApi.verifyEmail(token)
+          if ('accessToken' in res && res.accessToken) forgetThePasswordKey()
         } catch (err: any) {
           /* A link that ran out gets its own page (A2, "That link has expired"); anything else stays
              with "This link did not work" (LinkDidNotWork). */
@@ -400,7 +404,9 @@ export function MagicVerifyPage() {
     setChooseBusy(true)
     const flow = (async (): Promise<VerifyOutcome> => {
       try {
-        const res = await authApi.verifyEmail(token, choice)
+        const passwordKey = thePasswordKey()
+        const res = passwordKey ? await authApi.verifyEmail(token, choice, passwordKey) : await authApi.verifyEmail(token, choice)
+        if ('accessToken' in res && res.accessToken) forgetThePasswordKey()
         if ('whereDoYouWork' in res && res.whereDoYouWork) return { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
         return afterVerify(res as SignedIn, token, null, true)
       } catch (err: any) {

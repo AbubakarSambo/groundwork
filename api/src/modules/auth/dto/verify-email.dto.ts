@@ -23,4 +23,14 @@ export class VerifyEmailDto {
   @IsOptional()
   @IsBoolean()
   createMyOwn?: boolean;
+
+  /**
+   * The key the browser that signed up was given with a password (U.3 review, a security fix). Only
+   * with it is that password put on the account; without it, the person chooses one afterwards.
+   */
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  passwordKey?: string;
 }

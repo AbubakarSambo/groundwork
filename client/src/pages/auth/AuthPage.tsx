@@ -21,6 +21,7 @@ import { Button } from '@/components/gw/kit'
 import { AuthCard, AuthError, AuthField, AuthNotice, AuthSplit, GoogleMark, PasswordField, PasswordRules } from './auth-kit'
 import { meetsTodaysPasswordRules } from './password-rules'
 import { theFreeTrialSentence } from '@/lib/the-free-trial'
+import { keepThePasswordKey } from './the-password-key'
 
 
 
@@ -346,7 +347,8 @@ export function AuthPage() {
     mutationFn: () => nextPath
       ? save({ payload: whatTheyTyped() }, signInBy === 'password' ? newPassword : undefined)
       : authApi.entrySave(email.trim().toLowerCase(), { payload: whatTheyTyped() }, trap.filled, signInBy === 'password' ? newPassword : undefined),
-    onSuccess: () => { setSentBy('create'); setLinkSent(true) },
+    /* The key for a password chosen here stays in this browser (the-password-key.ts, U.3 review). */
+    onSuccess: (data: any) => { keepThePasswordKey(data?.passwordKey); setSentBy('create'); setLinkSent(true) },
     onError: (err: any) => {
       const status = err?.response?.status
       if (!status || status >= 500) {

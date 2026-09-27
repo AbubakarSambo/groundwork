@@ -60,7 +60,12 @@ describe('an address that already has an account', () => {
     const b = await fresh.svc.entrySave('ada@acme.test', undefined, 'harbour7lamp');
     expect(existing.prisma.user.update).not.toHaveBeenCalled();
     expect(existing.pending).toHaveLength(0);
-    expect(a).toEqual({ message: b.message, email: b.email });
+    /* U.3 review: both answers now carry a password key of the same shape (the security fix in
+       the-password-stays-with-the-browser.spec.ts); the new address's is real, this one opens nothing. */
+    expect(Object.keys(a).sort()).toEqual(Object.keys(b).sort());
+    expect({ message: a.message, email: a.email }).toEqual({ message: b.message, email: b.email });
+    expect(a.passwordKey).toMatch(/^[0-9a-f]{64}$/);
+    expect(b.passwordKey).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('a password that is the address is refused the same way whether or not there is an account', async () => {

@@ -115,7 +115,7 @@ describe('opening the link hands the place back', () => {
   });
 
   it('a plain sign-up with no place: no next', async () => {
-    const pending = { id: 'p1', email: 'ama@gmail.com', token: 'x', firstName: 'Ama', lastName: null, orgName: null, passwordHash: 'h', payload: {}, history: [], draftToken: null, next: null, expiresAt: future };
+    const pending = { id: 'p1', email: 'ama@gmail.com', token: 'x', firstName: 'Ama', lastName: null, orgName: null, passwordHash: null, payload: {}, history: [], draftToken: null, next: null, expiresAt: future };
     const res = await service({ pending }).svc.verifyEmail({ token: 'x' } as any);
     expect(res).not.toHaveProperty('next');
   });

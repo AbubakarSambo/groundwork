@@ -76,6 +76,28 @@ import { whereTheyBelong, ROLE_FOR_SOMEBODY_EXPECTED } from './they-are-already-
  * For an address that already has an account: the draft token a new address would have been given
  * for the same request, in the same shape, stored nowhere. See the end of entrySave.
  */
+/**
+ * A PASSWORD CHOSEN AT SIGN-UP IS KEPT ONLY FOR THE BROWSER THAT CHOSE IT (U.3 review, a security fix).
+ *
+ * Hafsah decided a password may be chosen at sign-up. But the waiting sign-up is keyed only by the
+ * address, so anybody could sign up with somebody else's address and a password of their own; when the
+ * owner opened the confirmation, the account was made with the stranger's password. Now a password
+ * comes with a random key, handed only to the browser that sent it and stored here as a hash. The
+ * confirmation puts the password on the account only when that key comes back with it. Opened
+ * anywhere else, the password is thrown away, and the person chooses one afterwards, exactly as after
+ * a sign-up by link. Nothing on screen or in any answer says a password had been chosen.
+ */
+function aPasswordKey(): { key: string; keyHash: string } {
+  const key = crypto.randomBytes(32).toString('hex');
+  return { key, keyHash: hashed(key) };
+}
+function theKeyMatches(presented: unknown, keyHash: string | null | undefined): boolean {
+  if (typeof presented !== 'string' || !presented || !keyHash) return false;
+  const a = Buffer.from(hashed(presented));
+  const b = Buffer.from(keyHash);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 function theSameShapeAsANewAddress(draft: unknown): { draftToken?: string } {
   return draft ? { draftToken: crypto.randomBytes(32).toString('hex') } : {};
 }
@@ -130,7 +152,7 @@ export class AuthService {
     }
   }
 
-  async register(dto: RegisterDto): Promise<{ message: string; email: string }> {
+  async register(dto: RegisterDto): Promise<{ message: string; email: string; passwordKey?: string }> {
     /**
      * THIS HONEYPOT GUARDS A DOOR NOBODY USES. W-UX-C. Not fixed - recorded, because the fix is a
      * decision rather than a line.
@@ -176,6 +198,8 @@ export class AuthService {
     if (isTheirEmail(dto.password, dto.email)) throw new BadRequestException(IS_THEIR_EMAIL);
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const token = crypto.randomBytes(32).toString('hex');
+    /* Kept only for the browser that chose it (see aPasswordKey). */
+    const { key: passwordKey, keyHash: passwordKeyHash } = aPasswordKey();
 
     await this.prisma.pendingSignup.upsert({
       where: { email: dto.email.toLowerCase() },
@@ -187,6 +211,7 @@ export class AuthService {
         /* The person's own name, never their employer's domain, when none was typed. */
         orgName: dto.organizationName?.trim() || null,
         passwordHash,
+        passwordKeyHash,
         expiresAt: expiresAtFor('verify an address'),
       },
       update: {
@@ -195,12 +220,13 @@ export class AuthService {
         lastName: dto.lastName,
         orgName: dto.organizationName?.trim() || null,
         passwordHash,
+        passwordKeyHash,
         expiresAt: expiresAtFor('verify an address'),
       },
     });
 
     await this.emailService.sendVerificationEmail(dto.email.toLowerCase(), dto.firstName, token);
-    return { message: 'Registration successful. Please check your email to verify your account.', email: dto.email.toLowerCase() };
+    return { message: 'Registration successful. Please check your email to verify your account.', email: dto.email.toLowerCase(), passwordKey };
   }
 
   async registerMagicLink(dto: MagicLinkRegisterDto): Promise<{ message: string; email: string }> {
@@ -337,6 +363,16 @@ export class AuthService {
         );
       }
 
+      /*
+       * THE PASSWORD CHOSEN AT SIGN-UP, ONLY IN THE BROWSER THAT CHOSE IT (aPasswordKey). Opened
+       * anywhere else, it is thrown away now, so no later answer on this link can bring it back, and
+       * the person chooses one after confirming, as after a sign-up by link. Nothing says so.
+       */
+      const passwordHash = pending.passwordHash && theKeyMatches(dto.passwordKey, pending.passwordKeyHash) ? pending.passwordHash : null;
+      if (pending.passwordHash && !passwordHash) {
+        await this.prisma.pendingSignup.update({ where: { id: pending.id }, data: { passwordHash: null, passwordKeyHash: null } });
+      }
+
       // Someone may have signed up by another route in the meantime.
       const already = await this.prisma.user.findUnique({ where: { email: pending.email }, include: { organization: true } });
       if (already) {
@@ -377,7 +413,7 @@ export class AuthService {
               email: pending.email,
               firstName: pending.firstName,
               lastName: pending.lastName ?? '',
-              passwordHash: pending.passwordHash,
+              passwordHash,
               googleId: pending.googleId ?? undefined,
               /* Never an admin. Being listed is not authority over the company. */
               role: ROLE_FOR_SOMEBODY_EXPECTED as any,
@@ -435,7 +471,7 @@ export class AuthService {
                   email: pending.email,
                   firstName: pending.firstName,
                   lastName: pending.lastName ?? '',
-                  passwordHash: pending.passwordHash,
+                  passwordHash,
               googleId: pending.googleId ?? undefined,
                   /* "Takes part". Never an admin: joining is not authority over the company. */
                   role: ROLE_FOR_SOMEBODY_EXPECTED as any,
@@ -488,7 +524,7 @@ export class AuthService {
             firstName: pending.firstName,
             lastName: pending.lastName ?? '',
             /* Only the password signup path carries one. The others set a password later. */
-            passwordHash: pending.passwordHash,
+            passwordHash,
               googleId: pending.googleId ?? undefined,
             role: 'ADMIN',
             // Verified by construction: this only runs because the link opened.
@@ -582,7 +618,7 @@ export class AuthService {
     password?: string,
     /* Where in the app they were going (U.3 review). Only a path inside this app is kept. */
     next?: string,
-  ): Promise<{ message: string; email: string; draftToken?: string }> {
+  ): Promise<{ message: string; email: string; draftToken?: string; passwordKey?: string }> {
     const lower = email.toLowerCase();
     const goingTo = aPathInThisApp(next);
     const message = 'Check your email for your sign-in link.';
@@ -599,6 +635,12 @@ export class AuthService {
 
     let user = await this.prisma.user.findUnique({ where: { email: lower } });
     let draftToken: string | undefined;
+    /*
+     * THE KEY FOR THE PASSWORD, THE SAME SHAPE FOR EVERY ADDRESS. A new address with a password gets
+     * the real key; an address with an account gets one of the same shape that is stored nowhere and
+     * opens nothing, so the answer never says which addresses have accounts.
+     */
+    let passwordKey: string | undefined = password ? crypto.randomBytes(32).toString('hex') : undefined;
 
     if (!user) {
       /**
@@ -644,6 +686,9 @@ export class AuthService {
 
       /* Hashed here and held on the waiting sign-up, never on a User, which must not exist yet (GW-001). */
       const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
+      /* With a key only this browser is given, so the password is kept only for it (aPasswordKey). */
+      const keyed = password ? aPasswordKey() : undefined;
+      passwordKey = keyed?.key;
 
       await this.prisma.pendingSignup.upsert({
         where: { email: lower },
@@ -652,7 +697,7 @@ export class AuthService {
           token,
           firstName,
           orgName: typedOrgName || null,
-          ...(passwordHash ? { passwordHash } : {}),
+          ...(passwordHash ? { passwordHash, passwordKeyHash: keyed!.keyHash } : {}),
           next: goingTo,
           payload: (draft?.payload ?? {}) as any,
           history: (draft?.history ?? []) as any,
@@ -689,7 +734,7 @@ export class AuthService {
           token,
           expiresAt: expiresAtFor('verify an address'),
           /* A password sent again replaces the one before; a request without one leaves it alone. */
-          ...(passwordHash ? { passwordHash } : {}),
+          ...(passwordHash ? { passwordHash, passwordKeyHash: keyed!.keyHash } : {}),
           /* The same for where they were going: a bare "send the link again" keeps the place. */
           ...(goingTo ? { next: goingTo } : {}),
           ...(draft
@@ -738,7 +783,7 @@ export class AuthService {
         orderBy: { createdAt: 'desc' },
       });
       if (recentToken) {
-        return { message, email: lower, ...theSameShapeAsANewAddress(draft) };
+        return { message, email: lower, ...theSameShapeAsANewAddress(draft), ...(passwordKey ? { passwordKey } : {}) };
       }
       await this.prisma.emailVerificationToken.updateMany({
         where: { userId: user.id, type: TokenType.EMAIL_VERIFICATION, usedAt: null },
@@ -761,7 +806,7 @@ export class AuthService {
      * it does not hold), and the account's draft is still never written from here. Without a draft,
      * neither gets a token.
      */
-    return { message, email: lower, ...(draftToken ? { draftToken } : user ? theSameShapeAsANewAddress(draft) : {}) };
+    return { message, email: lower, ...(draftToken ? { draftToken } : user ? theSameShapeAsANewAddress(draft) : {}), ...(passwordKey ? { passwordKey } : {}) };
   }
 
   async teamInvite(
@@ -1055,6 +1100,7 @@ export class AuthService {
             lastName: googleUser.lastName || null,
             orgName: null,
             passwordHash: null,
+            passwordKeyHash: null,
             payload: {} as any,
             history: [] as any,
             draftToken: null,

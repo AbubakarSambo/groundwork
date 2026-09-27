@@ -758,6 +758,12 @@ model PendingSignup {
   /// Set when somebody signed up with a password. Held here rather than on a
   /// User, because a User is what must not exist before the address is proved.
   passwordHash String?  @map("password_hash")
+  /// THE BROWSER THAT CHOSE THE PASSWORD (U.3 review, a security fix). The hash of a random key handed
+  /// only to the browser that signed up. The password above is put on the account only when the
+  /// confirmation is opened with that key; opened anywhere else, the password is thrown away and the
+  /// person chooses one afterwards, as after a link-only sign-up. So somebody who signs up with another
+  /// person's address cannot choose that person's password.
+  passwordKeyHash String? @map("password_key_hash")
   // The anonymous session, carried verbatim so the ground can be built after
   // verification from any browser - not only the one that started it.
   payload      Json?

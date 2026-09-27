@@ -58,7 +58,7 @@ function service(opts: { pending: any; linkOrg?: any; domainOrgs?: any[]; room?:
 
 const waiting = (over: any = {}) => ({
   id: 'p1', email: 'ama@coamana.test', token: 'link', firstName: 'Ama', lastName: null,
-  orgName: null, passwordHash: 'h', payload: {}, history: [], draftToken: null, next: null,
+  orgName: null, passwordHash: null, payload: {}, history: [], draftToken: null, next: null,
   expiresAt: future(), ...over,
 });
 

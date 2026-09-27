@@ -77,8 +77,9 @@ export const authApi = {
     apiClient.post<MagicLinkResponse>('/auth/member-signin', { email }).then(r => r.data),
 
   /* With a choice only on "Where do you work?" before the account exists (U.3 review). */
-  verifyEmail: (token: string, choice?: { joinOrganizationId: string } | { createMyOwn: true }) =>
-    apiClient.post<VerifyEmailResponse | WhereDoYouWorkFirst>('/auth/verify-email', { token, ...(choice ?? {}) }).then(r => r.data),
+  /* `passwordKey`: the key this browser was given with a password chosen at sign-up (the-password-key.ts). */
+  verifyEmail: (token: string, choice?: { joinOrganizationId: string } | { createMyOwn: true }, passwordKey?: string) =>
+    apiClient.post<VerifyEmailResponse | WhereDoYouWorkFirst>('/auth/verify-email', { token, ...(choice ?? {}), ...(passwordKey ? { passwordKey } : {}) }).then(r => r.data),
 
   setPassword: (token: string, password: string) =>
     apiClient.post<VerifyEmailResponse>('/auth/set-password', { token, password }).then(r => r.data),
@@ -114,7 +115,7 @@ export const authApi = {
   /* `next`: where in the app they were going, such as an organisation's invite link. The server keeps
      it with the link and hands it back when the link is opened (U.3 review). */
   entrySave: (email: string, draft?: { payload?: Record<string, unknown>; history?: unknown[] }, hp?: string, password?: string, next?: string | null) =>
-    apiClient.post<MagicLinkResponse & { draftToken?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}), ...(next ? { next } : {}) }).then(r => r.data),
+    apiClient.post<MagicLinkResponse & { draftToken?: string; passwordKey?: string }>('/auth/entry-save', { email, draft, ...(hp ? { _hp: hp } : {}), ...(password ? { password } : {}), ...(next ? { next } : {}) }).then(r => r.data),
 
   requestPasswordSetup: () =>
     apiClient.post<{ token: string }>('/auth/request-password-setup').then(r => r.data),
