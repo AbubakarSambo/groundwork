@@ -284,15 +284,22 @@ function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
   isCorrection: boolean
   correctionOf: number | null
 }) {
-  const when = whenItWas(date, 'day')
+  /*
+   * A PLAIN PHRASE, NOT TWO PIECES JOINED WITH A DOT (U.8 re-review).
+   *
+   * "Session 1 · 27 Sept 2026" read as a label and a stamp stuck together, not a sentence anybody
+   * would say. It is one phrase now, with the date said in full ('full', not the abbreviated
+   * 'day') the way a person actually reads a date out loud.
+   */
+  const when = whenItWas(date, 'full')
   const label = isCorrection
-    ? `Added to session ${correctionOf ?? sessionNumber}`
-    : `Session ${sessionNumber}`
+    ? `Added to session ${correctionOf ?? sessionNumber}, on ${when}`
+    : `Session ${sessionNumber}, on ${when}`
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 14px' }}>
       <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
-        {label} <span style={{ fontWeight: 500, color: 'var(--gw-muted)' }}>· {when}</span>
+        {label}
       </div>
       <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
     </div>
