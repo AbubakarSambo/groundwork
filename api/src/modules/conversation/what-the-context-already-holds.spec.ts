@@ -39,10 +39,16 @@ describe('what the context already holds', () => {
     expect(b).toContain('Never tell them the record says otherwise');
   });
 
-  it("asks the lead's questions in the interviewer's own words, without saying whose they are", () => {
-    const b = theQuestionsTheLeadWants(['which accounts actually have a buying process?']);
-    expect(b).toContain('Ask them in your own words');
-    expect(b).toContain('Never say who wants them asked');
+  /*
+   * Decision 34, 28 September 2026: a question the lead wants asked is asked in the exact words the
+   * lead confirmed, not in the interviewer's own. This used to pin "Ask them in your own words".
+   */
+  it("asks the lead's confirmed questions word for word, without saying whose they are", () => {
+    const b = theQuestionsTheLeadWants(['Which accounts actually have a buying process?']);
+    expect(b).toContain('- "Which accounts actually have a buying process?"');
+    expect(b).toContain('Ask each one exactly as it is written, word for word');
+    expect(b).not.toContain('in your own words');
+    expect(b).toContain('Never say who wants it asked');
   });
 
   it('holds a pair as a pair, and blames neither', () => {

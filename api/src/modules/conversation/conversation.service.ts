@@ -179,6 +179,7 @@ import { totalSessionsFor } from '../grounds/session-count';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABOUT } from './when-this-is-over';
 import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, whatTheyHedged, keepTheirHedge, howThisTeamWorks } from './what-the-context-already-holds';
+import { alreadyAsked, withTheQuestionAsConfirmed } from '../grounds/a-question-asked-word-for-word';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
@@ -1047,8 +1048,14 @@ export class ConversationService {
    * the model to say "you".
    */
   private async theTurnAsItIsSaved(checkIn: { groundId?: string; participant?: { partyType?: PartyType } }, raw: string): Promise<string> {
+    /*
+     * AND A QUESTION THE LEAD CONFIRMED IS ASKED IN THE WORDS THEY CONFIRMED. Decision 34: the model
+     * decides when to ask it, and where it asked it its own way the confirmed sentence is put back.
+     * Here because every path a turn is saved by - the opener, the turn, the stream - comes through.
+     */
+    const asConfirmed = (checkIn as any)?.id ? this.withTheLeadsQuestionsAsConfirmed((checkIn as any).id, raw) : raw;
     /* AND NO SENTENCE STARTS IN LOWER CASE. See a-sentence-starts-with-a-capital. */
-    const capitalised = aSentenceStartsWithACapital(raw);
+    const capitalised = aSentenceStartsWithACapital(asConfirmed);
     if (capitalised.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a sentence started in lower case and was repaired before saving.`);
     const text = capitalised.text;
     if (!text || !/\bperson who set this up\b/i.test(text)) return text;
@@ -2871,6 +2878,29 @@ export class ConversationService {
     return this._theirEarlierWordsForThisTurn;
   }
 
+  /*
+   * THE LEAD'S CONFIRMED QUESTIONS THIS TURN MAY ASK, written when the prompt is composed and taken by
+   * the reply path in the same request, like the citation. See grounds/a-question-asked-word-for-word.
+   */
+  private _questionsForThisTurn?: Map<string, string[]>;
+  private get questionsForThisTurn(): Map<string, string[]> {
+    if (!this._questionsForThisTurn) this._questionsForThisTurn = new Map();
+    return this._questionsForThisTurn;
+  }
+
+  /** The reply with each confirmed question in its confirmed words, where the model asked it in its own. */
+  private withTheLeadsQuestionsAsConfirmed(checkInId: string, reply: string): string {
+    const questions = this.questionsForThisTurn.get(checkInId) ?? [];
+    this.questionsForThisTurn.delete(checkInId);
+    let out = reply;
+    for (const q of questions) {
+      const put = withTheQuestionAsConfirmed(out, q);
+      if (put.putBack) this.logger.warn(`Check-in ${checkInId}: a confirmed question was asked in other words, and its confirmed words were put back.`);
+      out = put.text;
+    }
+    return out;
+  }
+
   private get citationForThisTurn(): Map<string, { citation: string; directive: string }> {
     if (!this._citationForThisTurn) this._citationForThisTurn = new Map();
     return this._citationForThisTurn;
@@ -4001,8 +4031,14 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
         groundId: checkIn.groundId,
         closedAt: null,
         kind: { notIn: (isTheLead ? ['ABOUT_A_PERSON'] : ['ABOUT_A_PERSON', 'BETWEEN_PEOPLE']) as any },
+        /* A question the lead has not confirmed word for word is not read into anybody's session.
+           Decision 34 - see grounds/a-question-asked-word-for-word. */
+        NOT: [
+          { kind: 'QUESTION_FOR_PERSON' as any, questionConfirmedAt: null },
+          { kind: 'QUESTION_FOR_PERSON' as any, exactQuestion: null },
+        ],
       },
-      select: { kind: true, text: true, aboutParticipantId: true },
+      select: { kind: true, text: true, aboutParticipantId: true, exactQuestion: true, questionConfirmedAt: true },
       orderBy: { createdAt: 'asc' },
       take: 80,
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
@@ -4011,7 +4047,34 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
       .map((l) => (l.text ?? '').trim())
       .filter(Boolean);
     const notSettledLines = ofKind('UNSETTLED');
-    const askThemLines = ofKind('QUESTION_FOR_PERSON', true);
+    /*
+     * THE LEAD'S QUESTIONS FOR THIS PERSON, AS THE SENTENCES THE LEAD CONFIRMED, AND NEVER TWICE.
+     *
+     * Decision 34, 28 September 2026. `text` is the lead's shorthand and is never read into a session;
+     * the confirmed `exactQuestion` is, and only where it was confirmed - checked here as well as in
+     * the query, so a row that reaches this without both is still not asked. One already asked in any
+     * of this person's check-ins on this ground is left out, and the rest are kept for the reply path,
+     * which puts the confirmed words back where the model used its own.
+     */
+    const confirmedForMe = (contextLines as any[])
+      .filter((l) => l.kind === 'QUESTION_FOR_PERSON' && l.aboutParticipantId === checkIn.participantId && l.questionConfirmedAt && (l.exactQuestion ?? '').trim())
+      .map((l) => (l.exactQuestion as string).trim());
+    let askThemLines: string[] = [];
+    if (confirmedForMe.length) {
+      const mineOnThisGround = await (this.prisma.checkIn?.findMany?.({
+        where: { participantId: checkIn.participantId },
+        select: { id: true },
+      }) ?? Promise.resolve([] as { id: string }[])).catch(() => [] as { id: string }[]);
+      const ids = [...new Set([checkIn.id, ...(mineOnThisGround as { id: string }[]).map((c) => c.id)])];
+      const saidSoFar = await (this.prisma.conversationTurn?.findMany?.({
+        where: { checkInId: { in: ids }, role: TurnRole.AI },
+        select: { content: true },
+        take: 400,
+      }) ?? Promise.resolve([] as { content: string | null }[])).catch(() => [] as { content: string | null }[]);
+      askThemLines = confirmedForMe.filter((q) => !alreadyAsked((saidSoFar as any[]).map((t) => t.content ?? ''), q));
+    }
+    if (askThemLines.length) this.questionsForThisTurn.set(checkIn.id, askThemLines);
+    else this.questionsForThisTurn.delete(checkIn.id);
     /* A pair line names both people in its own text, so this person's own name is the test. */
     const myName = [
       (checkIn.participant as any).user?.firstName,

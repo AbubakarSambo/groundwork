@@ -18,7 +18,10 @@
  *    "a place to look", kept from them only by an instruction. Decision 32, 27 September 2026: a
  *    lead's private notes about a person never reach the model in that person's own session, so
  *    the conversation service does not read them in the first place.
- * 4. A question the lead wrote is asked in the interviewer's own words, once, when it fits.
+ * 4. A question the lead wants asked is asked word for word, once, when it fits - and only once the
+ *    lead has confirmed that exact sentence. Decision 34, 28 September 2026: it used to be "asked in
+ *    the interviewer's own words", which meant nobody had read what the person was actually asked.
+ *    See grounds/a-question-asked-word-for-word.
  */
 
 export interface ACommitmentOnRecord {
@@ -65,14 +68,18 @@ export function whatIsNotSettled(lines: string[]): string {
   ].join('\n');
 }
 
-/** A question the lead wants asked of this person. Asked once, in the interviewer's own words. */
-export function theQuestionsTheLeadWants(questions: string[]): string {
-  const rows = (questions ?? []).map((q) => (q ?? '').trim()).filter(Boolean);
+/**
+ * The questions the lead confirmed for this person, each as the exact sentence to ask. Only confirmed
+ * sentences are ever passed here - the caller reads nothing else - and one already asked in this
+ * check-in is left out by the caller too, so it is never asked twice.
+ */
+export function theQuestionsTheLeadWants(confirmed: string[]): string {
+  const rows = (confirmed ?? []).map((q) => (q ?? '').trim()).filter(Boolean);
   if (!rows.length) return '';
   return [
-    'THE PERSON RUNNING THIS CHECK-IN WANTS THESE ASKED:',
-    ...rows.slice(0, 5).map((r) => `- ${r}`),
-    'Ask them in your own words, one at a time, where they fit what is being discussed. Never say who wants them asked, never read one out as a list, and never ask one twice.',
+    `${rows.length === 1 ? 'A QUESTION' : 'QUESTIONS'} TO ASK THIS PERSON, WORD FOR WORD. Each one was confirmed exactly as it is written here:`,
+    ...rows.slice(0, 5).map((r) => `- "${r}"`),
+    'Ask each one exactly as it is written, word for word, as a sentence of its own, once, at the point where it fits what is being discussed. Do not change its words and do not add to it. Never say who wants it asked, and never read them out as a list.',
   ].join('\n');
 }
 
