@@ -30,7 +30,7 @@ Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds a
 
 ## Test results
 
-On the combined code at `5413a8ee`:
+On the combined code at `7a9e9c93`, with all seven blockers fixed: **API 10,220 of 10,220 tests pass, in 1,102 suites.** The typecheck is clean. **Client: 3,196 of 3,198 pass.** The two that fail are the screens workspace's sidebar tests. They fail even alone, although no client file has changed since `5413a8ee`, when all 3,198 passed, so they seem to depend on the date or the time. I have passed them to the screens workspace. Before that, on the combined code at `5413a8ee`:
 - **API:** 10,100 of 10,100 tests pass, in 1,096 suites. The typecheck is clean.
 - **Client:** 3,198 of 3,198 tests pass, in 446 files. The typecheck is clean.
 - **The last full 24-scenario run (run-10):** the checker says nothing is worse than the baseline. Every quote was from the record. There were no leaks of the lead's words.
