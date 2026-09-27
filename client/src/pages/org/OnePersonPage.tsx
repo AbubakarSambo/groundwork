@@ -196,7 +196,8 @@ export function OnePersonPage() {
       <section className="gw-people-sec" aria-labelledby="status-h">
         <h2 id="status-h">Status</h2>
         <div className="gw-one-field"><span className="gw-one-label">Now</span><span className="gw-one-value">{statusWord(m)}</span></div>
-        {!guest && !m.awaitingOrgApproval && <div className="gw-one-field"><span className="gw-one-label">Seat</span><span className="gw-one-value">Holds a seat</span></div>}
+        {/* A guest with an account takes a seat too (U.4 re-review); one held for a seat does not yet. */}
+        {!m.awaitingOrgApproval && <div className="gw-one-field"><span className="gw-one-label">Seat</span><span className="gw-one-value">{m.heldForASeat ? 'No seat on your plan' : 'Holds a seat'}</span></div>}
         {m.arrivedThroughACheckIn && <p className="gw-people-note">They came in by accepting an invitation to a check-in.</p>}
         {whatsappOn && (
           <div className="gw-one-field">

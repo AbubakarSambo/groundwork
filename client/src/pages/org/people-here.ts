@@ -24,6 +24,8 @@ export interface OrgMember {
   checkInsNotOpened?: number
   arrivedThroughACheckIn?: boolean
   awaitingOrgApproval?: boolean
+  /** A guest added when the plan had no seat for them: holds none, and is not offered the check-in yet. */
+  heldForASeat?: boolean
   /** Where they sit here. Describes the organisation; grants nothing. */
   level?: string | null
   team?: string | null
@@ -78,6 +80,7 @@ export function roleWord(m: Pick<OrgMember, 'id' | 'role'>, ownerId: string | nu
  */
 export function statusWord(m: OrgMember): string {
   if (m.awaitingOrgApproval) return 'Waiting to be let in'
+  if (m.heldForASeat) return 'No seat on your plan'
   if (m.state === 'invited') return 'Invited, not opened'
   if ((m.checkInsOn ?? 0) === 0) return 'Signed in, not on a check-in'
   /* Added to a check-in, and has not opened the invitation yet (U.4 review). */
@@ -87,7 +90,7 @@ export function statusWord(m: OrgMember): string {
 }
 
 export function needsSomething(m: OrgMember): boolean {
-  return ['Waiting to be let in', 'Invited, not opened', 'Not answered yet'].includes(statusWord(m))
+  return ['Waiting to be let in', 'No seat on your plan', 'Invited, not opened', 'Not answered yet'].includes(statusWord(m))
 }
 
 /** "Sales rep, reports to Wairimu Kamau", or either half on its own, or nothing. */

@@ -88,7 +88,8 @@ describe('everyone at Baridi', () => {
     expect(await screen.findByRole('heading', { name: 'Everyone at Baridi Appliances' })).toBeTruthy()
     expect(await screen.findByText('27 people, on the Growth plan, which is for up to 100.')).toBeTruthy()
     /* U.19: Peter is a guest from outside, listed here, and billing does not count him. */
-    expect(screen.getByText('Guests from outside don’t count toward the plan.')).toBeTruthy()
+    /* The prototype's rule (U.4 re-review): a guest with an account takes a seat. */
+    expect(screen.getByText('Guests with no account don’t.')).toBeTruthy()
     const miriam = screen.getByText('Miriam Wanjiku', { selector: 'b' }).closest('[role="row"]') as HTMLElement
     const row = within(miriam)
     expect(row.getByText('Sales rep, reports to Wairimu Kamau')).toBeTruthy()

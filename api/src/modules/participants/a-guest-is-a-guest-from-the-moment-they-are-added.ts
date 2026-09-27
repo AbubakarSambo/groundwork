@@ -22,10 +22,15 @@ import { GUEST_ROLE } from './joining-a-second-organisation';
  */
 type Db = {
   user: { findUnique: (a: any) => Promise<any> };
-  organizationMembership: { findUnique: (a: any) => Promise<any>; create: (a: any) => Promise<any> };
+  organizationMembership: { findUnique: (a: any) => Promise<any>; create: (a: any) => Promise<any>; update?: (a: any) => Promise<any> };
 };
 
-export async function aGuestHereIfTheyAreFromElsewhere(db: Db, groundOrganizationId: string, email: string): Promise<boolean> {
+/**
+ * `held`: added when the plan had no seat for them (U.4 re-review). A guest with an account takes a
+ * seat, as the prototype says, so a guest added with no room is written held: on the People page,
+ * holding no seat, and offered nothing until their invitation is sent.
+ */
+export async function aGuestHereIfTheyAreFromElsewhere(db: Db, groundOrganizationId: string, email: string, held = false): Promise<boolean> {
   const user = await db.user.findUnique({
     where: { email: email.trim().toLowerCase() },
     select: { id: true, organizationId: true, isActive: true, deletedAt: true },
@@ -35,11 +40,17 @@ export async function aGuestHereIfTheyAreFromElsewhere(db: Db, groundOrganizatio
   if (user.organizationId === groundOrganizationId) return false;
   const here = await db.organizationMembership.findUnique({
     where: { userId_organizationId: { userId: user.id, organizationId: groundOrganizationId } },
-    select: { id: true },
+    select: { id: true, heldForASeat: true },
   });
-  if (here) return false;
+  if (here) {
+    /* Held on one check-in, added to another now there is room: they take their seat. */
+    if (here.heldForASeat && !held && db.organizationMembership.update) {
+      await db.organizationMembership.update({ where: { id: here.id }, data: { heldForASeat: false } });
+    }
+    return false;
+  }
   await db.organizationMembership.create({
-    data: { userId: user.id, organizationId: groundOrganizationId, role: GUEST_ROLE },
+    data: { userId: user.id, organizationId: groundOrganizationId, role: GUEST_ROLE, ...(held ? { heldForASeat: true } : {}) },
   });
   return true;
 }

@@ -360,12 +360,14 @@ export class UsersService {
            say "Waiting to be let in" beside them. */
         select: {
           role: true,
+          /* A guest added with no seat for them reads "No seat on your plan" (U.4 re-review). */
+          heldForASeat: true,
           user: { select: { id: true, email: true, firstName: true, lastName: true, isActive: true, isEmailVerified: true, createdAt: true, phoneNumber: true, awaitingOrgApproval: true } },
         },
       }),
       this.prisma.organizationMembership.count({ where: inThisOrganisation }),
     ]);
-    const users = rows.map((r) => ({ ...r.user, role: r.role as string }));
+    const users = rows.map((r) => ({ ...r.user, role: r.role as string, heldForASeat: !!r.heldForASeat }));
 
     /*
      * WHERE EACH PERSON ACTUALLY GOT TO, which is the only question an admin has at any scale

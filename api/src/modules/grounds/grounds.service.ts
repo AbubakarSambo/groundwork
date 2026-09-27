@@ -1162,7 +1162,8 @@ export class GroundsService {
       // participant-link fix was deployed (groundParticipant.userId was null).
       if (userEmail) {
         await this.prisma.groundParticipant.updateMany({
-          where: { email: userEmail.toLowerCase(), userId: null },
+          /* Never a row held for a seat: it is not offered until its invitation goes (U.4 re-review). */
+          where: { email: userEmail.toLowerCase(), userId: null, awaitingSeat: false },
           data: { userId },
         });
       }
@@ -4197,8 +4198,9 @@ export class GroundsService {
        the check-in - so there is nothing to put back and the ground is right to be waiting. */
     let movedTheGroundOn = false;
 
-    /* After every refusal above, so a refused add leaves nothing behind (U.4 review). */
-    await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email);
+    /* After every refusal above, so a refused add leaves nothing behind (U.4 review). Held when there
+       is no seat for them: a guest with an account takes a seat (U.4 re-review). */
+    await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email, !waitingForASeat.room);
     const participant = await this.prisma.$transaction(async (tx) => {
       const participant = await tx.groundParticipant.create({
         data: {
@@ -4822,6 +4824,11 @@ export class GroundsService {
         await this.prisma.groundParticipant.update({
           where: { id: w.id },
           data: { awaitingSeat: false, invitedAt: new Date() },
+        });
+        /* A guest held for a seat takes it now (U.4 re-review). */
+        await this.prisma.organizationMembership.updateMany({
+          where: { organizationId, heldForASeat: true, user: { email: w.email.toLowerCase() } },
+          data: { heldForASeat: false },
         });
         sent += 1;
       } catch (e: any) {

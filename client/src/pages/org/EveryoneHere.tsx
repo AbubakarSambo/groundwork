@@ -106,14 +106,14 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
         <div className="gw-people-sec-head">
           <h2 id="everyone-h">{`Everyone at ${orgName}`}</h2>
           {/*
-            THE SAME NUMBER AS PLAN AND BILLING (U.19): billing's seat count, which counts everybody who
-            belongs here except guests from outside. The plan is whichever covers the organisation, so a
-            free run's plan is named rather than "the free plan". The list below shows guests too, so
-            the page says they do not count.
+            THE SAME NUMBER AS PLAN AND BILLING (U.19): billing's seat count. Everybody with an account
+            here takes a seat, guests included, as the prototype says (U.4 re-review); only somebody
+            answering by link with no account does not, and a guest held for a seat does not yet. The
+            plan is whichever covers the organisation, so a free run's plan is named.
           */}
           <span>{howManyHere(status.data?.people?.count ?? everybody.length, status.data?.subscription?.plan ?? status.data?.onTheHouse?.plan, status.data?.people?.cap)}</span>
           {status.data?.people && everybody.some((m) => m.role === 'GUEST') && (
-            <span>Guests from outside don’t count toward the plan.</span>
+            <span>Guests with no account don’t.</span>
           )}
         </div>
         <div className="gw-people-filters">

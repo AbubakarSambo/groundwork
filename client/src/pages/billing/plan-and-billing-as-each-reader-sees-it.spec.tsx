@@ -83,7 +83,8 @@ describe('Grace, an admin, on Growth', () => {
     expect(screen.getByRole('heading', { name: 'Plan and billing' })).toBeTruthy()
     expect(text()).toContain('Baridi Appliances')
     expect(text()).toContain('1 October, $400, by card ending 4417.')
-    expect(text()).toContain('Every person with a Groundwork account at Baridi Appliances. Guests from outside don’t.')
+    /* F2's own line (U.4 re-review): a guest with an account takes a seat; only guests with no account don't. */
+    expect(text()).toContain('Every person with a Groundwork account at Baridi Appliances. Guests with no account don’t.')
     expect(text()).toContain('38 check-ins, 12 reports shared, and 25 people taking part.')
     expect(text()).toContain('One flat monthly rate, unlimited check-ins, sessions and reports')
     expect(text()).toContain('Custom needs, volume pricing or dedicated support.')

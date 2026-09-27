@@ -43,18 +43,27 @@ export const SEAT_RELATION_COUNT = { users: { where: SEAT_WHERE } } as const;
  * guest who had switched in to look was counted as one of this organisation's people. The People list
  * already reads the memberships (U.4), and it lists guests, so the two numbers parted.
  *
- * A seat here is a person who can use the product (SEAT_WHERE) and belongs here as anything but a
- * guest: an admin, a lead or somebody who takes part. A guest is somebody from outside, asked into
- * one check-in, and does not hold a seat, as the prototype's billing page says ("Guests with no
- * account don't"). One older shape is counted too: an account whose organisation is this one but
- * which has no membership row here at all, which some roster imports left behind. Without it those
- * people would drop out of the count and the gate would let an organisation past its plan.
+ * A seat here is a person with a Groundwork account who can use the product (SEAT_WHERE) and
+ * belongs here, as an admin, a lead, somebody who takes part, or a guest. The prototype is the rule:
+ * "They take a seat; you have 73 free." of somebody from outside waiting to be let in (A4
+ * people.txt), and "Every person with a Groundwork account at Baridi Appliances. Guests with no
+ * account don't." (F2). So a guest with an account holds a seat (decided the prototype's way on
+ * 27 September; U.19 had counted guests out without a decision), and only somebody answering by
+ * link with no account holds none, because they have no row here at all.
+ *
+ * Except a guest HELD FOR A SEAT: added when there was no seat for them, so they hold none, are not
+ * offered the check-in, and read "No seat on your plan" until a seat is freed and their invitation
+ * goes (`heldForASeat`, cleared by grounds.service releaseAnyoneWaitingForASeat).
+ *
+ * One older shape is counted too: an account whose organisation is this one but which has no
+ * membership row here at all, which some roster imports left behind. Without it those people would
+ * drop out of the count and the gate would let an organisation past its plan.
  */
 export function seatsIn(organizationId: string) {
   return {
     ...SEAT_WHERE,
     OR: [
-      { memberships: { some: { organizationId, role: { not: 'GUEST' as const } } } },
+      { memberships: { some: { organizationId, heldForASeat: false } } },
       { organizationId, memberships: { none: { organizationId } } },
     ],
   };

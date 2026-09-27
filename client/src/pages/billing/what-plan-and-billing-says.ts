@@ -77,9 +77,12 @@ export function theNextPaymentLine(status: BillingStatus | undefined, pricing: L
   return 'Nothing is charged until you choose a plan.'
 }
 
-/** "Every person with a Groundwork account at Baridi. Guests with no account don't." As the server counts a seat. */
+/**
+ * "Every person with a Groundwork account at Baridi Appliances. Guests with no account don't." (F2), as
+ * the server counts a seat: a guest with an account takes one (U.4 re-review, the prototype's rule).
+ */
 export function whoCounts(orgName: string): string {
-  return `Every person with a Groundwork account at ${orgName || 'your organisation'}. Guests from outside don’t.`
+  return `Every person with a Groundwork account at ${orgName || 'your organisation'}. Guests with no account don’t.`
 }
 
 /** The smallest paid plan that holds this many people, from the table. */

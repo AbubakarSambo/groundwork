@@ -26,13 +26,15 @@ import { SEAT_WHERE } from '../../common/seats';
  * `lookingAt` is the organisation they last switched to. Left out, a row is an ordinary member of
  * org1 looking at org1.
  */
-type Row = { isActive: boolean; deletedAt: Date | null; here?: string | null; lookingAt?: string };
+type Row = { isActive: boolean; deletedAt: Date | null; here?: string | null; lookingAt?: string; held?: boolean };
 function fakePrisma(users: Row[], plan: string | null) {
   const roleIn = (u: Row, org: string) => (org === 'org1' ? (u.here === undefined ? 'MEMBER' : u.here) : null);
   const clause = (u: Row, c: any): boolean => {
     if (c.memberships?.some) {
       const role = roleIn(u, c.memberships.some.organizationId);
-      return !!role && (c.memberships.some.role?.not === undefined || role !== c.memberships.some.role.not);
+      return !!role
+        && (c.memberships.some.role?.not === undefined || role !== c.memberships.some.role.not)
+        && (c.memberships.some.heldForASeat === undefined || !!u.held === c.memberships.some.heldForASeat);
     }
     if (c.memberships?.none) {
       return (u.lookingAt ?? 'org1') === c.organizationId && !roleIn(u, c.memberships.none.organizationId);
@@ -152,18 +154,32 @@ describe('the gate and the billing page count the same people', () => {
 
 /**
  * THE PEOPLE PAGE AND PLAN AND BILLING SAY THE SAME NUMBER (U.19), and it is the number the gate
- * refuses by. A seat is somebody who belongs to this organisation as anything but a guest.
+ * refuses by. A seat is somebody with a Groundwork account who belongs to this organisation.
+ *
+ * U.4 re-review: this case said a guest from outside holds no seat. The prototype says otherwise, and
+ * the prototype is the rule: "They take a seat; you have 73 free." (A4 people.txt), and "Every person
+ * with a Groundwork account at Baridi Appliances. Guests with no account don't." (F2). So a guest with
+ * an account holds one; only a guest held for a seat, added when there was none, does not yet.
  */
 describe('who holds a seat, read from the memberships', () => {
-  it('a guest from outside does not hold a seat, on either screen', async () => {
+  it('a guest with an account holds a seat, on either screen, as the prototype says', async () => {
     const svc = svcFor([
       { isActive: true, deletedAt: null, here: 'ADMIN' },
       { isActive: true, deletedAt: null, here: 'LEAD' },
       { isActive: true, deletedAt: null, here: 'MEMBER' },
-      { isActive: true, deletedAt: null, here: 'GUEST', lookingAt: 'org1' },
+      { isActive: true, deletedAt: null, here: 'GUEST', lookingAt: 'org2' },
     ], 'STARTER');
-    expect((await svc.getStatus('org1')).people.count).toBe(3);
-    expect(await svc.seatsLeft('org1')).toBe(2);
+    expect((await svc.getStatus('org1')).people.count).toBe(4);
+    expect(await svc.seatsLeft('org1')).toBe(1);
+  });
+
+  it('a guest held for a seat does not hold one until it is freed and their invitation goes', async () => {
+    const svc = svcFor([
+      ...Array.from({ length: 5 }, () => ({ isActive: true, deletedAt: null } as Row)),
+      { isActive: true, deletedAt: null, here: 'GUEST', lookingAt: 'org2', held: true },
+    ], 'STARTER');
+    expect((await svc.getStatus('org1')).people.count).toBe(5);
+    expect(await svc.seatsLeft('org1')).toBe(0);
   });
 
   it('somebody who belongs here but is looking at another organisation still holds their seat', async () => {
