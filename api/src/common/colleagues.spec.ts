@@ -14,7 +14,7 @@ type Person = {
   isActive?: boolean; isEmailVerified?: boolean; deletedAt?: Date | null; awaitingOrgApproval?: boolean;
 };
 type Membership = { userId: string; organizationId: string; role: string; team: string | null; level?: string | null; reportsToUserId?: string | null };
-type Row = { groundId: string; organizationId: string; userId: string | null };
+type Row = { groundId: string; organizationId: string; userId: string | null; email?: string };
 
 const people: Person[] = [
   { id: 'grace', firstName: 'Grace', lastName: 'Achieng', email: 'grace@baridi.co.ke' },
@@ -76,6 +76,7 @@ const db: any = {
   groundParticipant: {
     findMany: async ({ where }: any) => rows
       .filter((r) => (where.ground ? r.organizationId === where.ground.organizationId : true))
+      .filter((r) => (!where.OR ? true : where.OR.some((o: any) => (o.userId === null ? r.userId === null && r.email === o.email : r.userId === o.userId))))
       .filter((r) => (where.groundId ? where.groundId.in.includes(r.groundId) : true))
       .filter((r) => (where.userId === undefined ? true : typeof where.userId === 'string' ? r.userId === where.userId : r.userId !== null)),
   },
@@ -144,5 +145,24 @@ describe('both doors that add a picked colleague look the address up on the serv
     expect(grounds).toMatch(/if \(dto\.colleagueId\) \{\s*const address = await theAddressOfAColleague\(this\.prisma as any, organizationId, dto\.colleagueId\);\s*if \(!address\) throw new BadRequestException\(NOT_SOMEONE_HERE\);/);
     const entry = strip(readFileSync(join(__dirname, '..', 'modules', 'entry', 'entry.service.ts'), 'utf8'));
     expect(entry).toMatch(/dto = \{ \.\.\.dto, contributors: await this\.withColleaguesAddressed\(organizationId,/);
+  });
+});
+
+describe('a guest added but not yet in, calling from inside the host', () => {
+  it('sees only the people on the check-in they were added to, found by the address it went to', async () => {
+    const pending = [
+      ...rows.filter((r) => r.userId !== 'peter'),
+      /* Peter's row before he opened the invitation: no account on it, only his address. */
+      { groundId: 'sales', organizationId: 'baridi', userId: null, email: 'peter@ouma-agencies.co.ke' },
+    ];
+    const before = { ...db, groundParticipant: { findMany: async (a: any) => {
+      const w = a.where;
+      return pending
+        .filter((r: any) => (w.ground ? r.organizationId === w.ground.organizationId : true))
+        .filter((r: any) => (!w.OR ? true : w.OR.some((o: any) => (o.userId === null ? r.userId === null && r.email === o.email : r.userId === o.userId))))
+        .filter((r: any) => (w.groundId ? w.groundId.in.includes(r.groundId) : true))
+        .filter((r: any) => (w.userId === undefined ? true : r.userId !== null));
+    } } };
+    expect(names(await colleaguesOf(before, 'baridi', 'peter'))).toEqual(['Miriam Wanjiku', 'Wairimu Kamau']);
   });
 });

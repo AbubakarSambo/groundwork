@@ -1,4 +1,5 @@
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
+import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theAddressOfAColleague, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
@@ -745,6 +746,8 @@ export class GroundsService {
           },
         });
         pendingInvites.push({ email: p.email.toLowerCase(), token: inviteToken, participantId: participant.id });
+        /* A guest here from the moment they are added, when their account lives elsewhere (U.4 review). */
+        await aGuestHereIfTheyAreFromElsewhere(tx as any, organizationId, p.email);
         // SEQUENTIAL: lock session 1 until the lead completes their own -
         // the lead has no completed session yet at ground-creation time, so
         // this is unconditional here (unlike addParticipant(), which checks).
@@ -4046,6 +4049,8 @@ export class GroundsService {
     });
     if (existing) {
       if (existing.userId !== null) throw new BadRequestException('This email is already a participant on this check-in');
+      /* Somebody from another organisation is a guest here from now, not only once they click (U.4 review). */
+      await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email);
       /**
        * KEEP THE TOKEN. Re-adding somebody who hasn't accepted yet used to mint a
        * new token and overwrite the old one, which silently killed the first
@@ -4192,6 +4197,8 @@ export class GroundsService {
        the check-in - so there is nothing to put back and the ground is right to be waiting. */
     let movedTheGroundOn = false;
 
+    /* After every refusal above, so a refused add leaves nothing behind (U.4 review). */
+    await aGuestHereIfTheyAreFromElsewhere(this.prisma as any, ground.organizationId, dto.email);
     const participant = await this.prisma.$transaction(async (tx) => {
       const participant = await tx.groundParticipant.create({
         data: {
