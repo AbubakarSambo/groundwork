@@ -275,6 +275,7 @@ describe('an admin, Grace, reads a suggestion only once it is appealed, and deci
       mayDecide: true,
     });
     expect(a).not.toHaveProperty('verdict');
+    expect(a).not.toHaveProperty('factsForThem');
 
     await expect(svc.decideAppeal(id, as('grace'), { outcome: 'changed', reasons: '' })).rejects.toThrow(REFUSED.sayWhyToBoth);
     await expect(svc.decideAppeal(id, as('grace'), { outcome: 'maybe', reasons: 'x' })).rejects.toThrow(REFUSED.keepOrChange);

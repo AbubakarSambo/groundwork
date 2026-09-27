@@ -183,8 +183,8 @@ export function forThePerson(row: SuggestionRow, who: WhoIsWho): ForThePerson {
 
 /**
  * What an admin is served, and only once the suggestion has been appealed: what they need to
- * decide the appeal fairly. The suggestion as the lead read it, the facts as the person read them,
- * the decision with its reasons, the person's side, and the appeal.
+ * decide the appeal fairly: the suggestion as the lead read it, the decision with its reasons, the
+ * person's side, and the appeal.
  */
 export interface ForAnAdmin {
   id: string;
@@ -195,7 +195,6 @@ export interface ForAnAdmin {
   why: string;
   whatWouldChangeIt: string | null;
   theirOwnAnswer: string | null;
-  factsForThem: string;
   decision: TheDecision | null;
   theirSide: string | null;
   appeal: { says: string; at: string | null };
@@ -215,7 +214,6 @@ export function forAnAdmin(row: SuggestionRow, who: WhoIsWho, readerId: string):
     why: who.name(row.why),
     whatWouldChangeIt: row.whatWouldChangeIt ? who.name(row.whatWouldChangeIt) : null,
     theirOwnAnswer: row.theirOwnAnswer ?? null,
-    factsForThem: who.name(row.factsForThem),
     decision: theDecision(row),
     theirSide: row.theirSide ?? null,
     appeal: { says: row.appeal, at: iso(row.appealedAt) },
