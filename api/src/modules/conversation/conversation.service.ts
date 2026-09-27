@@ -67,6 +67,7 @@ import { detectFunction, detectUniversalModes } from '../board/function-detectio
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { displayName } from '../reports/party-labels';
+import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom } from '../reports/a-quote-is-what-they-said';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import {
   plainWordsForEveryoneElse,
@@ -8630,10 +8631,23 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return;
     }
 
+    /*
+     * AND ITS QUOTES ARE THEIR OWN WORDS FROM THE RECORD, OR ARE NOT QUOTES. The same rule as every
+     * report, over the same lines this summary was written from: see a-quote-is-what-they-said. On
+     * the run of 26 September two of the seven quotes in these summaries were in nobody's record.
+     */
+    const theirs = everyQuoteFromTheRecord(
+      { summary: result.summary, whatToCarry: result.whatToCarry ?? '' },
+      theLinesAQuoteMayComeFrom(entries),
+    );
+    if (theirs.unquoted.length) {
+      this.logger.warn(`Private record summary for participant ${participantId}: ${theirs.unquoted.length} quote(s) were not in their record word for word, so they are no longer quotes.`);
+    }
+
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
       data: {
-        soloArtifact: JSON.stringify({ summary: result.summary, whatToCarry: result.whatToCarry ?? '' }),
+        soloArtifact: JSON.stringify(theirs.value),
         soloArtifactAt: new Date(),
       },
     });
