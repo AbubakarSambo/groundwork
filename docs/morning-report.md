@@ -43,6 +43,11 @@ I tried two other changes and undid them. One gave the judgement people's names,
 2. **The situation names** the screens workspace asked about (their request 5). Two of the prototype's names narrow the meaning: "recognition" and "contract" drop out.
 3. **The older open questions** are unchanged: B5's plain name, the 50 scenario packs and `the-real-gate`.
 
+**Every test, after merging the screens workspace at the end of the night.**
+- **API: all 9,352 tests pass, in 1,031 suites, and the typecheck is clean.** That includes `the-password-rules.spec.ts`, which the screens workspace has now fixed. After the merge I had to run `prisma generate`, because their schema changes were not yet in the generated code on this computer. That touches only `node_modules`.
+- **Client: 2,730 of 2,732 pass.** The two that failed are in the screens workspace's new check-in spec, and they time out at 5 seconds when the whole suite runs. The file passes on its own, 22 of 22. I have told them in `docs/answers-from-engine.md`.
+- **The local test database has not had the screens workspace's nine new migrations applied.** Apply them before the next scenario run.
+
 **The first thing for the next session** is the screens workspace's privacy request 8. The board tells a lead that a person said "nothing checkable", and that rests on how their answers were rated.
 
 ## TONIGHT, 26 to 27 September: where I am now
