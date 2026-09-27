@@ -62,7 +62,7 @@ export function theRows(k: WhatSetupKnows): { label: string; set: boolean; value
   const total = k.added.length + notYet.length
   const who = k.added.length
     ? `${k.added.length} of ${total} added`
-    : notYet.length ? `${notYet.length} you mentioned: ${andList(notYet)}.` : null
+    : notYet.length ? `You mentioned ${andList(notYet)}.` : null
   return [
     { label: FILLS_IN.name, set: !!k.name.trim(), value: k.name.trim() || null },
     { label: FILLS_IN.howOften, set: !!often, value: often ? (weekdays && k.cadence !== 'ONE_TIME' ? `${often}, weekdays` : often) : null },

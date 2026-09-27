@@ -49,9 +49,15 @@ describe('the panel, as the lead reads it', () => {
     expect(who.textContent?.startsWith('○')).toBe(true)
   })
 
+  /* U.6 review: "1 you mentioned: Daniel." read as a fragment. Changed from that wording. */
   it('names the people mentioned before anybody is added', () => {
     render(<FillsInAsYouTalk {...nothingYet} mentioned={['Daniel']} />)
-    expect(screen.getByText('1 you mentioned: Daniel.')).toBeTruthy()
+    expect(screen.getByText('You mentioned Daniel.')).toBeTruthy()
+  })
+
+  it('and joins two names in a sentence', () => {
+    render(<FillsInAsYouTalk {...nothingYet} mentioned={['Aisha', 'Brian']} />)
+    expect(screen.getByText('You mentioned Aisha and Brian.')).toBeTruthy()
   })
 })
 
@@ -82,6 +88,6 @@ describe('on the setup conversation itself', () => {
     expect(within(panel).getByText('Help a new hire get started')).toBeTruthy()
     expect(within(panel).getByText('2 of 4 set')).toBeTruthy()
     expect(within(panel).getByText('Every week')).toBeTruthy()
-    expect(within(panel).getByText('1 you mentioned: Kwame.')).toBeTruthy()
+    expect(within(panel).getByText('You mentioned Kwame.')).toBeTruthy()
   })
 })
