@@ -18,9 +18,9 @@ board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
 onboarding, leave requests, time sheets, performance reviews, when someone leaves, the role map,
 spending and budgets, to-dos, customers and deals, and equipment) and U.18 (connections and
-channels). Each passed the full screen and API
-suites; the few failures each run found came from that module and were fixed. The latest full run, at
-the end of U.17, passed everything with no failures (2,973 screen tests and 9,608 API tests). **None
+channels). Each passed the full screen and API suites; the few failures each run found came from
+that module and were fixed. The latest full run, after U.18, passed 3,006 screen tests and 9,647 API
+tests apart from three failures from U.18 itself, all since fixed. **None
 could be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
 important thing for you to unblock.
 
@@ -3182,6 +3182,13 @@ real WhatsApp, Slack, Teams or Meta was reached.
 
 **Requests to the engine:** none. The conversation on WhatsApp is unchanged; team chat waits for your
 decision first (item 29.9).
+
+**The full run** found three failures from U.18, all fixed: an unused helper in a new test broke the
+build; `/org/integrations`, now a redirect kept for links in emails already sent, was not written
+down as reached from outside; and the Slack or Teams test still read the page the console had left. That
+test keeps its privacy check in the new words, and the builder confirmed in the server code that a
+channel notice carries only one sentence and a link. Apart from those three, every screen test (3,006)
+and API test (9,647) passed. **Not ticked,** because no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 
