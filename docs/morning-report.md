@@ -10,6 +10,11 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 This section is kept up to date as I go. If it stops partway, that is where I got to.
 
+### Your decisions at midday
+
+- **Situation names: agreed.** The prototype's names for six of the eight. Keep "contract" and "recognition" in the other two. I had an error in my own table: it also bolded a third change, "Make sense of something serious that happened". I am following your words, so that one takes the prototype's name, "Make sense of something serious".
+- **Scoring: a run where the key fact was never said is marked "couldn't be tested", and left out of the count.** Applied to runs 6, 7 and 8 below, with both counts shown.
+
 ### Your decisions this morning, and what I am doing with them
 
 - **Names inside people's words:** you said no to `8feedc64` and yes to the middle way, on two conditions. Every quote a person sees must be the original words from the record, and a test must prove that every quote in a served report matches the original answer exactly. That is step 3 below. If it cannot meet both conditions, I will stop and tell you.
@@ -65,35 +70,49 @@ If you agree, the table's names change in the engine, and the screens workspace 
 
 These are the three full runs I have, graded against each scenario's right answer. I started no new run for this. Run-6 came before any of last night's changes, run-7 came after the first seven, and run-8 came after all of them.
 
-| Scenario | Run-6 | Run-7 | Run-8 | Clearly right |
-| --- | --- | --- | --- | --- |
-| cofounder | right | right | right | 3 of 3 |
-| contractreview | right | right | right | 3 of 3 |
-| crisis | right | right | right | 3 of 3 |
-| discovery | right | right | right | 3 of 3 |
-| implementation | right | right | right | 3 of 3 |
-| newmanager | right | right | right | 3 of 3 |
-| pip | right | right | right | 3 of 3 |
-| realign | right | right | right | 3 of 3 |
-| renewal | right | right | right | 3 of 3 |
-| seniorhire | right | right | right | 3 of 3 |
-| workplan | right | right | right | 3 of 3 |
-| board | - | right | right | 2 of 3 |
-| handover | - | right | right | 2 of 3 |
-| project | right | right | - | 2 of 3 |
-| updates | right | - | right | 2 of 3 |
-| advisor | right | - | - | 1 of 3 |
-| openread | - | - | right | 1 of 3 |
-| pulse | right | - | - | 1 of 3 |
-| recognition | - | - | right | 1 of 3 |
-| sales | right | - | - | 1 of 3 |
-| snapshot | right | - | - | 1 of 3 |
-| drift | - | - | - | 0 of 3 |
-| loans | - | - | - | 0 of 3 |
-| shock | - | - | - | 0 of 3 |
-| **Total** | **17** | **14** | **16** | |
+**Two counts, as you asked.** A run is marked "couldn't be tested" for a scenario when the simulated people never said the fact that scenario depends on. The first count leaves those runs out. The second counts all 24, as before.
 
-**Right in all three runs (11):** cofounder, contractreview, crisis, discovery, implementation, newmanager, pip, realign, renewal, seniorhire and workplan. **Never right (3):** drift, loans and shock. Drift needs the names change. Loans and shock come close each time but miss one part of the right answer. **Right in one or two (10):** the rest. For most of these, whether the key fact comes up depends on what the simulated people happen to say in that run.
+| Scenario | Run-6 | Run-7 | Run-8 | Right, of the runs that could be tested | Right, of all three |
+| --- | --- | --- | --- | --- | --- |
+| cofounder | right | right | right | 3 of 3 | 3 of 3 |
+| contractreview | right | right | right | 3 of 3 | 3 of 3 |
+| crisis | right | right | right | 3 of 3 | 3 of 3 |
+| discovery | right | right | right | 3 of 3 | 3 of 3 |
+| implementation | right | right | right | 3 of 3 | 3 of 3 |
+| newmanager | right | right | right | 3 of 3 | 3 of 3 |
+| pip | right | right | right | 3 of 3 | 3 of 3 |
+| realign | right | right | right | 3 of 3 | 3 of 3 |
+| renewal | right | right | right | 3 of 3 | 3 of 3 |
+| seniorhire | right | right | right | 3 of 3 | 3 of 3 |
+| workplan | right | right | right | 3 of 3 | 3 of 3 |
+| board | couldn't be tested | right | right | 2 of 2 | 2 of 3 |
+| advisor | right | couldn't be tested | couldn't be tested | 1 of 1 | 1 of 3 |
+| openread | couldn't be tested | couldn't be tested | right | 1 of 1 | 1 of 3 |
+| handover | - | right | right | 2 of 3 | 2 of 3 |
+| project | right | right | - | 2 of 3 | 2 of 3 |
+| updates | right | - | right | 2 of 3 | 2 of 3 |
+| pulse | right | - | - | 1 of 3 | 1 of 3 |
+| recognition | - | - | right | 1 of 3 | 1 of 3 |
+| sales | right | - | - | 1 of 3 | 1 of 3 |
+| snapshot | right | - | - | 1 of 3 | 1 of 3 |
+| drift | - | - | - | 0 of 3 | 0 of 3 |
+| loans | - | - | - | 0 of 3 | 0 of 3 |
+| shock | couldn't be tested | - | couldn't be tested | 0 of 1 | 0 of 3 |
+| **Total** | **17 of 21** | **14 of 22** | **16 of 22** | | |
+
+**On all 24, as before:** 17 on run-6, 14 on run-7 and 16 on run-8.
+
+**The runs that couldn't be tested, and why:**
+
+- **advisor, run-7:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **advisor, run-8:** Peter never says he has no relationship at KCB or Co-operative Bank.
+- **board, run-6:** Wanjiru never gives a timeline for the licence, only that there is none yet.
+- **openread, run-6:** Kofi says it is "not a freeze problem", so the two engineers never agree.
+- **openread, run-7:** Kofi says it is "a scheduling problem, not a problem with the actual freezes".
+- **shock, run-6:** nobody says first-hand that the quarterly reviews were missed.
+- **shock, run-8:** nobody says first-hand that the quarterly reviews were missed.
+
+**A correction to last night's report.** I wrote that on run-7 Daniel never said that Priti was the one he was waiting on. That was wrong. He said "Priti can grant that access." So updates on run-7 could be tested, and the judgement missed it.
 
 
 ## THE NIGHT IN SHORT, 27 September, about 03:30
