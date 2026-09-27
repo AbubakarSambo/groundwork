@@ -12,6 +12,20 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **Is the engine ready to deploy?** Not yet, but close. All seven deploy blockers are fixed in code, with tests, and every API test passes. The last step is the proof on a full run of all 24 scenarios. **That run is run-12, started at about 01:15 on `5b01fe58`.** It includes everything up to the guests in Ask Groundwork. This line is updated when it has finished.
 
+**Run-12's results, read against the database and the actual sentences:**
+- **The run is sound.** All 24 scenarios finished. Two reports were incomplete (implementation and newmanager, 2 findings for 3 people each), and those two are left out.
+- **Task 1.6 is met: every problem count in the scorer is 0 across all 24 scenarios.** On run-10 there were 114 internal labels, 36 role descriptions used as a name, and 2 sentences starting in lower case.
+- **Patterns:** no board or report served in the whole run carries one.
+- **The lead's private words:** none reached any invited person. The check matched 4 people, and each match was that person's own words: Yemi said "I'm the account manager for the relationship" himself, for example. That makes two full runs in a row with none.
+- **Quotes:** 479 of 482 were word for word in the record. The 3 that were not are all in lines built when the page is opened, which the quote check did not yet cover. That is now fixed (`4efa6a74`), with two more fixes behind it (`d1c35b87`, `6331337b`). Replayed over run-12, it is 480 of 480.
+- **The judgements: 18 clearly right of the 20 that count, which is exactly 90%.** Advisor and shock could not be tested: Peter never mentions the other two banks, and nobody says first-hand that the reviews were missed. Loans and sales were not right. **Run-12 meets Hafsah's bar for task 1.5 on its own**, with at least 20 testable and at least 90% right. The bar needs two full runs in a row, and run-10 did not meet it, so the next full run decides task 1.5.
+- **But the checker fails run-12 on the conversation.**
+  - "Specific detail asked for" was 71, against a baseline of 88.
+  - "Blocker checked" was 24, against 37.
+  - "Turns asking more than one question" was 39, against 37.
+
+  These count phrases in Groundwork's turns, such as "by when", "which" and "what have you tried". I am testing whether this is one of tonight's changes or variation between runs. Sales and seniorhire lost the most, so I am re-running them twice on exactly run-12's build. The first round came back higher on seniorhire. The answer, and what I did about it, is below when it is known.
+
 **Run-11 does not count, and the product was not at fault.** I started it at about midnight, before tonight's five hours began, from a separate copy of the code, so that the builders' work could not change it halfway through. But the runner starts the model itself, to play the simulated people, and that copy did not have the model's credentials file, which is kept out of git. So every simulated person's answer failed. No check-in could finish, and no report was written: all 25 reports were empty. I found it by reading the log, stopped it, and started run-12 from the main folder, where the credentials are.
 
 **What still blocks it:**
