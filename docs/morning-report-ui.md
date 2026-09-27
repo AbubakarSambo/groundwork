@@ -29,8 +29,8 @@ important thing for you to unblock.
 addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
 others' email addresses and a report's findings before release (U.5); and every person's rating of
 how checkable their answers were went to the lead and admins (U.8). The board still turned that
-rating into "nothing checkable" for the lead; since U.10 the server no longer serves it (request 8
-asks the engine to change the rule itself).
+rating into "nothing checkable" for the lead; the engine workspace has now fixed it at the source (request 8,
+done on 27 September): the board never reads the rating.
 
 **One privacy question found in the engine's code, not closed:** the engine's pattern detectors read
 everybody's questions to Ask Groundwork, which are meant to be private always. That is engine code, so
