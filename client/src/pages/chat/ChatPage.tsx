@@ -409,11 +409,16 @@ export function ChatPage() {
        * they would answer in is already switched off. The person is told what to do and given no
        * way to do it, which is the dead end behind "I could not complete my check-in".
        *
-       * The server marks those two refusals `canContinue`, so re-open the session rather than
-       * leaving them looking at a disabled box and an instruction. Not matched on the wording:
-       * rewording the sentence would otherwise quietly bring the trap back.
+       * NOT MATCHED ON `canContinue` ALONE ANY MORE (U.8 third review). The server marks these
+       * refusals `canContinue: true`, but a shared filter rebuilds every error body between the
+       * exception and the client, and it dropped that field entirely - so the live 400 carried no
+       * `canContinue` at all, this branch never ran, and the end card sat over a disabled box for
+       * real people. The filter has been fixed to keep the field, but this branch must not depend
+       * on it staying kept: every completion refusal that is not "already complete" is, by
+       * construction, exactly this case (the gate has only these two branches), so ANY 400 here
+       * is treated the same way. The server's own sentence is still never shown - only ours.
        */
-      if (err?.response?.data?.canContinue) {
+      if (err?.response?.status === 400) {
         /**
          * SAY IT WHERE THE CONVERSATION IS, NOT IN A POP-UP THAT FADES.
          *

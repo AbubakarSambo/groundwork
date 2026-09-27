@@ -24,6 +24,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let errors: any = null;
     /* A machine-readable reason, where a route gives one (e.g. BACK_OFFICE_CODE_REQUIRED). */
     let code: string | null = null;
+    /**
+     * A REFUSAL THAT ASKS FOR MORE HAS TO SAY SO IN THE BODY THE CLIENT ACTUALLY READS.
+     *
+     * `conversation.service.ts`'s completion gate throws `BadRequestException({ message, canContinue:
+     * true })` so the client can tell "answer more, then try again" apart from every other refusal
+     * and re-open the composer instead of leaving it disabled. This filter used to rebuild the body
+     * from `message`/`errors`/`code` alone and drop everything else on the thrown object - so the
+     * live response never carried `canContinue`, the client fell back to its default refusal
+     * handling, and the end card stayed up over a disabled box. Passed through explicitly, as a
+     * boolean only, the same way `code` is: never the whole exception, never a class name or a stack.
+     */
+    let canContinue: boolean | null = null;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
@@ -46,6 +58,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           errors = responseObj.errors || null;
         }
         code = typeof responseObj.code === 'string' ? responseObj.code : null;
+        canContinue = typeof responseObj.canContinue === 'boolean' ? responseObj.canContinue : null;
       }
     } else if (exception instanceof Error) {
       /**
@@ -116,6 +129,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message,
       errors,
       ...(code ? { code } : {}),
+      ...(canContinue !== null ? { canContinue } : {}),
       timestamp: new Date().toISOString(),
       path: request.url,
     });

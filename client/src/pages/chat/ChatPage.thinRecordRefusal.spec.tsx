@@ -27,11 +27,18 @@ vi.mock('@/api/conversation', () => ({
   conversationApi: {
     transcript: vi.fn(),
     open: vi.fn(),
+    /*
+     * U.8 THIRD REVIEW: no `canContinue` in this mock any more, on purpose. The live filter
+     * between the exception and the client dropped that field entirely, so a spec that only ever
+     * faked a response carrying it proved nothing about the real body. The client now keys off
+     * the HTTP status instead - any 400 here that is not "already complete" - so this mock is
+     * exactly what a live 400 looked like with the bug still in the filter.
+     */
     complete: vi.fn().mockRejectedValue({
       response: {
+        status: 400,
         data: {
           message: 'A few more exchanges are needed before this check-in can close - the record is still thin. Answer one or two more questions, then complete.',
-          canContinue: true,
         },
       },
     }),
