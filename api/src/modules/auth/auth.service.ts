@@ -1502,8 +1502,10 @@ export class AuthService {
     });
     if (!user) throw new NotFoundException('User not found');
 
+    /* Never one they are held out of for want of a seat (U.4 third review): they have not been told
+       about it, so it is not theirs to see or switch to until the hold is cleared. */
     const memberships = await this.prisma.organizationMembership.findMany({
-      where: { userId },
+      where: { userId, heldForASeat: false },
       select: { organizationId: true, role: true, joinedHow: true, organization: { select: { id: true, name: true, slug: true } } },
       orderBy: { createdAt: 'asc' },
     });
@@ -1558,9 +1560,11 @@ export class AuthService {
   async switchOrganization(userId: string, organizationId: string, via: SignedInVia = 'password') {
     const membership = await this.prisma.organizationMembership.findUnique({
       where: { userId_organizationId: { userId, organizationId } },
-      select: { role: true, organization: { select: { id: true, name: true, slug: true } } },
+      select: { role: true, heldForASeat: true, organization: { select: { id: true, name: true, slug: true } } },
     });
-    if (!membership) {
+    /* Held for a seat (U.4 third review): refused exactly as if they were not a member, because they
+       have not been told they are one. */
+    if (!membership || membership.heldForASeat) {
       // Not "not found": from the caller's side this is being refused, and saying so
       // plainly is better than implying the organisation does not exist.
       throw new ForbiddenException('You are not a member of that organisation');
