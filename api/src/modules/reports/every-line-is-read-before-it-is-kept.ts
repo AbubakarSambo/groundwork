@@ -30,6 +30,7 @@
  * Every rewrite and every drop is returned, so the caller can log each one.
  */
 import { whatIsWrongWith, quotedSpansOf, AHit } from './a-line-a-person-can-read';
+import { quotationsIn } from './a-quote-is-what-they-said';
 
 export interface AReader {
   participantId: string | null;
@@ -96,7 +97,13 @@ function allStrings(v: any, into: Set<string> = new Set()): Set<string> {
  */
 export function sentencesOf(text: string): string[] {
   const held: string[] = [];
-  const masked = text.replace(/“[^“”]*”|"[^"\n]*"/g, (m) => `${held.push(m) - 1}`);
+  let masked = '';
+  let from = 0;
+  for (const q of quotationsIn(text)) {
+    masked += `${text.slice(from, q.start)}${held.push(text.slice(q.start, q.end)) - 1}`;
+    from = q.end;
+  }
+  masked += text.slice(from);
   const out: string[] = [];
   let at = 0;
   for (const m of masked.matchAll(/[.!?]+["”’)\]]*(?:\s+|$)|\n+/g)) {
@@ -129,6 +136,14 @@ function mayStand(original: string, rewrite: string | null): string | null {
   for (const [a, b] of quotedSpansOf(original)) {
     if (!r.includes(original.slice(a, b))) return null;
   }
+  /*
+   * AND NO QUOTATION THE ORIGINAL DID NOT HAVE. Openread, check-2: asked to fix a pronoun, the model
+   * turned the single marks round "incredibly tight timelines" into double ones, and a phrase nobody
+   * said was served as somebody's words. Whatever marks it uses, a passage may be in quotation marks
+   * after the rewrite only if it was a quotation, word for word, before it.
+   */
+  const before = new Set(quotationsIn(original).map((q) => q.inner.trim()));
+  if (quotationsIn(r).some((q) => !before.has(q.inner.trim()))) return null;
   return r;
 }
 

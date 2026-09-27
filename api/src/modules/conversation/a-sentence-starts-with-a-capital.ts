@@ -27,15 +27,21 @@
  * person's own words, and a person may write in lower case.
  */
 import { LOWER_CASE_START } from '../reports/a-line-a-person-can-read';
+import { quotationsIn } from '../reports/a-quote-is-what-they-said';
 
-const QUOTED = /“[^”]*”|"[^"\n]*"/g;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function aSentenceStartsWithACapital(text: string): { text: string; changed: boolean } {
   if (!text) return { text, changed: false };
   /* Their words held aside, so a stop inside a quote never starts a sentence here. */
   const held: string[] = [];
-  const masked = text.replace(QUOTED, (m) => `${held.push(m) - 1}`);
+  let masked = '';
+  let from = 0;
+  for (const q of quotationsIn(text)) {
+    masked += `${text.slice(from, q.start)}${held.push(text.slice(q.start, q.end)) - 1}`;
+    from = q.end;
+  }
+  masked += text.slice(from);
   if (!new RegExp(LOWER_CASE_START.source).test(masked)) return { text, changed: false };
 
   /* Sentences, each carrying its own trailing space, so joining them back needs nothing added. */

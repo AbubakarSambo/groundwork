@@ -18,6 +18,8 @@
  *     line is rendered for the reader, which is why it is here and not in the prompt.
  */
 
+import { quotationsIn } from './a-quote-is-what-they-said';
+
 export interface AProblem {
   /** The scorer's own name for it, word for word, where it has one. */
   what: string;
@@ -61,9 +63,11 @@ export const WHAT_THE_TASK_ADDS: AProblem[] = [
 
 export const EVERY_PROBLEM: AProblem[] = [...WHAT_THE_SCORER_COUNTS, ...WHAT_THE_TASK_ADDS];
 
-/** The quoted spans in a line: somebody's own words, which no check may change. */
-export const QUOTED_SPAN = /“[^“”]*”|(?<![\p{L}\p{N}])"[^"\n]*"(?![\p{L}\p{N}])/gu;
-
+/*
+ * The quoted spans in a line: somebody's own words, which no check may change. The quote pass's own
+ * reading of what a quotation is (a-quote-is-what-they-said), single marks included, so the two can
+ * never disagree about where somebody's words start and stop.
+ */
 export interface AHit {
   what: string;
   /** The words that matched. */
@@ -77,7 +81,7 @@ const global = (re: RegExp) => new RegExp(re.source, re.flags.includes('g') ? re
 
 /** The quoted spans of a line, as [start, end) offsets. */
 export function quotedSpansOf(line: string): [number, number][] {
-  return [...(line ?? '').matchAll(global(QUOTED_SPAN))].map((m) => [m.index!, m.index! + m[0].length]);
+  return quotationsIn(line ?? '').map((q) => [q.start, q.end]);
 }
 
 /**

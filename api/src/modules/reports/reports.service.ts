@@ -2367,6 +2367,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
         inferences,
       });
       if (checked) {
+        /*
+         * AND THE QUOTE PASS AGAIN, OVER WHAT THE CHECK CHANGED. A rewrite may not add a quotation
+         * (see mayStand), and this is the second lock on the same door: nothing the check hands back
+         * is stored with a quote the record does not hold word for word. Openread, check-2.
+         */
+        const again = everyQuoteFromTheRecord(checked, whatAQuoteMayBe, namesInThisCheckIn);
+        if (again.unquoted.length || again.dropped.length) {
+          this.logger.warn(`Report for ground ${groundId}: after the check, ${again.unquoted.length} quote(s) lost their marks and ${again.dropped.length} sentence(s) went, because they were not in the record word for word.`);
+        }
+        Object.assign(checked, again.value);
         (result as any).sharedPicture = checked.sharedPicture;
         (result as any).theOpening = checked.theOpening;
         (result as any).agreements = checked.agreements;
