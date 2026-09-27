@@ -14,12 +14,11 @@ in, with every decision you made).
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
-board), U.13 (suggestions from verdicts, and appeals) and U.14 (Ask Groundwork, not yet the full
-run). Each before U.14 passed the full screen and API
-suites. The latest full run, after U.13, passed 2,785 screen tests and every API test but one that is
-meant to fail until a new area is written down, which is now done. **None could be ticked, because the
-reviewer can no longer sign in as anyone** (item 14). That is the most important thing for
-you to unblock.
+board), U.13 (suggestions from verdicts, and appeals) and U.14 (Ask Groundwork). Each passed the full
+screen and API suites; the few failures each run found came from that module and were fixed. The
+latest full run, after U.14, passed all 9,427 API tests and every screen test apart from one missing
+style, now added. **None could be ticked, because the reviewer can no longer sign in as anyone** (item
+14). That is the most important thing for you to unblock.
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
 addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
@@ -1908,6 +1907,10 @@ so. Only the tests for the changed files, the guards that read whole folders, an
 were run, as you asked. No screen could be checked signed in (item 14), so the screens were checked
 by rendering tests only. No database change. **Not ticked,** because no review can sign in (item 14),
 and the full run is still to do.
+
+**The full run:** all 9,427 API tests and the build passed, and every screen test but one: a style used
+by the speech-bubble button had no definition. It now gives the button a pressed look while the panel
+is open. **Not ticked,** because no review can sign in (item 14).
 
 ## Found on the way, for later tasks
 
