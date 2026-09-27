@@ -13,10 +13,9 @@ in, with every decision you made).
 
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
-screens), U.9 (reports and sharing) and U.10 (the board). U.3 to U.9 each passed the full screen and
-API suites, apart from failures in the engine workspace's own files, which I have asked them to fix.
-U.10 has passed the tests for the files it changed; the full suites have not been run on it yet. **None could be ticked, because
-the reviewer can no longer sign in as anyone** (item 14). That is the most important thing for you to
+screens), U.9 (reports and sharing) and U.10 (the board). Each passed the full screen and API suites,
+apart from failures in the engine workspace's own files, which I have asked them to fix. **None could
+be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most important thing for you to
 unblock.
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
@@ -35,7 +34,7 @@ asks the engine to change the rule itself).
 6. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
 7. The rest of items 13, 15 to 21 are smaller, each with a recommendation.
 
-**In progress:** U.11 (ending a check-in) is next.
+**In progress:** U.11 (ending a check-in, the probation review, handover) is next.
 
 ## Needs Hafsah
 
