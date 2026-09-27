@@ -74,6 +74,7 @@ import { withoutOtherPeoplesReads } from './own-reads-only';
 import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-label';
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
 import { linesBuiltAtTheRead } from './a-line-built-at-the-read-is-read-too';
+import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
 import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRewrite, THE_LINES_REWRITTEN, theRewritesById } from './every-line-is-read-before-it-is-kept';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
@@ -3178,6 +3179,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
       drafts.push({ key: 'conf', text: shape.confidence.saying });
       drafts.push({ key: 'stand', text: shape.whereThingsStand.saying });
       const said = await this.phrase('the session report', drafts);
+      /* And their quotes are the record's words, because none of this is stored: see
+         a-quote-built-at-the-read. The tiles carry a worry or a blocker in its record words. */
+      const quotable = await theRecordAQuoteMayComeFrom(this.prisma as any, groundId);
+      const q = <T,>(v: T): T => this.quotesAsTheRecordHasThem(v, groundId, 'the session report', quotable);
       const subOf = (i: number, t: { label: string; value: string; sub: string }) => {
         const w = said[`sub${i}`];
         /* The tile keeps label and value as its own fields; only the sub-line takes the wording. */
@@ -3186,10 +3191,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
       };
       return {
         ...shape,
-        sections: shape.sections.map((sec, i) => ({ ...sec, saying: sec.saying ? (said[`say${i}`] ?? sec.saying) : sec.saying })),
-        atAGlance: shape.atAGlance.map((t, i) => ({ ...t, sub: subOf(i, t) })),
-        confidence: { ...shape.confidence, saying: said.conf ?? shape.confidence.saying, reasons: shape.confidence.reasons.map((r, i) => said[`why${i}`] ?? r) },
-        whereThingsStand: { ...shape.whereThingsStand, saying: said.stand ?? shape.whereThingsStand.saying },
+        sections: shape.sections.map((sec, i) => ({ ...sec, saying: q(sec.saying ? (said[`say${i}`] ?? sec.saying) : sec.saying) })),
+        atAGlance: shape.atAGlance.map((t, i) => ({ ...t, sub: q(subOf(i, t)) })),
+        confidence: { ...shape.confidence, saying: q(said.conf ?? shape.confidence.saying), reasons: q(shape.confidence.reasons.map((r, i) => said[`why${i}`] ?? r)) },
+        whereThingsStand: { ...shape.whereThingsStand, saying: q(said.stand ?? shape.whereThingsStand.saying) },
       };
     })();
 
@@ -4572,12 +4577,26 @@ happened, and what is in the way.`;
     return done.length ? (report as R) : null;
   }
 
-  /** A line built at the read, made to read right or not shown, with a line in the log for each. */
-  private readAsItWillBeRead<T>(value: T, groundId: string, what: string): T {
+  /**
+   * A line built at the read, made to read right or not shown, with a line in the log for each. Its
+   * quotes first, against `record`, the same lines the stored pass quotes from: see
+   * a-quote-built-at-the-read.
+   */
+  private readAsItWillBeRead<T>(value: T, groundId: string, what: string, record: string[]): T {
     if (value == null) return value;
+    const quoted = this.quotesAsTheRecordHasThem(value, groundId, what, record);
     const dropped: string[] = [];
-    const out = linesBuiltAtTheRead(value, dropped);
+    const out = linesBuiltAtTheRead(quoted, dropped);
     if (dropped.length) this.logger.warn(`Report for ground ${groundId}: ${dropped.length} line(s) of ${what} not shown, because they still failed a test after the read's repairs. First: "${dropped[0].slice(0, 160)}"`);
+    return out;
+  }
+
+  /** Only the quote rule, for a part built at the read that has no other test to pass. */
+  private quotesAsTheRecordHasThem<T>(value: T, groundId: string, what: string, record: string[]): T {
+    if (value == null) return value;
+    const requoted: string[] = [];
+    const out = quotesBuiltAtTheRead(value, record, requoted);
+    if (requoted.length) this.logger.warn(`Report for ground ${groundId}: ${requoted.length} quote(s) in ${what} were not the record's words. First: ${requoted[0].slice(0, 200)}`);
     return out;
   }
 
@@ -5625,6 +5644,14 @@ happened, and what is in the way.`;
     const isOrgAdmin = !isInitiator && !participant && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
     if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
 
+    /*
+     * THE LINES A QUOTE MAY COME FROM, for everything below that is built now rather than stored.
+     * The stored report's quotes were made the record's words before it was kept; these were never
+     * seen by that pass. See a-quote-built-at-the-read.
+     */
+    const quotable = await theRecordAQuoteMayComeFrom(this.prisma as any, groundId);
+    const quotesChecked = <T,>(value: T, what: string): T => this.quotesAsTheRecordHasThem(value, groundId, what, quotable);
+
     if (!ground.report.releasedAt) {
       // Before everyone has checked in, the report is a forming picture, not
       // a final one - show it as such rather than blocking anyone entirely.
@@ -5679,7 +5706,7 @@ happened, and what is in the way.`;
           soloArtifact,
           /* Their own rows, which do not wait on a release: see theirOwnRows. */
           myRows: await this.theirOwnRows(participant?.id),
-          couldTry: await this.whatTheyCouldTryNext(groundId, participant?.id),
+          couldTry: quotesChecked(await this.whatTheyCouldTryNext(groundId, participant?.id), 'what they could try'),
           sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
           declined: await this.declinedThisRound(groundId, ground.participants as any),
         };
@@ -5717,7 +5744,7 @@ happened, and what is in the way.`;
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
         soloArtifact,
         myRows: await this.theirOwnRows(participant?.id),
-        couldTry: await this.whatTheyCouldTryNext(groundId, participant?.id),
+        couldTry: quotesChecked(await this.whatTheyCouldTryNext(groundId, participant?.id), 'what they could try'),
         sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
         declined: await this.declinedThisRound(groundId, ground.participants as any),
         /* AND WHAT IT RESTS ON. Sixteen documents were attached across an audit run and one report of
@@ -5875,8 +5902,8 @@ happened, and what is in the way.`;
           .catch(() => 0),
         (ground.report as any)?.builtFromAnswers ?? null,
       ),
-      postReportGuide,
-      coaching: this.readAsItWillBeRead(coaching, groundId, 'the coaching note'),
+      postReportGuide: quotesChecked(postReportGuide, 'the guide to the next conversation'),
+      coaching: this.readAsItWillBeRead(coaching, groundId, 'the coaching note', quotable),
       /* Only a discovery session has one; everything else gets null and renders nothing. */
       theDirection: await this.theDirectionFrom(
         ground,
@@ -5891,9 +5918,9 @@ happened, and what is in the way.`;
        * the dispute; every read that COUNTS rows filters them out.
        */
       myRows: await this.theirOwnRows(participant?.id),
-      couldTry: await this.whatTheyCouldTryNext(groundId, participant?.id),
+      couldTry: quotesChecked(await this.whatTheyCouldTryNext(groundId, participant?.id), 'what they could try'),
       mySoftSpots: participant
-        ? await this.myOwnSoftSpots(groundId, participant.id).catch(() => [])
+        ? quotesChecked(await this.myOwnSoftSpots(groundId, participant.id).catch(() => []), 'their soft spots')
         : [],
       /*
        * AND THE LEAD'S OWN SECTION. Null for everybody else, decided inside `whatToProbeOn` rather
@@ -5902,7 +5929,7 @@ happened, and what is in the way.`;
        */
       /* Built at the read with the reader's "you" already in, so held to the same tests here. See
          a-line-built-at-the-read-is-read-too. */
-      probes: this.readAsItWillBeRead(probes, groundId, 'the probe list'),
+      probes: this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable),
       soloArtifact,
       /**
        * A RELEASED report is exactly where this matters most, and it was the branch that could not
