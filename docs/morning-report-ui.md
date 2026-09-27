@@ -23,8 +23,8 @@ channels) and U.19 (billing). Each passed the full screen and API suites; the fe
 that module and were fixed. The latest full run, after U.18, passed 3,006 screen tests and 9,647 API
 tests apart from three failures from U.18 itself, all since fixed. U.19 has passed the tests for
 every file it changed; its full run is next. **None
-could be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
-important thing for you to unblock.
+could be ticked, because each needs its review, which now runs one module at a time, oldest first,
+signing in the way you chose** (item 14).
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
 addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
@@ -79,39 +79,38 @@ whoever holds the organisation's developer key. The developer API must keep work
 that one is yours to decide (item 27.4).
 
 **What needs you most, in order:**
-1. Item 14: let the reviewer sign in (my recommendation: allow reading the local test password).
-2. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
-3. Item 20.1: should the lead hold the team's report until they share it? (a privacy question)
-4. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
-5. Items 17.5 and 17.13: in a new check-in, do invitations go before or after the lead's own first
+1. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
+2. Item 20.1: should the lead hold the team's report until they share it? (a privacy question)
+3. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
+4. Items 17.5 and 17.13: in a new check-in, do invitations go before or after the lead's own first
    check-in, and should the check-in a lead does on the start screen count as their first session?
-6. Item 17 (new point): name a check-in after the person ("Daniel, the next six weeks", as the
+5. Item 17 (new point): name a check-in after the person ("Daniel, the next six weeks", as the
    prototype does) or after the topic (an earlier rule, because the name is the invitation email's subject)?
-7. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
-8. Item 22.1: the handover page, because the prototype's page and the product's handover are two
+6. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
+7. Item 22.1: the handover page, because the prototype's page and the product's handover are two
    different things (a privacy question).
-9. Item 23.1: may anyone but the person read their You board? (a privacy question)
-10. Item 24.1: which admins may read a suggestion about someone, and when? (a privacy question)
-11. Item 25.2: questions to Ask Groundwork feed the pattern detectors (a privacy question), and
+8. Item 23.1: may anyone but the person read their You board? (a privacy question)
+9. Item 24.1: which admins may read a suggestion about someone, and when? (a privacy question)
+10. Item 25.2: questions to Ask Groundwork feed the pattern detectors (a privacy question), and
     25.1: most people cannot use Ask Groundwork yet.
-12. Item 26.1: may the Company page show what new people keep asking, when it is built from their
+11. Item 26.1: may the Company page show what new people keep asking, when it is built from their
     private questions to Ask Groundwork? (a privacy question), and 26.2: priorities can only come
     in from an organisation's own systems today.
-13. Item 27.1 and 27.2: may somebody share their load with a lead, and may the team being asked
+12. Item 27.1 and 27.2: may somebody share their load with a lead, and may the team being asked
     read what another team asked of it? (both privacy questions)
-14. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
+13. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
     screen shows any; 28.3: who counts as a lead for the suites; and 28.9: onboarding's "Something
     nobody has shown them yet" is built from private questions (a privacy question); 28.18 and 28.19:
     nobody can ask for leave yet, and no screen shows a person their own; 28.25 to 28.27: the same for
     hours, and who says what each client agreed; 28.33: does a person read their manager's own words
     in their review? (a privacy question); 28.49: is one to-do list for each person their private
     load? (a privacy question)
-15. Item 29.1: may an admin connect their own WhatsApp number while Groundwork's WhatsApp is off?
+14. Item 29.1: may an admin connect their own WhatsApp number while Groundwork's WhatsApp is off?
     and 29.4: should everyone's word-for-word check-ins be deleted after a time? (a privacy question)
-16. Item 30.1: what happens to organisations already on the free plan when you turn on the one
+15. Item 30.1: what happens to organisations already on the free plan when you turn on the one
     switch for the trial and the free plan (it is off, so nothing has changed yet); 30.2: one trial
     for each organisation, or for each person?
-17. The rest of items 13, 15 to 30 are smaller, each with a recommendation.
+16. The rest of items 13, 15 to 30 are smaller, each with a recommendation.
 
 **Just finished, not ticked:** U.19, billing. Stripe works exactly as before, in test mode only: the
 same checkout, webhooks, invoices, care fee and portal. Plan and billing is the prototype's page, with
