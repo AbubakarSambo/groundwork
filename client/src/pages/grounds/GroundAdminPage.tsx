@@ -1,3 +1,4 @@
+import { whatAnAdminHereCanSee } from '@/lib/what-an-admin-here-can-see'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
@@ -20,7 +21,7 @@ import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
-import { personLabel } from '@/lib/utils'
+import { personLabel as onePersonsLabel, peopleLabels, atTheStart } from '@/lib/utils'
 import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
 import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { alignmentLabel } from '@/lib/alignment'
@@ -35,6 +36,7 @@ import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec, TextAction } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { ShareSection } from './ShareSection'
+import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
@@ -395,6 +397,17 @@ export function GroundAdminPage() {
     .filter((c: any) => ((ground as any)?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id))
     .sort((a: any, b: any) => (b.sessionNumber ?? 0) - (a.sessionNumber ?? 0))
 
+  /*
+   * EVERYBODY ON THIS PAGE, NAMED ONCE (request 36). Their name, else the address the lead typed,
+   * never the lead's note about them; with no name "a colleague", or "one colleague", "another
+   * colleague", "a third colleague" when there are several, the same words the engine uses. The note
+   * is still shown, beside the name, as the lead's own ("Your note: ...").
+   */
+  const labelsHere = peopleLabels((ground as any)?.participants ?? [], { forTheLead: true })
+  const labelInASentence = (p: any): string => labelsHere.get(p?.id) ?? onePersonsLabel(p)
+  /** At the start of a line: "Another colleague". */
+  const personLabel = (p: any): string => atTheStart(labelInASentence(p))
+
   /**
    * ONE ROW PER SESSION, AND WHO EACH ROW IS COUNTING.
    *
@@ -429,7 +442,8 @@ export function GroundAdminPage() {
         answered: parties.filter((p) => answeredIds.has(p.id)).length,
         total: parties.length,
         closed: (((ground as any)?.roundCompletions ?? []) as any[]).some((r) => r.sessionNumber === n),
-        waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => personLabel(p)),
+        /* The reader is "you", never their own name (the wording rule); everybody else as labelled. */
+        waitingOn: parties.filter((p) => !answeredIds.has(p.id)).map((p) => (p.userId && p.userId === user?.id ? 'you' : labelInASentence(p))),
         /* When this session opened, for the row's "Wed, 23 Sept" (U.9). The earliest opening, or
            the first answer when no opening time was kept. */
         opened: (() => {
@@ -513,7 +527,7 @@ export function GroundAdminPage() {
     if (!participantId) return null
     const p: any = (ground?.participants ?? []).find((x: any) => x.id === participantId)
     if (!p) return null
-    return personLabel(p)
+    return labelInASentence(p)
   }
 
   /**
@@ -1676,8 +1690,13 @@ export function GroundAdminPage() {
                  */
                 const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
                 const first = (lead?.user?.firstName ?? '').trim()
-                const who = first || 'The lead here'
-                return `${who} runs this check-in. You can see everything here, which is the point of being an admin - but releasing the report and closing the check-in are theirs to decide, and nothing you do here is hidden from them.`
+                /* U.7 review: it said "You can see everything here", over a page that cannot open
+                   the documents or each person's share. See what-an-admin-here-can-see. */
+                return whatAnAdminHereCanSee({
+                  leadName: [first, (lead?.user?.lastName ?? '').trim()].filter(Boolean).join(' ') || null,
+                  leadFirstName: first || null,
+                  inIt: !!myParticipantId,
+                })
               })()}
             </div>
           </div>
@@ -1798,7 +1817,7 @@ export function GroundAdminPage() {
                   const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
                   const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
                   return {
-                    name: nameOfParticipant(p.id) ?? 'A participant',
+                    name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
                     done: hasDoneThisSession(theirs, current),
                     isSelf: p.userId === user?.id,
                   }
@@ -1876,7 +1895,7 @@ export function GroundAdminPage() {
                 waitingOn: (ground.participants ?? [])
                   .filter((p: any) => !p.managingOnly && p.userId !== user?.id)
                   .filter((p: any) => !(((p as any).checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
-                  .map((p: any) => personLabel(p)),
+                  .map((p: any) => labelInASentence(p)),
                 /* The lead's page does not fetch the shared report, and these two rows are about
                    what it can say. Left null, so they read as not-yet rather than as absent. */
                 corroborated: null,
@@ -1979,13 +1998,13 @@ export function GroundAdminPage() {
                         <div className="ga-status-dot" style={{ background: statusColor }} title={statusLabel} />
                         <div className={`gw-av gw-av-${i % 6}`}>{(p.email || '?').charAt(0).toUpperCase()}</div>
                         <div style={{ flex: 1 }}>
-                          {/* `participantLabel` gives "a teammate" to anybody who has not signed
-                              in yet, so a lead who invited three people saw three rows all called
-                              "a teammate". This is the lead's own roster - they invited these
-                              people by typing the addresses - so `personLabel`, which falls back
-                              to the address, is both truthful and useful here. */}
+                          {/* This is the lead's own roster - they invited these people by typing
+                              the addresses - so `personLabel`, which falls back to the address, is
+                              both truthful and useful here. With no address either, the engine's
+                              words: "one colleague", "another colleague". Never the lead's note,
+                              which is shown below as theirs. */}
                           <div style={{ fontSize: 13, fontWeight: 600 }}>{personLabel(p)}</div>
-                          {personLabel(p) !== p.email && (
+                          {labelInASentence(p) !== p.email && (
                             <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{p.email}</div>
                           )}
                           {editingRoleId === p.id ? (
@@ -2005,7 +2024,8 @@ export function GroundAdminPage() {
                             </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
-                              {p.roleAsDescribed && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
+                              {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
+                              {isInitiator && p.roleAsDescribed && <span data-leads-note style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
                               {/* What someone is answerable for is the lead's to
                                   set, or their own. Every party could edit every
                                   other party's remit, on a ground that may be
@@ -2110,7 +2130,11 @@ export function GroundAdminPage() {
                           Sits before "Copy invite link" in importance but after it in the row, so
                           the existing habit is not moved out from under anybody.
                         */}
-                        {isInitiator && !p.userId && (
+                        {/* U.6 review: not for an invitation still waiting for its start day. */}
+                        {isInitiator && !p.userId && waitsForItsStart(p as any) && (
+                          <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>Their invitation goes out on the morning the check-in starts.</span>
+                        )}
+                        {isInitiator && !p.userId && !waitsForItsStart(p as any) && (
                           <button
                             disabled={resendInvite.isPending}
                             onClick={() => resendInvite.mutate(p.id)}

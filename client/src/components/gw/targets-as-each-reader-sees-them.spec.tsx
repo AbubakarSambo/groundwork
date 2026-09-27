@@ -98,9 +98,37 @@ describe('Aisha, who takes part', () => {
 })
 
 describe('an admin reading a check-in somebody else leads', () => {
-  it('is told whose share it is and who sees it, and cannot write to it', () => {
-    draw({ targets: [team, aisha], viewerUserId: 'u-admin' })
-    expect(rowText('t2')).toContain('Seen by Aisha and Wairimu')
+  /* U.7 review: the server now sends an admin who is not the lead only the team's targets (the same
+     rule as Context, one-rule-for-whose-share-is-shown.spec.ts), so that is what he is fed here. */
+  it('reads the team target, no one’s share, and cannot write to it', () => {
+    draw({ targets: [team], viewerUserId: 'u-admin' })
+    expect(rowText('t1')).toContain('Seen by everyone')
+    expect(document.body.textContent).not.toContain('Aisha')
     expect(screen.queryByText('Say what it assumes')).toBeNull()
+  })
+})
+
+/*
+ * U.7 REVIEW: A TARGET WITH NO NUMBER. The heading read "What Aisha and Baraka are to sell 25 water
+ * pumps this quarter. assumes", the target's whole sentence dropped into it.
+ */
+describe('what a target with no number assumes', () => {
+  const pumps: Target = { id: 't9', name: 'Aisha and Baraka are to sell 25 water pumps this quarter.', target: null, ownerParticipantId: null, assumes: ['Stock arrives on time.'] }
+  for (const [who, viewerUserId, isTheLead] of [['the lead', 'u-lead', true], ['Aisha', 'u-aisha', false], ['an admin', 'u-admin', false]] as const) {
+    it(`reads "What this target assumes" as ${who}`, () => {
+      draw({ targets: [pumps], viewerUserId, isTheLead })
+      expect(screen.getByText('What this target assumes')).toBeTruthy()
+      expect(document.body.textContent).not.toMatch(/quarter\. assumes/)
+      expect(rowText('t9')).toContain('No number set')
+    })
+  }
+  it('and the lead writing it reads the same heading on the box', async () => {
+    draw({ targets: [{ ...pumps, assumes: [] }], viewerUserId: 'u-lead', isTheLead: true })
+    await userEvent.click(screen.getByText('Say what it assumes'))
+    expect(screen.getByLabelText('What this target assumes')).toBeTruthy()
+  })
+  it('and a target with a number keeps it in the heading', () => {
+    draw({ targets: [team], viewerUserId: 'u-aisha' })
+    expect(screen.getByText('What the target of 25 assumes')).toBeTruthy()
   })
 })

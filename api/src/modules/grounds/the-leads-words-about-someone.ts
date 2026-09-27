@@ -1,15 +1,21 @@
 /**
- * WHAT THE LEAD WROTE ABOUT A PERSON IS FOR WHOEVER RUNS THE CHECK-IN (U.6 review).
+ * WHAT THE LEAD WROTE ABOUT A PERSON IS FOR THE LEAD ALONE (U.6 review, tightened in the U.7 review).
  *
  * `roleAsDescribed` is mostly the lead's own sentence about someone, typed when they were added:
  * "Daniel - Your sales manager, who you said is not meeting his agreed targets for pipeline
  * building and coaching." Read live on Daniel's invitation, under "Your part in this". It judges
- * him, it speaks to the lead ("who you said"), and it is the lead's view, which a participant never
- * reads (the settled privacy rules). The row does not record who wrote it, so it is served only to
- * someone who runs this check-in: the lead or an admin. Everyone else gets nothing in its place.
+ * him, it speaks to the lead ("who you said"), and it is the lead's private note, which a
+ * participant never reads (the settled privacy rules).
+ *
+ * Until the U.7 review it also went to every admin of the organisation, as "someone who runs the
+ * check-in". Read live: Otieno, an admin who is not in Wanjiru's check-in, opened its Context page
+ * and read "Baraka. Your note: Baraka is a member of the team...". It was not his note, and a lead's
+ * private notes are private, always. The row does not record who typed it, so it is served only to
+ * the check-in's lead (its initiator), who is the person it is written by and for. Everyone else,
+ * admins included, gets nothing in its place.
  */
-export function theLeadsWordsAbout(p: { roleAsDescribed?: string | null }, readerRunsThisCheckIn: boolean): string | null {
-  return readerRunsThisCheckIn ? (p.roleAsDescribed ?? null) : null;
+export function theLeadsWordsAbout(p: { roleAsDescribed?: string | null }, readerLeadsThisCheckIn: boolean): string | null {
+  return readerLeadsThisCheckIn ? (p.roleAsDescribed ?? null) : null;
 }
 
 /**

@@ -19,8 +19,9 @@
  * including the lead, who cannot mark somebody else's work done. A lead changes what is EXPECTED,
  * and does it in the conversation, because a change has a reason and a form does not take one.
  */
+import { theLeadsNote } from '@/lib/the-leads-note'
 import { useState } from 'react'
-import { personLabel } from '@/lib/utils'
+import { peopleLabels, atTheStart } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
 
@@ -81,6 +82,8 @@ export function EachPerson({
   asks,
   viewerUserId,
   isLead,
+  isTheLead = false,
+  leadFirstName = null,
   onChangeInChat,
   onUploadFor,
   onSetToDo,
@@ -94,6 +97,10 @@ export function EachPerson({
   asks: Record<string, AnAskOnTheCard[]>
   viewerUserId?: string | null
   isLead: boolean
+  /** The check-in's own lead, not an admin reading it. Only the lead reads their own notes. */
+  isTheLead?: boolean
+  /** The lead's first name, so nobody but the lead reads "your" about the lead's own things. */
+  leadFirstName?: string | null
   /** The lead changes what is expected of somebody in the conversation, not in a form. */
   onChangeInChat?: (said: string) => void
   /** A person attaching the thing they said they would show. */
@@ -117,6 +124,12 @@ export function EachPerson({
   /* Your own row first, then a few, then the count - at a hundred people a stack of cards is a wall
      however small each card is. See a-long-list-is-not-a-page. */
   const inOrder = mine ? [mine, ...rows.filter((p) => p.id !== mine.id)] : rows
+  /* Never the lead's note as the name (request 36): two people with no name are "one colleague" and
+     "another colleague", and you are "You". */
+  const labels = peopleLabels(rows as any[], { forTheLead: true, readerId: mine?.id ?? null })
+  const labelOf = (p: APersonOnTheCard) => labels.get(p.id) ?? 'a colleague'
+  /* "Wanjiru’s", never "the lead’s" and never "your" to an admin reading the page (U.7 review). */
+  const leadsOwn = leadFirstName ? `${leadFirstName}\u2019s` : 'the lead\u2019s'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
@@ -136,7 +149,7 @@ export function EachPerson({
           theirToDos.length ? line(theirToDos.length, 'to-do') : null,
           theirAsks.length ? `${line(theirAsks.length, 'thing')} to show` : null,
           theirFiles.length ? line(theirFiles.length, 'file') : null,
-        ].filter(Boolean).join(' · ') || 'nothing on record yet'
+        ].filter(Boolean).join(', ') || 'Nothing on record yet'
 
         return (
           <div key={p.id} style={{ background: 'white', border: `1px solid ${isMe ? 'var(--gw-navy)' : 'var(--gw-border)'}`, borderRadius: 10, overflow: 'hidden' }}>
@@ -164,8 +177,11 @@ export function EachPerson({
                 display: 'inline-block', width: 10,
                 transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .12s ease',
               }}>&#9654;</span>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{isMe ? 'You' : personLabel(p as any)}</span>
-              {p.roleAsDescribed && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{isMe ? 'You' : atTheStart(labelOf(p))}</span>
+              {/* The lead's own note, beside the name and never as it. The server sends it only to the
+                  check-in's lead, and this card says "Your note" only to the lead as well: an admin
+                  reading the page did not write it (U.7 review). */}
+              {isTheLead && p.roleAsDescribed && <span data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
               <span style={{ flex: 1 }} />
               <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{summary}</span>
               <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{isOpen ? 'Hide' : 'Open'}</span>
@@ -196,16 +212,16 @@ export function EachPerson({
                         to decide whether to offer the chat link.
                       */
                       <Empty>
-                        Nothing yet. It comes from {isLead ? 'your' : 'the lead\u2019s'} own check-in,
+                        Nothing yet. It comes from {isTheLead ? 'your' : leadsOwn} own check-in,
                         or from the conversation on this page.
                       </Empty>
                     )}
                   {isLead && onChangeInChat && (
-                    <Small onClick={() => onChangeInChat(`Change what I expect of ${personLabel(p as any)} to `)}>Change this in the chat</Small>
+                    <Small onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `)}>Change this in the chat</Small>
                   )}
                 </Part>
 
-                <Part title="Their numbers">
+                <Part title={isMe ? 'Your numbers' : 'Their numbers'}>
                   {theirTargets.length ? theirTargets.map((t) => (
                     <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4 }}>
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)' }}>{t.name}</span>
@@ -213,7 +229,9 @@ export function EachPerson({
                         {t.target == null ? <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--gw-muted)' }}>no number</span> : t.target.toLocaleString('en-GB')}
                       </span>
                     </div>
-                  )) : <Empty>No number of their own. Their check-in asks against the team's.</Empty>}
+                  )) : <Empty>{isMe
+                    ? 'You have no number of your own. Your check-in asks against the team\u2019s.'
+                    : `${atTheStart(labelOf(p))} has no number of their own, so their check-in asks against the team\u2019s.`}</Empty>}
                 </Part>
 
                 {/* THEIR TO-DOS, MOVED BY THEM. A lead cannot mark somebody else's work done. */}
@@ -229,7 +247,7 @@ export function EachPerson({
                       */}
                       {!t.explicit && (
                         <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>
-                          {isLead ? 'your words, not theirs' : 'the lead\u2019s words, not theirs'}
+                          {isTheLead ? 'These are your words, not theirs.' : isMe ? `These are ${leadsOwn} words, not yours.` : `These are ${leadsOwn} words, not theirs.`}
                         </span>
                       )}
                       {isMe && onSetToDo && (
@@ -266,7 +284,9 @@ export function EachPerson({
                     <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 4, flexWrap: 'wrap' }}>
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', minWidth: 160 }}>{f.fileName}</span>
                       <span style={{ fontSize: 11.5, color: f.visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
-                        {f.visibility === 'OPEN' ? 'everyone here reads it' : 'only you and the check-in'}
+                        {f.visibility === 'OPEN'
+                          ? 'Everyone in this check-in can read it.'
+                          : f.visibility === 'CLOSED' ? 'Whoever runs this check-in can read it.' : 'Only you can read it.'}
                       </span>
                     </div>
                   )) : <Empty>{isMe ? 'Nothing attached yet.' : 'Nothing attached.'}</Empty>}

@@ -15,7 +15,7 @@ import { GroundChat } from '@/components/gw/GroundChat'
 import { groundTabs } from './ground-tabs'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { apiClient } from '@/api/client'
-import { participantLabel } from '@/lib/utils'
+import { peopleLabels, atTheStart } from '@/lib/utils'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
@@ -300,6 +300,11 @@ export function GroundParticipantPage() {
   }
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
+  /* Everybody this reader may know about, named once for the whole page (request 36): their name,
+     never the lead's note about them; with no name "a colleague", or "one colleague" and "another
+     colleague" when there are several; a lead with no name is "your lead". */
+  const labelsForMe = peopleLabels(ground.participants ?? [], { readerId: myParticipant?.id ?? null, readerIsInIt: true })
+  const participantLabel = (p: any): string => labelsForMe.get(p?.id) ?? 'a colleague'
   /**
    * MY OWN FINISHED SESSIONS, newest first, so each session's own report can be opened from the
    * record it belongs to. Yours only - somebody else's session is theirs until the shared report
@@ -629,7 +634,7 @@ export function GroundParticipantPage() {
                   totalSessions,
                 )
                 return {
-                  name: participantLabel(p),
+                  name: atTheStart(participantLabel(p)),
                   done: hasDoneThisSession((p.checkIns ?? []) as any[], currentSession),
                   isSelf: p.userId === user?.id,
                 }
@@ -675,7 +680,7 @@ export function GroundParticipantPage() {
               refetchSoloReport={refetchSoloReport}
               otherParties={(ground.participants ?? [])
                 .filter((p: any) => p.userId !== user?.id)
-                .map((p: any) => ({ id: p.id, name: participantLabel(p), email: p.email }))}
+                .map((p: any) => ({ id: p.id, name: atTheStart(participantLabel(p)), email: p.email }))}
             />
 
             {/*

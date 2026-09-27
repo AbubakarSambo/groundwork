@@ -32,7 +32,7 @@ describe('the lead\'s words about someone', () => {
     expect(JSON.stringify(preview)).not.toContain('who you said');
   });
 
-  it('is kept for whoever runs the check-in, and is nothing for anybody else', () => {
+  it('is kept for the check-in\'s lead, and is nothing for anybody else', () => {
     expect(theLeadsWordsAbout({ roleAsDescribed: DANIEL }, true)).toBe(DANIEL);
     expect(theLeadsWordsAbout({ roleAsDescribed: DANIEL }, false)).toBeNull();
   });
@@ -41,10 +41,12 @@ describe('the lead\'s words about someone', () => {
   it('the check-in, the check-ins list and the board all narrow it by who is reading', () => {
     const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const grounds = strip(readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8'));
-    expect(grounds).toContain('roleAsDescribed: theLeadsWordsAbout(p, runsIt),');
-    expect(grounds).toContain('roleAsDescribed: theLeadsWordsAbout(p, viewerRunsThisGround),');
+    /* U.7 review: the lead alone, not an admin, so each call is asked with "is this the lead". */
+    expect(grounds).toContain('roleAsDescribed: theLeadsWordsAbout(p, isInitiator),');
+    expect(grounds).toContain('roleAsDescribed: theLeadsWordsAbout(p, viewerIsInitiator),');
     const board = strip(readFileSync(join(__dirname, '..', 'board', 'board.service.ts'), 'utf8'));
     expect(board).not.toMatch(/role: p\.roleAsDescribed/);
-    expect(board.match(/theLeadsWordsAbout\(p, runsThisGround\)/g)).toHaveLength(3);
+    expect(board.match(/theLeadsWordsAbout\(p, isInitiator\)/g)).toHaveLength(3);
+    expect(board).not.toMatch(/theLeadsWordsAbout\([^)]*runsThisGround\)/);
   });
 });

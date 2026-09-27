@@ -1740,6 +1740,8 @@ from finishing at all.`;
     initiatorId: string,
     dto: {
       groundLabel: string;
+      /** Which setup this is: see EntryCommitDto.setupKey. */
+      setupKey?: string;
       orgName?: string;
       scenario?: string;
       cadence?: string;
@@ -1755,6 +1757,8 @@ from finishing at all.`;
       /** True when they said the other people check in and they read what comes back. */
       managingOnly?: boolean;
       history: ChatTurn[];
+      /** What they typed in setup, their own messages only (LeadSetupWords, U.7 re-check). */
+      leadsOwnWords?: string[];
       /** Documents attached during the anonymous chat, kept as real records. */
       documents?: { fileName: string; content: string; mimeType?: string }[];
       report?: EntryReport | null;
@@ -1783,6 +1787,15 @@ from finishing at all.`;
      * The protection this gives is real and stays: two requests seconds apart must not make two
      * grounds. See a-second-setup-is-a-second-check-in for what separates the two.
      */
+    /*
+     * BY IDENTITY, NEVER BY NAME (U.6 review). Read live: the same lead set up a check-in about Grace a
+     * few minutes after Daniel's, both named "Help someone get back on track", pressed save, and was
+     * handed Daniel's check-in; Grace's was never made. The client now sends a key per setup, and the
+     * key decides: the same key is the same save retried, a different key is a new check-in.
+     */
+    const key = dto.setupKey?.trim() || null;
+    if (key) return this.commitBySetupKey(organizationId, initiatorId, dto, draft, key);
+
     if (draft?.consumedAt) {
       const itMade = draft.groundId
         ? await this.prisma.ground.findUnique({ where: { id: draft.groundId }, select: { label: true } }).catch(() => null)
@@ -1795,6 +1808,10 @@ from finishing at all.`;
         return this.awaitConsumedDraftGround(initiatorId);
       }
       this.logger.log(`Entry commit for ${initiatorId}: the draft was consumed on ${new Date(draft.consumedAt).toISOString()} by ${JSON.stringify(itMade?.label ?? null)}, and this is a new check-in. Setting it up fresh.`);
+      /* A NEW CHECK-IN IS SET UP FRESH, AS THE LINE ABOVE SAYS (U.6 review). It fell through to the
+         claim below, which only claims an unconsumed draft, so it "lost the race" to itself and was
+         handed the old check-in anyway, whatever it was called. */
+      return this.commitInner(organizationId, initiatorId, dto);
     }
     if (draft) {
       const claimed = await this.prisma.entryDraft.updateMany({
@@ -1823,6 +1840,67 @@ from finishing at all.`;
       }
     }
     return this.commitInner(organizationId, initiatorId, dto);
+  }
+
+  /**
+   * ONE SETUP, ONE CHECK-IN, BY ITS KEY (U.6 review).
+   *
+   * The lead's draft row remembers which setup it last made a check-in for (`payload.setupKey`), so:
+   * - the same key, already made or being made: the same save retried; its check-in is returned.
+   * - the setup the draft itself holds, not made yet (signed out, opening the link): claimed and made
+   *   from the draft, as before.
+   * - any other key: a new check-in, made from this request alone, never the old draft's content.
+   * Claiming is one conditional write, so two requests with one key make one check-in.
+   */
+  private async commitBySetupKey(organizationId: string, initiatorId: string, dto: any, draft: any, key: string) {
+    const draftKey = (draft?.payload as any)?.setupKey ?? null;
+    if (draft && draftKey === key && draft.consumedAt) return this.awaitConsumedDraftGround(initiatorId);
+
+    if (draft && !draft.consumedAt && (draftKey === key || draftKey === null)) {
+      const claimed = await this.prisma.entryDraft.updateMany({
+        where: { id: draft.id, consumedAt: null },
+        data: { consumedAt: new Date(), payload: { ...((draft.payload as object) ?? {}), setupKey: key } as any },
+      });
+      if (claimed.count === 0) return this.awaitConsumedDraftGround(initiatorId);
+      const body = overlayDraftOntoBody(draft, dto);
+      try {
+        const result = await this.commitInner(organizationId, initiatorId, body);
+        await this.prisma.entryDraft.updateMany({ where: { id: draft.id }, data: { groundId: result.groundId } });
+        return result;
+      } catch (err) {
+        await this.prisma.entryDraft.updateMany({ where: { id: draft.id, groundId: null }, data: { consumedAt: null } }).catch(() => undefined);
+        throw err;
+      }
+    }
+
+    /* A new setup. The row is taken over for this key in one conditional write. */
+    let claimedId: string;
+    if (draft) {
+      const claimed = await this.prisma.entryDraft.updateMany({
+        where: { id: draft.id, updatedAt: draft.updatedAt },
+        data: { consumedAt: new Date(), groundId: null, payload: { ...((draft.payload as object) ?? {}), setupKey: key } as any },
+      });
+      if (claimed.count === 0) return this.awaitConsumedDraftGround(initiatorId);
+      claimedId = draft.id;
+    } else {
+      try {
+        const made = await this.prisma.entryDraft.create({
+          data: { userId: initiatorId, draftToken: crypto.randomBytes(24).toString('hex'), payload: { setupKey: key } as any, history: [] as any, consumedAt: new Date() },
+        });
+        claimedId = made.id;
+      } catch {
+        return this.awaitConsumedDraftGround(initiatorId);
+      }
+    }
+    try {
+      const result = await this.commitInner(organizationId, initiatorId, dto);
+      await this.prisma.entryDraft.updateMany({ where: { id: claimedId }, data: { groundId: result.groundId } });
+      return result;
+    } catch (err) {
+      /* Nothing was made: the key is let go, so the same save retried can make it. */
+      await this.prisma.entryDraft.updateMany({ where: { id: claimedId, groundId: null }, data: { payload: { ...((draft?.payload as object) ?? {}), setupKey: null } as any } }).catch(() => undefined);
+      throw err;
+    }
   }
 
   /** A consumed draft means a commit already ran (or is mid-flight). Return
@@ -2138,6 +2216,29 @@ from finishing at all.`;
     }
     if (!participant) throw new BadRequestException('Participant not found after creating a check-in');
 
+    /*
+     * WHAT THEY TYPED IN SETUP, KEPT FOR THEM (U.7 re-check). The Context page showed the brief, which
+     * setup puts together from the answers it drew out, under "What you wrote". It was not what she
+     * wrote. Her own messages are kept here, apart from the ground's row so nothing spreads them, and
+     * are shown only to her while she leads it. Only on this path: on the coordinator's, the person
+     * committing is not the lead, and their words are not the lead's. A document folded into the chat
+     * and a picked situation card are not things they typed.
+     */
+    const theirOwnWords = (dto.leadsOwnWords ?? [])
+      .map((t) => (typeof t === 'string' ? t.trim() : ''))
+      .filter((t) => t && !t.startsWith('[Document:') && !t.startsWith('[Situation picked'))
+      .join('\n\n')
+      .slice(0, 20_000);
+    if (theirOwnWords) {
+      await (this.prisma as any).leadSetupWords
+        ?.upsert?.({
+          where: { groundId: ground.id },
+          create: { groundId: ground.id, authorUserId: initiatorId, text: theirOwnWords },
+          update: { authorUserId: initiatorId, text: theirOwnWords },
+        })
+        ?.catch?.((err: any) => this.logger.warn(`Could not keep the lead's setup words on ${ground.id}: ${err?.message}`));
+    }
+
     const checkIn = await this.prisma.checkIn.findFirst({
       where: { groundId: ground.id, participantId: participant.id, sessionNumber: 1 },
     });
@@ -2275,7 +2376,7 @@ from finishing at all.`;
     // Invite each contributor. addParticipant generates a fresh token per participant.
     // Do NOT pass a shared client-side inviteToken here - it would collide on the unique constraint
     // for the second and subsequent contributors, silently dropping them.
-    const inviteResults: { email: string; devUrl?: string; waiting?: boolean }[] = [];
+    const inviteResults: { email: string; devUrl?: string; waiting?: boolean; waitingBecause?: string; saying?: string }[] = [];
     const failedInvites: string[] = [];
     /*
      * WHY EACH ONE FAILED, NOT JUST THAT IT DID.
@@ -2296,6 +2397,10 @@ from finishing at all.`;
           email: c.email,
           roleAsDescribed: c.context,
           note: c.note,
+          /* U.6 review: the check-in's start, so a future start holds the invitation until the
+             morning it starts (the on-the-day cron sends it), as adding someone on the check-in's
+             own page does. Without it the invitation went the moment the link was opened. */
+          ...(dto.checkInBy ? { startsAt: dto.checkInBy } : {}),
         });
         /*
          * WHETHER THE MAIL ACTUALLY WENT, WHICH THIS THREW AWAY.
@@ -2310,6 +2415,9 @@ from finishing at all.`;
           email: c.email,
           devUrl: (result as any)?.devUrl,
           waiting: !(result as { invitedAt?: Date | null })?.invitedAt,
+          /* U.6 review: why it waits, so the page after the link can say it truly for each person. */
+          ...((result as any)?.notInvitedBecause ? { waitingBecause: (result as any).notInvitedBecause } : {}),
+          ...((result as any)?.saying ? { saying: (result as any).saying } : {}),
         });
       } catch (err: any) {
         this.logger.error(`entry commit: failed to invite ${c.email}: ${err.message}`);

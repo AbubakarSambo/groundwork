@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
-import { personLabel } from '@/lib/utils'
+import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { scrollToId } from '@/lib/scroll-to'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -98,10 +98,23 @@ export function ContextPage({
   const contextEnabled = (ground as any)?.contextEnabled === true
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
-  const { data: docs = [] } = useQuery({
+  /*
+   * THE DOCUMENTS ARE THE PEOPLE IN THE CHECK-IN'S, SO NOBODY ELSE IS SENT TO ASK FOR THEM (U.7
+   * review). The server lets in the people in the check-in and its lead, and refuses anyone else,
+   * an admin of the organisation included. Otieno, an admin not in Wanjiru's check-in, opened this
+   * page and got "That one is not yours to open" twice (the request and its retry) right under a
+   * banner saying he could see everything. Now the page does not ask on his behalf, says why in the
+   * band, and a refusal that still comes is said there too, once, never as a toast.
+   */
+  const mayOpenDocuments = isTheLead || !!myParticipant
+  const docsQuery = useQuery({
     queryKey: ['docs', id],
     queryFn: () => documentsApi.list(id),
+    enabled: mayOpenDocuments,
+    retry: (n, e: any) => e?.response?.status !== 403 && n < 1,
   })
+  const docs: any[] = docsQuery.data ?? []
+  const documentsAreNotOpenToYou = !mayOpenDocuments || (docsQuery.error as any)?.response?.status === 403
 
   /*
    * A RECORD OF A CONVERSATION IS ASKED ABOUT BEFORE IT IS STORED.
@@ -154,7 +167,7 @@ export function ContextPage({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["ground", id] })
       setBriefDraft(null)
-      toast.success('Everyone here reads this now')
+      toast.success('Saved. Everyone in this check-in now reads this.')
     },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - try again.'),
   })
@@ -252,13 +265,19 @@ export function ContextPage({
    * THE BUCKETS, IN THE ORDER THE PAGE DRAWS THEM. Kept in step with THE_BUCKETS on the server by
    * name rather than by import, because this list is also the page's copy order.
    */
+  /** Whose words the brief is, for everybody but the lead. */
+  const theLeadsFirstName: string =
+    atTheStart(firstNameOrLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') ?? { partyType: 'INITIATOR' }))
+  /* The same, inside a sentence: "Wanjiru" stays "Wanjiru", and a lead with no name is "the lead". */
+  const theLeadMidSentence: string =
+    firstNameOrLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') ?? { partyType: 'INITIATOR' })
   const BUCKETS: { kind: string; title: string; sub: string }[] = [
-    { kind: 'STRATEGY', title: 'The strategy', sub: 'how we win work and what we lead with' },
+    { kind: 'STRATEGY', title: 'The strategy', sub: 'This is how we win work and what we lead with.' },
     /* "as you wrote them" to the person who wrote them - item D. See the source lines below. */
-    { kind: 'WAY_OF_WORKING', title: 'How we work', sub: isTheLead ? 'the rules, as you wrote them' : 'the rules, as the lead wrote them' },
-    { kind: 'DECISION', title: 'Still to decide', sub: 'nobody has decided these yet' },
-    { kind: 'UNSETTLED', title: 'Not settled', sub: 'not treated as fact or as a target' },
-    { kind: 'NOTE', title: 'Notes', sub: 'kept because somebody said it' },
+    { kind: 'WAY_OF_WORKING', title: 'How we work', sub: isTheLead ? 'These are the rules, as you wrote them.' : `These are the rules, as ${theLeadMidSentence} wrote them.` },
+    { kind: 'DECISION', title: 'Still to decide', sub: 'Nobody has decided these yet.' },
+    { kind: 'UNSETTLED', title: 'Not settled', sub: 'These are not treated as facts or as targets.' },
+    { kind: 'NOTE', title: 'Notes', sub: 'These are kept because somebody said them.' },
   ]
   const contextLines: any[] = (ground as any).contextItems ?? []
   /*
@@ -294,6 +313,11 @@ export function ContextPage({
    */
 
   /** What people are down as doing. Unowned first: it is the fact a lead can act on. */
+  /* Everybody's label at once, so two people with no name are "one colleague" and "another colleague"
+     (request 36). Never the lead's note. */
+  const labelsHere = peopleLabels(ground.participants ?? [], {
+    forTheLead: true, readerId: myParticipant?.id ?? null, readerIsInIt: !!myParticipant && !isTheLead,
+  })
   const commitments = [...((ground as any).commitments ?? [])].sort(
     (a: any, b: any) => (a.participantId ? 1 : 0) - (b.participantId ? 1 : 0),
   )
@@ -320,9 +344,54 @@ export function ContextPage({
    * readiness check below already treats it.
    */
   const theBrief: string = ((ground as any).brief ?? '').trim()
-  /** Whose words the brief is, for everybody but the lead. */
-  const theLeadsFirstName: string =
-    personLabel((ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')).split(' ')[0] || 'The lead'
+  /*
+   * WHAT EVERYONE IN THE CHECK-IN READS, WHICH IS NOT ALWAYS THE BRIEF (U.7 review). The lead was
+   * shown her own words with "Everyone reads this before they answer.", and her people were shown a
+   * different text: the short read Groundwork writes from the brief. The server now sends whoever
+   * runs the check-in what the people in it read, and a participant's `brief` already is that text.
+   */
+  const sentToWhoeverRunsIt: string | null = isLead ? (ground as any).briefAsEveryoneReadsIt ?? null : null
+  const whatEveryoneReads: string = (sentToWhoeverRunsIt ?? theBrief ?? '').trim()
+  /*
+   * WHOSE WORDS THEY ARE, SAID ONLY WHEN IT IS TRUE (U.7 review). "Your words, from setup." while the
+   * text is the lead's own and nobody else has changed it; the name of whoever changed it, where the
+   * server knows who; Groundwork, where it wrote the text people read from the lead's words.
+   */
+  const changedBy = (ground as any).briefChangedBy as { firstName: string | null; isYou: boolean; isTheLead: boolean } | null | undefined
+  /* Whether what everyone reads is the stored brief itself, or Groundwork's short read of it. */
+  const shownIsTheBrief = !!theBrief && whatEveryoneReads === theBrief
+  const whoseWords: string | null = (() => {
+    const ownWords = (ground as any).briefIsTheLeadsOwnWords === true
+    if (changedBy && !changedBy.isTheLead) {
+      /* U.7 re-check: above text Groundwork rewrote from an admin's words, he is told so, as the lead is. */
+      if (changedBy.isYou) return shownIsTheBrief ? 'You changed this.' : 'Groundwork wrote this from your words.'
+      if (!changedBy.firstName) return shownIsTheBrief ? 'Someone else changed this.' : 'Someone else changed this, and Groundwork wrote it from their words.'
+      return shownIsTheBrief ? `${changedBy.firstName} changed this.` : `Groundwork wrote this from ${changedBy.firstName}\u2019s words.`
+    }
+    if (ownWords) {
+      if (isTheLead) return changedBy ? 'Your words.' : 'Your words, from setup.'
+      return changedBy ? `${theLeadsFirstName}\u2019s words.` : `${theLeadsFirstName}\u2019s words, from setup.`
+    }
+    if (isTheLead) return 'Groundwork wrote this from your words.'
+    if (isLead) return `Groundwork wrote this from ${theLeadMidSentence}\u2019s words.`
+    return null
+  })()
+  /*
+   * THE FOLDS UNDER IT, AND ONLY WORDS SOMEBODY WROTE (U.7, fourth check).
+   *   - "What you wrote" is the lead's own messages from setup, which the server sends to her alone.
+   *   - Once somebody has rewritten the brief, it is theirs: "What you wrote" or "What Otieno wrote".
+   *   - The text setup put together from her answers is shown to nobody. It was "What Groundwork put
+   *     together from your answers" for three reviews, and no template makes any answer a sentence:
+   *     Otieno read fragments standing as sentences, and Wanjiru's "I" as if it were his. It stays
+   *     only as what the engine reads. Rewriting starts from the text everyone reads.
+   */
+  const herSetupWords: string = ((ground as any).leadsOwnSetupWords ?? '').trim()
+  const theBriefIsSetups = (ground as any).briefPutTogetherBySetup === true && !changedBy
+  const theBriefFoldTitle: string = (() => {
+    if (changedBy?.isYou) return 'What you wrote'
+    if (changedBy && !changedBy.isTheLead) return changedBy.firstName ? `What ${changedBy.firstName} wrote` : 'What someone else wrote'
+    return isTheLead ? 'What you wrote' : `What ${theLeadMidSentence} wrote`
+  })()
   const objectives: any[] = (ground as any).objectives ?? []
 
 
@@ -384,27 +453,42 @@ export function ContextPage({
               targets, which it also had to account for, are their own band since U.7.
             */}
             <Sec n={band()} title="What this check-in is for" />
-            {theBrief && (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: objectives.length > 0 ? 8 : 6, maxWidth: 620 }}>
-                <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{'\u201C'}{theBrief}{'\u201D'}</div>
+            {whatEveryoneReads && (
+              <div data-gw-brief style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: objectives.length > 0 ? 8 : 6, maxWidth: 620 }}>
+                <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{'\u201C'}{whatEveryoneReads}{'\u201D'}</div>
                 {/*
                   WHOSE WORDS, SAID TO WHOEVER IS READING. The prototype's sentence for the lead; the
                   lead's name for everybody else, never "the lead" to the lead's own face (item D on
                   the Context fix list, 23 September 2026).
                 */}
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-                  <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
-                    {isTheLead ? 'Your words, from setup.' : `${theLeadsFirstName}\u2019s words, from setup.`} Everyone reads this before they answer.
+                  <span data-gw-brief-whose style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                    {whoseWords ? `${whoseWords} ` : ''}This is what everyone in this check-in reads before they answer.
                   </span>
                   {isLead && briefDraft === null && (
                     <button
-                      onClick={() => setBriefDraft(theBrief)}
+                      onClick={() => setBriefDraft(theBriefIsSetups ? whatEveryoneReads : (theBrief || whatEveryoneReads))}
                       style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Rewrite
                     </button>
                   )}
                 </div>
+                {/* Her own words from setup, to her alone, while the brief is still setup's. */}
+                {isTheLead && herSetupWords && !changedBy && (
+                  <details data-gw-brief-fold style={{ marginTop: 8 }}>
+                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>What you wrote</summary>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{herSetupWords}</div>
+                  </details>
+                )}
+                {/* The stored brief, where what everyone reads is Groundwork's short read of it, and
+                    only when somebody wrote it: never the text setup put together (see above). */}
+                {isLead && theBrief && !shownIsTheBrief && !theBriefIsSetups && (
+                  <details data-gw-brief-fold style={{ marginTop: 8 }}>
+                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{theBriefFoldTitle}</summary>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{theBrief}</div>
+                  </details>
+                )}
               </div>
             )}
             {/*
@@ -416,12 +500,12 @@ export function ContextPage({
               has not written one shows the space and what belongs in it, which somebody can act
               on. See the comment in entry.service.ts on `const brief`.
             */}
-            {!theBrief && briefDraft === null && (
+            {!whatEveryoneReads && briefDraft === null && (
               <div style={{ background: 'white', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
                 <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                  Nobody has written a brief yet. It is a few lines from whoever runs this saying
-                  what the check-in is for and what they want out of it, in their own words -
-                  everybody here reads it before they answer.
+                  Nobody has said what this check-in is for yet. Whoever runs it can write a few
+                  lines about what it is for and what they want from it. Everyone in this check-in
+                  reads it before they answer.
                 </div>
                 {isLead && (
                   <button
@@ -442,7 +526,7 @@ export function ContextPage({
                   onChange={(e) => setBriefDraft(e.target.value)}
                   rows={4}
                   maxLength={4000}
-                  placeholder="What this check-in is for, and what you want out of it. Everybody here reads this before they answer."
+                  placeholder="What this check-in is for, and what you want from it, in your own words."
                 />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
                   <button
@@ -450,7 +534,7 @@ export function ContextPage({
                     disabled={saveBrief.isPending || briefDraft === theBrief}
                     style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: briefDraft === theBrief ? 0.4 : 1 }}
                   >
-                    {saveBrief.isPending ? 'Saving…' : 'Everyone here reads this'}
+                    {saveBrief.isPending ? 'Saving…' : 'Save'}
                   </button>
                   <button
                     onClick={() => setBriefDraft(null)}
@@ -515,7 +599,7 @@ export function ContextPage({
               /* Renamed 22 September 2026: "not sure the purpose of person by person". The band is a
                  card per person holding everything about them, so it is named after that. */
               title={isLead ? 'Each person' : 'Your part, and everybody else\u2019s'}
-              src={isLead ? 'their numbers, their to-dos, what they owe a look at' : 'yours is open \u00b7 theirs are a click'}
+              src={isLead ? 'Open a card to see that person\u2019s numbers, to-dos and what they said they would show.' : 'Your card is open. Open anyone else\u2019s card to see what is on it.'}
             />
             {/*
               WHAT IS OUTSTANDING, IN ONE LINE, BEFORE THE LIST OF IT.
@@ -560,6 +644,8 @@ export function ContextPage({
               asks={((ground as any).asks ?? {}) as any}
               viewerUserId={viewerUserId}
               isLead={isLead}
+              isTheLead={isTheLead}
+              leadFirstName={theLeadMidSentence}
               onChangeInChat={isTheLead && contextEnabled ? changeThisInTheChat : undefined}
               /*
                 ATTACHING AGAINST THE THING THEY PROMISED, not into a general pile. The line they
@@ -667,6 +753,11 @@ export function ContextPage({
               The count is in the heading now and the box below it is one row.
             */}
             <Sec n={band()} title="Documents" />
+            {documentsAreNotOpenToYou && (
+              <div data-gw-documents-not-open style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, maxWidth: 620 }}>
+                Documents here are shared by the people in this check-in, so you cannot open them from here.
+              </div>
+            )}
 
             {/*
               AN EMPTY STATE THAT SAYS WHAT TO ADD, NOT THAT NOTHING IS THERE. W8-24.
@@ -695,8 +786,8 @@ export function ContextPage({
                   reader was taught did not appear anywhere they could click. And the lead now has a
                   third answer, which a sentence naming two would quietly contradict.
                 */}
-                Everything you add starts private to you. <b>Everyone</b> means everyone in this check-in can read it, which is what the brief and the plan are for. <b>Only me</b> keeps it yours.
-                {isLead && <> <b>Whoever runs this check-in</b> keeps it to that person, so it stays readable if somebody takes the check-in over from you.</>}
+                Everything you add starts private to you. If you choose <b>Everyone</b>, everyone in this check-in can read it. If you choose <b>Only you</b>, nobody else can open it.
+                {isTheLead && <> If you choose <b>Whoever runs this check-in</b>, the person running it can read it, so it stays readable if someone else takes the check-in over from you.</>}
               </div>
             )}
             {/*
@@ -716,6 +807,7 @@ export function ContextPage({
                 onClose={() => setReviewing(null)}
               />
             )}
+            {!documentsAreNotOpenToYou && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 12, maxWidth: 720 }}>
             {/*
               GROUPED BY WHO READS THEM, which is the only decision anybody makes about a file.
@@ -749,45 +841,38 @@ export function ContextPage({
                   {doc.usedFor && (
                     <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 3 }}>{doc.usedFor}</div>
                   )}
-                  <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 3 }}>{whenItWas(doc.uploadedAt, 'day')}</div>
                   {/*
-                    WHAT THE CHECK-IN TOOK FROM IT, WHICH IT HAS ALWAYS WORKED OUT AND NEVER SHOWN.
+                    WHAT GROUNDWORK TOOK FROM IT, FOLDED UNDER THE CARD (U.7 review).
 
-                    Every upload is read and assessed - two to four things the document suggests,
-                    and what will be done with it - and the result has been stored on the row and
-                    rendered by nothing since it was built. So the card was a filename, a date and
-                    two controls: a file locker, which is not what this is. A person cannot tell
-                    that the thing they uploaded was read at all, let alone that it is read against
-                    what they say in the chat.
-
-                    Two lines, not the whole assessment: the point is to show the document landed
-                    and was understood, not to reprint it. The rest reaches them in the check-in,
-                    which is where it can actually be compared with what they said.
+                    The card is the prototype's: the file, what it is for, and who can read it. What
+                    the read found ("Read from it", the numbers and dates it holds) was printed on the
+                    card's face in pieces joined with colons and dashes. It is still here, one click
+                    away, because a card that says a file was read and not what it gave is a file
+                    locker. The words of the second part are the engine's (what-a-document-holds.ts);
+                    asked to be full sentences in request 40.
                   */}
-                  {Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0 && (
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 5 }}>
-                      <span style={{ color: 'var(--gw-muted)' }}>Read from it: </span>
-                      {(doc as any).assessment.suggests.slice(0, 2).join(' ')}
-                    </div>
-                  )}
-                  {/*
-                    AND THE NUMBERS IT HOLDS, WHOSE THEY ARE, AND THE DATES - the same words the chat
-                    says, from the same read (the API's what-a-document-holds). Hafsah, 22 Sep 2026:
-                    "context tab as well as the reports and board. It can pull the targets." A card
-                    that says a file was read and not what it gave is the locker this page is not.
-                  */}
-                  {doc.theContextWeHave && (
-                    <div style={{ marginTop: 8, background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '9px 11px' }}>
-                      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--gw-navy)', fontWeight: 700 }}>The context we have from it</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 4 }}>
-                        {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
-                      </div>
-                      {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
-                          These are on the board and in the report, against the people who hold them.
+                  {((Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0) || doc.theContextWeHave) && (
+                    <details data-gw-document-took style={{ marginTop: 6 }}>
+                      <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>What Groundwork took from it</summary>
+                      {doc.uploadedAt && (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5 }}>Added on {whenItWas(doc.uploadedAt, 'day')}.</div>
+                      )}
+                      {Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0 && (
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 5 }}>
+                          {(doc as any).assessment.suggests.slice(0, 2).join(' ')}
                         </div>
-                      ) : null}
-                    </div>
+                      )}
+                      {doc.theContextWeHave && (
+                        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                          {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
+                          {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
+                            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
+                              These are on the board and in the report, against the people who hold them.
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </details>
                   )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -836,7 +921,7 @@ export function ContextPage({
                       }}
                     >
                       <option value="OPEN">Everyone</option>
-                      <option value="OWN">Only me</option>
+                      <option value="OWN">Only you</option>
                       {/* Named by who reads it, not by how private it feels, because "the person
                           running this check-in" is a chair rather than a person: it stays readable
                           if the lead changes or an org admin steps in. That is the whole of the
@@ -874,7 +959,7 @@ export function ContextPage({
                           are what a person is choosing between; an icon or a switch makes them
                           guess, and this is the one control on the page whose mistake cannot be
                           undone. CLOSED is the lead's own material and is not settable here. */}
-                      {(doc as any).visibility === 'OPEN' ? 'Everyone' : 'Only me'}
+                      {(doc as any).visibility === 'OPEN' ? 'Everyone' : 'Only you'}
                     </button>
                   ))}
                   {/* Same rule as the visibility control above it, and the same defect until now:
@@ -1000,6 +1085,7 @@ export function ContextPage({
                 }} />
             </div>
             </div>
+            )}
 
 
 
@@ -1043,7 +1129,7 @@ export function ContextPage({
             */}
             {(isTheLead || commitments.length > 0) && (
               <>
-                <Sec n={band()} title="What people are down as doing" src="nobody is marked as having done it &middot; the check-ins ask" />
+                <Sec n={band()} title="What people are down as doing" src="Nobody is marked as having done these. The check-ins ask about them." />
                 {isTheLead && contextEnabled && commitments.length === 0 && (
                   <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 14, maxWidth: 720, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                     Nothing yet. Anything somebody says they will do in a check-in lands here on its
@@ -1065,11 +1151,12 @@ export function ContextPage({
                     return (
                       <div key={c.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: c.participantId ? 'var(--gw-dark)' : 'var(--gw-amber-t)', minWidth: 120 }}>
-                          {c.participantId ? personLabel(p) : 'nobody owns this'}
+                          {c.participantId ? (p && p.id === myParticipant?.id ? 'You' : atTheStart((p && labelsHere.get(p.id)) ?? 'a colleague')) : 'Nobody owns this'}
                         </span>
                         <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 200 }}>{c.text}</span>
                         {c.whenSaid && <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{c.whenSaid}</span>}
-                        {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>your words, not theirs</span>}
+                        {/* Whose words, to whoever is reading: it said "your words" to everyone (U.7 review). */}
+                        {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{isTheLead ? 'These are your words, not theirs.' : p && p.id === myParticipant?.id ? `These are ${theLeadMidSentence}\u2019s words, not yours.` : `These are ${theLeadMidSentence}\u2019s words, not theirs.`}</span>}
                       </div>
                     )
                   }}
@@ -1108,7 +1195,7 @@ export function ContextPage({
             */}
             {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
               <>
-                <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'what you put here guides every check-in \u00b7 change any line in it' : 'the lead\u2019s framing, never quoted as a finding'} />
+                <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'What you put here guides every check-in. You can change any line in it.' : `What ${theLeadMidSentence} put here guides the check-ins. It is never quoted as something anyone found.`} />
                 {/*
                   A PLACE TO TYPE A LINE, BESIDE THE CONVERSATION RATHER THAN INSTEAD OF IT.
 
@@ -1209,7 +1296,7 @@ export function ContextPage({
                         <div key={l.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                           <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 220 }}>{l.text}</span>
                           {l.audience !== 'EVERYONE' && (
-                            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-sub)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)' }}>only you</span>
+                            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-sub)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)' }}>Only you</span>
                           )}
                           {isTheLead && l.legacy && l.audience !== 'EVERYONE' && (
                             <button

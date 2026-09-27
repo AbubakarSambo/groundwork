@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { HOW_A_SITUATION_IS_CHOSEN, WHAT_THAT_SOUNDS_LIKE } from '@/lib/one-way-to-say-what-a-situation-does'
-import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENCE_VALUE, type ScenarioKey } from '@/lib/scenario-catalog'
 /*
  * THE CATALOGUE'S CARDS, IMPORTED FROM THE PAGE THAT OWNS THEM.
  *
@@ -24,14 +24,14 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { toast } from 'sonner'
 import AskYourTeamOneThing from './AskYourTeamOneThing'
 import { TheDoor } from './TheDoor'
-import { TheSetup } from './TheSetup'
+import { TheSetup, theDay } from './TheSetup'
 import { FillsInAsYouTalk } from './FillsInAsYouTalk'
 import { sentenceCase } from '@/pages/grounds/how-a-row-reads'
 import { EverySituation } from './EverySituation'
 import { scrollTo } from '@/lib/scroll-to'
 import { TheReportYouSawAtTheEnd } from '@/components/gw/TheReportYouSawAtTheEnd'
 import { nothingInternalReachesTheBubble } from '@/lib/nothing-internal-reaches-the-bubble'
-import { clearEntryHandover } from '@/pages/auth/entry-handover'
+import { clearEntryHandover, theSetupKey, SETUP_KEY } from '@/pages/auth/entry-handover'
 import { rememberWhoWasNotInvited } from '@/pages/grounds/who-was-not-invited'
 import { API_ORIGIN } from '@/lib/where-the-api-lives'
 import { useTheTrap } from '@/components/gw/a-field-nobody-can-see'
@@ -130,7 +130,7 @@ function loadSession(): EntrySession | null {
   return null
 }
 export function clearEntrySession() {
-  try { localStorage.removeItem(STORAGE_KEY) } catch { /* */ }
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(SETUP_KEY) } catch { /* */ }
 }
 
 /** Which branch the load-or-start effect takes. Pure so it can be pinned by
@@ -324,20 +324,61 @@ export function isCorrectionTurn(t: { role: string; content: string }): boolean 
  * still travels - on the coordinator path this is the only context a lead inherits, and dropping it
  * would lose the handover - but as sentences rather than a form, and punctuated once.
  */
-export function composeLeadBrief(sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string }): string {
+/**
+ * WHAT THE PERSON TYPED IN SETUP, AND NOTHING ELSE (U.7 re-check). Their own turns, without the
+ * sentence a situation card posts for them, and without a document folded into the chat.
+ */
+export function theirOwnSetupWords(history: { role: string; content: string }[]): string[] {
+  const cards = new Set(SITUATION_CARDS.map((c) => c.message))
+  return history
+    .filter((t) => t.role === 'user')
+    .map((t) => (t.content ?? '').trim())
+    .filter((t) => t && !cards.has(t) && !t.startsWith('[Document:') && !t.startsWith('[Situation picked'))
+}
+
+export function composeLeadBrief(
+  sels: { initial?: string; whoInvolved?: string; decision?: string; goals?: string[]; brief?: string },
+): string {
   /* Ends every fragment exactly once, whatever the person typed. */
   const sentence = (t?: string) => {
     const trimmed = (t ?? '').trim()
     if (!trimmed) return ''
     return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`
   }
+  /*
+   * EACH ANSWER, AS GROUNDWORK UNDERSTOOD IT, AFTER THE QUESTION IT ANSWERED (U.7 third review).
+   *
+   * These answers are what setup drew out of the conversation, not anybody's exact words. So there
+   * are no quotation marks (the U.7 re-check quoted them as "Wanjiru said", which put words in her
+   * mouth), no name, and no fixed opening to glue them onto ("It matters now because whether to
+   * confirm him."). The question comes first, in a sentence that says what follows is a reading of
+   * the answer, and the answer stands as its own sentence: a clause, a noun, a single word or a
+   * question all read the same way. Nothing on the server reads these openings back out; the
+   * server cuts them off before anything is shown to the people in the check-in
+   * (what-someone-who-does-not-run-it-reads.ts).
+   */
+  const itsOwnSentence = (t?: string) => {
+    const b = (t ?? '').trim().replace(/^["“”']+|["“”']+$/g, '').trim()
+    if (!b) return ''
+    return sentence(b[0].toUpperCase() + b.slice(1))
+  }
+  const afterTheQuestion = (question: string, answer?: string) => {
+    const a = itsOwnSentence(answer)
+    return a ? `When asked ${question}, the answer was taken to mean this. ${a}` : ''
+  }
+  const goals = (sels.goals ?? []).map(itsOwnSentence).filter(Boolean)
+  const goalLine = goals.length === 0
+    ? ''
+    : goals.length === 1
+      ? `When asked what this is aiming at, the answer was taken to mean this. ${goals[0]}`
+      : `When asked what this is aiming at, the answer was taken to mean these ${goals.length} things. ${goals.join(' ')}`
   return [
     /* Unlabelled and first: the band above it already says what this is. */
     sentence(sels.initial),
-    sels.whoInvolved ? sentence(`Who is part of this: ${sels.whoInvolved}`) : '',
-    sels.decision ? sentence(`Why now: ${sels.decision}`) : '',
-    sels.goals?.length ? sentence(`What it is aiming at: ${sels.goals.join(', ')}`) : '',
-    sels.brief ? sentence(`Focus: ${sels.brief}`) : '',
+    afterTheQuestion('who is part of this', sels.whoInvolved),
+    afterTheQuestion('why this matters now', sels.decision),
+    goalLine,
+    afterTheQuestion('what the questions should focus on', sels.brief),
   ].filter(Boolean).join(' ')
 }
 
@@ -1055,34 +1096,59 @@ export function itIsStillAskingSomething(reply: string): boolean {
 }
 
 /*
- * THE NAME WHEN THE LEAD GAVE NONE: THE TOPIC SHE CHOSE, IN PLAIN WORDS (U.6 review).
+ * THE NAME WHEN THE LEAD GAVE NONE: THE TOPIC, IN PLAIN WORDS, NEVER HER OWN WORDS (U.6 review).
  *
- * A check-in's label is the subject line of the invitation email ("{founder} invited you to check in
- * on: {label}"), so it names the topic and never the person: see a-label-is-a-subject-line.spec.ts.
- * The prototype names check-ins after the person ("Daniel, the next six weeks"); that disagreement is
- * Hafsah's to settle (item 17 of docs/morning-report-ui.md), and until then this rule stands.
+ * A check-in's label is the subject line of the invitation email ("{lead} would like your take on
+ * {label}"), so it names the topic and never the person: see a-label-is-a-subject-line.spec.ts. And an
+ * invitation never carries the lead's private words, not even reworded (Hafsah, 27 September): this
+ * used to fall back to the first thing she typed, so "Daniel isn't hitting his targets" would have gone
+ * to Daniel as the subject of his own invitation. Her words are never used now.
  *
- * Read live: a check-in the lead set up as "Help someone get back on track" was named "Drift", because
- * this was handed the CLASSIFIER's situation, which had switched it. It is handed the situation the
- * LEAD picked now (theSituationTheLeadPicked), and a known situation is said in its plain words from
- * the catalogue. The underscore rule below stays for a key the catalogue does not know.
+ * In order: the situation she picked, or else the one the conversation settled on, said in its plain
+ * card words from the catalogue ("Get a project back on track", never "DRIFT"); an unknown key is
+ * turned into words rather than printed; else "A check-in", with the organisation when it is known.
  */
-export function fallbackGroundName(classifiedScenario?: string, firstDescription?: string): string {
-  const known = classifiedScenario ? (SCENARIO_LABELS as Record<string, string>)[classifiedScenario] : undefined
+/**
+ * WHAT OPENING THE EMAILED LINK DOES, AS THE SAVE CARD SAYS IT (U.6 review), in full sentences. Only
+ * what it always does. An invitation can wait (the check-in starts later, there is no seat for the
+ * person, an admin has to accept the check-in first) or fail (an address that cannot be invited), so
+ * this never says the link sends them. The page that opens shows who was invited and who has to wait
+ * (MagicVerifyPage); when the start is later, the one thing that is certain is said as well.
+ */
+export function whatOpeningTheLinkDoes(people: number, startsOnLater: string | null): string {
+  if (people === 0) return 'Opening it saves your check-in.'
+  const later = startsOnLater ? ` Nobody is invited before ${theDay(new Date(`${startsOnLater}T00:00:00`))}.` : ''
+  return `Opening it saves your check-in. Then you see who was invited and who has to wait.${later}`
+}
+
+/* U.6 review: a sentence, not pieces joined with dashes: "daniel@x.test (Daniel). Your note: He is
+   the subject of this check-in." Shown on the lead's own page only; nothing of it reaches the person. */
+export function anEntryAsASentence(entry: string, shownAs: (head: string) => string = (h) => h): string {
+  const [who, ...rest] = entry.split(' - ')
+  const address = shownAs(who)
+  if (!rest.length) return `${address}.`
+  const [name, ...note] = rest.length > 1 ? rest : ['', ...rest]
+  const said = note.join(' - ').trim()
+  return `${address}${name ? ` (${name.trim()})` : ''}.${said ? ` Your note: ${said.replace(/([^.?!])$/, '$1.')}` : ''}`
+}
+
+/* "daniel@x.test is waiting to be invited." or "a@x.test and b@x.test are waiting to be invited." */
+export function whoIsWaitingSentence(who: string[]): string {
+  const list = who.length <= 1 ? who.join('') : `${who.slice(0, -1).join(', ')} and ${who[who.length - 1]}`
+  return `${list} ${who.length === 1 ? 'is' : 'are'} waiting to be invited.`
+}
+
+export function fallbackGroundName(situation?: string, where?: string): string {
+  const known = situation ? (SCENARIO_LABELS as Record<string, string>)[situation] : undefined
   if (known) return sentenceCase(known)
-  const fromScenario = (classifiedScenario ?? '')
+  const fromScenario = (situation ?? '')
     .trim()
     .replace(/_/g, ' ')
     .toLowerCase()
     .replace(/^\w/, (c) => c.toUpperCase())
   if (fromScenario) return fromScenario
-
-  const said = (firstDescription ?? '').trim().replace(/\s+/g, ' ')
-  if (said) {
-    const clipped = said.length > 60 ? said.slice(0, 57).trimEnd() + '...' : said
-    return clipped.replace(/^\w/, (c) => c.toUpperCase())
-  }
-  return 'Untitled'
+  const at = (where ?? '').trim()
+  return at ? `A check-in at ${at}` : 'A check-in'
 }
 
 /**
@@ -1255,10 +1321,8 @@ export function EntryChatPage() {
     if (!head.startsWith(A_COLLEAGUE)) return head
     return colleagues.find((c) => c.id === head.slice(A_COLLEAGUE.length))?.name ?? 'A colleague'
   }
-  function shownEntry(entry: string): string {
-    const dash = entry.indexOf(' - ')
-    return dash === -1 ? shownAs(entry) : `${shownAs(entry.slice(0, dash))} - ${entry.slice(dash + 3)}`
-  }
+  function shownEntry(entry: string): string { return anEntryAsASentence(entry, shownAs) }
+  function whoIsWaiting(): string { return whoIsWaitingSentence(inviteAdded.map((e) => shownAs(e.split(' - ')[0]))) }
   function colleagueNamed(label: string): { id: string; name: string; team: string | null } | null {
     const name = label.split(' - ')[0].trim().toLowerCase()
     if (name.length < 2) return null
@@ -1413,15 +1477,43 @@ export function EntryChatPage() {
     setSessions(1)
   }, [])
 
-  // Load or start session
+  /*
+   * WHAT THE SETUP SHOWS IS WHAT IS SAVED (U.6 review). Read live: the setup said "Not set yet. This
+   * will run every 2 weeks unless you pick one." and listed fortnightly dates, and the check-in was
+   * saved weekly for 90 days ("Session 1 of 12", "Ends 3 Jan 2027"). An unpicked rhythm is not sent as
+   * a choice, so the server takes the situation's own rhythm and length; the page showed its own
+   * default instead. It shows the server's now: the situation the save will carry (the same expression
+   * as the payload), its recommended rhythm while none is picked, and its usual end while none is set,
+   * which then goes with the save as the end, so the dates listed are the dates used.
+   */
+  const theSituationSaved = (onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || '') as ScenarioKey
+  const [endChosen, setEndChosen] = useState(false)
   useEffect(() => {
-    const saved = loadSession()
-    const branch = saved ? (wantsANewOne ? 'conflict' : entryRestoreBranch(saved, scenario)) : 'fresh'
-    // Closed-but-unsaved sessions MUST restore too: they hold the report and
-    // the locked transcript. Excluding them made the fallback below DELETE an
-    // ended session on reload, right when it is most valuable.
-    if (saved && branch === 'restore') {
-      // Restore existing session
+    const facts = SCENARIO_FACTS[theSituationSaved]
+    if (!facts) return
+    if (!cadenceChosen) setCadence(CADENCE_VALUE[facts.cadence] as typeof cadence)
+    if (!endChosen && facts.cadence !== 'One time') {
+      const from = checkInBy ? new Date(`${checkInBy}T00:00:00`) : new Date()
+      /* The length said in the conversation first ("six weeks"), else the situation's usual one. */
+      const days = plannedFrom?.timelineDays ?? facts.timelineDays
+      /* The end is the day of the last check-in, as many as that length holds at this rhythm. */
+      const gap = ({ DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30 } as Record<string, number>)[cadenceChosen ? cadence : CADENCE_VALUE[facts.cadence]] ?? 1
+      const n = Math.max(1, Math.floor(days / gap))
+      const end = gap === 30
+        ? new Date(from.getFullYear(), from.getMonth() + (n - 1), from.getDate())
+        : new Date(from.getFullYear(), from.getMonth(), from.getDate() + gap * (n - 1))
+      setLastCheckInBy(`${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`)
+    }
+  }, [theSituationSaved, cadenceChosen, cadence, endChosen, checkInBy, plannedFrom?.timelineDays])
+
+  /*
+   * PUTS BACK THE SETUP THIS DEVICE KEPT.
+   *
+   * It used to live only inside the mount effect below, so the one other way in - "Carry on with
+   * this one" on the in-progress card - closed the card and left the empty first screen behind it.
+   * The setup only came back after reloading /start. Both ways in now use this.
+   */
+  function restoreTheSavedSetup(saved: EntrySession) {
       setHistory(saved.history)
       if (saved.report) { try { setSessionReport(JSON.parse(saved.report)) } catch { /* legacy plain text - discard */ } }
       /* "Others check in, I read what comes back" survives a reload. There are no lead details to
@@ -1465,6 +1557,17 @@ export function EntryChatPage() {
           setOnboardingReady((saved as any).onboardingReady ?? false)
         }
       }
+  }
+
+  // Load or start session
+  useEffect(() => {
+    const saved = loadSession()
+    const branch = saved ? (wantsANewOne ? 'conflict' : entryRestoreBranch(saved, scenario)) : 'fresh'
+    // Closed-but-unsaved sessions MUST restore too: they hold the report and
+    // the locked transcript. Excluding them made the fallback below DELETE an
+    // ended session on reload, right when it is most valuable.
+    if (saved && branch === 'restore') {
+      restoreTheSavedSetup(saved)
     } else if (saved && branch === 'conflict') {
       // Arriving with a new scenario while ANY session exists (open or closed):
       // ask, never silently discard. Show inline conflict modal instead of
@@ -2098,7 +2201,9 @@ export function EntryChatPage() {
    */
   function buildCommitPayload() {
     return {
-        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked(), onboardingSelections.initial),
+        /* Which setup this is, so a retried save is the same check-in and a new setup is a new one (U.6 review). */
+        setupKey: theSetupKey(),
+        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
         orgName: orgName.trim() || undefined,
         // Prefer the AI-classified scenario; fall back to mode key, then URL param.
         scenario: onboardingSelections.classifiedScenario || onboardingSelections.mode || scenario || undefined,
@@ -2168,6 +2273,13 @@ export function EntryChatPage() {
         ...(composeLeadBrief(onboardingSelections)
           ? { brief: composeLeadBrief(onboardingSelections) }
           : {}),
+        /*
+         * WHAT THEY TYPED IN SETUP, THEIR OWN MESSAGES (U.7 re-check). The brief above is put together
+         * from their answers; these are the words themselves, kept for the Context page's "What you
+         * wrote" and shown to nobody else. A picked situation card and a folded-in document are not
+         * things they typed.
+         */
+        leadsOwnWords: theirOwnSetupWords(onboardingHistory),
         ...(flowPath === 'lead' ? { managingOnly: true } : {}),
       }
   }
@@ -2380,7 +2492,7 @@ export function EntryChatPage() {
     if (!emailSent || !draftToken) return
     const t = setTimeout(() => {
       const patch = {
-        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked(), onboardingSelections.initial),
+        groundLabel: groundName.trim() || fallbackGroundName(theSituationTheLeadPicked() ?? onboardingSelections.classifiedScenario, orgName.trim() || user?.organization?.name || undefined),
         orgName: orgName.trim() || undefined,
         cadence,
         /* The page's default is not a choice; the server records only a confirmed pick as one. */
@@ -2515,7 +2627,7 @@ export function EntryChatPage() {
   /*
    * THE SITUATION THE LEAD PICKED, not the one the classifier moved it to (U.6 review): the card she
    * pressed, found again from its sentence after a reload, or a known ?scenario= she arrived with.
-   * Nothing when she described it herself, so the name falls back to her own words.
+   * Nothing when she described it herself; then the situation the conversation settled on is used.
    */
   function theSituationTheLeadPicked(): string | undefined {
     /* The card's own name where there is one, so "Connect goals across the team" is not named after
@@ -2525,6 +2637,12 @@ export function EntryChatPage() {
     if (card) return card.label
     return scenario && (SCENARIO_LABELS as Record<string, string>)[scenario] ? scenario : undefined
   }
+  /* Whether the start is after today, which is the one case where nobody is invited on saving, for certain. */
+  const startsLater = (() => {
+    if (!checkInBy) return false
+    const t = new Date(); const today = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+    return checkInBy > today
+  })()
   const atTheDoor = phase === 'onboarding' && onboardingHistory.length === 1 && !onboardingLoading && !pickedSituation
   /** Words typed at the door, or on the list, open the conversation as describing it yourself. */
   function describeItInYourOwnWords(text: string) {
@@ -3747,7 +3865,7 @@ export function EntryChatPage() {
                 startsOn={checkInBy}
                 onStartsOn={setCheckInBy}
                 endsOn={lastCheckInBy}
-                onEndsOn={setLastCheckInBy}
+                onEndsOn={(d) => { setEndChosen(true); setLastCheckInBy(d) }}
               />
 
               <div style={{ background: '#F0F4FA', borderRadius: 10, padding: '14px 16px', marginBottom: 18 }}>
@@ -3755,12 +3873,12 @@ export function EntryChatPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {(user
                     ? [
-                      checkInBy ? `Save this. Your invites go out on ${checkInBy}, not before.` : 'Save this. Your invites go out straight away.',
+                      startsLater ? `Save this. Nobody is invited before ${theDay(new Date(`${checkInBy}T00:00:00`))}.` : 'Save this. You then see who was invited and who has to wait.',
                       'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]
                     : [
                       'Save your email below to keep access to this report.',
-                      'Open the confirmation link we email you - that saves it and sends your invites.',
+                      'Open the confirmation link we email you. That saves it, then shows who was invited and who has to wait.',
                       'Once they check in, everyone gets the shared report. It shows where you agree and where the conversation still needs to happen.',
                     ]).map((step, i) => (
                     <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -3848,7 +3966,9 @@ export function EntryChatPage() {
                 </button>
                 </form>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
-                  We'll email you a confirmation link. Your report is saved and your invites go out the moment you open it.
+                  {/* U.6 review: it promised the invites went out on opening the link, which a later start (or a
+                      seat, or an admin who must accept it) makes untrue. The same sentences as after saving. */}
+                  {`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(inviteAdded.length, startsLater ? checkInBy : null)}`}
                 </div>
 
                 {/* SIGNING UP WITH GOOGLE, AT THE MOMENT SIGNING UP HAPPENS.
@@ -3926,7 +4046,7 @@ export function EntryChatPage() {
                 <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (
                   <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
-                    <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => shownAs(e.split(' - ')[0])).join(', ')}. Invites go out when you confirm your email.
+                    {whoIsWaiting()} Nobody is invited before you confirm your email.
                   </div>
                 ) : (
                   /* Saying nothing here read as "you have left something
@@ -3989,7 +4109,7 @@ export function EntryChatPage() {
                 {inviteSubtext}
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 11px', lineHeight: 1.5, marginBottom: 10 }}>
-                Add them here now. Anyone you added from the report above is already on this list. Invites don't go out yet - they're sent once you save this check-in and confirm your email.
+                Add them here now. Anyone you added from the report above is already on this list. Nobody is invited before you save this check-in and confirm your email.
                 {' '}
                 {/*
                   * HOW MANY PEOPLE CAN BE ON THIS, SAID WHERE PEOPLE ARE ADDED.
@@ -4199,11 +4319,11 @@ export function EntryChatPage() {
                     quietly wrong by one: it promised to send 1 invite while two
                     people had been named.
                   */}
-                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>{(() => {
+                  Nothing else to do here. The link is in your inbox at <strong>{email}</strong>. {(() => {
                     const pending = inviteContextFor && !inviteAdded.some(e => e === inviteContextFor || e.startsWith(`${inviteContextFor} - `)) ? 1 : 0
                     const n = inviteAdded.length + pending
-                    return n > 0 ? ` - opening it saves your check-in and sends the ${n} invite${n === 1 ? '' : 's'}` : ' - opening it saves your check-in'
-                  })()}. You can reopen this any time from the bar below.
+                    return whatOpeningTheLinkDoes(n, startsLater ? checkInBy : null)
+                  })()} You can reopen this any time from the bar below.
                 </div>
               </div>
             ) : closed ? null : (
@@ -4221,18 +4341,25 @@ export function EntryChatPage() {
           <div style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 380, width: '100%' }}>
             <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>You have a check-in in progress</div>
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 18 }}>
-              Starting a new one clears the one you were setting up, and nothing you said in it is kept. Keep it to carry on where you left off.
+              Starting a new one clears the one you were setting up, and nothing you said in it is kept. Carry on with it to pick up where you left off.
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={() => {
                   setShowNewScenarioConflict(false); setPendingNewScenario(null)
-                  /* Came from the rail with a saved setup: keeping it means restoring it, which the plain address does. */
-                  if (wantsANewOne) navigate('/start', { replace: true })
+                  /*
+                   * Carrying on means the kept setup is on the screen now, not after a reload. The
+                   * address goes back to plain /start as well, so a reload restores it too rather
+                   * than asking again.
+                   */
+                  const saved = loadSession()
+                  if (saved) restoreTheSavedSetup(saved)
+                  if (wantsANewOne || scenario || urlInitial) navigate('/start', { replace: true })
                 }}
                 style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-paper-2)', color: 'var(--gw-sub)', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                Keep current session
+                {/* U.6 review: plain words, where it said "Keep current session" / "Start new scenario". */}
+                Carry on with this one
               </button>
               <button
                 onClick={() => {
@@ -4272,7 +4399,7 @@ export function EntryChatPage() {
                 }}
                 style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
-                Start new scenario
+                Start a new one
               </button>
             </div>
           </div>

@@ -21,10 +21,10 @@ export const THE_SETUP = {
   tomorrow: 'Tomorrow',
   onADate: 'On a date',
   howOften: 'How often',
-  notChosen: 'Not set yet. This will run every 2 weeks unless you pick one.',
+  /** Names the rhythm it will really run at, the situation's own (U.6 review). */
+  notChosen: (howOften: string) => `Not set yet. This will run ${howOften.toLowerCase()} unless you pick one.`,
   whenItEnds: 'When it ends',
   moreTimeLater: 'You can give it more time later.',
-  whenIEndIt: 'When I end it',
 } as const
 
 /* The product's one set of names for how often (lib/cadence.ts), in the prototype's order. */
@@ -120,7 +120,6 @@ export function TheSetup(p: {
   const today = p.today ?? new Date()
   const tomorrow = tomorrowOf(today)
   const [pickingADate, setPickingADate] = useState(!!p.startsOn && p.startsOn !== tomorrow)
-  const [endingOnADate, setEndingOnADate] = useState(!!p.endsOn)
   const startMode = !p.startsOn ? 'now' : p.startsOn === tomorrow && !pickingADate ? 'tomorrow' : 'date'
   const opens = whenTheyOpen({ cadence: p.cadence, anchorDay: p.anchorDay, startsOn: p.startsOn, endsOn: p.endsOn, workingDays: p.workingDays, today })
 
@@ -141,7 +140,7 @@ export function TheSetup(p: {
       </Section>
 
       <Section title={THE_SETUP.howOften}>
-        {!p.cadenceChosen && <p style={{ ...note, margin: '0 0 8px', color: 'var(--gw-amber-t)' }}>{THE_SETUP.notChosen}</p>}
+        {!p.cadenceChosen && <p style={{ ...note, margin: '0 0 8px', color: 'var(--gw-amber-t)' }}>{THE_SETUP.notChosen(cadenceLabel(p.cadence as never))}</p>}
         <div style={row}>
           {HOW_OFTEN.map(([c, label]) => (
             <Choice key={c} on={p.cadenceChosen && p.cadence === c} onClick={() => p.onCadence(c)}>{label}</Choice>
@@ -158,15 +157,14 @@ export function TheSetup(p: {
 
       {opens && <p style={{ ...note, margin: '0 0 16px', color: 'var(--gw-text)' }}>{opens}</p>}
 
+      {/*
+        U.6 review: one choice, a date, set to when it will really end. The prototype's "When I end it"
+        is left out: every check-in ends (it keeps a length), so a check-in with no end would have been
+        saved as ending on the situation's usual day while the screen said it did not end.
+      */}
       {p.cadence !== 'ONE_TIME' && (
         <Section title={THE_SETUP.whenItEnds} help={THE_SETUP.moreTimeLater}>
-          <div style={row}>
-            <Choice on={endingOnADate} onClick={() => setEndingOnADate(true)}>{THE_SETUP.onADate}</Choice>
-            <Choice on={!endingOnADate} onClick={() => { setEndingOnADate(false); p.onEndsOn('') }}>{THE_SETUP.whenIEndIt}</Choice>
-          </div>
-          {endingOnADate && (
-            <input type="date" aria-label={THE_SETUP.whenItEnds} value={p.endsOn} min={p.startsOn || iso(today)} onChange={(e) => p.onEndsOn(e.target.value)} style={{ ...dateInput, marginTop: 8 }} />
-          )}
+          <input type="date" aria-label={THE_SETUP.whenItEnds} value={p.endsOn} min={p.startsOn || iso(today)} onChange={(e) => p.onEndsOn(e.target.value)} style={dateInput} />
         </Section>
       )}
     </div>

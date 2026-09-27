@@ -330,6 +330,12 @@ export class EntryDocumentDto {
 
 export class EntryCommitDto {
   @IsString() groundLabel: string;
+  /**
+   * WHICH SETUP THIS IS (U.6 review). A fresh key for every new setup, the same one when the same save
+   * is retried. A replay is recognised by this, never by the check-in's name: topic names ("Help
+   * someone get back on track") are the same for many check-ins. See a-second-setup-is-a-second-check-in.
+   */
+  @IsOptional() @IsString() @MaxLength(100) setupKey?: string;
   @IsOptional() @IsString() orgName?: string;
   @IsOptional() @IsString() scenario?: string;
   @IsOptional() @IsString() cadence?: string;
@@ -376,6 +382,18 @@ export class EntryCommitDto {
   @ValidateNested({ each: true })
   @Type(() => TurnDto)
   history: TurnDto[];
+
+  /**
+   * WHAT THEY TYPED IN SETUP, THEIR OWN MESSAGES ONLY (U.7 re-check). The brief is put together
+   * from the answers setup drew out, so it is not what they wrote. These are kept so the Context
+   * page can show the lead her own words, and nobody else (LeadSetupWords).
+   */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(A_HISTORY_MAX_TURNS)
+  @IsString({ each: true })
+  @MaxLength(A_MESSAGE_MAX, { each: true })
+  leadsOwnWords?: string[];
 
   @IsOptional()
   report?: any;

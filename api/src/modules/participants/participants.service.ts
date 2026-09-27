@@ -71,6 +71,12 @@ export class ParticipantsService {
       organisationName: (ground as any).organization?.name ?? null,
       leadFirstName: (ground.initiator.firstName ?? '').trim() || null,
       endsAt: ground.endsAt ? ground.endsAt.toISOString() : null,
+      /* U.6 review: when their first check-in opens, if that is later than now, so the page does not
+         offer "Answer today's check-in now" for a check-in that opens on 5 October. */
+      opensOn: (() => {
+        const at = (participant as any).startsAt ?? (ground as any).startsAt ?? null;
+        return at && new Date(at).getTime() > Date.now() ? new Date(at).toISOString() : null;
+      })(),
       /* "What it asks": the rhythm, in one sentence (when-it-asks.ts). */
       schedule: whenItAsks({
         cadence: ground.cadence,

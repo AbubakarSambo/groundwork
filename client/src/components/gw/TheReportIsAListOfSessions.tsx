@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { Tag } from './kit'
+import { atTheStart } from '@/lib/a-colleague'
 
 /**
  * EVERY SESSION: THE BOARD, THEN ONE LINE FOR EACH SESSION, NEWEST FIRST (U.9, B4).
@@ -60,9 +61,11 @@ export function checkedIn(answered: number, total: number): string {
 }
 
 /** "Omar has not checked in yet." Names, never a count alone, because the lead needs to know who. */
-export function stillToCheckIn(names: string[]): string {
-  if (names.length === 0) return ''
-  if (names.length === 1) return `${names[0]} has not checked in yet.`
+export function stillToCheckIn(given: string[]): string {
+  if (given.length === 0) return ''
+  /* "a colleague" starts the sentence here, so it takes the capital (request 36). */
+  const names = given.map((n, i) => (i === 0 ? (n === 'you' ? 'You' : atTheStart(n)) : n))
+  if (names.length === 1) return names[0] === 'You' ? 'You have not checked in yet.' : `${names[0]} has not checked in yet.`
   if (names.length === 2) return `${names[0]} and ${names[1]} have not checked in yet.`
   if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]} have not checked in yet.`
   const more = names.length - 2

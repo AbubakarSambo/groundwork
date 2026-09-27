@@ -156,7 +156,7 @@ export function AddADocument({
       {contextEnabled ? (
         <div role="radiogroup" aria-label="Who can read it" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {([
-            { v: 'OWN', title: 'Only you', says: 'Only you can see this. It supports your own account and nobody else can open it.' },
+            { v: 'OWN', title: 'Only you', says: 'Only you can open it. It shapes the questions in your own check-in.' },
             { v: 'OPEN', title: 'Everyone in this check-in', says: 'They can open it from Context.' },
           ] as const).map((o) => (
             <label key={o.v} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 8, cursor: 'pointer', border: who === o.v ? '2px solid var(--gw-dark)' : '1px solid var(--gw-border)' }}>

@@ -13,7 +13,7 @@ import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { alignmentLabel, alignmentShort } from '@/lib/alignment'
 import { whyYouCannotSeeThis, whatWentWrong } from './why-you-cannot-see-this'
-import { personLabel, participantLabel } from '@/lib/utils'
+import { personLabel as onePersonsLabel, participantLabel as oneParticipantsLabel, peopleLabels, atTheStart } from '@/lib/utils'
 import { Sec } from '@/components/gw/kit'
 import { InferenceReviewPanel } from '@/components/InferenceReviewPanel'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
@@ -980,6 +980,18 @@ export function ReportBody({
 
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
   const isAdmin = myParticipant?.partyType === 'INITIATOR'
+  /*
+   * EVERYBODY ON THIS REPORT, NAMED ONCE (request 36). Their name (and, for the lead, the address
+   * they typed), never the lead's note about them; with no name the engine's words, "a colleague",
+   * or "one colleague" and "another colleague" when there are several, and "your lead".
+   */
+  const labelsHere = peopleLabels(ground.participants ?? [], {
+    forTheLead: isAdmin, readerId: myParticipant?.id ?? null, readerIsInIt: !!myParticipant,
+  })
+  const labelOf = (p: any): string =>
+    labelsHere.get(p?.participantId ?? p?.id) ?? (isAdmin ? onePersonsLabel(p) : oneParticipantsLabel(p))
+  const participantLabel = labelOf
+  const personLabel = labelOf
   // The participant's own latest COMPLETED session - the one self-correction targets.
   const myCompletedSessions = (((myParticipant as any)?.checkIns ?? []) as any[])
     .filter((c) => c.status === 'COMPLETED')
@@ -989,7 +1001,7 @@ export function ReportBody({
 
   const adminParty = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
   const partParty = (ground.participants ?? []).find((p: any) => p.partyType !== 'INITIATOR')
-  // Real name if given, else roleAsDescribed, else a neutral descriptor -
+  // Real name if given, else a neutral descriptor (never the lead's note, request 36) -
   // never the bare role word ("Admin"/"Participant") and never a raw email
   // local-part, both of which read as a label rather than a person.
   /* The fallback is rendered, so it has to read like something a person would say. The bare
@@ -1010,7 +1022,7 @@ export function ReportBody({
     if (l === 'the participant' || l === 'the other party') return partHandle
     return label
   }
-  const partHandle = partParty ? participantLabel(partParty) : 'the other party'
+  const partHandle = partParty ? participantLabel(partParty) : 'a colleague'
 
   const agreements = report.agreements ?? []
   const divergences = report.divergences ?? []
@@ -1375,7 +1387,7 @@ export function ReportBody({
                   spots={(report as any).softSpots}
                   nameFor={(pid) => {
                     const p: any = (ground.participants ?? []).find((x: any) => x.id === pid)
-                    return p ? participantLabel(p) : 'a participant'
+                    return p ? participantLabel(p) : 'a colleague'
                   }}
                 />
               )}
@@ -1441,7 +1453,7 @@ export function ReportBody({
                   <SecH>For your review - record shape</SecH>
                   {((report as any).arcAdvisories as any[]).map(a => (
                     <div key={a.participantId} style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-red-t)' }}>{personLabel(a)}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-red-t)' }}>{atTheStart(personLabel(a))}</div>
                       <div style={{ fontSize: 12.5, color: '#5A2A2A', lineHeight: 1.55 }}>{a.note}</div>
                       {(a.features ?? []).map((f: string, i: number) => (
                         <div key={i} style={{ fontSize: 11.5, color: '#7A4B4B', lineHeight: 1.5, marginTop: 2 }}>· {f}</div>
@@ -1462,7 +1474,7 @@ export function ReportBody({
                   {((report as any).updates as any[]).map((u, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 0' }}>
                       <div style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>
-                        {personLabel(u)} updated what they said
+                        {atTheStart(personLabel(u))} updated what they said
                         {u.completedAt ? ` on ${whenItWas(u.completedAt, 'full')}` : ''}
                       </div>
                       {u.isPostSignOff && (

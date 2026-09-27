@@ -1155,6 +1155,7 @@ model Ground {
   baselineEntries   GroundBaselineEntry[]
   setupSignOffs     GroundSetupSignOff[]
   leadContextNotes  LeadContextNote[]
+  leadSetupWords    LeadSetupWords?
   commitments       GroundCommitment[]
   contextItems      GroundContextItem[]
   pastesTaken       GroundPaste[]
@@ -7883,4 +7884,22 @@ model GroundSetupSignOff {
   @@unique([groundId, userId, step])
   @@index([groundId, userId])
   @@map("ground_setup_sign_offs")
+}
+
+/// WHAT THE LEAD TYPED IN SETUP, IN THEIR OWN WORDS (U.7 re-check). The brief is put together from
+/// the answers setup drew out of the conversation, so the Context page could not honestly call it
+/// "What you wrote". These are the person's own messages from the setup conversation, kept so the
+/// page can show them to that person. A table of its own, rather than a column on grounds, so no
+/// read of a check-in hands it on by spreading the row: it is served only where it is asked for,
+/// and only to the person who wrote it while they lead the check-in.
+model LeadSetupWords {
+  id           String   @id @default(uuid())
+  groundId     String   @unique @map("ground_id")
+  authorUserId String   @map("author_user_id")
+  text         String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@map("lead_setup_words")
 }

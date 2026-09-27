@@ -80,7 +80,16 @@ describe('and the list carries it', () => {
        sentences. The card leads with the summary and the board switcher uses the finding. */
     expect(GROUNDS).toMatch(/const latestFinding = /);
     expect(GROUNDS).toMatch(/const latestSummary = /);
-    expect(GROUNDS).toMatch(/latestFinding, latestSummary,/);
+    /* Given by name, and only through the gate (abb6f3b8, U.5 re-review): somebody who does not run
+       the check-in gets both only once the report is released, and both go through the report's own
+       naming door, so no label is ever served. This pinned the shorthand `latestFinding,
+       latestSummary,` that the gate replaced. */
+    expect(GROUNDS).toMatch(/const mayReadTheReport = runsIt \|\| !!fullReport\?\.releasedAt;/);
+    expect(GROUNDS).toMatch(/if \(!mayReadTheReport \|\| \(!latestFinding && !latestSummary\)\) return \{ latestFinding: null, latestSummary: null \};/);
+    expect(GROUNDS).toMatch(/this\.reportTextAsItWasShared\(rest as any, \{ latestFinding, latestSummary \}, fullReport\?\.sharedAs, me\?\.id \?\? null, runsIt\)/);
+    expect(GROUNDS).toMatch(/return \{ latestFinding: named\.latestFinding, latestSummary: named\.latestSummary \};/);
+    /* And never handed out raw, around the gate. */
+    expect(GROUNDS).not.toMatch(/latestFinding, latestSummary,/);
   });
 
   it('and the summary is cut where sentences actually end, wherever that now lives', () => {

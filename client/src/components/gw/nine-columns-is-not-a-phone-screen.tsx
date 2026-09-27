@@ -1,4 +1,5 @@
 import { Pill } from './kit'
+import { theLeadsNote } from '@/lib/the-leads-note'
 
 /**
  * WHO CHECKED IN, WHEN THE SCREEN IS TOO NARROW FOR A GRID.
@@ -89,9 +90,9 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions }: {
         return (
           <div key={r.participantId} style={{ display: 'grid', gap: 7 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{r.name ?? 'A teammate'}</span>
+              <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{r.name ?? 'A colleague'}</span>
               {r.role && r.role !== r.name && (
-                <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{r.role}</span>
+                <span data-leads-note style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{theLeadsNote(r.role)}</span>
               )}
               {!r.role && r.managingOnly && <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Managing only</span>}
             </div>

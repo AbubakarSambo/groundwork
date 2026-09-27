@@ -593,7 +593,7 @@ export class BoardService {
         id: p.id,
         name: nameOf(p.id),
         /* U.6 review: the lead's words about a person are for whoever runs the check-in only. */
-        role: theLeadsWordsAbout(p, runsThisGround) ?? (p.managingOnly ? 'Managing only' : null),
+        role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
         managingOnly: p.managingOnly,
         signedOffAt: p.signedOffAt,
       })),
@@ -691,14 +691,18 @@ export class BoardService {
        * showed every owned target to everybody and read `whoSeesTargets` for one purpose only,
        * telling the lead their privacy setting was doing nothing on the targets that had no owner.
        *
-       * The lead keeps everything, as they do everywhere else - `runsThisGround`, which is the
-       * board's own word for it and covers an admin standing in for an absent lead.
+       * The lead keeps everything, as they do everywhere else. ONLY THE LEAD, since the U.7 review:
+       * this read `runsThisGround`, which lets in any admin of the organisation, while the Context
+       * page of the same check-in (grounds.service, `isLead: viewerIsInitiator`) did not. Otieno, an
+       * admin not in Wanjiru's check-in, was shown only the team's targets on Context and every
+       * person's share, Baraka's included, on the board. One rule now, the stricter one: the
+       * check-in's lead sees every share; anybody else sees the team's targets and their own share.
        */
       const mayRead = targetsFor(
         ground.objectives as any[],
         me?.id ?? null,
         (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
-        { isLead: runsThisGround },
+        { isLead: isInitiator },
       ).shown as typeof ground.objectives;
 
       out.objectives = mayRead.map((o) => ({
@@ -837,6 +841,7 @@ export class BoardService {
     }
 
     if (has('checkInGrid') && runsThisGround) {
+      const sharesStayWithTheirOwner = !isInitiator && (ground as any).whoSeesTargets !== 'EVERYBODY';
       /*
        * THE ROUND THAT IS OPEN IS THE ONE SOMEBODY HAS STARTED, not the newest row that exists.
        *
@@ -872,7 +877,11 @@ export class BoardService {
          * not running. This read is what to do about other people.
          */
         ground.participants.filter((p) => !p.managingOnly && p.id !== me?.id).map((p) => {
-          const theirs = (ground.objectives ?? []).find((o: any) => o.ownerParticipantId === p.id);
+          /* Their share, to whoever may read it: the same rule as the targets above (U.7 review). An
+             admin standing in reads where each person is without each person's number. */
+          const theirs = sharesStayWithTheirOwner
+            ? undefined
+            : (ground.objectives ?? []).find((o: any) => o.ownerParticipantId === p.id);
           const mine = checkIns.filter((c) => c.participantId === p.id);
           const thisRound = mine.find((c) => c.sessionNumber === openRound);
           return {
@@ -945,7 +954,7 @@ export class BoardService {
         rows: ground.participants.map((p) => ({
           participantId: p.id,
           name: nameOf(p.id),
-          role: theLeadsWordsAbout(p, runsThisGround) ?? (p.managingOnly ? 'Managing only' : null),
+          role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
           // A managing-only lead has no account of their own and is not counted
           // in readiness, so their row is dashes, not "overdue".
           managingOnly: p.managingOnly,
@@ -975,7 +984,7 @@ export class BoardService {
         .map((p) => ({
           participantId: p.id,
           name: nameOf(p.id),
-          role: theLeadsWordsAbout(p, runsThisGround),
+          role: theLeadsWordsAbout(p, isInitiator),
           /*
            * `cleanText`, NOT `e.text`. This panel is read by a person, and the stored text still
            * carries the engine's own markers - a live board showed
@@ -1110,12 +1119,13 @@ export class BoardService {
        * `remit` is `roleAsDescribed`, the sentence the lead typed about the person when inviting
        * them. It reached every reader of the board: on a live-shaped board, the person and a peer
        * both read "Daniel - Your sales manager, who you said is not meeting his agreed targets".
-       * The same rule as the roster's `role` above: the lead or an admin reads it, nobody else.
+       * The same rule as the roster's `role` above: the lead reads it, nobody else, not even an admin
+       * (U.7 review).
        * `remitDefined` stays, because it says only that a role was given, not what it says.
        */
       if (has('contribution')) {
         out.contribution = buildContribution(readInput, nameOf)
-          .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, runsThisGround) }));
+          .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
       }
       if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
       /*

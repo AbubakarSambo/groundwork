@@ -62,8 +62,12 @@ describe('who the report is counting', () => {
   })
 
   it('and still gives a nameless party a row rather than dropping them', () => {
-    /* Blanking the row would lose the fact that somebody has not answered, which is the point. */
-    expect(API).toContain("label || 'A teammate'")
+    /* Blanking the row would lose the fact that somebody has not answered, which is the point.
+       Request 36: the engine now says "A colleague" (or "One colleague", "Another colleague"),
+       from its shared plain words, where it said "A teammate", and never the lead's note. */
+    expect(API).toContain('return aColleague(p.id);')
+    expect(API).toContain("const aColleague = (pid: string) => atTheStart(plainWords.get(pid) ?? 'a colleague');")
+    expect(API).not.toContain("'A teammate'")
   })
 
   it('never counts somebody who was never going to answer', () => {

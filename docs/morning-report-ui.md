@@ -10,10 +10,12 @@ same file.
 
 **Finished and ticked:** U.1 (the look, the sidebar, the phone bar, "Jump to", help), U.2 (signing
 in, with every decision you made), U.3 (organisations and joining, passed on its third review), U.4
-(people, roles and access, passed on its fifth) and U.5 (Today and the check-ins list, passed on its
-third).
+(people, roles and access, passed on its fifth), U.5 (Today and the check-ins list, passed on its
+third), U.6 (starting a check-in, passed on its seventh; the lead's first check-in card still waits
+for you, in item 17) and U.7 (context, passed on its fifth; it found that the check-ins list sent
+participants the lead's setup brief, also in the live product, item 0b).
 
-**Built and tested, but not ticked:** U.6 (starting a check-in), U.7 (context), U.8 (the check-in
+**Built and tested, but not ticked:** U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
@@ -51,7 +53,12 @@ People page contradict itself. The prototype says a guest from outside "takes a 
 yours, seats now follow the prototype: everyone with a Groundwork account in the organisation takes a
 seat, guests included, and people answering by link with no account take none (item 30).
 
-**One more privacy leak, found by the U.6 review and being fixed:** when a lead named someone in the
+**And one more, found by the fifth U.6 review and now fixed:** the first screen of a check-in's open
+link showed anyone with the link the lead's setup description, reworded ("This check-in is about Grace,
+the new operations lead…"). For a check-in about one person, a stranger with the link could read what
+the lead thinks of them.
+
+**One more privacy leak, found by the U.6 review and now fixed:** when a lead named someone in the
 setup conversation, the lead's private description of that person reached them on their invitation:
 "Your part in this: Daniel - Your sales manager, who you said is not meeting his agreed targets…".
 
@@ -82,35 +89,32 @@ that one is yours to decide (item 27.4).
 1. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
 2. Item 20.1: should the lead hold the team's report until they share it? (a privacy question)
 3. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
-4. Items 17.5 and 17.13: in a new check-in, do invitations go before or after the lead's own first
-   check-in, and should the check-in a lead does on the start screen count as their first session?
-5. Item 17 (new point): name a check-in after the person ("Daniel, the next six weeks", as the
-   prototype does) or after the topic (an earlier rule, because the name is the invitation email's subject)?
-6. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
-7. Item 22.1: the handover page, because the prototype's page and the product's handover are two
+4. Item 17.5: in a new check-in, do invitations go before or after the lead's own first check-in?
+5. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
+6. Item 22.1: the handover page, because the prototype's page and the product's handover are two
    different things (a privacy question).
-8. Item 23.1: may anyone but the person read their You board? (a privacy question)
-9. Item 24.1: which admins may read a suggestion about someone, and when? (a privacy question)
-10. Item 25.2: questions to Ask Groundwork feed the pattern detectors (a privacy question), and
+7. Item 23.1: may anyone but the person read their You board? (a privacy question)
+8. Item 24.1: which admins may read a suggestion about someone, and when? (a privacy question)
+9. Item 25.2: questions to Ask Groundwork feed the pattern detectors (a privacy question), and
     25.1: most people cannot use Ask Groundwork yet.
-11. Item 26.1: may the Company page show what new people keep asking, when it is built from their
+10. Item 26.1: may the Company page show what new people keep asking, when it is built from their
     private questions to Ask Groundwork? (a privacy question), and 26.2: priorities can only come
     in from an organisation's own systems today.
-12. Item 27.1 and 27.2: may somebody share their load with a lead, and may the team being asked
+11. Item 27.1 and 27.2: may somebody share their load with a lead, and may the team being asked
     read what another team asked of it? (both privacy questions)
-13. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
+12. Item 28.1: the questions an admin answers before a suite switches on, which I wrote, because no
     screen shows any; 28.3: who counts as a lead for the suites; and 28.9: onboarding's "Something
     nobody has shown them yet" is built from private questions (a privacy question); 28.18 and 28.19:
     nobody can ask for leave yet, and no screen shows a person their own; 28.25 to 28.27: the same for
     hours, and who says what each client agreed; 28.33: does a person read their manager's own words
     in their review? (a privacy question); 28.49: is one to-do list for each person their private
     load? (a privacy question)
-14. Item 29.1: may an admin connect their own WhatsApp number while Groundwork's WhatsApp is off?
+13. Item 29.1: may an admin connect their own WhatsApp number while Groundwork's WhatsApp is off?
     and 29.4: should everyone's word-for-word check-ins be deleted after a time? (a privacy question)
-15. Item 30.1: what happens to organisations already on the free plan when you turn on the one
+14. Item 30.1: what happens to organisations already on the free plan when you turn on the one
     switch for the trial and the free plan (it is off, so nothing has changed yet); 30.2: one trial
     for each organisation, or for each person?
-16. The rest of items 13, 15 to 30 are smaller, each with a recommendation.
+15. The rest of items 13, 15 to 30 are smaller, each with a recommendation.
 
 **Just finished, not ticked:** U.19, billing. Stripe works exactly as before, in test mode only: the
 same checkout, webhooks, invoices, care fee and portal. Plan and billing is the prototype's page, with
@@ -126,6 +130,26 @@ nothing about today's billing has changed. Nobody already on the free plan is cu
 **Next:** the waiting reviews, one at a time, oldest first: the 16 you named (U.3 to U.18), then U.19's.
 U.20 (small states and errors) starts only when all have passed, as you asked.
 
+## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
+
+`CLAUDE.md` forbids editing `docs/decisions.md`, and the kit's safety rule blocks it. So these are
+written here, for Hafsah to copy into `docs/decisions.md` when she chooses, and for every later session
+to find.
+
+- **27 September 2026: the setup is not the lead's first check-in, and the lead always does a first
+  check-in.** This keeps Hafsah's rule of 15 September (commit `2cd80f22`: "The setup does not count as a
+  leads first checkin. lead has to always do a first checkin."). The prototype agrees: after the
+  invitations go, it shows "Your own check-in, before the team's". Its sentence "What you just answered
+  becomes your first check-in once your account is made" belongs only to the "Try it on your own team"
+  box on the public home page. The product has no such box (it is part of the public site, F3, a
+  separate project), so that finding is dropped.
+- **27 September 2026: a check-in is named after the topic, in plain words, never the person and never a
+  type name** such as "Drift". The rule stays because the name is the invitation email's subject. The
+  test that guards it, `api/src/modules/grounds/a-label-is-a-subject-line.spec.ts`, stays.
+- **Earlier decisions made in this workspace** are recorded where they were made in this report: the
+  sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
+  its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+
 ## Every module since U.2, and its review
 
 | Module | Built and tested | Reviewer |
@@ -133,8 +157,8 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 | U.3 Organisations and joining | Yes | **Passed** on 27 September, on the third round |
 | U.4 People, roles and access | Yes | **Passed** on 27 September, on the fifth round |
 | U.5 Today and the check-ins list | Yes | **Passed** on 27 September, on the third round |
-| U.6 Starting a check-in | Yes, except the lead's first check-in card | Sent back on 27 September; being fixed |
-| U.7 Context | Yes | Waiting |
+| U.6 Starting a check-in | Yes, except the lead's first check-in card | **Passed** on 27 September, on the seventh round |
+| U.7 Context | Yes | **Passed** on 27 September, on the fifth round |
 | U.8 The check-in screens | Yes | Waiting |
 | U.9 Reports and sharing | Yes | Waiting |
 | U.10 The board | Yes | Waiting |
@@ -207,6 +231,51 @@ engine's name handling: when a person has no name, their label falls back to tha
 another participant could see it as the person's name. I have asked the engine workspace to stop that
 (request 36).
 
+**Labels, 27 September: the screens' half of request 36 is done** (`43ee5651`, `526a9691`, `0693d1bc`,
+`4db70392`, `8614b047`). The engine fixed the server; the screens had the same fallback in
+`client/src/lib/utils.ts`, which took the part of the lead's note before the dash as the person's name,
+then said "a teammate". Now no screen names anybody from `roleAsDescribed`. A person is their name, or
+the name they typed at the end of an open link, or (on the lead's own pages) what their address says.
+With none, the screens use the engine's own words, from a copy of its function that a test checks
+against the real one. What a person now reads:
+
+- One person with no name: "A colleague has not checked in yet." (the lead's list of sessions).
+- Several, on the board, the Sessions tab, Context and the report: "One colleague", "Another colleague",
+  "A third colleague", in the order they joined. On a participant's own page they are not counted, and
+  are "You"; so a participant with two others reads "One colleague" and "Another colleague".
+- The lead's own line: "You, one colleague and a third colleague have not checked in yet." It used to
+  give the lead their own name.
+- A lead with no name: "The lead's words, from setup." and "your lead" to somebody in the check-in.
+- The lead still reads their own note, beside the name and never as it: "Daniel. Your note: Daniel is
+  expected to generate 20 leads a week." The board's lead-only role lines now read the same way. A
+  participant and a reading admin see no part of it (the server does not send it, and each person's
+  card now also shows it only to the lead).
+- "A teammate" is gone from every screen.
+
+A new test renders the board (as the lead, a participant and an admin), the check-in's page (as the
+lead on Check-in, Sessions, Context and Report, and as a participant on each of their tabs), and the
+report, with three people whose note is "Daniel9k2 - PRIVATE-DESCRIPTION-9k2 is not meeting targets",
+and finds no piece of it in any name, title or label. Today, the You board, the invitation, People and
+Jump to name people only from what the server sends; a scan fails if any new screen starts reading
+the note. Three old specs expected "a teammate" or the name made from the note, which was the defect;
+they now expect "a colleague" and also prove there is no fallback. Two specs that read code were out of
+date: the reveal row now expects the engine's `return aColleague(p.id);`, and request 32's round-card
+spec now pins the privacy gate on `latestFinding` and `latestSummary` that replaced the shorthand it
+looked for.
+
+
+### 0b. The check-ins list sent every participant the lead's setup brief, in the live product too
+
+**Found by the U.7 review on 27 September, and fixed on this branch** (`ed43e6e2`). The list of
+check-ins (`GET /grounds`) sent every field of each check-in to every reader, including the lead's own
+brief from setup. On a probation check-in, the person on probation received the lead's framing of
+them, for example that they are "often late with stock counts". No screen showed it, but it was in what
+their browser received. It was already so before this work: the brief then held the same answers as
+"Why now: …" and "Focus: …". **My recommendation:** fix it on the live product too, separately from
+this work. Now everyone who does not run a check-in gets only the short version Groundwork writes for
+the people in it, from one rule used by both the list and the single check-in. A participant's own
+check-in conversation can still fall back to the lead's brief when the short version is missing; that
+is the engine's code, so I have asked the engine workspace (request 41).
 
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
@@ -834,17 +903,85 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
     check-ins are named after the topic the lead chose, in plain words. **My recommendation:** keep the
     topic in the email subject, and show the person's name only inside the product, to the lead.
 
-**Answered by you on 27 September:**
+**Answered on 27 September:**
 - **The privacy leak comes first.** An invitation must never use the lead's private description, not
   even softened or reworded. It says only what the prototype's invitation says: what the check-in is and
   when it runs. A test proves no text from the lead's private description appears in any invitation:
   email, WhatsApp or on screen.
 - **The save card's promise** must be true, and if it cannot be true every time, the sentence is not
   shown.
-- **Point 13: the lead's first check-in carries over,** as the prototype says: "What you just answered
-  becomes your first check-in once your account is made." This replaces your rule of 15 September.
-- **Point 18: a check-in gets a real name the way the prototype does** (for example "Daniel, the next six
-  weeks"), never a type name such as "Drift". This replaces the earlier topic-only rule for the name.
+
+**Decided by Hafsah on 27 September** (see "Hafsah's decisions" at the top): point 13, the setup is not
+the lead's first check-in, and the rule of 15 September stays (the prototype's sentence belongs only to
+the public site's "Try it on your own team" box, which the product does not have, so that finding is
+dropped); and point 18, check-ins are named after the topic in plain words, never the person and never a
+type name, because the name is the invitation email's subject.
+
+**New question, found in the final U.6 review: may the person a check-in is about read the lead's own
+setup words?** The lead's brief is shown on the check-in page under "About this check-in", and U.7
+made it readable by everyone in the check-in, following the prototype's "Your words, from setup.
+Everyone reads this before they answer." For a check-in about one person, the brief can hold the lead's
+judgement of them, for example "Daniel, a sales manager, is not meeting his targets. … Why now: Daniel
+has consistently not met targets since August…". Your decision keeps the lead's private words out of
+every invitation, but the brief is a different, deliberate part of the check-in, and rule 4 lets words
+said in a check-in be shown to the people in it. **My recommendation:** for a check-in about one person,
+show that person the brief only after the lead has read it back and chosen to share it, or show them a
+version written for them; and show the brief as it is to everyone else. I have not changed it.
+
+**What it would take to bring back "When I end it" (a check-in with no end), found by reading the code
+on 27 September; nothing was built.**
+
+Today every check-in has a length. The column `timelineDays` cannot be empty, and when the lead says
+nothing, the situation's usual length is filled in (for example 90 days for a performance plan). About
+twenty files read it. What assumes an end, and whose code it is:
+
+1. **The conversation, which is the engine's.** `positionInRun` in
+   `api/src/modules/conversation/where-in-the-run.ts` decides whether a session is the first, a middle
+   one or the last, and the conversation changes its questions for the last one. With no planned total,
+   it counts the total as 1, so every session after the first would be treated as the last: Groundwork
+   would try to wrap up the check-in every time. The prompts also fall back to "4 sessions"
+   (`prompt-library.ts`). Both are the engine's code, so the engine workspace would have to add an
+   "ongoing" state that is never "last" until the lead ends it.
+2. **Reports, which are the engine's.** The report and the synthesis are told how many sessions are
+   planned (`reports.service.ts`), for lines such as how far through the run it is. With no end, those
+   lines must be left out, not guessed. Engine work.
+3. **The board's sections.** Which sections a check-in's board shows depends partly on how long the run
+   is (`sectionsForARunOf` in the board module, which is shared ground). It already copes with "not
+   known", but that should be checked for an ongoing check-in.
+4. **Out of time, and the daily sweep.** Every morning, a check-in past its length is marked "out of
+   time" (STALLED) by `grounds.cron.ts`, which also stops its charges. An open-ended check-in would never
+   be swept. That is correct, but it means it runs, and is billed, until the lead ends it. This is the
+   screens' code, and small to change.
+5. **Ending it.** The board offers "Decide how it ends" only near the last planned session (U.11). With
+   no end, that offer never appears, so the lead needs a way to end it at any time, and perhaps a gentle
+   nudge after a long quiet spell. This is the screens' work.
+6. **Counts on screen.** "Session 3 of 12", "12 in all" and "Ends 26 Dec" appear on the setup, the
+   board, Today and the check-ins list. Each already handles an unknown total in places, but each would
+   need a plain wording for an ongoing check-in, such as "Session 3. It runs until you end it." Screens'
+   work.
+7. **Billing.** The published plans are flat monthly prices, so an ongoing check-in costs nothing
+   extra. The older per-check-in charge stops when the sweep in point 4 marks a check-in out of time, so
+   with no end it would stop only when the lead ends it. That is a billing rule to confirm.
+8. **Patterns after three periods** (decisions rule 8) count periods, not the end, so they are not
+   affected.
+9. **Reminders** follow the rhythm, not the end, so they are not affected.
+10. **The developer API** takes a length when a check-in is made from outside
+    (`a-check-in-a-customer-can-run.service.ts`). Making it optional would be an addition, so existing
+    callers would keep working.
+
+**The database change** is small: allow `timelineDays` to be empty, or add an "ongoing" flag, with a
+migration.
+
+**My recommendation:** bring it back in two steps. First, ask the engine workspace for an ongoing run
+that is never "last" until the lead ends it, and that leaves "how far through" out of reports (points 1
+and 2). Then, once that is in, build the screens' part (points 4 to 6), with "End it" available at any
+time on an ongoing check-in. Until the engine's part exists, keep "When I end it" off the screen, as now,
+because the conversation would otherwise try to close the check-in every session.
+
+**Answered on 27 September: yes, bring "When I end it" back, the way recommended above.** The request to
+the engine workspace is request 37: an ongoing run that is never treated as the last session, no "how
+far through" in reports, and "End it" available at any time. The screens' part is built only after the
+engine answers. Until then, "When I end it" stays off the screen.
 
 ### 18. Context (U.7): what needs you
 
@@ -854,6 +991,8 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
    document everyone's check-in reads is one everyone can open. Making it true would change who a
    document reaches, which is a privacy rule, so I kept today's rule and used the product's own
    sentence: "Only you can see this. It supports your own account and nobody else can open it."
+   (Since the first review it reads "Only you can open it. It shapes the questions in your own
+   check-in.")
    **My recommendation:** allow it for the lead's documents only (the check-in may use them for
    everyone's questions, and nobody else can open them or be quoted them), with a privacy test, and
    then use the prototype's sentence.
@@ -1850,6 +1989,48 @@ fixes, a commit, this report and a push. U.20 starts only when all 16 have passe
     cover its organisations (request 30(b)). **Please keep the switch off wherever the scorer runs.**
 
 
+### 31. Context, after its first review (U.7): what needs you
+
+1. **Please confirm: an admin who does not run a check-in now sees only the team's targets, not
+   each person's share.** Before this, the Context page and the board disagreed. On the Context page,
+   Otieno (an admin who is not in Wanjiru's check-in) saw only the team's targets. On the board he
+   saw every person's share, Baraka's included, and each person's number beside where they are. Both
+   now follow the stricter rule, in the server: the check-in's lead sees every share, and anyone
+   else, admins included, sees the team's targets and their own share. Where the check-in is set so
+   that everyone sees every number, nothing changes. **My recommendation:** keep the stricter rule.
+   If you want admins to see each share, say so and it is one change in one place for both routes.
+
+2. **May an admin who does not run a check-in rewrite what it is for?** Today the server lets any
+   admin of the organisation rewrite the brief, and the Context page offers Otieno "Rewrite" on
+   Wanjiru's check-in. I kept that rule and made the screen honest about it: the change is recorded,
+   and Wanjiru then reads "Otieno changed this." under it instead of "Your words, from setup."
+   **My recommendation:** let only the lead rewrite it, since it is the lead's own framing, and
+   let an admin ask the lead to change it. It is one line in the server and one on the screen.
+
+3. **After a handover, "Your note" is said to the new lead.** The product does not record who
+   typed a note about a person, so it treats the check-in's lead as its writer. When a check-in is
+   handed over, the new lead reads "Baraka. Your note: ..." about words the old lead wrote. Nobody
+   else can read it. **My recommendation:** record who wrote each note (one column), and say
+   "Wanjiru's note" to a lead who did not write it. I have not changed this.
+
+4. **What Juma reads about why his check-in exists.** The reviewer noticed that, on a probation
+   check-in, the text everyone reads (the short read Groundwork writes from the brief) tells Juma
+   that "whether his employment will be confirmed" is what the check-in is for. That is the current
+   design: the people in a check-in read what it is for. You may want to see it before it goes to a
+   real person. Where that short read is missing, the first sentences of the brief stand in, and
+   they can include "Asked why this matters now, Wanjiru said “whether to confirm him”." I have not
+   changed what participants read; that text is written by the engine. **My recommendation:** look
+   at one probation check-in as the person it is about, and decide whether the decision itself
+   should be named to them.
+
+5. **A decision about a person, set as a target that person reads.** On a probation check-in, the
+   engine created the team target "Decide whether to confirm Aisha in her role". Team targets are
+   sent to everyone in the check-in, so Aisha is sent it, and her Context page shows it (it is the
+   first of the targets, `objectives[0].name`). The target is the engine's, so I have not changed it,
+   and I asked the engine to consider the same question (request 42). **Please decide:** may a
+   decision about a person be a target that person reads? My recommendation is no. The decision
+   stays with the lead, and the person reads what they are expected to do.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -2528,7 +2709,7 @@ you forecasts 2", which is the engine's grammar when the reader is the person na
   waiting by that count); and nothing confirms an approval after "Approve" on the check-in page beyond
   a short toast.
 
-### U.6 Starting a check-in: built and tested except one card, not yet reviewed
+### U.6 Starting a check-in: passed its seventh review, except one card that waits for you
 
 - **The first screen, from the prototype.** Signed out: "What do you need updates on, or want to
   track?", "A goal, a new hire, a decision. Describe it and we’ll set it up in about two minutes.",
@@ -2589,7 +2770,7 @@ only", "Any day is fine"). Apart from those, every screen test (2,659) and API t
 build is clean; the only other failure is the engine workspace's own (request 4). **Not ticked:** the
 lead's first check-in card waits on you, and no review can sign in (item 14).
 
-### U.7 Context: built and tested, not yet reviewed
+### U.7 Context: passed its fifth review
 
 - **Targets, in the prototype's table.** Context now has a "Targets" band: each target's name, its
   number, whose it is ("The whole team", or the person), and who sees it. The lead reads "Seen by
@@ -2626,6 +2807,88 @@ and `what-the-upload-box-promises-is-true` (the privacy sentence is now the prot
 by the setting and still shown before any upload). Only the tests for the changed files and the type
 checks were run, as you asked; the full suites wait for the end of the module. No screen could be
 checked signed in (item 14).
+
+**After the first review (27 September).** The reviewer read the page as Wanjiru (the lead),
+Aisha (who takes part) and Otieno (an admin who is not in the check-in). What changed:
+
+- **Privacy.** Otieno read "Baraka. Your note: ..." about a note Wanjiru wrote. The server now
+  sends the lead's note about a person only to the check-in's lead, on every route: the check-in,
+  the check-ins list, the board and the organisation roster. The screens say "Your note" only to
+  the lead as well.
+- **Privacy.** The Context page hid other people's shares of a target from Otieno, and the board
+  showed him every share. Both now follow the stricter rule, in the server: only the lead sees each
+  share. I ask you to confirm this in item 31.1.
+- **Otieno and the documents.** He read "That one is not yours to open" twice. His access is the
+  same (the server still refuses him), but the page no longer asks, and the documents band says
+  "Documents here are shared by the people in this check-in, so you cannot open them from here."
+  The banner that said "You can see everything here" now says what he can and cannot see, starting
+  with the prototype's own sentence, "You can read this check-in’s board and reports."
+- **What this check-in is for.** The lead now reads what her people read, with "This is what
+  everyone in this check-in reads before they answer." under it. "Your words, from setup." is said
+  only while it is her unchanged words; otherwise "Otieno changed this.", "You changed this." or
+  "Groundwork wrote this from your words.", with her own words under "What you wrote". Setup writes
+  the brief in plain sentences, without "Why now:" or "Focus:". The button is "Save", and saving
+  says "Saved. Everyone in this check-in now reads this." Whether an admin may rewrite it is item 31.2.
+- **Targets.** A target with no number reads "What this target assumes". Targets have no unit or
+  currency yet, so "12" cannot become "6 sales" without inventing it; I asked the engine (request 39).
+- **Documents.** Each card is the prototype's: the file, what it is for, and "Everyone" or "Only
+  you". What Groundwork took from a file is folded under the card. "Only me" is "Only you"
+  everywhere. I asked the engine to write what a document holds in full sentences, and to list bank
+  details under what it left out (request 40).
+- **Every band line is a full sentence**, said to whoever reads it: for example "Your card is
+  open. Open anyone else’s card to see what is on it.", "Your numbers", "You have no number of your
+  own. Your check-in asks against the team’s.", and "It comes from Wanjiru’s own check-in".
+- **Tests.** New server tests ask each route as the lead, a participant and an admin
+  (`the-leads-note-reaches-the-lead-alone`, `one-rule-for-whose-share-is-shown`,
+  `whose-words-the-brief-is`). The screen tests render the Context page, the targets and each
+  person's card as each of the three. Tests changed only where they checked old wording, or, in two
+  cases, the old looser rule for admins, which is now stricter.
+
+**After the re-check (27 September).** Everything passed except the setup brief, now fixed. The
+lead typed "Juma joined our warehouse team in January and his probation ends in March. I need to
+decide whether to confirm him. He is often late with the stock counts." Under "What you wrote" the
+page showed setup's own paragraph instead, with "It matters now because whether to confirm him."
+Now:
+
+- Her own messages from setup are kept (a new table, one migration) and shown to her alone under
+  "What you wrote". A participant, an admin, or a lead the check-in is later handed to is never sent
+  them, which a server test checks.
+- The paragraph setup puts together quotes each answer after its question, so any answer reads as a
+  sentence: "Asked why this matters now, Wanjiru said “whether to confirm him”." It is headed "What
+  Groundwork put together from your answers", and is no longer called her words.
+- An admin who rewrote the brief, where Groundwork then wrote what everyone reads from his words,
+  reads "Groundwork wrote this from your words.", as the lead is told.
+- A question for you about what Juma reads is item 31.4.
+- **U.7 passed its fifth review on 27 September, and is ticked.** The reviewer checked it as the lead, two participants (one of them the person on probation) and an admin. One case, for you to know: after the lead rewrites the brief herself, an admin sees her rewrite in a fold, "What Wanjiru wrote", and "Rewrite" starts from it. These are the words she typed as the brief, which an admin who runs a check-in already receives, not her private setup answers, which stay hers alone.
+- One test changed after the list fix (`e776c3f1`): `what-a-participant-is-told-about-this.spec.ts` looked for the old rule's exact code in `grounds.service.ts`. The rule now lives in one helper that the list and the single check-in both use, so the test checks that the helper is used and checks what it gives back. It checks the same rule as before.
+
+**After the third review (27 September).**
+
+- **Privacy.** The check-ins list (GET /grounds) sent every reader the brief as it is stored. Aisha,
+  the person on probation, received the lead's setup answers about her, including "Aisha is often
+  late with stock counts". This leak was older than the U.7 fixes: the list has always sent the
+  whole row. Now the list follows the same rule as the check-in's own page. Whoever runs the
+  check-in gets the brief. Everyone else gets the short version Groundwork writes for them, or, where
+  that is missing, only the sentences about the situation, never the lead's answers. I checked the
+  other routes that serve a check-in, and none of them sends the brief to a participant. The
+  participant's own session can still fall back to the brief in the engine's code, so I asked the
+  engine to use the same rule (request 41).
+- **The setup text no longer quotes anyone.** Each answer follows the question it answered, as
+  Groundwork understood it: "When asked why this matters now, the answer was taken to mean this.
+  Decide whether to confirm Aisha for her role in the warehouse team." There are no quotation marks
+  and no names.
+- **The lead's own words.** When her own words from setup are kept, the lead reads only those, under
+  "What you wrote". "What Groundwork put together from your answers" appears only on older check-ins
+  without them, and for an admin, who can rewrite it.
+
+**After the fourth check (27 September).** Participants' privacy and Wanjiru's view passed. Otieno's
+fold "What Groundwork put together from Wanjiru’s answers" failed: its sentences were fragments, and
+he read Wanjiru's "I" as though it were his own. No template can make every answer a sentence, so the
+text setup puts together is no longer shown to anyone on the Context page. It stays only as what the
+engine reads. Wanjiru keeps "What you wrote" where her own words are stored. An admin who rewrites
+the brief starts from the text everyone reads. The line "Groundwork wrote this from Wanjiru’s words."
+(or "from your words." for the lead) stays, and is still true. A question about a target set on a
+person is item 31.5.
 
 **The full run:** every screen test (2,681) and the build passed. In the API suite, U.7's own new test
 read a source file without removing comments first, and the comment guard caught it; that is fixed.
@@ -3972,9 +4235,37 @@ none of them changed. **Not ticked,** until its review.
 - **"You mentioned Daniel."** in the panel.
 - **The setup conversation** reads "Set up a check-in", "This sounds like …" and "It’s something else", without the old name box, "Getting started", the arrow steps or the chickens example; "N sessions planned" follows how often it runs.
 - **One set of names for how often** everywhere: Once, Every day, Every week, Every 2 weeks, Every month, When I choose.
-- **Not fixed, waiting on you:** the lead's first check-in on /start is not kept as her session 1 (item 17, point 13).
+- **Decided by you:** the setup is not the lead's first check-in (item 17, point 13), and check-ins are named after the topic (point 18). Neither was changed.
+- **No invitation carries the lead's words, on any channel.** Checked every builder: the invitation page and its preview, the invitation email (first invitation, the on-the-day send, "send it again", the reminder, "Send me a fresh link", the lapse warning) and the WhatsApp messages. None uses what the lead wrote about the person, and a new test proves it with a seeded private sentence ("PRIVATE-DESCRIPTION-7f3 is not meeting his targets") that appears in none of them. It fails if the preview ever returns it again.
+- **The save card now promises only what opening the link does.** It reads " - opening it saves your check-in, then shows who was invited and who has to wait", with ". Nobody is invited before Monday 2 November" when the check-in starts later. The page the link opens lists as "Invited" only those written to, then "Not invited yet" with why for each ("Their invitation goes out on the morning the check-in starts.", the seat sentence for someone held for a seat, "The invitation did not send. You can send it again from your check-in page."), then the ones refused with the server's reason (for example "This check-in is waiting for an admin in your organisation to accept it. Nobody can be invited until then."). "Your invites go out straight away." and "that saves it and sends your invites" are gone for the same reason.
+- **The invitation email's subject is now rendered in a test:** "Hafsah would like your take on Help someone get back on track".
+- **A check-in is never named with the lead's own words.** With no name and nothing picked, it used to be named after her first words, which became the invitation's subject. It is now the situation she picked, else the one the conversation settled on, in plain words ("Get a project back on track", never "DRIFT"), else "A check-in at <organisation>" or "A check-in". A test proves a lead whose first words were a private sentence sends an invitation with none of it. Two assertions in `a-label-is-a-subject-line.spec.ts` that required falling back to "what the person actually typed" were changed for your decision of 27 September; the topic-not-person rule is unchanged.
+- **The save card now reads in full sentences:** "The link is in your inbox at u6-lead@example.test. Opening it saves your check-in. Then you see who was invited and who has to wait." with "Nobody is invited before Monday 2 November." when it starts later.
+- **A later start holds the invitations from the setup too.** Read live: start 5 October, and the invitation went the moment the link was opened on 27 September. The save now hands each person the check-in's start, so nothing is sent before it; the page after the link lists them under "Not invited yet" with "Their invitation goes out on the morning the check-in starts.", and the morning sweep sends it on the day.
+- **Before saving, the line follows the start:** "We'll email you a confirmation link. Opening it saves your check-in. Then you see who was invited and who has to wait. Nobody is invited before Monday 5 October."
+- **The invitation to a check-in that opens later says when:** "Your first check-in opens on Monday 5 October.", with nothing offering to answer now. "You make your account afterwards" is said only to someone not signed in (whether an address has an account is never revealed).
+- **The invite list reads in sentences:** "u6f-daniel@example.test is waiting to be invited." and "u6f-daniel@example.test (Daniel). Your note: He is the subject of this check-in." (the lead's page only).
+- **A second setup is a second check-in.** Read live: signed in, a check-in about Grace set up minutes after Daniel's, both "Help someone get back on track", saved into Daniel's. The save now carries a key for each setup (the same one when the save is retried, a new one for the next setup), and the server decides by it, never by the name. A second cause was fixed with it: a setup the old rule already judged "new" still fell through and was handed the old check-in.
+- **The setup shows what is really saved.** With no rhythm picked it shows the situation's own ("Not set yet. This will run every week unless you pick one."), and its end is the day of the last check-in the said or usual length holds, which goes with the save, so the dates listed are the dates used. The prototype's "When I end it" is left out, because every check-in keeps a length. **For you:** if check-ins should be able to run with no end, that needs the server to allow it; until then the screen does not offer it.
+- **The invitation to a check-in that opens later** says its opening day above "What happens to what you write", not under it.
+- **The lead's Sessions list** reads "Daniel. Your note: Daniel is expected to generate…" instead of joining pieces with dashes, and says "Their invitation goes out on the morning the check-in starts." instead of offering "Resend invite" for an invitation still waiting for its day.
+- **The open link carries none of the lead's description.** Its first screen showed anyone with the link the engine's reword of the setup ("This check-in is about Grace, the new operations lead…"). It now says "Hafsah invited you to “Help a new hire get started”" and when it runs, and shows a question only for "Get updates from your team", where the lead wrote that one line to be asked. **For you:** the same kind of sentence at the top of the check-in page, for someone already in it, is left as it is.
+- **A second check-in with the same name** reads "Help a new hire get started, from 27 September", where it was "· 27 Sept".
+- **The open link's last step says what "Done" waits for:** "Add your name, your organisation and your email to finish." What is required is unchanged.
+- **Coming back to an unfinished setup** offers "Carry on with this one" or "Start a new one".
+- **"Carry on with this one" now puts the kept setup back straight away.** Pressing it used to show the empty first screen, and the setup only came back after reloading /start. This was already broken before the button's words changed. The card's sentence now reads "Starting a new one clears the one you were setting up, and nothing you said in it is kept. Carry on with it to pick up where you left off."
+- **"Get updates from your team" is named with the whole question.** "What moved this week, and what is stuck?" was named "What moved this week, and what". A question longer than 80 characters is named "Get updates from your team", never cut off, and a second one with the same name still gets ", from 27 September". One test that expected the clipped name was changed, because the clipped name was the fault.
+- **The open link says who asked, in a sentence.** Over the question it read "U6G ASKED" in capitals. It now reads "Amara asked you this.", with the lead's name as given, or "You have been asked this." with no name.
+- **Signed in, "Get updates from your team" says where the report goes.** The email box showed the lead's address while "Send" stayed greyed with "Add your own email, so the report has somewhere to go." Signed in there is no box now. The page reads "The report goes to you at amara@acme.com.", and "Send" is ready once the other fields are. Signed out, the hint now reads "Where the report goes. You do not have to sign in first. We will email you your way in."
+- **After the seventh review, two last wording fixes.** A second check-in named with the same question now reads "What moved this week, and what is stuck? From 27 September.", where it read "…stuck?, from 27 September". Ordinary names keep ", from 27 September". Under "Say we are trying this out" the hint now reads "This adds one sentence to the invite. It reads “We are trying this out to see if this new tool can help us be aligned, and your answers go into one summary that gives us a shared picture.”", where it joined the two with a colon.
+- **U.6 passed its seventh review on 27 September and is ticked.** The lead's first check-in card still waits for you (item 17).
+- **For you to know, not changed:** a note the lead types on the check-in's page ("Add a note to send with your link") goes into the invitation email. That is intended: she chose to send it to that person.
 
 ## Found on the way, for later tasks
+
+- **For U.8 (the check-in screens):** the check-in page reads "You · waiting" and "U6g · waiting", pieces joined with dots.
+- **Also for U.8:** an invited person who opens their link is signed in and then waits on "Opening your session…" for more than 13 seconds, with no server error. It happened for two people in the U.6 reviews. Someone waiting that long may give up.
+- **For U.5 (Today):** "A decision for you." sits over a first check-in on Today, which is not a decision.
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
   rounds · 2 of 5 answered this round", "In the way 1 · the sales deck", and "IN PROGRESS" in capital

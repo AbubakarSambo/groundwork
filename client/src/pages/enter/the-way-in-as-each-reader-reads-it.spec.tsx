@@ -142,26 +142,25 @@ describe('the list itself', () => {
   })
 })
 
-describe('a name, never the classifier\'s type (U.6 review)', () => {
-  /* Read live: set up as "Help someone get back on track", classified as DRIFT, saved as "Drift". The
-     name is the topic the LEAD picked, in plain words (a-label-is-a-subject-line.spec.ts keeps it the
-     topic and never the person). */
-  it('says the situation the lead picked in plain words, or her own words', async () => {
+describe('a name, the topic in plain words, never the lead\'s words (U.6 review)', () => {
+  /* Read live: set up as "Help someone get back on track", classified as DRIFT, saved as "Drift".
+     And her own first words must never become the name: it is the invitation's subject. */
+  it('says the situation in plain words, else a neutral name', async () => {
     const { fallbackGroundName } = await import('./EntryChatPage')
     const { SCENARIO_LABELS } = await import('@/lib/scenario-catalog')
     expect(fallbackGroundName('PIP')).toBe('Help someone get back on track')
     expect(fallbackGroundName(SCENARIO_LABELS.PIP)).toBe('Help someone get back on track')
+    expect(fallbackGroundName('DRIFT')).toBe('Get a project back on track')
     expect(fallbackGroundName('Connect Goals Across the Team')).toBe('Connect goals across the team')
-    expect(fallbackGroundName(undefined, 'our sales targets this quarter')).toBe('Our sales targets this quarter')
-    expect(fallbackGroundName()).toBe('Untitled')
-    expect(fallbackGroundName('PIP')).not.toMatch(/Drift|Pip/)
+    expect(fallbackGroundName(undefined, 'U6 Review Co')).toBe('A check-in at U6 Review Co')
+    expect(fallbackGroundName()).toBe('A check-in')
   })
-  it('is handed the lead\'s pick, never the classified situation', async () => {
+  it('is handed the lead\'s pick first, then the settled situation, and never her words', async () => {
     const { readFileSync } = await import('fs')
     const { join } = await import('path')
     const src = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
-    expect(src.match(/groundLabel: groundName\.trim\(\) \|\| fallbackGroundName\(theSituationTheLeadPicked\(\), onboardingSelections\.initial\),/g)).toHaveLength(2)
-    expect(src).not.toMatch(/fallbackGroundName\(onboardingSelections\.classifiedScenario/)
+    expect(src.match(/groundLabel: groundName\.trim\(\) \|\| fallbackGroundName\(theSituationTheLeadPicked\(\) \?\? onboardingSelections\.classifiedScenario, /g)).toHaveLength(2)
+    expect(src).not.toMatch(/fallbackGroundName\([^)]*onboardingSelections\.initial/)
   })
 })
 
@@ -189,5 +188,22 @@ describe('"You picked", in plain words (U.6 review)', () => {
         expect(e).not.toMatch(/re-litigate|he-said-she-said|offsite|lightweight|signal/)
       }
     }
+  })
+})
+
+describe('who is on the list, in sentences (U.6 review)', () => {
+  /* Read live: "Waiting to send (1): u6f-daniel@example.test." and "✓ u6f-daniel@example.test -
+     Daniel - He is the subject of this check-in…". The lead's page only. */
+  it('says who is waiting in a sentence', async () => {
+    const { whoIsWaitingSentence } = await import('./EntryChatPage')
+    expect(whoIsWaitingSentence(['u6f-daniel@example.test'])).toBe('u6f-daniel@example.test is waiting to be invited.')
+    expect(whoIsWaitingSentence(['a@x.test', 'b@x.test', 'c@x.test'])).toBe('a@x.test, b@x.test and c@x.test are waiting to be invited.')
+  })
+  it('says each person added without dashes', async () => {
+    const { anEntryAsASentence } = await import('./EntryChatPage')
+    expect(anEntryAsASentence('u6f-daniel@example.test - Daniel - He is the subject of this check-in'))
+      .toBe('u6f-daniel@example.test (Daniel). Your note: He is the subject of this check-in.')
+    expect(anEntryAsASentence('a@x.test - Runs the pipeline.')).toBe('a@x.test. Your note: Runs the pipeline.')
+    expect(anEntryAsASentence('a@x.test')).toBe('a@x.test.')
   })
 })

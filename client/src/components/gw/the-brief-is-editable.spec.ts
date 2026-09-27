@@ -29,12 +29,15 @@ describe('writing the brief', () => {
 
   it('and offered as a way in when there is none yet', () => {
     expect(PAGE).toContain('Write the brief')
-    expect(PAGE).toContain('Nobody has written a brief yet')
+    /* U.7 review: in plain full sentences, with no dash joining two of them. */
+    expect(PAGE).toContain('Nobody has said what this check-in is for yet.')
   })
 
-  it('says who reads it, on the button that saves it', () => {
-    /* The one fact that decides how somebody writes it. */
-    expect(PAGE).toContain("'Everyone here reads this'")
+  it('says who reads it once it is saved', () => {
+    /* U.7 review: the button is "Save", and who reads it is said in full sentences, under the brief
+       and when it is saved, rather than as a clipped phrase on the button. */
+    expect(PAGE).toContain("saveBrief.isPending ? 'Saving…' : 'Save'")
+    expect(PAGE).toContain("'Saved. Everyone in this check-in now reads this.'")
   })
 
   it('warns before an empty save clears it', () => {

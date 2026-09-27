@@ -52,6 +52,7 @@ import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT } from './what-a-participant-is-told-about-this';
+import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
 import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant } from './nothing-proposed-that-nobody-said';
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
@@ -312,6 +313,9 @@ export const SAFE_PARTICIPANT_SELECT = {
      "Invite pending" about a mail that was never sent, and the lead chases the person instead of
      the admin. See added-but-waiting-for-a-seat.ts. */
   awaitingSeat: true,
+  /* The day their invitation waits for, when it waits (U.6 review): the roster says so instead of
+     offering "Resend invite" for a mail that has not been sent yet. A date, nothing about the person. */
+  startsAt: true,
   /* Whether this person answers at all. The roster counted a managing-only lead among the people a
      round is waiting for, so "4 of 5 checked in" named the person it was for. */
   managingOnly: true,
@@ -1077,7 +1081,7 @@ export class GroundsService {
    * client-side (reusing ReportPage's deriveStatus rather than duplicating
    * that logic in two languages). Admin/HR/Founder/Manager oversight view -
    * not scoped to "my grounds," unlike list(). */
-  async getOrgRoster(organizationId: string) {
+  async getOrgRoster(organizationId: string, requestingUserId?: string) {
     const grounds = await this.prisma.ground.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
@@ -1132,7 +1136,9 @@ export class GroundsService {
             // Display name only, so the client never has to make one out of the address.
             firstName: (p as any).user?.firstName ?? null,
             partyType: p.partyType,
-            roleAsDescribed: p.roleAsDescribed,
+            /* The lead's note about a person, to that check-in's lead alone. This roster is read by
+               admins, and an admin is not the lead of every check-in (U.7 review). */
+            roleAsDescribed: theLeadsWordsAbout(p, !!requestingUserId && g.initiator.id === requestingUserId),
             accepted: p.userId != null,
           };
         }),
@@ -1408,9 +1414,9 @@ export class GroundsService {
           .map((p) => ({
             ...p,
             email: hideContact && !isInitiator && !isMe(p) ? null : p.email,
-            /* U.6 review: what the lead wrote about a person is for whoever runs the check-in only.
+            /* What the lead wrote about a person is for the lead alone, not an admin (U.7 review).
                See the-leads-words-about-someone.ts. */
-            roleAsDescribed: theLeadsWordsAbout(p, runsIt),
+            roleAsDescribed: theLeadsWordsAbout(p, isInitiator),
           }));
         const shown = new Set(participants.map((p: any) => p.id));
         const checkInsShown = hidePeers
@@ -1427,6 +1433,12 @@ export class GroundsService {
         const mayReadTheReport = runsIt || !!fullReport?.releasedAt;
         return {
           ...safe,
+          /*
+           * THE BRIEF, BY THE SAME RULE AS THE CHECK-IN'S OWN READ (U.7 third review). It went out
+           * raw in `safe` to every reader of the list, so Aisha was sent the lead's setup answers
+           * about her. Whoever runs it gets the brief; anybody else the version everyone reads.
+           */
+          brief: runsIt ? ((safe as any).brief ?? null) : whatSomeoneWhoDoesNotRunItReads(safe as any),
           participants,
           checkIns: checkInsShown,
           dependencies: dependenciesShown,
@@ -1680,6 +1692,33 @@ export class GroundsService {
         }
       : null;
 
+    /* What the people in it read about what this is for, and whose words those are (U.7 review). */
+    const briefAsEveryoneReadsIt: string | null = whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: (ground as any).toldToParticipants });
+    const briefChange = rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).briefChangedBy ?? null : null;
+    const changedBySomebodyElse = !!briefChange?.userId && briefChange.userId !== ground.initiatorId;
+    /*
+     * WHAT THE LEAD TYPED IN SETUP (U.7 re-check). Handed over only to the reader who leads this
+     * check-in and is also the person who typed it; nobody else is sent the text. Its existence also
+     * says the brief was put together by setup from her answers, so while nobody has rewritten it the
+     * brief is not "her words".
+     */
+    const setupWords: { authorUserId: string; text: string } | null =
+      await ((this.prisma as any).leadSetupWords?.findUnique?.({ where: { groundId: id }, select: { authorUserId: true, text: true } }) ?? Promise.resolve(null)).catch(() => null);
+    const briefWasPutTogetherBySetup = !briefChange?.userId && !!setupWords;
+    const briefIsTheLeadsOwnWords = !!briefAsEveryoneReadsIt && !changedBySomebodyElse && !briefWasPutTogetherBySetup
+      && briefAsEveryoneReadsIt === (typeof brief === 'string' ? brief.trim() : '');
+
+    const briefChangedBy: { firstName: string | null; isYou: boolean; isTheLead: boolean } | null = briefChange?.userId
+      ? {
+          isYou: briefChange.userId === requestingUserId,
+          isTheLead: briefChange.userId === ground.initiatorId,
+          firstName: await this.prisma.user
+            .findUnique({ where: { id: briefChange.userId }, select: { firstName: true } })
+            .then((u: any) => (u?.firstName ?? '').trim() || null)
+            .catch(() => null),
+        }
+      : null;
+
     const rawTimeline: any[] =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).timeline ?? [] : Array.isArray(rawLog) ? rawLog : [];
     const settingsChanges = rawTimeline
@@ -1852,8 +1891,9 @@ export class GroundsService {
       return {
         ...p,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
-        /* U.6 review: the lead's words about a person never reach a participant. */
-        roleAsDescribed: theLeadsWordsAbout(p, viewerRunsThisGround),
+        /* The lead's words about a person reach the lead alone: not a participant, not an admin
+           (U.7 review). See the-leads-words-about-someone.ts. */
+        roleAsDescribed: theLeadsWordsAbout(p, viewerIsInitiator),
         soloArtifactShared: p.soloArtifactShared ?? false,
         // Only expose the content when the participant explicitly shared it
         sharedSoloReport: raw
@@ -2055,7 +2095,9 @@ export class GroundsService {
       if (theirs.length) asks[p.id] = theirs;
     }
 
-    const { patternDetections: _pd, ...rest } = ground as any;
+    /* The raw audit log stays in the server: what anybody needs from it is read out above, as
+       `contextNotes`, `settingsChanges` and who changed the brief. It holds user ids (U.7 review). */
+    const { patternDetections: _pd, groundAuditLog: _audit, ...rest } = ground as any;
     // THE BROADCAST JOIN TOKEN IS THE INITIATOR'S TO GIVE OUT, NOBODY ELSE'S.
     //
     // It was returned to every party on the ground, and the ground page renders
@@ -2199,7 +2241,25 @@ export class GroundsService {
       /* The lead and the organisation's admins read the brief they wrote. A participant reads the
          situation and nothing that tells the product how to interview them. See
          what-a-participant-is-told-about-this. Goals are on the payload already, under objectives. */
-      brief: viewerRunsThisGround ? brief : ((ground as any).toldToParticipants?.trim() || theSituationIn(brief)),
+      brief: viewerRunsThisGround ? brief : briefAsEveryoneReadsIt,
+      /*
+       * AND WHAT THE PEOPLE IN IT READ, TO WHOEVER RUNS IT (U.7 review). The Context page told the
+       * lead "Your words, from setup. Everyone reads this before they answer." over her own words,
+       * while her people were shown a different text: the short read Groundwork writes from the
+       * brief, or its first sentences. The lead now reads what they read, and her own words stay
+       * hers to rewrite. A participant already gets exactly this, as `brief`.
+       */
+      briefAsEveryoneReadsIt: viewerRunsThisGround ? briefAsEveryoneReadsIt : undefined,
+      /* Whether what everyone reads is the lead's own words, unchanged by anybody else. */
+      briefIsTheLeadsOwnWords,
+      /* Who last rewrote it, to whoever runs the check-in: their first name, or "you". */
+      briefChangedBy: viewerRunsThisGround ? briefChangedBy : undefined,
+      /* Whether the brief is still the one setup put together from the lead's answers. */
+      briefPutTogetherBySetup: viewerRunsThisGround ? briefWasPutTogetherBySetup : undefined,
+      /* What she typed in setup, to her alone (U.7 re-check). See LeadSetupWords. */
+      leadsOwnSetupWords: viewerIsInitiator && setupWords && !!requestingUserId && setupWords.authorUserId === requestingUserId
+        ? setupWords.text
+        : undefined,
       signals,
       contextNotes,
       settingsChanges,
@@ -5191,10 +5251,24 @@ export class GroundsService {
 
     // Parse existing audit log - migrate legacy array format to structured object.
     const rawLog = ground.groundAuditLog;
-    const auditData: { timeline: object[]; contextNotes: string[] } =
+    const auditData: { timeline: object[]; contextNotes: string[]; briefChangedBy?: { userId: string; at: string } } =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object'
-        ? { timeline: (rawLog as any).timeline ?? [], contextNotes: (rawLog as any).contextNotes ?? [] }
+        ? {
+            timeline: (rawLog as any).timeline ?? [], contextNotes: (rawLog as any).contextNotes ?? [],
+            ...((rawLog as any).briefChangedBy ? { briefChangedBy: (rawLog as any).briefChangedBy } : {}),
+          }
         : { timeline: Array.isArray(rawLog) ? (rawLog as object[]) : [], contextNotes: [] };
+
+    /*
+     * WHO LAST CHANGED WHAT THIS CHECK-IN IS FOR (U.7 review). The comment on the brief's permission
+     * above has always promised "the same audit entry" as renaming, and nothing was written. The
+     * Context page now says "Otieno changed this." when an admin rewrote the lead's words, and says
+     * "Your words" only while they are. Kept apart from `timeline`, which the setup page reads as
+     * changes to the length and the cadence.
+     */
+    if (dto.brief !== undefined && (dto.brief.trim() || null) !== ((ground as any).brief ?? null)) {
+      auditData.briefChangedBy = { userId: requestingUserId, at: new Date().toISOString() };
+    }
 
     if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined) {
       auditData.timeline.push({

@@ -28,6 +28,22 @@ import { WhatTheNetworkSaid } from '@/components/gw/WhatTheNetworkSaid'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
+import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
+import { theLeadsNote } from '@/lib/the-leads-note'
+
+/**
+ * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
+ *
+ * The server sends a person's name, or null, and never the lead's words about them. With null this
+ * says what the engine says: "A colleague", or "One colleague" and "Another colleague" when several
+ * people on this check-in have no name, counted across the whole check-in so the same person is the
+ * same words in every section. It used to say "A teammate", which the prototype never says.
+ */
+function nameOnTheBoard(b: { participants?: { id: string; name: string | null }[] } | null | undefined, participantId: string, name: string | null | undefined): string {
+  if (name?.trim()) return name
+  const words = plainWordsByPerson(b?.participants ?? [], { named: (p) => !!p.name?.trim() })
+  return atTheStart(words.get(participantId) ?? 'a colleague')
+}
 import { WhereEachPersonIs } from '@/components/gw/where-each-person-is'
 import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-across-people'
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
@@ -1207,8 +1223,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       address (W-UX-4), so the subtitle has to stop repeating it - otherwise a person
                       with no account yet reads "Engineer" over "Engineer".
                     */}
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{p.name ?? 'A teammate'}</div>
-                    {p.role && p.role !== p.name && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 1 }}>{p.role}</div>}
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{nameOnTheBoard(b, p.participantId, p.name)}</div>
+                    {p.role && p.role !== p.name && <div data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 1 }}>{theLeadsNote(p.role)}</div>}
                   </div>
                   <div style={{ padding: '2px 15px 10px' }}>
                     {p.items.length === 0 ? (
@@ -1280,7 +1296,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 The phone gets the same facts down the page instead - see the component.
               */}
               {onAPhone ? (
-                <NineColumnsIsNotAPhoneScreen rows={b.checkInGrid.rows as any} sessions={b.checkInGrid.sessions} />
+                <NineColumnsIsNotAPhoneScreen rows={b.checkInGrid.rows.map((r) => ({ ...r, name: nameOnTheBoard(b, r.participantId, r.name) })) as any} sessions={b.checkInGrid.sessions} />
               ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
@@ -1309,10 +1325,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           in the next column gave "Engineer | Engineer" on one row while the row above
                           it read "Sahar Okonkwo | -".
                         */}
-                        <td style={td}><span style={{ fontWeight: 700, color: 'var(--gw-dark)' }}>{r.name ?? 'A teammate'}</span></td>
+                        <td style={td}><span style={{ fontWeight: 700, color: 'var(--gw-dark)' }}>{nameOnTheBoard(b, r.participantId, r.name)}</span></td>
                         {anyRoleToShow && (
                           <td style={{ ...td, color: 'var(--gw-sub)' }}>
-                            {r.role && r.role !== r.name ? r.role : r.managingOnly ? 'Managing only' : ' - '}
+                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : r.managingOnly ? 'Managing only' : ' - '}
                           </td>
                         )}
                         {b.checkInGrid!.sessions.map((s) => {
@@ -1383,9 +1399,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ) : b.contribution.filter((c) => c.name || c.remitDefined).map((c) => (
                 <div key={c.participantId} style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{c.name}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{nameOnTheBoard(b, c.participantId, c.name)}</span>
+                    {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
                     {c.remitDefined
-                      ? <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{c.remit}</span>
+                      ? (b.canEditFrame && c.remit ? <span data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(c.remit)}</span> : null)
                       : <span style={{ fontSize: 12, color: 'var(--gw-amber-t)', fontWeight: 600 }}>role not clearly defined</span>}
 
                   </div>
@@ -1462,7 +1479,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {b.coverage.reads.filter((r) => r.shown !== false).map((r) => (
                 <div key={r.participantId} style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{r.name}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{nameOnTheBoard(b, r.participantId, r.name)}</span>
                     <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.3px' }}>{r.scope} level</span>
                     <span style={{ marginLeft: 'auto' }}>
                       <Pill tone={r.kind === 'LEAKING' ? 'warn' : r.kind === 'ABSORBING' ? 'info' : 'flat'}>
