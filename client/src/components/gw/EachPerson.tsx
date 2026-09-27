@@ -19,6 +19,7 @@
  * including the lead, who cannot mark somebody else's work done. A lead changes what is EXPECTED,
  * and does it in the conversation, because a change has a reason and a form does not take one.
  */
+import { theLeadsNote } from '@/lib/the-leads-note'
 import { useState } from 'react'
 import { personLabel } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
@@ -165,7 +166,7 @@ export function EachPerson({
                 transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .12s ease',
               }}>&#9654;</span>
               <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{isMe ? 'You' : personLabel(p as any)}</span>
-              {p.roleAsDescribed && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
+              {p.roleAsDescribed && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
               <span style={{ flex: 1 }} />
               <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{summary}</span>
               <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{isOpen ? 'Hide' : 'Open'}</span>

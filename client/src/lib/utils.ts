@@ -88,7 +88,8 @@ export function personLabel(p: {
     }
     return email
   }
-  const role = p?.roleAsDescribed?.trim()
+  /* The name part of the lead's note ("Daniel - Daniel is expected to..."), never the note itself (U.6 review). */
+  const role = p?.roleAsDescribed?.trim().split(' - ')[0].trim()
   if (role) return role
   return 'a teammate'
 }
@@ -99,7 +100,8 @@ export function participantLabel(p: {
 } | null | undefined): string {
   const name = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim()
   if (name) return name
-  const role = p?.roleAsDescribed?.trim()
+  /* The name part of the lead's note ("Daniel - Daniel is expected to..."), never the note itself (U.6 review). */
+  const role = p?.roleAsDescribed?.trim().split(' - ')[0].trim()
   if (role) return role
   return 'a teammate'
 }

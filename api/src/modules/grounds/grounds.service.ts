@@ -312,6 +312,9 @@ export const SAFE_PARTICIPANT_SELECT = {
      "Invite pending" about a mail that was never sent, and the lead chases the person instead of
      the admin. See added-but-waiting-for-a-seat.ts. */
   awaitingSeat: true,
+  /* The day their invitation waits for, when it waits (U.6 review): the roster says so instead of
+     offering "Resend invite" for a mail that has not been sent yet. A date, nothing about the person. */
+  startsAt: true,
   /* Whether this person answers at all. The roster counted a managing-only lead among the people a
      round is waiting for, so "4 of 5 checked in" named the person it was for. */
   managingOnly: true,

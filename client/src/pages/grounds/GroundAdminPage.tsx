@@ -35,6 +35,7 @@ import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec, TextAction } from '@/components/gw/kit'
 import { groundTabs } from './ground-tabs'
 import { ShareSection } from './ShareSection'
+import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
@@ -2005,7 +2006,7 @@ export function GroundAdminPage() {
                             </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
-                              {p.roleAsDescribed && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{p.roleAsDescribed}</span>}
+                              {p.roleAsDescribed && <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
                               {/* What someone is answerable for is the lead's to
                                   set, or their own. Every party could edit every
                                   other party's remit, on a ground that may be
@@ -2110,7 +2111,11 @@ export function GroundAdminPage() {
                           Sits before "Copy invite link" in importance but after it in the row, so
                           the existing habit is not moved out from under anybody.
                         */}
-                        {isInitiator && !p.userId && (
+                        {/* U.6 review: not for an invitation still waiting for its start day. */}
+                        {isInitiator && !p.userId && waitsForItsStart(p as any) && (
+                          <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>Their invitation goes out on the morning the check-in starts.</span>
+                        )}
+                        {isInitiator && !p.userId && !waitsForItsStart(p as any) && (
                           <button
                             disabled={resendInvite.isPending}
                             onClick={() => resendInvite.mutate(p.id)}
