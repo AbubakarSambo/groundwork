@@ -3862,7 +3862,9 @@ export function EntryChatPage() {
                 </button>
                 </form>
                 <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', lineHeight: 1.5, textAlign: 'center', paddingTop: 8 }}>
-                  We'll email you a confirmation link. Your report is saved and your invites go out the moment you open it.
+                  {/* U.6 review: it promised the invites went out on opening the link, which a later start (or a
+                      seat, or an admin who must accept it) makes untrue. The same sentences as after saving. */}
+                  {`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(inviteAdded.length, startsLater ? checkInBy : null)}`}
                 </div>
 
                 {/* SIGNING UP WITH GOOGLE, AT THE MOMENT SIGNING UP HAPPENS.

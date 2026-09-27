@@ -82,3 +82,17 @@ describe('the page the link opens, case by case', () => {
     expect(screen.getByText('That address cannot be invited.')).toBeTruthy()
   })
 })
+
+describe('the line before saving (U.6 review)', () => {
+  /* It said "We'll email you a confirmation link. Your report is saved and your invites go out the
+     moment you open it." with a start of 5 October. It follows the start now. */
+  it('says nobody is invited before the start, when the start is later', async () => {
+    const { readFileSync } = await import('fs')
+    const { join } = await import('path')
+    const src = readFileSync(join(__dirname, '..', 'enter', 'EntryChatPage.tsx'), 'utf8')
+    expect(src).not.toContain('your invites go out the moment you open it')
+    expect(src).toContain("{`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(inviteAdded.length, startsLater ? checkInBy : null)}`}")
+    expect(`We'll email you a confirmation link. ${whatOpeningTheLinkDoes(1, '2026-10-05')}`)
+      .toBe("We'll email you a confirmation link. Opening it saves your check-in. Then you see who was invited and who has to wait. Nobody is invited before Monday 5 October.")
+  })
+})
