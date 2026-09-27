@@ -1973,6 +1973,17 @@ engine answers. Until then, "When I end it" stays off the screen.
     cover its organisations (request 30(b)). **Please keep the switch off wherever the scorer runs.**
 
 
+### 31. Context, after its first review (U.7): what needs you
+
+1. **Please confirm: an admin who does not run a check-in now sees only the team's targets, not
+   each person's share.** Before this, the Context page and the board disagreed. On the Context page,
+   Otieno (an admin who is not in Wanjiru's check-in) saw only the team's targets. On the board he
+   saw every person's share, Baraka's included, and each person's number beside where they are. Both
+   now follow the stricter rule, in the server: the check-in's lead sees every share, and anyone
+   else, admins included, sees the team's targets and their own share. Where the check-in is set so
+   that everyone sees every number, nothing changes. **My recommendation:** keep the stricter rule.
+   If you want admins to see each share, say so and it is one change in one place for both routes.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
