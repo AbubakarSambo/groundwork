@@ -15,9 +15,10 @@ in, with every decision you made).
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
 screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
-U.16 (links between check-ins, and each person's load) and U.17 (the Suites page and all ten suites:
+U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
 onboarding, leave requests, time sheets, performance reviews, when someone leaves, the role map,
-spending and budgets, to-dos, customers and deals, and equipment). Each passed the full screen and API
+spending and budgets, to-dos, customers and deals, and equipment) and U.18 (connections and
+channels). Each passed the full screen and API
 suites; the few failures each run found came from that module and were fixed. The latest full run, at
 the end of U.17, passed everything with no failures (2,973 screen tests and 9,608 API tests). **None
 could be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most
@@ -69,19 +70,20 @@ that one is yours to decide (item 27.4).
     hours, and who says what each client agreed; 28.33: does a person read their manager's own words
     in their review? (a privacy question); 28.49: is one to-do list for each person their private
     load? (a privacy question)
-14. The rest of items 13, 15 to 28 are smaller, each with a recommendation.
+14. Item 29.1: may an admin connect their own WhatsApp number while Groundwork's WhatsApp is off?
+    and 29.4: should everyone's word-for-word check-ins be deleted after a time? (a privacy question)
+15. The rest of items 13, 15 to 29 are smaller, each with a recommendation.
 
-**Just finished, not ticked:** the last five suites of U.17, so all ten now have a board: the role map
-(admins only; every role, what it owns, who holds it, and "Nobody owns …"), spending and budgets
-(admins and leads; requests waiting for a yes or no with the budget check, and each team's budget),
-to-dos (admins and leads; what each person said they will do in their check-ins), customers and deals
-(admins and leads; one list, from the organisation's own customers and contacts) and equipment (admins
-only; who has what, and how it is). Each refuses everybody else on the server, and nothing from any of
-them reaches a check-in or its report. What only the engine can do is in requests 25 to 29. One new
-privacy question: is one to-do list for each person their private "load"? (item 28.49).
+**Just finished, not ticked:** U.18, connections and channels, at the prototype's three addresses.
+Connections shows WhatsApp (only while it is switched on) with three counts from the server, your
+numbers, your own address as not set up, notices in Slack or Teams, figures from your other systems,
+and what else you can connect. Connect WhatsApp is six steps, each done only when the server says so;
+Meta's check of the address is now recorded, so "Not proven yet" is true. The old Connect page is
+"Connect your own tools", with everything it did. Only admins get in, on the server and on the page.
+Payments, the spreadsheet, the setup link and "Add your own" are left out, because nothing real
+stands behind them (item 29).
 
-**Next:** U.18 (connections and channels). U.17 has passed its full run; its review cannot sign in (item
-14).
+**Next:** U.19 (billing, keeping Stripe exactly as it is). U.18's review cannot sign in (item 14).
 
 ## Needs Hafsah
 
@@ -1447,6 +1449,79 @@ reviewed" in this report.
     found.", "Give the item a name.", "There is already an item with that name.", "Choose somebody in
     your staff directory, or nobody.", and, for the engine, "Only people in this organisation can update
     equipment here.").
+
+### 29. Connections (U.18): what needs you
+
+1. **WhatsApp is mentioned only while it is switched on, as you decided.** On Connections, the
+   WhatsApp section shows only while WhatsApp is on in Groundwork, or while the organisation has a
+   number of its own (so an admin who switched their own number off can still switch it back on).
+   That means an admin cannot find the way to connect their own number while Groundwork's WhatsApp is
+   off. The page `#/settings/whatsapp` still works if they type its address, as the old Connect page
+   always offered it, but nothing links to it. **My recommendation:** decide whether an admin may
+   connect their own number while Groundwork's WhatsApp is off. If yes, always show admins the
+   WhatsApp section, with "Not set up" and "Set it up".
+2. **"Your own address" shows only that it is not set up,** because you decided it comes later. It
+   reads "Your own address", "Not set up", and "Put Groundwork at an address on your own domain.
+   Invitations, reminders and sign-in links then use it.", with nothing to press. I took out the
+   prototype's example address (checkins.baridi.co.ke), which is sample data. The welcome card's door
+   still says "Your numbers, your own address" (item 16.1). **My recommendation:** keep both until the
+   address is built, or take the section out and change the door to "Your numbers".
+3. **Left out, because nothing real stands behind them** (not-to-build.md rules out pretend ones):
+   - "Paystack, Flutterwave or M-Pesa" and "A weekly spreadsheet". There is no such connection.
+   - The line under "Your numbers": "Totals only: no customer’s personal details come into
+     Groundwork. Each number is matched once to a target, in Context." Nothing enforces it: the
+     figures the developer API takes may carry a short label, such as a customer's name.
+   - "Hand it to your developer, or to Claude Code", with a link that expires in 7 days and
+     instructions for Claude Code. No such link exists.
+   - On the tools page, "Add your own" (a field, a board or a suite added by an admin). Nothing like
+     it exists.
+   - On the tools page, "Build your own screens". Its sentence "It starts with reading and chat;
+     changing things comes later." is not true: the developer API can already change things.
+   - The end of the tools page's first sentence, "unless you choose an event that carries it". No
+     event carries what anyone said, so the page now says "nothing sends what anyone said in a
+     check-in."
+   **My recommendation:** build Paystack and the spreadsheet as real connections when you want
+   them, and decide whether figures should be totals only; the rest can wait.
+4. **"How long conversations are kept" is a different rule from the product's.** The prototype says
+   "Word-for-word check-ins. Kept for [n] days, then deleted. The history and the reports built from
+   it stay." The product deletes a person's own words only after they leave, after a number of days
+   the admin sets ("When somebody leaves"). I kept the product's section as it is. **My
+   recommendation:** decide whether everyone's words should be deleted after a time, not only a
+   leaver's. This is a privacy question.
+5. **The tools page keeps the product's keys and calls, not the prototype's examples.** The
+   prototype shows "Create a key", keys described as "Can send figures", "API access approved on 12
+   September, for … Terms accepted by Grace Achieng.", and an example request to
+   `POST /v1/figures`. The product names each key, lets the admin tick what it may do, and sends
+   figures to `PUT /api/org/v1/evidence` and `PUT /api/org/v1/metrics`. The developer API must keep
+   working exactly as now, so I renamed only the sections. **My recommendation:** leave the API as it
+   is, and later show who accepted the terms and when, if the server records it.
+6. **Notices in Slack or Teams no longer ask for a channel name,** because the prototype has only the
+   address. Whether it is Slack or Teams is read from the address (Slack's all start
+   `https://hooks.slack.com/`). A name already saved is still shown. The buttons on a connected
+   channel keep today's words: "Post a test", "Switch on" or "Switch off", and "Remove".
+7. **"What these look like" shows the product's own pictures,** not the prototype's drawn Baridi
+   samples: "On WhatsApp" (only while WhatsApp is on) and "Inside your own tool".
+8. **The three WhatsApp counts, as the server counts them.** "People checking in on WhatsApp" is each
+   number that has been put through to a check-in; "check-ins this month" is each check-in a message
+   was sent for on the organisation's own number since the first of the month; "failed messages this
+   week" is messages on its own number that did not go, in the last seven days. Counts only, for
+   admins only. **My recommendation:** say if you meant something else by any of them.
+9. **Team chat is not built.** `docs/modules.md` lists it as planned: Groundwork inside a WhatsApp
+   group, Slack or Teams, answering questions and posting the shared report. It needs your decision
+   first (what it may post, and to whom), and then the engine. **My recommendation:** decide it with
+   the rule that nothing private is ever posted in a group.
+10. **Wording no screen shows, which I wrote with the fewest words:** "Switched off" (a WhatsApp
+    number or a channel that is off); "Needs a key" on "Accounting or sales tools"; "Usage numbers,
+    sent by your own product." (the prototype's "Usage, sent every morning. For example, MarketView’s
+    weekly users." promises a time and uses sample data); "Approved" and "Waiting for an answer" beside
+    "Figures from your other systems"; the singular counts ("person checking in on WhatsApp", "check-in
+    this month", "failed message this week"); "Connections did not load."; on the WhatsApp page, "The
+    number, as people will see it (optional)" and "WhatsApp Business Account id (optional)" (today's
+    words), "Connect" or "Save", "Send a test message", "Save what Meta approved", "Switch on" or
+    "Switch off", and "Whoever sets up a check-in chooses whether people answer it here or on
+    WhatsApp."; and for anybody but an admin, today's "Only an admin in your organisation can set this
+    up. Ask whoever manages Groundwork for your organisation." The organisation's name is written with
+    "’s", so "Baridi Appliances’s WhatsApp Business number".
 
 
 
@@ -3026,6 +3101,87 @@ screen could be checked signed in (item 14).
 
 **The full run at the end of U.17 passed with no failures:** 2,973 screen tests, 9,608 API tests, and
 the build. **Not ticked,** because no review can sign in (item 14).
+
+### U.18 Connections and channels: built and tested, not yet reviewed
+
+**The gap list, before I started:**
+- There was one long page, "Connect your systems", at `/org/integrations`. The prototype has three:
+  Connections (`#/settings/connections`), Connect WhatsApp (`#/settings/whatsapp`) and Connect your
+  own tools (`#/settings/tools`).
+- WhatsApp's three counts had no source, and step 3 of connecting WhatsApp ("Not proven yet") could
+  not be told, because nothing recorded Meta checking the address.
+- Payments (Paystack, Flutterwave, M-Pesa), the weekly spreadsheet, your own address, the setup link
+  for a developer, "Add your own" and team chat do not exist.
+- Keys, imports, webhooks, deliveries, the panel inside your own tool, how long a leaver's words are
+  kept, Slack or Teams notices and the WhatsApp connection all worked, and had to keep working.
+
+**What I built, in three commits:**
+1. `23b1337a` (the server). `GET /integrations/connections`, for admins only, gives the three counts
+   and whether numbers from the organisation's own product have arrived. Counts only: no phone
+   number, no name, nothing anybody said. Meta's check of the address, with the right token, is now
+   remembered (one new empty column, `webhook_verified_at`), and the admin is told when the address
+   was proven. New API test: every Connections route as an admin, a lead, a member and a guest (only
+   the admin gets in), the counts, and the proof.
+2. `bf4c6613` (the two new pages). The sidebar's Connections door goes to `#/settings/connections`
+   and stays lit on the two pages under it. The old address opens the tools page, because emails still
+   carry it.
+3. `94b902d9` (the tools page). The old Connect page, with the prototype's heading and section names,
+   and without WhatsApp and Slack or Teams, which moved.
+
+**What each person now reads:**
+- **Grace, an admin, on Connections:** "Settings", "Baridi Appliances". Then, while WhatsApp is on:
+  "WhatsApp", "Connected", "Your people check in by replying to +254 709 000 111, Baridi Appliances’s
+  WhatsApp Business number. A reply is their check-in, exactly as if typed here.", "6 people checking
+  in on WhatsApp", "212 check-ins this month", "0 failed messages this week", and "Send a test
+  message", "Reminder messages", "Change the number", "Disconnect" (which asks first: "Remove the
+  WhatsApp connection? Nothing sent or received is deleted."). With no number of her own: "Not set
+  up", "People check in by replying to your organisation’s WhatsApp number.", "Set it up". Then "Your
+  numbers", "So what people say is checked against where the work shows up", with "Your own product
+  sends its numbers" ("Connected" or "Not set up", "Set it up") and "Accounting or sales tools",
+  "Invoices paid, deals won." ("Needs a key" until a key may send figures, "Connect"). Then "Your own
+  address", "Not set up" (item 29.2). Then "Notices in Slack or Teams" with the prototype's sentence,
+  "Paste the channel’s incoming-webhook address", "Add it, switched off" and "It arrives switched off.
+  Send one test notice, see it land, then turn it on." Then "Figures from your other systems" with
+  the prototype's sentence, "Ask for API access", "Read how it works", and "For whoever runs your
+  systems. Say what it’s for and accept the terms; keys, webhooks and delivery logs open once access
+  is approved." Then "More you can connect", "Each one means one less list to keep in two places",
+  with the six cards in the prototype's words, each "Connected" or "Needs a key", and "Set up". Last,
+  "What these look like", with "On WhatsApp" and "Inside your own tool".
+- **Grace, on Connect WhatsApp:** "Connections" (the way back), "Connect WhatsApp", and "People check
+  in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You
+  can stop at any step; what you’ve entered is kept." Then the six steps in the prototype's words:
+  "What you need first" (with "How to get these"), "Paste three things from Meta" (Phone number ID,
+  Access token, App secret, each with the prototype's hint), "Tell Meta where to send replies" (the
+  callback address and verify token, each with "Copy", and "Waiting for Meta to check the address.
+  This page updates on its own." with "Not proven yet" until Meta has checked it), "Send yourself a
+  test", "Approve the reminder messages" and "Turn it on, and choose who uses it". Each step says
+  "Done" only when the server says it happened. The token and the app secret are never shown back.
+  Last, "Keep your number on your own system instead", with the prototype's sentence and "Read how
+  the relay works".
+- **Grace, on Connect your own tools:** "Settings", "Baridi Appliances", "Connections", "Connect your
+  own tools", and "For whoever runs Baridi Appliances’s systems. Everything here is off until you turn
+  it on, and nothing sends what anyone said in a check-in." Then, as before, the request for API
+  access and, once approved, "Setting it up", "Keys", "Be told when something happens", "Recent
+  deliveries", "How it looks inside your tool", "Show Groundwork inside your own tool", "When somebody
+  leaves" and the calls for your engineer.
+- **Wairimu, a lead; Miriam, a member; Tomas, a guest:** no Connections in the sidebar. On any of the
+  three addresses, only "Only an admin in your organisation can set this up. Ask whoever manages
+  Groundwork for your organisation." Nothing is fetched for them, and the server refuses every
+  Connections route to them.
+
+**Tests changed, and why:** the sidebar, More, the welcome card, the Suites page and the route checks
+expected the old address `/org/integrations`; the console's setup test looked for "What it does" and
+"What it looks like", which the prototype's names replaced; and the failure test followed the WhatsApp
+switch and disconnect, which moved to the new pages and still say when they fail. New: the
+Connections and WhatsApp pages as each reader sees them (23 tests), the tools page as each reader sees
+it (6 tests), and the API test above (40 tests).
+
+**Checked:** the tests for every file I changed, and both type checks, pass. **Not checked in the
+browser,** because no review can sign in (item 14). Nothing was sent: every test uses mocks, and no
+real WhatsApp, Slack, Teams or Meta was reached.
+
+**Requests to the engine:** none. The conversation on WhatsApp is unchanged; team chat waits for your
+decision first (item 29.9).
 
 ## Found on the way, for later tasks
 
