@@ -24,6 +24,17 @@ describe('every verb keeps its subject', () => {
   it('is NOT in what the synthesis appends in code after the stored prompt', () => {
     expect(SYNTHESIS_RULES).not.toContain('EVERY VERB KEEPS ITS SUBJECT');
     expect(WRITTEN_ONCE_FOR_SEVERAL_READERS).not.toContain('EVERY VERB KEEPS ITS SUBJECT');
+    expect(SYNTHESIS_RULES).not.toContain(EVERY_VERB_KEEPS_ITS_SUBJECT);
+  });
+
+  it('but the example already in that block no longer teaches a verb with no subject', () => {
+    /* An ordinary fix to an example that was always there, with no rule text added (27 September 2026). */
+    for (const block of [WRITTEN_ONCE_FOR_SEVERAL_READERS, SYNTHESIS_RULES]) {
+      const flat = block.replace(/\s+/g, ' ');
+      expect(flat).toContain('Write "Participant A says Participant A was told the target was five renewals, and Participant A has completed six."');
+      expect(flat).toContain('"You say you were told the target was five renewals, and you have completed six"');
+      expect(flat).not.toMatch(/renewals, and has completed six|renewals, and have completed six/);
+    }
   });
 
   it('is in each prompt built in code, which has no PromptVersion row', () => {

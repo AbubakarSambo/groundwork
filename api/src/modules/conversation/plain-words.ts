@@ -126,9 +126,9 @@ AND DO NOT REFER BACK TO A PERSON WITH A PRONOUN. Write the label again instead 
 that agreed with the label no longer agrees with what replaces it, and "Participant A says they were
 told the target was five" is served as "You say they were told the target was five".
 
-Write "Participant A says Participant A was told the target was five renewals, and has completed
-six." It reads repetitively to you. It is served as "You say you were told the target was five
-renewals, and have completed six", which is what the person actually reads.`;
+Write "Participant A says Participant A was told the target was five renewals, and Participant A
+has completed six." It reads repetitively to you. It is served as "You say you were told the target
+was five renewals, and you have completed six", which is what the person actually reads.`;
 
 /**
  * EVERY VERB KEEPS ITS SUBJECT.
