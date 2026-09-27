@@ -39,13 +39,15 @@ describe('the new admin', () => {
     expect(text).not.toMatch(/You can see every board and report|They never see/)
   })
 
-  it('the welcome card has the prototype\'s doors, with no Suites door until that page exists', async () => {
+  /* U.17: the Suites door came with the Suites page, in the prototype's place and words. */
+  it('the welcome card has the prototype\'s doors, Suites included now that its page exists', async () => {
     open(ADMIN)
     await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })
     const doors = [...document.querySelectorAll('.gw-welcome-door')].map(a => [a.querySelector('b')?.textContent, a.querySelector('span')?.textContent, a.getAttribute('href')])
     expect(doors).toEqual([
       ['People', 'Invite people, set roles and teams, let guests in', '/org/members'],
       ['Connections', 'Your numbers, your own address', '/org/integrations'],
+      ['Suites', 'Leave, spending and onboarding, switched on as needed', '/settings/suites'],
       ['Plan and billing', 'Seats, the card and invoices', '/billing'],
     ])
   })

@@ -72,6 +72,22 @@ const NAV_ITEMS = [
     ),
   },
   {
+    /* SUITES FOR A LEAD (E, U.17): the suites an admin has switched on, without the switches, under
+       You, as layout-computer.txt draws it for Wairimu ("Today", "Company", "You", "Suites"). The
+       server gives a lead only what is on, and refuses a member and a guest (GET /suites). */
+    label: 'Suites',
+    to: '/settings/suites',
+    leadOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2.5" y="2.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <rect x="11.5" y="2.5" width="6" height="6" rx="3" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="2.5" y="11.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="11.5" y="11.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+      </svg>
+    ),
+  },
+  {
     /*
      * "ALL CHECK-INS", BECAUSE THE RAIL ABOVE IT IS ALREADY A LIST OF CHECK-INS.
      *
@@ -154,6 +170,21 @@ const NAV_ITEMS = [
         <path d="M7.5 12.5l5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         <path d="M11 4.5l1.5-1.5a3.5 3.5 0 015 5L16 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0} />
         <path d="M9 15.5L7.5 17a3.5 3.5 0 01-5-5L4 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    /* SUITES FOR AN ADMIN (E, U.17): under the organisation's name, between Connections and Plan and
+       billing, as today-admin.txt draws it. Only an admin switches a suite on or off, on the server. */
+    label: 'Suites',
+    to: '/settings/suites',
+    adminOnly: true,
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2.5" y="2.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <rect x="11.5" y="2.5" width="6" height="6" rx="3" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="2.5" y="11.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+        <rect x="11.5" y="11.5" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
       </svg>
     ),
   },
@@ -248,6 +279,8 @@ export function navItemsFor(user: { role?: string; isPlatformAdmin?: boolean } |
   return NAV_ITEMS.filter(item => {
     if ((item as any).platformAdminOnly) return !!user?.isPlatformAdmin
     if ((item as any).adminOnly) return user?.role === 'ADMIN'
+    /* A lead of this organisation, by role. An admin has the same page under the organisation's name. */
+    if ((item as any).leadOnly) return user?.role === 'LEAD'
     /* Whoever oversees more than one check-in: the org's, or a department's. */
     if ((item as any).oversightOnly) return user?.role === 'ADMIN' || user?.role === 'LEAD'
     /* Everybody in the organisation, and not a guest from another company. */

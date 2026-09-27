@@ -12,8 +12,8 @@ import { Button, Tag } from '@/components/gw/kit'
  * check-ins list; U.5 moved them onto Today (pages/today/TodayPage.tsx), where the prototype has them.
  *
  * THE CARD'S DOORS, as the prototype draws them under the heading: People, Connections, Suites, and
- * Plan and billing, each with its line. Suites is left out until the Suites page exists (U.17), so no
- * door leads nowhere. Connections names WhatsApp only while WhatsApp is switched on in Groundwork.
+ * Plan and billing, each with its line. Suites came with its page (U.17). Connections names WhatsApp
+ * only while WhatsApp is switched on in Groundwork.
  *
  * WHAT IS HELD. The welcome card's sentence "You can see every board and report. They never see
  * anyone's questions to Ask Groundwork, anyone's own report, or a lead's private notes." goes further
@@ -65,6 +65,7 @@ export function doorsFor(f: Pick<RolloutFacts, 'whatsappOn'>): { title: string; 
   return [
     { title: 'People', line: 'Invite people, set roles and teams, let guests in', to: '/org/members' },
     { title: 'Connections', line: f.whatsappOn ? 'WhatsApp, your numbers, your own address' : 'Your numbers, your own address', to: '/org/integrations' },
+    { title: 'Suites', line: 'Leave, spending and onboarding, switched on as needed', to: '/settings/suites' },
     { title: 'Plan and billing', line: 'Seats, the card and invoices', to: '/billing' },
   ]
 }

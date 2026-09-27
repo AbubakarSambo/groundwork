@@ -39,12 +39,14 @@ const labels = (u: any) => navItemsFor(u).map(i => i.label)
 /* U.5: Today is everybody's, first of the pages. These lists gained it when the page came.
    U.12: so is You, straight after Today, as layout-computer.txt draws it.
    U.15: Company sits between them, for everybody in the organisation but a guest from another
-   company. Signed out (null), there is no organisation, so no Company. */
+   company. Signed out (null), there is no organisation, so no Company.
+   U.17: Suites, for an admin under the organisation's name between Connections and Plan and
+   billing, and for a lead after You, as the prototype draws each. A member has none. */
 
 describe('who sees what', () => {
   it('an admin sees the organisation\'s pages', () => {
     // The design system's names for the organisation's pages: People, Connections, Plan and billing.
-    expect(labels(admin)).toEqual(['Today', 'Company', 'You', 'All check-ins', 'Boards', 'People', 'Connections', 'Plan and billing', 'Settings'])
+    expect(labels(admin)).toEqual(['Today', 'Company', 'You', 'All check-ins', 'Boards', 'People', 'Connections', 'Suites', 'Plan and billing', 'Settings'])
   })
 
   it('a lead gets the boards door and nothing else that is the org\'s', () => {
@@ -52,7 +54,7 @@ describe('who sees what', () => {
       A lead oversees a department's check-ins, so the one page across several is theirs. People,
       Connect and Billing are the organisation's and would bounce them.
     */
-    expect(labels(lead)).toEqual(['Today', 'Company', 'You', 'All check-ins', 'Boards', 'Settings'])
+    expect(labels(lead)).toEqual(['Today', 'Company', 'You', 'Suites', 'All check-ins', 'Boards', 'Settings'])
   })
 
   it('a team member sees the check-ins and their own settings, and nothing that would bounce them', () => {
@@ -61,6 +63,11 @@ describe('who sees what', () => {
 
   it('a guest from another company is not offered this organisation\'s Company page', () => {
     expect(labels({ role: 'GUEST' })).not.toContain('Company')
+  })
+
+  it('Suites goes to the one Suites page, and only for an admin or a lead', () => {
+    for (const u of [admin, lead]) expect(navItemsFor(u).filter(i => i.label === 'Suites').map(i => i.to)).toEqual(['/settings/suites'])
+    for (const u of [member, { role: 'GUEST' }, null]) expect(labels(u)).not.toContain('Suites')
   })
 
   it('the platform back-office is for Groundwork, not for an org admin', () => {

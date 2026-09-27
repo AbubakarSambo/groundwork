@@ -166,7 +166,7 @@ describe('the sidebar, as a participant and as an admin read it', () => {
   it('a participant sees their check-ins and their own menu, and no organisation pages', () => {
     const { rail } = shell({ ...LEAD, id: 'u-other', firstName: 'Adam', lastName: 'Grunewald' })
     expect(rail).toHaveTextContent('Coamana growth, Q3')
-    expect(within(rail).queryByRole('link', { name: /People|Connections|Plan and billing|Boards/ })).toBeNull()
+    expect(within(rail).queryByRole('link', { name: /People|Connections|Suites|Plan and billing|Boards/ })).toBeNull()
     expect(within(rail).queryAllByRole('button', { name: /^Rename / })).toHaveLength(0)
   })
 
@@ -175,9 +175,12 @@ describe('the sidebar, as a participant and as an admin read it', () => {
     expect(within(rail).getByRole('link', { name: 'Boards' })).toHaveAttribute('href', '/boards')
     const headings = [...rail.querySelectorAll('.gw-rl-h')].map(h => h.textContent)
     expect(headings).toEqual(['Check-ins', 'Coamana'])
-    for (const [name, href] of [['People', '/org/members'], ['Connections', '/org/integrations'], ['Plan and billing', '/billing']]) {
+    for (const [name, href] of [['People', '/org/members'], ['Connections', '/org/integrations'], ['Suites', '/settings/suites'], ['Plan and billing', '/billing']]) {
       expect(within(rail).getByRole('link', { name })).toHaveAttribute('href', href)
     }
+    /* U.17: Suites sits under the organisation's name, between Connections and Plan and billing, as today-admin.txt has it. */
+    const orgPages = [...rail.querySelectorAll('.gw-rl-h + .gw-rl-list a')].map(a => a.textContent)
+    expect(orgPages.slice(-4)).toEqual(['People', 'Connections', 'Suites', 'Plan and billing'])
     expect((rail.querySelector('.gw-rl-org') as HTMLElement)).toHaveTextContent('Admin')
   })
 })
@@ -214,5 +217,20 @@ describe('Company and You in the sidebar (D2, U.15; C2, U.12), as layout-compute
     const pages = [...rail.querySelectorAll('.gw-rl-pages a')]
     expect(pages[2].getAttribute('href')).toBe('/you')
     expect(pages[2].textContent).toBe('You')
+  })
+})
+
+describe('Suites in the sidebar (E, U.17), as the prototype draws it for each reader', () => {
+  it('a lead has Suites straight after You, and no organisation pages', () => {
+    const { rail } = shell({ ...LEAD, role: 'LEAD' })
+    const pages = [...rail.querySelectorAll('.gw-rl-pages a')]
+    expect(pages.slice(0, 4).map(a => a.textContent)).toEqual(['Today', 'Company', 'You', 'Suites'])
+    expect(pages[3].getAttribute('href')).toBe('/settings/suites')
+    expect(within(rail).queryByRole('link', { name: /People|Connections|Plan and billing/ })).toBeNull()
+  })
+
+  it('a member has no Suites, because the server would refuse them', () => {
+    const { rail } = shell(LEAD)
+    expect(within(rail).queryByRole('link', { name: 'Suites' })).toBeNull()
   })
 })
