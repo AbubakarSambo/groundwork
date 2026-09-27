@@ -141,7 +141,7 @@ export function GroundsListPage() {
 
   const now = new Date()
   const me = user?.id
-  const rows = (grounds as unknown as ListRow[]).map(g => ({ g, reads: howARowReads(g, me, now) }))
+  const rows = (grounds as unknown as ListRow[]).map(g => ({ g, reads: howARowReads(g, me, now, { isAdmin }) }))
   const open = rows.filter(r => !isFinished(r.g))
   const youRun = byWhatNeedsYou(open.filter(r => !!me && r.g.initiatorId === me))
   const youreIn = byWhatNeedsYou(open.filter(r => r.g.initiatorId !== me && (r.g.participants ?? []).some(p => !!me && p.userId === me)))

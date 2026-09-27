@@ -1,3 +1,4 @@
+import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
 import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
@@ -1610,7 +1611,17 @@ export function GroundAdminPage() {
           the creator sees a ground that looks finished, adds somebody, and gets a
           refusal with no explanation of who has to act.
         */}
-        {(ground as any).status === 'AWAITING_APPROVAL' && (
+        {/* An admin who is not its lead decides here, instead of reading the lead's banner (U.5 review). */}
+        {(ground as any).status === 'AWAITING_APPROVAL' && isOrgAdmin && !isInitiator && (
+          <AnAdminDecidesWhetherItStarts
+            groundId={id!}
+            setUpBy={(() => {
+              const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') as any
+              return ([lead?.user?.firstName, lead?.user?.lastName].filter(Boolean).join(' ').trim() || lead?.nameGiven?.trim()) || null
+            })()}
+          />
+        )}
+        {(ground as any).status === 'AWAITING_APPROVAL' && !(isOrgAdmin && !isInitiator) && (
           <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
               Waiting for an admin to accept this check-in

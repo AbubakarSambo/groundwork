@@ -136,7 +136,7 @@ function nextSessionOn(g: ListRow, now: Date): Date | null {
   return future ? new Date(future) : null
 }
 
-export function howARowReads(g: ListRow, me: string | null | undefined, now: Date = new Date()): RowReads {
+export function howARowReads(g: ListRow, me: string | null | undefined, now: Date = new Date(), reader: { isAdmin?: boolean } = {}): RowReads {
   const forWhat = g.scenario ? sentenceCase(scenarioLabel(g.scenario, g.brief)) : ''
   const iRunIt = !!me && g.initiatorId === me
   const planned = g.glance?.progress?.roundsPlanned
@@ -171,7 +171,8 @@ export function howARowReads(g: ListRow, me: string | null | undefined, now: Dat
   let needs: RowReads['needs'] = null
   const a = railAttention(g as never, me, now)
   const out = whenItRunsOut(g as never)
-  if (g.status === 'AWAITING_APPROVAL') needs = { text: 'Waiting for an admin', tone: 'plain' }
+  /* Waiting for an admin: to the admin, it is theirs to approve (U.5 review); to anyone else, it is waiting. */
+  if (g.status === 'AWAITING_APPROVAL') needs = reader.isAdmin ? { text: 'Yours to approve', tone: 'action' } : { text: 'Waiting for an admin', tone: 'plain' }
   /* REPORT_READY is a legacy status nothing writes now; rows written before the release change carry it. */
   else if (g.reportWaitingForMe || g.status === 'REPORT_READY') needs = { text: 'Your report is ready', tone: 'proven' }
   else if (hasStalled(g.status) || out.state === 'out') needs = { text: 'Out of time', tone: 'attention' }
