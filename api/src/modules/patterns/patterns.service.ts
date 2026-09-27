@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
 import { whatWasSeenLastPeriod, lastPeriodBlockFor, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
@@ -873,9 +874,10 @@ export class PatternsService {
 
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: created.participantId },
-      select: { email: true, ground: { select: { organizationId: true } } },
+      select: { email: true, userId: true, ground: { select: { organizationId: true } } },
     });
-    const roster = participant?.email
+    /* A guest's detection is theirs, never an entry's on the host's list. See a-guest-is-never-somebody-on-the-hosts-list. */
+    const roster = participant?.email && !(await isAGuestIn(this.prisma, participant.ground.organizationId, participant))
       ? await this.prisma.person.findFirst({
           where: { organizationId: participant.ground.organizationId, email: participant.email.toLowerCase() },
           select: { externalId: true },

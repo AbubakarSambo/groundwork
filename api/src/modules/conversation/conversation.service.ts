@@ -1,4 +1,5 @@
 import { theLeadByName } from './the-lead-has-a-name';
+import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
@@ -3709,6 +3710,8 @@ export class ConversationService {
         ? (await this.prisma.user.findUnique({ where: { id: checkIn.participant.userId }, select: { email: true } }))?.email
         : null;
       if (!email) return [] as any[];
+      /* A guest's check-in never reads the records of an entry on the host's list that shares their address. See a-guest-is-never-somebody-on-the-hosts-list. */
+      if (await isAGuestIn(this.prisma, ground.organizationId, { userId: checkIn.participant.userId, userEmail: email })) return [] as any[];
       const person = await this.prisma.person.findFirst({
         where: { organizationId: ground.organizationId, email },
         select: { externalId: true },
@@ -7659,9 +7662,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const me = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
-      select: { user: { select: { email: true } } },
+      select: { userId: true, email: true, user: { select: { email: true } } },
     });
-    const person = me?.user?.email
+    /* A guest's words are never filed as the work of an entry on the host's list. See a-guest-is-never-somebody-on-the-hosts-list. */
+    const person = me?.user?.email && !(await isAGuestIn(this.prisma, ground.organizationId, { userId: me.userId, email: me.email, userEmail: me.user.email }))
       ? await this.prisma.person.findFirst({
         where: { organizationId: ground.organizationId, email: me.user.email },
         select: { externalId: true },
@@ -8189,9 +8193,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         if (kind === 'COMMITMENT') {
           const person = await this.prisma.groundParticipant.findUnique({
             where: { id: target },
-            select: { email: true, ground: { select: { organizationId: true } } },
+            select: { email: true, userId: true, ground: { select: { organizationId: true } } },
           });
-          const roster = person?.email
+          /* A guest's word is theirs, never an entry's on the host's list. See a-guest-is-never-somebody-on-the-hosts-list. */
+          const roster = person?.email && !(await isAGuestIn(this.prisma, person.ground.organizationId, person))
             ? await this.prisma.person.findFirst({
                 where: { organizationId: person.ground.organizationId, email: person.email.toLowerCase() },
                 select: { externalId: true },

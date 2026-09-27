@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CheckInStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -290,6 +291,8 @@ export class WhatsAppForAnOrganisationService {
         select: { id: true, sessionNumber: true, status: true, ground: { select: { id: true, organizationId: true, label: true } }, participant: { select: { userId: true, email: true } } },
       });
       if (!c?.participant.userId) return;
+      /* A guest's report never goes to the phone of an entry on the host's list that shares their address. See a-guest-is-never-somebody-on-the-hosts-list. */
+      if (await isAGuestIn(this.prisma, c.ground.organizationId, c.participant)) return;
       const person = c.participant.email ? await this.prisma.person.findFirst({ where: { organizationId: c.ground.organizationId, email: c.participant.email }, select: { phone: true } }) : null;
       if (!person?.phone) return;
       const alreadySent = await this.prisma.whatsAppSend.findFirst({ where: { checkInId: c.id, kind: { in: ['report', 'report:template'] }, sentAt: { not: null } }, select: { id: true } }).catch(() => null);
