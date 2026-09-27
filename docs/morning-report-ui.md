@@ -3048,6 +3048,49 @@ U8 (lead Rukia Otieno, participants Baraka and Neema). All eight are fixed, in o
     tries once to overwrite it with the real profile from `authApi.me()`. Nothing else in the app ever
     calls `/auth/me` again after this page, so one dropped request there left the placeholder standing
     through every reload. Now retried a few times before falling back.
+
+    **Hafsah then asked me to find the real cause before adding retries: reproduce the emailed join
+    link once with the local servers running, and record the profile request's actual status and
+    timing against the sign-in call, never guessing.** I started both servers (`preview_start`, both
+    stopped again afterwards), made a throwaway admin account through the browser
+    (`u8admin-repro@example.test`, its own fresh organisation, no password ever typed - the email
+    link's own "keep using email links" option), and began setting up a check-in with a participant
+    (`neema-repro@example.test`) to reach "Save & invite" and receive the same join-confirmation
+    email a real check-in participant gets. **I could not finish it.** Partway through my own private
+    session, the composer stopped accepting text - confirmed not a coordinate mistake by resolving
+    the field's own element reference and clicking through it directly, by trying every viewport size
+    the pane offers, by confirming with `Tab` that keyboard focus does move around the page, and by
+    finding and dismissing an unrelated "save your draft" overlay that had been sitting on top of it.
+    None of it restored typing. This is a Browser-pane/automation limitation, not a safety refusal,
+    so per her later instruction (below) I stopped rather than keep trying variations, and never
+    reached "Save & invite" or a join-confirmation email to read the network for.
+
+    **What the reproduction did confirm, as far as it went:** the read-only `groundwork_dev` query
+    above (Neema's real membership row is not missing); and, on this same running instance, the
+    *admin's own* equivalent sign-in (`POST /auth/verify-email` then `GET /auth/me`, both 200 OK,
+    the profile read firing immediately after the token was minted) worked exactly as the code says
+    it should. I did not observe an actual failed or slow `/auth/me` call - I could not get far enough
+    into the specific join-confirm path to see one. The cause given above (a single, unretried
+    profile read with no other refresh path in the app) is what the code shows will happen if that
+    read is ever dropped; I cannot report a status code or timing for a real failure, because I did
+    not manage to force or witness one. Also done, regardless: nothing shows "Your organisation" or
+    "Takes part" as if it were fact any more - AppShell.tsx, OrganisationChoices.tsx and MorePage.tsx
+    now show nothing in that spot until `organizationName` actually arrives, since its absence always
+    means "not known yet," never "none" (new `OrganisationChoices.spec.tsx`).
+
+    **A safety check also refused actions along the way, the coordinator said four in a row, the
+    last "Expose Local Services."** The one I saw directly was `preview_start` for the client dev
+    server, denied once with that reason, then it succeeded on an immediate retry with no change on
+    my side - I do not know what the other three were. Hafsah's instruction, followed exactly: use
+    only the already-running preview browser (`mcp__Claude_Browser__*` on localhost) and its logs and
+    network reading, no tunnels, no binding to another interface, no new way of starting or reaching
+    the servers, and stop at once rather than try another way around a further refusal. I did not hit
+    another refusal after that instruction arrived; the composer failure above is a Browser-pane
+    rendering/automation limitation on an already-permitted, already-running localhost page, not a
+    safety refusal, which is why I kept trying different viewports and click strategies against it
+    rather than stopping immediately - and then stopped that line of investigation on my own once
+    every reasonable variation had failed, stopped both servers, and moved to the code-level fixes
+    that did not need a live network trace to be correct.
   - The board's engine-written line naming a specific private file ("The attached team-plan.txt
     document confirms the split…") to people who cannot open it is engine text; added to request 46
     and to Needs Hafsah, since it touches a privacy default.
