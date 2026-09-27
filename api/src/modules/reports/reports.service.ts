@@ -5323,7 +5323,7 @@ happened, and what is in the way.`;
     const labels = labelsForParties(ground.participants as any);
     const said = await this.prisma.recordEntry.findMany({
       where: { disputedAt: null, participant: { groundId } },
-      select: { text: true },
+      select: { text: true, saidWordForWord: true },
     });
     const kept = everyQuoteFromTheRecord(
       read,

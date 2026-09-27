@@ -1672,6 +1672,11 @@ model RecordEntry {
   /// Set by the person this row is about when they say it is not what they said. A disputed row stays
   /// on the record and stops counting toward every read. See the-wall-between-said-and-extracted.
   disputedAt           DateTime?      @map("disputed_at")
+  /// True only when this line is the person's own words: its text appears, as one unbroken passage,
+  /// in what they typed in this check-in (forgiving only capitals, spacing, end punctuation and curly
+  /// or straight marks). A line the record reader tidied, joined or bracketed stays false. A report
+  /// may only quote a line that is true. See reports/a-quote-is-what-they-said.
+  saidWordForWord      Boolean        @default(false) @map("said_word_for_word")
 
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
   checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)

@@ -20,6 +20,10 @@
  * that these were somebody's words was wrong. The same rule the conversation already keeps for its
  * own replies, in a-quote-has-to-match-what-they-said.ts.
  *
+ * AND ONLY A LINE THAT IS THEIR OWN WORDS. A record line is stamped `saidWordForWord` when it is
+ * written, true only where it is a passage of what the person typed (see saidWordForWord below).
+ * A tidied line is never quoted from.
+ *
  * WHAT COUNTS AS "FOUND", AND NOTHING ELSE DOES. The same words in the same order, allowing only:
  *   - capitals, and how much space is between words;
  *   - punctuation at either end of the quote, which the sentence around it owns;
@@ -280,20 +284,41 @@ export function everyQuoteFromTheRecord<T>(
   return { value: walk(value) as T, restored, unquoted };
 }
 
+/* The record reader's note of what a word referred to. It is the reader's, never the person's. */
+const THE_READERS_NOTE = /\s*\[INFERRED:[^\]]*\]/gi;
+
+/**
+ * WHETHER A RECORD LINE IS THE PERSON'S OWN WORDS, decided once, when the line is written, where
+ * what they typed can be read.
+ *
+ * About one record line in ten is the record reader's tidied version of what somebody said: two
+ * sentences joined, a name put in square brackets, a clause trimmed. It is right about what they
+ * meant and it is not their words, so a quote of it would be the model's copy. True only when the
+ * whole line, without the reader's note, appears as one unbroken passage in what this person typed
+ * in this check-in, forgiving exactly what a quote is forgiven: capitals, spacing, end punctuation,
+ * and curly or straight marks.
+ */
+export function saidWordForWord(line: string | null | undefined, whatTheyTyped: string[]): boolean {
+  const text = String(line ?? '').replace(THE_READERS_NOTE, '').trim();
+  if (!text) return false;
+  return theRecordsWordsFor(text, whatTheyTyped) !== null;
+}
+
 /**
  * THE RECORD A REPORT MAY QUOTE, AS ONE LIST OF LINES.
  *
- * What each person said, as the record holds it, without the bracket the record reader adds when it
- * had to infer what a word referred to ("[INFERRED: 'her' refers to Priti]"), which is the reader's
- * note and not anybody's words. A disputed line is still what its author said, so it can be quoted;
- * the objection beside it is not added here. And the lead's own words at set-up.
+ * Only the lines that are the person's own words (`saidWordForWord`), because a quote of a tidied
+ * line is a model's copy. Without the reader's note ("[INFERRED: 'her' refers to Priti]"). A disputed
+ * line is still what its author said, so it can be quoted; the objection beside it is not added here.
+ * And the lead's own words at set-up - the brief and each role as they gave it - which they typed.
  */
 export function theLinesAQuoteMayComeFrom(
-  entries: { text: string | null | undefined }[],
+  entries: { text: string | null | undefined; saidWordForWord?: boolean | null }[],
   setUp: (string | null | undefined)[] = [],
 ): string[] {
   const lines = entries
-    .map((e) => String(e.text ?? '').replace(/\s*\[INFERRED:[^\]]*\]/gi, '').trim())
+    .filter((e) => e.saidWordForWord === true)
+    .map((e) => String(e.text ?? '').replace(THE_READERS_NOTE, '').trim())
     .filter(Boolean);
   return [...lines, ...setUp.map((s) => String(s ?? '').trim()).filter(Boolean)];
 }

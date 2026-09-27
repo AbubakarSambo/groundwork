@@ -49,9 +49,14 @@ const PARTICIPANTS = [
 /* Labels as labelsForParties hands them out for these two. */
 const ZAINABS_LABEL = 'Participant A';
 
+/* A line the record reader tidied: what Zainab meant, in the reader's words. It is on the record and
+   the report may read it, but it is not an original, so nothing may quote it. */
+const TIDIED = 'The three partnerships have had no progress since the sales work began.';
+
 const RECORD_ROWS = [
-  { id: 'r1', participantId: 'pid-2', participant: { id: 'pid-2' }, checkIn: { sessionNumber: 1 }, type: 'WORRY', text: ZAINAB_SAID, disputedAt: null, createdAt: new Date() },
-  { id: 'r2', participantId: 'pid-1', participant: { id: 'pid-1' }, checkIn: { sessionNumber: 1 }, type: 'SUCCESS_DEFINITION', text: NADIA_SAID, disputedAt: null, createdAt: new Date() },
+  { id: 'r1', participantId: 'pid-2', participant: { id: 'pid-2' }, checkIn: { sessionNumber: 1 }, type: 'WORRY', text: ZAINAB_SAID, disputedAt: null, saidWordForWord: true, createdAt: new Date() },
+  { id: 'r2', participantId: 'pid-1', participant: { id: 'pid-1' }, checkIn: { sessionNumber: 1 }, type: 'SUCCESS_DEFINITION', text: NADIA_SAID, disputedAt: null, saidWordForWord: true, createdAt: new Date() },
+  { id: 'r3', participantId: 'pid-2', participant: { id: 'pid-2' }, checkIn: { sessionNumber: 1 }, type: 'PROGRESS', text: TIDIED, disputedAt: null, saidWordForWord: false, createdAt: new Date() },
 ];
 const THE_ORIGINALS = [ZAINAB_SAID, NADIA_SAID, PARTICIPANTS[1].roleAsDescribed!];
 
@@ -139,6 +144,7 @@ function harness() {
             startWith: ZAINABS_LABEL,
           }],
           whatThisCannotTellYou: [],
+          whatWeFailedToAsk: [{ about: `Whether "${TIDIED}" is still true.` }],
         };
       }
       /* The synthesis itself. One quote the record holds, one it does not. */
@@ -215,6 +221,16 @@ describe('the quote a person reads is what they said', () => {
       expect(quotes.filter((q) => !q.inTheRecord)).toEqual([]);
     });
   }
+
+  it('a quote of a line the record reader tidied is never served as a quote, to anybody', () => {
+    for (const who of ['lead', 'zainab', 'anonymous'] as const) {
+      const all = everyString(served[who]).join('\n');
+      expect(all).not.toContain(`"${TIDIED}"`);
+      expect(all).not.toContain(`“${TIDIED}”`);
+    }
+    /* The line is in the stored judgement, as a plain statement about the record. */
+    expect(stored.theJudgement.whatWeFailedToAsk[0].about).toBe(`Whether ${TIDIED} is still true.`);
+  });
 
   it('Nadia reads Zainab\'s quote with "Nadia" in it, and the sentence around it says "your request"', () => {
     const finding = served.lead.findings.find((f: any) => f.participantId === 'pid-2').text;

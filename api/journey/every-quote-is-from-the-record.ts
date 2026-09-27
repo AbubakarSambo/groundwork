@@ -6,7 +6,8 @@
  * this proves it on a whole run. It reads the reports and boards a scenario run captured, as each
  * reader was served them (lead report, lead board, participant report, participant board), finds
  * every quotation in them, and looks each one up in that check-in's record in the database: every
- * record line, and the lead's own words at set-up. A quote passes only if it is there character for
+ * record line stamped as the person's own words (`saidWordForWord`), and the lead's own words at
+ * set-up. A line the record reader tidied is not an original, so a quote of it fails here. A quote passes only if it is there character for
  * character.
  *
  * WHAT IT DOES NOT COUNT, AND WHY:
@@ -61,9 +62,10 @@ async function main() {
         console.warn(`${file}: ground ${run.groundId} is not in this database, skipped.`);
         continue;
       }
-      const lines = await prisma.recordEntry.findMany({ where: { participant: { groundId: run.groundId } }, select: { text: true } });
+      /* Only the lines that are the person's own words, as the report may quote them. */
+      const lines = await prisma.recordEntry.findMany({ where: { participant: { groundId: run.groundId }, saidWordForWord: true }, select: { text: true } });
       const record = [
-        ...lines.map((l) => l.text),
+        ...lines.map((l) => l.text.replace(/\s*\[INFERRED:[^\]]*\]/gi, '')),
         ground.brief ?? '',
         ...ground.participants.flatMap((p) => [p.roleAsDescribed ?? '', p.remitAsGiven ?? '']),
       ].filter(Boolean).map((t) => t.normalize('NFC'));

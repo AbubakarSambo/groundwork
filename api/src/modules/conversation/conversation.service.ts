@@ -67,7 +67,7 @@ import { detectFunction, detectUniversalModes } from '../board/function-detectio
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { displayName } from '../reports/party-labels';
-import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom } from '../reports/a-quote-is-what-they-said';
+import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, saidWordForWord } from '../reports/a-quote-is-what-they-said';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import {
   plainWordsForEveryoneElse,
@@ -6988,6 +6988,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * The text is stored clean, which is the part that ends the leak: a marker that is not in the
      * text cannot be printed by a reader who forgot it was there.
      */
+    /* What this person typed in this check-in, every turn of it, for the stamp below. */
+    const whatTheyTyped = theirs.map((t) => String(t.content ?? ''));
     await this.prisma.recordEntry.createMany({
       data: valid.map((e) => {
         const v = VALID_VERIFIABILITY.includes(e.verifiability) ? e.verifiability : 'LOW';
@@ -7002,6 +7004,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           /* A half sentence that kept its "and" is not a line anybody should read under a heading.
              See half-a-sentence-is-not-a-line-in-a-report. */
           text: theLineWithoutItsDanglingJoin(e.text),
+          /* Whether the line as stored is their own words or the reader's tidied version. Only the
+             first may ever be quoted to anybody. See reports/a-quote-is-what-they-said. */
+          saidWordForWord: saidWordForWord(theLineWithoutItsDanglingJoin(e.text), whatTheyTyped),
         };
       }),
     });
@@ -8603,7 +8608,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const entries = await this.prisma.recordEntry.findMany({
       where: { participantId, participant: { groundId } },
       orderBy: { createdAt: 'asc' },
-      select: { type: true, text: true },
+      select: { type: true, text: true, saidWordForWord: true },
     });
     if (entries.length === 0) return;
 

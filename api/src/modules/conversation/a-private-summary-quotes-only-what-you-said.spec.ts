@@ -14,7 +14,7 @@ describe('a private summary quotes only what you said', () => {
     const prisma: any = {
       recordEntry: {
         findMany: jest.fn(async () => [
-          { type: 'WORRY', text: "I can't proceed with the security review until the InfoSec contractor is back on the 29th." },
+          { type: 'WORRY', text: "I can't proceed with the security review until the InfoSec contractor is back on the 29th.", saidWordForWord: true },
         ]),
       },
       groundParticipant: { update: jest.fn(async (a: any) => { stored = JSON.parse(a.data.soloArtifact); return {}; }) },

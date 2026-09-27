@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  saidWordForWord,
   everyQuoteFromTheRecord,
   quotationsIn,
   quotesNotWordForWord,
@@ -21,9 +22,11 @@ import { withoutWhoSaidIt } from './what-the-respondents-get';
  */
 
 const RECORD = theLinesAQuoteMayComeFrom([
-  { text: "Since March 11th, I've been almost entirely focused on inbound sales support as requested by Nadia, which has meant no progress on the three partnerships." },
-  { text: "I asked her on the 8th and chased on the 15th. [INFERRED: 'her' refers to Priti]" },
-  { text: 'The handover — it was late, and the other party never signed.' },
+  { text: "Since March 11th, I've been almost entirely focused on inbound sales support as requested by Nadia, which has meant no progress on the three partnerships.", saidWordForWord: true },
+  { text: "I asked her on the 8th and chased on the 15th. [INFERRED: 'her' refers to Priti]", saidWordForWord: true },
+  { text: 'The handover — it was late, and the other party never signed.', saidWordForWord: true },
+  /* The record reader's tidied version of something said: right about it, and not their words. */
+  { text: '[Tobi] has followed up on specific action items with each client.', saidWordForWord: false },
 ], ['Partnerships lead. Three named partnerships to close this year.']);
 
 const PEOPLE = [
@@ -65,6 +68,11 @@ describe('a quote is what they said, restored before the report is stored', () =
     expect(RECORD).toContain('I asked her on the 8th and chased on the 15th.');
     expect(whatTheySaidInQuotes('"her refers to Priti"', RECORD).text).toBe('her refers to Priti');
     expect(whatTheySaidInQuotes('"I asked her on the 8th"', RECORD).text).toBe('"I asked her on the 8th"');
+  });
+
+  it('a tidied record line is never an original, so a quote of it is not a quote', () => {
+    expect(RECORD.join('\n')).not.toContain('Tobi');
+    expect(whatTheySaidInQuotes('She said "[Tobi] has followed up on specific action items with each client."', RECORD).text).not.toContain('"');
   });
 
   it('a whole word only: "minor noise" is not found inside "minor noises"', () => {
@@ -174,5 +182,31 @@ describe('the report pass runs once, on everything stored', () => {
   it('and the discovery read too', () => {
     const d = src.slice(src.indexOf('async readAndKeepTheDirection'), src.indexOf('private async readTheDirectionInChunks'));
     expect(d).toContain('everyQuoteFromTheRecord(');
+  });
+});
+
+describe('whether a record line is their own words, stamped when it is written', () => {
+  const TYPED = ["Honestly? Since March 11th I've been almost entirely focused on inbound sales support, as requested by Nadia. It's been a lot."];
+
+  it('a line that is a passage of what they typed is theirs, forgiving capitals, spacing and end punctuation', () => {
+    expect(saidWordForWord("since March 11th I've been almost entirely focused on inbound sales support.", TYPED)).toBe(true);
+    expect(saidWordForWord("It’s been a lot", TYPED)).toBe(true);
+  });
+
+  it('a line the reader joined, reworded or bracketed is not', () => {
+    expect(saidWordForWord("Since March 11th I've been focused on inbound sales support.", TYPED)).toBe(false);
+    expect(saidWordForWord('as requested by Nadia. It has been a lot.', TYPED)).toBe(false);
+    expect(saidWordForWord('[Nadia] asked for sales support.', TYPED)).toBe(false);
+  });
+
+  it("the reader's note is not counted against it", () => {
+    expect(saidWordForWord("It's been a lot. [INFERRED: 'it' refers to the sales work]", TYPED)).toBe(true);
+  });
+
+  it('and the record writer stamps every line it writes, from what the person typed in that check-in', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(src).toMatch(/const whatTheyTyped = theirs\.map\(/);
+    expect(src).toMatch(/saidWordForWord: saidWordForWord\(theLineWithoutItsDanglingJoin\(e\.text\), whatTheyTyped\)/);
   });
 });
