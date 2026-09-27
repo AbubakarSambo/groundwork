@@ -44,6 +44,19 @@ const NAV_ITEMS = [
     ),
   },
   {
+    /* YOU (C2, U.12): what is yours, across your check-ins, as layout-computer.txt draws it under
+       Today ("Today", "Company", "You"). Everybody has one, and only they may read it. Company
+       joins between the two when that page exists (U.15). */
+    label: 'You',
+    to: '/you',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="6.5" r="3.5" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
+        <path d="M3 17.5c0-3.3 3.1-5.5 7-5.5s7 2.2 7 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     /*
      * "ALL CHECK-INS", BECAUSE THE RAIL ABOVE IT IS ALREADY A LIST OF CHECK-INS.
      *

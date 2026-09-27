@@ -1821,6 +1821,43 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: '�
   .gw-today { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 24px 16px 96px; }
 }
 
+/* ── THE YOU BOARD (C2, U.12), as you-board-miriam.jpg draws it: white cards on the cream page,
+   three across on a computer, one under another on a phone, and nothing wider than the screen. */
+.gw-you { box-sizing: border-box; width: 100%; max-width: 1140px; margin: 0 auto; padding: 40px 32px 80px; overflow-wrap: anywhere; }
+.gw-you-h1 { margin: 0 0 6px; color: var(--gw-text); }
+.gw-you-sub { margin: 0 0 20px; font-size: 16px; line-height: 1.5; color: var(--gw-sub); }
+.gw-you-h2 { margin: 0 0 16px; color: var(--gw-text); }
+.gw-you-h2-small { margin: 0 0 12px; color: var(--gw-text); }
+.gw-you-quiet { color: var(--gw-sub); }
+.gw-you-card { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; min-width: 0; }
+.gw-you-card h3 { margin: 0 0 8px; color: var(--gw-text); }
+.gw-you-card p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.5; color: var(--gw-text); }
+.gw-you-card p:last-child { margin-bottom: 0; }
+.gw-you-card-warm { background: var(--gw-amber-bg); border-color: transparent; }
+.gw-you-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; align-items: start; }
+.gw-you-grid .gw-you-card { margin-bottom: 0; }
+.gw-you-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gw-you-list { list-style: none; margin: 0; padding: 0; }
+.gw-you-list li { padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gw-you-section { margin: 24px 0; }
+.gw-you-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.gw-you-section-head h2 { margin: 0; color: var(--gw-text); }
+.gw-you-section-head span { color: var(--gw-sub); }
+.gw-you-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
+.gw-you-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gw-you-row-said { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; }
+.gw-you-row-report { grid-template-columns: minmax(0, 1fr) auto auto; }
+.gw-you-row-each { grid-template-columns: minmax(0, 1fr) auto; }
+.gw-you-row a { color: var(--gw-navy); font-weight: 700; text-decoration: none; }
+.gw-you-row a:hover, .gw-you-row a:focus-visible { text-decoration: underline; }
+.gw-you-data { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 24px; }
+@media (max-width: 900px) {
+  .gw-you { padding: 24px 16px 96px; }
+  .gw-you-grid, .gw-you-grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .gw-you-row-said { grid-template-columns: minmax(0, 1fr) auto; }
+  .gw-you-row-said > span:nth-child(2), .gw-you-row-said > span:nth-child(3) { grid-column: 1; }
+}
+
 /* ── THE CHECK-INS LIST (C1, U.5), as check-ins.jpg draws it: a white table per section, four
    columns on a computer; on a phone each row becomes a short stack, and nothing is wider than the
    screen. */

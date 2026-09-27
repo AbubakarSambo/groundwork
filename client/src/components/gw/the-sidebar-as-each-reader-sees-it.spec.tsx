@@ -199,3 +199,12 @@ describe('Today in the sidebar (C1, U.5), as layout-computer.txt draws it', () =
     expect(none.rail.querySelector('.gw-rl-pages a')?.textContent).toBe('Today')
   })
 })
+
+describe('You in the sidebar (C2, U.12), as layout-computer.txt draws it', () => {
+  it('sits straight after Today and goes to the You board', () => {
+    const { rail } = shell(LEAD)
+    const pages = [...rail.querySelectorAll('.gw-rl-pages a')]
+    expect(pages[1].getAttribute('href')).toBe('/you')
+    expect(pages[1].textContent).toBe('You')
+  })
+})

@@ -200,3 +200,10 @@ describe('the floating Feedback button', () => {
     expect(screen.getByRole('button', { name: /^Feedback\. Drag to move/ })).toBeInTheDocument()
   })
 })
+
+describe('"More" offers You (C2, U.12), since the phone\'s bar has no room for it', () => {
+  it('links to the You board', () => {
+    mount(ADMIN)
+    expect(hrefOf(main(), 'You')).toEqual(['/you'])
+  })
+})

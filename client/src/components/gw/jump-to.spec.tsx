@@ -83,8 +83,9 @@ describe('"Jump to" in the sidebar, as a participant uses it', () => {
     ctrlK()
     const box = screen.getByRole('combobox', { name: 'Jump to a check-in, a person or a page' })
     await waitFor(() => expect(box).toHaveFocus())
-    /* U.5: Today is a page now, so "Jump to" offers it, first of the pages as in the sidebar. */
-    expect(options()).toEqual(['Coamana growth, Q3 paying customers', 'Leadership, Q3', 'Today', 'All check-ins', 'Your settings'])
+    /* U.5: Today is a page now, so "Jump to" offers it, first of the pages as in the sidebar.
+       U.12: You too, after Today, as in the sidebar. */
+    expect(options()).toEqual(['Coamana growth, Q3 paying customers', 'Leadership, Q3', 'Today', 'You', 'All check-ins', 'Your settings'])
     fireEvent.change(box, { target: { value: 'q3' } })
     expect(options()).toEqual(['Coamana growth, Q3 paying customers', 'Leadership, Q3', 'Kavon BadieIn Coamana growth, Q3 paying customers'])
     fireEvent.keyDown(box, { key: 'ArrowDown' })

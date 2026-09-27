@@ -34,6 +34,7 @@ function ChatRedirect() {
 }
 import { GroundsListPage } from '@/pages/grounds/GroundsListPage'
 import { TodayPage } from '@/pages/today/TodayPage'
+import { YouPage } from '@/pages/you/YouPage'
 import { GroundParticipantPage } from '@/pages/grounds/GroundParticipantPage'
 import { GroundPage } from '@/pages/grounds/GroundPage'
 import { ReportPage } from '@/pages/report/ReportPage'
@@ -446,6 +447,8 @@ export default function App() {
             <Route path="/grounds" element={<RequireOrgSetup><HomeOrChooseAnOrganisation /></RequireOrgSetup>} />
             {/* Today (C1, U.5): what needs you now. Home after signing in, as in the prototype. */}
             <Route path="/today" element={<RequireOrgSetup><TodayPage /></RequireOrgSetup>} />
+            {/* The You board (C2, U.12): yours alone, and the server refuses anybody else. */}
+            <Route path="/you" element={<RequireOrgSetup><YouPage /></RequireOrgSetup>} />
             {/*
               * REFUSED AT THE DOOR, NOT ON SUBMIT. Both of these were behind RequireOrgSetup alone,
               * so a member who typed the address got the whole flow and was turned away at the end.

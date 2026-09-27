@@ -36,12 +36,13 @@ const member = { role: 'MEMBER' }
 const lead = { role: 'LEAD' }
 const platform = { role: 'ADMIN', isPlatformAdmin: true }
 const labels = (u: any) => navItemsFor(u).map(i => i.label)
-/* U.5: Today is everybody's, first of the pages. These lists gained it when the page came. */
+/* U.5: Today is everybody's, first of the pages. These lists gained it when the page came.
+   U.12: so is You, straight after Today, as layout-computer.txt draws it. */
 
 describe('who sees what', () => {
   it('an admin sees the organisation\'s pages', () => {
     // The design system's names for the organisation's pages: People, Connections, Plan and billing.
-    expect(labels(admin)).toEqual(['Today', 'All check-ins', 'Boards', 'People', 'Connections', 'Plan and billing', 'Settings'])
+    expect(labels(admin)).toEqual(['Today', 'You', 'All check-ins', 'Boards', 'People', 'Connections', 'Plan and billing', 'Settings'])
   })
 
   it('a lead gets the boards door and nothing else that is the org\'s', () => {
@@ -49,11 +50,11 @@ describe('who sees what', () => {
       A lead oversees a department's check-ins, so the one page across several is theirs. People,
       Connect and Billing are the organisation's and would bounce them.
     */
-    expect(labels(lead)).toEqual(['Today', 'All check-ins', 'Boards', 'Settings'])
+    expect(labels(lead)).toEqual(['Today', 'You', 'All check-ins', 'Boards', 'Settings'])
   })
 
   it('a team member sees the check-ins and their own settings, and nothing that would bounce them', () => {
-    expect(labels(member)).toEqual(['Today', 'All check-ins', 'Settings'])
+    expect(labels(member)).toEqual(['Today', 'You', 'All check-ins', 'Settings'])
   })
 
   it('the platform back-office is for Groundwork, not for an org admin', () => {
@@ -66,7 +67,7 @@ describe('who sees what', () => {
   })
 
   it('and somebody not signed in is not offered anything admin-shaped', () => {
-    expect(labels(null)).toEqual(['Today', 'All check-ins', 'Settings'])
+    expect(labels(null)).toEqual(['Today', 'You', 'All check-ins', 'Settings'])
   })
 })
 
