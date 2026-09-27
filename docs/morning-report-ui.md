@@ -13,10 +13,10 @@ in, with every decision you made).
 
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
-screens), U.9 (reports and sharing), U.10 (the board) and U.11 (ending a check-in). Each passed the full screen and API suites,
-apart from failures in the engine workspace's own files, which I have asked them to fix. **None could
-be ticked, because the reviewer can no longer sign in as anyone** (item 14). That is the most important thing for you to
-unblock.
+screens), U.9 (reports and sharing), U.10 (the board) and U.11 (ending a check-in). Each passed the
+full screen and API suites. The engine workspace has since fixed the failures in its own files, so
+both suites are now clean. **None could be ticked, because the reviewer can no longer
+sign in as anyone** (item 14). That is the most important thing for you to unblock.
 
 **Three privacy leaks found and closed on the way:** members and guests could get everyone's email
 addresses from the colleague list (U.4); the check-ins list sent every participant the join link,
@@ -36,8 +36,8 @@ asks the engine to change the rule itself).
    different things (a privacy question).
 8. The rest of items 13, 15 to 22 are smaller, each with a recommendation.
 
-**Built, not yet tested or reviewed:** U.11 (ending a check-in). The lead now ends a check-in with a
-reason, and the person it is about reads the decision with that reason. Item 22 lists what needs you.
+**In progress:** U.12 (the You board) is next. In U.11 the lead now ends a check-in with a reason, and
+the person it is about reads the decision with that reason.
 
 ## Needs Hafsah
 
