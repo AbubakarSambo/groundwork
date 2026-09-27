@@ -10,6 +10,7 @@ import { whatToCallThem } from '../conversation/a-colleague-in-an-interview-has-
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { whatToWorkOnNext } from './what-to-work-on-next';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
+import { praiseTheNumbersDoNotSupport, sentencesTheNumbersDoNotSupport } from './praise-the-numbers-do-not-support';
 
 /**
  * A PERSON'S LABEL IS THEIR NAME OR A NEUTRAL WORD, NEVER THE LEAD'S DESCRIPTION OF THEM.
@@ -292,9 +293,21 @@ describe('the role handed to the judgement reaches only the lead', () => {
     const src = withoutComments('reports/reports.service.ts');
     /* `role:` built from the row appears in the room's people, and that list is read only by theRoom. */
     expect(src.match(/role: \(p\.remitAsGiven \?\? p\.roleAsDescribed \?\? null\)/g) ?? []).toHaveLength(1);
-    expect(src.match(/role: p\.role,/g) ?? []).toHaveLength(1);
+    /*
+     * TWO READS OF IT, AND THE SECOND IS THE PRAISE CHECK'S (commits 6628e6b6, 7d5c36dc). The lead's
+     * description is the only place a per-person target lives when the lead typed it there: on the
+     * sales run, "Target 14 approved facilities this quarter" is in Kwame's description and in no
+     * objective and none of his own answers. The praise check reads it to find the target, and only
+     * ever takes sentences OUT of the judgement; it writes nothing and calls no model. The next
+     * describe proves its output holds none of the description.
+     */
+    expect(src.match(/role: p\.role,/g) ?? []).toHaveLength(2);
     const body = theBodyOf(src, 'material = theRoom(', 'instruction = theJudgementOverARoom(');
     expect(body).toContain('role: p.role,');
+    expect(src.match(/praiseTheNumbersDoNotSupport\(kept, \(room\?\.people \?\? \[\]\)\.map\(\(p\) => \(\{ who: p\.who, role: p\.role, facts: p\.facts \?\? null \}\)\)\)/g) ?? []).toHaveLength(1);
+    /* And the same description read for the product's own paragraphs goes to the same check and nowhere else. */
+    expect(src.match(/whoThePraiseCouldBeAbout/g) ?? []).toHaveLength(2);
+    expect(src).toContain('sentencesTheNumbersDoNotSupport(text, whoThePraiseCouldBeAbout, about)');
   });
 
   it('a participant\'s report read drops the judgement', () => {
@@ -313,6 +326,35 @@ describe('the role handed to the judgement reaches only the lead', () => {
       expect(b.theJudgement ?? null).toBeNull();
       /* The whole served board, searched in the test above, holds none of it either. */
     }
+  });
+});
+
+/* ---- Route 5: the praise check reads the description to find a target, and writes none of it. ---- */
+
+describe('the praise check reads the lead\'s description and never writes any of it', () => {
+  const ROLE = 'Relationship officer, Surulere. Target 14 approved facilities this quarter.';
+  const ROLE_PIECES = [/relationship officer/i, /surulere/i, /this quarter/i];
+  const people = [{
+    who: 'Participant C', role: ROLE,
+    facts: { whatTheySaidItWasFor: null, whereTheySayTheyAre: 'Three approved so far, and 22 applications.', anEarlierFigureTheyGave: null, numbers: [], aNumberSetForThemTheyHaveNeverSaid: null, twoNumbersForOneTarget: null } as any,
+  }];
+  const holdsTheRole = (v: unknown) => ROLE_PIECES.filter((p) => p.test(JSON.stringify(v))).map(String);
+
+  it('finds the target in it: praise the numbers do not support is held back', () => {
+    const judgement = { whatToDo: [{ move: 'Recognise Participant C for exceeding their target of 14 approved facilities.', who: 'Participant C' }], theGap: 'Participant C has three approved facilities.' };
+    const out = praiseTheNumbersDoNotSupport(judgement, people);
+    expect(out.heldBack).toEqual(['Recognise Participant C for exceeding their target of 14 approved facilities.']);
+    expect(out.judgement).toEqual({ whatToDo: [], theGap: 'Participant C has three approved facilities.' });
+    expect(holdsTheRole(out)).toEqual([]);
+  });
+
+  it('only ever takes sentences out, so no word of the description can come back in', () => {
+    const judgement = { theGap: 'Participant C is ahead of target. Participant C has three approved facilities.', whatWeFailedToAsk: [{ about: 'Whether Participant C beat the target of 14 approved facilities.' }] };
+    const out = praiseTheNumbersDoNotSupport(judgement, people);
+    expect(holdsTheRole(out)).toEqual([]);
+    const para = sentencesTheNumbersDoNotSupport('Participant C is ahead of target. The team met on Friday.', people, 'Participant C');
+    expect(para.text).toBe('The team met on Friday.');
+    expect(holdsTheRole(para)).toEqual([]);
   });
 });
 
