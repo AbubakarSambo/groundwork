@@ -13,9 +13,11 @@ in, with every decision you made).
 
 **Built and tested, but not ticked:** U.3 (organisations and joining), U.4 (people, roles and access),
 U.5 (Today and the check-ins list), U.6 (starting a check-in), U.7 (context), U.8 (the check-in
-screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in) and U.12 (the You
-board). Each passed the full screen and API suites. The latest full run, after U.12, passed
-everything with no failures at all (2,765 screen tests and 9,391 API tests). **None could be ticked,
+screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
+board) and U.13 (suggestions from verdicts, and appeals). U.3 to U.12 each passed the full screen and
+API suites. The latest full run, after U.12, passed everything with no failures at all (2,765 screen
+tests and 9,391 API tests). U.13 has passed its own tests, the guards that read whole folders, and
+both type checks; its full run is still to do. **None could be ticked,
 because the reviewer can no longer sign in as anyone** (item 14). That is the most important thing for
 you to unblock.
 
@@ -36,10 +38,13 @@ asks the engine to change the rule itself).
 7. Item 22.1: the handover page, because the prototype's page and the product's handover are two
    different things (a privacy question).
 8. Item 23.1: may anyone but the person read their You board? (a privacy question)
-9. The rest of items 13, 15 to 23 are smaller, each with a recommendation.
+9. Item 24.1: which admins may read a suggestion about someone, and when? (a privacy question)
+10. The rest of items 13, 15 to 24 are smaller, each with a recommendation.
 
-**In progress:** U.13 (suggestions from verdicts, and appeals) is next. In U.12 each person got their
-own You board, which the server serves to them alone; the engine's own text for it is request 14.
+**In progress:** U.14 (Ask Groundwork) is next. In U.13 the product got the part of "a verdict, told
+like a signal" that is not the engine's: the lead's decision with reasons, the person's side, an
+appeal, and an admin's decision on it, each read only by the right people, enforced on the server. No
+suggestion appears anywhere until the engine writes one (request 15).
 
 ## Needs Hafsah
 
@@ -900,6 +905,80 @@ reviewed" in this report.
     marked not done. When anybody asks for someone else's board, the server says "Only the person
     whose page this is can read it."
 
+### 24. Suggestions from verdicts, and appeals (U.13): what needs you
+
+1. **Which admins may read a suggestion about someone, and when. This is a privacy question.** Rule
+   5 says admins see every board, and rule 6 says an admin decides appeals. Item 15.1 (should admins
+   be kept out of performance plans unless given access) is still open. I built the narrower answer:
+   an admin reads a suggestion only once the person has appealed it, and then only what they need to
+   decide it (the suggestion as the lead read it, the decision and its reasons, the person's side and
+   the appeal). Before an appeal, an admin who is not in the check-in reads nothing of it. **My
+   recommendation:** keep it this way, whatever you decide for item 15.1.
+2. **Who may decide an appeal.** Any admin of the organisation, except the admin who made the
+   decision (a lead who is also an admin cannot decide an appeal against their own decision). If the
+   only admin is the person who decided, the appeal waits, and nothing tells the person why. **My
+   recommendation:** when no other admin exists, tell the person so on their You board, and let the
+   chief executive decide it (U.15 knows who that is).
+3. **What "Change the decision" does.** The admin's answer and reasons are stored, and both the
+   person and the lead read them ("Grace decided the appeal. The decision is changed.", with Grace's
+   reasons). Nothing else changes by itself: the lead's decision stays on the record as it was, and no
+   plan starts or ends. **My recommendation:** after "The decision is changed", let the lead record a
+   new decision, with the admin's reasons shown beside it.
+4. **On the ending page, the suggestion and the outcome are saved separately,** as the prototype
+   draws them: "Agree" or "Choose something else" with reasons, and then the outcome with "Why, in a
+   sentence or two". **My recommendation:** when the lead agrees with a suggestion about how it ends,
+   choose that outcome for them and carry the reasons over, so they say it once.
+5. **Nobody is told by email,** and nothing is added to "What needs you". A decision, a side, an
+   appeal and an appeal's answer are saved and shown on the pages, but no email goes, because you
+   asked for emails to keep working exactly as now. An admin sees appeals at the top of Today. **My
+   recommendation:** add "Daniel appealed your decision" and "Wairimu decided" to "What needs you"
+   for the lead and the person, and an email for an appeal and its answer.
+6. **The lead may change their decision until it is appealed; the person may change their side at
+   any time, and may appeal once.** After an appeal the decision is the admin's to answer. **My
+   recommendation:** keep it.
+7. **A colleague never learns about a suggestion about someone else,** even on a team check-in, and
+   the board's "Last updated" time does not count these decisions, because on a team check-in that
+   time would tell everyone that something was decided about somebody. **My recommendation:** keep
+   it.
+8. **Not built, and why.** The text of every suggestion is the engine's (request 15, which replaces
+   request 13(a)); until the engine writes one, no suggestion appears anywhere. "Daniel was also told,
+   on his own board: …" waits for what Groundwork noticed (request 14(c)). "The full case, stage by
+   stage, with both accounts, the blocker check and the requirements review." and "Open Daniel’s
+   case" need a case page the product does not have. "Where this is heading" is held (item 22.3).
+   "Groundwork suggests recognising Aisha’s work" is on the reviews suite, which is U.17. "Say what’s
+   behind it" and "Stop sharing automatically" on the You board still wait for what Groundwork
+   noticed (request 14(c)).
+9. **The prototype's "her decision and her reasons" reads "the decision and the reasons".** The
+   product does not know anyone's pronouns, so Daniel reads "Wairimu has not decided anything yet.
+   You will see the decision and the reasons here."
+10. **Wording no screen shows, which I wrote with the fewest words.** Some of these are the same as
+    the words in the prototype's code for the same forms; none is on a prototype screen. **For the
+    lead:** after deciding, "Your decision", "Your reasons" and "Daniel sees your decision and your
+    reasons, and can appeal.", with "Change my decision". In the form: "Your decision", "Your reasons,
+    in a sentence or two", "Save my decision", "Not yet", and when choosing something else, the
+    choices, "Something else" and "What you decided". "Daniel’s side". "Daniel has appealed" with "An
+    admin decides the appeal." "Grace decided the appeal. The decision stays." or "Grace decided the
+    appeal. The decision is changed.", then "Grace’s reasons". **For the person:** "About your work in
+    Daniel, the next six weeks.", "Wairimu’s decision", "Wairimu’s reasons", "Your side", "Change my
+    side", "Appeal this decision", "Wairimu sees this next to the facts.", "An admin looks at the
+    decision, the facts and your reasons, and decides. Wairimu sees that you appealed.", "Why do you
+    disagree?", "Send my appeal", "Save", "You appealed. An admin decides. You will see the answer
+    here." and "Grace decided your appeal. The decision stays." **For an admin, on Today:** "Appeals to
+    decide", "Daniel appealed Wairimu’s decision", "In Daniel, the next six weeks.", "Daniel’s appeal",
+    "Keep the decision", "Change the decision", "Daniel and Wairimu both read your reasons.", "Your
+    reasons", and "You made this decision, so another admin decides the appeal." **Everywhere:**
+    "Saving…" and "That did not save. What you wrote is still here, so you can try again." **What the
+    server says when it refuses:** "Only the person who runs this check-in decides.", "Only the person
+    this is about can do this.", "Only an admin of this organisation decides an appeal.", "You made
+    this decision, so another admin decides the appeal.", "Say what you decided.", "Say why, in a
+    sentence or two. The person this is about reads your reasons.", "This decision has been appealed,
+    so an admin decides it now.", "Write your side first.", "There is no decision to appeal yet.",
+    "You have already appealed this decision.", "Say why you disagree.", "There is no appeal to
+    decide.", "This appeal has already been decided.", "Choose whether the decision stays or is
+    changed.", "Say why. Both of them read your reasons.", "You are not part of this check-in." and
+    "That suggestion was not found." Where somebody has no first name, the page says "This person",
+    "Your lead" or "An admin".
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -1636,6 +1715,69 @@ because no review can sign in (item 14).
 **The full run passed with no failures at all:** 2,765 screen tests, 9,391 API tests, and the build.
 That run also confirmed U.11's fixes, the faster check-in test, and the engine workspace's fixes to its
 own files. **Not ticked,** because no review can sign in (item 14).
+
+### U.13 Suggestions from verdicts, and appeals: built and tested, not yet reviewed
+
+**What was missing, against the prototype (the gap list):** the product had no verdict engine and
+nowhere to keep a suggestion; no decision with reasons outside ending a check-in; nowhere for the
+person to add their side; no appeal and nobody to decide one; nothing about it on the board, the
+ending page, the You board or Today; and nothing in the person's data file. The existing disputes
+("That is not what I said", on a line of the record, a term or a record from another system) and
+clarifications are about whether something was said or read rightly, not about a decision, so they
+are left exactly as they were: an appeal is a new thing beside them, and neither changes the other.
+The suggestion's text is the engine's (request 15).
+
+**What each person now reads** (Wairimu runs "Daniel, the next six weeks" and "Kwame, first 90 days";
+Daniel and Kwame are in them; Grace is an admin who is in neither), once the engine has written a
+suggestion:
+- **Wairimu, on Daniel's board:** "Groundwork suggests a performance plan for Daniel", "Why: In the
+  last 4 weeks, Daniel kept 11 of his 20 commitments. …", "What would change this: Keeping 8 in 10 of
+  his commitments for the next 4 weeks.", "Daniel’s own answer." with his words, "Your decision",
+  "This is only a suggestion. You decide, and Daniel sees your reasons.", "Agree" and "Choose something
+  else". Agreeing offers the suggested decision to change, and "Your reasons, in a sentence or two";
+  nothing saves without reasons. Afterwards she reads her decision and reasons, "Daniel sees your
+  decision and your reasons, and can appeal.", Daniel's side, his appeal ("Daniel has appealed", "An
+  admin decides the appeal."), and then Grace's answer and reasons.
+- **Wairimu, on Kwame's ending page:** "Groundwork suggests keeping Kwame on", in the same parts, above
+  "How does this end?".
+- **Daniel, on his You board:** "Where you stand", "About your work in Daniel, the next six weeks.",
+  "In the last 4 weeks, you kept 11 of your 20 commitments. When fewer than 6 in 10 are kept,
+  Groundwork suggests extra help to your manager.", "What would change this: Keeping 8 in 10 for the
+  next 4 weeks.", then either "Wairimu has not decided anything yet. You will see the decision and the
+  reasons here." or "Wairimu’s decision" and "Wairimu’s reasons". "Add my side", and "Appeal this
+  decision" once there is a decision. He never reads the headline, Wairimu's "why" or the verdict.
+- **Grace, on Today:** "Appeals to decide", "Daniel appealed Wairimu’s decision", the suggestion, the
+  decision and reasons, Daniel's side and appeal, and "Keep the decision" or "Change the decision"
+  with "Your reasons". Before an appeal, she reads nothing of it.
+- **Miriam, Daniel's colleague on the team check-in:** nothing about a suggestion about Daniel.
+
+**Privacy, on the server:** each reader's shape is built field by field in
+`a-suggestion-told-like-a-signal.ts`, never by passing the row through. The verdict is served to
+nobody. The person is never served the headline, the lead's "why", the choices or the verdict. An
+admin is served a suggestion only once it is appealed. A colleague gets nothing, and somebody outside
+the check-in is refused. Only the lead decides; only the person adds their side or appeals, once and
+after a decision; only an admin decides an appeal, never the one who made the decision. The engine's
+door in refuses text with a label on a person. A test scans everything each reader is served, at
+every step, for labels, the verdict and ratings. The person's side and appeal are in their own data
+file, and nothing the lead wrote is.
+
+**Commits:** `bca337b3` (the table, the server's rules and routes), `66ba7345` (the You board's part,
+and the data file), `31c54f12` (an admin is not served the person's facts), `3920a56d` (the screens),
+`929b2bf4` (request 15 to the engine).
+
+**Tested:** new tests read what each person is served and sees:
+`api/src/modules/suggestions/suggestions-as-each-reader-reads-them.spec.ts` (Wairimu, Daniel, Grace,
+Omar, Miriam and Kofi, each served or refused), `api/src/modules/users/your-data-holds-your-side-and-your-appeal.spec.ts`,
+two new tests in `the-you-board-as-each-reader-reads-it.spec.ts`,
+`client/src/components/gw/suggestions-as-each-reader-sees-them.spec.tsx`, and new tests in the You
+board and Today page specs. **No existing test was changed.** One guard (every mutation says what
+happened when it failed) caught that the new forms had no failure handling; they now say "That did
+not save. What you wrote is still here, so you can try again." Only the tests for the changed files,
+the guards that read whole folders on both sides, the board and ending page specs, and both type
+checks were run, as you asked. No screen could be checked signed in (item 14), so the screens were
+checked by rendering tests only. The migration (`20260927060000_suggestions_and_appeals`) adds one
+empty table, alters nothing, and was not applied to any database. **Not ticked,** because no review
+can sign in (item 14), and the full run is still to do.
 
 ## Found on the way, for later tasks
 
