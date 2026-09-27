@@ -2,7 +2,7 @@
 
 **This is a draft, written on 27 September 2026, late evening. It is not finished yet.** Tomorrow's first full run is the 24-scenario proof for task 1.6. When it has run, this document is finished, with its results.
 
-Branch `wip/plain-reports`, at `5413a8ee` when this was written. It holds all of the screens workspace's work up to `185ff692` (`wip/prototype-ui`), plus the engine's work.
+Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds all of the screens workspace's work up to `185ff692` (`wip/prototype-ui`), plus the engine's work.
 
 ---
 
@@ -35,6 +35,7 @@ On the combined code at `5413a8ee`:
 - **Client:** 3,198 of 3,198 tests pass, in 446 files. The typecheck is clean.
 - **The last full 24-scenario run (run-10):** the checker says nothing is worse than the baseline. Every quote was from the record. There were no leaks of the lead's words.
 - **Task 1.6, tested on sales, seniorhire and openread, twice each:** every problem count in the scorer was 0, every quote was from the record, and the reports took no longer than before the check was added.
+- **The stored report prompt is at `report_synthesis` version 7.** It now carries the rule "every verb keeps its subject". The reports from the three test runs record version 7 as their `promptVersionId`, and nothing else changed: every problem count was 0, and 260 of 260 quotes were from the record.
 - **Still to come: the first full run tomorrow.** That is the proof for task 1.6 across all 24 scenarios.
 
 ## Known problems that remain, and why it is safe to deploy with them

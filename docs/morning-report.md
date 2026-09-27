@@ -57,6 +57,14 @@ Everything else, phase 2 included, waits until after deployment.
   - **It made reports slower.** For openread, the time from the last check-in to the finished report went from 112 seconds to 223 and 253 seconds. The check was calling the model once per sentence, and there were 53 rewrites in these runs, mostly pronoun fixes. For a team of nine, whose report already took five to six minutes, that would be worse. The fix: one model call per report for all its rewrites.
 - **Two grammar slips still reach the lead:** "You also believes…", and "…but has not communicated this", with no subject. Both are added to the check.
 
+**The rule "every verb keeps its subject" is in the stored prompt, as you decided (`33c1694a`, `ff318f1e`).** It was appended in code after the stored prompt, so no report's `promptVersionId` showed it. It is now part of the stored `report_synthesis` prompt, and the copy added in code is removed. On restart the product created and activated **`report_synthesis` version 7**. I tested sales, seniorhire and openread once each:
+- every report records version 7;
+- every problem count in the scorer is 0;
+- 260 of 260 quotes are word for word in the record;
+- the judgements read as before.
+
+One old example in the rules the code adds after the stored prompt had the same fault ("…and has completed six", with no subject). It contradicted the new rule, so I corrected that example only, and added no rule text there.
+
 **What it does not cover yet:**
 - The board's own sentences, which are built when the board is opened, not stored. The check sees the report text the board uses, but not those.
 - The pronoun check in conversation turns.
