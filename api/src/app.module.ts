@@ -22,6 +22,7 @@ import { ReportsModule } from './modules/reports';
 import { PatternsModule } from './modules/patterns';
 import { BoardModule } from './modules/board';
 import { ResolutionModule } from './modules/resolution';
+import { SuggestionsModule } from './modules/suggestions';
 import { BillingModule } from './modules/billing';
 import { IntelligenceModule } from './modules/intelligence';
 import { DocumentsModule } from './modules/documents/documents.module';
@@ -77,6 +78,7 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     PatternsModule,
     BoardModule,
     ResolutionModule,
+    SuggestionsModule,
     BillingModule,
     IntelligenceModule,
     FeedbackModule,

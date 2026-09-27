@@ -1101,6 +1101,8 @@ model Ground {
   report            Report?
   patternDetections PatternDetection[]
   resolution        Resolution?
+  /// Groundwork's suggestions from a verdict, about someone in this check-in (C3, U.13).
+  suggestions       Suggestion[]
   outcome           Outcome?
   outcomeFeedback   OutcomeFeedback[]
   billingEvents     BillingEvent[]
@@ -1432,6 +1434,8 @@ model GroundParticipant {
   commitments       GroundCommitment[]
   contextItems      GroundContextItem[]
   resolutionConfirmations ResolutionConfirmation[]
+  /// Groundwork's suggestions about this person (C3, U.13). See Suggestion.
+  suggestionsAboutThem    Suggestion[]             @relation("SuggestionAbout")
   reportActivations       ReportActivation[]
   dependenciesFrom        GroundDependency[]       @relation("DependencyFrom")
   dependenciesOn          GroundDependency[]       @relation("DependencyOn")
@@ -2237,6 +2241,78 @@ model Resolution {
   confirmations ResolutionConfirmation[]
 
   @@map("resolutions")
+}
+
+/// A SUGGESTION FROM A VERDICT, TOLD LIKE A SIGNAL (C3, U.13; decisions rule 6).
+///
+/// The engine may reach a verdict about one person in a check-in. Nobody ever reads it as a label.
+/// The lead reads a suggestion ("Groundwork suggests ..."), with why, what would change it and the
+/// person's own answer, and decides, giving a reason. The person reads the facts about their work
+/// and the decision with its reasons, and can add their side or appeal. An admin decides an appeal.
+///
+/// The engine's text is written by the engine (docs/requests-to-engine.md, request 15), stored in
+/// labels like a report, and named for each reader only when served. Who reads which column is
+/// decided in suggestions.service.ts, never on the screen. `verdict` is served to nobody.
+model Suggestion {
+  id                 String @id @default(uuid())
+  organizationId     String @map("organization_id")
+  groundId           String @map("ground_id")
+  /// The person the suggestion is about.
+  aboutParticipantId String @map("about_participant_id")
+
+  /// keep | reward | support | plan | exit. For the engine only; never served to anybody.
+  verdict String @db.VarChar(16)
+
+  /// For the lead: "Groundwork suggests a performance plan for Daniel".
+  headline          String   @db.Text
+  /// For the lead: why, from the facts.
+  why               String   @db.Text
+  whatWouldChangeIt String?  @map("what_would_change_it") @db.Text
+  /// The person's own words from a check-in, which the people in that check-in may read.
+  theirOwnAnswer    String?  @map("their_own_answer") @db.Text
+  /// What the lead's decision would say if they agree, for them to change before saving.
+  ifYouAgree        String?  @map("if_you_agree") @db.Text
+  /// Other decisions the lead might choose instead.
+  otherChoices      String[] @map("other_choices")
+  /// Set when the suggestion is about how the check-in ends: the end state suggested.
+  forTheEnding      String?  @map("for_the_ending") @db.VarChar(40)
+
+  /// For the person it is about: the facts about their work, never the verdict.
+  factsForThem             String  @map("facts_for_them") @db.Text
+  whatWouldChangeItForThem String? @map("what_would_change_it_for_them") @db.Text
+
+  /// Which version of the engine's instructions wrote it.
+  promptVersionId String? @map("prompt_version_id")
+
+  /// THE LEAD'S DECISION, with their reasons. The person reads both.
+  decision       String?   @db.Text
+  decisionReason String?   @map("decision_reason") @db.Text
+  decidedById    String?   @map("decided_by_id")
+  decidedAt      DateTime? @map("decided_at")
+
+  /// THE PERSON'S SIDE, in their own words. The lead reads it beside the facts.
+  theirSide   String?   @map("their_side") @db.Text
+  theirSideAt DateTime? @map("their_side_at")
+
+  /// THE PERSON'S APPEAL, and an admin's decision on it with the admin's reasons.
+  appeal            String?   @db.Text
+  appealedAt        DateTime? @map("appealed_at")
+  /// stands | changed
+  appealOutcome     String?   @map("appeal_outcome") @db.VarChar(16)
+  appealReason      String?   @map("appeal_reason") @db.Text
+  appealDecidedById String?   @map("appeal_decided_by_id")
+  appealDecidedAt   DateTime? @map("appeal_decided_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ground Ground            @relation(fields: [groundId], references: [id], onDelete: Cascade)
+  about  GroundParticipant @relation("SuggestionAbout", fields: [aboutParticipantId], references: [id], onDelete: Cascade)
+
+  @@index([groundId])
+  @@index([aboutParticipantId])
+  @@index([organizationId, appealedAt])
+  @@map("suggestions")
 }
 
 // Per-party end-state confirmation. A ground closes only when every ACTIVE party
