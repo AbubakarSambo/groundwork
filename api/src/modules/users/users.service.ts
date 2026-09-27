@@ -294,12 +294,21 @@ export class UsersService {
       );
     }
 
-    /* One query for the whole paste rather than one per address. */
-    const existing = await this.prisma.user.findMany({
-      where: { email: { in: addresses }, deletedAt: null },
-      select: { email: true },
+    /*
+     * "ALREADY HERE" MEANS IN THIS ORGANISATION (U.4 fourth review). It asked whether an account
+     * existed anywhere, so somebody with an account at another company read "Already here" and was
+     * never invited. Now it is somebody with a membership here that is not held for a seat. (Somebody
+     * who left keeps their membership and still reads "Already here": inviting them would not bring
+     * them back, because teamInvite does not reactivate an account. Listed for Hafsah.)
+     * Somebody with an account elsewhere reads "Will be invited", which says nothing about that
+     * account; inviting them adds a membership here and sends a sign-in link (auth teamInvite).
+     * One query for the whole paste rather than one per address.
+     */
+    const existing = await this.prisma.organizationMembership.findMany({
+      where: { organizationId, heldForASeat: false, user: { email: { in: addresses }, deletedAt: null } },
+      select: { user: { select: { email: true } } },
     });
-    const here = new Set(existing.map((e) => e.email.toLowerCase()));
+    const here = new Set(existing.map((e) => e.user.email.toLowerCase()));
 
     const seats = await this.billing.seatsLeft(organizationId);
     const rows = planFor(pasted, (e) => here.has(e), seats);
