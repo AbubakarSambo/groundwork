@@ -170,3 +170,13 @@ describe('"You make your account afterwards" (U.6 review)', () => {
   })
 })
 
+
+describe('the opening day is not under "What happens to what you write" (U.6 review)', () => {
+  it('comes before that heading', async () => {
+    open({ ...PREVIEW, opensOn: '2099-10-05T00:00:00.000Z' })
+    const line = await screen.findByText('Your first check-in opens on Monday 5 October.')
+    const heading = screen.getByText('What happens to what you write')
+    expect(line.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(heading.closest('details')?.contains(line)).toBe(false)
+  })
+})

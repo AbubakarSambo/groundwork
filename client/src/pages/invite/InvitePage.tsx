@@ -349,6 +349,17 @@ export function InvitePage() {
             the acknowledgement (see accept.onSuccess), so the chat opens straight onto the
             first question instead of repeating this back at them.
         */}
+        {/*
+          U.6 review: a check-in that opens later is not answered today. Its first check-in's day is
+          said, here, above "What happens to what you write" rather than under it, and nothing offers
+          to answer now.
+        */}
+        {opensLater && (
+          <div role="status" style={{ margin: '4px 0 16px', fontSize: 14, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+            {`Your first check-in opens on ${theDayOf(opensLater)}.`}
+          </div>
+        )}
+
         <details style={{ marginBottom: 16, border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', padding: '12px 16px' }}>
           <summary style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', cursor: 'pointer' }}>
             What happens to what you write
@@ -373,15 +384,7 @@ export function InvitePage() {
           </div>
         </details>
 
-        {/*
-          U.6 review: a check-in that opens later is not answered today. Its first check-in's day is
-          said instead, and nothing offers to answer now.
-        */}
-        {opensLater ? (
-          <div role="status" style={{ marginTop: 12, fontSize: 14, color: 'var(--gw-text)', textAlign: 'center', lineHeight: 1.6 }}>
-            {`Your first check-in opens on ${theDayOf(opensLater)}.`}
-          </div>
-        ) : (
+        {!opensLater && (
         <>
         <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
           {failed && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{failed}</div>}
