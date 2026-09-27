@@ -49,6 +49,14 @@ Everything else, phase 2 included, waits until after deployment.
 
 **On run-10's stored reports, served again through the new code:** every problem count is 0, except six old sales lines already in storage. Those change when the report is next written.
 
+**Tested live on sales, seniorhire and openread, twice each:**
+- **Every problem count in the scorer is 0 in both rounds.**
+- **Openread is right in both.** Both judgements join Kofi's Thursday scramble and Mei's delayed fixes to the Friday freeze, which is exactly the right answer.
+- **Two defects found, both being fixed now:**
+  - **A quote nobody said.** The model wrote 'incredibly tight timelines' in single quotation marks, which the quote check does not treat as a quote. The check's pronoun rewrite then turned them into double quotation marks. Sofia never said those words. The quote checker caught it: 162 of 164 quotes were right, and 2 were not. The fix: single quotation marks count as quotation marks, and the quote check runs again after any rewrite.
+  - **It made reports slower.** For openread, the time from the last check-in to the finished report went from 112 seconds to 223 and 253 seconds. The check was calling the model once per sentence, and there were 53 rewrites in these runs, mostly pronoun fixes. For a team of nine, whose report already took five to six minutes, that would be worse. The fix: one model call per report for all its rewrites.
+- **Two grammar slips still reach the lead:** "You also believes…", and "…but has not communicated this", with no subject. Both are added to the check.
+
 **What it does not cover yet:**
 - The board's own sentences, which are built when the board is opened, not stored. The check sees the report text the board uses, but not those.
 - The pronoun check in conversation turns.
