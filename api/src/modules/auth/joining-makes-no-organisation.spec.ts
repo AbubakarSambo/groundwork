@@ -108,7 +108,7 @@ describe('with an address whose domain an organisation lets join', () => {
     expect(made.orgs).toHaveLength(0);
     expect(made.users).toHaveLength(0);
     expect(made.pendingDeleted).toBe(0);
-    expect(res).toEqual({ whereDoYouWork: { byDomain: [{ id: COAMANA.id, name: 'Coamana', domain: 'coamana.test' }] } });
+    expect(res).toEqual({ email: 'ama@coamana.test', whereDoYouWork: { byDomain: [{ id: COAMANA.id, name: 'Coamana', domain: 'coamana.test' }] } });
   });
 
   it('"Join": joins it as "Takes part", and makes no organisation', async () => {

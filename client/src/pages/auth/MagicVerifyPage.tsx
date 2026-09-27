@@ -188,7 +188,7 @@ export function MagicVerifyPage() {
 
 
   /** Everything after the link has made or opened the account: the password step, the confirmation, the commit. */
-  async function afterVerify(res: SignedIn, token: string, fromParam: string | null): Promise<VerifyOutcome> {
+  async function afterVerify(res: SignedIn, token: string, fromParam: string | null, alreadyConfirmed = false): Promise<VerifyOutcome> {
     setAuth(res.user, res.accessToken)
 
     /**
@@ -233,7 +233,8 @@ export function MagicVerifyPage() {
      */
     const confirmFirst = (o: VerifyOutcome): VerifyOutcome => {
       /* Somebody who came from Google confirmed no email, so they are not told they did (U.3 review). */
-      if (!res.justCreated || params.get('via') === 'google') return o
+      /* Said once: somebody who chose where they work was told before they chose (U.3 review). */
+      if (!res.justCreated || alreadyConfirmed || params.get('via') === 'google') return o
       if (o.kind === 'redirect') {
         const onward = o.to.startsWith('/set-password') ? o : (passwordStep(o.to) ?? o)
         return { kind: 'confirmed', email: res.user?.email ?? null, then: onward }
@@ -312,8 +313,15 @@ export function MagicVerifyPage() {
           if (what === 'expired' || what === 'resent') return { kind: 'deadLink', what, sentence: typeof said === 'string' && what === 'resent' ? said : WE_SENT_A_NEW_ONE }
           return { kind: 'verifyError', message: typeof said === 'string' && said ? said : 'The link could not be checked.' }
         }
-        /* "Where do you work?" first: nothing has been made yet (U.3 review). */
-        if ('whereDoYouWork' in res && res.whereDoYouWork) return { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
+        /*
+         * Nothing has been made yet, and they choose where they work (U.3 review). In the natural
+         * order: "Your email is confirmed" first, then "Where do you work?". Somebody who came from
+         * Google confirmed no email, so they go straight to the choice.
+         */
+        if ('whereDoYouWork' in res && res.whereDoYouWork) {
+          const choice: VerifyOutcome = { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
+          return params.get('via') === 'google' ? choice : { kind: 'confirmed', email: res.email ?? null, then: choice }
+        }
         return afterVerify(res as SignedIn, token, fromParam)
       })()
       verifyFlows.set(token, flow)
@@ -394,7 +402,7 @@ export function MagicVerifyPage() {
       try {
         const res = await authApi.verifyEmail(token, choice)
         if ('whereDoYouWork' in res && res.whereDoYouWork) return { kind: 'whereDoYouWork', token, offers: res.whereDoYouWork }
-        return afterVerify(res as SignedIn, token, null)
+        return afterVerify(res as SignedIn, token, null, true)
       } catch (err: any) {
         const said = err?.response?.data?.message
         const what = whatTheLinkDid(said)

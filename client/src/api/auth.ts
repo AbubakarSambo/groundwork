@@ -27,6 +27,8 @@ export interface VerifyEmailResponse {
  * work?" comes first. Answering calls verify-email again with the choice.
  */
 export interface WhereDoYouWorkFirst {
+  /** Their own address, which the link has just proved. */
+  email?: string
   whereDoYouWork: { byDomain: { id: string; name: string; domain: string }[]; problem?: string }
 }
 /** `expired` is true only for a real, unused link of the asked kind that has run out. The server never

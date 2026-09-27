@@ -41,14 +41,22 @@ beforeEach(() => {
   vi.mocked(entryApi.commit).mockRejectedValue({ response: { data: { message: 'NO_ENTRY_SESSION' } } })
 })
 
+/* "Your email is confirmed" comes first, then "Where do you work?" (the natural order). */
+async function pastTheConfirmation() {
+  expect(await screen.findByRole('heading', { name: 'Your email is confirmed' })).toBeTruthy()
+  expect(screen.getByText(/sign-in links and reports to/).textContent).toBe('We’ll send sign-in links and reports to ama@coamana.test.')
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+  await screen.findByRole('heading', { name: 'Where do you work?' })
+}
+
 describe('an organisation lets their domain join', () => {
   beforeEach(() => {
-    vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ whereDoYouWork: { byDomain: [{ id: 'o-c', name: 'Coamana', domain: 'coamana.test' }] } } as any)
+    vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ email: 'ama@coamana.test', whereDoYouWork: { byDomain: [{ id: 'o-c', name: 'Coamana', domain: 'coamana.test' }] } } as any)
   })
 
-  it('reads as the prototype\'s "Where do you work?", with no head count', async () => {
+  it('reads as the prototype\'s "Where do you work?", with no head count, after "Your email is confirmed"', async () => {
     const { container } = open()
-    await screen.findByRole('heading', { name: 'Where do you work?' })
+    await pastTheConfirmation()
     expect(readable(container)).toBe([
       'Groundwork',
       'Where do you work?',
@@ -58,26 +66,27 @@ describe('an organisation lets their domain join', () => {
     ].join(''))
   })
 
-  it('"Join" sends the same link with that organisation, then carries on as a new account', async () => {
+  it('"Join" sends the same link with that organisation, then goes on, without confirming twice', async () => {
     const { token } = open()
+    await pastTheConfirmation()
     vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ user, accessToken: 't', justCreated: true, next: '/today' } as any)
-    fireEvent.click(await screen.findByRole('button', { name: 'Join Coamana' }))
-    await screen.findByRole('heading', { name: 'Your email is confirmed' })
+    fireEvent.click(screen.getByRole('button', { name: 'Join Coamana' }))
+    await waitFor(() => expect(navigated).toHaveBeenCalledWith('/today', { replace: true }))
     expect(authApi.verifyEmail).toHaveBeenLastCalledWith(token, { joinOrganizationId: 'o-c' })
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
-    expect(navigated).toHaveBeenCalledWith('/today', { replace: true })
+    expect(screen.queryByRole('heading', { name: 'Your email is confirmed' })).toBeNull()
   })
 
   it('"Create" sends the same link asking for their own organisation', async () => {
     const { token } = open()
+    await pastTheConfirmation()
     vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ user: { ...user, role: 'ADMIN' }, accessToken: 't', justCreated: true } as any)
-    fireEvent.click(await screen.findByRole('button', { name: 'Create' }))
-    await screen.findByRole('heading', { name: 'Your email is confirmed' })
-    expect(authApi.verifyEmail).toHaveBeenLastCalledWith(token, { createMyOwn: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() => expect(authApi.verifyEmail).toHaveBeenLastCalledWith(token, { createMyOwn: true }))
   })
 
   it('a refusal is said on the card, which stays', async () => {
     open()
+    await pastTheConfirmation()
     vi.mocked(authApi.verifyEmail).mockRejectedValueOnce({ response: { data: { message: 'Coamana has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.' } } })
     fireEvent.click(await screen.findByRole('button', { name: 'Join Coamana' }))
     expect(await screen.findByText('Coamana has no room for another person on its plan right now. Ask an admin there to make room, or to invite you when there is.')).toBeTruthy()
@@ -87,9 +96,9 @@ describe('an organisation lets their domain join', () => {
 
 describe('the invite link they came from was turned off', () => {
   it('says so, and offers only "Create a new organisation"', async () => {
-    vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ whereDoYouWork: { byDomain: [], problem: 'That invite link is not open any more. Ask whoever sent it for the new one.' } } as any)
+    vi.mocked(authApi.verifyEmail).mockResolvedValueOnce({ email: 'ama@coamana.test', whereDoYouWork: { byDomain: [], problem: 'That invite link is not open any more. Ask whoever sent it for the new one.' } } as any)
     const { container } = open()
-    await screen.findByRole('heading', { name: 'Where do you work?' })
+    await pastTheConfirmation()
     expect(readable(container)).toContain('That invite link is not open any more. Ask whoever sent it for the new one.')
     expect(screen.queryByRole('button', { name: /^Join/ })).toBeNull()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Create' })).toBeTruthy())

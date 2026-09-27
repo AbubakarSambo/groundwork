@@ -462,6 +462,8 @@ export class AuthService {
         if (where.offered.length > 0 || where.cameByLink) {
           /* Nothing is made, and this link stays good until they choose (or it runs out). */
           return {
+            /* Their own address, which this link has just proved, for "Your email is confirmed". */
+            email: pending.email,
             whereDoYouWork: {
               byDomain: where.byDomain.map((o) => ({ id: o.id, name: o.name, domain: where.domain! })),
               ...(problem ? { problem } : {}),
