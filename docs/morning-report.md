@@ -29,6 +29,18 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   - **The new database column** is a migration applied only to the local test database.
   - **Proven by 29 tests**, not by a scenario run: no scenario sets a question through the context chat.
   - **For the screens workspace:** what it needs is written in `docs/answers-from-engine.md`, including the card with Confirm, Edit and Not now.
+- **Item 6, guests use Ask Groundwork within their own check-in (decision 36), is built** (`d2a97ffe`).
+  - **What a guest can ask:** what was agreed, what is stuck, what they said they would do, when their next check-in is, and what the report says. The answers are built only from reads that already show that guest just their own check-in, with a second list of allowed fields in code.
+  - **What it never does:** it is never added to the host's list of people, never reads another check-in, the lead's judgement or a colleague's report, and never writes anything in the host organisation.
+  - **The replies are written by rules, not by the model.** Anything else gets a plain refusal.
+  - **For Hafsah:** an older piece of code matches check-in answers to the host's list of people by email. If a guest's email is also on an unclaimed entry in the host's list, their check-in words could be credited to that entry. That was true before tonight, and it is not fixed yet.
+- **Item 7, week 1 of the weekly plan, is built, and not yet measured** (`020260e4`, `3fb7edf9`).
+  - **The check-in now asks for what someone left out.** When a person speaks to only part of a set the lead named, the model is told, as context for its next question, which ones they left out. For example: "Grace named three: Equity, KCB and Co-op Bank. Peter has spoken about Equity only. Ask directly about the other two…". The same goes when a person describes something that happened without saying when.
+  - **It asks each only once**, and takes "I can't" as an answer.
+  - **It never asks again a question the person already answered**, not only the last one. Across three past runs this would have caught seven real repeats.
+  - **No stored prompt changed.** It is context built in code.
+  - **For Hafsah:** to find the set, a participant's session may now use the item names from the lead's own check-in words, such as the three bank names. It never uses the lead's sentence, and never people's names. It is used only on shared check-ins where people see each other. This rests on decision 4, but it is new, and the gate is one line if you want it narrower.
+  - **Measuring it:** advisor and shock, twice each, after run-12.
 - Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
 
 **What needs Hafsah:**
