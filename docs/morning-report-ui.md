@@ -4108,9 +4108,16 @@ none of them changed. **Not ticked,** until its review.
 - **The setup shows what is really saved.** With no rhythm picked it shows the situation's own ("Not set yet. This will run every week unless you pick one."), and its end is the day of the last check-in the said or usual length holds, which goes with the save, so the dates listed are the dates used. The prototype's "When I end it" is left out, because every check-in keeps a length. **For you:** if check-ins should be able to run with no end, that needs the server to allow it; until then the screen does not offer it.
 - **The invitation to a check-in that opens later** says its opening day above "What happens to what you write", not under it.
 - **The lead's Sessions list** reads "Daniel. Your note: Daniel is expected to generate…" instead of joining pieces with dashes, and says "Their invitation goes out on the morning the check-in starts." instead of offering "Resend invite" for an invitation still waiting for its day.
+- **The open link carries none of the lead's description.** Its first screen showed anyone with the link the engine's reword of the setup ("This check-in is about Grace, the new operations lead…"). It now says "Hafsah invited you to “Help a new hire get started”" and when it runs, and shows a question only for "Get updates from your team", where the lead wrote that one line to be asked. **For you:** the same kind of sentence at the top of the check-in page, for someone already in it, is left as it is.
+- **A second check-in with the same name** reads "Help a new hire get started, from 27 September", where it was "· 27 Sept".
+- **The open link's last step says what "Done" waits for:** "Add your name, your organisation and your email to finish." What is required is unchanged.
+- **Coming back to an unfinished setup** offers "Carry on with this one" or "Start a new one".
 - **For you to know, not changed:** a note the lead types on the check-in's page ("Add a note to send with your link") goes into the invitation email. That is intended: she chose to send it to that person.
 
 ## Found on the way, for later tasks
+
+- **For U.8 (the check-in screens):** the check-in page reads "You · waiting" and "U6g · waiting", pieces joined with dots.
+- **For U.5 (Today):** "A decision for you." sits over a first check-in on Today, which is not a decision.
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
   rounds · 2 of 5 answered this round", "In the way 1 · the sales deck", and "IN PROGRESS" in capital
