@@ -84,6 +84,37 @@ describe('a room is not a population', () => {
     it('asks for a line about somebody doing the job well, not only problems', () => {
       expect(it0).toContain('a judgement that only names problems is not a judgement');
     });
+
+    /*
+     * Four people in one run each said, in their own words, that the same thing went wrong at the
+     * start, and the judgement named two of them and never said it was one cause in how the thing
+     * was set up. In another, three people each held one warning sign and nobody put them in order.
+     */
+    it('says a cause several people share once, names them all, and keeps a different reason apart', () => {
+      expect(it0).toContain('THE SAME CAUSE IN SEVERAL BLOCKS IS ONE FINDING');
+      expect(it0).toContain('say it once, as one cause, and name everyone it applies to');
+      expect(it0).toContain('Keep anybody whose reason differs as a finding of their own');
+      expect(it0).toContain('say what in the arrangement would need to change, but only as far as the blocks support it');
+    });
+
+    it('puts the pieces of one story in the order they happened', () => {
+      expect(it0).toContain('PIECES OF ONE STORY GO IN ORDER');
+      expect(it0).toContain('with the dates the blocks give');
+      expect(it0).toContain('no one person had all of them');
+      expect(it0).toContain('putting the pieces in order is not saying whose fault it was');
+    });
+
+    it('keeps both inside the limits that were already there', () => {
+      expect(it0).toContain('NOTHING IS ANYBODY\'S FAULT UNLESS AN ACCOUNT SAYS SO');
+      expect(it0).toContain('every sentence names a PERSON');
+    });
+
+    /* The rules are about any room, so the runs they came from must not leak into the words. */
+    it('carries no word from the runs these rules came from', () => {
+      for (const w of [/borrower/i, /repayment/i, /instalment/i, /grace period/i, /\bloan/i, /\bQBR/i, /quarterly review/i, /champion/i, /support ticket/i]) {
+        expect(it0).not.toMatch(w);
+      }
+    });
   });
 
   it('and the service chooses between the two by headcount', () => {
