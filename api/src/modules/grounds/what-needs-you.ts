@@ -85,6 +85,22 @@ export interface Reader {
   userId: string;
   role?: string | null;
   organizationId: string;
+  /**
+   * NOT LET INTO THE ORGANISATION YET (U.8 third review, PRIVACY).
+   *
+   * Faraji joined a check-in through an open link while there was no free seat for him; his
+   * account and his participant row both exist (so `whatTheyMayRead` correctly calls him "own" -
+   * he is not a stranger, and the ground-level rule has not changed for anybody it already covers),
+   * but he is still `awaitingOrgApproval`: queued for an admin to let him into the organisation, the
+   * same hold `WhoIsWaitingAtTheDoorService` reads for "Almost in". The conversation layer already
+   * refuses him at the gate (conversation.service.ts, `CANNOT_CHECK_IN_YET`) - but Today still read
+   * "The report for Sales team, Q3 is ready… Read it" and "Your first check-in… Start it" for him,
+   * because nothing here asked the question at all. This flag makes Today stop offering either
+   * while it is true; it is the caller's job to know whether the reader is currently held (a report
+   * being releasable to the ORGANISATION at large is a separate, engine-owned question - see
+   * request to the engine workspace on whether a held person may read a shared report at all).
+   */
+  notLetIn?: boolean;
 }
 
 const DAY = 86_400_000;
@@ -149,8 +165,18 @@ export function whatNeedsYou(
     const sessions = sessionsOf(g);
     const base = { groundId: g.id, organizationId: g.organizationId };
 
+    /*
+     * NOT LET IN YET: OFFERED NEITHER A CHECK-IN NOR A REPORT (U.8 third review, PRIVACY).
+     * A check-in this reader is not yet admitted to is not theirs to start or read about, whatever
+     * their participant row already says - the conversation layer refuses them at the door anyway,
+     * so offering it here was inviting them into a refusal (the same fault "offer only what the
+     * server accepts" fixed elsewhere), and the report is exactly what CLAUDE.md's privacy rule
+     * calls "released" - not yet something to hand somebody who has not been let into the reader.
+     */
+    const heldFromMyOwn = !!reader.notLetIn;
+
     /* Your turn: the earliest open session of yours that is not done. Being two behind is one thing to do. */
-    if (!over && me) {
+    if (!over && me && !heldFromMyOwn) {
       const next = sessions
         .filter((c) => c.participantId === me.id && c.status !== 'COMPLETED' && (time(c.availableFrom) ?? 0) <= at)
         .sort((a, b) => a.sessionNumber - b.sessionNumber)[0];
@@ -181,7 +207,7 @@ export function whatNeedsYou(
     }
 
     /* A released report you have not opened. */
-    if (g.reportWaitingForMe) {
+    if (g.reportWaitingForMe && !heldFromMyOwn) {
       reports.push({
         key: `report-${g.id}`,
         kind: 'ready',
@@ -207,7 +233,7 @@ export function whatNeedsYou(
     }
 
     /* Your own report from a check-in you finished in the last day. Only you are given it. */
-    if (me) {
+    if (me && !heldFromMyOwn) {
       const last = sessions
         .filter((c) => c.participantId === me.id && c.status === 'COMPLETED' && (time(c.completedAt) ?? 0) > at - DAY)
         .sort((a, b) => (time(b.completedAt) ?? 0) - (time(a.completedAt) ?? 0))[0];

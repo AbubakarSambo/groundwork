@@ -15,9 +15,17 @@ export class WhatNeedsYouService {
   constructor(private prisma: PrismaService, private grounds: GroundsService) {}
 
   async forReader(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou> {
-    const [list, waiting] = await Promise.all([
+    const [list, waiting, me] = await Promise.all([
       this.grounds.list(organizationId, userId, email, role),
       role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId) : Promise.resolve([]),
+      /**
+       * NOT LET IN YET (U.8 third review, PRIVACY). One cheap read of the reader's own account,
+       * so Today can stop offering a check-in to start or a report to read to somebody the
+       * conversation layer would refuse at the door anyway (`awaitingOrgApproval`,
+       * conversation.service.ts's `CANNOT_CHECK_IN_YET`) - and never something released, which is
+       * exactly the word CLAUDE.md's privacy rule uses for who gets to read a shared report.
+       */
+      this.prisma.user.findUnique({ where: { id: userId }, select: { awaitingOrgApproval: true } }),
     ]);
     /*
      * ONLY THIS ORGANISATION'S (U.5 review). The list also carries check-ins in other organisations
@@ -25,7 +33,7 @@ export class WhatNeedsYouService {
      * "N new" on Choose an organisation. Another organisation's needs are counted there, not here.
      */
     const here = (list as any[]).filter((g) => g.organizationId === organizationId);
-    return whatNeedsYou(here as any, { userId, role, organizationId }, waiting.map((w) => ({ ...w, organizationId })));
+    return whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval }, waiting.map((w) => ({ ...w, organizationId })));
   }
 
   /**

@@ -8,7 +8,7 @@ import { WhatNeedsYouService } from './what-needs-you.service';
  * only that organisation's own check-ins.
  */
 
-function setup(memberships: { organizationId: string; role: string }[] = []) {
+function setup(memberships: { organizationId: string; role: string }[] = [], opts: { awaitingOrgApproval?: boolean } = {}) {
   const grounds: any = {
     list: jest.fn(async (org: string) => [
       {
@@ -25,8 +25,11 @@ function setup(memberships: { organizationId: string; role: string }[] = []) {
     ]),
     listAwaitingApproval: jest.fn(async () => [{ id: 'g-wait', label: 'Supplier review', createdBy: 'Omar Ali' }]),
   };
-  const prisma: any = { organizationMembership: { findMany: jest.fn(async () => memberships) } };
-  return { svc: new WhatNeedsYouService(prisma, grounds), grounds };
+  const prisma: any = {
+    organizationMembership: { findMany: jest.fn(async () => memberships) },
+    user: { findUnique: jest.fn(async () => ({ awaitingOrgApproval: opts.awaitingOrgApproval ?? false })) },
+  };
+  return { svc: new WhatNeedsYouService(prisma, grounds), grounds, prisma };
 }
 
 describe('the read behind Today', () => {
@@ -52,6 +55,51 @@ describe('the read behind Today', () => {
     const r = await svc.forReader('me', 'me@x.test', 'org-a', 'ADMIN');
     expect(grounds.listAwaitingApproval).toHaveBeenCalledWith('org-a');
     expect(r.needs.map((n) => n.title)).toContain('Supplier review is waiting for you to approve it');
+  });
+});
+
+describe('somebody not yet let into the organisation is offered neither a check-in nor a report (U.8 third review, PRIVACY)', () => {
+  /*
+   * Faraji joined a check-in through an open link while there was no free seat for him: his
+   * account and participant row both exist (so the ground-level rule correctly calls him "own"),
+   * but he is `awaitingOrgApproval` - queued for an admin to let him in, exactly the hold
+   * WhoIsWaitingAtTheDoorService reads for "Almost in". Today read "The report for Sales team,
+   * Q3 is ready… Read it" and "Your first check-in… Start it" for him regardless, because nothing
+   * asked whether he had actually been let in.
+   */
+  function setupHeld(awaitingOrgApproval: boolean) {
+    const grounds: any = {
+      list: jest.fn(async () => [{
+        id: 'g-sales', label: 'Sales team, Q3', status: 'ACTIVE', organizationId: 'org-a', initiatorId: 'lead',
+        participants: [{ id: 'p-faraji', userId: 'me' }],
+        checkIns: [{ id: 'c-1', participantId: 'p-faraji', sessionNumber: 1, status: 'NOT_STARTED', availableFrom: null }],
+        reportWaitingForMe: true,
+        latestSummary: 'Where the team stands.',
+      }]),
+      listAwaitingApproval: jest.fn(async () => []),
+    };
+    const prisma: any = {
+      organizationMembership: { findMany: jest.fn(async () => []) },
+      user: { findUnique: jest.fn(async () => ({ awaitingOrgApproval })) },
+    };
+    return new WhatNeedsYouService(prisma, grounds);
+  }
+
+  it('offers him neither while he is held', async () => {
+    const svc = setupHeld(true);
+    const r = await svc.forReader('me', 'me@x.test', 'org-a', 'MEMBER');
+    expect(r.needs).toEqual([]);
+    expect(r.count).toBe(0);
+    expect(JSON.stringify(r)).not.toMatch(/Sales team, Q3/);
+  });
+
+  it('and offers him both, honestly, the moment he is let in', async () => {
+    const svc = setupHeld(false);
+    const r = await svc.forReader('me', 'me@x.test', 'org-a', 'MEMBER');
+    expect(r.needs.map((n) => n.title)).toEqual([
+      'Your first check-in for Sales team, Q3',
+      'The report for Sales team, Q3 is ready',
+    ]);
   });
 });
 

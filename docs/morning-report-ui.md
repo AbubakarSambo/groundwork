@@ -314,6 +314,34 @@ on both the forming and the released report.
 defect is specific to `wip/prototype-ui`. **My recommendation:** treat request 43 as urgent on the live
 product as well, not only on this branch.
 
+### 0d. Someone not let into the organisation could read a released report, in full
+
+**Found by the U.8 third review on 28 September.** Faraji joined a check-in through an open link while
+there was no free seat for him. His account and his participant row both exist - he is a real party to
+the check-in, not a stranger, and the ground-level rule that decides who may read a check-in
+(`who-may-read-this-check-in.ts`) is right to say so - but he is still `awaitingOrgApproval`: queued for
+an admin to let him into the organisation, the same hold the "Almost in" page reads (item 5 of this
+review, U.8 third). `GET /grounds/9028f0ad-…/report` returned 200 with the released team report, names
+included, and Today separately offered him "The report for Sales team, Q3 is ready… Read it" and "Your
+first check-in… Start it".
+
+**The question is a plain one, and it is yours: may somebody held for a seat, or otherwise not yet let
+into an organisation, read a check-in's shared report at all - and if not, at what point does that
+change? The moment an admin lets them in? Only once they have answered themselves?** Nothing in this
+branch, or as far as I can tell in the live product, currently asks that question anywhere in the report
+read itself.
+
+**What I have fixed, screens-side:** Today (`what-needs-you.ts` / `what-needs-you.service.ts`) no longer
+offers him "Read it" or "Start it" while he is held - one cheap read of his own account, and the two
+"my own turn" / "my own report" needs are skipped while it is true. The report endpoint itself
+(`reports.service.ts`) is engine code, so I have not touched it: it still answers 200 to a direct
+request for the URL, whether or not Today ever points him at it, and the check-in conversation itself
+already refuses him (`conversation.service.ts`, `CANNOT_CHECK_IN_YET`) - the report is the one door
+still open. Written up as request 49, URGENT.
+
+**This is very likely in the live product too**, for the same reason 0c is: `reports.service.ts` is
+engine code this branch has not touched.
+
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
 **Fixed on 26 September** by the engine workspace, in the way suggested below (`theResendClient()` in
@@ -3206,6 +3234,52 @@ changed), `colleagues.spec.ts` (updated source match) plus two new specs
 `joining-by-email-domain.spec.ts` (updated: their prisma doubles needed the fuller user-with-org shape
 `userShapeFor` now reads), and `almost-in-names-the-admin-after-a-real-invitation.spec.ts` (extended
 for the seat check). Only the tests for files changed run (`--maxWorkers=2`), both type checks clean.
+
+### U.8 The check-in screens: third review's findings, all fixed in one round
+
+- **The thin-record fix never actually ran.** The completion gate throws `BadRequestException({
+  message, canContinue: true })`, but `GlobalExceptionFilter` rebuilt every error body from
+  `message`/`errors`/`code` alone and silently dropped `canContinue` - so the live 400 never carried
+  it, and the previous round's fix only ever worked against a spec that faked the response. The
+  filter now passes `canContinue` through explicitly, as a boolean only, the same narrow way `code`
+  already is - never the whole exception, never a stack or class name (checked against
+  `the-filter-hides-the-database.spec.ts` and `nobody-should-read-an-exception-class-name.spec.ts`,
+  both still pass unchanged). The client no longer depends on that one field surviving a shared
+  filter: any 400 from `/complete` that is not "already complete" is treated as "answer a little
+  more, then try again" - the gate has only these two throw branches, so there is no other real 400
+  it can mean.
+- **Names, not roles, for who can see whom, and the lead never reads a sentence about herself.**
+  "Your lead knows who is here; you will not see the others…" named a role and joined two facts with
+  a semicolon; it is "Rukia knows who is here. You will not see the others or what they wrote, and
+  they will not see you." now, and the lead reading her own check-in gets her own true sentence
+  instead: "People on this check-in answer without seeing each other. You can see who is here."
+- **The slow-open sentence, on the check-in's own page too.** Only `/checkin` explained that opening
+  a session can take up to a minute; the check-in's own page (the ground page's "Check in now"
+  button) said only "Opening…" for as long as 70 seconds. Both now share one sentence and one timer
+  (`opening-is-slow.ts`). Also: the header could promise "The next session opens on 12 October" while
+  the current one was still being opened - nothing is said about a later session while this one is.
+- **PRIVACY: Today offered a check-in and a released report to somebody not let into the
+  organisation.** Faraji is `awaitingOrgApproval`, the same hold "Almost in" reads - the conversation
+  itself already refuses him, but Today did not know to ask the question. It does now
+  (`what-needs-you.ts`'s `reader.notLetIn`), and neither "Start it" nor "Read it" is offered while he
+  is held. The report endpoint itself is engine code and, as far as I can read it, still answers 200
+  to a direct request regardless - written up urgently (request 49) and as Needs Hafsah item 0d,
+  since whether someone in his position may ever read a shared report is a decision, not a bug.
+- **Request only:** three more engine-written sentences joined with a colon or otherwise malformed,
+  added to request 40: "The objectives on record:", a doubled word ("by by 9 October"), a sentence
+  said to Rukia about herself in the third person, and "One thing for next time: I want to finish
+  now." (the person's own words handed back as if they were advice).
+
+**Tests:** `canContinue-reaches-the-live-body.spec.ts` (new, runs the real filter on the real
+exception shape), `ChatPage.alreadyComplete.spec.tsx` (updated: its "genuine failure" case was in
+fact the same refusal every completion 400 is, so it now proves the status-based match and gained a
+companion test for an actually different failure), `ChatPage.thinRecordRefusal.spec.tsx` (updated:
+no `canContinue` in the mock any more, on purpose), `who-is-in-this.spec.tsx` (updated) plus
+`who-is-in-this-when-peers-are-hidden.spec.tsx` (new), `GroundChat.openIsSlow.spec.tsx` (new, fake
+timers) and `nothing-about-next-while-the-current-one-opens.spec.tsx` (new, a full render with the
+`?open=1` handoff and a POST that never resolves), and `what-needs-you.service.spec.ts` (extended
+for the "not let in" case). Only the tests for files changed run (`--maxWorkers=2`), both type
+checks clean.
 
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 
