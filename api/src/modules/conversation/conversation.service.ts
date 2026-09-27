@@ -184,6 +184,7 @@ import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
+import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -1314,6 +1315,9 @@ export class ConversationService {
 
   async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string) {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
+    /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model.
+       Straight after the door, before anything reads the message. See documents/bank-details-are-never-kept. */
+    message = withoutBankDetails(message);
 
     const again = await this.theSameAnswerAgain(checkIn.id, message);
     if (again.kind === 'the same answer, already answered') {
@@ -2490,6 +2494,8 @@ export class ConversationService {
     AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean }, void, unknown> {
     /* The door people actually use. It had no lock for as long as the guard lived only on sendMessage(). See openTheDoor. */
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
+    /* Decision 35, as in sendMessage. */
+    message = withoutBankDetails(message);
     const againStreaming = await this.theSameAnswerAgain(checkIn.id, message);
     if (againStreaming.kind !== 'a new answer') {
       const say =
@@ -2791,6 +2797,8 @@ export class ConversationService {
    * nobody cannot be asked a follow-up question.
    */
   async offerWhatWorked(checkInId: string, userId: string, about: string, what: string) {
+    about = withoutBankDetails(about);
+    what = withoutBankDetails(what);
     const checkIn = await this.prisma.checkIn.findUnique({
       where: { id: checkInId },
       select: { participantId: true, ground: { select: { organizationId: true } } },

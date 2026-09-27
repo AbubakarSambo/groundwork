@@ -190,3 +190,17 @@ export function withoutBankDetails(text: string | null | undefined): string | nu
 export function withoutBankDetailsInEachTurn<T extends { content: string }>(turns: T[] | null | undefined): T[] {
   return (turns ?? []).map((t) => ({ ...t, content: withoutBankDetails(t?.content ?? '') }));
 }
+
+/**
+ * AND EVERY STRING IN SOMETHING A PERSON TYPED, however it arrived: a setup's draft, the setup's
+ * conversation, the answers it was committed with. The same function on each string and nothing
+ * else changed, so a name, an address or a date comes through exactly as it was.
+ */
+export function withoutBankDetailsAnywhere<T>(value: T): T {
+  if (typeof value === 'string') return withoutBankDetails(value) as unknown as T;
+  if (Array.isArray(value)) return value.map((v) => withoutBankDetailsAnywhere(v)) as unknown as T;
+  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, withoutBankDetailsAnywhere(v)])) as T;
+  }
+  return value;
+}

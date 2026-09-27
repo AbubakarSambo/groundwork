@@ -3780,6 +3780,7 @@ export class GroundsService {
   }
 
   async addLeadContext(groundId: string, requestingUserId: string, dto: { participantId?: string | null; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' }) {
+    dto = { ...dto, text: withoutBankDetails(dto?.text) as string };
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: { initiatorId: true, organizationId: true },
@@ -5568,6 +5569,7 @@ export class GroundsService {
   }
 
   async addMyNote(groundId: string, userId: string, text: string) {
+    text = withoutBankDetails(text) as string;
     const trimmed = (text ?? '').trim();
     if (!trimmed) throw new BadRequestException('A note needs some words in it.');
     const participant = await this.prisma.groundParticipant.findFirst({
@@ -5750,6 +5752,7 @@ export class GroundsService {
     userId: string,
     dto: { text: string; evidence?: string | null; objectiveId?: string | null },
   ) {
+    dto = { ...dto, text: withoutBankDetails(dto?.text) as string, evidence: withoutBankDetails(dto?.evidence) ?? null };
     const text = (dto.text ?? '').trim();
     if (!text) throw new BadRequestException('Say what you did.');
     const me = await this.prisma.groundParticipant.findFirst({

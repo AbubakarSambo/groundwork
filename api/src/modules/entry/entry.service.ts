@@ -69,6 +69,7 @@ import { theClassifierPrompt, readTheClassification } from './which-situation-th
 import { isAReplayRatherThanASecondSetup } from './a-second-setup-is-a-second-check-in';
 import { WHAT_ONE_PERSON_BUILDS } from './what-we-call-the-thing-a-person-builds';
 import { thisAlreadyHappened, LOOK_BACK_INSTEAD } from './this-already-happened';
+import { withoutBankDetails, withoutBankDetailsAnywhere } from '../documents/bank-details-are-never-kept';
 
 const SCENARIO_MAP: Record<string, GroundScenario> = {
   // Human-readable labels from legacy UI
@@ -606,6 +607,7 @@ export class EntryService {
   }
 
   async faq(question: string): Promise<string> {
+    question = withoutBankDetails(question);
     this.anonymousModelCall('faq', question.length);
     /* Prose, to a person, containing whatever they typed - so it needs the same guard as every
        other reply. It was the fourth path found without one. */
@@ -629,6 +631,7 @@ export class EntryService {
    * card the person chose rather than a guess.
    */
   async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low' }> {
+    description = withoutBankDetails(description);
     this.anonymousModelCall('classify-intent', description.length);
     const prompt = theClassifierPrompt(description, mode);
     try {
@@ -717,6 +720,9 @@ export class EntryService {
     /** Party path only: setup can finish, but nobody has been named yet and they are told so. */
     needsPeople: boolean;
   }> {
+    /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
+    messages = withoutBankDetailsAnywhere(messages);
+    soFar = withoutBankDetailsAnywhere(soFar);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     /**
@@ -1311,6 +1317,8 @@ from finishing at all.`;
    * tick could decide each other's close. It travels with the reply now.
    */
   async chat(messages: ChatTurn[], scenario?: string, groundLabel?: string, onDelta?: (text: string) => void, peopleNamed?: string[], alreadySaid?: string[]): Promise<{ reply: string; closed: boolean }> {
+    /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
+    messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
@@ -1574,6 +1582,7 @@ from finishing at all.`;
 
 
   async report(messages: ChatTurn[], scenario?: string, groundLabel?: string, peopleNamed?: string[]): Promise<EntryReport | null> {
+    messages = withoutBankDetailsAnywhere(messages);
     if (!messages || messages.length === 0) throw new BadRequestException('messages required');
 
     const mapped = resolveScenario(scenario);
@@ -1768,6 +1777,8 @@ from finishing at all.`;
       contributors: { email: string; colleagueId?: string; context?: string; inviteToken?: string; note?: string }[];
     },
   ): Promise<{ groundId: string; joinToken: string | null; contributors: { email: string; devUrl?: string; waiting?: boolean }[]; failedInvites: string[]; whyInvitesFailed?: { email: string; because: string }[] }> {
+    /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
+    dto = withoutBankDetailsAnywhere(dto);
     // ---- Server-side draft (written at entry-save, the ISSUE-17 consent
     // moment). The draft is the base and whatever the browser sent overlays
     // it, so commit works no matter which browser opened the magic link.
@@ -2493,6 +2504,7 @@ from finishing at all.`;
    * email was sent - org name, ground name, cadence, dates, contributors -
    * which previously lived only in localStorage and were lost cross-browser. */
   async patchDraft(draftToken: string, payload: Record<string, any>): Promise<{ ok: true }> {
+    payload = withoutBankDetailsAnywhere(payload);
     if (!draftToken || typeof draftToken !== 'string') throw new BadRequestException('draftToken required');
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new BadRequestException('payload must be an object');
     if (JSON.stringify(payload).length > 200_000) throw new BadRequestException('payload too large');

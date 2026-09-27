@@ -376,3 +376,14 @@ describe('the staff consoles', () => {
     expect(faults).toEqual([]);
   });
 });
+
+/* Decision 35: a bank or card number typed into a question is hidden before it is kept or read. */
+describe('a bank or card number typed into a question', () => {
+  it('is kept as the placeholder, never as the number', async () => {
+    const { controller, asUser, db } = fixture();
+    await controller.question(asUser(readers.miriam), { message: 'remind me to pay Kariuki into account number 0123456789 by Friday' });
+    const kept = JSON.stringify([db.assistantTurn, db.assistantProposal, db.todo]);
+    expect(kept).not.toContain('0123456789');
+    expect(kept).toContain('[account number hidden]');
+  });
+});

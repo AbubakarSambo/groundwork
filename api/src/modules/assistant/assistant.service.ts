@@ -61,6 +61,7 @@ import {
   Suggestible, fromRow, suggestionLine, askAbout, acceptedLine, acceptedNextStep, declinedLine, NOTHING_PENDING,
 } from './a-suggestion-you-can-answer';
 import { Prisma } from '@prisma/client';
+import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -122,6 +123,8 @@ export class AssistantService {
   ) {}
 
   async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
+    /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
+    message = withoutBankDetails(message);
     const me = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
       select: { externalId: true },
