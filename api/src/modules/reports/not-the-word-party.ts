@@ -20,6 +20,8 @@
  * set already excludes, and the keys are lifted out of the text before any rule runs.
  */
 
+import { theQuotesKept } from './a-quote-is-what-they-said';
+
 /** The label keys. Never rewritten, anywhere, for any reason. */
 const KEYS = ['the other party', 'the initiator', 'the participant'];
 
@@ -56,7 +58,13 @@ function likeFor(original: string, replacement: string): string {
     : replacement;
 }
 
+/* Never inside a quotation: "the other party" in somebody's own words is what they said. See a-quote-is-what-they-said. */
 export function notTheWordParty(text: string): string {
+  if (!text) return text;
+  return theQuotesKept(text, partyOutsideTheQuotes);
+}
+
+function partyOutsideTheQuotes(text: string): string {
   if (!text) return text;
 
   /*

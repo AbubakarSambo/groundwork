@@ -29,6 +29,8 @@
  * sold a guarantee the product cannot keep.
  */
 
+import { QUOTATION } from './a-quote-is-what-they-said';
+
 export type HowItWasShared = 'NAMED' | 'ANONYMOUS';
 
 export function isHowItWasShared(v: unknown): v is HowItWasShared {
@@ -83,12 +85,30 @@ export function withoutWhoSaidIt(text: string, identities: Identity[]): string {
       }
     }
   }
-  let out = text;
-  for (const [what, withWhat] of Array.from(words.entries()).sort((a, b) => b[0].length - a[0].length)) {
-    const escaped = what.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), withWhat);
-  }
-  return out;
+  const scrub = (piece: string): string => {
+    let out = piece;
+    for (const [what, withWhat] of Array.from(words.entries()).sort((a, b) => b[0].length - a[0].length)) {
+      const escaped = what.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), withWhat);
+    }
+    return out;
+  };
+  /*
+   * A QUOTE THAT HAS TO LOSE A NAME IS NO LONGER A QUOTE. What is between quotation marks is a
+   * person's own words, word for word (see a-quote-is-what-they-said). "as requested by somebody in
+   * this check-in" is not what anybody said, so it must not sit between the marks as though it were.
+   * The name still comes out - that is the whole promise of an anonymous copy - and the marks come
+   * off with it. A quote with nobody in it keeps its marks and its words.
+   */
+  const quotesFirst: string[] = [];
+  const held = text.replace(new RegExp(QUOTATION.source, 'gu'), (m: string, a?: string, b?: string) => {
+    const inner = a ?? b ?? '';
+    const without = scrub(inner);
+    if (without !== inner) return without;
+    quotesFirst.push(m);
+    return `\uE004${quotesFirst.length - 1}\uE005`;
+  });
+  return scrub(held).replace(/\uE004(\d+)\uE005/g, (_m, i) => quotesFirst[Number(i)]);
 }
 
 /** The same, over every string in a report-shaped object, however deep. */
