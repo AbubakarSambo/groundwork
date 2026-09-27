@@ -29,20 +29,27 @@ describe('personLabel says what a person would say out loud', () => {
     expect(personLabel({ roleAsDescribed: 'the new hire', email: 'j@x.test' })).toBe('j@x.test')
   })
 
-  it('and the role only when there is no address either', () => {
-    expect(personLabel({ roleAsDescribed: 'the new hire' })).toBe('the new hire')
+  /* Request 36: the role is never the name, not even with no address. `roleAsDescribed` is mostly the
+     lead's own private sentence about the person; the lead reads it as their note, beside the name. */
+  it('and never the role, even when there is no address either', () => {
+    expect(personLabel({ roleAsDescribed: 'the new hire' })).toBe('a colleague')
+    expect(personLabel({ roleAsDescribed: 'Daniel - Your sales manager, who you said is not meeting his agreed targets' })).toBe('a colleague')
   })
 
+  /* "a teammate" became "a colleague", and "the lead" for a lead: Hafsah's decision and the engine's
+     shared wording. The prototype never says "teammate". */
   it('never blank', () => {
-    expect(personLabel(null)).toBe('a teammate')
-    expect(personLabel({})).toBe('a teammate')
+    expect(personLabel(null)).toBe('a colleague')
+    expect(personLabel({})).toBe('a colleague')
+    expect(personLabel({ partyType: 'INITIATOR' })).toBe('the lead')
   })
 })
 
 describe('and the party-facing helper still refuses the address', () => {
   it('an email is not a name, even when it is the only thing we hold', () => {
     /** The rule this file must not quietly relax while tidying the other one. */
-    expect(participantLabel({ email: 'j@x.test' } as any)).toBe('a teammate')
+    expect(participantLabel({ email: 'j@x.test' } as any)).toBe('a colleague')
+    expect(participantLabel({ email: 'j@x.test', roleAsDescribed: 'Head of Design' } as any)).toBe('a colleague')
   })
 })
 

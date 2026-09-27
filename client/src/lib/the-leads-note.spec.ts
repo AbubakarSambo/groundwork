@@ -12,8 +12,11 @@ describe('the lead’s note about a person', () => {
     expect(theLeadsNote('Runs the pipeline')).toBe('Runs the pipeline')
     expect(theLeadsNote('')).toBeNull()
   })
-  it('and a name made from it is only the name', () => {
-    expect(participantLabel({ roleAsDescribed: 'Daniel - Daniel is expected to generate 20 leads a week' })).toBe('Daniel')
+  /* Request 36 (Hafsah, 27 September): no label is made from the lead's note at all, not even its
+     first part. This used to expect "Daniel"; "Daniel - Your sales manager, who you said..." gave
+     "Daniel - Your sales manager" on the board. The lead reads the note as theirs, beside the name. */
+  it('and no name is made from it', () => {
+    expect(participantLabel({ roleAsDescribed: 'Daniel - Daniel is expected to generate 20 leads a week' })).toBe('a colleague')
   })
 })
 
