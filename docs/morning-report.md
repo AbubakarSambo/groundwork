@@ -6,6 +6,20 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 27 SEPTEMBER, NIGHT: THE CAPABILITY CHECK AND THE DEPLOY BLOCKERS
+
+- **The capability check is in `docs/capability-check.md`.** Eleven capabilities were tried live. Eight partly work and three are missing. The work is after deployment, except for the blockers below.
+- **Seven deploy blockers, all being fixed, one builder after another.** The full list, and whether each is fixed, is in `docs/ready-to-deploy.md`. Blockers 1 to 3 are the patterns, which are being switched off on every board for every reader. Blocker 4 is bank details. Blocker 5 is a lead's private notes in a person's own session. Blocker 6 is Ask Groundwork, which you decided must work before deployment. Blocker 7 is the board crash for a participant when colleagues are hidden.
+- **Hafsah's three new decisions are added to `docs/decisions-merged.md`** as decisions 31 to 33:
+  - the engine may know the dates of approved leave, dates only;
+  - a lead's private notes never reach the model in that person's own session;
+  - who counts as a person's lead for approvals, and the thresholds for verdicts, are decided when that work starts.
+- **Ask Groundwork in the live code.** The live code (`be8b48d9`) has no Ask Groundwork for signed-in users at all. The assistant is reached only through a customer's embedded panel or WhatsApp, and only for people on the organisation's connected list. The fix being built changes one file. It finds, claims or creates the person's entry when they ask. Claiming matches only on a confirmed email address, and never across organisations. If a switched-off entry exists, it refuses.
+- **The checkers' test data is cleaned up,** in one transaction, in the local test database only.
+  - 149 rows were deleted, all in the Meridian test organisation, in the window the checkers worked.
+  - Two sessions the checkers had started, which existed before them, were put back to "not started".
+  - The three test users have their original seed passwords back, not "test", and their saved sign-in tokens are cancelled. Signing in with "test" is refused for all three.
+
 ## 27 SEPTEMBER, EVENING: THE AIM IS NOW DEPLOYMENT
 
 **Your change of direction, recorded.** The aim now is deployment, not reaching task 1.5's bar. I have stopped working on the judgements to reach it. These are the only things left before deployment:

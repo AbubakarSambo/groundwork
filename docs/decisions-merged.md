@@ -1,7 +1,7 @@
 <!--
 This is docs/decisions.md with Hafsah's missing decisions added.
 docs/decisions.md is a protected file, so this is written alongside it for Hafsah to put in place.
-Decisions 1 to 16 are exactly as they are in docs/decisions.md, unchanged. Decisions 17 to 30 are added.
+Decisions 1 to 16 are exactly as they are in docs/decisions.md, unchanged. Decisions 17 to 33 are added.
 Her own list's items 1 to 16 are all already in 1 to 16 here (her 1 is here as 1 and 2; her 3 and 4 are here as 4).
 -->
 # Decisions already made
@@ -50,3 +50,6 @@ These are settled. Do not change them. If one seems to block the work, stop and 
 28. **The setup is not the lead's first check-in** (decided 15 September). The lead always does a first check-in.
 29. **Check-ins are named by their topic, in plain words.** Never by the person, and never by a type name. The name is the subject of the invitation email.
 30. **A lead's private description of a person never reaches that person or anyone else.** Not in any label, board, session, invitation or message.
+31. **The engine may know the dates of someone's approved leave.** Dates only, and never a reason.
+32. **A lead's private notes about a person never reach the model in that person's own session.** They are left out of what that session is given, not kept back by an instruction to the model.
+33. **Decided later, when that work starts:** whether the person who runs a check-in counts as a person's lead for approvals, and the thresholds for verdicts.

@@ -38,6 +38,30 @@ On the combined code at `5413a8ee`:
 - **The stored report prompt is at `report_synthesis` version 7.** It now carries the rule "every verb keeps its subject". The reports from the three test runs record version 7 as their `promptVersionId`, and nothing else changed: every problem count was 0, and 260 of 260 quotes were from the record.
 - **Still to come: the first full run tomorrow.** That is the proof for task 1.6 across all 24 scenarios.
 
+## The deploy blockers, and whether each is fixed
+
+These came out of the capability check (`docs/capability-check.md`). Each one breaks one of Hafsah's rules as the product stands, or is something the screens show that does not work. **Nothing is deployed until all of them are fixed and proven.**
+
+| # | Blocker | Fixed? |
+| --- | --- | --- |
+| 1 | Internal pattern names, such as "Blame Shifting", appear beside people's names on the lead's and the participant's board. | Being fixed. Patterns will be switched off on every board, for every reader, until they are done properly. The code stays, and a test will prove no board carries a pattern. |
+| 2 | A participant can read a colleague's pattern. | Being fixed, by the same switch. |
+| 3 | The lead sees a pattern before the person it is about, after one session instead of three, and the person cannot answer it. | Being fixed, by the same switch. |
+| 4 | Bank account numbers, card numbers and similar in a document are stored and sent to the model. | Being fixed. They will be hidden before any document is stored or sent to a model, and a test will prove it. |
+| 5 | A lead's private notes about a person reach the model in that person's own check-in, kept back only by an instruction. | Being fixed. They will be left out of what that person's session is given, and a test will prove it. |
+| 6 | Ask Groundwork refuses almost everyone. Only people on an organisation's connected list of people can use it: 64 of 3,162 users in the test database. | Being fixed. See below. |
+| 7 | The board crashes for a participant when colleagues are hidden from each other. | Being fixed, with a test that opens every board as every kind of reader and proves none of them errors. |
+
+### Ask Groundwork: what the live code does, and the fix
+
+- **The live code (`be8b48d9`) has no Ask Groundwork for signed-in users at all.** The assistant is reached only through a customer's embedded panel or through WhatsApp. Both need the person to already be on the organisation's list of people. That list is filled only by a connected staff directory, or by someone added from inside the panel. Signing up, Google sign-up, a team invite, joining a check-in and the open link never put anyone on it.
+- **So the refusal is not something that broke.** The panel's route was added on top of an assistant that was only ever built for listed people.
+- **The fix, being built:** when someone asks, Groundwork finds their entry on the list. If it doesn't find one, it claims a matching unclaimed entry, or creates one.
+  - **Claiming** an unclaimed entry matches only on an email address the person has confirmed, and never across organisations.
+  - **A switched-off entry means a refusal**, so a person the staff directory has switched off cannot get back in.
+  - **Opening the page writes nothing.** Only asking a question creates or claims the entry.
+- **One thing to know for later.** If an organisation connects its staff directory after people have used Ask Groundwork, the directory may add a second entry for the same person. Sign-in will not merge the two. This is a follow-up, not a blocker.
+
 ## Known problems that remain, and why it is safe to deploy with them
 
 1. **The judgement is not yet right often enough to meet Hafsah's bar for task 1.5.** On the last two full runs it was right in 18 of the 20 scenarios that could be tested, then 15 of 18. The bar is two runs in a row with at least 20 testable and at least 90% right. **Why it is safe:** the judgement is a suggestion, never a decision and never a label. The lead decides. When it misses, it misses the most important point; it does not invent a charge. Rules in code stop it praising what the numbers contradict and stop it blaming anyone without an account that says so.
