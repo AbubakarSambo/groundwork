@@ -14,8 +14,10 @@
  * 2. What is not settled is a reason to ask, never a correction. Where somebody states as fact
  *    something the record says is unknown, the conversation asks how they know - it does not tell
  *    them they are wrong, and it does not quietly overwrite the record either.
- * 3. The lead's read of a person is a place to look. Never quoted, never attributed, never put to
- *    them as a claim - the same rule the coaching steer has carried since it was written.
+ * 3. The lead's read of a person is not here at all. It used to reach that person's own session as
+ *    "a place to look", kept from them only by an instruction. Decision 32, 27 September 2026: a
+ *    lead's private notes about a person never reach the model in that person's own session, so
+ *    the conversation service does not read them in the first place.
  * 4. A question the lead wrote is asked in the interviewer's own words, once, when it fits.
  */
 
@@ -82,17 +84,6 @@ export function whatSitsBetweenPeople(lines: string[]): string {
     'SOMETHING THAT SITS BETWEEN TWO PEOPLE, as the person running this check-in reads it. It is one person\'s account of a thing involving two, so it is not a fact about either of them:',
     ...rows.slice(0, 6).map((r) => `- ${r}`),
     'Use it to ask about the work: what was promised, what was agreed, what each side understood. Never quote it, never say who wrote it, and never put it to this person as something they did wrong.',
-  ].join('\n');
-}
-
-/** The lead's private read of this person: which behaviour to look at first, and nothing more. */
-export function aPlaceToLook(notes: string[]): string {
-  const rows = (notes ?? []).map((n) => (n ?? '').trim()).filter(Boolean);
-  if (!rows.length) return '';
-  return [
-    'A PLACE TO LOOK, FROM THE PERSON RUNNING THIS CHECK-IN. Their read, not a fact, and not something this person has seen:',
-    ...rows.slice(0, 3).map((r) => `- ${r}`),
-    'It decides which part of the work you ask about first. It is never quoted, never attributed, never described to them, and never the reason for anything you say. If what they tell you does not show it, it was not there.',
   ].join('\n');
 }
 

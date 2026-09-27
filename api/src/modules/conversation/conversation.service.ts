@@ -178,7 +178,7 @@ import { asksItAgainAfterTheAnswer, theyPushedBackOnTheQuestions, asksTheSameThi
 import { totalSessionsFor } from '../grounds/session-count';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABOUT } from './when-this-is-over';
-import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, aPlaceToLook, whatTheyHedged, keepTheirHedge, howThisTeamWorks } from './what-the-context-already-holds';
+import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, whatTheyHedged, keepTheirHedge, howThisTeamWorks } from './what-the-context-already-holds';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
@@ -3974,8 +3974,26 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
      * This used to parse the opening sentence of four long notes to work out what each blob was. The
      * lines carry their own kind now - see GroundContextItem - so nothing here depends on wording.
      */
+    /*
+     * NOTHING THE LEAD WROTE PRIVATELY ABOUT A PERSON, AND LEFT OUT AT THE READ. Decision 32, 27
+     * September 2026: "A lead's private notes about a person never reach the model in that person's
+     * own session. They are left out of what that session is given, not kept back by an instruction
+     * to the model."
+     *
+     * The capability check put "She may leave after Q4 because of the commute" - a line the lead had
+     * asked to go to nobody - into Ngozi's own check-in, under an instruction that it was "never
+     * quoted". So the lead's read of a person (ABOUT_A_PERSON) is not read into any check-in, and the
+     * lead's account of something between two people (BETWEEN_PEOPLE, always the lead's only) is read
+     * into the lead's own check-in and nobody else's. Neither is in the rows, so no sentence about
+     * them has to hold. A question the lead wants put to somebody (QUESTION_FOR_PERSON) still arrives,
+     * because being asked is what it is for.
+     */
     const contextLines = await (this.prisma.groundContextItem?.findMany?.({
-      where: { groundId: checkIn.groundId, closedAt: null },
+      where: {
+        groundId: checkIn.groundId,
+        closedAt: null,
+        kind: { notIn: (isTheLead ? ['ABOUT_A_PERSON'] : ['ABOUT_A_PERSON', 'BETWEEN_PEOPLE']) as any },
+      },
       select: { kind: true, text: true, aboutParticipantId: true },
       orderBy: { createdAt: 'asc' },
       take: 80,
@@ -3997,14 +4015,11 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
       .filter((l) => l.kind === 'BETWEEN_PEOPLE')
       .map((l) => (l.text ?? '').trim())
       .filter((t) => t && (isTheLead || myName.some((n) => t.toLowerCase().includes(n.toLowerCase()))));
-    const myReadLines = ofKind('ABOUT_A_PERSON', true);
     /* And the work buckets a session is better for knowing: how this team says it sells and works. */
     const howWeWorkLines = [...ofKind('STRATEGY'), ...ofKind('WAY_OF_WORKING')];
     const notSettledBlock = whatIsNotSettled(notSettledLines);
     const leadsQuestions = theQuestionsTheLeadWants(askThemLines);
     const betweenBlock = whatSitsBetweenPeople(betweenLines);
-    /* Never in the person's own session as a description of them - see aPlaceToLook. */
-    const placeToLook = isTheLead ? '' : aPlaceToLook(myReadLines);
     /* Shared by design: a person answering should know what this team says it is doing. */
     const howWeWork = howThisTeamWorks(howWeWorkLines);
 
@@ -4544,7 +4559,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
       ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge],
       ['theirCommitments', theirCommitments], ['nobodyOwns', nobodyOwns], ['notSettledBlock', notSettledBlock],
-      ['leadsQuestions', leadsQuestions], ['betweenBlock', betweenBlock], ['placeToLook', placeToLook], ['howWeWork', howWeWork],
+      ['leadsQuestions', leadsQuestions], ['betweenBlock', betweenBlock], ['howWeWork', howWeWork],
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
     this.logger.log(oneLine(whatFiredThisTurn(inThisTurn)));
 
@@ -4587,7 +4602,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, placeToLook, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -4910,43 +4925,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const behaviours = (readFromTheAccount ? theBehavioursAnybodyCanBeRead() : map!.failureSignals!)
       .map((b, i) => `${i}. ${b}`).join('\n');
 
-    /**
-     * THE LEAD'S ENTRY CAN DETERMINE WHAT SOMEBODY IS COACHED ON.
+    /*
+     * NO STEER FROM THE LEAD'S PRIVATE NOTES ABOUT THIS PERSON. Decision 32, 27 September 2026.
      *
-     * I built this reading only the person's own transcript against their role map,
-     * and ignored the lead completely - the third time in one sitting I treated the
-     * lead's input as a liability rather than as an input. It is the opposite: a
-     * lead's note is usually WHY the ground exists, and their check-ins shape what
-     * matters as priorities move. A coaching layer that cannot hear "the handover is
-     * the thing that matters this month" is coaching last month's ground.
-     *
-     * a-hypothesis-is-not-a-finding.ts already drew the line and nothing had ever
-     * called it: mayShapeProbing is true for a hypothesis, mayBeSurfaced is not. So
-     * the note steers WHICH behaviour is looked for first, and the REASON still has
-     * to come from what the person said. That order is the whole guardrail:
-     *
-     *   the lead says where to look        allowed, and useful
-     *   the lead's words become the reason  never - the prompt takes the reason from
-     *                                       the transcript, and a step with no reason
-     *                                       is refused by the machine
-     *
-     * So a lead can point at ownership and the coach still says nothing unless this
-     * person's own session showed something about ownership.
+     * This read every note the lead had written about this person - every one of them the lead's
+     * only, because a note about one named person is never shared - and handed it to the model
+     * reading this person's own session, with an instruction that it only said where to look. That
+     * is the lead's private words in the model's hands in this person's session, kept from them by an
+     * instruction, which is what the decision rules out. The coach reads what this person said, the
+     * behaviours for their kind of work, and what has already been seen across their own sessions.
      */
-    // Optional chaining, and a catch, because a steer is an improvement to the
-    // question and must never be the reason nobody gets coached. My first version
-    // used .catch() alone, which does nothing when the accessor itself is missing -
-    // a synchronous TypeError, not a rejected promise.
-    const leadNotes = await (this.prisma.leadContextNote?.findMany({
-      where: { participantId },
-      select: { text: true },
-      orderBy: { createdAt: 'desc' },
-      take: 3,
-    }) ?? Promise.resolve([] as { text: string }[])).catch(() => [] as { text: string }[]);
-    const steer = leadNotes.length
-      ? `\n\nWHAT THE PERSON RUNNING THIS GROUND HAS SAID MATTERS (most recent first). Use this ONLY to decide which behaviour above to look at first. It is not evidence, it is never the reason, and if the transcript does not show the behaviour then the answer is still none:\n${leadNotes.map((n) => `- ${n.text}`).join('\n')}`
-      : '';
-
     /*
      * WHAT HAS ALREADY BEEN SEEN ABOUT THIS PERSON, ACROSS SESSIONS.
      *
@@ -4960,8 +4948,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * is the bar the engine already sets and this does not lower it.
      *
      * IT STEERS WHICH BEHAVIOUR TO LOOK AT, NEVER WHAT THE ANSWER IS. If the transcript does not
-     * show it, the answer is still none - the same rule the lead's steer above already carries, and
-     * for the same reason: a pattern is a place to look, not a finding to confirm.
+     * show it, the answer is still none, because a pattern is a place to look, not a finding to
+     * confirm.
      */
     const surfaced = await (this.prisma.patternDetection?.findMany({
       where: { participantId, status: 'SURFACED' as any },
@@ -4969,10 +4957,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       orderBy: { lastSeenAt: 'desc' },
       take: 3,
       /*
-       * Optional chaining AND a catch, the same shape as the lead's steer above and for the reason
-       * written there: `.catch()` alone does nothing when the accessor itself is missing - that is
-       * a synchronous TypeError, not a rejected promise. A steer must never be the reason nobody
-       * gets coached.
+       * Optional chaining AND a catch: `.catch()` alone does nothing when the accessor itself is
+       * missing - that is a synchronous TypeError, not a rejected promise. A steer must never be the
+       * reason nobody gets coached.
        */
     }) ?? Promise.resolve([] as { observationText: string | null; periodsObserved: number }[]))
       .catch(() => [] as { observationText: string | null; periodsObserved: number }[]);
@@ -4995,7 +4982,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       lastStepOutcome: string | null;
     }>(
       COACHING_OBSERVATION_PROMPT,
-      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${steer}${alreadySeen}\n\nTRANSCRIPT:\n${transcript}` }],
+      [{ role: 'user', content: `BEHAVIOURS FOR THIS KIND OF WORK:\n${behaviours}${alreadySeen}\n\nTRANSCRIPT:\n${transcript}` }],
       COACHING_OBSERVATION_SCHEMA,
     );
 
