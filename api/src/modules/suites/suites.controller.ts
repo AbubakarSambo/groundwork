@@ -1,15 +1,25 @@
 import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsObject, IsOptional } from 'class-validator';
+import { IsArray, IsBoolean, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
 import { SuitesService } from './suites.service';
 import { OnboardingBoardService } from './the-onboarding-board.service';
 import { LeaveBoardService } from './the-leave-board.service';
 import { TimeSheetsService } from './the-time-sheets.service';
+import { ReviewsService } from './the-reviews.service';
 
 class SwitchDto {
   @IsBoolean() on!: boolean;
   @IsOptional() @IsObject() answers?: Record<string, unknown>;
+}
+
+class WordsDto {
+  @IsString() @MaxLength(4000) text!: string;
+}
+
+class ReviewDecisionDto {
+  @IsOptional() @IsString() @MaxLength(1000) decision?: string;
+  @IsOptional() @IsString() @MaxLength(2000) reasons?: string;
 }
 
 class AgreementsDto {
@@ -29,6 +39,7 @@ export class SuitesController {
     private readonly onboarding: OnboardingBoardService,
     private readonly leave: LeaveBoardService,
     private readonly time: TimeSheetsService,
+    private readonly reviews: ReviewsService,
   ) {}
 
   @Get()
@@ -89,6 +100,42 @@ export class SuitesController {
   @ApiOperation({ summary: 'An admin says what each client agreed. It replaces the list.' })
   setTimeAgreements(@CurrentUser() user: CurrentUserData, @Body() dto: AgreementsDto) {
     return this.time.setAgreements({ userId: user.id, organizationId: user.organizationId }, dto.agreements);
+  }
+
+  @Get('reviews/board')
+  @ApiOperation({ summary: 'The next performance reviews, while the suite is on, for an admin or the lead of the team' })
+  reviewsBoard(@CurrentUser() user: CurrentUserData) {
+    return this.reviews.board({ userId: user.id, organizationId: user.organizationId });
+  }
+
+  @Post('reviews/due/:dueId/start')
+  @ApiOperation({ summary: 'The person who writes the review with them starts it' })
+  startReview(@Param('dueId') dueId: string, @CurrentUser() user: CurrentUserData) {
+    return this.reviews.start({ userId: user.id, organizationId: user.organizationId }, dueId);
+  }
+
+  @Get('reviews/:id')
+  @ApiOperation({ summary: 'One review, as this reader may read it' })
+  oneReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
+    return this.reviews.one({ userId: user.id, organizationId: user.organizationId }, id);
+  }
+
+  @Put('reviews/:id/words')
+  @ApiOperation({ summary: 'The writer’s own words' })
+  reviewWords(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
+    return this.reviews.writeWords({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
+  }
+
+  @Put('reviews/:id/view')
+  @ApiOperation({ summary: 'The person’s own view of their work' })
+  reviewView(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: WordsDto) {
+    return this.reviews.writeView({ userId: user.id, organizationId: user.organizationId }, id, dto.text);
+  }
+
+  @Post('reviews/:id/decision')
+  @ApiOperation({ summary: 'The writer decides, with reasons, and the person reads both' })
+  decideReview(@Param('id') id: string, @CurrentUser() user: CurrentUserData, @Body() dto: ReviewDecisionDto) {
+    return this.reviews.decide({ userId: user.id, organizationId: user.organizationId }, id, dto);
   }
 
   @Put(':key')

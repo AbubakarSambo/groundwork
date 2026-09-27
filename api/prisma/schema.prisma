@@ -461,6 +461,8 @@ model Organization {
   timeEntries        TimeEntry[]
   timeWeeks          TimeWeek[]
   timeAgreements     TimeAgreement[]
+  /// Performance reviews, for the reviews suite (E4, U.17).
+  performanceReviews PerformanceReview[]
   evaluationsDue     EvaluationDue[]
   apiAccessRequest   ApiAccessRequest?
   whatWorked         WhatWorked[]
@@ -2270,6 +2272,38 @@ model Resolution {
 /// person's own answer, and decides, giving a reason. The person reads the facts about their work
 /// and the decision with its reasons, and can add their side or appeal. An admin decides an appeal.
 ///
+/// ONE PERFORMANCE REVIEW (E4, the reviews suite, U.17), started for a review that falls due
+/// (`EvaluationDue`, which the daily reminder already reads). Holds what people write: the manager's
+/// own words, the person's own view, and the manager's decision with its reasons. `noticed` is the
+/// engine's "What Groundwork noticed", each line with how it is known, written by the engine with the
+/// prompt version that ran (docs/requests-to-engine.md, request 23); empty until then. There is no
+/// score and no verdict here. Hours and leave never feed it (decisions rule 10). Who reads which part
+/// is decided in suites/the-reviews.service.ts, never on the screen.
+model PerformanceReview {
+  id                     String    @id @default(uuid())
+  organizationId         String    @map("organization_id")
+  evaluationDueId        String    @unique @map("evaluation_due_id")
+  personExternalId       String    @map("person_external_id")
+  startedById            String    @map("started_by_id")
+  startedAt              DateTime  @default(now()) @map("started_at")
+  managersWords          String?   @map("managers_words") @db.Text
+  managersWordsById      String?   @map("managers_words_by_id")
+  managersWordsAt        DateTime? @map("managers_words_at")
+  theirView              String?   @map("their_view") @db.Text
+  theirViewAt            DateTime? @map("their_view_at")
+  noticed                Json?
+  noticedPromptVersionId String?   @map("noticed_prompt_version_id")
+  decision               String?   @db.Text
+  decisionReasons        String?   @map("decision_reasons") @db.Text
+  decidedById            String?   @map("decided_by_id")
+  decidedAt              DateTime? @map("decided_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, personExternalId])
+  @@map("performance_reviews")
+}
+
 /// HOURS SPENT ON ONE CLIENT OR PROJECT ON ONE DAY (E3, the time sheets suite, U.17). FOR BILLING
 /// ONLY (decisions rule 10): nothing here is evidence about how well anybody works, and nothing outside
 /// the suites reads it, so it never reaches a check-in, its record or its report. Who reads which row is
