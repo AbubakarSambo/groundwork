@@ -8,6 +8,8 @@ import { endStatesFor } from '../resolution/end-states';
 import { displayName, labelsForParties, namesVisibleTo, readsWithNamesOf, type LabelParty } from './party-labels';
 import { whatToCallThem } from '../conversation/a-colleague-in-an-interview-has-a-name';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
+import { whatToWorkOnNext } from './what-to-work-on-next';
+import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 
 /**
  * A PERSON'S LABEL IS THEIR NAME OR A NEUTRAL WORD, NEVER THE LEAD'S DESCRIPTION OF THEM.
@@ -241,6 +243,30 @@ describe('the role handed to the judgement reaches only the lead', () => {
       expect(b.theJudgement ?? null).toBeNull();
       /* The whole served board, searched in the test above, holds none of it either. */
     }
+  });
+});
+
+/* ---- The person's own coaching note: "your work as …" is never the lead's words. ---- */
+
+describe('the person\'s own coaching note does not say the lead\'s words back to them', () => {
+  const base = {
+    patterns: [], detectedFunction: null as string | null, functionConfidence: null as number | null,
+    noticedBehaviour: null as string | null, sessionNumber: 2, totalSessions: 6, scenario: 'NEW_HIRE',
+    waitingOn: [] as any[], holdingUp: [] as any[], saidSomethingSpecific: true, anythingDocumented: false,
+  };
+
+  it('with the lead\'s description as the role, nothing of it is said', () => {
+    const note = whatToWorkOnNext({ ...base, role: DESCRIPTION, roleToSay: aRoleInTheirOwnWords({ partyType: PartyType.PARTICIPANT, roleAsDescribed: DESCRIPTION }) } as any);
+    expect(PIECES.filter((p) => p.test(JSON.stringify(note))).map(String)).toEqual([]);
+  });
+
+  it('left out, the role is still said ("your work as daniel"), which is why the report must pass it', () => {
+    const note = whatToWorkOnNext({ ...base, role: DESCRIPTION } as any);
+    expect(JSON.stringify(note)).toMatch(/your work as daniel/i);
+  });
+
+  it('and the report passes only the person\'s own words to be said', () => {
+    expect(withoutComments('reports/reports.service.ts')).toContain('roleToSay: aRoleInTheirOwnWords(participant as any),');
   });
 });
 

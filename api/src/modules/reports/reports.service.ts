@@ -139,6 +139,7 @@ import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, whoIsExpected } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
+import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -4853,6 +4854,8 @@ happened, and what is in the way.`;
         .filter((d) => d.participantId === participant.id)
         .map((d) => ({ code: d.code, periodsObserved: d.periodsObserved })),
       role: participant.roleAsDescribed ?? null,
+      /* Said to this person only in their own words, never the lead's sentence about them (request 36). */
+      roleToSay: aRoleInTheirOwnWords(participant as any),
       /*
        * THE COLUMN THAT SELECTS THE ROLE MAP, read here for the first time on this page. See
        * whichRoleMap: below MIN_COACHING_CONFIDENCE there is no map and the note says why, rather
