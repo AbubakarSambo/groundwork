@@ -151,15 +151,23 @@ export function ChatPage() {
   const checkInName: string = groundLabel || (ground.data as any)?.label || ''
   const [brief, setBrief] = useState<CheckInBrief | null>(null)
   /*
-   * WHEN THE SCREEN MAY OFFER TO FINISH. The server holds a check-in to a turn floor - five answers
-   * for a full check-in, three for a team update, one for a correction - and this page used to keep
-   * its own copy of that number. The copies drifted (the server's went to five on 11 September, this
-   * one stayed at three), and for ten days the page offered "Complete session" two answers before the
-   * server would honour it: "a few more exchanges are needed" as a pop-up, on the button the page had
-   * just shown. The server now says the number with the session, and this page reads it. Five until
-   * it does, which is the stricter of the two and cannot offer early.
+   * `mayCompleteAfter` USED TO GATE WHEN "FINISH MY CHECK-IN NOW" APPEARED - the server's own turn
+   * floor for this check-in, so the offer would only show once the server was expected to honour it.
+   *
+   * U.8 FOURTH REVIEW: THE FLOOR AND THE CLOSING MESSAGE CAN DISAGREE (request 47). Walked live: the
+   * engine wrote "...Your report is ready now. Speak soon." after three short answers - its own
+   * close-readiness check said the record was done - and pressing "That's right, finish" then had the
+   * completion gate refuse it as too thin, on the SAME session. `sessionComplete` stayed false, so no
+   * end card came up either, and the manual button below was still gated on a floor of five: the
+   * person had answered, was told to finish, and had no way to press anything until two more answers
+   * later. "Please finish my check-in" got the same closing reply, again and again.
+   *
+   * The offer is now available from the first landed answer, always, so nobody is ever left with
+   * nothing to press. Pressing it before the record is actually ready reaches the same 400 refusal
+   * this page already turns into a plain sentence in the conversation, with the composer handed back
+   * (see the completion mutation's `onError` below) - so an early press costs one exchange, never a
+   * dead end. Nothing on this page reads the server's turn floor any more, so it is not stored here.
    */
-  const [mayCompleteAfter, setMayCompleteAfter] = useState(5)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
   const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
 
@@ -310,7 +318,6 @@ export function ChatPage() {
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       if (res.brief) setBrief(res.brief)
-      if (res.mayCompleteAfter) setMayCompleteAfter(res.mayCompleteAfter)
       setOpened(true)
       setOpenFailed(false)
     },
@@ -550,7 +557,6 @@ export function ChatPage() {
           */
           if (t.brief) setBrief(t.brief)
           if (t.endCard) setEndCard(t.endCard)
-          if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
           /*
             AND WHICH SESSION THIS IS, FOR THE SAME REASON AS THE BAND ABOVE.
 
@@ -1199,9 +1205,18 @@ export function ChatPage() {
               more exchanges are needed before this check-in can close". The
               person is invited to finish and immediately turned down.
               Seen four times in one twelve-session run. Only messages the server
-              has acknowledged are counted now, so the offer appears exactly when
-              the server will honour it. */}
-          {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
+              has acknowledged are counted now, so the offer never appears on the
+              strength of an echo that never landed.
+
+              THE THRESHOLD ITSELF IS NOW ONE, ALWAYS (U.8 fourth review), not the
+              server's turn floor (`mayCompleteAfter`). That floor and the engine's
+              own closing message can disagree - request 47 - so gating the button
+              on it could leave someone told "your report is ready now" with
+              nothing to press for two more answers. One landed answer is enough
+              to offer a way out; pressing it before the record is ready reaches
+              the friendly refusal below and hands the composer straight back, so
+              trying early costs an exchange, never a dead end. */}
+          {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= 1 && (
             <div style={{ textAlign: 'center', padding: '6px 0' }}>
               <button
                 onClick={() => setDone(true)}
