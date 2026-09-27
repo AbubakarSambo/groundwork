@@ -1999,6 +1999,16 @@ engine answers. Until then, "When I end it" stays off the screen.
    else can read it. **My recommendation:** record who wrote each note (one column), and say
    "Wanjiru's note" to a lead who did not write it. I have not changed this.
 
+4. **What Juma reads about why his check-in exists.** The reviewer noticed that, on a probation
+   check-in, the text everyone reads (the short read Groundwork writes from the brief) tells Juma
+   that "whether his employment will be confirmed" is what the check-in is for. That is the current
+   design: the people in a check-in read what it is for. You may want to see it before it goes to a
+   real person. Where that short read is missing, the first sentences of the brief stand in, and
+   they can include "Asked why this matters now, Wanjiru said “whether to confirm him”." I have not
+   changed what participants read; that text is written by the engine. **My recommendation:** look
+   at one probation check-in as the person it is about, and decide whether the decision itself
+   should be named to them.
+
 ### How this workspace runs now, since 26 September (your rule, because the Mac froze)
 
 - One helper at a time: builder, tester or reviewer, never several together.
@@ -2811,6 +2821,22 @@ Aisha (who takes part) and Otieno (an admin who is not in the check-in). What ch
   `whose-words-the-brief-is`). The screen tests render the Context page, the targets and each
   person's card as each of the three. Tests changed only where they checked old wording, or, in two
   cases, the old looser rule for admins, which is now stricter.
+
+**After the re-check (27 September).** Everything passed except the setup brief, now fixed. The
+lead typed "Juma joined our warehouse team in January and his probation ends in March. I need to
+decide whether to confirm him. He is often late with the stock counts." Under "What you wrote" the
+page showed setup's own paragraph instead, with "It matters now because whether to confirm him."
+Now:
+
+- Her own messages from setup are kept (a new table, one migration) and shown to her alone under
+  "What you wrote". A participant, an admin, or a lead the check-in is later handed to is never sent
+  them, which a server test checks.
+- The paragraph setup puts together quotes each answer after its question, so any answer reads as a
+  sentence: "Asked why this matters now, Wanjiru said “whether to confirm him”." It is headed "What
+  Groundwork put together from your answers", and is no longer called her words.
+- An admin who rewrote the brief, where Groundwork then wrote what everyone reads from his words,
+  reads "Groundwork wrote this from your words.", as the lead is told.
+- A question for you about what Juma reads is item 31.4.
 
 **The full run:** every screen test (2,681) and the build passed. In the API suite, U.7's own new test
 read a source file without removing comments first, and the comment guard caught it; that is fixed.
