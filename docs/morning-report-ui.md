@@ -263,6 +263,19 @@ spec now pins the privacy gate on `latestFinding` and `latestSummary` that repla
 looked for.
 
 
+### 0b. The check-ins list sent every participant the lead's setup brief, in the live product too
+
+**Found by the U.7 review on 27 September, and fixed on this branch** (`ed43e6e2`). The list of
+check-ins (`GET /grounds`) sent every field of each check-in to every reader, including the lead's own
+brief from setup. On a probation check-in, the person on probation received the lead's framing of
+them, for example that they are "often late with stock counts". No screen showed it, but it was in what
+their browser received. It was already so before this work: the brief then held the same answers as
+"Why now: …" and "Focus: …". **My recommendation:** fix it on the live product too, separately from
+this work. Now everyone who does not run a check-in gets only the short version Groundwork writes for
+the people in it, from one rule used by both the list and the single check-in. A participant's own
+check-in conversation can still fall back to the lead's brief when the short version is missing; that
+is the engine's code, so I have asked the engine workspace (request 41).
+
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
 **Fixed on 26 September** by the engine workspace, in the way suggested below (`theResendClient()` in
