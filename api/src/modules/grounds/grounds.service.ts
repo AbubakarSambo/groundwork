@@ -52,6 +52,7 @@ import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT } from './what-a-participant-is-told-about-this';
+import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
 import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant } from './nothing-proposed-that-nobody-said';
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
@@ -1432,6 +1433,12 @@ export class GroundsService {
         const mayReadTheReport = runsIt || !!fullReport?.releasedAt;
         return {
           ...safe,
+          /*
+           * THE BRIEF, BY THE SAME RULE AS THE CHECK-IN'S OWN READ (U.7 third review). It went out
+           * raw in `safe` to every reader of the list, so Aisha was sent the lead's setup answers
+           * about her. Whoever runs it gets the brief; anybody else the version everyone reads.
+           */
+          brief: runsIt ? ((safe as any).brief ?? null) : whatSomeoneWhoDoesNotRunItReads(safe as any),
           participants,
           checkIns: checkInsShown,
           dependencies: dependenciesShown,
@@ -1686,7 +1693,7 @@ export class GroundsService {
       : null;
 
     /* What the people in it read about what this is for, and whose words those are (U.7 review). */
-    const briefAsEveryoneReadsIt: string | null = (ground as any).toldToParticipants?.trim() || theSituationIn(brief) || null;
+    const briefAsEveryoneReadsIt: string | null = whatSomeoneWhoDoesNotRunItReads({ brief, toldToParticipants: (ground as any).toldToParticipants });
     const briefChange = rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).briefChangedBy ?? null : null;
     const changedBySomebodyElse = !!briefChange?.userId && briefChange.userId !== ground.initiatorId;
     /*

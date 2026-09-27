@@ -190,3 +190,62 @@ describe('setup keeps what the lead typed, and only that', () => {
     expect(upsert).not.toHaveBeenCalled();
   });
 });
+
+/*
+ * U.7 THIRD REVIEW: THE LIST SENT THE RAW BRIEF TO EVERYONE. Aisha, the person on probation, got the
+ * lead's setup answers about her from GET /grounds. It was so before the U.7 fixes too: `list()`
+ * spread the whole row. Now the list follows the check-in's own read.
+ */
+describe('what the check-ins list sends about what a check-in is for', () => {
+  const PUT_TOGETHER = 'Aisha’s probation in the warehouse team needs a decision. When asked why this matters now, the answer was taken to mean this. Decide whether to confirm Aisha for her role. When asked what the questions should focus on, the answer was taken to mean this. Aisha is often late with stock counts.';
+  const TOLD_AISHA = 'This check-in looks at how your first months in the warehouse have gone.';
+  function listAs(userId: string, role: string, told: string | null) {
+    const g: any = {
+      id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, label: 'Aisha, probation', status: 'ACTIVE', scenario: 'PROBATION_REVIEW',
+      cadence: 'WEEKLY', timelineDays: 84, updatedAt: new Date('2026-09-20'), joinToken: 'jt', groundAuditLog: null, restrictExternalVisibility: true,
+      peersVisibleToEachOther: true, brief: PUT_TOGETHER, toldToParticipants: told,
+      participants: [
+        { id: 'p-w', userId: WANJIRU, email: 'w@x.test', partyType: 'INITIATOR', createdAt: new Date('2026-09-01'), user: { firstName: 'Wanjiru', lastName: 'Lead' } },
+        { id: 'p-a', userId: AISHA, email: 'a@x.test', partyType: 'PARTICIPANT', createdAt: new Date('2026-09-02'), user: { firstName: 'Aisha', lastName: 'Otieno' } },
+        { id: 'p-b', userId: 'u-baraka', email: 'b@x.test', partyType: 'PARTICIPANT', createdAt: new Date('2026-09-03'), user: { firstName: 'Baraka', lastName: 'Kip' } },
+      ],
+      checkIns: [], report: null, reportRounds: [], dependencies: [], reportActivations: [],
+    };
+    const prisma: any = {
+      ground: { findMany: jest.fn().mockResolvedValue([g]) },
+      groundParticipant: { updateMany: jest.fn().mockResolvedValue({ count: 0 }), findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const reports = { theReportAsItWasShared: jest.fn() };
+    const svc = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { get: () => reports } as any);
+    return svc.list('org1', userId, `${userId}@x.test`, role).then((rows: any[]) => rows[0]);
+  }
+
+  it('Wanjiru, who leads it, gets her brief', async () => {
+    expect((await listAs(WANJIRU, 'MEMBER', TOLD_AISHA)).brief).toBe(PUT_TOGETHER);
+  });
+  it('Aisha, the person it is about, gets the version everyone reads, and none of the lead’s answers', async () => {
+    const row = await listAs(AISHA, 'MEMBER', TOLD_AISHA);
+    expect(row.brief).toBe(TOLD_AISHA);
+    expect(JSON.stringify(row)).not.toContain('often late with stock counts');
+    expect(JSON.stringify(row)).not.toContain('Decide whether to confirm');
+  });
+  it('and where that version is missing, only the situation, never the answers', async () => {
+    const row = await listAs(AISHA, 'MEMBER', null);
+    expect(row.brief).toBe('Aisha’s probation in the warehouse team needs a decision.');
+    expect(JSON.stringify(row)).not.toContain('often late with stock counts');
+  });
+  it('Baraka, another participant, gets the same', async () => {
+    const row = await listAs('u-baraka', 'MEMBER', null);
+    expect(JSON.stringify(row)).not.toContain('often late with stock counts');
+  });
+  it('an admin, who runs it by the list’s rule, gets the brief as the check-in’s own read gives it him', async () => {
+    expect((await listAs(OTIENO, 'ADMIN', TOLD_AISHA)).brief).toBe(PUT_TOGETHER);
+  });
+  it('and the check-in’s own read never gives Aisha the answers either, with or without the short version', async () => {
+    for (const told of [TOLD_AISHA, null]) {
+      const got = await getAs(AISHA, { brief: PUT_TOGETHER, toldToParticipants: told });
+      expect(JSON.stringify(got)).not.toContain('often late with stock counts');
+      expect(JSON.stringify(got)).not.toContain('Decide whether to confirm');
+    }
+  });
+});
