@@ -1,0 +1,262 @@
+import { isShut } from './a-ground-that-has-ended';
+import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
+
+/**
+ * THE YOU BOARD (C2, U.12): WHAT IS YOURS, ACROSS YOUR CHECK-INS, FOR YOUR EYES ONLY.
+ *
+ * WHO READS IT. Only the person it is about. There is no way to ask for anybody else's: the read
+ * takes the signed-in person and nobody else, and asking for someone else's is refused (see
+ * you.controller.ts). A lead, an admin and a colleague are each refused, with a test for each.
+ *
+ * WHAT IT IS MADE OF. Only what the person may already read, each piece from where they already
+ * read it:
+ *   - their check-ins, their turns and their own reports come from the check-ins list as
+ *     `GroundsService.list()` gives it to them (the one rule for who reads which check-in), cut down
+ *     to the check-ins in this organisation that they run or take part in;
+ *   - what is expected of them (their own `PersonObjective` rows and the board targets that are
+ *     theirs), which the Context page already shows them as "What is expected of you";
+ *   - what they are down as doing (`GroundCommitment` rows that are theirs), which the check-in's
+ *     own page already shows them and only they may move;
+ *   - the one coaching step their last check-in gave them, which Ask Groundwork already tells them;
+ *   - their own to-do list, which is theirs alone.
+ *
+ * WHAT IT NEVER HOLDS. How anybody's answers were rated (no specificity, no confidence, no
+ * severity), a label on anybody, anybody else's anything, a lead's private notes, and questions to
+ * Ask Groundwork. The engine's own text for this page (where you stand, what Groundwork noticed,
+ * coaching followed over time, what you contributed, what keeps coming up) is the engine's to write
+ * (docs/requests-to-engine.md, request 14); until it is served, the page shows none of it.
+ *
+ * The sentences are written here, once. Dates are not: the screen says them in the reader's time.
+ */
+
+export interface ObjectiveRow {
+  id: string;
+  groundId: string;
+  participantId: string;
+  text: string;
+  kind: string | null;
+  status: string | null;
+  authoredBy: string | null;
+  dueSaid: string | null;
+  createdAt?: Date | string | null;
+}
+
+export interface OwnedTargetRow {
+  id: string;
+  groundId: string;
+  name: string;
+  target: number | null;
+  count: number | null;
+}
+
+export interface GroundCommitmentRow {
+  id: string;
+  groundId: string;
+  participantId: string | null;
+  text: string;
+  whenSaid: string | null;
+  status: string | null;
+  createdAt?: Date | string | null;
+}
+
+export interface CoachingRow {
+  participantId: string;
+  currentStep: string | null;
+  updatedAt: Date | string | null;
+}
+
+export interface TodoRow {
+  id: string;
+  text: string;
+  dueSaid: string | null;
+}
+
+export interface YourCheckIn {
+  id: string;
+  label: string;
+  youRunIt: boolean;
+  /** One plain sentence about your part in it. */
+  line: string;
+  to: string;
+}
+
+export interface YourGoal {
+  id: string;
+  says: string;
+  checkIn: string;
+}
+
+export type SaidState = 'open' | 'kept' | 'not_done';
+
+export interface SomethingYouSaid {
+  id: string;
+  text: string;
+  /** Their own words for when, as said. Never turned into a date. */
+  when: string | null;
+  checkIn: string;
+  state: SaidState;
+  /** The word the screen shows beside it. */
+  stateSays: string;
+}
+
+export interface YourReport {
+  checkIn: string;
+  /** When it was written, as a moment. The screen says it in the reader's time. */
+  at: string | null;
+  to: string;
+}
+
+export interface YourBoard {
+  checkIns: YourCheckIn[];
+  turns: Pick<Need, 'key' | 'title' | 'detail' | 'action'>[];
+  goals: YourGoal[];
+  saidYoudDo: SomethingYouSaid[];
+  todos: { id: string; text: string; when: string | null }[];
+  coaching: { says: string; checkIn: string } | null;
+  ownReports: YourReport[];
+}
+
+export interface BoardReader {
+  userId: string;
+  organizationId: string;
+}
+
+const time = (d: Date | string | null | undefined) => (d ? new Date(d).getTime() : 0);
+
+/** Kinds that are about the whole check-in, not about one person. */
+const NOT_ABOUT_ONE_PERSON = new Set(['SUCCESS_DEFINITION']);
+/** Kinds that are something to do, rather than something to reach. */
+const THINGS_TO_DO = new Set(['COMMITMENT', 'TODO']);
+
+function sessionsLine(done: number): string {
+  if (done === 0) return 'You have not finished a session yet.';
+  if (done === 1) return 'You have finished 1 session.';
+  return `You have finished ${done} sessions.`;
+}
+
+function goalFromTarget(t: OwnedTargetRow): string {
+  const name = t.name.trim().replace(/[.\s]+$/, '');
+  if (t.target === null || t.target === undefined) return `${name}.`;
+  return `${name}. You have ${t.count ?? 0} of ${t.target}.`;
+}
+
+const STATE_SAYS: Record<SaidState, string> = { open: 'Open', kept: 'Kept', not_done: 'Not done' };
+
+export function yourBoard(
+  list: ListedCheckIn[],
+  reader: BoardReader,
+  rows: {
+    objectives: ObjectiveRow[];
+    ownedTargets: OwnedTargetRow[];
+    commitments: GroundCommitmentRow[];
+    coaching: CoachingRow[];
+    todos: TodoRow[];
+  },
+  now: Date = new Date(),
+): YourBoard {
+  /* Only this organisation's check-ins that you run or take part in. An admin's list carries every
+     check-in in the organisation; the ones they only oversee are not theirs, so they are not here. */
+  const mine = list.filter((g) => {
+    if (g.organizationId !== reader.organizationId) return false;
+    if ((g.status ?? '') === 'AWAITING_APPROVAL' || (g.status ?? '') === 'DECLINED') return false;
+    const inIt = (g.participants ?? []).some((p) => p.userId && p.userId === reader.userId);
+    return inIt || g.initiatorId === reader.userId;
+  });
+
+  const labelOf = new Map(mine.map((g) => [g.id, g.label]));
+  const myParticipantIds = new Set<string>();
+  for (const g of mine) {
+    for (const p of g.participants ?? []) if (p.userId === reader.userId) myParticipantIds.add(p.id);
+  }
+  /* A row counts only when it is in one of your check-ins AND belongs to your own place in it. */
+  const isMine = (groundId: string, participantId: string | null) =>
+    labelOf.has(groundId) && !!participantId && myParticipantIds.has(participantId);
+
+  const checkIns: YourCheckIn[] = [];
+  const ownReports: (YourReport & { t: number })[] = [];
+  for (const g of mine) {
+    const me = (g.participants ?? []).find((p) => p.userId === reader.userId) ?? null;
+    const youRunIt = g.initiatorId === reader.userId;
+    const done = me
+      ? (g.checkIns ?? []).filter((c) => !c.isSetup && c.participantId === me.id && c.status === 'COMPLETED')
+      : [];
+    const parts = [youRunIt ? 'You run this check-in.' : null, me ? sessionsLine(done.length) : null].filter(Boolean);
+    checkIns.push({ id: g.id, label: g.label, youRunIt, line: parts.join(' '), to: `/grounds/${g.id}` });
+
+    const last = [...done].sort((a, b) => time(b.completedAt) - time(a.completedAt))[0];
+    if (last) {
+      ownReports.push({
+        checkIn: g.label,
+        at: last.completedAt ? new Date(last.completedAt).toISOString() : null,
+        to: `/checkin/${last.id}/report`,
+        t: time(last.completedAt),
+      });
+    }
+  }
+  /* Open check-ins first, then finished ones; within each, the order the list gave. */
+  const over = new Set(mine.filter((g) => isShut(g.status) || !!g.closedAt || !!g.resolvedAt).map((g) => g.id));
+  checkIns.sort((a, b) => Number(over.has(a.id)) - Number(over.has(b.id)));
+
+  /* Your turns: the same "your turn" Today shows, so the two pages never disagree. */
+  const turns = whatNeedsYou(mine, { userId: reader.userId, organizationId: reader.organizationId }, [], now)
+    .needs.filter((n) => n.key.startsWith('turn-'))
+    .map(({ key, title, detail, action }) => ({ key, title, detail, action }));
+
+  /* What is expected of you: open, about you alone, and not a thing you said you would do. */
+  const goals: YourGoal[] = [];
+  for (const o of rows.objectives) {
+    if (!isMine(o.groundId, o.participantId)) continue;
+    if ((o.status ?? 'OPEN') !== 'OPEN') continue;
+    if (o.kind && NOT_ABOUT_ONE_PERSON.has(o.kind)) continue;
+    if (o.kind && THINGS_TO_DO.has(o.kind) && o.authoredBy === 'self') continue;
+    const text = (o.text ?? '').trim();
+    if (text) goals.push({ id: o.id, says: text, checkIn: labelOf.get(o.groundId)! });
+  }
+  for (const t of rows.ownedTargets) {
+    if (!labelOf.has(t.groundId) || !(t.name ?? '').trim()) continue;
+    goals.push({ id: t.id, says: goalFromTarget(t), checkIn: labelOf.get(t.groundId)! });
+  }
+
+  /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere. */
+  const said: (SomethingYouSaid & { t: number })[] = [];
+  for (const c of rows.commitments) {
+    if (!isMine(c.groundId, c.participantId)) continue;
+    const state: SaidState | null =
+      c.status === 'DONE' ? 'kept' : c.status === 'NOT_DONE' ? 'not_done' : c.status === 'DROPPED' ? null : 'open';
+    const text = (c.text ?? '').trim();
+    if (!state || !text) continue;
+    said.push({ id: c.id, text, when: c.whenSaid?.trim() || null, checkIn: labelOf.get(c.groundId)!, state, stateSays: STATE_SAYS[state], t: time(c.createdAt) });
+  }
+  for (const o of rows.objectives) {
+    if (!isMine(o.groundId, o.participantId)) continue;
+    if (!o.kind || !THINGS_TO_DO.has(o.kind) || o.authoredBy !== 'self') continue;
+    const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
+    const text = (o.text ?? '').trim();
+    if (!state || !text) continue;
+    said.push({ id: o.id, text, when: o.dueSaid?.trim() || null, checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt) });
+  }
+  const order: Record<SaidState, number> = { open: 0, kept: 1, not_done: 2 };
+  said.sort((a, b) => order[a.state] - order[b.state] || a.t - b.t);
+
+  /* The one step your latest check-in gave you. One at a time, never a list. */
+  const step = rows.coaching
+    .filter((c) => myParticipantIds.has(c.participantId) && (c.currentStep ?? '').trim())
+    .sort((a, b) => time(b.updatedAt) - time(a.updatedAt))[0];
+  let coaching: YourBoard['coaching'] = null;
+  if (step) {
+    const g = mine.find((x) => (x.participants ?? []).some((p) => p.id === step.participantId));
+    coaching = { says: `One thing for this week: ${step.currentStep!.trim()}`, checkIn: g?.label ?? '' };
+  }
+
+  return {
+    checkIns,
+    turns,
+    goals,
+    saidYoudDo: said.map(({ t: _t, ...s }) => s),
+    todos: rows.todos
+      .filter((t) => (t.text ?? '').trim())
+      .map((t) => ({ id: t.id, text: t.text.trim(), when: t.dueSaid?.trim() || null })),
+    coaching,
+    ownReports: ownReports.sort((a, b) => b.t - a.t).map(({ t: _t, ...r }) => r),
+  };
+}
