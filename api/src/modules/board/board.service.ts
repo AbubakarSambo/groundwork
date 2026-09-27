@@ -34,7 +34,6 @@ import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { theSessionReport } from '../reports/the-session-report';
-import { aNameOrNothing } from './a-name-is-short';
 import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
@@ -394,15 +393,14 @@ export class BoardService {
      * "hafeezah@meridianhealth.test" and four more, in one grid, so it read as two different kinds
      * of person. Her audit note said exactly that about two screens; this was the third.
      *
-     * The board falls back to the ROLE, not the address, and there are two reasons rather than one:
+     * The board never falls back to the address: it is read by every party, and a party's address
+     * can be hidden from the others. The client's `participantLabel` refuses the email for this
+     * reason and this did not.
      *
-     *  1. The board is read by every party, and a party's address can be hidden from the others. The
-     *     client's `participantLabel` refuses the email for this reason and this did not.
-     *  2. It is what this board is for. Its own framing panel says each person is shown "against
-     *     their own role in its own terms" - so when there is no name, the role IS the identity.
-     *
-     * `role` is already sent alongside `name` in the response, so the client suppresses the subtitle
-     * when the two would say the same word twice.
+     * It used to fall back to the ROLE instead, on the grounds that the board shows each person
+     * "against their own role in its own terms". It no longer does, because the role on the row is
+     * the lead's own description of the person (request 36, below). With no name, a person is
+     * "A teammate".
      */
     const nameOf = (pid: string) => {
       const p = ground.participants.find((x) => x.id === pid);
@@ -416,8 +414,16 @@ export class BoardService {
        * see displayName in party-labels, which this now matches.
        */
       const forWhom = ((p as any).organisationGiven ?? '').trim();
-      /* A sentence is not a name. See a-name-is-short.ts for the one that reached a live report. */
-      const label = n || aNameOrNothing(p.roleAsDescribed) || null;
+      /*
+       * A NAME, OR NOTHING, AND NEVER THE LEAD'S WORDS ABOUT THEM. Request 36, 27 September 2026.
+       *
+       * With no name this fell back to `roleAsDescribed`, cut short by `aNameOrNothing`. That field
+       * is the sentence the lead typed about the person when inviting them, and it can hold the
+       * lead's private words: "Daniel - Your sales manager, who you said is not meeting his agreed
+       * targets" came out as "Daniel - Your sales manager", printed as a name to every reader of the
+       * board, the person included. With no name the callers say "A teammate" instead.
+       */
+      const label = n || null;
       return label && n && forWhom ? `${label} (${forWhom})` : label;
     };
 

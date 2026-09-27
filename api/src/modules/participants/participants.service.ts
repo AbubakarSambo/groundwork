@@ -597,8 +597,10 @@ export class ParticipantsService {
 
   // Never fabricate a name from the email address. firstName is a required
   // column, but an empty string is the correct "no name given" value -
-  // participantLabel() (and every other name-display surface) already treats
-  // an empty name as absent and falls back to roleAsDescribed / "a teammate".
+  // every name-display surface already treats an empty name as absent and
+  // falls back to "a teammate". Never to roleAsDescribed: that is the lead's
+  // own description of the person, and it can hold the lead's private words
+  // (request 36, 27 September 2026).
   // A capitalized email local-part ("Hjumare") is not a name; it just looks
   // like one, which is worse than showing nothing.
   /** Every admin of the organisation, because one of them has to decide and any of them may. */

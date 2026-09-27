@@ -51,7 +51,6 @@ import {
   plainWordsForTheUnnameable,
   type LabelParty,
 } from '../reports/party-labels';
-import { aNameOrNothing } from '../board/a-name-is-short';
 
 /**
  * A POSITIONAL LABEL THAT SOMEHOW REACHED THE RECORD IS NOT WHAT ANYBODY CALLED ANYBODY.
@@ -133,9 +132,11 @@ export function whatToCallThem(
   const theirs = theyReallyCalledThem(speakerCalledThem);
   if (theirs) return theirs;
 
-  /* 2. A real name, where this check-in names people to each other. */
+  /* 2. A real name, where this check-in names people to each other. A name only: the role on the
+        row is the lead's own description of the person, which can hold the lead's private words,
+        so it never stands in for one (request 36, 27 September 2026). */
   if (peersMayBeNamed) {
-    const named = theirName(person) ?? aNameOrNothing((person as any)?.roleAsDescribed);
+    const named = theirName(person);
     if (named) return named;
   }
 

@@ -243,13 +243,18 @@ export class ResolutionService {
     // Notify the other active parties.
     const active = await this.prisma.groundParticipant.findMany({
       where: { groundId, userId: { not: null } },
-      select: { id: true, email: true, roleAsDescribed: true },
+      select: { id: true, email: true },
     });
     /**
      * The eighth hand-written name chain. Same shape as the others: the role, else a raw address,
      * with the person's actual NAME never consulted - and this one goes out in an email.
+     *
+     * AND WITH NO NAME, NEITHER THE ROLE NOR THE ADDRESS. Request 36, 27 September 2026. The role on
+     * the row is the lead's own description of the person, which can hold the lead's private words,
+     * and this email goes to everybody else in the check-in. The address is not theirs to be shown to
+     * a peer either (see `displayName`). With no name, they are "A teammate".
      */
-    const proposerLabel = displayName(participant as any) ?? participant.roleAsDescribed?.trim() ?? participant.email;
+    const proposerLabel = displayName(participant as any) ?? 'A teammate';
     const frontend = this.config.get<string>('resend.frontendUrl') || '';
     /* The ground page: `/grounds/:id/resolution` has never been a client route, so both of
        these invitations to settle an end state landed on the not-found page. The panel that
@@ -342,7 +347,6 @@ export class ResolutionService {
         userId: true,
         partyType: true,
         createdAt: true,
-        roleAsDescribed: true,
         /** For `labelsForParties`, which reads the name before anything else. */
         user: { select: { firstName: true, lastName: true, email: true } },
       },

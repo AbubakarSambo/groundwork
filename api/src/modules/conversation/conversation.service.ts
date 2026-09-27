@@ -35,7 +35,6 @@ import { thePeriodTheyNamed } from './when-words-mean-a-date';
 import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
-import { aNameOrNothing } from '../board/a-name-is-short';
 import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
@@ -4221,7 +4220,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const aiSoFar = (said as any[]).map((t: any) => t.content ?? '');
       const others = (ground?.participants ?? [])
         .filter((p: any) => p.id !== checkIn.participantId && !p.managingOnly)
-        .map((p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.roleAsDescribed || '')
+        /* A name only, never the lead's description of them (request 36): somebody with no name is left out of the list. */
+        .map((p: any) => [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim() || '')
         .filter(Boolean);
       const whoCarries = askWhoCarriesWhichPart({
         sharedNumbers: (board as any[]).filter((o: any) => !o.ownerParticipantId).map((o: any) => ({ name: o.name, target: o.target })),
@@ -4438,7 +4438,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ];
       const nameOfParticipant = (pid: string) => {
         const p = (ground.participants ?? []).find((x: any) => x.id === pid) as any;
-        return (p?.user?.firstName ?? '').trim() || (p?.roleAsDescribed ?? '').split(/[.,]/)[0].trim() || 'they';
+        /* A name only, never the lead's description of them (request 36). "they" made "they's own account reads". */
+        return (p?.user?.firstName ?? '').trim() || (p?.nameGiven ?? '').trim() || 'A teammate';
       };
       if (isLead) {
         const findings = Array.isArray((ground as any).report?.findings) ? ((ground as any).report.findings as any[]) : [];
@@ -4608,15 +4609,16 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         select: {
           what: true,
           onParticipantId: true,
-          fromParticipant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+          fromParticipant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         },
         take: 40,
       });
       const others = rows.map((r: any) => ({
         what: r.what ?? '',
+        /* A name only, never the lead's description of them (request 36). No name reads "Somebody else". */
         raisedBy: mayName
           ? ([r.fromParticipant?.user?.firstName, r.fromParticipant?.user?.lastName].filter(Boolean).join(' ').trim()
-            || aNameOrNothing(r.fromParticipant?.roleAsDescribed ?? null))
+            || (r.fromParticipant?.nameGiven ?? '').trim() || null)
           : null,
         owned: !!r.onParticipantId,
       }));
@@ -4673,14 +4675,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         select: {
           text: true,
           awareness: true,
-          participant: { select: { roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+          participant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         },
         orderBy: { createdAt: 'desc' },
         take: 30,
       });
       const onThem = rows.map((r: any) => ({
+        /* A name only, never the lead's description of them (request 36); nobody is matched without one. */
         name: [r.participant?.user?.firstName, r.participant?.user?.lastName].filter(Boolean).join(' ').trim()
-          || aNameOrNothing(r.participant?.roleAsDescribed ?? null) || '',
+          || (r.participant?.nameGiven ?? '').trim() || '',
         text: r.text ?? '',
         awareness: r.awareness ?? null,
       })).filter((r: { name: string }) => r.name);

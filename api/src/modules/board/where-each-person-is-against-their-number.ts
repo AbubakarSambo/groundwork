@@ -136,9 +136,10 @@ export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason
  * a count against the calendar, and how long a thing has sat against what was tried, are facts the
  * lead can do something with.
  *
- * Where nobody has given a name, `who` is their role, and "Head of Sales has not checked in" reads
- * as if the role were a person. So the sentence says "the person listed as" the role. A reader the
- * product cannot name to this reader at all is "a teammate".
+ * Where nobody has given a name, `who` was their role, and "Head of Sales has not checked in" read
+ * as if the role were a person, so the sentence said "the person listed as" the role. The board no
+ * longer uses the role as a name at all (request 36: it is the lead's own description of the
+ * person), so somebody with no name, or one the product cannot name to this reader, is "a teammate".
  */
 function subjectFor(row: Pick<PersonRow, 'who' | 'nameIsTheirRole'>, atTheStart: boolean): string {
   const who = (row.who ?? '').trim();
