@@ -382,6 +382,38 @@ export class GroundsController {
     return this.grounds.changeContextLine(id, userId, itemId, dto ?? {});
   }
 
+  /**
+   * THE LEAD'S QUESTIONS FOR PEOPLE, ONE AT A TIME. Decision 34: the lead sees the exact question as
+   * Groundwork will ask it, and confirms it, changes it, or leaves it out. Nothing is read into a
+   * person's check-in until it is confirmed here. See a-question-asked-word-for-word.
+   */
+  @Get(':id/questions-for-people')
+  @ApiOperation({ summary: "The lead's questions for people on this check-in, each with the exact sentence Groundwork will ask (lead or org admin)" })
+  async questionsForPeople(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.grounds.questionsForPeople(id, userId);
+  }
+
+  @Post(':id/questions-for-people/:itemId/confirm')
+  @ApiOperation({ summary: 'Lead only: confirm one question, as shown or in your own changed words, so it is asked word for word' })
+  async confirmQuestionForPerson(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { exactQuestion?: string | null },
+  ) {
+    return this.grounds.confirmQuestionForPerson(id, userId, itemId, dto ?? {});
+  }
+
+  @Post(':id/questions-for-people/:itemId/decline')
+  @ApiOperation({ summary: 'Lead only: leave one question out, so it is asked of nobody' })
+  async declineQuestionForPerson(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.grounds.declineQuestionForPerson(id, userId, itemId);
+  }
+
   @Patch(':id/chasing')
   @ApiOperation({ summary: 'Initiator-only: which days this check-in reminds people on, whether it reminds at all, and whether the lead hears who never started' })
   async setChasing(
