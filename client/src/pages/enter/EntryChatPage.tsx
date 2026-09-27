@@ -1080,6 +1080,23 @@ export function whatOpeningTheLinkDoes(people: number, startsOnLater: string | n
   return `Opening it saves your check-in. Then you see who was invited and who has to wait.${later}`
 }
 
+/* U.6 review: a sentence, not pieces joined with dashes: "daniel@x.test (Daniel). Your note: He is
+   the subject of this check-in." Shown on the lead's own page only; nothing of it reaches the person. */
+export function anEntryAsASentence(entry: string, shownAs: (head: string) => string = (h) => h): string {
+  const [who, ...rest] = entry.split(' - ')
+  const address = shownAs(who)
+  if (!rest.length) return `${address}.`
+  const [name, ...note] = rest.length > 1 ? rest : ['', ...rest]
+  const said = note.join(' - ').trim()
+  return `${address}${name ? ` (${name.trim()})` : ''}.${said ? ` Your note: ${said.replace(/([^.?!])$/, '$1.')}` : ''}`
+}
+
+/* "daniel@x.test is waiting to be invited." or "a@x.test and b@x.test are waiting to be invited." */
+export function whoIsWaitingSentence(who: string[]): string {
+  const list = who.length <= 1 ? who.join('') : `${who.slice(0, -1).join(', ')} and ${who[who.length - 1]}`
+  return `${list} ${who.length === 1 ? 'is' : 'are'} waiting to be invited.`
+}
+
 export function fallbackGroundName(situation?: string, where?: string): string {
   const known = situation ? (SCENARIO_LABELS as Record<string, string>)[situation] : undefined
   if (known) return sentenceCase(known)
@@ -1263,10 +1280,8 @@ export function EntryChatPage() {
     if (!head.startsWith(A_COLLEAGUE)) return head
     return colleagues.find((c) => c.id === head.slice(A_COLLEAGUE.length))?.name ?? 'A colleague'
   }
-  function shownEntry(entry: string): string {
-    const dash = entry.indexOf(' - ')
-    return dash === -1 ? shownAs(entry) : `${shownAs(entry.slice(0, dash))} - ${entry.slice(dash + 3)}`
-  }
+  function shownEntry(entry: string): string { return anEntryAsASentence(entry, shownAs) }
+  function whoIsWaiting(): string { return whoIsWaitingSentence(inviteAdded.map((e) => shownAs(e.split(' - ')[0]))) }
   function colleagueNamed(label: string): { id: string; name: string; team: string | null } | null {
     const name = label.split(' - ')[0].trim().toLowerCase()
     if (name.length < 2) return null
@@ -3942,7 +3957,7 @@ export function EntryChatPage() {
                 <div style={{ fontSize: 13, color: 'var(--gw-green-t)', lineHeight: 1.6 }}>We sent a link to <strong>{email}</strong>. Click it to finish setting up and get your invite link.</div>
                 {inviteAdded.length > 0 ? (
                   <div style={{ fontSize: 12, color: 'var(--gw-green-t)', lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--gw-green-b-soft)' }}>
-                    <strong>Waiting to send ({inviteAdded.length}):</strong> {inviteAdded.map(e => shownAs(e.split(' - ')[0])).join(', ')}. Nobody is invited before you confirm your email.
+                    {whoIsWaiting()} Nobody is invited before you confirm your email.
                   </div>
                 ) : (
                   /* Saying nothing here read as "you have left something

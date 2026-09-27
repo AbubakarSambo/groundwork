@@ -190,3 +190,20 @@ describe('"You picked", in plain words (U.6 review)', () => {
     }
   })
 })
+
+describe('who is on the list, in sentences (U.6 review)', () => {
+  /* Read live: "Waiting to send (1): u6f-daniel@example.test." and "✓ u6f-daniel@example.test -
+     Daniel - He is the subject of this check-in…". The lead's page only. */
+  it('says who is waiting in a sentence', async () => {
+    const { whoIsWaitingSentence } = await import('./EntryChatPage')
+    expect(whoIsWaitingSentence(['u6f-daniel@example.test'])).toBe('u6f-daniel@example.test is waiting to be invited.')
+    expect(whoIsWaitingSentence(['a@x.test', 'b@x.test', 'c@x.test'])).toBe('a@x.test, b@x.test and c@x.test are waiting to be invited.')
+  })
+  it('says each person added without dashes', async () => {
+    const { anEntryAsASentence } = await import('./EntryChatPage')
+    expect(anEntryAsASentence('u6f-daniel@example.test - Daniel - He is the subject of this check-in'))
+      .toBe('u6f-daniel@example.test (Daniel). Your note: He is the subject of this check-in.')
+    expect(anEntryAsASentence('a@x.test - Runs the pipeline.')).toBe('a@x.test. Your note: Runs the pipeline.')
+    expect(anEntryAsASentence('a@x.test')).toBe('a@x.test.')
+  })
+})
