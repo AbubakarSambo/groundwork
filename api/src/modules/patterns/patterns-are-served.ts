@@ -1,43 +1,35 @@
 /**
- * THE ONE SWITCH FOR WHETHER ANYBODY READS A PATTERN. IT IS OFF.
+ * THE ONE SWITCH FOR WHETHER ANYBODY READS A PATTERN. IT IS OFF, AND STAYS OFF UNTIL HAFSAH HAS
+ * APPROVED THE PLAIN NAMES.
  *
- * Hafsah, 27 September 2026: "stop serving patterns to every board, for everyone, until patterns are
- * done properly. Switch them off; don't delete the code." The capability check that morning found
- * three things a person actually read (docs/capability-check.md, "What must be fixed before
- * deploying"):
+ * What it means now. Hafsah, 27 September 2026: "Patterns are built, so they are not hidden at
+ * release. They stay switched off only until they follow Hafsah's rules." Every rule is now built
+ * and kept in one place, patterns/who-reads-a-pattern, so turning this on means "serve patterns
+ * under these rules", and nothing else:
  *
- *   - the internal names, "Blame Shifting", "Equity Without Contribution", "Claimed Work Inflation",
- *     on the lead's board and the participant's board, beside a person's name;
- *   - a participant reading a colleague's pattern, unnamed, on a team of four where the observation
- *     names them as surely as a name would;
- *   - the lead reading a pattern after one session, before the person it is about had read it, and
- *     with no way for that person to answer it.
+ *   1. PLAIN NAMES. Every page uses the plain names in plain-pattern-names.ts, copied from
+ *      docs/pattern-names.md, never an internal name or a code. E4 and F5 are never named to anyone.
+ *   2. NEVER A LABEL BESIDE A NAME. A pattern is served as a sentence of what happened in the work,
+ *      with the person as an id for the page to place, never a name joined to a pattern's name.
+ *   3. A PARTICIPANT READS ONLY THEIR OWN, on every page. Only whoever runs the check-in (its lead,
+ *      whoever set it up, an admin of its organisation) reads anybody else's.
+ *   4. THREE PERIODS, counted from every period it was really seen in, good news included.
+ *   5. THE PERSON SEES IT FIRST, AND CAN ANSWER (POST /patterns/:id/answer). The lead reads it only
+ *      after the person has answered, or three days after they were shown it, or a week after it
+ *      was ready if they never opened it, with the person's own words beside it.
  *
- * WHAT STILL RUNS. Detection, the three-period rule and every `pattern_detections` row are exactly as
- * they were: the detector runs after every session, stores what it saw, and the live conversation
- * still uses a surfaced pattern to sharpen a question, which a person never reads as a pattern. What
- * stops is every road from those rows to a page: the board's pattern section, the lead's "what the
- * record shows over time", the ground page's feed of what was noticed, a person's own record, the
- * session report's section and the picture drafted from it, the coaching note and the probe list
- * built from them, and the judgement's material, which the lead reads on the board.
+ * WHY IT IS STILL OFF. The plain names are Hafsah's to approve (decision 19), and she has not yet
+ * approved docs/pattern-names.md, B5's name included. Turn it on only after she has, and after the
+ * screens can show the new shape and the "Say what's behind it" answer box.
  *
- * WHAT MUST BE TRUE BEFORE THIS IS TURNED ON, all four, and not one of them is true today:
+ * WHAT RUNS EITHER WAY. Detection, the three-period rule and every `pattern_detections` row, and the
+ * live conversation's use of a surfaced pattern to sharpen a question, which a person never reads as
+ * a pattern. The developer API's findings never carry a pattern, on or off, and neither does the
+ * record over time stored on a report, which was written before any of these rules held.
  *
- *   1. THREE PERIODS. Nothing negative reaches anybody before it has been seen in three periods.
- *      Today the lead's record-over-time shows patterns seen once, under "not yet a pattern".
- *   2. THE PERSON SEES THEIRS FIRST, AND CAN ANSWER. A pattern reaches the person it is about before
- *      it reaches anybody else, and they have a way to say what is behind it that the lead then
- *      reads beside it. Today there is no route for an answer (patterns.controller has only
- *      `accuracy` and `rate`), and their own report leaves the pattern out.
- *   3. PLAIN NAMES, APPROVED BY HAFSAH. Every screen uses the plain names in docs/pattern-names.md,
- *      never the internal names or codes, and only once Hafsah has approved that list. Today no code
- *      reads it.
- *   4. NEVER BESIDE A NAME. A pattern is never printed next to a person's name, or on a page where
- *      the rest of the page identifies who it is about. Today the board prints both.
- *
- * Turning it on is changing `false` to `true` here and nowhere else. Every road listed above reads
- * this constant, and the-board-serves-no-pattern.spec.ts builds every board as every reader and
- * checks that none of it carries a pattern while it is off.
+ * Turning it on is changing `false` to `true` here and nowhere else.
+ * the-board-serves-patterns-under-the-rules.spec.ts reads the board, the check-in's own page and the
+ * person's own record as every kind of reader with it on and with it off, and
+ * the-board-serves-no-pattern.spec.ts checks every board while it is off.
  */
 export const PATTERNS_ARE_SERVED = false;
-
