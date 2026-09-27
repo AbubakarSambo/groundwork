@@ -50,17 +50,30 @@ describe('a check-in can be brought to an end', () => {
     expect(screen.getByText('Let them go')).toBeTruthy()
   })
 
-  it('records a choice against the real API', async () => {
-    ;(resolutionApi.get as any).mockResolvedValue(STATE)
-    ;(resolutionApi.propose as any).mockResolvedValue({ ...STATE, confirmedCount: 1 })
+  it('records the lead\'s outcome and reason against the real API', async () => {
+    /* U.11: a decision is saved with its reason, and the button is the prototype's. The lead is the
+       one who decides on every check-in now, so this is written as the lead. */
+    const LEAD = { ...STATE, leadDecides: true, viewerIsLead: true, viewerIsParty: true }
+    ;(resolutionApi.get as any).mockResolvedValue(LEAD)
+    ;(resolutionApi.propose as any).mockResolvedValue({ ...LEAD, confirmedCount: 1 })
     renderPanel()
     await userEvent.click(await screen.findByText('Keep the hire'))
-    await userEvent.click(screen.getByText('This is my answer'))
+    await userEvent.type(screen.getByLabelText('Why, in a sentence or two'), 'He met his goal.')
+    await userEvent.click(screen.getByText('Save the outcome and end it'))
     /* The consequences, then the press (nothing-irreversible-happens-on-one-press.spec.tsx): one click
        does not end an engagement. */
     expect(resolutionApi.propose).not.toHaveBeenCalled()
-    await userEvent.click(screen.getByText('Yes, that is my answer'))
-    await waitFor(() => expect(resolutionApi.propose).toHaveBeenCalledWith('g1', 'KEEP'))
+    await userEvent.click(screen.getByText('Yes, end it'))
+    await waitFor(() => expect(resolutionApi.propose).toHaveBeenCalledWith('g1', 'KEEP', 'He met his goal.'))
+  })
+
+  it('will not end it on an outcome with no reason', async () => {
+    ;(resolutionApi.get as any).mockResolvedValue({ ...STATE, leadDecides: true, viewerIsLead: true, viewerIsParty: true })
+    renderPanel()
+    await userEvent.click(await screen.findByText('Keep the hire'))
+    await userEvent.click(screen.getByText('Save the outcome and end it'))
+    expect(screen.queryByText('Yes, end it')).toBeNull()
+    expect(resolutionApi.propose).not.toHaveBeenCalled()
   })
 
   it('will not submit before a choice is made', async () => {
@@ -102,12 +115,14 @@ describe('a check-in can be brought to an end', () => {
   it('shows the outcome, and no voting controls, once it is closed', async () => {
     ;(resolutionApi.get as any).mockResolvedValue({
       ...STATE,
-      resolution: { id: 'r1', groundId: 'g1', endState: 'KEEP', closedAt: '2026-08-07T00:00:00Z' },
+      resolution: { id: 'r1', groundId: 'g1', endState: 'KEEP', closedAt: '2026-08-07T00:00:00Z', reason: 'He met his goal.' },
       groundStatus: 'RESOLVED',
     })
     renderPanel()
     expect(await screen.findByText('How this ended')).toBeTruthy()
+    expect(screen.getByText('He met his goal.')).toBeTruthy()
     expect(screen.queryByText('This is my answer')).toBeNull()
+    expect(screen.queryByText('Save the outcome and end it')).toBeNull()
   })
 
   it('renders nothing at all for someone who is not a party', async () => {

@@ -21,7 +21,11 @@ export interface ResolutionConfirmation {
 }
 
 export interface ResolutionState {
-  resolution: { id: string; groundId: string; endState: string; closedAt: string | null } | null
+  /**
+   * `reason` is why the lead chose the outcome, in their own words (U.11, decisions rule 6). The
+   * server sends it only once the check-in has ended, and only to the people in it and an admin.
+   */
+  resolution: { id: string; groundId: string; endState: string; closedAt: string | null; reason?: string | null } | null
   confirmations: ResolutionConfirmation[]
   confirmedCount: number
   totalActive: number
@@ -44,6 +48,10 @@ export interface ResolutionState {
    * coming without being asked to consent to it. False everywhere else, where nobody closes alone.
    */
   leadDecides: boolean
+  /** Whether the reader runs the check-in. */
+  viewerIsLead?: boolean
+  /** Whether the reader is in the check-in. False for an admin who only reads it. */
+  viewerIsParty?: boolean
 }
 
 export const resolutionApi = {
@@ -55,9 +63,9 @@ export const resolutionApi = {
       .get<ResolutionState>(`/grounds/${groundId}/resolution`, { skipForbiddenToast: true })
       .then(r => r.data),
 
-  /** Propose or confirm. The ground closes when every active party picks the same one. */
-  propose: (groundId: string, endState: string) =>
-    apiClient.post<ResolutionState>(`/grounds/${groundId}/resolution`, { endState }).then(r => r.data),
+  /** The lead's outcome and why. The server refuses an ending without a reason. */
+  propose: (groundId: string, endState: string, reason: string) =>
+    apiClient.post<ResolutionState>(`/grounds/${groundId}/resolution`, { endState, reason }).then(r => r.data),
 
   counter: (groundId: string, proposedEndState: string, message?: string) =>
     apiClient

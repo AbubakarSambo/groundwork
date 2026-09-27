@@ -95,6 +95,25 @@ function badgeColoursFor(type: string): { background: string; color: string } {
   return { background: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
 }
 
+/**
+ * WHERE THE RUN IS, counted from sessions everybody has finished (moved here from the foot of the
+ * board so the top and the foot read the same answer).
+ *
+ * NOT `phaseSpine.currentSession`, which is the highest session NUMBER any check-in row carries -
+ * rows for the next session are created the moment one completes, so it runs ahead of the run. A
+ * spine session is 'done' only when every check-in for it completed, which is the min-across-people
+ * rule. And PLANNED sessions, not the ones that happen to have rows yet: `phaseSpine.sessions` lists
+ * only the session numbers check-in rows exist for, so the run's length comes from the check-in's
+ * own timeline and cadence, which is what the header counts to say "Session 1 of 6".
+ */
+function whereTheRunIs(data: any, ground: any): { nearTheEnd: boolean; lastSessionDone: boolean } {
+  const sessions = (data?.phaseSpine?.sessions ?? []) as { state: string }[]
+  const planned = plannedSessionsFor(ground?.timelineDays, ground?.cadence, ground?.plannedSessions)
+  const done = sessions.filter((x) => x.state === 'done').length
+  if (planned == null || planned <= 0) return { nearTheEnd: false, lastSessionDone: false }
+  return { nearTheEnd: done >= planned - 1, lastSessionDone: done >= planned }
+}
+
 export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const { id: idFromRoute } = useParams<{ id: string }>()
   const id = groundId ?? idFromRoute
@@ -481,6 +500,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {b.readOnlyNote && (
           <p role="note" style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '8px 0 0' }}>{b.readOnlyNote}</p>
         )}
+
+        {/*
+          HOW IT ENDS, AT THE TOP (U.11, day-30-and-60.txt and ending-and-probation-review.txt).
+          Once it has ended, everyone reads the outcome, who decided, when, and why. Near the end,
+          the lead reads "It’s yours to decide how this ends." with the way to the ending page.
+        */}
+        <div style={{ marginTop: 14 }}>
+          <ResolutionPanel
+            groundId={id!}
+            place="board-top"
+            nearTheEnd={whereTheRunIs(data, groundForSignals).nearTheEnd}
+            lastSessionDone={whereTheRunIs(data, groundForSignals).lastSessionDone}
+          />
+        </div>
 
         {/*
           WHAT NEEDS YOU IN THIS CHECK-IN (board-as-lead.txt), for whoever runs it. Not a second read:
@@ -1744,27 +1777,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             is the min-across-people rule. The other half of the gate - a decision already under
             way - is the panel's own, because only it knows whether anybody has picked.
           */
-          const spine = (data as any)?.phaseSpine
-          const sessions = (spine?.sessions ?? []) as { state: string }[]
-          /*
-           * PLANNED sessions, not the ones that happen to have rows yet.
-           *
-           * Driven on a check-in at session 1 of 6, and the exit appeared. `phaseSpine.sessions`
-           * lists only the session numbers check-in rows exist for - two of them, at that point -
-           * so "done >= total - 1" was 1 >= 1 and read as the end of the run. The run's length
-           * comes from the check-in's own timeline and cadence, which is what the header counts
-           * to say "Session 1 of 6".
-           */
-          const planned = plannedSessionsFor(
-            (groundForSignals as any)?.timelineDays,
-            (groundForSignals as any)?.cadence,
-            (groundForSignals as any)?.plannedSessions,
-          )
-          const done = sessions.filter((x) => x.state === 'done').length
-          const nearTheEnd = planned != null && planned > 0 && done >= planned - 1
+          const { nearTheEnd } = whereTheRunIs(data, groundForSignals)
           return (
             <div style={{ marginTop: 14 }}>
-              <ResolutionPanel groundId={id!} nearTheEnd={nearTheEnd} />
+              {/* U.11: for everyone except the lead while it is open. The lead decides on the
+                  ending page, and once it has ended it shows at the top of the board. */}
+              <ResolutionPanel groundId={id!} nearTheEnd={nearTheEnd} place="board-bottom" />
             </div>
           )
         })()}
