@@ -19,6 +19,20 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 
 /**
+ * U.9 RE-REVIEW: "WHAT YOU SHARED:" IS A LABEL BOLTED ONTO A SENTENCE WITH A COLON.
+ *
+ * The private closing summary the engine writes is instructed to open with the exact phrase "What
+ * you shared:" (conversation.service.ts) - so Amani's own report read "What you shared: You are
+ * aiming for…". That is the engine's own prompt, out of this workspace's reach
+ * (api/src/modules/conversation/), and is asked for as engine request 60. Until it lands, this
+ * screen turns the stored opening into a sentence of its own before drawing it, rather than pass
+ * the colon join straight through to a reader.
+ */
+export function withoutTheColonOpening(summary: string): string {
+  return summary.replace(/^What you shared:\s*/, 'Here is what you shared. ')
+}
+
+/**
  * THE REPORT ONE SESSION ENDED ON, OPENED AGAIN.
  *
  * Reported four times: "I want the exact same forming report to be openable or seen. I have not
@@ -247,7 +261,7 @@ export default function SessionReportPage() {
       {!isLoading && !isError && !data?.report && (groundReport as any)?.soloArtifact && (
         <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-paper)', padding: '14px 16px', marginBottom: 16 }}>
           <div style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)' }}>
-            {(groundReport as any).soloArtifact.summary}
+            {withoutTheColonOpening((groundReport as any).soloArtifact.summary ?? '')}
           </div>
           {(groundReport as any).soloArtifact.whatToCarry && (
             <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', marginTop: 8, borderTop: '1px solid var(--gw-border)', paddingTop: 8 }}>
