@@ -3355,6 +3355,35 @@ real hidden-check-in row shape), extended `the-lead-is-named-even-when-hidden.sp
 whole name at signup trims to its first word). Only the tests for files changed run
 (`--maxWorkers=2`), both type checks clean.
 
+### U.8, end-of-module suites: four failures from our own commits, all fixed
+
+Running every suite (not only the files this module touched) at the end of U.8 found four
+failures, all self-inflicted:
+
+- **"Finish my check-in now" reads the server's floor again, not one landed answer.** The fourth
+  review's fix offered the manual finish button from the first landed answer, always, reasoning
+  that the engine's closing message and its own completion gate can disagree on the same session
+  (request 47). `api/src/modules/conversation/one-floor-not-two.spec.ts` is the engine's own
+  deliberate rule against exactly that shape: the engine, the server's refusal, and this page's
+  offer must all read ONE floor, because a live check-in has deadlocked when the screen and the
+  server disagreed about when finishing was allowed. Offering from the first answer always
+  recreated that same two-sources-of-truth shape from the other side, so the gate is restored to
+  `mayCompleteAfter`, the server's own number. The dead end itself - the engine's closing message
+  can still say "your report is ready now" while its own gate disagrees - is unchanged and stays
+  the engine's to close; noted on request 47 that the screens' floor gate is deliberately restored
+  to the engine's own rule, and why, so nobody re-removes it for the same reason again.
+- **The completion refusal reads `canContinue` first.** Changed to
+  `err?.response?.data?.canContinue || err?.response?.status === 400`, per
+  `a-refusal-that-asks-must-be-answerable.spec.ts` - the explicit signal first, the status as the
+  fallback for the history where a shared filter once dropped the field.
+- **A stale test fixture.** `the-check-in-as-a-person-reads-it.spec.tsx`'s SALES fixture predated
+  `leadFirstName`/`leadAnswersToo`/`aTeamReportComes`; added them as the server actually sends
+  them, with `report.releasedAt` (not `roundCompletions` alone) in the "everyone has answered"
+  case - every existing assertion unchanged.
+- **A guard that pinned the retired read.** `a-shared-report-needs-two-people-and-the-page-says-so.spec.ts`
+  pinned `whoIsInRound(ground.participants, ...)`; updated to pin `atLeastTwoInThisRound` instead,
+  the sentence itself unchanged.
+
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 
 - **The lead's judgement on the board reads as sentences.** "What this cannot tell you" and "What
