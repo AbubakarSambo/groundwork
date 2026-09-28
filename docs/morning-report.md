@@ -131,6 +131,20 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **What is next, in your order:** measure weeks 4 and 5 live, twice, then carry on with the weekly plan.
 
+## 28 SEPTEMBER, AFTERNOON: RUN-15 DID NOT PASS, AND WHY
+
+**Run-15 was the first full run on the streamed route (13:32 to 15:25, on `75b4d687`). It cannot be the release candidate.**
+- **It found a real fault in the streamed route, and that is why it failed.** In 8 of the 24 scenarios one person's check-in stopped part-way, on "The reply could not be finished. Send that again." The model's stream did not open within 20 seconds (6 times), the network call failed (twice), or the model said it was too busy (once). The plain route's model call tries again on exactly these; the stream's did not. No earlier run saw it, because the runner used the plain route. People using the screen would have.
+- **Fixed** (`4d91d5ec`): when the stream fails, the reply is asked for again the plain way, with its retries, and shown whole. The person sees the error only if that fails too.
+- **Because of it,** 8 reports were one person short and flagged incomplete: renewal, discovery, loans, project, recognition, crisis, board and shock. So too few judgements could be tested for task 1.5. And one scenario, openread, could not be set up: adding a person took 6.8 seconds against a 5-second database limit while three parts of the run went at once. That is load on this computer, but I have added it to the questions for Abubakar, since a busy server could hit the same limit.
+- **What run-15 still shows:**
+  - **"Proof asked for" is back above the baseline: 52, against 42.** Week 4 works.
+  - No turn asks two questions, every problem count is 0, and all 428 quotes are word for word.
+  - None of the lead's private words reached anyone, for the fifth full run in a row.
+  - Jargon in Groundwork's turns is 17 by the checker's count.
+  - The checker fails it on specific detail (75 against 88), blocker checked (31 against 37), agreements (50 against 56) and patterns (84 against 100). All of those are counted from the check-ins and reports that broke, and openread is missing entirely, so they cannot be read yet.
+- **Next: run-16, on a build with every fix,** the stream fallback and the privacy fixes from this afternoon included. It decides the release candidate.
+
 ## 28 SEPTEMBER, AFTERNOON: A PRIVATE FILE'S NAME AND A HIDDEN TARGET, ON THE BOARD (`7afee54e`)
 
 - **Who could see each, before this:**
