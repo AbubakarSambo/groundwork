@@ -4,6 +4,37 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## At a glance, 28 September
+
+**Reviewed and passed:** 7 of the 20 modules are reviewed, passed and ticked (U.1 to U.7). U.8, the
+check-in screens, passed its sixth review this morning, and its last full test run is going now; it is
+ticked once that passes.
+
+**What is left:** the reviews of U.9 to U.19, one module at a time, oldest first; finishing U.19
+(billing) and U.20; the screens for the engine's new pattern shape and its answer box (patterns stay
+switched off until you approve their names); the table of Ask Groundwork, the switchboard and every
+kind of board; and `docs/ready-to-deploy-screens.md`.
+
+**Are the screens ready to deploy? Not yet.** Eleven modules still need their review. Four privacy
+problems are open, and each is in the live product too: the lead's private description reaching an
+invitation (item 0, fixed on this branch), the check-ins list sending participants the lead's setup
+brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c,
+engine code, request 43) and someone held for a seat reading a released report (item 0d, engine code,
+request 49). The last two need the engine workspace.
+
+**What I finished tonight:** U.8 went through six reviews, and everything they found is fixed. A
+person can now always finish their check-in, and a refusal to finish is said plainly in the
+conversation. The "How checkable" card no longer tells people they left out things they said. Names
+are first names, not email addresses or roles, even on a check-in where people don't see each other.
+The Done page says truthfully whether a team report is coming and when it can be read. The
+organisation switcher gets the organisation's name straight from sign-in. Someone held for a seat is no
+longer offered a check-in or a report on Today. I also merged the engine workspace's latest work.
+
+**What needs you:** items 0 to 0d near the top of "Needs Hafsah" (privacy, most urgent: 0c and 0d
+need the engine workspace, and 0 and 0b need fixing on the live product too); item 31 (what admins who
+don't run a check-in may see and change, and whether a decision about a person may be a target that
+person reads); and the older items further down.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
