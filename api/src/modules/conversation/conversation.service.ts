@@ -1,3 +1,4 @@
+import { managementWordsIn, sayItInPlainWords } from './management-words';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { theLeadByName, mentionsTheLeadByALabel } from './the-lead-has-a-name';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -2028,6 +2029,37 @@ export class ConversationService {
         }
       }
 
+      /*
+       * AND NO MANAGEMENT WORD THEY DID NOT USE FIRST. Task 2.3, week 3: "pipeline", "escalate",
+       * "deliverable" and the rest, when Groundwork reached for them itself. Asked again once, with
+       * the sentence quoted and a plain way offered; if the second try is no better, the first
+       * stands. See management-words. It runs before the word guard below, which stays last so it
+       * reads whatever ships, this one's rewrite included.
+       */
+      const jargonHere = managementWordsIn(screened.text, theirWords);
+      if (jargonHere.length) {
+        this.logger.warn(`Check-in ${checkIn.id}: ${jargonHere.length} management word(s) they did not use; asking again.`);
+        const plain = await this.anthropic
+          .respond(`${fullSystem}\n\n${sayItInPlainWords(jargonHere, screened.text)}`, history)
+          .catch(() => '');
+        const second = plain.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(plain), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (
+          second?.text && !second.hits.length &&
+          !managementWordsIn(second.text, theirWords).length &&
+          !wordsWeDoNotUse(second.text, theirWords).length &&
+          !asksMoreThanOneThing(second.text) &&
+          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
+          !opensByRepeatingThem(message, second.text)
+        ) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try said it plainly.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try was no plainer; the first stands.`);
+        }
+      }
+
       const notOurWords = wordsWeDoNotUse(screened.text, theirWords);
       if (notOurWords.length) {
         this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
@@ -2050,6 +2082,7 @@ export class ConversationService {
           this.logger.warn(`Check-in ${checkIn.id}: the second try used them too; the first stands.`);
         }
       }
+
 
       /*
        * AND SAY SO WHENEVER A LONG ONE SHIPS, NOT ONLY WHEN THE GUARD TRIPS.
