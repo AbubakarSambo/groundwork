@@ -492,6 +492,14 @@ export default function SessionReportPage() {
         The primary action is the question. Opening a follow-up is how that conversation gets a
         time and a place in this product, so that is the button. The link stays, quieter.
       */}
+      {/*
+        U.9 REVIEW: "WHAT NOW?" WAS OFFERED ON THE PAGE THAT SAYS THIS ISN'T YOURS TO OPEN.
+        This whole block sat outside the `!isLoading && !isError` guard the rest of the page uses,
+        so somebody who reached this page for a session that refused them (403, 404, or any other
+        failure) still read "Start a new check-in" and "Copy the link" under the error message.
+        There is nothing here for a page that has nothing to show.
+      */}
+      {!isLoading && !isError && (
       <div className="gw-print-none" style={{ marginTop: 30, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>What now?</div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11, maxWidth: '68ch' }}>
@@ -520,6 +528,7 @@ export default function SessionReportPage() {
           The link opens only for people already entitled to read this.
         </div>
       </div>
+      )}
 
     </div>
   )
