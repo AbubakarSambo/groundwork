@@ -45,7 +45,7 @@ import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingFor
 import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
-import { GroundTabRow } from '@/components/gw/GroundTabRow'
+import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel, SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
 import { whoIsInRound, countsInRound } from '@/lib/who-is-in-this-round'
@@ -1264,28 +1264,55 @@ export function GroundAdminPage() {
   /* On unless somebody turned it off, matching the column. */
   const expectsUnblocking = (ground as any)?.expectThemToUnblock !== false
 
+  /**
+   * ONE TAB ORDER, SHARED WITH THE PARTY VIEW. See `ground-tabs.ts`.
+   *
+   * This list used to live inline where `<GroundTabRow>` drew it, in its own order, with its own
+   * labels - and the party view kept a second one. Report was fifth here and third there;
+   * "Sessions" here was "My record" there. Both read the same function now, so a tab cannot move
+   * on one page without moving on the other. TheCheckInHeader (U.10 picture-check round 6, item I)
+   * draws it now, with "Board" (its own route) prepended.
+   */
+  const tabs = groundTabs({ contextEnabled, canRunThisCheckIn: true, isAParty: viewerIsAParty })
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       {/* Sticky header */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '1px solid var(--gw-border)' }}>
         {/*
-          ON A PHONE THIS HEADER BROKE INTO SEVEN LINES. W-UX-A.
-          
-          Her audit note: the title cuts off to "Ne...". What the running page actually did at 375px
-          was worse - four things were competing for one row that could not hold any of them, so
-          every one of them broke mid-word: "← Check-" / "ins", "Opened for:" / "Starting", "No read"
-          / "yet". Two hundred and seventy pixels of chrome before a word of content.
-          
-          Nothing is hidden and nothing is truncated. The row is allowed to WRAP between its parts,
-          and each part refuses to wrap inside itself, so it degrades into stacked whole phrases
-          instead of shredded ones. `minWidth: 0` on the title block is what lets the long name take
-          the space the short pieces give up.
+          U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SAME SHARED HEADER EVERY CHECK-IN PAGE NOW USES.
+
+          "← Check-ins" and the bare 15px <h1> are gone - TheCheckInHeader's own breadcrumb
+          ("Check-ins / {title}") and 30px serif title replace them, with the tab bar (the same
+          `groundTabs()` output GroundTabRow always drew, unchanged in key or label - see
+          GroundParticipantPage.tsx for why the labels are kept rather than forced to the board's
+          prototype wording) now at the TOP of the header, matching the prototype's own shape
+          (board-as-lead.jpg: breadcrumb, title, cadence, buttons, then tabs, then everything else).
+
+          EVERYTHING BELOW THIS - the moment pill and admin note, the report-state corner, the
+          attention line, the "runs out"/"out of time" banners, the scenario/session/days row - is
+          kept exactly where it was, just now sitting under the header and its tabs instead of
+          above the header's own old tab row. None of it duplicates anything TheCheckInHeader
+          says (it has no session-progress figure of its own, no report state, no banners), so
+          nothing here was dropped for the new header to be added.
         */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', padding: '12px 16px' }}>
+        <TheCheckInHeader
+          id={id!}
+          title={ground.label}
+          cadence={(ground as any).cadence ?? null}
+          plannedSessions={plannedSessions}
+          canRunThisCheckIn
+          isAParty={viewerIsAParty}
+          active={({ chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
+          tabs={[
+            { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
+            ...tabs.map((t) => ({ key: t.key, label: t.label })),
+          ]}
+          onSelectTab={(k) => goTab(FROM_TAB_KEY[k] ?? 'chat')}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', padding: '10px 16px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>← Check-ins</button>
             <div style={{ minWidth: 0 }}>
-              <h1 style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2, margin: 0 }}>{ground.label}</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                 {/*
                   "STARTING", ON A GROUND WITH TWELVE OF TWELVE SESSIONS DONE. W8-66.
@@ -1547,41 +1574,13 @@ export function GroundAdminPage() {
           {reportState !== 'report sent to everyone' && reportState !== 'no report yet' && <span style={{ color: 'var(--gw-sub)' }}>{reportState}</span>}
         </div>
 
-        {/* Tabs.
-            THE BOARD BELONGS HERE, WITH THE OTHER PLACES YOU GO.
-            It was a small dark pill floating up beside the ground's status and
-            nowhere else in the product, so someone who did not happen to notice
-            it on that one row had no way of knowing the board existed at all.
-            Board is per-ground, so a global nav entry would have to guess which
-            ground someone meant; this row is where a person already looks for
-            the parts of a ground. It only appears when the server says this
-            ground has one (boardRenders), same as before. */}
-        {/**
-          * ONE TAB ORDER, SHARED WITH THE PARTY VIEW. See `ground-tabs.ts`.
-          *
-          * This list used to live here, in its own order, with its own labels - and the party view
-          * kept a second one. Report was fifth here and third there; "Sessions" here was "My record"
-          * there. Both read the same function now, so a tab cannot move on one page without moving on
-          * the other.
-          *
-          * The keys this page uses internally are unchanged, so nothing about its own state machine
-          * moves: the shared list is mapped onto them.
-          */}
-        {/**
-          * THE SAME ROW THE PARTY VIEW DRAWS. `GroundTabRow` owns the scroll behaviour, so the fix for
-          * seven tabs in a 390px row lands on both views at once rather than being written twice.
-          */}
-        <GroundTabRow
-          tabs={groundTabs({
-            contextEnabled,
-            canRunThisCheckIn: true,
-            isAParty: viewerIsAParty,
-          })}
-          active={({ chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
-          onPick={k => {
-            goTab(FROM_TAB_KEY[k] ?? 'chat')
-          }}
-        />
+        {/*
+          U.10 PICTURE-CHECK ROUND 6, ITEM I: THE TAB ROW MOVED TO THE TOP OF THE HEADER.
+          `<GroundTabRow>` used to draw here, at the foot of all the status content above. It is
+          now `TheCheckInHeader`'s own tab bar, at the top of this sticky header (see the comment
+          there) - the prototype's own shape, header then tabs then everything else, rather than
+          everything else then tabs.
+        */}
       </div>
 
       <div className="gw-bd" style={{ paddingTop: 12, maxWidth: 600, margin: '0 auto', width: '100%' }}>
