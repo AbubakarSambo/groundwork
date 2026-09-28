@@ -79,6 +79,19 @@ import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 
 
 
+/**
+ * U.10 PICTURE-CHECK ROUND 6, ITEM F: THE PROTOTYPE'S WIDE OUTLINED BUTTON ("Every session").
+ * `btnGhost` (kit.tsx) is a thin grey-bordered, grey-text button used throughout the product for a
+ * secondary action; the prototype's own "Every session" button is heavier - white, a visible dark
+ * border, bold near-black text, full width. Kept local to the board rather than added to
+ * `btnGhost`, which many other pages already use for its lighter weight.
+ */
+const wideOutlineBtn = {
+  display: 'block', textAlign: 'center' as const, marginTop: 8, textDecoration: 'none',
+  padding: '11px 16px', borderRadius: 8, border: '1.5px solid var(--gw-dark)',
+  background: 'white', color: 'var(--gw-dark)', fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+}
+
 const dshort = (iso?: string | null) =>
   iso ? whenItWas(iso, 'dayAndMonth') : ' - '
 
@@ -496,23 +509,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {justAnswered && <ThatIsOnTheRecord groundId={id!} />}
 
         {/*
-          THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE. A board was a page you arrived at
-          from one check-in and left the same way - read one, back to the list, find the next,
-          open it, open its board. See the component for why the server says which have one.
-
-          NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING. On /boards the tabs above do this
-          job, and two switchers one above the other, both listing the same check-ins, is a
-          reader asking which of them is the real one.
-        */}
-        {!groundId && <div style={{ marginBottom: 10 }}><TheOtherBoardsYouAreIn groundId={id!} /></div>}
-
-        {/*
           U.10 ITEM 2: THE PROTOTYPE'S HEADER AND TABS (board-as-lead.jpg), NOT THE DARK NAVY CARD.
           "← Back to the check-in" and a dark header of the board's own invention are gone; every
           check-in page now has one shared shell (TheCheckInHeader.tsx) for the breadcrumb, the
           serif title, the cadence line, "Your check-in", "Ask" and the tab bar - built to be reused
           by GroundAdminPage.tsx and GroundParticipantPage.tsx too (see that file for what is and is
           not wired in this pass).
+
+          THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE (picture-check round 6, item A). A board was
+          a page you arrived at from one check-in and left the same way - read one, back to the
+          list, find the next, open it, open its board. See the component for why the server says
+          which have one. It used to sit above the header of its own accord, styled for the dark
+          header the board no longer has - on the cream page its near-white text on white was almost
+          invisible, and the prototype has nothing above the breadcrumb. It is real navigation, not
+          the check-in switcher, so rather than delete it, it now draws in the tab row's own
+          "Views ▾" slot (not built - nothing answers what that menu would offer), restyled for a
+          light ground. NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING: on /boards the tabs above do
+          this job, and two switchers is a reader asking which of them is the real one.
         */}
         <TheCheckInHeader
           id={id!}
@@ -525,6 +538,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           canRunThisCheckIn={viewerRunsThisCheckIn}
           isAParty={!!b.myParticipantId}
           active="board"
+          trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} /> : undefined}
         />
 
         {/*
@@ -735,7 +749,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.cascade && b.cascade && (
           <Card>
             <Row first>
-              <div style={{ fontSize: 12.5, letterSpacing: '.1px', color: 'var(--gw-muted)', marginBottom: 6 }}>
+              {/* Picture-check round 6, item H: the card's own title, the prototype's weight (18px/700/near-black), not a 12.5px muted caption. */}
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>
                 {b.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}
               </div>
               {b.cascade.parentNamed && (
@@ -1485,24 +1500,33 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 />
               ) : (
                 <div>
+                  {/*
+                    U.10 PICTURE-CHECK ROUND 6, ITEM D: SQUARES IN THEIR OWN FIXED COLUMN.
+                    The name cell used to sit inline with the lead's note ("Faraji Odhiambo I sell
+                    fridges in Kilimani"), so a long note pushed that row's squares right of every
+                    other row's. The name column is now `flex: 1` and the note is its own line under
+                    the name, in small grey text; the squares sit in a column of a fixed width
+                    (enough for ten 14px squares with 5px gaps), so they line up across every row
+                    regardless of how long a name or a note is.
+                  */}
                   {b.checkInGrid.rows.map((r, i) => (
-                    <div key={r.participantId} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                      <div style={{ minWidth: 160 }}>
-                        <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13.5 }}>{nameOnTheBoard(b, r.participantId, r.name)}</span>
-                        {anyRoleToShow && (
-                          <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--gw-sub)' }}>
-                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : r.managingOnly ? 'Managing only' : null}
-                          </span>
+                    <div key={r.participantId} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13.5 }}>{nameOnTheBoard(b, r.participantId, r.name)}</div>
+                        {anyRoleToShow && (r.role && r.role !== r.name || r.managingOnly) && (
+                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>
+                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : 'Managing only'}
+                          </div>
                         )}
                       </div>
-                      <div style={{ display: 'flex', gap: 5 }}>
+                      <div style={{ display: 'flex', gap: 5, flex: '0 0 auto', width: 190, justifyContent: 'flex-end' }}>
                         {squaresFor(r.participantId).map((sq) => (
                           <span
                             key={sq.key}
                             aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
                             title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
                             style={{
-                              display: 'inline-block', width: 14, height: 14, borderRadius: 3,
+                              display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0,
                               background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent',
                               border: sq.state === 'empty' ? '1.5px solid var(--gw-border)' : 'none',
                             }}
@@ -1999,12 +2023,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </Row>
               ))}
             </Card>
+            {/*
+              PICTURE-CHECK ROUND 6, ITEM F: "N SESSION(S) IN ALL", AND A REAL OUTLINED BUTTON.
+              "All 1 session" read oddly in the singular; the prototype's own phrasing puts the
+              count first ("All 38 sessions"). Read as a sentence instead: "1 session in all." /
+              "38 sessions in all." And `btnGhost` (thin grey border, grey text) drew as a pale bar
+              rather than the prototype's wide outlined white button with a border and bold text.
+            */}
             <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gw-sub)' }}>
-              All {sessionRows.length} session{sessionRows.length === 1 ? '' : 's'}
+              {sessionRows.length} session{sessionRows.length === 1 ? '' : 's'} in all.
             </div>
             <Link
               to={`/grounds/${id}?tab=report`}
-              style={{ ...btnGhost, display: 'block', textAlign: 'center', marginTop: 8, textDecoration: 'none' }}
+              style={wideOutlineBtn}
             >
               {EVERY_SESSION.heading}
             </Link>
@@ -2022,7 +2053,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!shown.checkInGrid && b.myParticipantId && (
           <Link
             to={`/grounds/${id}?tab=record`}
-            style={{ ...btnGhost, display: 'block', textAlign: 'center', marginTop: 20, textDecoration: 'none' }}
+            style={{ ...wideOutlineBtn, marginTop: 20 }}
           >
             {EVERY_SESSION.heading}
           </Link>
@@ -2040,16 +2071,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           if it has. This is now the only screen that carries the arc, which is why the report tab
           could become a list of sessions.
 
-          U.10 ITEM 7: UNDER "OVER TIME", OPENING ON ASK. The prototype has this as its own small
-          heading with a "Show" link, not open by default - the same shape "How to read this board"
-          already uses above.
+          U.10 ITEM 7: UNDER "OVER TIME", OPENING ON ASK. The prototype has this as its own section
+          heading, not a small blue link-style label - picture-check round 6, item E: the same 22px
+          bold heading every other section uses (Sec's own `size="board"` styling, matched by hand
+          here since Sec's own right-hand slot only takes text, not a "Show"/"Hide" control), with
+          "Show" on the right.
         */}
-        <div style={{ marginTop: 26 }}>
+        <div style={{ marginTop: 28 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>Over time</span>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', margin: 0 }}>Over time</h2>
             <button
               onClick={() => setShowOverTime((v) => !v)}
-              style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+              style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
             >
               {showOverTime ? 'Hide' : 'Show'}
             </button>
@@ -2133,8 +2166,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           this check-in - `showWith` sets both the panel open and the question in one step, and
           `checkInOnThisPage` (AskGroundwork.tsx) already reads the check-in id straight off this
           page's own address, so "about" is this board without anything extra to wire.
+
+          PICTURE-CHECK ROUND 6, ITEM G: THE EXAMPLE IS THIS BOARD'S OWN DATA, NOT THE PROTOTYPE'S
+          SAMPLE ("Green Mart" is not in this check-in). Built from the first blocker when there is
+          one ("Why is Baraka Mwangi still waiting on the discount decision?"), else the plain
+          example asked for.
         */}
-        <AskTheBoard />
+        <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} />
       </div>
     </div>
   )
@@ -2145,9 +2183,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
  * Kept as its own small component so BoardPage's already-long body does not grow another inline
  * form; it owns nothing but the draft text, which it hands to the shared Ask Groundwork panel.
  */
-function AskTheBoard() {
+function AskTheBoard({ firstBlocker }: { firstBlocker: { from: string | null; what: string; on: string | null } | null }) {
   const [draft, setDraft] = useState('')
   const showWith = useAskStore((s) => s.showWith)
+  const example = firstBlocker?.from
+    ? `Why is ${firstBlocker.from} still waiting on ${firstBlocker.what}?`
+    : 'Who is waiting on whom?'
   return (
     <form
       onSubmit={(e) => {
@@ -2163,7 +2204,7 @@ function AskTheBoard() {
         type="text"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder="Ask about this board, for example “Why is Green Mart not quarter?”"
+        placeholder={`Ask about this board, for example “${example}”`}
         aria-label="Ask about this board"
         style={{
           flex: 1, padding: '11px 14px', borderRadius: 8, border: '1px solid var(--gw-border)',

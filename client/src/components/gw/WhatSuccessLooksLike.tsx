@@ -58,12 +58,19 @@ const STATE: Record<'everyone' | 'only-yours', Record<ConditionState, { word: st
   },
 }
 
+/**
+ * U.10 PICTURE-CHECK ROUND 6, ITEM H: A CARD TITLE, THE PROTOTYPE'S WEIGHT.
+ * This drew at 13px, muted grey - the caption weight for a small label above something else, not
+ * a title. The prototype's own card titles ("What the target of 25 assumes", "To close the gap,
+ * two of these three") are 18px, bold, near-black. Matched here so every card on the board reads
+ * at the same weight.
+ */
 const Heading = ({ children, note }: { children: React.ReactNode; note?: string | null }) => (
   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-    <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1px', color: 'var(--gw-muted)' }}>
+    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)' }}>
       {children}
     </div>
-    {note ? <div style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>{note}</div> : null}
+    {note ? <div style={{ fontSize: 12, color: 'var(--gw-muted)', flexShrink: 0 }}>{note}</div> : null}
   </div>
 )
 

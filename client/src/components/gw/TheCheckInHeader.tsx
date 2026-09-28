@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
@@ -43,6 +43,7 @@ export function TheCheckInHeader({
   canRunThisCheckIn,
   isAParty,
   active,
+  trailing,
 }: {
   id: string
   title: string
@@ -55,6 +56,13 @@ export function TheCheckInHeader({
   canRunThisCheckIn: boolean
   isAParty: boolean
   active: 'board' | 'chat' | 'context' | 'sessions' | 'record' | 'settings'
+  /**
+   * U.10 PICTURE-CHECK ROUND 6, ITEM A: drawn at the right of the tab row, in the same slot the
+   * prototype's own "Views ▾" sits in (not built - nothing answers what it would offer). Used by
+   * the board for TheOtherBoardsYouAreIn, a real control the prototype has no equivalent slot for
+   * anywhere else on the page.
+   */
+  trailing?: ReactNode
 }) {
   const showAsk = useAskStore((s) => s.show)
 
@@ -86,9 +94,12 @@ export function TheCheckInHeader({
 
   return (
     <header>
-      {/* "Check-ins / Sales team, Q3" (board-as-lead.txt). */}
+      {/*
+        "Check-ins / Sales team, Q3" (board-as-lead.txt). "Check-ins" is a link in the prototype -
+        underlined navy - not plain grey text (picture-check round 6, item B).
+      */}
       <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginBottom: 6 }}>
-        <Link to="/grounds" style={{ color: 'var(--gw-sub)', textDecoration: 'none' }}>Check-ins</Link>
+        <Link to="/grounds" style={{ color: 'var(--gw-navy)', textDecoration: 'underline' }}>Check-ins</Link>
         {' / '}{title}
       </div>
 
@@ -120,22 +131,28 @@ export function TheCheckInHeader({
         </div>
       </div>
 
-      <nav aria-label="This check-in" style={{ display: 'flex', gap: 20, marginTop: 18, borderBottom: '1px solid var(--gw-border)', overflowX: 'auto' }}>
-        {tabs.map((t) => (
-          <Link
-            key={t.key}
-            to={t.to}
-            aria-current={t.key === active ? 'page' : undefined}
-            style={{
-              padding: '0 0 10px', fontSize: 13.5, fontWeight: t.key === active ? 700 : 500,
-              color: t.key === active ? 'var(--gw-text)' : 'var(--gw-sub)', textDecoration: 'none',
-              borderBottom: t.key === active ? '2px solid var(--gw-navy)' : '2px solid transparent',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {t.label}
-          </Link>
-        ))}
+      <nav
+        aria-label="This check-in"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginTop: 18, borderBottom: '1px solid var(--gw-border)', overflowX: 'auto' }}
+      >
+        <div style={{ display: 'flex', gap: 20 }}>
+          {tabs.map((t) => (
+            <Link
+              key={t.key}
+              to={t.to}
+              aria-current={t.key === active ? 'page' : undefined}
+              style={{
+                padding: '0 0 10px', fontSize: 13.5, fontWeight: t.key === active ? 700 : 500,
+                color: t.key === active ? 'var(--gw-text)' : 'var(--gw-sub)', textDecoration: 'none',
+                borderBottom: t.key === active ? '2px solid var(--gw-navy)' : '2px solid transparent',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t.label}
+            </Link>
+          ))}
+        </div>
+        {trailing && <div style={{ paddingBottom: 8, flexShrink: 0 }}>{trailing}</div>}
       </nav>
     </header>
   )

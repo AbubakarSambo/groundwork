@@ -61,9 +61,14 @@ export type Square = { key: number; state: 'done' | 'empty' | 'upcoming' }
  * Name, a one-line summary, a reason pill, then ten small navy squares for the last ten
  * check-ins. The prototype's rightmost column - "what keeps coming up" - is left out here: it
  * needs pattern detection, which is off while patterns are off (see `shown.patterns` on the
- * board), so nothing is faked in its place. `ask`, the whole point of a row - the one thing a
- * lead can act on - is not in the prototype's table at all, so it is kept as a second line under
- * the row rather than dropped, the same way `finding` already was.
+ * board), so nothing is faked in its place.
+ *
+ * PICTURE-CHECK ROUND 6, ITEM C: ONE COMPACT ROW, NOT A STACKED CARD. The first pass drew each
+ * person as a tall card (name, pill, says, squares, ask, a quoted finding, each on its own line) -
+ * the prototype draws one table row: name | summary | pill | squares. `ask` and `finding` are not
+ * in the prototype's table at all, so rather than drop them (the whole point of a row - the one
+ * thing a lead can act on) they sit as a single quiet second line under the summary, smaller and
+ * greyer than `says`, instead of each getting a card-sized block of their own.
  */
 export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFor?: (participantId: string) => Square[] }) {
   if (!rows.length) return null
@@ -77,57 +82,57 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
       */}
       <ShowAFew rows={rows} few={10} what="people">
       {(r: Row, i: number) => (
-        <div key={r.participantId} style={{ padding: '13px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>
-              {r.who}
-              {/*
-                Nobody has given a name, so this is their role. Said plainly, because on a list of
-                people a role reads as a name. "A colleague · no name given" joined a role and a
-                fact with a middle dot; now it is one clause read straight through.
-              */}
-              {r.nameIsTheirRole && (
-                <span style={{ fontWeight: 400, fontSize: 12.5, color: 'var(--gw-sub)' }}>, who has not given a name</span>
-              )}
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
+        <div key={r.participantId} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>
+                {r.who}
+                {/*
+                  Nobody has given a name, so this is their role. Said plainly, because on a list of
+                  people a role reads as a name. "A colleague · no name given" joined a role and a
+                  fact with a middle dot; now it is one clause read straight through.
+                */}
+                {r.nameIsTheirRole && (
+                  <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--gw-sub)' }}>, who has not given a name</span>
+                )}
+              </span>
               {/* The number, where they have one. A person with no target of their own still has a
                   row: what to do about them does not depend on somebody having set them a figure. */}
               {r.target != null && (
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontSize: 12.5, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums' }}>
                   {r.count} of {r.target}
                 </span>
               )}
-              <Pill tone={TONE[r.reason]}>{LABEL[r.reason]}</Pill>
-            </span>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>{r.says}</div>
+            {/* `ask` and `finding`, kept as one quiet line rather than dropped - not in the
+                prototype's table, but the whole point of a row for a lead who can act on it. */}
+            {(r.ask || r.finding) && (
+              <div style={{ fontSize: 12, color: r.hasGap ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 4, lineHeight: 1.5 }}>
+                {[r.ask, r.finding].filter(Boolean).join(' ')}
+              </div>
+            )}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{r.says}</div>
-          {/* The last-10 squares, the same mark and the same data "Who checked in" draws. */}
+          <div style={{ flexShrink: 0 }}>
+            <Pill tone={TONE[r.reason]}>{LABEL[r.reason]}</Pill>
+          </div>
+          {/* The last-10 squares, the same mark and the same data "Who checked in" draws, in their
+              own fixed-width column so they line up across every row. */}
           {squaresFor && (
-            <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 5, width: 170, justifyContent: 'flex-end', flexShrink: 0 }}>
               {squaresFor(r.participantId).map((sq) => (
                 <span
                   key={sq.key}
                   aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
                   title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
                   style={{
-                    display: 'inline-block', width: 12, height: 12, borderRadius: 3,
+                    display: 'inline-block', width: 12, height: 12, borderRadius: 3, flexShrink: 0,
                     background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent',
                     border: sq.state === 'empty' ? '1.5px solid var(--gw-border)' : 'none',
                   }}
                 />
               ))}
             </div>
-          )}
-          {/* The whole point of the row. Absent where there is nothing to ask for, rather than
-              padded with something to say. Not in the prototype's table - kept here so it is not lost. */}
-          {r.ask && (
-            <div style={{ fontSize: 13.5, color: 'var(--gw-text)', marginTop: 7, lineHeight: 1.55 }}>{r.ask}</div>
-          )}
-          {/* What the record says about them, in the product's words. "Nothing to do" over a farmer whose
-              maize had failed was the row without this (run 6, 21 Sep 2026). */}
-          {r.finding && (
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', marginTop: 8, lineHeight: 1.55, paddingLeft: 10, borderLeft: `3px solid ${r.hasGap ? 'var(--gw-amber-b)' : 'var(--gw-border)'}` }}>{r.finding}</div>
           )}
         </div>
       )}
