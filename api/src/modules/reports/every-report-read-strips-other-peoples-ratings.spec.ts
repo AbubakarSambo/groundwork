@@ -58,9 +58,9 @@ describe('every report read strips other people\'s ratings', () => {
       specificitySignal: { 'the initiator': 'moderate', 'Participant A': 'HIGH', 'Participant B': 'LOW' },
       pictureConfidence: { 'Participant A': 'firm', 'Participant B': 'thin' },
       parties: [
-        { label: 'the initiator', specificityLabel: 'moderate', contributed: true },
-        { label: 'Participant A', specificityLabel: 'HIGH', contributed: true },
-        { label: 'Participant B', specificityLabel: 'LOW', contributed: true },
+        { label: 'the initiator', specificityLabel: 'moderate', confidence: 'partly covered', contributed: true },
+        { label: 'Participant A', specificityLabel: 'HIGH', confidence: 'well covered', contributed: true },
+        { label: 'Participant B', specificityLabel: 'LOW', confidence: 'thin', contributed: true },
       ],
       concernFlags: [{ about: 'Participant B' }],
     },
@@ -84,6 +84,8 @@ describe('every report read strips other people\'s ratings', () => {
       expect(e.specificitySignal?.[label]).toBeUndefined();
       expect(e.pictureConfidence?.[label]).toBeUndefined();
       expect(e.parties.find((p: any) => p.label === label).specificityLabel).toBeUndefined();
+      /* Screens request 52: the per-person confidence band on the same row is a rating too. */
+      expect(e.parties.find((p: any) => p.label === label).confidence).toBeUndefined();
       expect(out.finalSynthesis.tiers[idOf[label]]).toBeUndefined();
     }
     /* Participation is not a rating and stays for everybody. */

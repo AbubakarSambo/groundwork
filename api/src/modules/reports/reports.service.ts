@@ -495,6 +495,10 @@ ${PLAIN_WORDS_EXAMPLES}
 
 ${WRITTEN_ONCE_FOR_SEVERAL_READERS}`;
 
+/** What a participant who has not answered yet is told, on the report and on a session's report alike. */
+export const A_PICTURE_IS_FORMING =
+  'A picture is forming from the accounts that are in. You can read it as soon as you have given yours. Reading somebody else\'s first would turn yours into an answer to theirs, and the point is that they are separate.';
+
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
@@ -2760,6 +2764,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
     if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('Report not found');
     const viewerIsLead = isInitiator || isOrgAdmin;
     const released = !!ground.report?.releasedAt;
+
+    /*
+     * NOT UNTIL YOU HAVE ANSWERED, AS ON THE MAIN REPORT. Screens request 51, 28 September 2026: this
+     * read had no such rule, so a participant who had not checked in for this session read the team's
+     * findings for it before giving their own account - the thing get()'s forming branch refuses,
+     * because reading somebody else's first turns yours into an answer to theirs. Before the report is
+     * released, a participant who has not answered this session is told what is happening and why,
+     * and given nothing else. The lead and an admin read as before; once released, everybody does.
+     */
+    if (me && !viewerIsLead && !released) {
+      const answeredThis = await (this.prisma.checkIn?.count?.({
+        where: { participantId: me.id, sessionNumber, status: { in: AN_ANSWER } },
+      }) ?? Promise.resolve(1)).catch(() => 1);
+      if (!answeredThis) {
+        return { sessionNumber, withheldUntilYouAnswer: true, saying: A_PICTURE_IS_FORMING } as any;
+      }
+    }
 
     /* The snapshot, when this round closed. Its presence IS what makes the report final. */
     const snapshot = await this.prisma.reportRound.findUnique({
@@ -5780,8 +5801,7 @@ happened, and what is in the way.`;
           activated: true,
           forming: true,
           withheldUntilYouAnswer: true,
-          saying:
-            'A picture is forming from the accounts that are in. You can read it as soon as you have given yours. Reading somebody else\'s first would turn yours into an answer to theirs, and the point is that they are separate.',
+          saying: A_PICTURE_IS_FORMING,
           soloArtifact,
           /* Their own rows, which do not wait on a release: see theirOwnRows. */
           myRows: await this.theirOwnRows(participant?.id),

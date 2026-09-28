@@ -138,7 +138,7 @@ export function withoutOtherPeoplesReads<T extends Record<string, any>>(
     /* The per-party label goes too. Participation (sessions, whether they contributed) stays. */
     if (Array.isArray(engagement.parties)) {
       engagement.parties = engagement.parties.map((p: any) =>
-        p?.label && p.label === viewerLabel ? p : { ...p, specificityLabel: undefined },
+        p?.label && p.label === viewerLabel ? p : { ...p, specificityLabel: undefined, confidence: undefined },
       );
     }
   }
