@@ -71,6 +71,25 @@ export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
   });
 }
 
+/**
+ * WHO IS IN THE ROUND, BY THE RULE THE CHECK-IN'S OWN HEADER USES. Hafsah, 28 September 2026: the
+ * count a person reads ("Four of the six people have answered") counts the same people as the
+ * screens' header, which is `whoIsInRound` in client/src/lib/who-is-in-this-round.ts: everybody,
+ * and a lead who only asks in the first round only. `whoIsExpected` above is the round-closing rule,
+ * which also leaves out an invitation that lapsed; that stays for deciding when a round is done and
+ * who is still waited on, but it is not the number people read.
+ */
+export function whoIsInTheRound<T extends { managingOnly?: boolean | null }>(people: T[], sessionNumber: number, scenario?: string | null): T[] {
+  const waitsOnTheLead = waitsOnAManagingOnlyLead(scenario, sessionNumber);
+  return (people ?? []).filter((p) => !p.managingOnly || waitsOnTheLead);
+}
+
+/** Of the people in the round, by the header's rule, how many have answered this round. */
+export function howManyInTheRoundAnswered<T extends SomebodyWhoMightAnswer>(people: T[], sessionNumber: number, scenario?: string | null): { answered: number; ofPeople: number } {
+  const inRound = whoIsInTheRound(people, sessionNumber, scenario);
+  return { answered: inRound.filter((p) => theyAnswered(p, sessionNumber)).length, ofPeople: inRound.length };
+}
+
 /** Of the people this session waits on, how many have answered - a decline being an answer. */
 export function howManyOfThemAnswered<T extends SomebodyWhoMightAnswer>(
   people: T[],

@@ -1,3 +1,6 @@
+import { targetsHiddenFrom, withoutHiddenTargets, withoutHiddenTargetsIn } from './a-hidden-target-stays-hidden';
+import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
+import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { Injectable, ForbiddenException, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -102,6 +105,12 @@ import { peersAreNamedOn } from '../reports/peers-are-named';
  * The newest row wins, because a handoff someone has stopped describing as
  * blocking is no longer blocking.
  */
+/** A phrase put inside a sentence: "Whether a range counts" becomes "whether a range counts"; "Kwame's target" stays. */
+export const inASentence = (phrase: string): string => {
+  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
+  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+};
+
 @Injectable()
 export class BoardService {
   private readonly logger = new Logger(BoardService.name);
@@ -1360,7 +1369,47 @@ export class BoardService {
       out.whyYouOnlySeeYourself = WHY_YOU_ONLY_SEE_YOURSELF;
     }
 
-    return out;
+    /*
+     * AND LAST, WHAT THE LEAD HAS NOT SHARED, IN THE WORDS AS WELL AS THE FIELDS. Hafsah, 28 September
+     * 2026: neither a private file's name nor a hidden target's number may reach anyone the lead has
+     * not shared it with. The fields were already walled; the sentences were not (screens requests
+     * 46 and 63). Read over everything this reader is served, once, here, so a section added later
+     * is covered by being served. See a-private-file-is-not-named and a-hidden-target-stays-hidden.
+     */
+    {
+      const reader = { participantId: me?.id ?? null, isLead: isInitiator || adminHere };
+      const docsHere = await ((this.prisma as any).groundDocument?.findMany?.({ where: { groundId }, select: { fileName: true, visibility: true, participantId: true } }) ?? Promise.resolve([])).catch(() => []);
+      const privateNames = namesThisReaderMayNotOpen(docsHere as any[], reader, (d, r) => canSeeDocument(d as any, r, true));
+      const namesOfPerson = (pid: string) => {
+        const p = (ground.participants as any[]).find((x) => x.id === pid);
+        const first = (p?.user?.firstName ?? '').trim();
+        const full = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
+        return [full, first, (p?.nameGiven ?? '').trim(), nameOf(pid) ?? ''].filter((n: string) => n && n.length > 1);
+      };
+      const hiddenTargets = targetsHiddenFrom(
+        { participantId: me?.id ?? null, isTheLead: isInitiator },
+        (ground as any).whoSeesTargets,
+        (ground.objectives ?? []) as any[],
+        namesOfPerson,
+      );
+      /* A row about one person loses any sentence with that person's hidden number in it. */
+      if (Array.isArray(out.eachPerson) && hiddenTargets.length) {
+        out.eachPerson = (out.eachPerson as any[]).map((row) => {
+          const theirs = ((ground.objectives ?? []) as any[]).find((o) => o.ownerParticipantId === row.participantId && typeof o.target === 'number');
+          const aboutOnly = theirs && hiddenTargets.length ? { names: namesOfPerson(row.participantId), target: theirs.target } : undefined;
+          if (!aboutOnly) return row;
+          return {
+            ...row,
+            ...(typeof row.says === 'string' ? { says: withoutHiddenTargets(row.says, hiddenTargets, { aboutOnly }) } : {}),
+            ...(typeof row.finding === 'string' ? { finding: withoutHiddenTargets(row.finding, hiddenTargets, { aboutOnly }) } : {}),
+          };
+        });
+      }
+      let walled = withoutHiddenTargetsIn(withoutPrivateFileNamesIn(out, privateNames), hiddenTargets) as any;
+      /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
+      if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
+      return walled;
+    }
   }
 
   /**
@@ -1382,6 +1431,7 @@ export class BoardService {
     return (lines as { text: string }[]).map((l) => (l.text ?? '').trim()).filter(Boolean);
   }
 
+  /* A topic said inside a sentence: its first word lower-cased only when it is an ordinary word, never a name. */
   private deriveDecisions(
     divergences: any[],
     dependencies: { what: string; status: DependencyStatus; onParticipantId: string | null; onLabel: string | null }[],
@@ -1389,7 +1439,8 @@ export class BoardService {
     stillToDecide: string[] = [],
   ) {
     const fromDivergence = divergences.map((d) => ({
-      question: d.topic ? `Settle: ${d.topic}` : 'Settle this difference between accounts',
+      /* Full sentences, never a label and a colon (screens request 68, 28 Sep 2026). */
+      question: d.topic ? `The accounts differ on ${inASentence(d.topic)}, so it needs settling.` : 'The accounts differ here, so it needs settling.',
       why: 'The accounts do not match on this, so it cannot be assumed agreed.',
       owner: 'Lead and team',
       source: 'divergence' as const,
@@ -1399,7 +1450,7 @@ export class BoardService {
       // needs to make, and leaving them on grew this list to 15 items.
       .filter((d) => d.status === DependencyStatus.BLOCKING)
       .map((d) => ({
-        question: `Unblock: ${d.what}`,
+        question: `Somebody is waiting on ${inASentence(d.what)}, so it needs deciding.`,
         why: 'A hard blocker. Someone cannot move until this is decided.',
         owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? 'Unassigned') : (d.onLabel ?? 'Unassigned'),
         source: 'blocker' as const,

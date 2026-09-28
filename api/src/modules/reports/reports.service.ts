@@ -1,3 +1,7 @@
+import { whoIsInTheRound } from './how-many-have-answered';
+import { canSeeDocument } from '../documents/who-can-see-a-document';
+import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
+import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { howToSayIt, NEVER_CONCLUDE_FROM_A_KIND, WHAT_IT_MEANS, WHO_CAN_MOVE_IT } from '../board/what-kind-of-thing-is-in-the-way';
@@ -2166,8 +2170,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
       .map((d: any) => (typeof d === 'string' ? d : d?.topic))
       .filter((t: any): t is string => typeof t === 'string' && !!t.trim())
       .slice(0, 4);
-    const answered = Math.max(peopleWhoAnswered, theFacts.length);
-    const expected = parties.filter((p: any) => !p.managingOnly).length || answered;
+    /*
+     * THE SAME PEOPLE AS THE CHECK-IN'S HEADER, FOR THIS ROUND. Hafsah, 28 September 2026. This counted
+     * everybody who had ever finished a check-in, the lead included, against everybody but a lead who
+     * only asks, so the two numbers were of different people ("Four of the 6" beside a header saying
+     * something else). Now both count who is in the round by the header's rule (whoIsInTheRound),
+     * and "answered" is who answered this round.
+     */
+    const inTheRound = whoIsInTheRound(parties as any[], roundNow, (ground as any).scenario);
+    const answeredThisRound = new Set(
+      ((await (this.prisma.checkIn?.findMany?.({
+        where: { groundId, sessionNumber: roundNow, status: { in: AN_ANSWER } },
+        select: { participantId: true },
+      }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[]).map((r: any) => r.participantId),
+    );
+    const inRoundIds = new Set(inTheRound.map((p: any) => p.id));
+    const answered = [...answeredThisRound].filter((id) => inRoundIds.has(id)).length || Math.min(peopleWhoAnswered, inTheRound.length);
+    const expected = inTheRound.length || answered;
     const picture = await this.pictureInPlainSentences(theFacts, {
       peopleAnswered: answered,
       peopleExpected: expected,
@@ -2702,7 +2721,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     });
   }
 
-  async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
+  private async sessionReportAsBuilt(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -5607,7 +5626,56 @@ happened, and what is in the way.`;
     return withTheNumbersTheModelMissed(mergeDirections(parts, knownLabels.length), byLabel);
   }
 
+  /**
+   * THE REPORT A READER IS SERVED, WITH WHAT THE LEAD HAS NOT SHARED TAKEN OUT OF ITS WORDS. Hafsah,
+   * 28 September 2026: a private file's name and a hidden target's number may not reach anyone the
+   * lead has not shared them with. The report is built as it always was, then read once more, here,
+   * for this reader. See whatTheLeadHasNotShared.
+   */
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    const served = await this.getAsBuilt(groundId, requestingUserId, requestingUserOrgId);
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+  }
+
+  /** The same for the report of one session. */
+  async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
+    const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId);
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+  }
+
+  /**
+   * A private file's name comes out for a reader who may not open the file (the rule every document
+   * read uses), and a sentence giving a person's target comes out for a reader who may not see that
+   * target (whoSeesTargets). The lead sees every target they set; a lead and an admin see a file
+   * only as who-can-see-a-document allows, so a lead's own private file is not named to an admin.
+   */
+  private async whatTheLeadHasNotShared<T>(groundId: string, requestingUserId: string, requestingUserOrgId: string | undefined, served: T): Promise<T> {
+    if (!served || typeof served !== 'object') return served;
+    const ground = await (this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: {
+        initiatorId: true, organizationId: true, whoSeesTargets: true,
+        participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        objectives: { select: { ownerParticipantId: true, target: true } },
+      } as any,
+    }) as Promise<any>).catch(() => null);
+    if (!ground) return served;
+    const me = (ground.participants ?? []).find((p: any) => p.userId === requestingUserId) ?? null;
+    const isInitiator = ground.initiatorId === requestingUserId;
+    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId).catch(() => false));
+    const docs = await ((this.prisma as any).groundDocument?.findMany?.({ where: { groundId }, select: { fileName: true, visibility: true, participantId: true } }) ?? Promise.resolve([])).catch(() => []);
+    const privateNames = namesThisReaderMayNotOpen(docs as any[], { participantId: me?.id ?? null, isLead: isInitiator || isOrgAdmin }, (d, r) => canSeeDocument(d as any, r, true));
+    const namesOfPerson = (pid: string) => {
+      const p = (ground.participants ?? []).find((x: any) => x.id === pid);
+      const first = (p?.user?.firstName ?? '').trim();
+      const full = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
+      return [full, first, (p?.nameGiven ?? '').trim()].filter((n: string) => n && n.length > 1);
+    };
+    const hiddenTargets = targetsHiddenFrom({ participantId: me?.id ?? null, isTheLead: isInitiator }, ground.whoSeesTargets, ground.objectives ?? [], namesOfPerson);
+    return withoutHiddenTargetsIn(withoutPrivateFileNamesIn(served, privateNames), hiddenTargets);
+  }
+
+  private async getAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: {

@@ -1,5 +1,5 @@
 import { DependencyStatus } from '@prisma/client';
-import { whoIsExpected, howManyOfThemAnswered, type SomebodyWhoMightAnswer } from '../reports/how-many-have-answered';
+import { whoIsExpected, howManyOfThemAnswered, howManyInTheRoundAnswered, type SomebodyWhoMightAnswer } from '../reports/how-many-have-answered';
 import { ReadDependency, dedupeDependencies, blockerHasSubstance } from '../board/reads';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 
@@ -71,6 +71,7 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
   for (const c of i.thisRound) rows.set(c.participantId, [...(rows.get(c.participantId) ?? []), { status: c.status }]);
   const withRows = i.people.map((p) => ({ ...p, checkIns: p.checkIns ?? rows.get(p.id) ?? [] }));
   const counted = howManyOfThemAnswered(withRows, session, i.scenario, now);
+  const shown = howManyInTheRoundAnswered(withRows, session, i.scenario);
   const answering = whoIsExpected(withRows, session, i.scenario, now);
   const done = new Set(answering.filter((p) => !counted.waitingOn.includes(p.id)).map((p) => p.id));
 
@@ -102,8 +103,9 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
     progress: {
       roundsDone: i.roundsDone,
       roundsPlanned: i.roundsPlanned,
-      answeredThisRound: counted.answered,
-      ofPeople: counted.expected,
+      /* The two numbers people read count who is in the round by the header's rule. See whoIsInTheRound. */
+      answeredThisRound: shown.answered,
+      ofPeople: shown.ofPeople,
       waitingOn: counted.waitingOn,
     },
     inTheWay: {

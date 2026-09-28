@@ -1,0 +1,158 @@
+import { BoardService } from './board.service';
+import { ReportsService } from '../reports/reports.service';
+import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
+import { withoutHiddenTargets, targetsHiddenFrom } from './a-hidden-target-stays-hidden';
+
+/**
+ * A PRIVATE FILE'S NAME AND A HIDDEN TARGET'S NUMBER REACH NOBODY THE LEAD HAS NOT SHARED THEM WITH.
+ *
+ * Hafsah, 28 September 2026, from screens requests 46 and 63. The board and the report are served
+ * here, through the real services, to every kind of reader: the lead, a participant whose target is
+ * hidden from others, a participant with no target, and an admin who only reads. The file is the
+ * lead's own (OWN), so only the lead may see its name - not an admin, who reads with the lead's eyes
+ * only for the lead's CLOSED material. Targets are each person's own (THEIR_OWN), so only the lead
+ * who set them and the person whose target it is may see the number.
+ */
+const person = (id: string, userId: string, first: string, last: string, partyType: PartyType = PartyType.PARTICIPANT) => ({
+  id, userId, partyType, email: `${id}@baridi.test`, roleAsDescribed: 'sales', nameGiven: null, organisationGiven: null,
+  managingOnly: partyType === PartyType.INITIATOR, createdAt: new Date('2026-09-01T10:00:00Z'), user: { firstName: first, lastName: last },
+});
+const LEAD = person('p-lead', 'u-wairimu', 'Wairimu', 'Kamau', PartyType.INITIATOR);
+const AISHA = person('p-aisha', 'u-aisha', 'Aisha', 'Otieno');
+const MIRIAM = person('p-miriam', 'u-miriam', 'Miriam', 'Wanjiku');
+
+const FILE = 'wairimu-team-plan.txt';
+const SAID = [
+  `The attached ${FILE} document confirms the split between the two.`,
+  'Aisha Otieno is aiming for 5 sales this month, and has sold 4.',
+  'Miriam Wanjiku visited the buyers.',
+].join(' ');
+
+const CHECK_INS = [
+  { id: 'c1', participantId: 'p-aisha', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: new Date('2026-09-22T16:10:00Z'), specificityLevel: 'specific', specificityDimensions: { checkable: 'specific' } },
+  { id: 'c2', participantId: 'p-miriam', sessionNumber: 1, status: 'COMPLETED', isSetup: false, completedAt: new Date('2026-09-23T15:00:00Z'), specificityLevel: 'specific', specificityDimensions: { checkable: 'specific' } },
+];
+
+const GROUND: any = {
+  id: 'g-sales', scenario: GroundScenario.OKR_ALIGNMENT, mode: GroundMode.SHARED,
+  initiatorId: 'u-wairimu', createdByUserId: 'u-wairimu', organizationId: 'org-1',
+  peopleWorkTogether: true, peersVisibleToEachOther: true, timelineDays: 90, cadence: 'WEEKLY',
+  whoSeesTargets: 'THEIR_OWN', label: 'Sales team, Q3',
+  participants: [LEAD, AISHA, MIRIAM],
+  checkIns: CHECK_INS,
+  report: {
+    releasedAt: new Date('2026-09-23T17:00:00Z'), sharedAs: null, theOpening: SAID, networkPicture: null,
+    sharedPicture: SAID, agreements: [SAID], divergences: [], centralQuestion: null, engagement: {},
+    findings: [
+      { participantId: 'p-aisha', text: 'Aisha Otieno set a target of five sales for her own work. She has four so far.', hasGap: false },
+      { participantId: 'p-miriam', text: `Miriam Wanjiku read ${FILE} and visited the buyers.`, hasGap: false },
+    ],
+    createdAt: new Date('2026-09-20T09:00:00Z'), updatedAt: new Date('2026-09-23T15:02:00Z'),
+  },
+  objectives: [
+    { id: 'o-aisha', name: 'Aisha’s sales', target: 5, count: 4, prevCount: 4, ownerParticipantId: 'p-aisha', sortOrder: 1, assumes: [],
+      createdAt: new Date('2026-09-01T09:00:00Z'), updatedAt: new Date('2026-09-02T09:00:00Z') },
+  ],
+  dependencies: [],
+  poll: null,
+};
+const DOCS = [{ fileName: FILE, visibility: 'OWN', participantId: 'p-lead', createdAt: new Date('2026-09-21T09:00:00Z'), origin: 'TYPED' }];
+
+function prismaFor(viewerRole: string) {
+  const reads = {
+    findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), findUnique: jest.fn(async () => null),
+    count: jest.fn(async () => 0), aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })),
+  };
+  const model = (own: Record<string, any> = {}) => ({ ...reads, ...own, create: jest.fn(async () => ({})), update: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({})), createMany: jest.fn(async () => ({})), upsert: jest.fn(async () => ({})) });
+  return new Proxy({
+    ground: model({ findUnique: jest.fn(async () => JSON.parse(JSON.stringify(GROUND))) }),
+    user: model({ findUnique: jest.fn(async () => ({ role: viewerRole, organizationId: 'org-1' })) }),
+    checkIn: model({ findMany: jest.fn(async () => JSON.parse(JSON.stringify(CHECK_INS))) }),
+    groundDocument: model({ findMany: jest.fn(async () => JSON.parse(JSON.stringify(DOCS))) }),
+  } as any, {
+    get(target: any, prop: string) {
+      if (!(prop in target) && typeof prop === 'string' && !prop.startsWith('$')) target[prop] = model();
+      return target[prop];
+    },
+  });
+}
+
+const boardAs = (userId: string, role = 'MEMBER') => {
+  const reports = Object.create(ReportsService.prototype) as ReportsService;
+  const svc = new BoardService(prismaFor(role), { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports);
+  return svc.get('g-sales', userId) as Promise<any>;
+};
+
+const READERS: [string, string, string, { file: boolean; target: boolean }][] = [
+  ['the lead', 'u-wairimu', 'MEMBER', { file: true, target: true }],
+  ['a participant whose own target it is', 'u-aisha', 'MEMBER', { file: false, target: true }],
+  ['a participant with no target', 'u-miriam', 'MEMBER', { file: false, target: false }],
+  ['an admin who only reads', 'u-grace', 'ADMIN', { file: false, target: false }],
+];
+
+const FIVE = /\b5 sales\b|\bfive sales\b/i;
+
+describe('what the lead has not shared reaches nobody, on the board', () => {
+  it.each(READERS)('%s', async (_who, userId, role, may) => {
+    const served = JSON.stringify(await boardAs(userId, role));
+    expect(served.includes(FILE)).toBe(may.file);
+    if (!may.target) expect(served).not.toMatch(FIVE);
+    /* What is not the lead's to keep stays for everybody: what Miriam did is not a secret. */
+    if (served.includes('Miriam Wanjiku')) expect(served).toMatch(/visited the buyers/);
+  });
+
+  it('and the lead still reads both', async () => {
+    const served = JSON.stringify(await boardAs('u-wairimu'));
+    expect(served).toMatch(FIVE);
+    expect(served).toContain(FILE);
+  });
+});
+
+describe('and in the report', () => {
+  const reportAs = async (userId: string, role = 'MEMBER') => {
+    const svc = Object.create(ReportsService.prototype) as any;
+    svc.prisma = prismaFor(role);
+    svc.isAnAdminOf = async () => role === 'ADMIN';
+    const built = { sharedPicture: SAID, findings: GROUND.report.findings, updatedAt: new Date('2026-09-23T15:02:00Z') };
+    return svc.whatTheLeadHasNotShared('g-sales', userId, 'org-1', built);
+  };
+
+  it.each(READERS)('%s', async (_who, userId, role, may) => {
+    const served = await reportAs(userId, role);
+    const text = JSON.stringify(served);
+    expect(text.includes(FILE)).toBe(may.file);
+    if (!may.target) expect(text).not.toMatch(FIVE);
+    else expect(text).toMatch(FIVE);
+    /* A date is still a date on its way through. */
+    expect(served.updatedAt instanceof Date).toBe(true);
+  });
+
+  it('get() and sessionReport() both go through it', () => {
+    const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'reports', 'reports.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(src).toMatch(/const served = await this\.getAsBuilt\(groundId, requestingUserId, requestingUserOrgId\);\s*return this\.whatTheLeadHasNotShared\(/);
+    expect(src).toMatch(/const served = await this\.sessionReportAsBuilt\(groundId, sessionNumber, requestingUserId, requestingUserOrgId\);\s*return this\.whatTheLeadHasNotShared\(/);
+  });
+});
+
+describe('the rule, on its own', () => {
+  const hidden = targetsHiddenFrom({ participantId: 'p-miriam', isTheLead: false }, 'THEIR_OWN',
+    [{ ownerParticipantId: 'p-aisha', target: 5 }, { ownerParticipantId: 'p-miriam', target: 3 }],
+    (pid) => (pid === 'p-aisha' ? ['Aisha Otieno', 'Aisha'] : ['Miriam Wanjiku', 'Miriam']));
+
+  it('hides everybody else’s target, never the reader’s own', () => {
+    expect(hidden.map((h) => h.target)).toEqual([5]);
+  });
+
+  it('takes out the sentence that gives it, and keeps the rest', () => {
+    expect(withoutHiddenTargets('Aisha is aiming for 5 sales. Aisha visited Fresh Foods.', hidden)).toBe('Aisha visited Fresh Foods.');
+    /* It errs on the side of hiding: a sentence naming Aisha with her target's number goes, even when
+       the number counts something else. A fact lost from a line is better than a target shown. */
+    expect(withoutHiddenTargets('Aisha visited five shops. Miriam is aiming for 3 sales.', hidden)).toBe('Miriam is aiming for 3 sales.');
+  });
+
+  it('shares nothing it should not when targets are shared with everybody, or with the lead', () => {
+    expect(targetsHiddenFrom({ participantId: 'p-miriam', isTheLead: false }, 'EVERYBODY', [{ ownerParticipantId: 'p-aisha', target: 5 }], () => ['Aisha'])).toEqual([]);
+    expect(targetsHiddenFrom({ participantId: 'p-lead', isTheLead: true }, 'THEIR_OWN', [{ ownerParticipantId: 'p-aisha', target: 5 }], () => ['Aisha'])).toEqual([]);
+  });
+});
