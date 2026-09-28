@@ -383,8 +383,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     /* Lead-only and absent for everybody else, so there is nothing to gate on here beyond its
        presence: the server does not send it to a reader who may not have it. */
     eachPerson: !!b.eachPerson?.length,
-    contribution: has('contribution') && !!b.contribution,
-    coverage: has('coverage') && !!b.coverage,
+    /*
+     * U.10 RE-REVIEW, NEEDS HAFSAH 0f: LEAD ONLY UNTIL SHE ANSWERS.
+     *
+     * "Contribution against role" and "Where work is landing" are the board's own read on how one
+     * person's work is going against their role - no prototype screen shows either to anyone. Until
+     * 0f is answered, these draw for whoever runs the check-in only, the same gate `eachPerson`
+     * already uses, so a participant is never shown a colleague's own contribution or coverage read.
+     */
+    contribution: has('contribution') && !!b.contribution && viewerRunsThisCheckIn,
+    coverage: has('coverage') && !!b.coverage && viewerRunsThisCheckIn,
     patterns: has('patterns') && !!b.patterns,
   }
   // Only the caller's own availability is theirs to toggle.
@@ -1586,7 +1594,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
          * section belongs in `sections` - as its own guard, and draws nothing here while it is off.
          * The data is kept (nothing is deleted); only the drawing stops.
          */}
-        {has('patterns') && b.managerAlignment && b.managerAlignment.length > 0 && (
+        {has('patterns') && viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
           <>
             <Sec title="How the leading is landing" src="two sides of the same leadership" />
             <Card>
