@@ -4008,6 +4008,8 @@ path, plus the full board suite, `npx tsc -b` and `npx tsc --noEmit`, and the fu
 once more for the capitals sweep's blast radius (in progress at the time of writing; will be noted
 if anything unexpected turns up).
 
+**A refusal by the safety check, 28 September (U.10 picture check).** The reviewer was cutting the prototype's very tall pictures into readable strips inside its own scratch folder. The command began by clearing two of its own test crops, `rm -f pc/*`, after moving into the scratch folder. The safety check read the relative path as a folder inside the repository and refused it. Nothing ran and nothing was deleted. The reviewer stopped and reported it, as you asked. It then carried on without deleting anything, writing its crops to a new scratch folder by its full path. The two test crops are still in the scratch folder, outside the repository.
+
 ### U.11 Ending a check-in, the probation review, handover: built and tested, not yet reviewed
 
 **What was missing, against the prototype (the gap list):** a decision with its reason (the lead
