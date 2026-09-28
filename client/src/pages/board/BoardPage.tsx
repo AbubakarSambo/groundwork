@@ -1415,39 +1415,53 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <>
             <Sec size="board" title="Waiting on" src="Handoffs between people, read from their check-ins." />
             {/*
-              Nothing to offer in the empty state, so it says where this comes from
-              instead. A handoff is extracted from what people say in their check-ins -
-              there is no button that would produce one, and an empty state implying
-              otherwise would send somebody looking for it. W8-24.
+              U.10: ONE CARD PER BLOCKER, THE PROTOTYPE'S LAYOUT (board-as-lead.jpg, "Blockers").
+              Each blocker there is its own white card: a bold title, an outlined status pill top
+              right, then "Waiting on:", "Raised:", "Affects:", "Promised", "What the proof shows"
+              and a light-blue "Would clear it:" bar. `Dependency` only carries `from`, `what`, `on`,
+              `status` and `then` - so this draws the columns that data supports (title, the status
+              pill with the prototype's border, "Waiting on:") and keeps the sentence and the
+              "then" quote this board already had, rather than inventing the missing fields. Raised
+              (with dates), Affects, Promised and What the proof shows are requested in
+              docs/requests-to-engine.md.
+
+              Nothing to offer in the empty state, so it says where this comes from instead. A
+              handoff is extracted from what people say in their check-ins - there is no button that
+              would produce one, and an empty state implying otherwise would send somebody looking
+              for it. W8-24.
             */}
-            <Card>
-              {b.dependencies.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Row>
-              ) : b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d, i) => {
-                /*
-                  U.10 RE-REVIEW ITEM 5: ONE SENTENCE PER ROW, NOT PIECES.
-                  "Baraka Mwangi / needs / the discount decision / from / Rukia Otieno / Blocking"
-                  read as a row of labelled fragments. The prototype's own "Waiting on other teams"
-                  rows are sentences ("Asked 16 Sept. The Mombasa depot's count is due Friday.") - this
-                  follows that style.
-                */
-                const onWhom = d.on ?? 'someone outside this check-in'
-                const statusSaid = d.status === 'BLOCKING' ? 'This is blocking work.' : d.status === 'CLEARED' ? 'This is cleared.' : 'This is waiting.'
-                return (
-                <Row key={d.id} first={i === 0}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: 13, color: 'var(--gw-dark)', lineHeight: 1.5 }}>
-                      <b>{d.from}</b> needs {d.what} from <b>{onWhom}</b>. {statusSaid}
+            {b.dependencies.length === 0 ? (
+              <Card><Row first><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Row></Card>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
+                  const onWhom = d.on ?? 'someone outside this check-in'
+                  const statusSaid = d.status === 'BLOCKING' ? 'This is blocking work.' : d.status === 'CLEARED' ? 'This is cleared.' : 'This is waiting.'
+                  const title = d.what ? d.what.charAt(0).toUpperCase() + d.what.slice(1) : 'Waiting on something'
+                  const tone = d.status === 'BLOCKING' ? 'bad' : d.status === 'CLEARED' ? 'good' : 'warn'
+                  const word = d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'
+                  return (
+                    <div key={d.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{title}</div>
+                        <Pill tone={tone} outline>{word}</Pill>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 8 }}>
+                        Waiting on: <span style={{ color: 'var(--gw-dark)', fontWeight: 600 }}>{onWhom}</span>
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--gw-dark)', lineHeight: 1.5, marginTop: 4 }}>
+                        <b>{d.from}</b> needs {d.what} from <b>{onWhom}</b>. {statusSaid}
+                      </div>
+                      {d.then && (
+                        <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 10px', marginTop: 8, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.5 }}>
+                          When this arrives, {d.from} says: “{String(d.then).replace(/[.\s]+$/, '')}.”
+                        </div>
+                      )}
                     </div>
-                    <Pill tone={d.status === 'BLOCKING' ? 'bad' : d.status === 'CLEARED' ? 'good' : 'warn'}>
-                      {d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'}
-                    </Pill>
-                  </div>
-                  {d.then && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>When this arrives, {d.from} says: “{String(d.then).replace(/[.\s]+$/, '')}.”</div>}
-                </Row>
-                )
-              })}
-            </Card>
+                  )
+                })}
+              </div>
+            )}
           </>
         )}
 

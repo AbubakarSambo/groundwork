@@ -152,17 +152,26 @@ export function Row({ children, first }: { children: React.ReactNode; first?: bo
   return <div style={{ padding: '11px 0', borderTop: first ? 'none' : '1px solid var(--gw-border)' }}>{children}</div>
 }
 
-export function Pill({ children, tone = 'flat' }: { children: React.ReactNode; tone?: 'good' | 'warn' | 'bad' | 'info' | 'flat' }) {
-  const m: Record<string, { bg: string; fg: string }> = {
-    good: { bg: 'var(--gw-green-bg)', fg: 'var(--gw-green-t)' },
-    warn: { bg: 'var(--gw-amber-bg)', fg: 'var(--gw-amber-t)' },
-    bad: { bg: 'var(--gw-red-bg)', fg: 'var(--gw-red-t)' },
-    info: { bg: 'var(--gw-blue-bg)', fg: 'var(--gw-blue-t)' },
-    flat: { bg: '#EEF0F4', fg: 'var(--gw-sub)' },
+/**
+ * `outline` is additive (U.10). The prototype's blocker pills (board-as-lead.jpg) carry a visible
+ * border in the tone's own colour - "Blocking" is pink fill, dark red text, red border. Every other
+ * caller of Pill is unchanged: `outline` defaults to false, so nothing elsewhere in the product grew
+ * a border it did not have.
+ */
+export function Pill({ children, tone = 'flat', outline = false }: { children: React.ReactNode; tone?: 'good' | 'warn' | 'bad' | 'info' | 'flat'; outline?: boolean }) {
+  const m: Record<string, { bg: string; fg: string; b: string }> = {
+    good: { bg: 'var(--gw-green-bg)', fg: 'var(--gw-green-t)', b: 'var(--gw-green-b)' },
+    warn: { bg: 'var(--gw-amber-bg)', fg: 'var(--gw-amber-t)', b: 'var(--gw-amber-b)' },
+    bad: { bg: 'var(--gw-red-bg)', fg: 'var(--gw-red-t)', b: 'var(--gw-red-b)' },
+    info: { bg: 'var(--gw-blue-bg)', fg: 'var(--gw-blue-t)', b: 'var(--gw-blue-b)' },
+    flat: { bg: '#EEF0F4', fg: 'var(--gw-sub)', b: 'var(--gw-border)' },
   }
   const c = m[tone] ?? m.flat
   return (
-    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 11, background: c.bg, color: c.fg, whiteSpace: 'nowrap' }}>
+    <span style={{
+      fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 11, background: c.bg, color: c.fg, whiteSpace: 'nowrap',
+      border: outline ? `1px solid ${c.b}` : 'none',
+    }}>
       {children}
     </span>
   )
