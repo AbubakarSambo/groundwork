@@ -1,6 +1,6 @@
 # Ready to deploy?
 
-**This is a draft, written on 27 September 2026, late evening. It is not finished yet.** Tomorrow's first full run is the 24-scenario proof for task 1.6. When it has run, this document is finished, with its results.
+**Updated on 28 September 2026, at night.** The full 24-scenario proof for task 1.6 and the deploy blockers is run-12, below. Run-13 is going, and its results are added when it finishes.
 
 Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds all of the screens workspace's work up to `185ff692` (`wip/prototype-ui`), plus the engine's work.
 
@@ -36,7 +36,13 @@ On the combined code at `dd9803c8`, with all seven blockers and decisions 35 and
 - **The last full 24-scenario run (run-10):** the checker says nothing is worse than the baseline. Every quote was from the record. There were no leaks of the lead's words.
 - **Task 1.6, tested on sales, seniorhire and openread, twice each:** every problem count in the scorer was 0, every quote was from the record, and the reports took no longer than before the check was added.
 - **The stored report prompt is at `report_synthesis` version 7.** It now carries the rule "every verb keeps its subject". The reports from the three test runs record version 7 as their `promptVersionId`, and nothing else changed: every problem count was 0, and 260 of 260 quotes were from the record.
-- **Still to come: the first full run tomorrow.** That is the proof for task 1.6 across all 24 scenarios.
+- **The full 24-scenario proof, run-12, on `5b01fe58`, with all the blocker fixes:**
+  - **Every problem count in the scorer is 0 across all 24 scenarios, so task 1.6 is met.** Run-10 had 114 internal labels, 36 role descriptions used as names, and 2 sentences starting in lower case.
+  - **No board or report carries a pattern.**
+  - **No invited person read any of the lead's private words about them.** The check matched four people, and each match was that person's own words. That is two full runs in a row with none.
+  - **Quotes:** 479 of 482 were word for word in the record. The other 3 were in lines built when a page is opened, which is now covered too (`4efa6a74`). Replayed over run-12's pages, it is 480 of 480.
+  - **The judgements:** 18 clearly right of the 20 that could be tested and had complete reports, which is 90%.
+  - **The checker's verdict:** it failed run-12 on three conversation numbers ("specific detail asked for", "blocker checked", and "turns asking more than one question"). Re-running the two scenarios that lost the most, twice on the same build, brought them back into the usual range. So it was variation between runs, not a change. Run-13 checks it again.
 
 ## The deploy blockers, and whether each is fixed
 

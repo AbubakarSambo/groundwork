@@ -24,7 +24,16 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   - "Blocker checked" was 24, against 37.
   - "Turns asking more than one question" was 39, against 37.
 
-  These count phrases in Groundwork's turns, such as "by when", "which" and "what have you tried". I am testing whether this is one of tonight's changes or variation between runs. Sales and seniorhire lost the most, so I am re-running them twice on exactly run-12's build. The first round came back higher on seniorhire. The answer, and what I did about it, is below when it is known.
+  These count phrases in Groundwork's turns, such as "by when", "which" and "what have you tried".
+- **The answer: variation between runs, not a change of mine.** I re-ran sales and seniorhire, the two scenarios that lost the most, twice on exactly run-12's build.
+
+  | | Blocker checked, sales | Blocker checked, seniorhire | Specific detail, sales | Specific detail, seniorhire |
+  | --- | --- | --- | --- | --- |
+  | Runs 8, 9 and 10 | 10, 10, 15 | 2, 4, 7 | 21, 27, 27 | 9, 13, 8 |
+  | Run-12 | 7 | 2 | 22 | 4 |
+  | Same build, run again | 13 and 8 | 6 and 3 | 28 and 18 | 14 and 12 |
+
+  On exactly the same code they came back into the usual range. So run-12 was a low draw, and there is nothing to drop. **Run-13, tonight's second full run, started at 03:10 on `e7b9cd65`.** It is the second of the two runs task 1.5's bar needs, and it also measures week 1 on advisor and shock.
 
 **Run-11 does not count, and the product was not at fault.** I started it at about midnight, before tonight's five hours began, from a separate copy of the code, so that the builders' work could not change it halfway through. But the runner starts the model itself, to play the simulated people, and that copy did not have the model's credentials file, which is kept out of git. So every simulated person's answer failed. No check-in could finish, and no report was written: all 25 reports were empty. I found it by reading the log, stopped it, and started run-12 from the main folder, where the credentials are.
 
