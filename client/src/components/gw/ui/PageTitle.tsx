@@ -8,12 +8,14 @@ import './gw-ui.css'
  *
  * An optional line above (14.5px, muted), an optional crumb (14px muted, its links navy and
  * underlined, "/" between with 6px either side), the title in Literata 30px (24 on a phone), an
- * optional avatar to its left (56px), an optional 16px muted line under it, and an optional
- * primary button on the right, lined up with the bottom of the title.
+ * optional avatar to its left (56px), an optional 16px line under it (muted by default; the
+ * invitation's hand-off screens - "Almost in", "Out of time", "This link has expired" - read it in
+ * ink instead, as the prototype has it: `subtitleTone="ink"`), and an optional primary button on
+ * the right, lined up with the bottom of the title.
  */
 export type Crumb = { label: string; to?: string }
 
-export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, action }: {
+export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, subtitleTone = 'muted', action }: {
   /** The line above the title, e.g. the organisation's name. */
   eyebrow?: string
   /** e.g. [{ label: 'People', to: '/org/members' }, { label: 'Miriam Wanjiku' }]. */
@@ -22,6 +24,8 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, ac
   /** Shows a 56px avatar to the left of the title when given. */
   avatarInitials?: string
   subtitle?: string
+  /** 'ink' for the prototype's darker line under "Almost in", "Out of time" and expired-link. */
+  subtitleTone?: 'muted' | 'ink'
   action?: React.ReactNode
 }) {
   return (
@@ -44,7 +48,7 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, ac
         </div>
         {action}
       </div>
-      {subtitle && <p className="gwui-pt-sub">{subtitle}</p>}
+      {subtitle && <p className={subtitleTone === 'ink' ? 'gwui-pt-sub gwui-pt-sub-ink' : 'gwui-pt-sub'}>{subtitle}</p>}
     </div>
   )
 }

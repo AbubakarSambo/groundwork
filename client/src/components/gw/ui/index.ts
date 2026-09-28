@@ -3,6 +3,7 @@
  * place: `import { Page, PageTitle, ... } from '@/components/gw/ui'`.
  */
 export { Page } from './Page'
+export { Stack, type StackGap } from './Stack'
 export { Mark } from './Mark'
 export { PageTitle, type Crumb } from './PageTitle'
 export { CheckInHeader, CHECK_IN_TABS, type CheckInTabKey } from './CheckInHeader'
