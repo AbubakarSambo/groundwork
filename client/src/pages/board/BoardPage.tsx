@@ -4,7 +4,6 @@ import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { ThatIsOnTheRecord } from '@/components/gw/ThatIsOnTheRecord'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
-import { BOARD_MUTED_INK, BOARD_BODY_INK, BOARD_ACCENT_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -16,7 +15,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
-import { Zone, Sec, Card, Row, Pill, td, btn, miniBtn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
+import { Sec, Card, Row, Pill, btn, miniBtn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
 import { todayApi, type Need } from '@/api/today'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
@@ -30,6 +29,8 @@ import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
 import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
 import { theLeadsNote } from '@/lib/the-leads-note'
+import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
+import { tileSentence } from '@/components/gw/TheSessionsReport'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -49,6 +50,11 @@ import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-acros
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
 import { whenTheBoardLastChanged } from './when-the-board-last-changed'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
+import { buildSessionRows } from '@/lib/session-rows'
+import { peopleLabels, personLabel } from '@/lib/utils'
+import { EVERY_SESSION, sessionDay, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
+import { useAskStore } from '@/stores/ask'
+import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 
 /**
  * The delivery board.
@@ -73,8 +79,80 @@ import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 
 
 
+/**
+ * U.10 PICTURE-CHECK ROUND 6, ITEM F: THE PROTOTYPE'S WIDE OUTLINED BUTTON ("Every session").
+ * `btnGhost` (kit.tsx) is a thin grey-bordered, grey-text button used throughout the product for a
+ * secondary action; the prototype's own "Every session" button is heavier - white, a visible dark
+ * border, bold near-black text, full width. Kept local to the board rather than added to
+ * `btnGhost`, which many other pages already use for its lighter weight.
+ */
+const wideOutlineBtn = {
+  display: 'block', textAlign: 'center' as const, marginTop: 8, textDecoration: 'none',
+  padding: '11px 16px', borderRadius: 8, border: '1.5px solid var(--gw-dark)',
+  background: 'white', color: 'var(--gw-dark)', fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
+}
+
 const dshort = (iso?: string | null) =>
   iso ? whenItWas(iso, 'dayAndMonth') : ' - '
+
+/**
+ * U.10 RE-REVIEW ITEM B: A SESSION PILL, AS A SENTENCE ITS OWN READER CAN FOLLOW.
+ *
+ * "Session 1, 27 Sept, now" - three comma-joined fragments with no verb - was still a list of
+ * pieces rather than something read the way a person reads a sentence.
+ */
+/*
+ * U.10 RE-REVIEW ITEM 4: SAY WHAT'S TRUE, NOT "TODAY" FOR A ROUND THAT ISN'T.
+ *
+ * "Session 1 is today, 27 Sept." read live on 28 September - `state === 'current'` means the
+ * currently OPEN round, which is not the same fact as "opened today": a round stays "current"
+ * until everybody in it has checked in, however many days that takes. `date` is when the first
+ * account in it actually completed, so that is the fact to say, whichever day it is now.
+ */
+function sessionPillSentence(s: { n: number; state: string; date: string | null; opensOn?: string | null }, groundEnded: boolean): string {
+  if (s.date) return `Session ${s.n} opened on ${dshort(s.date)}.`
+  if (s.state === 'current' && !groundEnded) return `Session ${s.n} is open now.`
+  if (s.opensOn && s.state !== 'done') return `Session ${s.n} opens on ${dshort(s.opensOn)}.`
+  return `Session ${s.n} has not opened yet.`
+}
+
+/**
+ * U.10 RE-REVIEW ITEM C: WHO SEES THIS DIFFERENTLY, NAMED - THE SAME NAMING RULES AS EVERYWHERE
+ * ELSE ON THIS PAGE.
+ *
+ * "You see this differently." under every difference, whoever was reading it, said nothing about
+ * who the two sides actually were. `positions[].who` already comes off the wire through the same
+ * per-reader masking every other name on this board gets (board.service.ts's `named()`, itself the
+ * one peers-are-named rule, `peers-are-named.ts`) - real names where the reader may see them, or
+ * the engine's own "A colleague" where they may not. This never re-derives that rule; it only reads
+ * what the server already decided and writes the sentence.
+ *
+ * "A colleague" is not disambiguated between two different hidden people (the server's own
+ * simplification, not this screen's), so the moment EITHER side is masked, the sentence falls back
+ * to "People see this differently." rather than risk naming the same "a colleague" twice for two
+ * different people - which is exactly the case an evaluation check-in's person being reviewed must
+ * never see peers named in anyway.
+ */
+export function whoSeesThisDifferently(positions: { who?: string }[] | undefined, myName: string | null): string {
+  let who = (positions ?? []).map((p) => p.who).filter((w): w is string => !!w)
+  if (who.length < 2) return 'This is seen differently.'
+  if (who.includes('A colleague')) return 'People see this differently.'
+  /* The reader reads themselves first: "You and Amani Wekesa", never "Amani Wekesa and You". */
+  /* The server has usually already turned the reader's own side into "You"; a real name standing
+     in for the reader counts the same. Either way the reader comes first, as "You". */
+  const isMe = (w: string) => w === 'You' || (!!myName && w === myName)
+  if (who.some(isMe)) who = [who.find(isMe)!, ...who.filter((w) => !isMe(w))]
+  const say = (w: string) => (isMe(w) ? 'You' : w)
+  return `${say(who[0])} and ${say(who[1])} see this differently.`
+}
+
+/** What each record type under "Who owns what" is, in a sentence rather than a bare tag. */
+const WHAT_THIS_ITEM_IS: Record<string, string> = {
+  COMMITMENT: 'This is a commitment.',
+  SUCCESS_DEFINITION: 'This says what success looks like.',
+  INTENT: 'This is something they intend to do.',
+  PROGRESS: 'This is progress they reported.',
+}
 
 // ---------------------------------------------------------------- page
 
@@ -132,6 +210,12 @@ function whereTheRunIs(data: any, ground: any): { nearTheEnd: boolean; lastSessi
   return { nearTheEnd: done >= planned - 1, lastSessionDone: done >= planned }
 }
 
+/*
+ * `phaseSpineSentence` moved to lib/phase-spine-sentence.ts (U.10 item 2): TheCheckInHeader.tsx
+ * builds the same "Session N of M. Runs until DATE." sentence, so this is now a shared function
+ * rather than a second copy of it there.
+ */
+
 export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const { id: idFromRoute } = useParams<{ id: string }>()
   const id = groundId ?? idFromRoute
@@ -159,6 +243,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const onAPhone = useIsAPhone()
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
 
+  /*
+   * U.10 ITEM 7: THE SAME ROWS THE REPORT TAB BUILDS "EVERY SESSION" FROM.
+   * `buildSessionRows` is the extraction of what used to be GroundAdminPage's own inline counting
+   * (see lib/session-rows.ts) - reused here rather than a second, possibly-diverging copy, per the
+   * task's own instruction to reuse the Report tab's query.
+   */
+  const labelsHere = peopleLabels((groundForSignals as any)?.participants ?? [], { forTheLead: viewerRunsThisCheckIn })
+  const labelInASentence = (p: any): string => labelsHere.get(p?.id) ?? personLabel(p)
+  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence)
+
   /* What needs the lead here: Today's items for this check-in. See where it is drawn. */
   const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: viewerRunsThisCheckIn, retry: false })
   const needsHere = (today?.needs ?? []).filter((n: Need) => n.groundId === id)
@@ -173,12 +267,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* Where the run is, read once, so the top and the foot of the board gate the ending panel on the
      same answer (the-exit-belongs-at-the-exit). */
   const { nearTheEnd, lastSessionDone } = whereTheRunIs(data, groundForSignals)
+  const plannedSessions = plannedSessionsFor((groundForSignals as any)?.timelineDays, (groundForSignals as any)?.cadence, (groundForSignals as any)?.plannedSessions)
 
   const [newObjName, setNewObjName] = useState('')
   const [newObjTarget, setNewObjTarget] = useState('')
   const [pollQ, setPollQ] = useState('')
   const [pollOpts, setPollOpts] = useState('')
   const [showPollForm, setShowPollForm] = useState(false)
+  /* U.10 item 7: "Over time" opens on ask, the same shape "How to read this board" already uses. */
+  const [showOverTime, setShowOverTime] = useState(false)
   const [pollCancelArmed, setPollCancelArmed] = useState(false)
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['board', id] })
@@ -251,7 +348,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     return (
       <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px' }}>
         <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '22px 24px' }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
+          <div style={{ fontSize: 13, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
             No shared board here
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--gw-text)', marginBottom: 16 }}>{data.reason}</div>
@@ -280,7 +377,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     return (
       <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px' }}>
         <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '22px 24px' }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
+          <div style={{ fontSize: 13, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
             Your answer first
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--gw-text)', marginBottom: 16 }}>{(data as any).saying}</div>
@@ -299,7 +396,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const endedSaying = howItEnded({ status: (b as any)?.groundStatus, endState: (b as any)?.endState })
   const has = (s: string) => b.sections.includes(s as any)
   /* Said once, at the top - and the divergence card below stays short rather than repeating it. */
+  /*
+   * ITEM D, CHECKED AND DELIBERATELY LEFT AS IT WAS. `whoIsInRound` answers a different question
+   * (who is expected to check in this round - a managing-only lead still counts for session 1) from
+   * this one (are there two ACCOUNTS to compare - a managing-only lead never gives one, ever).
+   * Tried unifying them; it broke "a managing-only lead is not the second account"
+   * (a-shared-picture-needs-two-accounts.spec.tsx), a rule this board already tests deliberately, so
+   * it was reverted. This board has no other client-computed count of people to point at
+   * `whoIsInRound` - every other figure on it (answered this round, checked-in counts) already
+   * comes straight off the server (`howItIsGoing.glance`, `checkInGrid`), so there is nothing here
+   * for two different counting rules to disagree about. See the morning report.
+   */
   const onlyOnePersonHere = (b.participants ?? []).filter(p => !p.managingOnly).length < 2
+  /* The reader's own name, as this board already resolves it, so "who sees this differently" can say "You". */
+  const myName = b.myParticipantId ? (b.participants ?? []).find((p) => p.id === b.myParticipantId)?.name ?? null : null
 
   /**
    * A HEADING WITH NOTHING UNDER IT. W-UX-7.
@@ -312,9 +422,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * `shown` is the one place a section's real condition lives, and both the zone and its content
    * read it. A zone cannot render unless something under it will.
    */
+  /*
+   * U.10 RE-REVIEW ITEM A: THE SWITCHBOARD SAYS WHAT'S ON, PER SITUATION - "nothing that's off".
+   * `has()` is the server's own per-FAMILY gate; this is the finer per-SITUATION layer from G2 on
+   * top of it, for the 8 sections this pass can map. See what-the-switchboard-allows.ts.
+   */
+  const allowed = (boardSection: string) => whatTheSwitchboardAllows(b.scenario, boardSection)
+
   const shown = {
-    quickRead: has('quickRead') && !!b.quickRead,
-    startingState: has('startingState') && !!b.startingState,
+    quickRead: has('quickRead') && allowed('quickRead') && !!b.quickRead,
+    startingState: has('startingState') && allowed('startingState') && !!b.startingState,
     decisions: has('decisions') && !!b.decisions?.length,
     /*
      * THE ONLY WAY TO SET A TARGET WAS INSIDE A SECTION THAT ONLY APPEARED ONCE A TARGET EXISTED.
@@ -333,194 +450,163 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * So it shows when there is something to show, OR when the reader is the person who can add
      * the first one. A party who cannot edit still sees nothing rather than an empty heading.
      */
-    objectives: has('objectives') && (!!b.objectives?.length || !!b.canEditFrame),
+    objectives: has('objectives') && allowed('objectives') && (!!b.objectives?.length || !!b.canEditFrame),
     cascade: has('cascade') && !!b.cascade,
     hiddenContributors: has('hiddenContributors') && !!b.hiddenContributors?.rows?.length,
-    divergence: has('divergence') && !!b.divergence,
+    divergence: has('divergence') && allowed('divergence') && !!b.divergence,
     /* The note stands in for the block before a round has closed, so either one is enough to show. */
-    whatTheRoomIsAbout: has('whatTheRoomIsAbout')
+    whatTheRoomIsAbout: has('whatTheRoomIsAbout') && allowed('whatTheRoomIsAbout')
       && (!!b.whatTheRoomIsAbout?.aims.length || !!b.whatTheRoomIsAbout?.places.length
         || !!b.whatTheRoomIsAbout?.things.length || !!b.whatTheRoomIsAboutNote),
     whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
-    dependencies: has('dependencies') && !!b.dependencies,
+    dependencies: has('dependencies') && allowed('dependencies') && !!b.dependencies,
     checkInGrid: has('checkInGrid') && !!b.checkInGrid,
     /* Lead-only and absent for everybody else, so there is nothing to gate on here beyond its
        presence: the server does not send it to a reader who may not have it. */
     eachPerson: !!b.eachPerson?.length,
-    contribution: has('contribution') && !!b.contribution,
-    coverage: has('coverage') && !!b.coverage,
-    patterns: has('patterns') && !!b.patterns,
+    /*
+     * U.10 RE-REVIEW, NEEDS HAFSAH 0f: LEAD ONLY UNTIL SHE ANSWERS.
+     *
+     * "Contribution against role" and "Where work is landing" are the board's own read on how one
+     * person's work is going against their role - no prototype screen shows either to anyone. Until
+     * 0f is answered, these draw for whoever runs the check-in only, the same gate `eachPerson`
+     * already uses, so a participant is never shown a colleague's own contribution or coverage read.
+     */
+    contribution: has('contribution') && !!b.contribution && viewerRunsThisCheckIn,
+    coverage: has('coverage') && !!b.coverage && viewerRunsThisCheckIn,
+    patterns: has('patterns') && allowed('patterns') && !!b.patterns,
   }
   // Only the caller's own availability is theirs to toggle.
   const myIds = new Set(b.myParticipantId ? [b.myParticipantId] : [])
 
-  return (
-    <div style={{ background: '#EEF0F6', minHeight: '100vh' }}>
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 80px' }}>
+  /**
+   * U.10: THE LAST 10 CHECK-INS, AS SQUARES, WHEREVER THE BOARD DRAWS A PERSON'S ROW.
+   *
+   * "The team today" (board-as-lead.jpg) and "Who checked in" both draw the same fact - a row of
+   * ten small squares, filled navy for checked in, empty for missed, nothing for not yet open - so
+   * this is computed once from the same `checkInGrid` the session table already uses, kept to the
+   * last 10 sessions, and handed to whichever section wants it for a given participant.
+   */
+  const squaresFor = (participantId: string): { key: number; state: 'done' | 'empty' | 'upcoming' }[] => {
+    if (!b.checkInGrid) return []
+    const row = b.checkInGrid.rows.find((r) => r.participantId === participantId)
+    if (!row) return []
+    const sessionState = new Map((b.phaseSpine?.sessions ?? []).map((ps) => [ps.n, ps.state]))
+    const last10 = b.checkInGrid.sessions.slice(-10)
+    return last10.map((s) => {
+      const v = row.cells[String(s)] ?? 'na'
+      const upcoming = v === 'na' && sessionState.get(s) === 'upcoming'
+      const checkedIn = v === 'done' || v === 'in-progress'
+      return { key: s, state: upcoming ? 'upcoming' : checkedIn ? 'done' : 'empty' }
+    })
+  }
 
-        {/*
-          A WAY BACK TO THE GROUND THIS BOARD BELONGS TO.
-          
-          There were back-links in the error state and the no-board state, and none
-          on the board that actually renders - the only state anybody reaches. Her
-          words: "i have no way to get back to anywhere from the board." The rail is
-          there, so it was not a trap, but the board is a tab of a ground and there
-          was no way back to the ground.
-        */}
-        <div style={{ marginBottom: 12 }}>
-          {/*
-            AND IT SENT A LEAD TO SOMEBODY ELSE'S VIEW.
-            
-            This went to `/grounds/:id/p` for everybody. `/grounds/:id` already decides by role -
-            a lead gets the lead's page, a party gets theirs - so hard-coding the party path meant
-            the lead's own way back off the board landed them on the party view of their own
-            check-in, one tab bar away from where they started.
-          */}
-          <button
-            onClick={() => navigate(`/grounds/${id}`)}
-            style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            ← Back to the check-in
-          </button>
-        </div>
+  return (
+    <div style={{ background: 'var(--gw-page)', minHeight: '100vh' }}>
+      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 80px' }}>
 
         {/* Somebody who has just answered from a link lands here with ?done=1: their answer landed, and where the report goes. */}
         {justAnswered && <ThatIsOnTheRecord groundId={id!} />}
 
-        {/* header + phase spine */}
-        <header style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 16, padding: '18px 22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-            <div>
-              {/*
-                THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE. A board was a page you arrived at
-                from one check-in and left the same way - read one, back to the list, find the next,
-                open it, open its board. See the component for why the server says which have one.
-              */}
-              {/*
-                NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING. On /boards the tabs above do this
-                job, and two switchers one above the other, both listing the same check-ins, is a
-                reader asking which of them is the real one.
-              */}
-              {!groundId && <div style={{ marginBottom: 8 }}><TheOtherBoardsYouAreIn groundId={id!} /></div>}
-              <h1 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '.2px' }}>{b.title}</h1>
-              <div style={{ fontSize: 12, color: '#AEB6D6', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ background: '#2C2E52', border: '1px solid #3C3E66', color: '#C7CDF0', borderRadius: 20, padding: '2px 10px', fontSize: 10.5, fontWeight: 700 }}>
-                  {/* Say what this is, in the words the person setting it up
-                      would use. "Cohort ground" is our internal grouping name
-                      leaking onto the page - nobody describes their own
-                      situation that way. What actually distinguishes these is
-                      whether the people see each other's work, which the lead
-                      now sets directly, so that is what the badge says. */}
-                  {b.peopleWorkTogether === false
-                    ? 'Same work, separate places'
-                    : b.family === 'DELIVERY' ? 'A team working together'
-                    : b.family === 'COHORT' ? 'Same work, separate places'
-                    : b.family === 'ONBOARDING' ? 'Settling into the role'
-                    : 'A period being reviewed'}
-                </span>
-                {/*
-                  A ground with no dates set rendered "— to — · session 1", which is
-                  two em dashes standing in for information nobody entered, in the
-                  header of the best page in the product - and em dashes are against
-                  house style anyway. Say the session, and only mention dates when
-                  there are dates.
-                */}
-                {/* Once it is over, what ended it is the header, not which session is open. */}
-                {endedSaying ? (
-                  <span style={{ color: BOARD_ACCENT_INK, fontWeight: 700 }}>{endedSaying}</span>
-                ) : b.phaseSpine ? (
-                  <span>
-                    {b.phaseSpine.startsAt || b.phaseSpine.endsAt
-                      ? `${dshort(b.phaseSpine.startsAt)} to ${dshort(b.phaseSpine.endsAt)} · `
-                      : ''}
-                    {/* Counted the way the exit gate below counts it: sessions everybody has finished.
-                        `currentSession` is the highest number any row carries, and the next row is
-                        created the moment one completes, so it ran ahead of the run. */}
-                    {/* ONCE, NOT TWICE. "0 sessions done" sat three inches above "Progress 0 of 6
-                        rounds" on the same header - the same fact, in two vocabularies, and the
-                        progress line is the one that says how many there are to do. */}
-                    {(() => {
-                      const done = ((b.phaseSpine.sessions ?? []) as { state: string }[]).filter((x) => x.state === 'done').length
-                      return done > 0 ? `${done} ${done === 1 ? 'session' : 'sessions'} done` : null
-                    })()}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </div>
+        {/*
+          U.10 ITEM 2: THE PROTOTYPE'S HEADER AND TABS (board-as-lead.jpg), NOT THE DARK NAVY CARD.
+          "← Back to the check-in" and a dark header of the board's own invention are gone; every
+          check-in page now has one shared shell (TheCheckInHeader.tsx) for the breadcrumb, the
+          serif title, the cadence line, "Your check-in", "Ask" and the tab bar - built to be reused
+          by GroundAdminPage.tsx and GroundParticipantPage.tsx too (see that file for what is and is
+          not wired in this pass).
 
-          {/*
-            HOW IT IS GOING, FIRST, WHICH IS WHY SOMEBODY OPENED THIS.
-
-            "When I come in as a manager, I want progress/status and blockers/risks." The board
-            opened on "where people differ": a manager had to read three zones to work out how far
-            through it was, and the screen that knew was the check-in list they had just left.
-
-            The same component the list and the boards page draw, on the dark ground. Not a second
-            read of the same week - the server computes it once (how-a-check-in-is-going.ts) and all
-            three are handed the answer.
-          */}
-          {(b as any).howItIsGoing && (
-            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #2E3054' }}>
-              <HowItIsGoing
-                summary={(b as any).howItIsGoing.latestSummary}
-                glance={(b as any).howItIsGoing.glance}
-                tone="dark"
-              />
-            </div>
-          )}
-
-          {has('phaseSpine') && b.phaseSpine && (
-            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #2E3054' }}>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {/*
-                  A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
-                  and this was the one list not keeping it: "a finished session opens the REPORT and
-                  not the transcript - that holds for every list there is". My record keeps it, the
-                  party's report keeps it, the Report tab keeps it. These were plain divs.
-                  A session that has not happened is not a link, because there is nothing behind it
-                  yet - so the ones that have are buttons and the rest stay as they were.
-                */}
-                {b.phaseSpine.sessions.map((s) => {
-                  const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
-                  const face = (
-                    <>
-                      {/* "now" on a check-in that has ended is a clock nobody is watching. */}
-                      Session {s.n}{s.date ? ` · ${dshort(s.date)}` : s.opensOn && s.state !== 'done' ? ` · opens ${dshort(s.opensOn)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
-                    </>
-                  )
-                  const skin = {
-                    fontSize: 11, padding: '4px 10px', borderRadius: 20,
-                    background: s.state === 'current' ? 'rgba(139,224,174,.18)' : '#2C2E52',
-                    color: s.state === 'current' ? BOARD_ACCENT_INK : BOARD_MUTED_INK,
-                    fontWeight: s.state === 'current' ? 700 : 500,
-                  } as const
-                  if (!been) return <div key={s.n} style={skin}>{face}</div>
-                  return (
-                    <button
-                      key={s.n}
-                      type="button"
-                      onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
-                      style={{ ...skin, border: '1px solid transparent', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 }}
-                    >
-                      {face}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </header>
+          THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE (picture-check round 6, item A). A board was
+          a page you arrived at from one check-in and left the same way - read one, back to the
+          list, find the next, open it, open its board. See the component for why the server says
+          which have one. It used to sit above the header of its own accord, styled for the dark
+          header the board no longer has - on the cream page its near-white text on white was almost
+          invisible, and the prototype has nothing above the breadcrumb. It is real navigation, not
+          the check-in switcher, so rather than delete it, it now draws in the tab row's own
+          "Views ▾" slot (not built - nothing answers what that menu would offer), restyled for a
+          light ground. NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING: on /boards the tabs above do
+          this job, and two switchers is a reader asking which of them is the real one.
+        */}
+        <TheCheckInHeader
+          id={id!}
+          title={b.title}
+          cadence={(groundForSignals as any)?.cadence ?? null}
+          plannedSessions={plannedSessions}
+          currentSession={b.phaseSpine?.currentSession ?? null}
+          endsAt={b.phaseSpine?.endsAt ?? null}
+          endedSaying={endedSaying}
+          canRunThisCheckIn={viewerRunsThisCheckIn}
+          isAParty={!!b.myParticipantId}
+          active="board"
+          trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} /> : undefined}
+        />
 
         {/*
           WHEN IT LAST CHANGED, AND THAT OPENING IT CHANGES NOTHING (U.10). The same line for every
           reader, from the server's `lastChangedAt`. Then, for an admin who only reads, who runs it.
+          The prototype has this small-grey line directly under the tab bar.
         */}
-        <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '12px 0 0' }}>
+        <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '14px 0 0' }}>
           {whenTheBoardLastChanged(b.lastChangedAt)}
         </p>
         {b.readOnlyNote && (
           <p role="note" style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '8px 0 0' }}>{b.readOnlyNote}</p>
+        )}
+
+        {/*
+          HOW IT IS GOING, AND THE SESSION SPINE - KEPT, RESTYLED AS PLAIN TEXT (U.10 item 2).
+
+          "When I come in as a manager, I want progress/status and blockers/risks." The summary
+          paragraph and the glance line are the same component the list and the boards page draw
+          (how-a-check-in-is-going.ts computes it once); only the dark card they used to sit in is
+          gone, in favour of the prototype's plain first block under the header. The clickable
+          session spine - which the prototype's own header does not draw, but is real, valuable
+          navigation this board already had - is kept underneath it rather than dropped.
+        */}
+        {(b as any).howItIsGoing && (
+          <div style={{ marginTop: 16 }}>
+            <HowItIsGoing
+              summary={(b as any).howItIsGoing.latestSummary}
+              glance={(b as any).howItIsGoing.glance}
+            />
+          </div>
+        )}
+
+        {has('phaseSpine') && b.phaseSpine && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {/*
+                A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
+                and this was the one list not keeping it: "a finished session opens the REPORT and
+                not the transcript - that holds for every list there is". My record keeps it, the
+                party's report keeps it, the Report tab keeps it. These were plain divs.
+                A session that has not happened is not a link, because there is nothing behind it
+                yet - so the ones that have are buttons and the rest stay as they were.
+              */}
+              {b.phaseSpine.sessions.map((s) => {
+                const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
+                const face = sessionPillSentence(s, groundEnded)
+                const skin = {
+                  fontSize: 11, padding: '4px 10px', borderRadius: 20,
+                  background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white',
+                  border: '1px solid var(--gw-border)',
+                  color: s.state === 'current' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
+                  fontWeight: s.state === 'current' ? 700 : 500,
+                } as const
+                if (!been) return <div key={s.n} style={skin}>{face}</div>
+                return (
+                  <button
+                    key={s.n}
+                    type="button"
+                    onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
+                    style={{ ...skin, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
+                    {face}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         )}
 
         {/*
@@ -585,35 +671,38 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           choice is remembered. A returning person gets the board they came for and the reminder
           within one click.
         */}
-        <div style={{ background: '#20233E', color: 'white', borderRadius: 14, padding: '14px 18px', marginTop: 14 }}>
-          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: BOARD_MUTED_INK, fontWeight: 700, display: 'block', marginBottom: 6 }}>
-            How to read and use this board
-          </span>
-          <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK }}>
-            Built from what each person shared in their private check-in.{' '}
-            <b style={{ color: BOARD_ACCENT_INK, fontWeight: 600 }}>Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.</b>
+        {/*
+          U.10: A PLAIN LINK, THE WEIGHT THE PROTOTYPE GIVES IT.
+          The prototype has no dark card here at all - just a small grey "How to read this board"
+          line among the rest of the page. The words below are unchanged; only the dark indigo panel
+          (rgb(32,35,62)) is gone, in favour of the same small-grey-text treatment as the rest of the
+          board (see "Last updated…" just above).
+        */}
+        <div style={{ marginTop: 12 }}>
+          <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: 0 }}>
+            Built from what each person shared in their private check-in. Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.
           </p>
           {howToRead && (
             <>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
+              <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 7 }}>
                 If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
               </p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
+              <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 7 }}>
                 Each person is shown in the context of their own role, not scored against everyone else.
               </p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
+              <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 7 }}>
                 This is the shared picture from this round of check-ins. It can change as the picture changes.
               </p>
-              <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK, marginTop: 7 }}>
+              <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 7 }}>
                 Where people see things differently or progress has stalled, you can see what each person shared and support them.
               </p>
             </>
           )}
           <button
             onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
-            style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 11.5, fontWeight: 700, color: BOARD_ACCENT_INK, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
           >
-            {howToRead ? 'Show less' : 'How to use it →'}
+            {howToRead ? 'Show less' : 'How to read this board'}
           </button>
         </div>
 
@@ -635,288 +724,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
-          WHERE PEOPLE DIFFER, FIRST.
+          U.10 RE-REVIEW ITEM 2: THE SWITCHBOARD'S OWN ORDER, MOVED FROM THREE SEPARATE ZONES.
 
-          It sat in "Against the plan", four zones and roughly two screens down, under the objectives
-          and the check-in grid. A lead opens this board to find out where they need to step in, and
-          the one section that tells them that was the last thing they reached; everything above it
-          they could already guess.
-
-          Moved, not changed. Same section, same rows, same order inside it. What follows it is
-          unchanged too - "At a glance" still opens the zones, and the objectives and targets still
-          lead "Against the plan" where the difference used to be.
+          G2 (docs/modules.md) and the prototype's own board (board-as-lead.txt) put these in one
+          order: Targets, then what was agreed at the start, then accounts side by side, then what
+          people are after. Objectives used to sit far down in "Against the plan"; divergence had
+          been moved to the very top in an earlier review, before the switchboard existed; starting
+          state and the quick read sat under "At a glance". All four zones are gone from this
+          group now - the prototype draws no zone dividers at all, only section headings one after
+          another - and what were once described as separate bands is one ordered run, built from
+          orderedSwitchboardSections() for every situation this pass can compute an order for.
+          Cascade and "what success looks like" stay directly above objectives, which is where the
+          plan they qualify already sat.
         */}
-        {shown.divergence && b.divergence && (
-          <>
-            <Sec title="Where people differ" src="cross-referenced" />
-            <Card>
-              {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
-                /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
-                   more than one person has checked in" on a round where everybody had, three inches
-                   under a tile that said so. The server computes it from the one counter. */
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'Nothing to cross-reference yet.' : (b.divergence.whyNothingYet ?? 'Nothing cross-referenced yet. This fills in once more than one person has answered.')}</div></Row>
-              ) : (
-                <>
-                  {b.divergence.items.map((d: any, i: number) => (
-                    <Row key={i} first={i === 0}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
-                        <span style={{ marginLeft: 8 }}><Pill tone="warn">differs</Pill></span>
-                      </div>
-                      {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
-                      {/*
-                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
-
-                        This section carried a headline and then a line of italics: "This is the
-                        summary. Your own report holds the detail of what each account said." So the
-                        one question the board exists to answer - what do the two of you each think
-                        is going on - was the one thing you had to leave it to find out.
-
-                        The data was already here. `divergence.items` is the report's own divergence
-                        objects, sent whole, and every string in them has been through `named()` on
-                        the way out - the same masking the rest of the board gets, so a reader who
-                        may not see who somebody is does not learn it here. Rendering it is a read
-                        of what was already on the wire, not a new disclosure.
-                      */}
-                      {Array.isArray(d.positions) && d.positions.length > 0 && (
-                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
-                          {d.positions.map((pos: any, j: number) => (
-                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
-                              <span style={{ fontWeight: 700 }}>{pos.who ?? 'A colleague'}</span>
-                              <span style={{ color: 'var(--gw-sub)' }}>{pos.view ? ` - ${pos.view}` : ''}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {d.atStake && (
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
-                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)' }}>Why it matters </span>
-                          {d.atStake}
-                        </div>
-                      )}
-                    </Row>
-                  ))}
-                  {b.divergence.agreements.map((a: any, i: number) => (
-                    <Row key={`a${i}`}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                        {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
-                        <span style={{ marginLeft: 8 }}><Pill tone="good">agreed</Pill></span>
-                      </div>
-                    </Row>
-                  ))}
-                </>
-              )}
-              {/*
-                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
-
-                It read "This is the summary. Your own report holds the detail of what each account
-                said." That sentence was the only reason a fourth report surface had to exist: the
-                board named the disagreement and then sent you to another page to find out what it
-                was. Each account is now printed above, so the sentence would be sending people away
-                from the thing they are already looking at.
-              */}
-            </Card>
-          </>
-        )}
-
-        {/*
-          THE QUESTION STANDS ON ITS OWN, BECAUSE IT IS NOT ALWAYS ABOUT A DIFFERENCE.
-
-          It was drawn as the last row INSIDE "Where people differ", which reads as a question about
-          the difference above it - and on a round where nothing differed, that card says "nothing
-          cross-referenced yet" and then asked a question about nothing.
-
-          It is the same field the report and a party's shared picture draw, under one name now:
-          three places had two names between them, so somebody who read the board and then their
-          report saw what looked like two different things.
-        */}
-        {b.divergence?.centralQuestion && (
-          <Card>
-            <Row first>
-              <WhatToSettleTogether question={b.divergence.centralQuestion} />
-            </Row>
-          </Card>
-        )}
-
-        {/* ---------------------------------------------- at a glance */}
-        {(shown.quickRead || shown.startingState || shown.decisions || shown.eachPerson) && <Zone label="At a glance" />}
-
-        {/*
-          ABOVE THE QUICK READ, BECAUSE IT IS WHAT THIS PAGE IS OPENED FOR.
-
-          The quick read is four facts about the check-in. This is ten rows about ten people, each
-          with the one thing to ask for, and a manager running a team against individual numbers
-          reads it first and often reads nothing else. Putting it under the tiles would be ordering
-          the page by how long each block has existed.
-        */}
-        {/*
-          WHAT THE ANSWERS SAY, ABOVE WHO HAS NOT GIVEN ONE.
-          
-          Hafsah, 23 September 2026, on a hundred-person board: "the reports and boards needs to
-          show more reasoning, they look more like things that just do counts." The page opened on a
-          hundred identical rows saying somebody had not answered, and said nothing at all about
-          what the people who HAD answered said. The read exists - see WhatTheNetworkSaid - and it
-          belongs on the page somebody opens to see how this is going, not only on the report.
-        */}
-        {/*
-          EITHER READ IS ENOUGH TO OPEN THIS BAND.
-
-          Gating both on the network read would hide the judgement on every check-in too small for
-          one - the network read needs eight accounts before it says anything - and the judgement is
-          arithmetic over whatever has been answered, so it is there long before that. A band that
-          appears only once the bigger of its two reads exists is a band nobody sees first.
-        */}
-        {/*
-          AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION, ABOVE BOTH.
-
-          The judgement reads this round's answers. This reads the whole run - promises and whether
-          they came back, who is waiting on whom, what has been seen often enough to be a pattern,
-          and each role beside what the record holds about it. A founder deciding about somebody
-          needs the run, not the round, and three of these sections were empty in the report on the
-          one engagement that was entirely about them. Its own band, because it is on its own
-          timescale.
-        */}
-        {(b as any).overTime && (
-          <>
-            <Sec title="What the record shows" src="across every session so far" />
-            <WhatTheRecordShows it={(b as any).overTime} />
-          </>
-        )}
-
-        {((b as any).whatTheAnswersSay || (b as any).theJudgement) && (
-          <>
-            {/*
-              THE JUDGEMENT FIRST, THEN WHAT PEOPLE SAID.
-
-              "The report did not put things into buckets, do clear synthesis." The network read
-              below this is what everybody said, grouped. This is what it means, what to do about it,
-              and what it cannot tell you - which is the thing a reader opens a board for. A summary
-              above the detail, the way every other read on this page is arranged.
-            */}
-            <Sec title="What the answers say" src="from everybody who has answered so far" />
-            <TheJudgement it={(b as any).theJudgement} />
-            {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
-          </>
-        )}
-
-        {shown.eachPerson && (
-          <>
-            <Sec title="Where each person is" src="ordered by what needs you, not by name" />
-            <WhereEachPersonIs rows={b.eachPerson!} />
-          </>
-        )}
-
-        {/*
-          WHAT THE CHECK-INS ASKED FOR AND DID NOT GET.
-
-          The conversation asks twice and then lets it go, rather than pressing somebody who has
-          already declined twice. Somebody has to see the gap, and it is you. It is not a mark
-          against anybody: half the time the honest reason is that nobody could have answered -
-          a target nobody set, a dependency nobody owns.
-        */}
-        {!!b.stillUnanswered?.length && (
-          <>
-            <Sec title="Asked for, not answered" src="the check-in stopped asking" />
-            <Card>
-              {b.stillUnanswered.map((g, i) => (
-                <Row key={`${g.who}-${g.what}`} first={i === 0}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13.5, color: 'var(--gw-dark)' }}>
-                      <b style={{ fontWeight: 700 }}>{g.who}</b> &mdash; {g.what}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
-                      {/* Some of these cannot be confirmed either way - the check-in asked and
-                          nothing on the record can prove the answer. Saying "they did not answer"
-                          about somebody who answered in their first sentence would be worse than
-                          saying nothing. */}
-                      {g.certain ? `open since session ${g.sinceRound}` : `asked in session ${g.sinceRound}, could not confirm`}
-                    </span>
-                  </div>
-                </Row>
-              ))}
-            </Card>
-          </>
-        )}
-
-        {shown.quickRead && b.quickRead && (
-          <>
-            <Sec title="The quick read" src="alignment and trust from the report" />
-            {/*
-              FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
-
-              `minmax(190px, 1fr)` puts one tile per row below about 400px, so the block a person
-              is meant to GLANCE at became four bordered cards, each with a 24px serif number and a
-              clause under it - about a phone screen and a half to read four short facts.
-
-              The clause stays: a tile that is a label and a figure is a scoreboard, and the clause
-              is the thing that stops it being one. What goes is the packaging. On a phone these
-              are four rows of one card, the value beside its label rather than under it at display
-              size, and the clause underneath in body text.
-            */}
-            <div className={onAPhone ? 'gw-qr-list' : undefined} style={onAPhone
-              ? { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 14px' }
-              : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
-              {b.quickRead.map((q, i) => {
-                const tone = q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-dark)'
-                return onAPhone ? (
-                  <div key={q.label} style={{ padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub-d)', fontWeight: 700 }}>{q.label}</span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: tone, textAlign: 'right' }}>{q.value}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{q.sub}</div>
-                  </div>
-                ) : (
-                  <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
-                    <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: tone }}>{q.value}</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
-                  </div>
-                )
-              })}
-            </div>
-          </>
-        )}
-
-        {/* What was agreed at the start, so the rest of the board has something
-            to be read against. This section has been in the DELIVERY family's
-            list since the board was built with nothing behind it - so a lead saw
-            where the work had got to and not what it was meant to be for. It is
-            the only block here that no check-in can revise. */}
-        {shown.startingState && b.startingState && (
-          <>
-            <Sec title="What was agreed at the start" src="set when this was opened, before any check-in" />
-            <Card>
-              <Row first>
-                <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
-              </Row>
-            </Card>
-          </>
-        )}
-
-        {shown.decisions && b.decisions && (
-          <>
-            <Sec title="Decisions needed" src="from divergences and blockers" />
-            <Card>
-              {b.decisions.map((d, i) => (
-                <Row key={i} first={i === 0}>
-                  <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
-                    <span style={{ fontFamily: 'var(--gw-font-name)', fontSize: 17, color: 'var(--gw-navy)', minWidth: 18 }}>{i + 1}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: 'var(--gw-dark)', fontSize: 13 }}>{d.question}</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>{d.why}</div>
-                    </div>
-                    <Pill tone={d.source === 'blocker' ? 'bad' : 'warn'}>{d.owner}</Pill>
-                  </div>
-                </Row>
-              ))}
-            </Card>
-          </>
-        )}
-
-        {/* ---------------------------------------------- against the plan */}
-        {(shown.objectives || shown.divergence || shown.cascade) && <Zone label="Against the plan" />}
-
         {/*
           WHAT THIS SITS UNDER, ABOVE EVERYTHING IT QUALIFIES.
 
@@ -929,7 +749,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.cascade && b.cascade && (
           <Card>
             <Row first>
-              <div style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 6 }}>
+              {/* Picture-check round 6, item H: the card's own title, the prototype's weight (18px/700/near-black), not a 12.5px muted caption. */}
+              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>
                 {b.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}
               </div>
               {b.cascade.parentNamed && (
@@ -968,7 +789,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.objectives && b.objectives && (
           <>
-            <Sec title="What we are aiming for" src="the lead sets these" />
+            <Sec size="board" title="What we are aiming for" src="The lead sets these targets." />
             {/* The privacy setting is on and some numbers still have nobody's name on them, so
                 everybody can read those. Said to the only person who can fix it. */}
             {/* One total, ten people, from the export they already have. Above the form, because
@@ -1001,10 +822,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, fontSize: 13, fontWeight: 600, minWidth: 160 }}>
                         {o.name}
-                        {/* WHOSE NUMBER IT IS, on the row. Nine rows read from one sheet are nine
-                            people's, and the board listed them exactly as it listed the team's. */}
-                        {o.owner && <span style={{ marginLeft: 7, fontWeight: 400, color: 'var(--gw-sub)', fontSize: 12 }}>· {o.owner}</span>}
                         {o.isNew && <span style={{ marginLeft: 7 }}><Pill tone="info">new</Pill></span>}
+                        {/*
+                          WHOSE NUMBER IT IS, on its own line. "12 shops· Rukia Otieno" read live: the
+                          name sat right after the target with only a CSS margin between them, no
+                          space in the text itself. Said as a plain sentence below the name instead.
+                        */}
+                        {o.owner && (
+                          <div style={{ fontWeight: 400, color: 'var(--gw-sub)', fontSize: 12, marginTop: 2 }}>{o.owner}’s own target</div>
+                        )}
                         {/*
                           A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, AND THE ROW SAYS SO.
                           "signed 12m" read as settled while the lead's own note, one page away, said
@@ -1026,17 +852,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           </div>
                           {/* Three numbers a person can check, rather than a share of a target that
                               means the opposite thing on a ceiling. */}
+                          {/*
+                            U.10 RE-REVIEW ITEM 3: TWO SENTENCES, NOT COMMA-JOINED PIECES.
+                            "12, up from 0, aiming for 12" and "up 12 this session" read as
+                            fragments strung together rather than something said to a reader.
+                          */}
                           <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 96, textAlign: 'right' }}>
                             {o.journey?.start != null
-                              ? (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` · from ${o.journey.start}, said ${o.target}`}</>)
-                              : (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}`}</>)}
+                              ? (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` now, up from ${o.journey.start}. The aim is ${o.target}.`}</>)
+                              : (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}.`}</>)}
                           </div>
                           <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
-                            {o.delta > 0 ? `+${o.delta} this session` : 'no change'}
+                            {o.delta > 0 ? `Up ${o.delta} this session.` : 'No change.'}
                           </div>
                         </>
                       ) : (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 92, textAlign: 'right' }}>no number set</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 92, textAlign: 'right' }}>No number is set yet.</div>
                       )}
                     </div>
                     {o.notSettled && (
@@ -1048,29 +879,35 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       name={o.name}
                       assumes={o.assumes ?? []}
                     />
+                      {/*
+                        WORDS, NOT SYMBOLS. "-", "+" and "x" read as three unlabelled glyphs to
+                        anybody looking at the screen, even though each already carried an
+                        aria-label for a screen reader - an accessible name is not the same thing
+                        as a word a sighted person can read.
+                      */}
                       {b.canEditFrame && (
-                        <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <button
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
                             disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
                             title="Move this count down"
                             aria-label={`One fewer: ${o.name}`}
-                            style={miniBtn}
-                          >-</button>
+                            style={{ ...miniBtn, width: 'auto', padding: '0 8px' }}
+                          >Lower</button>
                           <button
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
                             disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
                             title="Move this count up"
                             aria-label={`One more: ${o.name}`}
-                            style={miniBtn}
-                          >+</button>
+                            style={{ ...miniBtn, width: 'auto', padding: '0 8px' }}
+                          >Raise</button>
                           <button
                             onClick={() => sureAboutTarget.arm(o.id)}
                             disabled={removeObjective.isPending}
                             title="Remove this target"
                             aria-label={`Remove target: ${o.name}`}
-                            style={{ ...miniBtn, color: 'var(--gw-clay)' }}
-                          >x</button>
+                            style={{ ...miniBtn, width: 'auto', padding: '0 8px', color: 'var(--gw-clay)' }}
+                          >Remove</button>
                         </span>
                       )}
                       {sureAboutTarget.isArmed(o.id) && (
@@ -1107,11 +944,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {/* A new target means nothing until people have checked in against it. */}
                     {o.isNew && o.askedOf && (
                       <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
-                        Asked about this so far:{' '}
-                        {o.askedOf.filter((a) => a.asked).map((a) => a.name).join(', ') || 'nobody yet'}
-                        {o.askedOf.some((a) => !a.asked) && (
-                          <> · still to be asked: {o.askedOf.filter((a) => !a.asked).map((a) => a.name).join(', ')}</>
-                        )}
+                        {(() => {
+                          const asked = o.askedOf.filter((a) => a.asked).map((a) => a.name)
+                          const notYet = o.askedOf.filter((a) => !a.asked).map((a) => a.name)
+                          const askedSaid = asked.length ? `So far this has been asked of ${asked.join(', ')}.` : 'Nobody has been asked about this yet.'
+                          return notYet.length ? `${askedSaid} It still needs to be asked of ${notYet.join(', ')}.` : askedSaid
+                        })()}
                       </div>
                     )}
                   </Row>
@@ -1145,13 +983,146 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </>
         )}
 
+        {/* What was agreed at the start, so the rest of the board has something
+            to be read against. This section has been in the DELIVERY family's
+            list since the board was built with nothing behind it - so a lead saw
+            where the work had got to and not what it was meant to be for. It is
+            the only block here that no check-in can revise. */}
+        {shown.startingState && b.startingState && (
+          <>
+            <Sec size="board" title="What was agreed at the start" src="Set when this was opened, before any check-in." />
+            <Card>
+              <Row first>
+                <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
+              </Row>
+            </Card>
+          </>
+        )}
 
-        {/* ---------------------------------------------- the work */}
-        {(shown.whoOwnsWhat || shown.dependencies || shown.checkInGrid) && <Zone label="The work" />}
+        {/*
+          WHERE PEOPLE DIFFER, FIRST.
+
+          It sat in "Against the plan", four zones and roughly two screens down, under the objectives
+          and the check-in grid. A lead opens this board to find out where they need to step in, and
+          the one section that tells them that was the last thing they reached; everything above it
+          they could already guess.
+
+          Moved, not changed. Same section, same rows, same order inside it. What follows it is
+          unchanged too - "At a glance" still opens the zones, and the objectives and targets still
+          lead "Against the plan" where the difference used to be.
+        */}
+        {shown.divergence && b.divergence && (
+          <>
+            <Sec size="board" title="Where people differ" src="Built from what each person said in their check-in." />
+            <Card>
+              {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
+                /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
+                   more than one person has checked in" on a round where everybody had, three inches
+                   under a tile that said so. The server computes it from the one counter. */
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
+              ) : (
+                <>
+                  {b.divergence.items.map((d: any, i: number) => (
+                    <Row key={i} first={i === 0}>
+                      {/*
+                        A TAG GLUED TO THE SENTENCE BEFORE IT. "...12 shops.agreed" read on a live
+                        board: the pill sat right after the topic with only a CSS margin between
+                        them, which is invisible to a screen reader and to anybody copying the text.
+                        The kind is said as its own sentence now, on its own line.
+                      */}
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', marginTop: 2 }}>{whoSeesThisDifferently(d.positions, myName)}</div>
+                      {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
+                      {/*
+                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
+
+                        This section carried a headline and then a line of italics: "This is the
+                        summary. Your own report holds the detail of what each account said." So the
+                        one question the board exists to answer - what do the two of you each think
+                        is going on - was the one thing you had to leave it to find out.
+
+                        The data was already here. `divergence.items` is the report's own divergence
+                        objects, sent whole, and every string in them has been through `named()` on
+                        the way out - the same masking the rest of the board gets, so a reader who
+                        may not see who somebody is does not learn it here. Rendering it is a read
+                        of what was already on the wire, not a new disclosure.
+                      */}
+                      {/*
+                        "Rukia Otieno - Rukia Otieno's opening brief..." read on a live board: the
+                        name and what they said, joined with a dash, which reads as one run-on
+                        clause rather than a name followed by their words. Stacked instead, the way
+                        every other name-then-quote on this page is already shown.
+                      */}
+                      {Array.isArray(d.positions) && d.positions.length > 0 && (
+                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+                          {d.positions.map((pos: any, j: number) => (
+                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
+                              <div style={{ fontWeight: 700 }}>{pos.who ?? 'A colleague'}</div>
+                              {pos.view && <div style={{ color: 'var(--gw-sub)' }}>{pos.view}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/*
+                        "WHY IT MATTERS If the delays..." read live as one run-on line: the caption
+                        and the sentence shared a line with only a trailing space between them. The
+                        caption is now its own line, like every other caption on this page.
+                      */}
+                      {d.atStake && (
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
+                          <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>Why it matters</span>
+                          {d.atStake}
+                        </div>
+                      )}
+                    </Row>
+                  ))}
+                  {b.divergence.agreements.map((a: any, i: number) => (
+                    <Row key={`a${i}`}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                        {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', marginTop: 2 }}>Everybody agrees on this.</div>
+                    </Row>
+                  ))}
+                </>
+              )}
+              {/*
+                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
+
+                It read "This is the summary. Your own report holds the detail of what each account
+                said." That sentence was the only reason a fourth report surface had to exist: the
+                board named the disagreement and then sent you to another page to find out what it
+                was. Each account is now printed above, so the sentence would be sending people away
+                from the thing they are already looking at.
+              */}
+            </Card>
+          </>
+        )}
+
+        {/*
+          THE QUESTION STANDS ON ITS OWN, BECAUSE IT IS NOT ALWAYS ABOUT A DIFFERENCE.
+
+          It was drawn as the last row INSIDE "Where people differ", which reads as a question about
+          the difference above it - and on a round where nothing differed, that card says "nothing
+          cross-referenced yet" and then asked a question about nothing.
+
+          It is the same field the report and a party's shared picture draw, under one name now:
+          three places had two names between them, so somebody who read the board and then their
+          report saw what looked like two different things.
+        */}
+        {b.divergence?.centralQuestion && (
+          <Card>
+            <Row first>
+              <WhatToSettleTogether question={b.divergence.centralQuestion} />
+            </Row>
+          </Card>
+        )}
 
         {shown.whatTheRoomIsAbout && (
           <>
-            <Sec title="What people are after, and where" src="from what everybody said" />
+            <Sec size="board" title="What people are after, and where" src="Built from what everybody said." />
             {b.whatTheRoomIsAboutNote && (
               <Card><div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{b.whatTheRoomIsAboutNote}</div></Card>
             )}
@@ -1208,12 +1179,193 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </>
         )}
 
+        {shown.quickRead && b.quickRead && (
+          <>
+            <Sec size="board" title="The quick read" src="How much the team agrees, and how much the report can rely on." />
+            {/*
+              FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
+
+              `minmax(190px, 1fr)` puts one tile per row below about 400px, so the block a person
+              is meant to GLANCE at became four bordered cards, each with a 24px serif number and a
+              clause under it - about a phone screen and a half to read four short facts.
+
+              The clause stays: a tile that is a label and a figure is a scoreboard, and the clause
+              is the thing that stops it being one. What goes is the packaging. On a phone these
+              are four rows of one card, the value beside its label rather than under it at display
+              size, and the clause underneath in body text.
+            */}
+            {/*
+              U.10: ONE ROW OF FOUR, NOT THREE PLUS ONE. `auto-fit, minmax(190px, 1fr)` let the
+              browser decide how many tiles fit per row, and it wrapped to three-then-one at some
+              widths the prototype always draws as a single row of four white tiles. A fixed
+              four-column grid keeps them together; on a phone this still hands off to the list.
+            */}
+            <div className={onAPhone ? 'gw-qr-list' : undefined} style={onAPhone
+              ? { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 14px' }
+              : { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+              {/*
+                U.10 RE-REVIEW ITEM 6: A SENTENCE, THE WAY U.9's tileSentence ALREADY DOES IT.
+                "Differences / None / no disagreement, as the written report reads it" was a label,
+                a bare value and a fragment, stacked - the same bug U.9's report review found and
+                fixed with `tileSentence`, reused here rather than reworded: this is the same tile
+                shape (label/value/sub), from the same server function (atAGlanceTiles). The label
+                stays for a screen reader, without being shown as its own heading.
+              */}
+              {b.quickRead.map((q, i) => {
+                const tone = q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-text)'
+                const said = tileSentence(q)
+                return onAPhone ? (
+                  <div key={q.label} style={{ padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                    <span className="gw-sr-only">{q.label}</span>
+                    <div style={{ fontSize: 14, lineHeight: 1.5, color: tone }}>{said}</div>
+                  </div>
+                ) : (
+                  <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
+                    <span className="gw-sr-only">{q.label}</span>
+                    <div style={{ fontSize: 13, lineHeight: 1.5, color: tone }}>{said}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+
+
+        {/* ---------------------------------------------- at a glance */}
+        {/* quickRead and startingState moved into the switchboard-ordered group above (item 2). */}
+
+        {/*
+          WHAT THE ANSWERS SAY, ABOVE WHO HAS NOT GIVEN ONE.
+          
+          Hafsah, 23 September 2026, on a hundred-person board: "the reports and boards needs to
+          show more reasoning, they look more like things that just do counts." The page opened on a
+          hundred identical rows saying somebody had not answered, and said nothing at all about
+          what the people who HAD answered said. The read exists - see WhatTheNetworkSaid - and it
+          belongs on the page somebody opens to see how this is going, not only on the report.
+        */}
+        {/*
+          EITHER READ IS ENOUGH TO OPEN THIS BAND.
+
+          Gating both on the network read would hide the judgement on every check-in too small for
+          one - the network read needs eight accounts before it says anything - and the judgement is
+          arithmetic over whatever has been answered, so it is there long before that. A band that
+          appears only once the bigger of its two reads exists is a band nobody sees first.
+        */}
+        {/*
+          AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION, ABOVE BOTH.
+
+          The judgement reads this round's answers. This reads the whole run - promises and whether
+          they came back, who is waiting on whom, what has been seen often enough to be a pattern,
+          and each role beside what the record holds about it. A founder deciding about somebody
+          needs the run, not the round, and three of these sections were empty in the report on the
+          one engagement that was entirely about them. Its own band, because it is on its own
+          timescale.
+        */}
+        {(b as any).overTime && (
+          <>
+            <Sec size="board" title="What the record shows" src="Read across every session so far." />
+            <WhatTheRecordShows it={(b as any).overTime} />
+          </>
+        )}
+
+        {((b as any).whatTheAnswersSay || (b as any).theJudgement) && (
+          <>
+            {/*
+              THE JUDGEMENT FIRST, THEN WHAT PEOPLE SAID.
+
+              "The report did not put things into buckets, do clear synthesis." The network read
+              below this is what everybody said, grouped. This is what it means, what to do about it,
+              and what it cannot tell you - which is the thing a reader opens a board for. A summary
+              above the detail, the way every other read on this page is arranged.
+            */}
+            <Sec size="board" title="What the answers say" src="Built from everybody who has answered so far." />
+            <TheJudgement it={(b as any).theJudgement} />
+            {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
+          </>
+        )}
+
+        {shown.eachPerson && (
+          <>
+            {/*
+              U.10: "THE TEAM TODAY", THE PROTOTYPE'S WORDING (board-as-lead.txt).
+              The rows are still ordered by what needs the lead first, not listed by name - that
+              ordering is unchanged, only the heading now reads as the prototype's screen does.
+            */}
+            <Sec size="board" title="The team today" src="Each person’s line, their last 10 check-ins, and what keeps coming up." />
+            <WhereEachPersonIs rows={b.eachPerson!} squaresFor={squaresFor} />
+          </>
+        )}
+
+        {/*
+          WHAT THE CHECK-INS ASKED FOR AND DID NOT GET.
+
+          The conversation asks twice and then lets it go, rather than pressing somebody who has
+          already declined twice. Somebody has to see the gap, and it is you. It is not a mark
+          against anybody: half the time the honest reason is that nobody could have answered -
+          a target nobody set, a dependency nobody owns.
+        */}
+        {!!b.stillUnanswered?.length && (
+          <>
+            <Sec size="board" title="Asked for, not answered" src="The check-in asked twice, then stopped." />
+            <Card>
+              {b.stillUnanswered.map((g, i) => (
+                <Row key={`${g.who}-${g.what}`} first={i === 0}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13.5, color: 'var(--gw-dark)' }}>
+                      <b style={{ fontWeight: 700 }}>{g.who}</b> &mdash; {g.what}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
+                      {/* Some of these cannot be confirmed either way - the check-in asked and
+                          nothing on the record can prove the answer. Saying "they did not answer"
+                          about somebody who answered in their first sentence would be worse than
+                          saying nothing. */}
+                      {g.certain ? `open since session ${g.sinceRound}` : `asked in session ${g.sinceRound}, could not confirm`}
+                    </span>
+                  </div>
+                </Row>
+              ))}
+            </Card>
+          </>
+        )}
+
+
+
+        {shown.decisions && b.decisions && (
+          <>
+            <Sec size="board" title="Decisions needed" src="Raised by what people see differently, or what is stuck." />
+            <Card>
+              {b.decisions.map((d, i) => (
+                <Row key={i} first={i === 0}>
+                  <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
+                    <span style={{ fontFamily: 'var(--gw-font-name)', fontSize: 17, color: 'var(--gw-navy)', minWidth: 18 }}>{i + 1}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: 'var(--gw-dark)', fontSize: 13 }}>{d.question}</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>{d.why}</div>
+                    </div>
+                    {/* U.10: a name, not a verdict - the owner is who this is for, not a label on them. */}
+                    <span style={{ fontSize: 12.5, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{d.owner}</span>
+                  </div>
+                </Row>
+              ))}
+            </Card>
+          </>
+        )}
+
+        {/* ---------------------------------------------- against the plan */}
+
+
+
+
+
+        {/* ---------------------------------------------- the work */}
+
+
         {shown.whoOwnsWhat && b.whoOwnsWhat && (
           <>
             {/* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */}
             {b.family === 'UPDATE'
-              ? <Sec title="What each person said" src="their answers to the question, in their words" />
-              : <Sec title="Who owns what" src="extracted from check-ins" />}
+              ? <Sec size="board" title="What each person said" src="Their own answers to the question, in their words." />
+              : <Sec size="board" title="Who owns what" src="Read from what people said in their check-ins." />}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 14 }}>
               {b.whoOwnsWhat.map((p) => (
                 <Card key={p.participantId} pad={false}>
@@ -1232,10 +1384,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     ) : p.items.map((it, i) => (
                       <div key={it.id} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                         <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{it.text.replace(/^\[VERIFIABILITY:[A-Z]+\]\s*/, '')}</div>
-                        <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center' }}>
-                          {/* Record types are the goal vocabulary; an update's answers are not "success definitions". */}
-                          {b.family !== 'UPDATE' && <Pill>{it.type.toLowerCase().replace(/_/g, ' ')}</Pill>}
-                          {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>session {it.sessionNumber}</span>}
+                        <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                          {/*
+                            RECORD TYPES ARE THE GOAL VOCABULARY, SAID AS A SENTENCE. "success
+                            definition", "commitment", "intent" and "progress" as bare tags are the
+                            record's own internal words, printed at somebody rather than explained
+                            to them. The lookup is the record type; the reader gets a sentence.
+                          */}
+                          {b.family !== 'UPDATE' && WHAT_THIS_ITEM_IS[it.type] && (
+                            <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{WHAT_THIS_ITEM_IS[it.type]}</span>
+                          )}
+                          {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>Said in session {it.sessionNumber}.</span>}
                         </div>
                       </div>
                     ))}
@@ -1248,34 +1407,55 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.dependencies && b.dependencies && (
           <>
-            <Sec title="Waiting on" src="handoffs between people" />
+            <Sec size="board" title="Waiting on" src="Handoffs between people, read from their check-ins." />
             {/*
-              Nothing to offer in the empty state, so it says where this comes from
-              instead. A handoff is extracted from what people say in their check-ins -
-              there is no button that would produce one, and an empty state implying
-              otherwise would send somebody looking for it. W8-24.
+              U.10: ONE CARD PER BLOCKER, THE PROTOTYPE'S LAYOUT (board-as-lead.jpg, "Blockers").
+              Each blocker there is its own white card: a bold title, an outlined status pill top
+              right, then "Waiting on:", "Raised:", "Affects:", "Promised", "What the proof shows"
+              and a light-blue "Would clear it:" bar. `Dependency` only carries `from`, `what`, `on`,
+              `status` and `then` - so this draws the columns that data supports (title, the status
+              pill with the prototype's border, "Waiting on:") and keeps the sentence and the
+              "then" quote this board already had, rather than inventing the missing fields. Raised
+              (with dates), Affects, Promised and What the proof shows are requested in
+              docs/requests-to-engine.md.
+
+              Nothing to offer in the empty state, so it says where this comes from instead. A
+              handoff is extracted from what people say in their check-ins - there is no button that
+              would produce one, and an empty state implying otherwise would send somebody looking
+              for it. W8-24.
             */}
-            <Card>
-              {b.dependencies.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Row>
-              ) : b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d, i) => (
-                <Row key={d.id} first={i === 0}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13 }}>{d.from}</span>
-                    <span style={{ color: 'var(--gw-sub)', fontSize: 12 }}>needs</span>
-                    <Pill tone={d.status === 'CLEARED' ? 'good' : 'warn'}>{d.what}</Pill>
-                    <span style={{ color: 'var(--gw-sub)', fontSize: 12 }}>from</span>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13 }}>{d.on ?? 'someone outside this check-in'}</span>
-                    <span style={{ marginLeft: 'auto' }}>
-                      <Pill tone={d.status === 'BLOCKING' ? 'bad' : d.status === 'CLEARED' ? 'good' : 'warn'}>
-                        {d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'}
-                      </Pill>
-                    </span>
-                  </div>
-                  {d.then && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{d.then}</div>}
-                </Row>
-              ))}
-            </Card>
+            {b.dependencies.length === 0 ? (
+              <Card><Row first><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Row></Card>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
+                  const onWhom = d.on ?? 'someone outside this check-in'
+                  const statusSaid = d.status === 'BLOCKING' ? 'This is blocking work.' : d.status === 'CLEARED' ? 'This is cleared.' : 'This is waiting.'
+                  const title = d.what ? d.what.charAt(0).toUpperCase() + d.what.slice(1) : 'Waiting on something'
+                  const tone = d.status === 'BLOCKING' ? 'bad' : d.status === 'CLEARED' ? 'good' : 'warn'
+                  const word = d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'
+                  return (
+                    <div key={d.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{title}</div>
+                        <Pill tone={tone} outline>{word}</Pill>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 8 }}>
+                        Waiting on: <span style={{ color: 'var(--gw-dark)', fontWeight: 600 }}>{onWhom}</span>
+                      </div>
+                      <div style={{ fontSize: 13, color: 'var(--gw-dark)', lineHeight: 1.5, marginTop: 4 }}>
+                        <b>{d.from}</b> needs {d.what} from <b>{onWhom}</b>. {statusSaid}
+                      </div>
+                      {d.then && (
+                        <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 10px', marginTop: 8, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.5 }}>
+                          When this arrives, {d.from} says: “{String(d.then).replace(/[.\s]+$/, '')}.”
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </>
         )}
 
@@ -1285,9 +1465,26 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.checkInGrid && b.checkInGrid && (() => {
           /** Does any row have a role worth a column of its own? */
           const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name) || r.managingOnly)
+          /*
+           * ITEM E: A SESSION THAT HAS NOT OPENED IS NOT THE SAME "-" AS ONE SOMEBODY WAS SIMPLY
+           * NOT ON. A bare dash read the same for both, and for a session with nothing to say about
+           * it yet at all. Cross-referenced against the phase spine's own state, so an unopened
+           * session's cell is blank with an accessible "Not open yet" rather than a dash.
+           */
+          const sessionState = new Map((b.phaseSpine?.sessions ?? []).map((ps) => [ps.n, ps.state]))
+          /*
+           * U.10: "WHO CHECKED IN", THE PROTOTYPE'S WORDING AND SHAPE (board-as-lead.txt: "Who
+           * checked in / The last 10 sessions, one row each"). The prototype draws this as a
+           * name and a row of ten navy squares - not a table with a "Session N" header per column.
+           * Squares come from `squaresFor`, the same helper "The team today" uses, so both read the
+           * same checkInGrid data the same way. The role column (not in the prototype, but real
+           * data this board already had - "managing only", or a role standing in for a name nobody
+           * gave) is kept so nothing here is lost, just moved beside the name instead of its own
+           * header.
+           */
           return (
           <>
-            <Sec title="Sessions this phase" src="from sessions" />
+            <Sec size="board" title="Who checked in" src="The last 10 sessions, one row each." />
             <Card>
               {/*
                 A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
@@ -1296,57 +1493,49 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 The phone gets the same facts down the page instead - see the component.
               */}
               {onAPhone ? (
-                <NineColumnsIsNotAPhoneScreen rows={b.checkInGrid.rows.map((r) => ({ ...r, name: nameOnTheBoard(b, r.participantId, r.name) })) as any} sessions={b.checkInGrid.sessions} />
+                <NineColumnsIsNotAPhoneScreen
+                  rows={b.checkInGrid.rows.map((r) => ({ ...r, name: nameOnTheBoard(b, r.participantId, r.name) })) as any}
+                  sessions={b.checkInGrid.sessions}
+                  openSessions={b.checkInGrid.sessions.filter((s) => sessionState.get(s) !== 'upcoming')}
+                />
               ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
-                  <thead>
-                    <tr>
-                      {/*
-                        A COLUMN OF DASHES IS NOT A COLUMN. W-UX-P.
-                        
-                        Since the role stopped being repeated where it is already the person's label
-                        (W-UX-4), a board whose parties all show BY role renders "Role" as four
-                        dashes - a header, a divider and no information. Seen on the running board.
-                        
-                        Dropped when no row has anything to put in it, kept the moment one does.
-                      */}
-                      {['Person', ...(anyRoleToShow ? ['Role'] : []), ...b.checkInGrid.sessions.map((s) => `Session ${s}`)].map((h) => (
-                        <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700, borderBottom: '1px solid var(--gw-border)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {b.checkInGrid.rows.map((r) => (
-                      <tr key={r.participantId}>
-                        {/*
-                          Same reconciliation as the cards above (W-UX-4): when somebody has no
-                          account yet, the label falls back to their role, so printing the role again
-                          in the next column gave "Engineer | Engineer" on one row while the row above
-                          it read "Sahar Okonkwo | -".
-                        */}
-                        <td style={td}><span style={{ fontWeight: 700, color: 'var(--gw-dark)' }}>{nameOnTheBoard(b, r.participantId, r.name)}</span></td>
-                        {anyRoleToShow && (
-                          <td style={{ ...td, color: 'var(--gw-sub)' }}>
-                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : r.managingOnly ? 'Managing only' : ' - '}
-                          </td>
+                <div>
+                  {/*
+                    U.10 PICTURE-CHECK ROUND 6, ITEM D: SQUARES IN THEIR OWN FIXED COLUMN.
+                    The name cell used to sit inline with the lead's note ("Faraji Odhiambo I sell
+                    fridges in Kilimani"), so a long note pushed that row's squares right of every
+                    other row's. The name column is now `flex: 1` and the note is its own line under
+                    the name, in small grey text; the squares sit in a column of a fixed width
+                    (enough for ten 14px squares with 5px gaps), so they line up across every row
+                    regardless of how long a name or a note is.
+                  */}
+                  {b.checkInGrid.rows.map((r, i) => (
+                    <div key={r.participantId} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13.5 }}>{nameOnTheBoard(b, r.participantId, r.name)}</div>
+                        {anyRoleToShow && (r.role && r.role !== r.name || r.managingOnly) && (
+                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>
+                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : 'Managing only'}
+                          </div>
                         )}
-                        {b.checkInGrid!.sessions.map((s) => {
-                          const v = r.cells[String(s)] ?? 'na'
-                          return (
-                            <td key={s} style={td}>
-                              {v === 'na' ? <span style={{ color: 'var(--gw-muted)' }}> - </span>
-                                : <Pill tone={v === 'done' ? 'good' : v === 'in-progress' ? 'info' : v === 'declined' ? 'bad' : 'flat'}>
-                                    {v === 'done' ? 'Checked in' : v === 'in-progress' ? 'In progress' : v === 'declined' ? 'Declined' : 'Not started'}
-                                  </Pill>}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 5, flex: '0 0 auto', width: 190, justifyContent: 'flex-end' }}>
+                        {squaresFor(r.participantId).map((sq) => (
+                          <span
+                            key={sq.key}
+                            aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                            title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                            style={{
+                              display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                              background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent',
+                              border: sq.state === 'empty' ? '1.5px solid var(--gw-border)' : 'none',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </Card>
           </>
@@ -1354,7 +1543,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         })()}
 
         {/* ---------------------------------------------- contribution and fairness */}
-        {(shown.contribution || shown.coverage) && <Zone label="Contribution and fairness" />}
 
         {/*
           WHY THIS HALF OF THE BOARD IS SHORTER FOR SOME PEOPLE.
@@ -1376,7 +1564,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.contribution && b.contribution && (
           <>
-            <Sec title="Contribution against role" src="each role, own terms" />
+            <Sec size="board" title="Contribution against role" src="Measured against each person’s own role." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Is the role clear, and what does the record actually hold for each person, read in their own function's terms.
@@ -1423,7 +1611,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <>
                       {/* A position is never shown without its reason. */}
                       <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.45 }}>
-                        <b style={{ color: 'var(--gw-dark)' }}>Why:</b> {c.reason}
+                        {c.reason}
                       </div>
                       {c.basis && (
                         <div style={{ marginTop: 6, fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45 }}>
@@ -1455,7 +1643,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.coverage && b.coverage && (
           <>
-            <Sec title="Where work is landing" src="whose work is landing where" />
+            <Sec size="board" title="Where work is landing" src="Whose work is landing where." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 A drop in ownership shows up as your responsibilities landing more and more in what other people describe as theirs.
@@ -1465,7 +1653,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {/* Both variants ship so the "does a bar read as a verdict" question
                   gets answered by real use rather than a guess. */}
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', margin: '8px 0 4px' }}>
-                <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.3px' }}>Showing</span>
+                <span style={{ fontSize: 11.5, color: 'var(--gw-muted)', fontWeight: 700, letterSpacing: '.1px' }}>Showing</span>
                 {(['text', 'bar'] as CoverageVariant[]).map((v) => (
                   <button key={v} onClick={() => setVariant(v)} style={{
                     fontSize: 10.5, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
@@ -1480,7 +1668,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 <div key={r.participantId} style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{nameOnTheBoard(b, r.participantId, r.name)}</span>
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.3px' }}>{r.scope} level</span>
+                    {/* "ROLE LEVEL" read as a heading over a single word; it is a small note beside
+                        the name, not a section of its own, so it no longer renders in capitals. */}
+                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>at {r.scope} level</span>
                     <span style={{ marginLeft: 'auto' }}>
                       <Pill tone={r.kind === 'LEAKING' ? 'warn' : r.kind === 'ABSORBING' ? 'info' : 'flat'}>
                         {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : 'Staying with them'}
@@ -1494,14 +1684,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     </div>
                   )}
 
+                  {/* "WHAT PEOPLE SAID The role..." read live as one run-on line, the same bug as
+                      "Why it matters" above. Its own line now. */}
                   <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
-                    <b style={{ color: 'var(--gw-dark)' }}>What people said:</b> {r.what}
+                    <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>What people said</span>
+                    {r.what}
                   </div>
 
                   {/* The signal is ALWAYS coupled to the reason it cannot self-determine. */}
                   <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.4, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 9, padding: '7px 10px' }}>
-                    <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>
-                      Which of the four this is
+                    <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>
+                      Which of these this is
                     </span>
                     {r.reasonText}
                   </div>
@@ -1523,19 +1716,29 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               )}
 
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', marginTop: 11, paddingTop: 9, borderTop: '1px dashed var(--gw-border)', lineHeight: 1.5 }}>
-                Other people doing your work can mean four different things: an ownership drop (others covering a gap), healthy shared
-                work by design, you being blocked or overloaded, or someone else over-reaching into your role. This shows the signal and
-                the reason it cannot tell which on its own, two-sided, coupled to the waiting-on and role-clarity views, with your own
-                voice. It never concludes you stopped contributing. It surfaces a question the team should discuss, not a verdict about a
-                person. Only shown where the role is defined, an undefined boundary has no coverage to measure.
+                Other people doing your work can mean several different things. Nobody may own it any more, and others are quietly
+                covering the gap. It may be healthy work shared by design. You may be blocked or carrying too much. Or someone else may
+                be taking over your role without being asked to. This shows the signal, but it cannot tell which of these is happening on
+                its own, so it is shown alongside what you are waiting on, how clearly your role is defined, and your own voice. It never
+                concludes that you have stopped contributing. It raises a question for the team to discuss, never a verdict about a
+                person. It is only shown where the role is defined, because an undefined boundary has no coverage to measure.
               </div>
             </Card>
           </>
         )}
 
-        {b.managerAlignment && b.managerAlignment.length > 0 && (
+        {/*
+         * MANAGER ALIGNMENT IS A PATTERN CLAIM. Its pattern code is SETUP_NEVER_SAID and it says
+         * "seen across 2 sessions" from one, which is exactly what PATTERNS_ARE_SERVED being off is
+         * meant to stop the board from doing (see api/src/modules/patterns/patterns-are-served.ts).
+         * The server still sends this field on its own, outside `sections`, so the screen checks
+         * `has('patterns')` - the same flag the server itself uses to decide whether the `patterns`
+         * section belongs in `sections` - as its own guard, and draws nothing here while it is off.
+         * The data is kept (nothing is deleted); only the drawing stops.
+         */}
+        {has('patterns') && viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
           <>
-            <Sec title="How the leading is landing" src="two sides of the same leadership" />
+            <Sec size="board" title="How the leading is landing" src="Two sides of the same leadership." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Where one person's read of how this team is being led differs from another's. Neither is called wrong.
@@ -1582,7 +1785,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {shown.hiddenContributors && b.hiddenContributors && (
           <>
-            <Sec title="Named here, and not in this check-in" src="from what people said" />
+            <Sec size="board" title="Named here, and not in this check-in" src="Built from what people said." />
             <Card>
               {b.hiddenContributors.rows.map((r, i) => (
                 <Row key={r.label + i} first={i === 0}>
@@ -1597,11 +1800,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </>
         )}
 
-        {shown.patterns && <Zone label="The record over time" />}
 
         {shown.patterns && b.patterns && (
           <>
-            <Sec title="Patterns this phase" src="work patterns only" />
+            <Sec size="board" title="Patterns this phase" src="Patterns about the work only." />
             <Card>
               {b.patterns.length === 0 ? (
                 <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No patterns have repeated often enough to show yet. A pattern needs three periods before it appears here.</div></Row>
@@ -1642,8 +1844,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* ---------------------------------------------- logistics */}
         {has('poll') && (
           <>
-            <Zone label="Logistics" />
-            <Sec title="Find a time" src="the one thing you add" />
+            <Sec size="board" title="Find a time" src={b.canEditFrame ? 'The only thing on this board you set up yourself.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`} />
             <Card>
               {b.canEditFrame && (
                 <div style={{ padding: '8px 0', borderBottom: b.poll ? '1px solid var(--gw-border)' : 'none' }}>
@@ -1775,6 +1976,90 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 })()}
 
         {/*
+          U.10 ITEM 7: "REPORTS", THE PROTOTYPE'S WHITE TABLE (board-as-lead.jpg/.txt).
+          One row per session: a date, a one-line summary of who has checked in, a pill (amber "Not
+          shared" or green "Shared"), and a button. `sessionRows` is the exact data the Report tab's
+          "Every session" list is built from (see lib/session-rows.ts and
+          TheReportIsAListOfSessions.tsx); this shows the most recent few and points at that same
+          list for the rest, rather than re-querying or re-computing anything.
+
+          The prototype's weekly-digest row ("This week", "Week 38" - a beige "Friday" pill for one
+          not yet due) is not built here: there is no weekly rollup in this data, only per-session
+          rows, so nothing is invented in its place. Requested in docs/requests-to-engine.md.
+
+          PRIVACY: GATED ON `shown.checkInGrid`, NOT ON HAVING ANY ROWS. `sessionRows` comes from
+          `groundForSignals` (`groundsApi.get`), fetched for every reader, and unlike every other
+          section on this board it has no server-side `has(...)` gate of its own - so without a
+          guard here, a participant would see the whole team's completion and share state, which
+          board-as-participant.txt never shows them (their board has no Reports table at all, only
+          the plain "Every session" link at the foot). `checkInGrid` is the server's own, already
+          correct signal for "this reader may see everyone's session state" - the same fact this
+          table needs - so it is reused here rather than inventing a second, client-only privacy
+          rule that could drift from the server's.
+        */}
+        {shown.checkInGrid && sessionRows.length > 0 && (
+          <>
+            <Sec size="board" title="Reports" src="Every session has two: each person's own, and the team's once you share it." />
+            <Card>
+              {sessionRows.slice(0, 5).map((r, i) => (
+                <Row key={r.sessionNumber} first={i === 0}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>
+                        Session {r.sessionNumber}{r.opened ? `, ${sessionDay(r.opened)}` : ''}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{checkedIn(r.answered, r.total)}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Pill tone={r.closed ? 'good' : 'warn'}>{r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared}</Pill>
+                      <button
+                        onClick={() => navigate(r.myCheckInId ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)}
+                        style={r.closed ? btnGhost : btn}
+                      >
+                        {r.closed ? 'Open' : 'Share it'}
+                      </button>
+                    </div>
+                  </div>
+                </Row>
+              ))}
+            </Card>
+            {/*
+              PICTURE-CHECK ROUND 6, ITEM F: "N SESSION(S) IN ALL", AND A REAL OUTLINED BUTTON.
+              "All 1 session" read oddly in the singular; the prototype's own phrasing puts the
+              count first ("All 38 sessions"). Read as a sentence instead: "1 session in all." /
+              "38 sessions in all." And `btnGhost` (thin grey border, grey text) drew as a pale bar
+              rather than the prototype's wide outlined white button with a border and bold text.
+            */}
+            <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gw-sub)' }}>
+              {sessionRows.length} session{sessionRows.length === 1 ? '' : 's'} in all.
+            </div>
+            <Link
+              to={`/grounds/${id}?tab=report`}
+              style={wideOutlineBtn}
+            >
+              {EVERY_SESSION.heading}
+            </Link>
+          </>
+        )}
+
+        {/*
+          A PARTY STILL GETS "EVERY SESSION" (board-as-participant.txt ends with "Every session" and
+          "Ask", with no Reports table above it - just the link). Their own session-by-session record
+          lives on the "What I shared" tab (ground-tabs.ts key `record`); there is no page yet that is
+          specifically "every session, as a party reads it" the way TheReportIsAListOfSessions is for
+          whoever runs the check-in, so this points at the closest existing one rather than inventing
+          a destination. Noted for whoever picks up a dedicated one.
+        */}
+        {!shown.checkInGrid && b.myParticipantId && (
+          <Link
+            to={`/grounds/${id}?tab=record`}
+            style={{ ...wideOutlineBtn, marginTop: 20 }}
+          >
+            {EVERY_SESSION.heading}
+          </Link>
+        )}
+
+        {/*
           THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
 
           The board read only the CURRENT working copy of the report plus the record entries, so a
@@ -1785,9 +2070,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           Both come here: what the report said at the end of each round, and where the run finished
           if it has. This is now the only screen that carries the arc, which is why the report tab
           could become a list of sessions.
+
+          U.10 ITEM 7: UNDER "OVER TIME", OPENING ON ASK. The prototype has this as its own section
+          heading, not a small blue link-style label - picture-check round 6, item E: the same 22px
+          bold heading every other section uses (Sec's own `size="board"` styling, matched by hand
+          here since Sec's own right-hand slot only takes text, not a "Show"/"Hide" control), with
+          "Show" on the right.
         */}
-        <div style={{ marginTop: 26 }}>
-          <HowThisHasMoved groundId={id!} />
+        <div style={{ marginTop: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', margin: 0 }}>Over time</h2>
+            <button
+              onClick={() => setShowOverTime((v) => !v)}
+              style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
+            >
+              {showOverTime ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {showOverTime && <HowThisHasMoved groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} />}
         </div>
         {/*
           AND HOW IT ENDS, BUT ONLY NEAR THE END.
@@ -1846,7 +2146,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               { h: 'Honest closes', p: 'Decisions rarely finish clean, so it names what is aligned, what is open, and the question the whole thing turns on. It never gives a verdict on a person.' },
             ].map((cell, i) => (
               <div key={i}>
-                <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>{cell.h}</div>
+                <div style={{ fontSize: 12, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>{cell.h}</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{cell.p}</div>
               </div>
             ))}
@@ -1858,8 +2158,61 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           people check in each session." Neither is true: each reader is served what they may read, and
           opening the board rebuilds nothing. The line at the top says what is true.
         */}
+
+        {/*
+          U.10 ITEM 8: THE ASK BAR AT THE FOOT (board-as-lead.txt: "Ask about this board, for
+          example "Why is Green Mart not quarter?"" then "Ask"). Wired to Ask Groundwork (U.14):
+          typing a question here and pressing Ask opens that panel already asking it, scoped to
+          this check-in - `showWith` sets both the panel open and the question in one step, and
+          `checkInOnThisPage` (AskGroundwork.tsx) already reads the check-in id straight off this
+          page's own address, so "about" is this board without anything extra to wire.
+
+          PICTURE-CHECK ROUND 6, ITEM G: THE EXAMPLE IS THIS BOARD'S OWN DATA, NOT THE PROTOTYPE'S
+          SAMPLE ("Green Mart" is not in this check-in). Built from the first blocker when there is
+          one ("Why is Baraka Mwangi still waiting on the discount decision?"), else the plain
+          example asked for.
+        */}
+        <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} />
       </div>
     </div>
+  )
+}
+
+/**
+ * U.10 ITEM 8: A FULL-WIDTH BAR, THE PROTOTYPE'S OWN WORDS.
+ * Kept as its own small component so BoardPage's already-long body does not grow another inline
+ * form; it owns nothing but the draft text, which it hands to the shared Ask Groundwork panel.
+ */
+function AskTheBoard({ firstBlocker }: { firstBlocker: { from: string | null; what: string; on: string | null } | null }) {
+  const [draft, setDraft] = useState('')
+  const showWith = useAskStore((s) => s.showWith)
+  const example = firstBlocker?.from
+    ? `Why is ${firstBlocker.from} still waiting on ${firstBlocker.what}?`
+    : 'Who is waiting on whom?'
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        const m = draft.trim()
+        if (!m) return
+        showWith(m)
+        setDraft('')
+      }}
+      style={{ display: 'flex', gap: 8, marginTop: 22 }}
+    >
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder={`Ask about this board, for example “${example}”`}
+        aria-label="Ask about this board"
+        style={{
+          flex: 1, padding: '11px 14px', borderRadius: 8, border: '1px solid var(--gw-border)',
+          background: 'white', fontSize: 13.5, fontFamily: 'inherit', color: 'var(--gw-text)',
+        }}
+      />
+      <button type="submit" style={btn}>Ask</button>
+    </form>
   )
 }
 

@@ -52,8 +52,11 @@ describe('the order of the shared report', () => {
   it('and the objective comes before where things stand, which is the one order change', () => {
     /* What a thing is FOR before where it stands: every line underneath means something different
        depending on what it was in service of. Where-things-stand was first of all on the old body;
-       it is second here, and that is a decision rather than drift. */
-    expect(at('label="What everybody said good looks like"')).toBeLessThan(at('label="Where things stand"'))
+       it is second here, and that is a decision rather than drift.
+       U.9 RE-REVIEW, ITEM A: the label now folds in its former note as one sentence ("What
+       everybody said good looks like, and each person's own version of it"), so this matches the
+       label's opening words rather than the exact, now-longer, string. */
+    expect(at('label="What everybody said good looks like')).toBeLessThan(at('label="Where things stand"'))
   })
 
   it('the page does not open with the prose either', () => {

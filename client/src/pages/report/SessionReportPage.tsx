@@ -16,6 +16,23 @@ import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessio
 import { useAuthStore } from '@/stores/auth'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { whoIsInRound } from '@/lib/who-is-in-this-round'
+import { plannedSessionsFor } from '@/lib/sessionCount'
+import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
+
+/**
+ * U.9 RE-REVIEW: "WHAT YOU SHARED:" IS A LABEL BOLTED ONTO A SENTENCE WITH A COLON.
+ *
+ * The private closing summary the engine writes is instructed to open with the exact phrase "What
+ * you shared:" (conversation.service.ts) - so Amani's own report read "What you shared: You are
+ * aiming for…". That is the engine's own prompt, out of this workspace's reach
+ * (api/src/modules/conversation/), and is asked for as engine request 60. Until it lands, this
+ * screen turns the stored opening into a sentence of its own before drawing it, rather than pass
+ * the colon join straight through to a reader.
+ */
+export function withoutTheColonOpening(summary: string): string {
+  return summary.replace(/^What you shared:\s*/, 'Here is what you shared. ')
+}
 
 /**
  * THE REPORT ONE SESSION ENDED ON, OPENED AGAIN.
@@ -112,29 +129,70 @@ export default function SessionReportPage() {
     onError: () => toast.error('That did not start. Nothing has changed - try again.'),
   })
 
-  return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 16px 60px' }}>
-      <button
-        onClick={() => navigate(-1)}
-        style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
-      >
-        &larr; Back
-      </button>
+  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
 
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>
-        {data?.sessionNumber ? `Session ${data.sessionNumber}` : 'Your session'}
-      </div>
+  return (
+    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 60px' }}>
       {/*
-        THE PAGE HAS TWO REPORTS ON IT AND THIS LINE DESCRIBED ONE OF THEM.
-        "Nobody else can see it" is true of your own half and false of the shared half directly
-        below it, so read as the page's subtitle it was a privacy claim over a shared document. It
-        says what the page holds; each half now carries its own line about who reads it.
+        U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SHARED HEADER, ONCE THE PAGE HAS SOMETHING TO
+        SHOW. Matching U.9 RE-REVIEW ITEM A just below (neither the old heading nor this one is
+        drawn on a page that refused you): the header needs `data.groundId`, which only exists
+        once the session report itself has loaded, so it is gated the same way. Loading and error
+        states keep the plain "← Back" they already had. This is always the viewer's own report
+        (the server refuses anyone else's), so `isAParty` is always true here.
       */}
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
-        {data?.finishedAt
-          ? `Everything about this session, on ${whenItWas(data.finishedAt, 'dayAndMonthLong')}. Your report first, then the team’s report.`
-          : 'Everything about this session. Your report first, then the team’s report.'}
-      </div>
+      {!isLoading && !isError && data?.groundId ? (
+        <TheCheckInHeader
+          id={data.groundId as string}
+          title={(ground as any)?.label ?? 'Check-in'}
+          cadence={(ground as any)?.cadence ?? null}
+          plannedSessions={plannedSessions}
+          canRunThisCheckIn={amTheInitiator}
+          isAParty
+          active="report"
+          tabs={[
+            { key: 'board', label: 'Board', to: `/grounds/${data.groundId}/board` },
+            { key: 'chat', label: 'Check-in', to: `/grounds/${data.groundId}` },
+            { key: 'context', label: 'Context', to: `/grounds/${data.groundId}?tab=context` },
+            { key: amTheInitiator ? 'sessions' : 'record', label: 'My work', to: `/grounds/${data.groundId}?tab=${amTheInitiator ? 'sessions' : 'record'}` },
+            { key: 'settings', label: 'People and setup', to: `/grounds/${data.groundId}?tab=settings` },
+            { key: 'report', label: 'Report', to: `/grounds/${data.groundId}?tab=report` },
+          ]}
+        />
+      ) : (
+        <button
+          onClick={() => navigate(-1)}
+          style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
+        >
+          &larr; Back
+        </button>
+      )}
+
+      {/*
+        U.9 RE-REVIEW, ITEM A: NEITHER LINE APPEARS ON A PAGE THAT HAS REFUSED YOU.
+        "Your session" and "Everything about this session... Your report first, then the team's
+        report." were said unconditionally, above the error message, so somebody told "This
+        session is not yours to open" read a heading and a promise about a report they were just
+        refused. Both are now only drawn once the page actually has something to show.
+      */}
+      {!isError && (
+        <>
+          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2, marginTop: 20 }}>
+            {data?.sessionNumber ? `Session ${data.sessionNumber}` : 'Your session'}
+          </div>
+          {/*
+            THE PAGE HAS TWO REPORTS ON IT AND THIS LINE DESCRIBED ONE OF THEM.
+            "Nobody else can see it" is true of your own half and false of the shared half directly
+            below it, so read as the page's subtitle it was a privacy claim over a shared document. It
+            says what the page holds; each half now carries its own line about who reads it.
+          */}
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
+            {data?.finishedAt
+              ? `Everything about this session, on ${whenItWas(data.finishedAt, 'dayAndMonthLong')}. Your report first, then the team’s report.`
+              : 'Everything about this session. Your report first, then the team’s report.'}
+          </div>
+        </>
+      )}
 
       {isLoading && (
         <div role="status" aria-live="polite" style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Getting your report...</div>
@@ -235,11 +293,14 @@ export default function SessionReportPage() {
       {!isLoading && !isError && !data?.report && (groundReport as any)?.soloArtifact && (
         <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-paper)', padding: '14px 16px', marginBottom: 16 }}>
           <div style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--gw-text)' }}>
-            {(groundReport as any).soloArtifact.summary}
+            {withoutTheColonOpening((groundReport as any).soloArtifact.summary ?? '')}
           </div>
           {(groundReport as any).soloArtifact.whatToCarry && (
             <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', marginTop: 8, borderTop: '1px solid var(--gw-border)', paddingTop: 8 }}>
-              <b style={{ color: 'var(--gw-text)' }}>What to carry into the next one. </b>
+              {/* U.9 THIRD REVIEW, ITEM 4: "WHAT TO CARRY INTO THE NEXT ONE" IS A HEADING, NOT AN
+                  INSTRUCTION TO THE READER. It described the section rather than telling them what
+                  to do with it, which the prototype's own wording does instead. */}
+              <b style={{ color: 'var(--gw-text)' }}>Carry this into your next check-in. </b>
               {(groundReport as any).soloArtifact.whatToCarry}
             </div>
           )}
@@ -381,7 +442,7 @@ export default function SessionReportPage() {
             ) : (
               <>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                  Correcting it is a short check-in of its own - it asks you what it got wrong. Nothing
+                  Correcting it is a short check-in of its own. It asks you what it got wrong. Nothing
                   is overwritten; the change is shown alongside the original, and it closes a short
                   while after the shared report goes out.
                 </div>
@@ -453,12 +514,23 @@ export default function SessionReportPage() {
             other half: your own words about your own work can appear here, what you said about
             somebody else never does.
           */}
+          {/*
+            U.9 REVIEW FIX 8: "IT UPDATES AS PEOPLE CHECK IN" IS NOT TRUE ONCE IT HAS CLOSED.
+            A released report reads "Closed 27 Sept 2026. This does not change." further down, on
+            TheSessionsReport itself - so this line, above it on the same page, was claiming the
+            opposite about the same report. It now says the same true thing `shape` already knows,
+            in a sentence, with the date through the one shared formatter every other page uses.
+          */}
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
-            Everybody's side of this session, together, and it updates as people check in. What
-            each person said about their own work can appear here. What anyone said about somebody
-            else never does.
+            {shape?.state === 'final'
+              ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. What anyone said about somebody else never does.`
+              : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. What anyone said about somebody else never does.'}
           </div>
-          <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
+          <TheSessionsReport
+            groundId={data.groundId}
+            sessionNumber={data.sessionNumber}
+            totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario).length : null}
+          />
         </section>
       )}
       {/*
@@ -485,6 +557,14 @@ export default function SessionReportPage() {
         The primary action is the question. Opening a follow-up is how that conversation gets a
         time and a place in this product, so that is the button. The link stays, quieter.
       */}
+      {/*
+        U.9 REVIEW: "WHAT NOW?" WAS OFFERED ON THE PAGE THAT SAYS THIS ISN'T YOURS TO OPEN.
+        This whole block sat outside the `!isLoading && !isError` guard the rest of the page uses,
+        so somebody who reached this page for a session that refused them (403, 404, or any other
+        failure) still read "Start a new check-in" and "Copy the link" under the error message.
+        There is nothing here for a page that has nothing to show.
+      */}
+      {!isLoading && !isError && (
       <div className="gw-print-none" style={{ marginTop: 30, borderTop: '1px solid var(--gw-border)', paddingTop: 18 }}>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>What now?</div>
         <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 11, maxWidth: '68ch' }}>
@@ -513,6 +593,7 @@ export default function SessionReportPage() {
           The link opens only for people already entitled to read this.
         </div>
       </div>
+      )}
 
     </div>
   )

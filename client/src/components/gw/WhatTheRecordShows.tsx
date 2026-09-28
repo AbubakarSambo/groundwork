@@ -28,7 +28,7 @@ export interface TheRecordOverTime {
 }
 
 const Head = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--gw-sub)', margin: '18px 0 7px' }}>
+  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1px', color: 'var(--gw-sub)', margin: '18px 0 7px' }}>
     {children}
   </div>
 )
@@ -49,7 +49,8 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
   if (!anything) return null
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    // U.10: the prototype runs this block full width, not capped at 760px.
+    <div>
       {/* The only part somebody can act on, so it goes first and it is not styled as a warning. */}
       {!!it.toSettleFirst?.length && (
         <>

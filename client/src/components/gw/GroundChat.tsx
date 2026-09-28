@@ -122,7 +122,7 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty, l
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 6 }}>
       {/* Gated with the brief it heads: a check-in created without one showed this heading over nothing. */}
       {brief && (
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
+      <div style={{ fontSize: 10.5, letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 6 }}>
         About this check-in
       </div>
       )}
@@ -156,7 +156,7 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty, l
       */}
       {peersHidden && (
         <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 5 }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 5 }}>
             Who is in this
           </div>
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
@@ -168,7 +168,7 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty, l
       )}
       {!peersHidden && (parties ?? []).length > 1 && (
         <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 9, marginTop: 9 }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 5 }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '.5px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 5 }}>
             Who is in this
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

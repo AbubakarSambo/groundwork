@@ -1347,6 +1347,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const askOpen = useAskStore(s => s.open)
   const hideAsk = useAskStore(s => s.hide)
+  /* U.10 item 8: a question typed in the board's own Ask bar, handed to the panel once it opens. */
+  const pendingAskMessage = useAskStore(s => s.pendingMessage)
+  const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
   /**
    * Signed-out visitors do not get the signed-in navigation.
    *
@@ -1455,7 +1458,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '100vw', zIndex: 45,
           boxShadow: '-8px 0 24px rgba(26, 25, 22, 0.08)',
         }}>
-          <AskGroundwork onClose={hideAsk} />
+          <AskGroundwork onClose={hideAsk} initialMessage={pendingAskMessage} onSentInitialMessage={consumePendingAskMessage} />
         </div>
       )}
       <FeedbackWidget />

@@ -1,0 +1,273 @@
+/**
+ * THE SHARED PARTS' STYLESHEET (design-audit.md section 4).
+ *
+ * Every value here is the prototype's own, taken from docs/prototype/source/app.css as it actually
+ * renders (the file sets some colours three times over; the LAST value in the cascade is the one on
+ * screen - see the audit's warning at the top of section 2). Each rule names the prototype selector
+ * or component it copies, so anyone checking a value can go and look at the source line themselves.
+ *
+ * Class names are prefixed `gwui-` and kept in this one file, separate from index.css and from
+ * kit.tsx's old `gw-b-*` / `gw-tag-*` / `gw-need-*` classes, so building these parts changes nothing
+ * about a page that has not been rebuilt yet (CLAUDE.md: "Don't change any existing page or kit.tsx's
+ * old parts"). Where the product's --gw-* tokens already equal the prototype's final values, this
+ * file uses them; where they do not (the --gw-muted / "faint" trap the audit found), it defines its
+ * own token instead of silently reusing the wrong one.
+ */
+
+.gwui-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+:root {
+  /*
+   * THE "FAINT" TRAP. Prototype --faint is #85705A. The product's --gw-muted is #7D6A55 - a
+   * different colour under a name that sounds like a match (design-audit.md section 2, "Colours":
+   * "This is a trap for anyone copying values"). A new token, not a reuse, so nobody copies the
+   * wrong one again from here.
+   */
+  --gwui-faint: #85705A;
+}
+
+/* ── PAGE (prototype: .main, .wrap) ──────────────────────────────────────── */
+.gwui-page-main { padding: 32px 48px 72px; min-width: 0; }
+.gwui-page-wrap { max-width: 1150px; }
+.gwui-page-narrow { max-width: 360px; margin: 0 auto; }
+/* Sections stacked 30px apart (prototype: .stack), for a Page's direct children. */
+.gwui-page-wrap > * + *, .gwui-page-narrow > * + * { margin-top: 30px; }
+@media (max-width: 860px) {
+  .gwui-page-main { padding: 20px 18px 100px; }
+}
+
+/* ── PAGE TITLE (prototype: .t-title, .crumb, .t-small, .av at 56px) ────── */
+.gwui-pt-eyebrow { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }
+.gwui-pt-crumb { font-size: 14px; color: var(--gw-sub); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 6px; }
+.gwui-pt-crumb a { color: var(--gw-navy); text-decoration: underline; }
+.gwui-pt-crumb .gwui-pt-sep { margin: 0 6px; }
+.gwui-pt-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
+.gwui-pt-head { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.gwui-pt-title {
+  font-family: var(--gw-font-name); font-size: 30px; line-height: 1.18; font-weight: 500;
+  color: var(--gw-text); margin: 0;
+}
+@media (max-width: 640px) {
+  .gwui-pt-title { font-size: 24px; }
+}
+.gwui-pt-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin-top: 6px; }
+
+/* ── CHECK-IN HEADER (prototype: PageTitle + .tabs, 18px below) ─────────── */
+.gwui-cih-tabs { margin-top: 18px; }
+
+/* ── TABS (prototype: .tabs, .tab, .tab.on) ──────────────────────────────
+   BUG FIX (design-audit.md section 2, "Lines"): only the ACTIVE tab gets the 3px underline. The
+   others get a 3px TRANSPARENT underline of the same weight, so the row does not jump when the
+   active tab changes, but nothing is drawn under a tab that is not chosen. */
+.gwui-tabs {
+  display: flex; gap: 4px; border-bottom: 1px solid var(--gw-border); overflow-x: auto;
+}
+.gwui-tab {
+  min-height: 46px; padding: 0 14px; display: inline-flex; align-items: center;
+  font-family: var(--gw-font-ui); font-size: 16px; color: var(--gw-sub); text-decoration: none;
+  border: 0; background: none; cursor: pointer; font: inherit;
+  border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+.gwui-tab-on { color: var(--gw-text); font-weight: 700; border-bottom-color: var(--gw-navy); }
+
+/* ── SECTION (prototype: section.sec, .sec-h, .note) ─────────────────────
+   Headings are never navy (design-audit.md item 5). */
+.gwui-section { display: flex; flex-direction: column; }
+.gwui-section-h {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap;
+}
+.gwui-section-title {
+  font-family: var(--gw-font-ui); font-size: 21px; line-height: 1.25; font-weight: 700;
+  color: var(--gw-text); margin: 0;
+}
+.gwui-section-note { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-section-body { margin-top: 14px; }
+.gwui-section-foot { margin-top: 14px; font-size: 13.5px; color: var(--gw-sub); }
+
+/* ── PANEL (prototype: .panel, .pad) ─────────────────────────────────────── */
+.gwui-panel {
+  background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px;
+}
+.gwui-panel-pad { padding: 20px 22px; }
+
+/* ── EDGE LIST / EDGE ROW (prototype: .list, .item, .sp) ─────────────────── */
+.gwui-edge-list { border-top: 1px solid var(--gw-border); list-style: none; margin: 0; padding: 0; }
+.gwui-edge-row {
+  display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 16px;
+  padding: 16px 0; border-bottom: 1px solid var(--gw-border); align-items: center;
+}
+.gwui-edge-sp { align-self: stretch; border-radius: 2px; }
+.gwui-edge-sp-ready  { background: var(--gw-green-t); }
+.gwui-edge-sp-decide { background: var(--gw-navy); }
+.gwui-edge-sp-look   { background: var(--gw-amber-t); }
+.gwui-edge-sp-concern{ background: var(--gw-red-t); }
+.gwui-edge-h { font-size: 17px; font-weight: 700; line-height: 1.3; color: var(--gw-text); overflow-wrap: anywhere; }
+.gwui-edge-s { font-size: 15px; color: var(--gw-sub); margin-top: 2px; overflow-wrap: anywhere; }
+.gwui-edge-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .gwui-edge-row { grid-template-columns: 4px minmax(0, 1fr); }
+  .gwui-edge-acts { grid-column: 2; }
+}
+
+/* ── PEOPLE TABLE / PERSON ROW (prototype: .panel + .row, table headers) ── */
+.gwui-people-table { overflow-x: auto; }
+.gwui-people-head {
+  display: grid; padding: 10px 18px; font-size: 13px; color: var(--gw-sub);
+  border-bottom: 1px solid var(--gw-border); min-width: max-content; justify-items: start;
+}
+.gwui-person-row {
+  display: grid; padding: 12px 18px; border-top: 1px solid var(--gw-border); align-items: center;
+  min-width: max-content; text-decoration: none; color: inherit;
+  /* A Tag or a short line keeps its own natural width - the grid must not stretch it across the
+     whole column, which is what made a role tag fill its column edge to edge. */
+  justify-items: start;
+}
+a.gwui-person-row:hover { background: var(--gw-paper-2); }
+.gwui-person-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.gwui-person-name { font-size: 16px; font-weight: 700; color: var(--gw-text); }
+.gwui-person-level { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-person-email { font-size: 14.5px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-person-help {
+  grid-column: 1 / -1; margin-top: 12px; padding: 12px 16px; border-radius: 10px;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  font-size: 14.5px;
+}
+.gwui-person-help-look { background: var(--gw-amber-bg); color: var(--gw-amber-t); }
+.gwui-person-help-concern { background: var(--gw-red-bg); color: var(--gw-red-t); }
+@media (max-width: 900px) {
+  .gwui-people-head { display: none; }
+}
+@media (max-width: 640px) {
+  /* Each row becomes a small stack: PersonCell (its own 34px avatar and text) first, then
+     whatever else the row carries, each on its own line. */
+  .gwui-person-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
+}
+
+/* ── AVATAR (prototype: .av) ─────────────────────────────────────────────── */
+.gwui-avatar {
+  border-radius: 50%; background: var(--gw-blue-bg); color: var(--gw-navy);
+  display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex: none;
+}
+
+/* ── FIELD ROW (prototype: a label/value row, e.g. one person's page) ──────
+   Meant to sit inside a Panel with pad={false}, the same way PeopleTable does: the row carries
+   the panel's own inside space itself (22px at the sides, matching `.pad`), so it never sits flush
+   against the panel's border the way an un-padded row would. */
+.gwui-field-rows { border-top: 1px solid var(--gw-border); }
+.gwui-field-row {
+  display: grid; grid-template-columns: var(--gwui-field-label-w, 200px) minmax(0, 1fr) auto;
+  gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--gw-border); align-items: center;
+}
+.gwui-field-row-label { font-size: 16px; font-weight: 700; color: var(--gw-text); }
+.gwui-field-row-value { font-size: 16px; color: var(--gw-text); min-width: 0; }
+@media (max-width: 640px) {
+  .gwui-field-row { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* ── CHOICES (prototype: .seg, .seg button) ───────────────────────────────── */
+.gwui-choices { display: flex; gap: 6px; flex-wrap: wrap; }
+.gwui-choice {
+  min-height: 40px; padding: 0 14px; border-radius: 8px; border: 0;
+  box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); background: var(--gw-card);
+  font: inherit; font-family: var(--gw-font-ui); font-size: 15px; color: var(--gw-text); cursor: pointer;
+}
+.gwui-choice-on { background: var(--gw-navy); color: #fff; box-shadow: none; font-weight: 700; }
+.gwui-choice-stacked {
+  min-height: 0; height: auto; text-align: left; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;
+}
+.gwui-choice-stacked .gwui-choice-title { font-weight: 700; font-size: 15px; }
+.gwui-choice-stacked .gwui-choice-desc { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-choice-stacked.gwui-choice-on .gwui-choice-desc { color: rgba(255,255,255,.8); }
+
+/* ── CHOICE CARDS (prototype: white rows, chosen = 2px ink outline) ──────── */
+.gwui-choice-cards { display: flex; flex-direction: column; gap: 8px; }
+.gwui-choice-card {
+  display: block; width: 100%; text-align: left; background: var(--gw-card);
+  border: 1px solid var(--gw-border); border-radius: 12px; padding: 16px 18px; cursor: pointer;
+  font: inherit; box-shadow: none; outline: none;
+}
+.gwui-choice-card-on { box-shadow: inset 0 0 0 2px var(--gw-text); }
+.gwui-choice-card-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
+.gwui-choice-card-desc { font-size: 15px; color: var(--gw-sub); margin-top: 4px; }
+
+/* ── TOGGLE (prototype: a switch, on = --rec / green) ─────────────────────── */
+.gwui-toggle {
+  width: 48px; height: 28px; border-radius: 14px; border: 0; padding: 3px;
+  background: var(--gw-rule-2); display: inline-flex; align-items: center; cursor: pointer; flex: none;
+}
+.gwui-toggle-on { background: var(--gw-green-t); justify-content: flex-end; }
+.gwui-toggle-knob { width: 22px; height: 22px; border-radius: 50%; background: #fff; display: block; }
+
+/* ── FORM FIELDS (prototype: label.f, .input) ─────────────────────────────── */
+.gwui-field-label { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; font-weight: 700; color: var(--gw-text); }
+.gwui-input {
+  min-height: 48px; border-radius: 10px; border: 1.5px solid var(--gw-rule-2); background: var(--gw-card);
+  padding: 0 16px; font: inherit; font-family: var(--gw-font-ui); font-size: 16px; color: var(--gw-text);
+  width: 100%; min-width: 0;
+}
+textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
+.gwui-input:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+
+/* ── BUTTON (prototype: .btn, plus a `danger` kind) ───────────────────────── */
+.gwui-btn {
+  min-height: 44px; padding: 0 18px; border-radius: 8px; border: 0;
+  font: inherit; font-family: var(--gw-font-ui); font-size: 16px; font-weight: 700; line-height: 1.2;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  cursor: pointer; white-space: nowrap; text-decoration: none; text-align: center;
+}
+.gwui-btn:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 2px; }
+.gwui-btn:disabled, .gwui-btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.gwui-btn-primary { background: var(--gw-navy); color: #fff; }
+.gwui-btn-primary:hover:not(:disabled) { background: var(--gw-navy-d); }
+.gwui-btn-secondary { background: var(--gw-card); color: var(--gw-text); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
+.gwui-btn-quiet { background: transparent; color: var(--gw-navy); padding: 0 8px; }
+.gwui-btn-quiet:hover:not(:disabled) { text-decoration: underline; }
+/* the danger kind (design-audit.md item 15): a secondary button with red text and a red line */
+.gwui-btn-danger { background: var(--gw-card); color: var(--gw-red-t); box-shadow: inset 0 0 0 1.5px var(--gw-red-b); }
+/* the filled red for a pop-up's final "Remove" */
+.gwui-btn-danger-solid { background: var(--gw-red-t); color: #fff; }
+.gwui-btn-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
+.gwui-btn-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
+.gwui-btn-wide { width: 100%; }
+@media (max-width: 640px) {
+  .gwui-btn { white-space: normal; }
+  .gwui-btn-small { min-height: 40px; }
+}
+
+/* ── TAG (prototype: .tag, .tag.rec/.att/.act/.con/.plain) ────────────────── */
+.gwui-tag {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px;
+  border-radius: 13px; font-size: 13.5px; font-weight: 700; white-space: nowrap;
+}
+.gwui-tag-proven    { background: var(--gw-green-bg); color: var(--gw-green-t); box-shadow: inset 0 0 0 1px var(--gw-green-b); }
+.gwui-tag-attention { background: var(--gw-amber-bg); color: var(--gw-amber-t); box-shadow: inset 0 0 0 1px var(--gw-amber-b); }
+.gwui-tag-action    { background: var(--gw-blue-bg);  color: var(--gw-blue-t);  box-shadow: inset 0 0 0 1px var(--gw-blue-b); }
+.gwui-tag-concern   { background: var(--gw-red-bg);   color: var(--gw-red-t);   box-shadow: inset 0 0 0 1px var(--gw-red-b); }
+.gwui-tag-plain     { background: var(--gw-bg);       color: var(--gw-text); }
+
+/* ── NOTE / EMPTY (prototype: .note, an empty sentence, a locked door) ────── */
+.gwui-note { font-size: 13.5px; color: var(--gw-sub); }
+.gwui-empty-line { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-empty-panel { max-width: 640px; }
+.gwui-empty-panel-title {
+  font-family: var(--gw-font-ui); font-size: 21px; line-height: 1.25; font-weight: 700; color: var(--gw-text); margin: 0 0 8px;
+}
+.gwui-empty-panel-body { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
+.gwui-empty-panel-action { margin-top: 16px; }
+
+/* ── TOAST (prototype: .toast) ─────────────────────────────────────────────── */
+.gwui-toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; z-index: 60;
+  background: var(--gw-text); color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2); max-width: 90vw;
+}
+
+/* ── MODAL (prototype: .modal-bg, .modal) ────────────────────────────────── */
+.gwui-modal-bg {
+  position: fixed; inset: 0; z-index: 80; background: rgba(14,19,24,.45);
+  display: flex; align-items: center; justify-content: center; padding: 18px;
+}
+.gwui-modal {
+  background: var(--gw-card); border-radius: 14px; max-width: 520px; width: 100%; padding: 24px;
+  display: flex; flex-direction: column; gap: 14px; max-height: 88vh; overflow: auto;
+}

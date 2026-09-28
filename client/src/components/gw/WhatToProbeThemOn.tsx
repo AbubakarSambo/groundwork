@@ -1,3 +1,5 @@
+import { neverAnAddressAsAName } from './an-address-that-can-receive-mail'
+
 /**
  * WHAT TO PROBE EACH PERSON ON. THE LEAD SEES THIS AND NOBODY ELSE DOES.
  *
@@ -25,11 +27,12 @@ export interface ProbeRead {
   triedToUnblock: string
 }
 
+/* U.9 RE-REVIEW, ITEM A: a plain heading, not a shout ("WORTH ASKING", "WORTH SAYING"). */
 function Block({ title, lines }: { title: string; lines: string[] }) {
   if (!lines.length) return null
   return (
     <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 4 }}>
         {title}
       </div>
       <div style={{ display: 'grid', gap: 6 }}>
@@ -101,7 +104,10 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote }: {
       )}
         {(reads ?? []).map((r) => (
           <div key={r.participantId} style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-text)' }}>{r.who}</div>
+            {/* U.9 THIRD REVIEW, ITEM 5: A HEADING STARTS WITH A CAPITAL, LIKE ANY OTHER SENTENCE.
+                The fallback name is "a colleague" everywhere else it is used mid-sentence; here it
+                opens a heading of its own, so it reads "A colleague". */}
+            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-text)' }}>{neverAnAddressAsAName(r.who, 'A colleague')}</div>
             <Block title="Worth asking" lines={r.probe} />
             <Block title="Worth saying" lines={r.encourage} />
             <Block title="What they said they did about being stuck" lines={[r.triedToUnblock]} />

@@ -170,7 +170,9 @@ export type BoardPresent = {
     nameIsTheirRole: boolean
     target: number | null
     count: number
-    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing to do'
+    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'
+    /** What happened and what would change it, in a full sentence from the server. Shown under the pill in place of a fixed phrase. */
+    says: string
     ask: string | null
   }[]
   contribution?: {

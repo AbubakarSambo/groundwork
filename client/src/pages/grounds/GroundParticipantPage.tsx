@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { groundTabs } from './ground-tabs'
-import { GroundTabRow } from '@/components/gw/GroundTabRow'
+import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 import { apiClient } from '@/api/client'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -441,106 +441,38 @@ export function GroundParticipantPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Header */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-paper-2)', borderBottom: '1px solid var(--gw-border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
-          <button type="button" onClick={() => navigate('/grounds')} style={{ background: 'none', border: 'none', padding: 0, fontFamily: 'inherit', fontSize: 13, color: 'var(--gw-muted)', cursor: 'pointer', flexShrink: 0 }}>← Check-ins</button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ground.label}</div>
-            {/*
-              WHICH OF THE TWO VIEWS YOU ARE ON, PERMANENTLY.
-              
-              The same check-in has two pages - the one that runs it and this one, your own account -
-              and a person can move between them from a small button. Neither page said which it was,
-              so somebody who had crossed over could not tell why what they were seeing had changed.
-              The sentence stays on screen rather than announcing itself once and vanishing.
-            */}
-            {/*
-              THE STATE LIVES IN THE HEADER ON THIS PAGE TOO.
-              
-              It was on the lead's page only, so the card below had to carry a session count for a
-              participant - and then the same count sat on the lead's page twice, once in each place.
-              The card is meant to hold two things: the brief, and who is in this. Everything about
-              where the check-in has got to belongs up here, on both pages, once.
-            */}
-            <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {/*
-                WHICH OF THE TWO VIEWS YOU ARE ON, SAID OUTRIGHT.
+      {/*
+        U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SAME SHARED HEADER THE BOARD USES.
+        "← Check-ins" is now the breadcrumb's own "Check-ins" link, inside TheCheckInHeader. The
+        tab row is `groundTabs()`'s own list (unchanged - keeping the labels ("Sessions", "What I
+        shared", "Setup") that other tests and this page's own comments protect against collision
+        and plurals, rather than forcing them to the prototype's board-page wording), with "Board"
+        (its own route) prepended, drawn by the header instead of GroundTabRow. Nothing here reads
+        as the plural of anything else, so `one-word-for-one-screen.spec.ts` is unaffected -
+        `groundTabs()` itself is unchanged; only what draws its output is.
 
-                "I think there may be some chaos happening based on lead, participant or admin",
-                after landing here and reporting that the Sessions page had gone and the Context
-                page had vanished. Neither had: this is the party view, which has never had a
-                Sessions tab, and its Context tab is right there. But a lead who runs the check-in
-                AND gives their own account has two pages with the same name at the top, one tab
-                row that differs by two entries, and a line about privacy to tell them apart.
-
-                So the line says which page this is. For somebody who only takes part it reads the
-                same as it always did; for whoever runs it, it names the other page in the same
-                breath as the button that goes there.
-              */}
-              <span>
-                {canRunThisCheckIn
-                  ? 'Your own account of this check-in. Everything about running it - the sessions, who has answered, the setup - is on the whole check-in.'
-                  : 'Your own check-in. The report shows where you and the others agree, differ, and what to do next.'}
-              </span>
-              {/*
-                WHOSE WORKSPACE THIS IS, WHEN IT IS NOT YOURS.
-
-                Somebody added to a check-in in another organisation can open it and nothing said
-                so. They are a guest in a workspace holding one check-in and nothing around it, and
-                the first they knew was that the rest of the product looked empty. Reported as: "I
-                was added to a check-in in one org and then didn't have a way to join the org."
-                
-                Null on a reader's own check-in, because "at your own company" is not information.
-              */}
-              {(ground as any).guestIn && (
-                <span style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
-                  · A guest check-in at {(ground as any).guestIn}
-                </span>
-              )}
-              {/* Once it has ended, the clock is not the news. See lib/a-ground-that-has-ended. */}
-              {howItEnded(ground as any) ? (
-                <span style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>· {howItEnded(ground as any)}</span>
-              ) : (
-                <>
-                  {/* OPEN IS NOT DUE, in the header too. `opensLater` is derived above to tell the two
-                      apart, and this line numbered the not-yet-due session as current anyway. When it
-                      opens later, the date is the news; the total is printed only when it is known.
-                      FULL SENTENCES, NOT A DOT-JOINED FRAGMENT (U.8 review): "· Session 1 of 12" and
-                      "· Next session opens 4 October" are pieces of a sentence stuck onto the front of
-                      a heading with a dot, which CLAUDE.md's wording rule rules out same as anywhere
-                      else a person reads. */}
-                  {opensLater ? (
-                    <span>The next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
-                  ) : totalSessions != null ? (
-                    <span>This is session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}.</span>
-                  ) : (
-                    <span>This is session {completedCheckIns.length + 1}.</span>
-                  )}
-                  {/* A finished run has nothing remaining. "0 days remaining" sat on a one-session check-in everybody
-                      had done (21 Sep 2026); the count is for a run that is still going. */}
-                  {(ground as any).daysLeft != null && (totalSessions == null || completedCheckIns.length < totalSessions) && (ground as any).daysLeft > 0 && (
-                    <span>{(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? ' is' : 's are'} left.</span>
-                  )}
-                  {totalSessions != null && completedCheckIns.length >= totalSessions && (
-                    <span>· every session done</span>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-          {/*
-            THE OTHER HALF OF THE SWITCH.
-            The ground page now links here ("My check-ins"), and this page had no
-            way back - so the two views of one ground were a one-way trip. Her ask
-            was "at the top you can click the buttons to take you to the admin view
-            or checkin overview", which needs both directions.
-
-            Only for somebody who runs the ground. A participant who is not the
-            initiator has no admin view to switch to, and offering one would send
-            them to a page that refuses them.
-          */}
-          {canRunThisCheckIn && (
+        THE RICH CONTEXT LINE (which view this is, a guest note, ended state, session count, days
+        left) is kept below the header rather than dropped - none of it is in the prototype, but
+        it says real things ("Your own check-in. The report shows where you and the others agree,
+        differ, and what to do next." is asserted verbatim by the-two-views-are-a-pair.spec.ts).
+        "The whole check-in →" (the way back for an admin who is a party elsewhere) moved into the
+        header's own `trailing` slot, the same slot the board uses for its own switcher.
+      */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-paper-2)', borderBottom: '1px solid var(--gw-border)', padding: '12px 16px 0' }}>
+        <TheCheckInHeader
+          id={id!}
+          title={ground.label}
+          cadence={(ground as any).cadence ?? null}
+          plannedSessions={totalSessions}
+          canRunThisCheckIn={canRunThisCheckIn}
+          isAParty
+          active={TO_TAB_KEY[tab] ?? 'chat'}
+          tabs={[
+            { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
+            ...tabs.map((t) => ({ key: t.key, label: t.label })),
+          ]}
+          onSelectTab={(k) => goTab(FROM_TAB_KEY[k] ?? 'checkin')}
+          trailing={canRunThisCheckIn && (
             <button
               onClick={() => navigate(`/grounds/${id}`)}
               style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
@@ -548,41 +480,73 @@ export function GroundParticipantPage() {
               The whole check-in →
             </button>
           )}
+        />
+
+        <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 0 12px' }}>
           {/*
-            THE TEAM BOARD BELONGS TO THE GROUND, so it is in the tab row below and
-            not a dark pill floating up here beside the view switch. Hafsah's words.
-            It was the only part of a ground reachable from the chrome rather than
-            from the ground's own navigation, which is also how it stayed
-            undiscovered.
+            WHICH OF THE TWO VIEWS YOU ARE ON, SAID OUTRIGHT.
+
+            "I think there may be some chaos happening based on lead, participant or admin",
+            after landing here and reporting that the Sessions page had gone and the Context
+            page had vanished. Neither had: this is the party view, which has never had a
+            Sessions tab, and its Context tab is right there. But a lead who runs the check-in
+            AND gives their own account has two pages with the same name at the top, one tab
+            row that differs by two entries, and a line about privacy to tell them apart.
+
+            So the line says which page this is. For somebody who only takes part it reads the
+            same as it always did; for whoever runs it, it names the other page in the same
+            breath as the button that goes there.
           */}
+          <span>
+            {canRunThisCheckIn
+              ? 'Your own account of this check-in. Everything about running it - the sessions, who has answered, the setup - is on the whole check-in.'
+              : 'Your own check-in. The report shows where you and the others agree, differ, and what to do next.'}
+          </span>
+          {/*
+            WHOSE WORKSPACE THIS IS, WHEN IT IS NOT YOURS.
+
+            Somebody added to a check-in in another organisation can open it and nothing said
+            so. They are a guest in a workspace holding one check-in and nothing around it, and
+            the first they knew was that the rest of the product looked empty. Reported as: "I
+            was added to a check-in in one org and then didn't have a way to join the org."
+
+            Null on a reader's own check-in, because "at your own company" is not information.
+          */}
+          {(ground as any).guestIn && (
+            <span style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
+              · A guest check-in at {(ground as any).guestIn}
+            </span>
+          )}
+          {/* Once it has ended, the clock is not the news. See lib/a-ground-that-has-ended. */}
+          {howItEnded(ground as any) ? (
+            <span style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>· {howItEnded(ground as any)}</span>
+          ) : (
+            <>
+              {/* OPEN IS NOT DUE, in the header too. `opensLater` is derived above to tell the two
+                  apart, and this line numbered the not-yet-due session as current anyway. When it
+                  opens later, the date is the news; the total is printed only when it is known.
+                  FULL SENTENCES, NOT A DOT-JOINED FRAGMENT (U.8 review): "· Session 1 of 12" and
+                  "· Next session opens 4 October" are pieces of a sentence stuck onto the front of
+                  a heading with a dot, which CLAUDE.md's wording rule rules out same as anywhere
+                  else a person reads. */}
+              {opensLater ? (
+                <span>The next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
+              ) : totalSessions != null ? (
+                <span>This is session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}.</span>
+              ) : (
+                <span>This is session {completedCheckIns.length + 1}.</span>
+              )}
+              {/* A finished run has nothing remaining. "0 days remaining" sat on a one-session check-in everybody
+                  had done (21 Sep 2026); the count is for a run that is still going. */}
+              {(ground as any).daysLeft != null && (totalSessions == null || completedCheckIns.length < totalSessions) && (ground as any).daysLeft > 0 && (
+                <span>{(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? ' is' : 's are'} left.</span>
+              )}
+              {totalSessions != null && completedCheckIns.length >= totalSessions && (
+                <span>· every session done</span>
+              )}
+            </>
+          )}
         </div>
-
-        {/* Tab bar */}
-          <GroundTabRow
-            tabs={tabs}
-            active={TO_TAB_KEY[tab] ?? 'chat'}
-            /*
-              The `k === 'board'` branch that used to sit here was dead: `groundTabs()` stopped
-              returning a board key when the board left the tab row, so nothing could ever take it.
-              Dead, and worse than dead - it was the only navigate() to the board left in the app, so
-              it kept a "does anything link here?" check green while the board was unreachable.
-            */
-            /*
-              TRANSLATED ONCE, AND IN THE SAME PLACE THE LEAD'S VIEW TRANSLATES.
-
-              This page used to translate TWICE: the list it handed the row was already mapped into
-              this page's own keys, and then `onPick` ran those keys back through `FROM_TAB_KEY`,
-              which takes the SHARED ones. `docs` and `checkin` are in neither direction of that
-              map, so both fell through to the default. Three of the five keys spell the same in
-              both vocabularies, which is why Report, My record and Setup worked and Context was the
-              single tab that sent you back to the conversation. Reported as "her context page
-              doesnt seem to exist" - it existed; the tab could not reach it.
-
-              So the row is given the shared keys, exactly as the lead's view gives them, and the
-              only translation on this page happens here and in `active`.
-            */
-            onPick={k => goTab(FROM_TAB_KEY[k] ?? 'checkin')}
-          />
       </div>
 
       {/*
@@ -818,9 +782,22 @@ export function GroundParticipantPage() {
               report={report}
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
-              /* Per-session specificity on the row it is about. Same read as the bars above it on
-                 My record; here it is the words, because a row is a line of text. */
-              specificityBySession={Object.fromEntries(((specificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
+              /*
+                U.9 THIRD REVIEW, ITEM 6: THE SAME RATING THE SESSION'S OWN METER READS, NOT A
+                SEPARATE NUMBER. This used to come from `specificity.scores`, a continuous 0-1
+                figure banded with its own thresholds - which could disagree with the level
+                `HowSpecificThisSessionWas` shows on the session page for that very session (walked
+                live: "specific in places" here, "Mostly general" there, same person, same
+                session). `ground.checkIns[].specificityLevel` is the field the meter itself reads,
+                already filtered to this reader's own rows alone (`howCheckableIsYoursAlone`), so
+                using it here means the two surfaces can no longer read two different ratings of
+                one account.
+              */
+              specificityBySession={Object.fromEntries(
+                (((ground as any)?.checkIns ?? []) as any[])
+                  .filter((c) => (((ground as any)?.participants ?? []) as any[]).some((p) => p.id === c.participantId && p.userId === user?.id))
+                  .map((c) => [c.sessionNumber, c.specificityLevel ?? null]),
+              )}
               viewerUserId={user?.id}
             />
           </div>

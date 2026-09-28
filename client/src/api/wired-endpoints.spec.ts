@@ -130,9 +130,13 @@ describe('what was agreed at the start', () => {
     /**
      * The condition moved into `shown` (W-UX-7: a zone must not render a heading over nothing), so
      * this asserts the section is still WIRED rather than pinning the shape of the expression that
-     * wires it. `shown.startingState` is defined as `has('startingState') && !!b.startingState`.
+     * wires it. `shown.startingState` is defined as
+     * `has('startingState') && allowed('startingState') && !!b.startingState` - U.10 re-review item
+     * A added `allowed('startingState') &&`, the switchboard's own per-situation gate on top of the
+     * server's per-family `has()` (see what-the-switchboard-allows.ts); this test's own regex is
+     * updated to match rather than pinned to the pre-switchboard shape.
      */
-    expect(BOARD_PAGE).toMatch(/startingState: has\('startingState'\) && !!b\.startingState/)
+    expect(BOARD_PAGE).toMatch(/startingState: has\('startingState'\) && allowed\('startingState'\) && !!b\.startingState/)
     expect(BOARD_PAGE).toMatch(/shown\.startingState && b\.startingState/)
     expect(BOARD_PAGE).toMatch(/What was agreed at the start/)
   })

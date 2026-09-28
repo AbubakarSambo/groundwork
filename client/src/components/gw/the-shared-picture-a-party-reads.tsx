@@ -15,10 +15,9 @@ import { WhatToSettleTogether } from './what-to-settle-together'
  * a person's browser receives findings about themselves and chooses not to draw them, which is
  * worse than the blank page this replaces.
  */
-const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
+/* U.9 RE-REVIEW, ITEM A: a plain heading, not a shout ("WHAT CAME OUT OF IT"). */
 const LABEL: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase',
-  color: 'var(--gw-sub-d)', marginBottom: 10,
+  fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 10,
 }
 import { WhatTheNetworkSaid } from './WhatTheNetworkSaid'
 
@@ -44,7 +43,14 @@ export function TheSharedPictureAPartyReads({ report }: { report: any }) {
      object can itself be a list. A page must not assume which shape arrived. */
   const flat = (v: any): string => (typeof v === 'string' ? v.trim()
     : Array.isArray(v) ? v.filter((x) => typeof x === 'string').join(' ').trim() : '')
-  const textOf = (a: any) => (typeof a === 'string' ? a : [flat(a?.topic), flat(a?.note)].filter(Boolean).join(' - '))
+  /* U.9 re-review, item A: two clauses as one sentence, not joined with a dash. */
+  const textOf = (a: any) => {
+    if (typeof a === 'string') return a
+    const topic = flat(a?.topic)
+    const note = flat(a?.note)
+    if (topic && note) return `${topic}${/[.!?]$/.test(topic) ? '' : '.'} ${note}`
+    return topic || note
+  }
 
   return (
     <>
@@ -54,7 +60,7 @@ export function TheSharedPictureAPartyReads({ report }: { report: any }) {
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--gw-border)' }}>
         <div style={{ fontSize: 13.5, fontWeight: 700 }}>The shared picture</div>
         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 2 }}>
-          Built from what each person said. If you are one of the people in it, this is your report too. The same one.
+          Built from what each person said. If you are one of the people in it, this is your report too, and everyone reads the same one.
         </div>
       </div>
 

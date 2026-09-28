@@ -118,7 +118,7 @@ export function TheFiveThingsThatMakeItCheckable({
         "What was in what you said" over a list of absences, with the session number buried in a
         sub-line, left a person reading a permanent judgement instead of a note about session 1.
       */}
-      <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 3 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 3 }}>
         What would make your next check-in count for more
       </div>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginBottom: 11 }}>
@@ -173,15 +173,14 @@ export function TheFiveThingsThatMakeItCheckable({
               color: r.there ? 'var(--gw-text)' : r.mostUseful ? 'var(--gw-text)' : 'var(--gw-sub)',
               fontWeight: r.mostUseful ? 700 : 400,
             }}>
+              {/*
+                U.9 RE-REVIEW, ITEM A: A REAL SPACE, AND A SENTENCE, NOT A SHOUTED BADGE.
+                The badge sat right after the sentence with only a CSS margin between them, so the
+                text itself read "this time.MOST USEFUL" with nothing between the full stop and the
+                next word, and the badge shouted in capitals. It is now the sentence's own words.
+              */}
               {r.there ? r.met : r.missing}. {r.there ? 'Groundwork found this.' : 'Groundwork did not pick this up this time.'}
-              {r.mostUseful && (
-                <span style={{
-                  marginLeft: 7, fontSize: 10, fontWeight: 700, letterSpacing: '.04em',
-                  textTransform: 'uppercase', color: 'var(--gw-navy)',
-                  background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)',
-                  borderRadius: 20, padding: '1px 7px', whiteSpace: 'nowrap',
-                }}>most useful</span>
-              )}
+              {r.mostUseful && ' This is the one worth adding first.'}
             </span>
           </div>
         ))}

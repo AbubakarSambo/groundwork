@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PageCrash } from '@/components/gw/PageCrash'
 import EveryReportSideBySide from '@/pages/preview/EveryReportSideBySide'
+import PartsSamplePage from '@/pages/dev/PartsSamplePage'
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation, Link } from 'react-router-dom'
 import { QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
@@ -520,6 +521,12 @@ export default function App() {
               tool, so it sits behind the same gate as the rest of the platform back office.
             */}
             <Route path="/preview/reports" element={<RequirePlatformAdmin><EveryReportSideBySide /></RequirePlatformAdmin>} />
+            {/*
+              THE SHARED PARTS' SAMPLE PAGE (design-audit.md section 4, step 1), development only.
+              `import.meta.env.DEV` is false in a built, production app, so this route does not
+              exist there at all - not hidden, absent. Nothing it shows needs a signed-in person.
+            */}
+            {import.meta.env.DEV && <Route path="/dev/parts" element={<PartsSamplePage />} />}
             <Route path="/boards" element={<RequireOrgSetup><TeamBoardsPage /></RequireOrgSetup>} />
             <Route path="/grounds/:id/board" element={<RequireOrgSetup><BoardPage /></RequireOrgSetup>} />
             {/* U.11: "How does this end?", where the lead decides, with a reason. */}

@@ -26,7 +26,14 @@ const board = (participants: any[], canEditFrame: boolean) => ({
   family: 'DELIVERY',
   sections: ['divergence'],
   title: 'The Kano sprint',
-  scenario: 'TEAM_UPDATES',
+  /*
+   * U.10 RE-REVIEW ITEM A: the switchboard now gates `divergence` per situation (see
+   * what-the-switchboard-allows.ts), and 'TEAM_UPDATES' (family UPDATE) never turns on "Accounts
+   * side by side" - this fixture's own `family: 'DELIVERY'` never matched it anyway. Changed to
+   * 'OKR_ALIGNMENT', a real DELIVERY situation whose switchboard row carries "Accounts side by
+   * side" as optional, which is what this test is actually about (one person, not this rule).
+   */
+  scenario: 'OKR_ALIGNMENT',
   coverageVariant: 'NONE',
   myParticipantId: 'p1',
   canEditFrame,

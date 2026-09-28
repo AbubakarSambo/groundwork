@@ -75,4 +75,9 @@ describe('the judgement, as the lead reads it', () => {
     expect(startWith('Allan, who knows them.')).toBe('Start with Allan, who knows them.')
     expect(howManyNeverReachedIt(86)).toBe('86 conversations never reached this.')
   })
+
+  it('says "Start with yourself." when the reader is the one to start with, never "Start with You."', () => {
+    expect(startWith('You')).toBe('Start with yourself.')
+    expect(startWith('you')).toBe('Start with yourself.')
+  })
 })

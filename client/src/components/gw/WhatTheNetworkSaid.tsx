@@ -21,7 +21,7 @@ import { ShowAFew } from './a-long-list-is-not-a-page'
 type Said = { who?: string[]; howMany?: number }
 
 const H: React.CSSProperties = {
-  fontSize: 11.5, letterSpacing: '.07em', textTransform: 'uppercase',
+  fontSize: 13, letterSpacing: '.1px',
   color: 'var(--gw-muted)', margin: '18px 0 8px', fontWeight: 700,
 }
 const CARD: React.CSSProperties = {

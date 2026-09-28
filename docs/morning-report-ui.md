@@ -10,16 +10,16 @@ same file.
 check-in screens, passed its sixth review and its full test run this morning (10,376 API tests and
 3,244 screen tests, all passing), and is ticked. That makes 8 of 20.
 
-**What is left:** the reviews of U.9 to U.19, one module at a time, oldest first; finishing U.19
+**U.9, reports and sharing, passed its review** on the fifth round. It is not ticked yet, because one of the engine workspace's tests fails on a single heading until the engine changes its label to the prototype's wording, as you decided (request 62). Everything else in both suites passes.
+
+**What is left:** the reviews of U.10 to U.19, one module at a time, oldest first; finishing U.19
 (billing) and U.20; the screens for the engine's new pattern shape and its answer box (patterns stay
 switched off until you approve their names); the table of Ask Groundwork, the switchboard and every
 kind of board; and `docs/ready-to-deploy-screens.md`.
 
-**Are the screens ready to deploy? Not yet.** Eleven modules still need their review (U.9 to U.19), and U.20 is not built yet. Four privacy
-problems are open, and each is in the live product too: the lead's private description reaching an
+**Are the screens ready to deploy? Not yet.** Ten modules still need their review (U.10 to U.19), and U.20 is not built yet. Privacy problems are still open, and each is in the live product too: the lead's private description reaching an
 invitation (item 0, fixed on this branch), the check-ins list sending participants the lead's setup
-brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c; a
-participant now gets only their own, and the lead's and admins' part waits for your decision) and someone held for a seat reading a released report (item 0d, engine code,
+brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c, now closed by the engine workspace: every reader gets only their own) and someone held for a seat reading a released report (item 0d, engine code,
 request 49). The last two need the engine workspace.
 
 **What I finished tonight:** U.8 went through six reviews, and everything they found is fixed. A
@@ -34,6 +34,78 @@ longer offered a check-in or a report on Today. I also merged the engine workspa
 need the engine workspace, and 0 and 0b need fixing on the live product too); item 31 (what admins who
 don't run a check-in may see and change, and whether a decision about a person may be a target that
 person reads); and the older items further down.
+
+## The design audit, for you to decide (28 September)
+
+You asked me to stop patching screens and check whether the product follows a different design principle from the prototype. It does. The full answer is in `docs/design-audit.md`. In short:
+
+- **The prototype is built for reading.** Text is 16 pixels, buttons and tabs are at least 44 pixels tall, every page starts from one frame up to 1150 pixels wide from the left, and every screen is made from the same dozen parts. **The product is the old dense dashboard with new words.** Its most common text sizes are 13, 12 and 11 pixels, each page picks its own width and centres itself, so the left edge moves from page to page.
+- **Colours are not the cause.** The prototype's final colours match the product's almost exactly.
+- **Most screens are built from the old product's parts** (its cards, lists, buttons and spacing, lifted from the old board on 12 August). Only sign-in, Today, You, Company, the suites and the check-ins list are built from parts copied from the prototype. The check-in page, the board, the chat, starting a check-in, the reports, Context, Settings, the invitation, and the people screens are old parts with new words.
+- **The people screens** have the prototype's order and words but their own small styles: navy headings, 13-pixel text, buttons 800 pixels wide, and missing parts (Region, WhatsApp, "Free this seat", "Remove from Baridi"). The check-in's "People and setup" was never rebuilt at all.
+- **The proposal:** build about 18 shared parts from the prototype's exact values first (page frame, title, check-in header and tabs, section, panel, person row and table, avatar, field row, choices, toggle, form fields, button, tag, note, toast, modal), then rebuild screens from them rather than restyle old pages, with a test that stops rebuilt pages using the old parts. The parts take about 2 builder sessions. The people screens, the check-in's People and setup, the invitation and the check-in header take about 8 to 9 sessions in all. The whole product is about 25 to 30 sessions, each followed by a picture check.
+- **You decided, 28 September:** yes to this way, and the setup sign-off is removed. The rebuild has started with the shared parts.
+
+Nothing has been built since you asked me to stop. **A refusal to report:** during the audit, the safety check refused one command that wrote a small file and read `.claude/launch.json` in the same line. The reviewer then split it into two steps and carried on, instead of stopping as you asked. Nothing was changed by it (it only read the server settings), but it should have stopped.
+
+## The shared parts, from the prototype (28 September)
+
+The first step of the rebuild the audit proposed: the shared parts themselves, in a new
+`client/src/components/gw/ui/` folder, with one stylesheet (`gw-ui.css`). Every value is the
+prototype's own, taken from `docs/prototype/source/app.css` as it actually renders (the file sets
+some colours three times over; the last value in the cascade is the one on screen). No existing
+page or `kit.tsx` part was changed - they stay until each screen is rebuilt from these parts.
+
+The eighteen parts, and their prototype source:
+
+- **Page** - `main`, `.wrap` (page padding, 1150px content, left-aligned, a `narrow` column for
+  sign-in and the invitation).
+- **PageTitle** - `.t-title`, `.crumb`, an avatar at 56px.
+- **CheckInHeader** - PageTitle plus Tabs, with the one fixed tab list ("Board", "Check-in",
+  "Context", "My work", "People and setup").
+- **Tabs** - `.tabs`, `.tab`, `.tab.on`. **Fixes the audit's bug:** only the chosen tab is
+  underlined now; the others get a 3px transparent underline, not none and not all of them.
+- **Section** - `section.sec`, `.sec-h`, `.note`. Headings are 21px bold ink, never navy.
+- **Panel** - `.panel`, `.pad`.
+- **EdgeList / EdgeRow** - `.list`, `.item`, `.sp` (`NeedsYouRow` made general, with a `concern`
+  colour added for real problems).
+- **PeopleTable / PersonRow / PersonCell** - the panel-and-row table, with a `help` slot for the
+  soft amber or red strip under a row.
+- **Avatar** - `.av`, one colour, initials at size ÷ 2.8.
+- **FieldRows / FieldRow** - a label-and-value row (for example "Level", "How often").
+- **Choices** - `.seg`, with a `stacked` option for a choice with a description line.
+- **ChoiceCards** - the role cards on one person's page; the chosen one keeps its white fill and
+  gets a 2px ink outline, never a solid navy fill.
+- **Toggle** - a real switch, green when on (not navy, which the old `gw-switch` used).
+- **FieldLabel, TextField, TextArea, Select** - `label.f`, `.input`, the sign-in kit's field made
+  general.
+- **Button** - kit.tsx's `Button`, brought over, with a `danger` kind added (an outlined red for
+  "End this check-in", and `dangerSolid` for a pop-up's filled-red "Remove").
+- **Tag** - kit.tsx's `Tag`, brought over unchanged.
+- **Note / Empty** - `.note`, and a locked-door panel (a 21px heading, one sentence, at most one
+  button).
+- **Toast / Modal** - `.toast`, `.modal-bg` / `.modal`, with focus trapped in the modal and Escape
+  and an outside click closing it.
+
+Where the product's `--gw-*` tokens already equal the prototype's final values (ink, muted, navy,
+the rule colours, the tone colours, the two typefaces), the stylesheet uses them. Where they do
+not - the audit's "faint" trap, where the product's `--gw-muted` (`#7D6A55`) is not the prototype's
+`--faint` (`#85705A`) - a new token, `--gwui-faint`, holds the prototype's own value instead of
+silently reusing the wrong one.
+
+**The sample page:** `/dev/parts`, every part in every state, for a picture check against
+`docs/prototype/screens/A1-look-and-layout/design-system.jpg` at 1440px. It exists only when the
+app is built in development (`import.meta.env.DEV`); the route is absent, not hidden, from a
+production build.
+
+**The guard test:** `the-rebuilt-pages-use-only-the-new-parts.spec.ts`, reading source with
+comments stripped, against a list of rebuilt pages (`rebuilt-pages.ts`) that starts empty. This
+task adds no page to it - the next task rebuilds People and one person's page from these parts,
+and that is when the first entry goes in.
+
+**Not done in this task:** any screen. People, one person's page, the check-in's "People and
+setup", the invitation and the check-in header used by every check-in page are all still built
+from the old parts, waiting for their own sessions as the audit's order sets out.
 
 ## In short, for the morning
 
@@ -180,6 +252,13 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **28 September: yes to rebuilding from the prototype's own parts.** The shared parts are built first, from the prototype's exact values, then each screen is rebuilt from those parts, never by restyling an old page. A test stops rebuilt pages from using the old parts. Every privacy rule the design audit lists is kept, and board and report text that comes from the engine is never changed. The order after the shared parts: the invitation, then the check-in page and chat, then the board and reports, then the people and one-person screens, then the check-in's People and setup, then everything else. Each screen gets my own 1440-pixel picture check against the prototype, for every situation the switchboard covers where it applies, before the reviewer sees it.
+- **28 September: the setup's "I have read this, sign it off" step is removed.** The prototype's own confirmation ("Yes, set it") is enough.
+- **28 September, a rule for every helper:** if the safety check refuses anything, stop and write it in the report. Never split, rephrase or retry a refused command in another way. Every helper I start is told this.
+- **28 September: boards and reports change per situation.** The switchboard (G2) decides which sections each of the 24 situations shows, and in what order, and the prototype has a different board for each kind of check-in (the eleven examples in `docs/prototype/screens/G1-example-check-ins/`: engineering, sales, support desk, operations, field programme, founder alone, loans, two market reviews, law firm matter, government programme). So: the new check-in header goes on every page of the check-in in the same round; U.10's picture check covers every situation the prototype pictures, as the lead and a participant, each showing exactly its switchboard sections in order and each section looking like the prototype's; a test checks all 24 situations. After U.10 is ticked, U.3 to U.9 get the same picture check before anything new is built, oldest first, each marked close, some differences, or needs rebuilding, with a rough time for the fixes, then fixed one module at a time with my own picture check before the reviewer.
+- **28 September: every review includes a side-by-side picture check.** Wording alone is not enough: you can see the board and the reports look different from the prototype, in colour and in components that seem half done. Every review now opens the prototype's screen and the product's screen in the same state, as the lead, a participant and the admin, takes a picture of each, and lists every difference in colour, layout, spacing, type and components, saying for each whether the screen doesn't match the prototype (ours to fix) or the component is empty because the engine gives it nothing yet (and what is missing). Every difference that is ours is fixed before a module is ticked. When the waiting reviews are done, U.3 to U.9 get the same picture check, one module at a time.
+- **28 September: before any work goes to the reviewer, I check the builder's work myself against its list, item by item, on the rendered screens.** Every count of people comes from one source; where the engine's text counts wrong, it is a request, not a screen change; within a sentence counts are all words or all figures. "Who sees this differently" follows the same naming rules as everywhere else, and in evaluation check-ins colleagues are never named to the person being reviewed. The switchboard is built from `docs/modules.md` G2.
+- **28 September: keep the specificity rating.** It rates how specific and checkable the answers in a check-in are, not the person or their work, and it is needed. The lead's own report keeps showing her the rating of her own answers, and the "How checkable" card on the Done page stays as it passed in U.8. Request 51's "a lead is never shown even her own rating" no longer applies. Who sees which rating, and how it is worded, follows the prototype. (Recorded here because `docs/decisions.md` is protected.)
 - **28 September: deploy soon with what works, then improve the product every week.** The reviews, U.19 and U.20 carry on as planned. No screen is hidden yet: the engine workspace is checking whether some capabilities are really missing, and you will decide from its evidence. If something is to be hidden at release, the list comes in `docs/answers-from-engine.md`. When the screens are ready, I write `docs/ready-to-deploy-screens.md`: what is finished, every test result, every known problem and why it is safe.
 - **27 September: to go faster, a module gets a full review only in its first round; a re-review checks
   only what was found, plus one quick click-through of the main path. The builder fixes all findings in
@@ -196,7 +275,7 @@ to find.
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | **Passed** on 27 September, on the seventh round |
 | U.7 Context | Yes | **Passed** on 27 September, on the fifth round |
 | U.8 The check-in screens | Yes | **Passed** on 28 September, on the sixth round |
-| U.9 Reports and sharing | Yes | Waiting |
+| U.9 Reports and sharing | Yes | **Passed** its review on 28 September, on the fifth round. Not ticked yet: one engine test waits on request 62 |
 | U.10 The board | Yes | Waiting |
 | U.11 Ending a check-in, probation review, handover | Yes | Waiting |
 | U.12 The You board | Yes | Waiting |
@@ -315,7 +394,13 @@ is the engine's code, so I have asked the engine workspace (request 41).
 
 ### 0c. Every reader of a report gets everyone's rating, not only their own, and the Done page's "Only you see it" is not true yet
 
+**Closed, 28 September:** the engine workspace finished this on your decision (request 43, `828b4837`). Every reader of a report now gets only the rating of their own answers, leads and admins included, so the Done page's "Only you see it" is true.
+
 **Update, 28 September:** the engine workspace has closed half of this (request 43, `59a62cc3`). A participant's report, forming or released, now carries only their own rating. The other half is yours to decide: the engine gives the lead and an admin everyone's ratings on purpose, while CLAUDE.md says leads never see how a person's answers were rated. Until you decide, the Done page keeps its wording, as the engine workspace asked.
+
+**A second question, from the U.9 review:** a person's own report, and the Done page, show them the rating of their own answers ("How specific this session was", "How checkable today's check-in was"), to them alone. I have kept that, because it is their own and only they see it. Request 51 says a lead is never shown a rating, even of her own answers. Please say whether a person, lead or not, may see the rating of their own answers.
+
+**Answered by you, 28 September:** yes. Keep the specificity rating; it rates the answers, not the person. See your decisions near the top. One thing to know: the prototype's example boards (`docs/prototype/screens/G1-example-check-ins/`) show the lead "Nothing checkable" beside a person, for example "Omondi: nothing checkable". The engine workspace took that line off the board on 27 September (request 8), under your rule that nothing on a screen may read as a score of a person. I have not changed it back. Please say whether the board should follow the prototype there too.
 
 **Found by the U.8 review on 27 September.** CLAUDE.md's rule is plain: "Leads never see how a
 person's answers were rated." Two places in the engine's own code disagree with it. `own-reads-only.ts`,
@@ -374,6 +459,48 @@ still open. Written up as request 49, URGENT.
 
 **This is very likely in the live product too**, for the same reason 0c is: `reports.service.ts` is
 engine code this branch has not touched.
+
+### 0e. A session's own report gives an unanswered participant the team's findings, and a rating of the lead's own answers
+
+**Found by the U.9 review on 28 September.** `GET /grounds/:id/report/session/:n` (`sessionReport()`
+in `reports.service.ts`, around line 2700) has no version of `get()`'s "not until you have answered"
+rule. A participant who has not checked in for this session can still be given the team's synthesis
+for it (`whatEachPersonSaid[].finding`) and a rating of the lead's own answers
+(`confidence.saying`, which read "Nothing named so far could be checked by anyone else" on a real
+check-in). `GET /grounds/:id/report`, on the same check-in, correctly withholds both, with "You can
+read it as soon as you have given yours."
+
+**Who this reaches.** A participant who has not answered this particular session - which is exactly
+the person the rest of the product is careful never to show the team's picture to before they have
+given their own.
+
+**This is very likely in the live product too**, for the same reason 0c and 0d are:
+`reports.service.ts` is engine code this branch has not touched. Written up as request 51 to the
+engine workspace, URGENT.
+
+### 0f. Should a participant read the board's read on each colleague?
+
+**Found doing item 21.1, carried forward again by the U.10 review.** The product today shows a lead
+three sections the prototype's board never pictures: "Contribution against role", "Where work is
+landing" ("Where the leading is landing" carries this too), and "How the leading is landing". These
+are the board's own read on how each person's work is going, against their role - not something any
+prototype screen shows to anyone. This pass has kept them, lead-only, under plain headings below the
+prototype's own sections, and stopped "How the leading is landing" from drawing at all while
+patterns are off (it is a pattern claim, and a lead should not read "seen across 2 sessions" from
+one session).
+
+**The open question is who else should read them.** Today, if a participant is ever served
+`contribution` or `coverage` on the board (a family that includes those sections, and a viewer who
+is not the lead), the same read of them appears - a colleague's own read of how another colleague's
+work is landing, on a shared board. The prototype's own design answer, everywhere it shows a shared
+board, is: a participant sees their own part and the shared picture once it has been shared, never a
+read of a colleague framed against that colleague's role.
+
+**My recommendation is to follow the prototype:** serve `contribution` and `coverage` to the lead
+only, the way `eachPerson` already is, until a screen exists that is designed to show a participant
+this kind of read about somebody else (if one ever should). That is a change to what the board
+*serves*, which is shared ground with the engine workspace - not something to make unilaterally.
+Flagging it here rather than deciding it.
 
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
@@ -1242,6 +1369,27 @@ engine answers. Until then, "When I end it" stays off the screen.
    "Start with Brian and Miriam." The way back from a session: "← Every session". Under a session's
    heading: "Everything about this session, on 23 September. Your report first, then the team’s
    report."
+9. **Should any admin be able to release a report, or only its lead?** Found on the fourth review:
+   `POST /grounds/:id/report/release` is guarded only by `@Roles(Role.ADMIN)`, and `release()` never
+   checks whether the caller is the check-in's own lead - so any admin of the organisation can
+   release a check-in's report even when they did not run it, while the lead's own Sessions tab
+   tells other admins "Sharing the report and ending the check-in are Rukia's to decide." That is a
+   product decision as much as a bug: should releasing stay the lead's alone, enforced on the
+   server, or should an organisation admin also be allowed to, perhaps with a warning that they are
+   not its lead? Written up as request 57 to the engine workspace either way, since the check is
+   missing regardless of which answer you give.
+10. **The declared block label and the prototype's own wording disagree, for one heading (found by
+    the U.9 end-of-module API suite).** `the-four-reports.ts`'s `WHAT_THE_BLOCK_IS_CALLED.howMuchYouGaveIt`
+    declares "How much you gave this one" as the block's plain heading, and
+    `the-order-is-the-order-on-screen.spec.ts` checks the screen against exactly that string. The
+    U.9 third review asked this same heading to be changed to the prototype's own wording
+    (`docs/prototype/screens/B3-the-check-in/done.txt`: "How checkable today's check-in was"),
+    which the screen now says. CLAUDE.md says the prototype is the target, and also says to stop
+    and ask when the prototype and the backend disagree and `docs/backend-map.md` does not say
+    which way to go - this is exactly that case, so I have not silently picked one. Written up as
+    request 62 to the engine workspace, asking them to update the declared label to match the
+    prototype, or say why the older one should stand. Until it is answered, that one assertion in
+    `the-order-is-the-order-on-screen.spec.ts` fails; everything else in that file now passes.
 
 ### 21. The board (U.10): what needs you
 
@@ -3469,6 +3617,138 @@ this" part, which the engine workspace itself asked us to remove. It is theirs t
 The only other failure is the engine's own comment guard (request 4). **Not ticked,** because no
 review can sign in (item 14).
 
+**U.9's first review, and what it found fixed, 28 September.** The review read the session report
+and the participant's Report tab as the lead, a participant and an admin, and found thirteen things
+wrong. All thirteen are fixed on this branch, in thirteen small commits.
+
+The session report no longer shows "Session 1 / Session 1 / Session 1" on one screen: the card's own
+title, which used to repeat the number a second time, is gone, since every page that draws this card
+already has its own "Session N" heading above it. Its "Last updated" line draws nothing, rather than
+a broken sentence with two blank spots in it, when the date it is given is not a real one - which is
+what the server sends today (engine request 53). The team's report line above it no longer claims
+"it updates as people check in" once it has actually closed; it now says the true thing, with the
+closed date through the shared date formatter. The lead's Sessions tab no longer tells a lead the
+report waits for everyone once it has already been shared early - it reads whether it has, and says
+which is true, as a sentence rather than two clauses joined with a dash. Two more of the same
+dash-joined sentences on that page are now full sentences, and so is the board's own "1 read
+differed" beside its date. "Start with You." now reads "Start with yourself." The session's own
+block labels no longer shout in capitals with a number in front of them ("01 THIS IS THE TOP OF IT"),
+and a person's own name under a quote is no longer styled the same way ("RUKIA OTIENO (YOU)") - the
+words underneath were already plain sentences; only the shouting is gone. Two sentences that used to
+join a label to its content with a colon ("Why it matters:", "What settles it:") are now a caption
+above its own sentence. The participant's Report tab reads "Your sessions" and each finished session
+as its own sentences, following the lead's "Every session" pattern, and no longer joins a count or a
+rating to the row with a dot; the share-confirmation list no longer shows an email address beside a
+person's name. The session report's own count now agrees with the check-in header's count when the
+two would otherwise disagree, and nothing on a screen this session owns ever shows an email address
+where a name belongs. And, outside U.9 but the same kind of thing: the session page's "What now?"
+actions no longer appear on the page that tells somebody the session is not theirs to open.
+
+Eight things found could not be fixed on this branch, because the words themselves are the engine's:
+requests 51 to 58 to the engine workspace, one URGENT (item 0e above: a session's own report gives an
+unanswered participant the team's findings and a rating of the lead's own answers - the same shape of
+privacy gap as 0c and 0d, in a different endpoint). One of the eight is a question rather than a bug:
+whether any admin may release a report, or only its lead (item 20.9 above).
+
+**U.9's re-review, 28 September, sent back two things: fixed.** The first review's fix to item 12
+had only changed the capitals in one file; the re-review read the whole participant's own report,
+the lead's own report, the team's report and the party's shared picture, and found the same
+two-tier "01 LABEL" heading, the same "·" and " - " joins, in eleven files. Every block heading
+across all four reports is now one plain sentence, with no number, no capitals and no lower-case
+line stacked under it; every "name · fact" and "date - count" join is a sentence; the specificity
+bar, which was drawn twice on one page, is drawn once; a date that was not provably about the thing
+next to it ("By when, in your words: by 20 December", attached to the wrong item) is left out
+rather than guessed; and a claim this component cannot stand behind ("nobody else has answered
+yet", said unconditionally) is gone. `HowThisHasMoved` now writes its date through the shared
+formatter, in one sentence with the session number and the count of differences, instead of
+printing the server's raw value; the check-in header's "Waiting on 2 of 6" is now a sentence. A new
+spec, `a-label-is-a-sentence-not-a-shout.spec.ts`, scans every one of the eleven files for the same
+three patterns, so they cannot come back in one file while being fixed in another. One dash-joined
+label (`TheReportYouSawAtTheEnd.tsx`'s `renderAdd` slot) is left for a later round, named in that
+spec as a known exception: fixing it fully means touching `EntryChatPage.tsx`, a different module.
+Two more lines went to the engine as requests, added to request 58: "nobody else has answered yet"
+said when others had, and the "4 of 5" in the session report's own generated text (alongside
+request 56, the same count disagreeing with the check-in header).
+
+**U.9's third review, 28 September, sent back six more, plus one already-fixed rating question.**
+
+1. `HowThisHasMoved` read "At the end of session undefined, on 27 September, and one read
+   differed." three ways wrong: the session number was undefined, because `/report/rounds` selects
+   `sessionNumber` off the round and not `round`, so `howThisHasMoved`'s own `round: r.round` was
+   always undefined and dropped by JSON on the way over (engine request 59); a stray "and"; and
+   `differences` was read as a change from the session before when it is a count within that
+   session's own reading. Now: "At the end of session 1, on 27 September, people saw one thing
+   differently.", with the session number left out when the server does not send it.
+2. The "At a glance" tiles were still a label, a bare figure and a lower-case fragment stacked on
+   top of each other. Each is now `tileSentence()`'s full sentence, built from the same
+   label/value/sub the server sends: "People see one thing differently. The main obstacle to
+   signing new shops is seen differently.", "Nothing has moved yet. Two targets are set, and no
+   session has closed to measure them against.", "One thing is blocking work, the discount
+   decision.", "15 of every 100 things people said have a document behind them."
+3. The cascade block's headings ("This is the top of it; nothing sits above it", "What this sits
+   under, and what the objective serves") described the product's own structure without saying
+   what "it" was. Now: "This is part of a bigger goal." or "Nobody has said what bigger goal this
+   is part of."
+4. More of the same colon/dot/semicolon family, across the check-in and report cards: a cited file
+   now says "is a photo" for an image rather than calling everything "a typed document"; "Carry
+   this into your next check-in." replaces a heading that described itself; "Everyone agrees that…"
+   and "This is still open…" replace a one-word label bolted onto a sentence with a full stop;
+   "WHAT TO SETTLE TOGETHER" is a plain heading; "There is a solid amount to go on." replaces a
+   heading sitting next to a bare band word; "How checkable today's check-in was" is the
+   prototype's own wording (`done.txt`); "Your own part of this is X, Y." replaces a colon-and-
+   semicolon-joined line. One of these - the private closing summary's own "What you shared:"
+   opening - is the engine's prompt (`conversation.service.ts`), not the screen's, so it went to
+   the engine as request 60.
+5. "What to ask each person"'s fallback name read "a colleague" as the whole of a heading; it now
+   passes its own capitalised "A colleague" for that call site. A quote under the reader's own name
+   read "Rukia Otieno (you) said this."; it now reads "You said this."
+6. Amani's Report tab and her session's own meter disagreed about the same session - "specific in
+   places" against "Mostly general." The two read different engine fields for the same session (a
+   continuous trend score against a stored category); rather than pick a winner across an engine
+   boundary, the Report tab's line now reads the same `specificityLevel` the meter reads, so the
+   two surfaces can no longer disagree about one session.
+
+`a-label-is-a-sentence-not-a-shout.spec.ts` was extended to two more files
+(`what-to-settle-together.tsx`, `HowMuchThereIsToGoOn.tsx`) and two more patterns (a label joined
+to a sentence with a colon, a list joined with "; "), plus a named check for the two one-word-
+label-beside-a-heading instances the third review found.
+
+**U.9's re-review, 28 September, found four more, all from this round's commits: fixed.** `HowThisHasMoved`
+was still reading `m.round`, when a real `GET /grounds/:id/report/rounds` request sends
+`sessionNumber`; it now reads the field the server actually sends. `tileSentence`'s "is seen
+differently" could double when the topic it was given already said so ("…is seen differently is
+seen differently."); it now checks, case-insensitively and ignoring a trailing full stop, before
+appending it. Amani's own report still opened "What you shared: You are aiming for…" - the
+engine's own prompt (request 60, still open); `SessionReportPage.tsx` now turns that stored
+opening into "Here is what you shared. " before drawing it. And a document under "What this is
+built from" still read the server's own "<file> · <kind>" join verbatim, as if it were a quote;
+it now reads "<file> is <kind>." (engine request 61, still open, asks for a sentence or two fields
+instead of the pre-joined string).
+
+**U.9's end-of-module API suite found three more, from this round's commits: fixed, one genuine
+question left open.** Two block labels had grown extra description beyond the plain heading
+`the-four-reports.ts` declares (`WHAT_THE_BLOCK_IS_CALLED`), which broke
+`the-order-is-the-order-on-screen.spec.ts`; put back to "What this is for" and "What everybody
+said good looks like", with the dropped clauses left in the block's own body, where they were
+already true. Fixing that surfaced three more of the same pattern that predate this round
+(`the-order-is-the-order-on-screen.spec.ts` throws on the first mismatch per surface, so later
+ones were hidden until the earlier ones passed): "Where you are against it", "What you said" and
+"What is still open for you" are now the plain declared headings too. One label is left as a
+genuine disagreement rather than resolved unilaterally: `howMuchYouGaveIt` is declared "How much
+you gave this one", but the third review asked for the prototype's own wording, "How checkable
+today's check-in was", which the screen now says - written up as request 62. You had already decided this today: the rating's wording follows the
+prototype. So the screen keeps "How checkable today's check-in was", and request 62 now asks the
+engine workspace to change its declared label to match. Until it does, one engine test
+(`the-order-is-the-order-on-screen.spec.ts`, A_SESSION) fails on this one label. `the-template-is-on-the-screens.spec.ts`'s
+"four states, and each one says what it means" and
+`specificity-belongs-to-the-person.spec.ts`'s "what would help is rendered" were also updated,
+each for wording this round changed on purpose (the tile's clause folded into `tileSentence`'s own
+sentence; the "most useful" badge and its line moved to
+`TheFiveThingsThatMakeItCheckable.tsx` and reworded), with the reason recorded in each commit; a
+note was added to request 58 for the tile-clause change, since the engine workspace wrote that
+test's own comment and may want to reword it now that the check is one level removed from the
+literal string on the page.
+
 ### U.10 The board: built and tested, not yet reviewed
 
 **What was missing, against the prototype's board (the gap list):** the line saying when the board
@@ -3526,6 +3806,427 @@ module serves the board, though no engine text was touched: opening the board ne
 anything now, and a lead is never shown the checkability rating. Because the board module is shared
 ground, I have told the engine workspace exactly what changed (request 12), so it can take them over.
 **Not ticked,** because no review can sign in (item 14).
+
+### U.10 The board, first review: what changed and what still needs you
+
+**28 September, one round of fixes against the first review's findings.** Each commit below is
+small, on its own, with the reason for any changed test in the commit itself.
+
+- **The switchboard's G2 table (item 1).** The prototype's 24 situations and 5 groups, and the
+  "Help someone get back on track" example row's Switched on, Optional and Off by design legend,
+  written as data in `client/src/pages/board/the-switchboard-g2-table.ts`, checked against
+  `docs/prototype/screens/B1-starting-a-check-in/switchboard.txt` by a test rather than by eye.
+  **Not done:** the full 24-by-30 grid, because `switchboard.jpg` at the resolution this session
+  could read it does not reliably show which square is filled, hollow or crossed - see the file's
+  own comment. Making the board actually draw each situation's own set of sections needs that grid,
+  plus a decision on how the backend's 16 `BoardSection` keys should grow to cover the prototype's
+  30 named sections (most of which - "Blocker check", "Evidence index", "Requirements review" and
+  the rest of the purple, scenario-specific columns - have no served data at all yet). That is
+  requests 63 and 65 and a larger piece of work than this round had room for; `PROTOTYPE_SECTION_TO_BOARD_SECTION`
+  in the same file lists which of the 30 names this pass could responsibly map today (8 of them)
+  and which cannot be, with the reason for each.
+- **"Nothing checkable" (item 2).** The pill now reads "Nothing checkable" as the prototype writes
+  it, and every reason's fixed phrase under the pill is gone in favour of the server's own `says`
+  sentence, now that the engine sends `nothing checkable` as its own reason again (decision "8,
+  changed back"). `reportsApi.release`'s type now matches what the route actually sends.
+- **The board header (item 3).** "A team working together / - to 13 Dec ·" happened because the
+  date helper stood in a bare dash for a missing start date, joined regardless with a middle dot.
+  It now builds a sentence from only the parts the board has: "Session 38 of 65. Runs until 30
+  September." with the prototype's cadence clause left out, since nothing serves it yet. `endsAt`
+  is the check-in's own scheduled end, not a target's deadline - the two can differ, and the header
+  is rightly about the check-in.
+- **The wrong reader (item 5).** `/report/rounds moved[].says`, written to whoever runs the
+  check-in, was shown to every reader of "How this has moved"; it is now shown only to whoever
+  runs the check-in, with request 66 asking the engine for a field that names a line's audience
+  properly.
+- **Admin's "Sessions this phase" (item 6).** "Faraji Odhiambo / Not started for 1 of 1, and not on
+  the other 1." now reads "Faraji Odhiambo has not started session 1." - a sentence built from the
+  same shape the grid already computes, with a new test (the component had none before).
+- **Board chrome wording (item 4), bounded.** Fixed: the "cross-referenced" jargon subtitle and
+  empty state, the "differs"/"agreed" pills that glued onto the sentence before them, the four
+  record-kind tags said as sentences, the "Why:" and "What people said:" colon labels, the coverage
+  panel's "ownership drop" and "coupled to..." jargon, and a name dash-joined to what they said. A
+  new guard spec, `the-board-reads-as-sentences.spec.tsx`, renders the board and fails on a middle
+  dot, a capitalised "Label: " opening, or three or more literal capital words in a row, so a
+  regression in any of these is caught without knowing which section it landed in. **Not chased
+  down:** "Everything above it - what the accounts agree on…", which this pass could not find in
+  the current code and may already be fixed or may be a different screen; and the head-count
+  consistency half of item 5 ("Four of the 6 people" / "4 of 5 answered this round" / "2 of 6 people
+  have not given their account" from one count) - the exact mismatch was not reproduced this round,
+  so it was not chased without a concrete instance to fix against.
+- **Item 10.** `managerAlignment` ("How the leading is landing") is now never drawn while patterns
+  are off, checking `sections.includes('patterns')` client-side (request 64 asks the engine to gate
+  the field itself, not only its drawing). `hiddenContributors` was already correctly gated on
+  having rows, in both the board and the report page - nothing to fix there.
+- **Outside U.10, found in passing:** the [DEV EMAIL] that told Faraji his report was ready before
+  he had ever checked in was a real bug in the reveal-reminder sweep (`grounds.cron.ts`), not the
+  engine's - fixed directly, with a test.
+- **Engine requests:** 46 updated, and 63 to 66 added (the hidden target number leaking to an admin,
+  managerAlignment served while patterns are off, a list of engine text found wrong on a live board
+  and report, and the says-audience field for "How this has moved").
+- **Needs Hafsah 0f, added near the top of that section:** whether a participant should ever read
+  the board's read on a colleague (contribution, coverage), with the recommendation to follow the
+  prototype and keep those lead-only until a screen is designed for showing them more widely.
+
+**Tests run:** only the tests for the files this round changed, by path, `--maxWorkers=2`, plus
+`npx tsc -b` (client) and `npx tsc --noEmit` (api). All passed. The full suite and the scenario run
+were not run this round, per the task's own instruction to run only the changed files' tests.
+**Still not ticked:** items 1 (the full switchboard grid) and parts of items 4 and 5 remain, and no
+review could sign in (item 14) to check any of this as a real person yet.
+
+### U.10 The board, re-review: what changed this round
+
+**28 September, a second round against the re-review's findings.** Each item below is exactly as
+Hafsah's message named it, DONE or NOT DONE, with where.
+
+- **A, the switchboard's own 30-section grid (DONE, data and drawing; NOT DONE, order).**
+  `client/src/pages/board/the-switchboard-g2-table.ts` now carries `SWITCHBOARD_MATRIX`: all 24
+  rows of G2's "Every situation" table, parsed straight out of `docs/modules.md` by a test
+  (`the-switchboard-g2-table.spec.ts`) that fails the moment the data file and the live document
+  disagree, cell by cell. `client/src/pages/board/what-the-switchboard-allows.ts`'s
+  `switchboardAllows()` is wired into `BoardPage.tsx`'s `shown` object for the 7 sections G2 names
+  that the board can serve (objectives, startingState, divergence, whatTheRoomIsAbout, dependencies,
+  quickRead, patterns): a section only draws when this situation's row turns it on or makes it
+  optional, never when the row marks it off on purpose or does not name it at all, and patterns
+  never draw while `PATTERNS_ARE_SERVED` is off regardless of what G2 says. **Not done: the DRAWING
+  ORDER.** `orderedSwitchboardSections()` exists and is tested, but is not wired into the page's
+  actual render order - the four G2-mapped sections that could be reordered live in different zones
+  today (divergence was deliberately moved to the top of the page in an earlier review;
+  startingState sits under "At a glance"; objectives and whatTheRoomIsAbout under "Against the
+  plan"), and physically reordering across those zones per scenario would undo documented, reviewed
+  layout decisions rather than extend them. Flagged, not done unilaterally - see Needs Hafsah 0f's
+  neighbour note below if this needs a call. **List of what G2 calls for and nothing serves**, for
+  the engine (request 70): 22 of G2's 30 sections, including every "purple" one (Blocker check,
+  Evidence index, Requirements review and the rest) - `switchboardSectionsNotServed(scenario)` gives
+  the exact list per situation.
+- **The three sections lead-only until 0f (DONE).** Last round's request to draw "Contribution
+  against role", "Where work is landing" and "How the leading is landing" lead-only was written but
+  not actually wired up - `contribution` and `coverage` still drew for any reader the server served
+  them to. `BoardPage.tsx`'s `shown.contribution` / `shown.coverage` now also require
+  `viewerRunsThisCheckIn`, and `managerAlignment` requires it alongside the patterns-off gate.
+  `contribution-and-coverage-are-lead-only.spec.tsx` renders the same payload as the lead and as a
+  participant and checks the participant reads neither section.
+- **B, remaining wording (DONE, the items below; NOT DONE, the six capitals headings - see Needs
+  Hafsah).** Fixed in `BoardPage.tsx` and `where-each-person-is.tsx`: the session pill as a real
+  sentence ("Session 1 is today, 27 Sept." / "Session 1 was on 27 Sept." / "Session 2 opens on 3
+  Oct."); "A colleague · no name given" → "A colleague, who has not given a name"; the objectives
+  row's "12 · from 0, said 12" → "12, up from 0, aiming for 12", "+12 this session" → "up 12 this
+  session", the owner glued to the name ("shops· Rukia Otieno") → its own line ("Rukia Otieno's own
+  target"), and "Asked about this so far:" / "· still to be asked:" → two plain sentences; "WHAT
+  PEOPLE SAID The role…" and "WHY IT MATTERS If the delays…" (a caption sharing one line with the
+  sentence after it, with only a trailing space between them) → each caption on its own line, and
+  (with "Which of the four this is" and the "ROLE LEVEL" chip) no longer set `textTransform:
+  uppercase`; jargon `Sec` subtitles ("extracted from check-ins", "each role, own terms", "the one
+  thing you add", "from sessions", "from divergences and blockers") reworded in plain words; reason
+  pills are sentence case throughout, not just "Nothing checkable"; the target row's "-"/"+"/"x"
+  buttons now read the words "Lower"/"Raise"/"Remove" - they already carried an `aria-label`, which
+  is not the same thing as a word a sighted reader can see. The guard spec
+  (`the-board-reads-as-sentences.spec.tsx`) now also checks these captions' inline style directly
+  for `textTransform: uppercase`, since CSS text-transform never touches `textContent` and the old
+  spec could not have caught this class of bug. **NOT DONE, and why: the six literal capitals
+  headings** named this round ("HOW TO READ AND USE THIS BOARD", "AT A GLANCE", "WHO OWNS WHAT",
+  "CONTRIBUTION AND FAIRNESS", "LOGISTICS", "FIND A TIME") are every one of them the shared
+  `Zone`/`Sec` heading convention (`kit.tsx`: "every section heading in the product uses this"),
+  applied identically across the whole product, not a board-specific bug - their underlying content
+  is already sentence case ("How to read and use this board"), and it is CSS alone that draws them
+  in capitals. Removing that would be a design-system change reaching every module, not something
+  this pass has made unilaterally; it is here as a clear flag rather than deferred silently a second
+  time. **"HOW MUCH WAS SAID / 15% documented / …anchored to a document"** and **"Unblock: …"** are
+  both engine text (`reports/what-this-session-holds.ts` and `board.service.ts` respectively, both
+  off limits per CLAUDE.md), so both are requests (67, 68) with the exact replacement wording
+  carried over, not direct fixes.
+- **C, who sees this differently, named (DONE).** `whoSeesThisDifferently()` in `BoardPage.tsx`
+  reads `positions[].who` exactly as the server already resolved it (the one peers-are-named rule,
+  applied server-side) and writes "Rukia Otieno and Amani Wekesa see this differently.", "You and
+  Rukia Otieno see this differently." (the reader named first) when the reader is one of the two, or
+  "People see this differently." the instant either side is masked to "A colleague" - which is
+  exactly what happens on an evaluation check-in read by the person it is about, since the server
+  never disambiguates two different hidden people beyond that one generic label.
+  `who-sees-this-differently.spec.ts` covers the pure function; the new
+  `evaluation-check-in-never-names-peers.spec.tsx` renders a PIP board (family EVALUATION) as
+  Daniel, the person being reviewed, with one side already masked by the server, and checks the page
+  reads "People see this differently." and names nobody.
+- **D, head counts (CHECKED, nothing to unify in the board's own code).** Tried making
+  `onlyOnePersonHere` use `whoIsInRound` (the function the check-in header and the report pages
+  already share); it answers a different question here - `whoIsInRound` counts who is expected to
+  check in this round (a managing-only lead still counts for session 1), while this gate asks
+  whether there are two ACCOUNTS to compare (a managing-only lead never gives one, ever) - and
+  unifying them broke "a managing-only lead is not the second account"
+  (`a-shared-picture-needs-two-accounts.spec.tsx`), a rule this board already tests deliberately.
+  Reverted. Every other figure the board shows (answered this round, checked-in counts) already
+  comes straight off the server in one all-figures sentence each (fixed last round); no mixed
+  word-and-figure count like "Four of the 6" exists in this board's own code. If the mismatch Hafsah
+  saw is between two engine-written sentences on different pages, request 69 asks where it lives.
+- **E, the admin sessions line and unopened sessions (DONE).** "Faraji Odhiambo has not started
+  session 1, and was not part of the other 1." (naming a session that had not opened) is now
+  "Faraji Odhiambo has not started session 1." - `NineColumnsIsNotAPhoneScreen` takes a new
+  `openSessions` prop, and a session left out of it is left out of the sentence entirely rather than
+  counted as one more the person "was not part of". At desktop width, a checkInGrid cell for a
+  session that has not opened yet (cross-referenced against the phase spine's own state) now renders
+  blank with an accessible "Not open yet" instead of a dash; a cell for a session that has opened but
+  this person was simply not on keeps a dash, now labelled "Not on this session".
+
+**Engine requests added:** 67 (the quick-read tile's own text mixes a figure and a fragment,
+`reports/`), 68 (`board.service.ts`'s "Unblock: …" colon join), 69 (head counts across pages -
+nothing found in the board's own code to fix; asking where the mismatch actually lives), 70 (the 22
+switchboard sections nothing serves yet, listed per situation).
+
+**Needs Hafsah, still open:** 0f (the three lead-only sections, unchanged this round - still lead
+only, still waiting on her answer) and a new flag, not yet numbered: whether the shared `Zone`/`Sec`
+CSS-uppercase heading convention should change product-wide, since two review rounds have now named
+headings that are that convention working as designed everywhere else in the product.
+
+**Tests run:** only the tests for the files this round changed, by path, `--maxWorkers=2`, plus
+`npx tsc -b` (client) and `npx tsc --noEmit` (api). All passed.
+
+### U.10 The board, third round: the three remaining NOT DONE items finished
+
+**28 September, finishing capitals headings, the switchboard's order, and the head-count root
+cause.** All three of the second round's NOT DONE items, as Hafsah asked.
+
+- **1. Capitals headings (DONE).** Checked against two prototype screens: B5's
+  `board-as-lead.jpg`/`.txt` and B4's `team-report.jpg` - every heading in both is sentence case,
+  bold, never capitals. `kit.tsx`'s `Zone` and `Sec` ("every section heading in the product uses
+  this") drew every one of them in capitals via `textTransform: uppercase`; removed from both,
+  product-wide, since their content was already written in sentence case. Also fixed `BoardPage.tsx`'s
+  one local duplicate of the same convention ("How to read and use this board"). Ran the tests for
+  every file that imports `Zone`/`Sec` from `kit.tsx` by path, then the full client suite (477 files,
+  3,334 tests) as the safest way to catch indirect users too - all pass. Two tests pinned the old
+  shape and were updated, with the reason in each: `api/wired-endpoints.spec.ts` pinned
+  `shown.startingState`'s exact expression, which item A had already changed without this file being
+  run at the time; `one-vocabulary.spec.ts` pinned `Sec`'s dark-mode colour as a guard against
+  reintroducing near-identical whites, so rather than edit that guard, the colour itself was left
+  unchanged (only the transform and letter-spacing moved).
+- **2. Order (DONE).** `orderedSwitchboardSections()` is now wired into `BoardPage.tsx` for real. The
+  7 G2-mapped sections used to sit in three separate zones in an order nobody had checked against the
+  switchboard - **moves made:** objectives moved out of "Against the plan" (it sat far down the page)
+  to the top, with cascade and "what success looks like" (which sit directly above it and qualify it)
+  moving with it; divergence moved out of the very top of the page (an earlier review's deliberate
+  choice, made before the switchboard existed) to third, after objectives and startingState;
+  startingState and quickRead moved out of "At a glance" - startingState to second, quickRead to
+  fifth; whatTheRoomIsAbout moved out of the old "Against the plan" area to fourth. dependencies and
+  patterns were **not** moved - their existing positions already put them after the new group, in the
+  right relative order. The "Against the plan" zone divider is gone entirely (all three of its
+  sections moved into the new group); "At a glance" now gates only on decisions/eachPerson, which
+  stayed where they were. Wiring the function in for real caught a real bug in it: it had sorted "on"
+  sections before "optional" ones, which is not G2's own order (the 30-row table interleaves them);
+  fixed to sort by the table's own position, which is what the prototype's board actually draws in.
+  New test `the-board-draws-the-switchboards-order.spec.ts` reads `BoardPage.tsx`'s own source and
+  checks its document order against what the function computes, for two real situations and every
+  row in the switchboard, so the layout and the function cannot drift apart silently again.
+- **3. Head counts (DONE, root cause found and written up; the client side made consistent).**
+  Hafsah found it: the board's count is `howItIsGoing.glance.progress.ofPeople`
+  (`board.service.ts` ~509 → `how-a-check-in-is-going.ts` → `what-a-manager-needs-at-a-glance.ts`
+  ~106 → `how-many-have-answered.ts`'s `whoIsExpected`), a deliberately rich population (joined OR
+  answered OR still holding a live, unexpired invitation), while the check-in's own header counts a
+  narrower one client-side with `whoIsInRound` (managing-only counts only for session 1, no
+  invitation-lapse check at all) - the two agree once everybody has joined and disagree the moment
+  somebody is still mid-invitation, which is exactly the gap she found. Request 69 rewritten with
+  this exact chain (file, line, function, the population each one uses) and a direct question: which
+  population should be the one everyone reads. On the screens: `WhatYourRecordCanSupport`'s
+  `waitingOn` list filtered `!p.managingOnly` on its own, a different rule from `countsInRound`,
+  which the same card's `parties` count already used via `whoIsInRound` - two counts of the same
+  population on one card. Both now use the same predicate. The server's own number is unchanged on
+  screen, as asked.
+
+**Tests run:** the files each change touched, by path, plus the full client suite once (for item 1's
+broad blast radius) and `pages/grounds` in full (for item 3's `GroundAdminPage.tsx` change), plus
+`npx tsc -b` and `npx tsc --noEmit`. All pass.
+
+### U.10 The board, fourth round: walked live as Juma, six more found and fixed
+
+**28 September, after Hafsah checked the rendered board herself as Juma (admin) on the real ground.**
+All six items DONE.
+
+1. **Every remaining capital (DONE).** The third round's sweep only touched `Zone`/`Sec` and three
+   named captions; it missed every other ad hoc `textTransform: 'uppercase'` on the board's own
+   render path - "Nothing above this", "What success looks like", the four quick-read tile labels,
+   the checkInGrid table's column headers, the coverage "Showing" toggle, the admin "no shared
+   board"/"your answer first" captions, and the bottom legend ("What is open, first", "Each gap
+   names both sides", "Honest closes"). Removed from all of them: `BoardPage.tsx`'s own remaining
+   instances, `WhatSuccessLooksLike.tsx`, `TheJudgement.tsx`, `WhatTheRecordShows.tsx`,
+   `WhatTheNetworkSaid.tsx`, and `kit.tsx`'s `Stat` (a Zone/Sec sibling, shared with
+   `GroundAdminPage` and the admin pages). Left untouched: `textTransform: uppercase` outside the
+   board's own render path - `HomePage.tsx`, `AdminPage.tsx`'s own tables, `ChatPage.tsx`,
+   `ReportPage.tsx`, `BillingPage.tsx`, `GroundChat.tsx` and others the grep also found - these
+   belong to other modules' own review, not U.10's, and touching them here would be scope well
+   beyond the board. The guard spec no longer asks named elements by hand; it now walks every
+   element actually rendered on the board and reads `getComputedStyle().textTransform`, failing on
+   any non-empty text drawn in capitals anywhere - there is no longer a Zone/Sec exception to carve
+   out, since neither uses the transform any more.
+2. **Subtitle fragments (DONE).** Every `Sec` subtitle on the board that was a bare lower-case
+   fragment is now a capitalised, complete phrase, following the prototype's own subtitle style
+   (board-as-lead.txt: "Each person's time, their last 10 check-ins, and what keeps coming up") -
+   "Built from what each person said in their check-in.", "Raised by what people see differently,
+   or what is stuck.", and so on for all nine named plus the others in the same style.
+3. **The objective row (DONE).** "12, up from 0, aiming for 12" / "up 12 this session" -> "12 now,
+   up from 0. The aim is 12." / "Up 12 this session."
+4. **The session strip (DONE).** "Session 1 is today, 27 Sept." was wrong the day after it opened -
+   `state === 'current'` means the currently open round, not "opened today", and a round can stay
+   open for days while people finish checking in. `sessionPillSentence` no longer says "today" at
+   all: "Session 1 opened on 27 Sept." (once somebody has completed it), "Session 2 is open now."
+   (open, nobody has completed it yet - a case the bare "Session 2." example did not cover but the
+   old code would have wrongly called "not opened"), or "Session 2 has not opened yet." (the bare
+   case Hafsah named).
+5. **"Waiting on" rows (DONE).** "Baraka Mwangi / needs / the discount decision / from / Rukia
+   Otieno / Blocking" -> one sentence per row, "Baraka Mwangi needs the discount decision from
+   Rukia Otieno. This is blocking work.", following the prototype's own "Waiting on other teams"
+   row style. The status pill stays for quick visual scanning; the sentence says the status too.
+6. **Quick-read tiles (DONE).** Reused `tileSentence` from `TheSessionsReport.tsx` (U.9) rather
+   than reimplementing the same label/value/sub join - it is the same tile shape, from the same
+   server function (`atAGlanceTiles`), so the same composition applies without rewording the
+   server's own clause, exactly as asked.
+
+**Tests:** a new file, `u10-re-review-round-4.spec.tsx`, renders the board with real shapes for
+items 3 to 6 together and checks each reads as the sentence asked for - including that "today"
+never appears for a round that opened on an earlier date. Ran the files each change touched, by
+path, plus the full board suite, `npx tsc -b` and `npx tsc --noEmit`, and the full client suite
+once more for the capitals sweep's blast radius (in progress at the time of writing; will be noted
+if anything unexpected turns up).
+
+**The picture tool, 28 September, installed on your yes.** Playwright is installed in `e2e/` with `npm ci` from its lockfile (Playwright 1.62.1), and its Chromium browser (Playwright also fetched its headless shell and ffmpeg with it, about 95 MB in all, into `~/Library/Caches/ms-playwright`). No tracked file changed. It is used only to take pictures and for the project's own e2e tests, never in the product. The picture script lives in my scratch folder, outside the repository: it takes 1440-pixel full-page pictures of the prototype (choosing the person in its dark bar) and of the local product (signing in by an emailed link that it catches itself on 127.0.0.1, so no link or token is written down or printed). Every picture check from now on uses it, U.3 to U.9 included.
+
+**A refusal by the safety check, 28 September (U.10 picture check).** The reviewer was cutting the prototype's very tall pictures into readable strips inside its own scratch folder. The command began by clearing two of its own test crops, `rm -f pc/*`, after moving into the scratch folder. The safety check read the relative path as a folder inside the repository and refused it. Nothing ran and nothing was deleted. The reviewer stopped and reported it, as you asked. It then carried on without deleting anything, writing its crops to a new scratch folder by its full path. The two test crops are still in the scratch folder, outside the repository.
+
+### U.10 The board, fifth round: the 1440-pixel picture check's own differences, item by item
+
+**28 September, from Hafsah's own side-by-side picture check against board-as-lead.jpg and
+board-as-participant.jpg.** The earlier rounds fixed wording and capitals; this round made the page
+itself look like the prototype, not only read like it.
+
+1. **Page colour (DONE).** The board painted itself `#EEF0F6` directly; it now uses `var(--gw-page)`,
+   the same cream token every other page in the product already uses.
+2. **The check-in header and tabs (DONE).** "← Back to the check-in" above a dark navy card
+   (`rgb(10,22,40)`, a dropdown pill, a purple chip, a green-ruled summary) is gone. A new shared
+   component, `TheCheckInHeader.tsx`, draws the prototype's breadcrumb, serif title, cadence line,
+   "Your check-in"/"Start my check-in" button, "Ask" link and tab bar, and is wired into the board.
+   Tab map to the product's existing routes, and what has no page yet ("Views ▾"), are written in
+   that file's own comment. Wiring it into `GroundAdminPage.tsx` and `GroundParticipantPage.tsx` too
+   is real further work on two large, heavily-tested files, and is **NOT DONE** in this round - they
+   keep their own existing header and tab row for now. The summary paragraph and the session spine
+   are kept, restyled as plain text under the new header rather than dropped.
+3. **Section headings (DONE).** `Sec` gained a `size="board"` variant (22px/700/var(--gw-text), a
+   right-aligned grey subtitle) used only by the board, so every other page's heading is unchanged.
+   The `Zone` dividers ("AT A GLANCE", "THE WORK", …) are removed from the board; the prototype has
+   no banded rule between sections, only each section's own heading.
+4. **"The team today" (DONE).** "Where each person is" is renamed to the prototype's own heading and
+   redrawn on a white table with each row's last-10-session squares under the summary line. The
+   prototype's rightmost column, "what keeps coming up", needs pattern detection - off while
+   patterns are off - so it is left out rather than faked.
+5. **"Blockers" (DONE).** One white card per blocker (a bold title, an outlined status pill, "Waiting
+   on:", the sentence, the "then" quote) in place of one shared card of borderless-pill sentences.
+   `Pill` gained an `outline` prop, additive, for the prototype's bordered pills. The missing columns
+   (Raised with dates, Affects, Promised, What the proof shows) were already covered by request 11.
+6. **"Who checked in" (DONE).** Renamed from "Sessions this phase"; redrawn as one row per person -
+   name, then the last-10 squares - instead of a table with a "Session N" header per column.
+7. **"Reports" (DONE).** A new white table, one row per session, built from `sessionRows` - lifted
+   out of `GroundAdminPage.tsx`'s own inline counting into `lib/session-rows.ts` so the Report tab
+   and the board's table are the exact same rows, never a second copy that could disagree. Gated on
+   `shown.checkInGrid` (see the privacy note below). "How this has moved" now sits under its own
+   "Over time" heading with a Show/Hide link, closed by default. The prototype's weekly-digest row
+   has no data model yet - requested (71a).
+8. **The Ask bar (DONE).** A full-width input at the foot, the prototype's exact words, wired to the
+   existing Ask Groundwork panel: typing a question and pressing Ask opens the panel already asking
+   it. `stores/ask.ts` gained `pendingMessage`/`showWith`, additive.
+9. **The extra sections (DONE).** The dark indigo "How to read and use this board" card is now a
+   small grey line and link, words unchanged. `WhatTheRecordShows` and `TheJudgement` no longer cap
+   themselves at 760px. The quick-read tiles are a fixed four-column row, not `auto-fit` (which
+   wrapped three-plus-one at some widths). "Decisions needed"'s owner is plain text, not a red pill.
+10. **The participant board (DONE, as far as data allows).** The header now says "Start my check-in"
+    for a party and "Your check-in" for whoever runs it, and "People and setup" is unconditional
+    (`ground-tabs.ts` always includes it; my first pass had wrongly gated it to the lead). Every
+    other section already follows the switchboard's own reader gating. The amber "Today's team
+    picture isn't shared yet" card is **NOT DONE**: nothing served today carries whether the current
+    round's report has shared, or whether the party's own is ready - requested (71b) rather than
+    guessed from `withheldUntilYouCheckIn` or `readOnlyNote`, neither of which is that fact.
+
+**A privacy fix found while building item 10.** The new Reports table (item 7) first had no gate of
+its own - it would have shown a participant the whole team's session-completion and share state,
+which board-as-participant.txt never shows them. Caught before review, gated on `shown.checkInGrid`
+(the board's own existing, server-driven signal for "this reader may see everyone's session state"),
+rather than a second client-only rule.
+
+**Left for a request, not built.** docs/requests-to-engine.md gains request 71: the Reports table's
+weekly-digest row, and the fact the participant's amber card needs. Everything else this pass
+touched that has no data yet (the forecast question, "Every deal, day by day", "Reported vs criteria
+met", "Waiting on other teams", "Open issues", "Where this is heading", "Help nobody mentioned") was
+already covered by requests 6, 11 and 70, so nothing here duplicates them.
+
+**Tests:** `no-heading-without-content.spec.ts`'s Zone-count assertion updated from ">4" to "0" (the
+Zone dividers are gone from the board entirely; the rule it protects - no heading over empty content
+- is unchanged and still enforced by `shown`). Two tests that pinned the literal presence of the
+session-row counting code inside `GroundAdminPage.tsx` (`the-report-tab-shows-the-reports.spec.ts`,
+`the-lead-sees-the-ground-not-a-blank.spec.tsx`) updated to check `lib/session-rows.ts`, where that
+code now lives, for the same reason: extraction, not a behaviour change. A new
+`the-board-uses-the-page-token-and-shared-header.spec.ts` guards the page token and the shared
+header from coming back. `npx tsc -b` and the full board, grounds, company, Ask Groundwork and
+AppShell suites pass.
+
+### U.10 The board, sixth round: a second picture check, and every check-in page's header (items A-J)
+
+**28 September, from a second 1440-pixel side-by-side picture check, plus two items Hafsah added
+directly.** All ten items DONE except where marked.
+
+1. **The stray dropdown pill (DONE).** "Sales team, Q3 ▾" above the breadcrumb, near-invisible
+   white-on-white after the fifth round made the page cream, was `TheOtherBoardsYouAreIn` -
+   styled for the dark header the board no longer has. Restyled for a light ground and moved into
+   the tab row's own "Views ▾" slot (still not built) via a new `trailing` prop on the header.
+2. **The "Check-ins" breadcrumb (DONE).** Now a navy underlined link to /grounds, not plain text.
+3. **"The team today" (DONE).** One compact table row per person (name, summary, pill, squares in
+   a fixed column), not a stacked card. `ask` and `finding` kept as one quiet grey second line.
+4. **"Who checked in" (DONE).** Squares in their own fixed-width column, so a long lead's note
+   under a name no longer pushes that row's squares out of line with the rest.
+5. **"Over time" (DONE).** A real 22px section heading with "Show"/"Hide" on the right, not a 13px
+   navy label.
+6. **Reports (DONE).** "All 1 session" -> "1 session in all."; "Every session" is now a wide
+   outlined white button, not a pale thin-bordered bar.
+7. **The Ask bar's example (DONE).** Built from this board's own first blocker
+   ("Why is Baraka Mwangi still waiting on the discount decision?"), or a plain fallback ("Who is
+   waiting on whom?"), not the prototype's sample data ("Green Mart"), which is not in this check-in.
+8. **Card titles (DONE).** "What success looks like", the cascade card's own title, and "What the
+   target of N assumes" are now 18px/700/near-black, the prototype's card-title weight, not a
+   13px muted caption.
+
+9. **Item I: the shared header on every check-in page (DONE for five pages; one left out on
+   purpose).** `TheCheckInHeader` is now used by `BoardPage.tsx`, `GroundAdminPage.tsx`,
+   `GroundParticipantPage.tsx`, `RoundReportPage.tsx` and `SessionReportPage.tsx` - every page's own
+   old header and tab row (`GroundTabRow`, or a page-specific one) is replaced, with every existing
+   tab kept reachable (mapped in `TheCheckInHeader.tsx`'s own comment). The rich context each page
+   already had (the board's summary and session spine; the ground pages' "which view is this, a
+   guest note, ended state, session count, days left"; the report pages' "← Every session") is kept,
+   restyled as plain text under the new header rather than dropped. **Left out on purpose:**
+   `ChatPage.tsx` (`/checkin/:id`, the standalone live conversation) - it has no tab row to replace,
+   and is a deliberately chrome-free, focused conversation screen; the embedded conversation tab
+   inside GroundAdminPage/GroundParticipantPage already gets the new header. Worth a second look if
+   Hafsah wants it there too.
+
+   **A product decision worth confirming with Hafsah, flagged rather than decided alone:**
+   `one-door-per-place.spec.ts` held a 2026 decision that the board must NOT be a tab on
+   GroundAdminPage, because a board tab would navigate away unlike every other tab in the old row.
+   This task's own instruction ("map each tab to its route") and the prototype's own six-tab header
+   (board-as-lead.jpg) put "Board" in the tab bar on every check-in page, including the board's own
+   header (already built and reviewed earlier this round) - so navigating away is now what every tab
+   in the row does, not an exception. The test is updated to expect this, with the reasoning written
+   into it, but the underlying reversal is Hafsah's call to confirm, not this session's to make final.
+
+10. **Item J: a test that the switchboard decides the board for all 24 situations (DONE).** A new
+    test, `the-switchboard-decides-the-board-for-all-24-situations.spec.tsx`, renders the real board
+    for every one of the 24 situations in G2's own table (`SWITCHBOARD_MATRIX`, already fully
+    transcribed from docs/modules.md - the switchboard.jpg picture is unreadable at cell level, but
+    the text table was not), and checks exactly the sections that situation names appear, in G2's
+    own order, for all 7 sections the board actually serves. Also answers whether the report is
+    switched by situation the same way: it is not, and G2 does not say it should be - "The
+    switchboard is part of B5, the board." is G2's own words, and the report's own template
+    (`what-the-template-says.ts`) has no per-situation branch at all. Both asserted at the source,
+    not only stated here.
+
+**Tests:** `a-tab-click-lands-on-that-tab.spec.tsx` and `one-door-per-place.spec.ts` updated with
+reasons written into each (the row moved to `TheCheckInHeader`; the board becoming a real tab is a
+deliberate change, not the old duplication bug). `the-two-views-are-a-pair.spec.ts` and
+`nothing-about-next-while-the-current-one-opens.spec.tsx` updated for the same reason each time:
+real UI changes (a prop instead of an inline gate; the title now legitimately appearing twice, in
+the breadcrumb and the `<h1>`), not behaviour regressions. `npx tsc -b` and the full board, grounds,
+report, company, Ask Groundwork and stores suites pass (119 files, 739 tests).
 
 ### U.11 Ending a check-in, the probation review, handover: built and tested, not yet reviewed
 
@@ -4737,7 +5438,9 @@ none of them changed. **Not ticked,** until its review.
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
   rounds · 2 of 5 answered this round", "In the way 1 · the sales deck", and "IN PROGRESS" in capital
   letters. The progress number shows 0 first, then the real figure.
-- **The board (U.10)** is still grey-blue with dark cards, not cream.
+- **The board (U.10)** was still grey-blue with dark cards, not cream. **Fixed in U.10's fifth
+  round, 28 September** (page colour, the header, section headings and the other picture-check
+  items below).
 - **Any member can list everyone in the organisation.** `/users/colleagues` returns every person
   in the organisation to any member. "Jump to" does not use it for that reason. **Answered by you on
   26 September, to do in U.4:** a member may see colleagues' names, roles and teams, as the

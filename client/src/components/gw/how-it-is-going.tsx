@@ -51,38 +51,38 @@ export function HowItIsGoing({ summary, brief, glance, tone = 'light' }: {
 
       {glance && (
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 10, fontSize: 11.5 }}>
-          <div>
-            <span style={{ color: ink.quiet }}>Progress </span>
+          <div style={{ color: ink.body }}>
+            {/*
+              ONE SENTENCE, NOT A LABEL AND TWO NUMBERS JOINED BY A DOT. "8 OF 8 ROUNDS" BESIDE
+              "1 OF 4 ANSWERED THIS ROUND" IS A CARD ARGUING WITH ITSELF, so past the plan the
+              count drops the total: the rounds are done, the run is still going, and how far
+              through is no longer the useful fact.
+            */}
             <span style={{ color: ink.strong, fontWeight: 600 }}>
-              {/*
-                "8 OF 8 ROUNDS" BESIDE "1 OF 4 ANSWERED THIS ROUND" IS A CARD ARGUING WITH ITSELF.
-                Past the plan the count drops the total: the rounds are done, the run is still
-                going, and how far through is no longer the useful fact.
-              */}
               {glance.progress.roundsPlanned && glance.progress.roundsDone < glance.progress.roundsPlanned
-                ? `${glance.progress.roundsDone} of ${glance.progress.roundsPlanned} rounds`
-                : `${glance.progress.roundsDone} ${glance.progress.roundsDone === 1 ? 'round' : 'rounds'} done`}
+                ? `${glance.progress.roundsDone} of ${glance.progress.roundsPlanned} rounds are done.`
+                : `${glance.progress.roundsDone} ${glance.progress.roundsDone === 1 ? 'round is' : 'rounds are'} done.`}
             </span>
             {glance.progress.ofPeople > 0 && (
               <span style={{ color: tone === 'dark' ? BOARD_BODY_INK : 'var(--gw-sub)' }}>
-                {' · '}{glance.progress.answeredThisRound} of {glance.progress.ofPeople} answered this round
+                {' '}{glance.progress.answeredThisRound} of {glance.progress.ofPeople} people have answered this round.
               </span>
             )}
           </div>
-          <div>
-            <span style={{ color: ink.quiet }}>In the way </span>
+          <div style={{ color: ink.body }}>
             {late
               ? (
                 <span style={{ color: ink.warn, fontWeight: 600 }}>
-                  {glance.inTheWay.count}
-                  {glance.inTheWay.oldest ? ` · ${glance.inTheWay.oldest}` : ''}
                   {/* "(0d)" read as a code on a live board. Days, in words, and nothing on the day it was named. */}
+                  {glance.inTheWay.count} {glance.inTheWay.count === 1 ? 'thing is' : 'things are'} in the way
+                  {glance.inTheWay.oldest ? `, the oldest being ${glance.inTheWay.oldest}` : ''}
                   {glance.inTheWay.daysWaiting != null && glance.inTheWay.daysWaiting > 0
-                    ? ` · ${glance.inTheWay.daysWaiting} ${glance.inTheWay.daysWaiting === 1 ? 'day' : 'days'}`
+                    ? `, waiting ${glance.inTheWay.daysWaiting} ${glance.inTheWay.daysWaiting === 1 ? 'day' : 'days'}`
                     : ''}
+                  .
                 </span>
               )
-              : <span style={{ color: ink.strong, fontWeight: 600 }}>Nothing</span>}
+              : <span style={{ color: ink.strong, fontWeight: 600 }}>Nothing is in the way.</span>}
           </div>
         </div>
       )}

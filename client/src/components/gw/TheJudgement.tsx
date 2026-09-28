@@ -25,7 +25,7 @@ export interface TheJudgementRead {
 }
 
 const Head = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--gw-sub)', margin: '18px 0 7px' }}>
+  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1px', color: 'var(--gw-sub)', margin: '18px 0 7px' }}>
     {children}
   </div>
 )
@@ -45,23 +45,30 @@ export function howManyNeverReachedIt(n: number): string {
   return `${n} conversations never reached this.`
 }
 
-/** "Start with: Aisha" was a label and a colon. `startWith` is who to begin with, so it becomes one sentence. */
+/**
+ * "Start with: Aisha" was a label and a colon. `startWith` is who to begin with, so it becomes one
+ * sentence. And "Start with You." is nobody's own sentence about themselves - a reader is "you" to
+ * the product, not a name it hands back to them, so when the answer is the reader, it reads "Start
+ * with yourself."
+ */
 export function startWith(who: string): string {
   const w = who.trim().replace(/^start with\s+/i, '').replace(/^(The|A|An|Each|Every|All|Any)\b/, (d) => d.toLowerCase())
+  if (/^you$/i.test(w)) return 'Start with yourself.'
   return `Start with ${w}${/[.!?]$/.test(w) ? '' : '.'}`
 }
 
 export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }) {
   if (!it?.theGap && !it?.whatToDo?.length) return null
   return (
-    <div style={{ maxWidth: 760 }}>
+    // U.10: full width, like the rest of the prototype's board - not capped at 760px.
+    <div>
       {/* The gap, in the largest type on the board, because it is the one thing they will remember. */}
       {it.theGap && (
         <div style={{
           background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10,
           padding: '14px 16px', marginBottom: 4,
         }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.4px', color: 'var(--gw-navy)', marginBottom: 5 }}>THE GAP</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.4px', color: 'var(--gw-navy)', marginBottom: 5 }}>The gap</div>
           <div style={{ fontSize: 15.5, color: 'var(--gw-text)', lineHeight: 1.55, fontWeight: 600 }}>{it.theGap}</div>
         </div>
       )}

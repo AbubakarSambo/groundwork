@@ -28,11 +28,23 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { MARK_WORDS, readMark, type MarkKind } from './the-mark'
 
-/** A titled band with a rule, grouping sections. */
+/**
+ * A titled band with a rule, grouping sections.
+ *
+ * U.10 RE-REVIEW ITEM 1: SENTENCE CASE, NOT CAPITALS. The prototype's own board and report screens
+ * (docs/prototype/screens/B5-the-board/board-as-lead.jpg and .txt - "Every deal, day by day", "The
+ * team today", "Blockers", "What keeps coming up", "Who checked in", "Open issues", "Where this is
+ * heading"; confirmed against B4's team-report.jpg too - "What moved", "What each person did",
+ * "Where people see it differently") draws every heading in sentence case, bold, never in capitals.
+ * This component drew every heading in the product uppercase via `textTransform`, which is not what
+ * the prototype does anywhere - so the fix is here, once, rather than on each of the pages that use
+ * it. Labels passed in are already written in sentence case as content; removing the transform is
+ * enough.
+ */
 export function Zone({ label }: { label: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '30px 2px 2px' }}>
-      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.7px', fontWeight: 800, color: 'var(--gw-navy)' }}>{label}</span>
+      <span style={{ fontSize: 13, letterSpacing: '.1px', fontWeight: 800, color: 'var(--gw-navy)' }}>{label}</span>
       <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
     </div>
   )
@@ -59,8 +71,26 @@ export function Zone({ label }: { label: string }) {
  * `n` is optional and nothing else passes it - a numbered section only makes sense where the
  * sections are a sequence somebody works through, which is Context and not, say, Settings.
  */
-export function Sec({ title, src, n, on = 'light' }: { title: string; src?: string; n?: number; on?: 'light' | 'dark' }) {
+export function Sec({ title, src, n, on = 'light', size = 'default' }: { title: string; src?: string; n?: number; on?: 'light' | 'dark'; size?: 'default' | 'board' }) {
   const dark = on === 'dark'
+  const board = size === 'board'
+  /*
+   * U.10: THE BOARD'S OWN SECTION HEADINGS, THE PROTOTYPE'S SIZE.
+   *
+   * The prototype (board-as-lead.jpg) heads every board section bold, near-black, about 22px, with
+   * a small grey sentence right-aligned beside it - not the 14px muted label every other page in the
+   * product uses for the same slot. `size="board"` is additive: every other caller of `Sec` is
+   * unchanged, so Context, Settings and the rest keep the heading they already had. Only the board
+   * passes it.
+   */
+  if (board) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', margin: '28px 2px 10px', justifyContent: 'space-between' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', margin: 0 }}>{title}</h2>
+        {src && <span style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'right', maxWidth: '100%' }}>{src}</span>}
+      </div>
+    )
+  }
   return (
     /*
       AND IT WRAPS, BECAUSE THE SOURCE LINE WAS BEING CUT OFF THE SCREEN.
@@ -84,7 +114,7 @@ export function Sec({ title, src, n, on = 'light' }: { title: string; src?: stri
           {n}
         </span>
       )}
-      <h2 style={{ fontSize: 12.5, letterSpacing: '.4px', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,.45)' : 'var(--gw-sub)', fontWeight: 700 }}>{title}</h2>
+      <h2 style={{ fontSize: 14, letterSpacing: '.1px', color: dark ? 'rgba(255,255,255,.45)' : 'var(--gw-sub)', fontWeight: 700 }}>{title}</h2>
       {/* Beside the title where it fits, on its own line where it does not, and still right-aligned. */}
       {src && (
         <span style={{
@@ -122,17 +152,26 @@ export function Row({ children, first }: { children: React.ReactNode; first?: bo
   return <div style={{ padding: '11px 0', borderTop: first ? 'none' : '1px solid var(--gw-border)' }}>{children}</div>
 }
 
-export function Pill({ children, tone = 'flat' }: { children: React.ReactNode; tone?: 'good' | 'warn' | 'bad' | 'info' | 'flat' }) {
-  const m: Record<string, { bg: string; fg: string }> = {
-    good: { bg: 'var(--gw-green-bg)', fg: 'var(--gw-green-t)' },
-    warn: { bg: 'var(--gw-amber-bg)', fg: 'var(--gw-amber-t)' },
-    bad: { bg: 'var(--gw-red-bg)', fg: 'var(--gw-red-t)' },
-    info: { bg: 'var(--gw-blue-bg)', fg: 'var(--gw-blue-t)' },
-    flat: { bg: '#EEF0F4', fg: 'var(--gw-sub)' },
+/**
+ * `outline` is additive (U.10). The prototype's blocker pills (board-as-lead.jpg) carry a visible
+ * border in the tone's own colour - "Blocking" is pink fill, dark red text, red border. Every other
+ * caller of Pill is unchanged: `outline` defaults to false, so nothing elsewhere in the product grew
+ * a border it did not have.
+ */
+export function Pill({ children, tone = 'flat', outline = false }: { children: React.ReactNode; tone?: 'good' | 'warn' | 'bad' | 'info' | 'flat'; outline?: boolean }) {
+  const m: Record<string, { bg: string; fg: string; b: string }> = {
+    good: { bg: 'var(--gw-green-bg)', fg: 'var(--gw-green-t)', b: 'var(--gw-green-b)' },
+    warn: { bg: 'var(--gw-amber-bg)', fg: 'var(--gw-amber-t)', b: 'var(--gw-amber-b)' },
+    bad: { bg: 'var(--gw-red-bg)', fg: 'var(--gw-red-t)', b: 'var(--gw-red-b)' },
+    info: { bg: 'var(--gw-blue-bg)', fg: 'var(--gw-blue-t)', b: 'var(--gw-blue-b)' },
+    flat: { bg: '#EEF0F4', fg: 'var(--gw-sub)', b: 'var(--gw-border)' },
   }
   const c = m[tone] ?? m.flat
   return (
-    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 11, background: c.bg, color: c.fg, whiteSpace: 'nowrap' }}>
+    <span style={{
+      fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 11, background: c.bg, color: c.fg, whiteSpace: 'nowrap',
+      border: outline ? `1px solid ${c.b}` : 'none',
+    }}>
       {children}
     </span>
   )
@@ -149,7 +188,7 @@ export function Stat({ label, value, caption, tone }: { label: string; value: st
   const colour = tone === 'good' ? 'var(--gw-green-t)' : tone === 'warn' ? 'var(--gw-amber-t)' : tone === 'bad' ? 'var(--gw-red-t)' : 'var(--gw-navy)'
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', flex: 1, minWidth: 150 }}>
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 12, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700 }}>{label}</div>
       <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: colour }}>{value}</div>
       {caption && <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{caption}</div>}
     </div>
