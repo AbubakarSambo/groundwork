@@ -39,7 +39,6 @@ const RESTS_ON = ['What this is built from', 'What this rests on']
 
 /** Body copy is capped so a long quote does not run the full width of the container. */
 const PROSE: React.CSSProperties = { maxWidth: '68ch', lineHeight: 1.6 }
-const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
 /**
  * THE SHARED REPORT, IN THE SHAPE THE MARKETING PAGE PROMISES.
@@ -90,14 +89,20 @@ const SHEET = `
   .gw-sr .gw-tile-s   { font-size: 13px; line-height: 1.5; }
 }
 `
+/*
+ * U.9 REVIEW FIX 12: A LABEL IS A SHORT SENTENCE, NOT A SHOUTED CAPTION.
+ * All caps and letter-spacing turned "This is the top of it" into "THIS IS THE TOP OF IT" and,
+ * worse, a person's own name under a quote into "RUKIA OTIENO (YOU)" - a name is never a label.
+ * The words underneath were already plain sentences; only the styling shouted them.
+ */
 const LABEL: React.CSSProperties = {
-  fontFamily: MONO, fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase',
-  color: 'var(--gw-muted)', marginBottom: 10,
+  fontSize: 12, fontWeight: 700,
+  color: 'var(--gw-sub-d)', marginBottom: 10,
 }
 
 function Cite({ who, documented, figureIs }: { who: string; documented?: boolean; figureIs?: string }) {
   return (
-    <div style={{ marginTop: 6, fontFamily: MONO, fontSize: 10.5, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
+    <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--gw-muted)' }}>
       {who}{documented ? ' · from a document' : ''}
       {/*
         A FIGURE THE READER CANNOT CHECK SAYS SO, BESIDE THE LINE AND NOWHERE ELSE.
@@ -142,7 +147,9 @@ function Quotes({ items, yourName }: { items: { text: string; who?: string | nul
  * draws them in that order. `note` is the right-hand half and is never decoration: it says what the
  * block is for, which is the thing a first-time reader does not have.
  */
-function Row({ n, label, note, children, style }: {
+function Row({ label, note, children, style }: {
+  /** Kept on the interface so call sites (and the-order-comes-from-one-place test) are unchanged;
+      no longer drawn - see the note below. */
   n?: number
   label?: string
   note?: string
@@ -153,13 +160,15 @@ function Row({ n, label, note, children, style }: {
     <div style={{ ...ROW, ...style }}>
       {label && (
         <div style={{ ...LABEL, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <span>
-            {/* The space is real, not a margin: a screen reader announces "zero two against what
-                good looks like" only if there is one. */}
-            {n != null && <span style={{ color: 'var(--gw-muted)', marginRight: 8 }}>{String(n).padStart(2, '0')}{' '}</span>}
-            {label}
-          </span>
-          {note && <span style={{ color: 'var(--gw-sub)', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>{note}</span>}
+          {/*
+            U.9 REVIEW FIX 7 AND 12: NO NUMBER ON THE LABEL EITHER.
+            "01 What this sits under" numbered every block, which is what produced "Session 1 /
+            Session 1 / Session 1" once the masthead above also carried a number and a title. `n`
+            still says where a block sits in THE_ORDER, for the order-comes-from-one-place test,
+            but nothing about a report needs a person to count blocks to read it.
+          */}
+          <span>{label}</span>
+          {note && <span style={{ color: 'var(--gw-sub)', fontWeight: 400 }}>{note}</span>}
         </div>
       )}
       {children}
@@ -461,15 +470,24 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                         ))}
                       </div>
                     )}
+                    {/*
+                      U.9 REVIEW FIX 12: A CAPTION ABOVE ITS OWN PARAGRAPH, NOT A LABEL AND A COLON.
+                      "Why it matters: {atStake}" and "What settles it: {settledBy}" joined a label
+                      to a sentence with a colon, which reads as a table row. Each is now a small
+                      caption above its own full sentence, the same pattern the block's own note
+                      already uses.
+                    */}
                     {o.atStake && (
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
-                        <span style={{ color: 'var(--gw-sub)' }}>Why it matters: </span>{o.atStake}
-                      </p>
+                      <div style={{ marginTop: 2 }}>
+                        <p style={{ margin: '0 0 2px', fontSize: 11.5, color: 'var(--gw-sub)' }}>Why this matters</p>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>{o.atStake}</p>
+                      </div>
                     )}
                     {o.settledBy && (
-                      <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
-                        <span style={{ color: 'var(--gw-sub)' }}>What settles it: </span>{o.settledBy}
-                      </p>
+                      <div style={{ marginTop: 2 }}>
+                        <p style={{ margin: '0 0 2px', fontSize: 11.5, color: 'var(--gw-sub)' }}>What would settle it</p>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>{o.settledBy}</p>
+                      </div>
                     )}
                     {o.restsOn.length > 0 && (
                       <Folded summary="The lines this comes from">
@@ -569,8 +587,11 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       {/* ── The one conversation worth having. Boxed, because it is the thing to do next. */}
       {d.theConversationWorthHaving ? (
         <div style={{ padding: '18px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-border)' }}>
+          {/* U.9 REVIEW FIX 12: no more "06 THE CONVERSATION WORTH HAVING NOW" - a number and a
+              shout on a heading that already reads plainly as a sentence in itself. `next()` still
+              advances `step`, which the "nothing yet" empty state below reads. */}
+          {(() => { next(); return null })()}
           <div style={{ ...LABEL, color: 'var(--gw-navy)', marginBottom: 6 }}>
-            <span style={{ color: 'var(--gw-navy)', opacity: .6, marginRight: 8 }}>{String(next()).padStart(2, '0')}{' '}</span>
             The conversation worth having now
           </div>
           <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.45, fontWeight: 600, color: 'var(--gw-text)', maxWidth: '58ch' }}>{d.theConversationWorthHaving}</p>
