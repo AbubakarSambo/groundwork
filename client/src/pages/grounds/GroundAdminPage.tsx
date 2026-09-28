@@ -47,7 +47,7 @@ import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { billingApi } from '@/api/billing'
 import { scenarioLabel, SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
-import { whoIsInRound } from '@/lib/who-is-in-this-round'
+import { whoIsInRound, countsInRound } from '@/lib/who-is-in-this-round'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
@@ -1898,9 +1898,16 @@ export function GroundAdminPage() {
                 answered: (ground as any)?.sessionProgress?.completed ?? mySessionsDone,
                 parties: (ground as any)?.sessionProgress?.total
                   ?? whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length,
-                /* The lead sees who is on their own check-in, so no fallback is needed here. */
+                /*
+                 * ITEM D/3, U.10 RE-REVIEW: ONE SOURCE FOR "WHO IS IN THIS ROUND", ON THE SCREENS.
+                 * This filtered `!p.managingOnly` on its own, a different rule from `countsInRound`
+                 * (a managing-only lead still counts for session 1 - who-is-in-this-round.ts) - the
+                 * same population `whoIsInRound` above already uses for `parties`. Two counts on one
+                 * card that could disagree about the very thing the card is about.
+                 * The lead sees who is on their own check-in, so no fallback is needed here.
+                 */
                 waitingOn: (ground.participants ?? [])
-                  .filter((p: any) => !p.managingOnly && p.userId !== user?.id)
+                  .filter((p: any) => countsInRound(p, openRound, (ground as any).scenario) && p.userId !== user?.id)
                   .filter((p: any) => !(((p as any).checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
                   .map((p: any) => labelInASentence(p)),
                 /* The lead's page does not fetch the shared report, and these two rows are about
