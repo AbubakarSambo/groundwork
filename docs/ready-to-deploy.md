@@ -1,6 +1,6 @@
 # Ready to deploy?
 
-**This is a draft, written on 27 September 2026, late evening. It is not finished yet.** Tomorrow's first full run is the 24-scenario proof for task 1.6. When it has run, this document is finished, with its results.
+**Updated on 28 September 2026, at night.** The full 24-scenario proof for task 1.6 and the deploy blockers is run-12, below. Run-13, the second full run, confirmed it.
 
 Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds all of the screens workspace's work up to `185ff692` (`wip/prototype-ui`), plus the engine's work.
 
@@ -30,13 +30,30 @@ Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds a
 
 ## Test results
 
+**Newest, 28 September at 05:09, on the code merged with the screens branch (`338c4dbe`): API 10,408 of 10,408 tests pass. Client: 3,215 of 3,217 pass.** The two that fail are the screens workspace's sidebar tests. Two privacy items came from the screens workspace tonight (request 43): a participant being sent other people's ratings on a forming report is fixed (`59a62cc3`). Whether the lead should be sent everyone's ratings is a question for Hafsah, in the morning report.
+
+**Before that, at 04:45, on `f75afe50`: API 10,399 of 10,399 tests pass. Client: 3,195 of 3,198 pass.** The three that fail are all the screens workspace's sidebar tests ("Jump to", and two in "the sidebar waits for the list"). They depend on the date or the time, not on any engine change, and I have passed them to the screens workspace. The client's plain-wording check failed once tonight because of a new engine line joined with a colon. I rewrote it as two full sentences, and it passes.
+
 On the combined code at `dd9803c8`, with all seven blockers and decisions 35 and 36 fixed: **API 10,229 of 10,229 tests pass, in 1,103 suites.** The typecheck is clean. **Client: 3,196 of 3,198 pass.** The two that fail are the screens workspace's sidebar tests. They fail even alone, although no client file has changed since `5413a8ee`, when all 3,198 passed, so they seem to depend on the date or the time. I have passed them to the screens workspace. Before that, on the combined code at `5413a8ee`:
 - **API:** 10,100 of 10,100 tests pass, in 1,096 suites. The typecheck is clean.
 - **Client:** 3,198 of 3,198 tests pass, in 446 files. The typecheck is clean.
 - **The last full 24-scenario run (run-10):** the checker says nothing is worse than the baseline. Every quote was from the record. There were no leaks of the lead's words.
 - **Task 1.6, tested on sales, seniorhire and openread, twice each:** every problem count in the scorer was 0, every quote was from the record, and the reports took no longer than before the check was added.
 - **The stored report prompt is at `report_synthesis` version 7.** It now carries the rule "every verb keeps its subject". The reports from the three test runs record version 7 as their `promptVersionId`, and nothing else changed: every problem count was 0, and 260 of 260 quotes were from the record.
-- **Still to come: the first full run tomorrow.** That is the proof for task 1.6 across all 24 scenarios.
+- **The full 24-scenario proof, run-12, on `5b01fe58`, with all the blocker fixes:**
+  - **Every problem count in the scorer is 0 across all 24 scenarios, so task 1.6 is met.** Run-10 had 114 internal labels, 36 role descriptions used as names, and 2 sentences starting in lower case.
+  - **No board or report carries a pattern.**
+  - **No invited person read any of the lead's private words about them.** The check matched four people, and each match was that person's own words. That is two full runs in a row with none.
+  - **Quotes:** 479 of 482 were word for word in the record. The other 3 were in lines built when a page is opened, which is now covered too (`4efa6a74`). Replayed over run-12's pages, it is 480 of 480.
+  - **The judgements:** 18 clearly right of the 20 that could be tested and had complete reports, which is 90%.
+  - **Run-13, the next full run, on `e7b9cd65`:**
+    - the checker says nothing is worse than the baseline;
+    - every problem count is 0 again;
+    - 799 of 799 quotes are word for word from the record;
+    - no board or report carries a pattern;
+    - no invited person read any of the lead's private words, the third run in a row with none;
+    - the judgements are 17 right of 21, or 81%, so task 1.5's bar of two runs in a row at 90% is not met yet.
+  - **The checker's verdict on run-12:** it failed run-12 on three conversation numbers ("specific detail asked for", "blocker checked", and "turns asking more than one question"). Re-running the two scenarios that lost the most, twice on the same build, brought them back into the usual range. So it was variation between runs, not a change. Run-13 checks it again.
 
 ## The deploy blockers, and whether each is fixed
 

@@ -57,6 +57,7 @@ import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFir
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
+import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { theLeadsWordsAbout } from '../grounds/the-leads-words-about-someone';
@@ -1278,6 +1279,31 @@ export class BoardService {
             })),
           }
         : null;
+    }
+
+    /*
+     * EVERY QUOTE IN WHAT IS BUILT ON OPEN IS THE RECORD'S WORDS, OR IS NOT A QUOTE.
+     *
+     * The stored report's quotes were made the record's words before it was kept. What this board
+     * builds now never went through that pass: the tiles quote a worry or a blocker in its record
+     * words, and the sections below carry the engines' and the wording model's own sentences. Read
+     * on seniorhire, run 12, Amina's Blockers tile: "I haven't explicitly said 'get me out of these
+     * meetings.' I did say he..." - she typed those words in double marks, the record reader wrote
+     * them in single ones, and nobody said them as the tile quoted them. See a-quote-built-at-the-read.
+     *
+     * Not the record's own rows (whoOwnsWhat, dependencies), which are the record, and not what the
+     * lead typed (the targets, the poll, the title), which is theirs as they typed it. A tile keeps
+     * its place: only its line is read, so a tile never goes, and its line never goes blank.
+     */
+    {
+      const quotable = await theRecordAQuoteMayComeFrom(this.prisma as any, groundId);
+      const requoted: string[] = [];
+      const q = <T,>(v: T): T => (v == null ? v : quotesBuiltAtTheRead(v, quotable, requoted));
+      if (Array.isArray(out.quickRead)) out.quickRead = (out.quickRead as any[]).map((t) => ({ ...t, sub: q(t?.sub) }));
+      for (const k of ['howItIsGoing', 'divergence', 'eachPerson', 'stillUnanswered', 'contribution', 'coverage', 'hiddenContributors', 'decisions', 'managerAlignment'] as const) {
+        if (out[k] != null) out[k] = q(out[k]);
+      }
+      if (requoted.length) this.logger?.warn?.(`Board for ${groundId}: ${requoted.length} quote(s) built at the read were not the record's words. First: ${requoted[0].slice(0, 200)}`);
     }
 
     /*

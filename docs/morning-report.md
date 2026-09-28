@@ -10,7 +10,61 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 *This section is kept up to date through the night. It was started at 00:36. The work stops at 05:36.*
 
-**Is the engine ready to deploy?** Not yet, but close. All seven deploy blockers are fixed in code, with tests, and every API test passes. The last step is the proof on a full run of all 24 scenarios. **That run is run-12, started at about 01:15 on `5b01fe58`.** It includes everything up to the guests in Ask Groundwork. This line is updated when it has finished.
+**Is the engine ready to deploy? Yes, on the engine's side.** All seven deploy blockers are fixed, with tests, and proven on two full runs of all 24 scenarios, run-12 and run-13.
+- On both runs every problem count in the scorer is 0, which meets task 1.6.
+- No board or report carries a pattern.
+- No invited person read any of the lead's private words.
+- On run-13, every one of the 799 quotes served was word for word in the record.
+- The checker passes run-13 with nothing worse than the baseline. It failed run-12 on three conversation numbers, and re-running the same build showed that was variation.
+
+What is left before release is not the engine: it is the steps below, which need Abubakar and Hafsah. The judgement, task 1.5, is not yet at Hafsah's bar. Run-12 was 90% and run-13 was 81%, and the bar is two runs in a row at 90%. Hafsah decided the aim is deployment, with the judgement improving every week after.
+
+**The last hour, 04:36 to 05:15:**
+- Week 2 was measured live, twice, and kept. No turn asks two questions any more. One number to watch is below.
+- A privacy fix: a participant was sent other people's ratings on a report still being put together. That is fixed, with a test.
+- One privacy question is for Hafsah: the code sends the lead everyone's ratings on purpose, and CLAUDE.md says it must not. It is the first item under "What needs Hafsah".
+- The screens workspace's newest work is merged in, and every API test passes on the merged code.
+
+**Run-13's results, tonight's second full run, on `e7b9cd65`, read against the database and the actual sentences:**
+- **The checker says nothing is worse than the baseline.** "Blocker checked" is back up to 42, and "specific detail asked for" to 85. That confirms run-12's low numbers were variation.
+- **Every problem count in the scorer is 0 again,** so task 1.6's bar holds on two full runs in a row.
+- **Quotes:** 799 of 799 served are word for word in the record, including the lines built when a page is opened.
+- **Patterns:** none on any board or report.
+- **The lead's private words:** none reached any invited person. The one match was Tobi's own words, "My role is to manage the relationships with our five largest clients". That is three full runs in a row with none.
+- **Jargon in reports and boards rose to 180,** still far below the baseline of 511. It is mostly "pipeline" in sales and "bottleneck" in openread, which are the people's own words.
+- **The judgements: 17 clearly right of the 21 that count, which is 81%.**
+  - **Loans is clearly right for the first time:** "the problem is the loan program itself, which expects repayments before a new business can earn anything".
+  - **Crisis** was flagged incomplete at five minutes. Its captured report holds all 3 findings and would count as right, but under the rule I have used every night I have left it out.
+  - **Couldn't be tested:** advisor and shock again. Week 1 was in this run, but in both scenarios the simulated person still never said the fact.
+  - **Not right:**
+    - project: it says the team is blocked, not that they disagree on scope;
+    - realign: it says one of the two directions came from the lead;
+    - sales: Kwame's miscount again;
+    - snapshot: the lead's own signature appears only as "follow up with Ravi".
+- **So task 1.5 is not met.** Run-12 met Hafsah's bar, with 18 of 20, which is 90%. Run-13 did not, with 17 of 21, which is 81%. The bar needs two runs in a row.
+
+**Run-12's results, read against the database and the actual sentences:**
+- **The run is sound.** All 24 scenarios finished. Two reports were incomplete (implementation and newmanager, 2 findings for 3 people each), and those two are left out.
+- **Task 1.6 is met: every problem count in the scorer is 0 across all 24 scenarios.** On run-10 there were 114 internal labels, 36 role descriptions used as a name, and 2 sentences starting in lower case.
+- **Patterns:** no board or report served in the whole run carries one.
+- **The lead's private words:** none reached any invited person. The check matched 4 people, and each match was that person's own words: Yemi said "I'm the account manager for the relationship" himself, for example. That makes two full runs in a row with none.
+- **Quotes:** 479 of 482 were word for word in the record. The 3 that were not are all in lines built when the page is opened, which the quote check did not yet cover. That is now fixed (`4efa6a74`), with two more fixes behind it (`d1c35b87`, `6331337b`). Replayed over run-12, it is 480 of 480.
+- **The judgements: 18 clearly right of the 20 that count, which is exactly 90%.** Advisor and shock could not be tested: Peter never mentions the other two banks, and nobody says first-hand that the reviews were missed. Loans and sales were not right. **Run-12 meets Hafsah's bar for task 1.5 on its own**, with at least 20 testable and at least 90% right. The bar needs two full runs in a row, and run-10 did not meet it, so the next full run decides task 1.5.
+- **But the checker fails run-12 on the conversation.**
+  - "Specific detail asked for" was 71, against a baseline of 88.
+  - "Blocker checked" was 24, against 37.
+  - "Turns asking more than one question" was 39, against 37.
+
+  These count phrases in Groundwork's turns, such as "by when", "which" and "what have you tried".
+- **The answer: variation between runs, not a change of mine.** I re-ran sales and seniorhire, the two scenarios that lost the most, twice on exactly run-12's build.
+
+  | | Blocker checked, sales | Blocker checked, seniorhire | Specific detail, sales | Specific detail, seniorhire |
+  | --- | --- | --- | --- | --- |
+  | Runs 8, 9 and 10 | 10, 10, 15 | 2, 4, 7 | 21, 27, 27 | 9, 13, 8 |
+  | Run-12 | 7 | 2 | 22 | 4 |
+  | Same build, run again | 13 and 8 | 6 and 3 | 28 and 18 | 14 and 12 |
+
+  On exactly the same code they came back into the usual range. So run-12 was a low draw, and there is nothing to drop. **Run-13, tonight's second full run, started at 03:10 on `e7b9cd65`.** It is the second of the two runs task 1.5's bar needs, and it also measures week 1 on advisor and shock.
 
 **Run-11 does not count, and the product was not at fault.** I started it at about midnight, before tonight's five hours began, from a separate copy of the code, so that the builders' work could not change it halfway through. But the runner starts the model itself, to play the simulated people, and that copy did not have the model's credentials file, which is kept out of git. So every simulated person's answer failed. No check-in could finish, and no report was written: all 25 reports were empty. I found it by reading the log, stopped it, and started run-12 from the main folder, where the credentials are.
 
@@ -41,9 +95,39 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   - **No stored prompt changed.** It is context built in code.
   - **For Hafsah:** to find the set, a participant's session may now use the item names from the lead's own check-in words, such as the three bank names. It never uses the lead's sentence, and never people's names. It is used only on shared check-ins where people see each other. This rests on decision 4, but it is new, and the gate is one line if you want it narrower.
   - **Measuring it:** advisor and shock, twice each, after run-12.
+- **Week 2 of the weekly plan (tasks 2.1 and 2.2) is built, and measured offline, not yet live** (`6f8e7036`, `91e3dc73`, `504f7271`, `5d65a68b`).
+  - **One question per turn.** The gate that found a second question only logged it; a setting from 17 September had switched off the removal. Now every way a turn is saved keeps one question. It keeps the product's own question first, then the question that asks for a specific detail, a blocker or proof, then the first. An example written as a question stays as a statement.
+    - Offline over runs 8, 9, 10 and 12, turns asking more than one question go from 132 to 0.
+    - The first version lost too many detail and blocker questions, so the rule was changed. Now the checker's counts fall by at most 2 in any run, which is inside its allowance.
+  - **The lead's name.** In turns to a participant, "your lead", "the lead" and "the person who opened this check-in for you, Michael Achebe" now become the lead's first name, for example "This record goes to Amaka." A sales lead and "take the lead" are left alone. Offline, 24 turns change.
+  - **For Hafsah:**
+    - When the product's closing line goes under a model question, the model's question is dropped so that the closing line is never lost. The other choice, holding the closing line for a later turn, would have lost it in more than a third of the cases seen.
+    - "Your manager" is not changed, because it is often a person's own manager, who is not always the lead.
+    - A few scenario packs in the database script two questions in one line, such as "How are you carrying this? What is the worry underneath it?". The code now repairs them when a turn is saved, but the real fix is in the packs, and those are yours to switch on (decision 20).
+  - **Measured live, and kept:** sales and seniorhire, twice each, on the newest build, finished at 05:11.
+
+    | Sales and seniorhire together | Runs before week 2 (run-12, run-13, and two re-runs) | Week 2, first pair | Week 2, second pair |
+    | --- | --- | --- | --- |
+    | Turns that ask more than one question | 5, 6, 5, 10 | **0** | **0** |
+    | Proof asked for | 9, 5, 10, 9 | 5 | 5 |
+    | Specific detail asked for | 26, 28, 42, 30 | 29 | 41 |
+    | Blocker checked | 9, 16, 19, 11 | 11 | 15 |
+    | Past words brought back | 34, 32, 37, 26 | 27 | 36 |
+    | Commitments recorded | 31, 42, 46, 20 | 29 | 35 |
+
+    - No turn asks two questions now, in either pair. Every other number is inside the range of the four runs before week 2, so I have kept week 2.
+    - **One number to watch:** proof asked for was 5 both times, the bottom of the earlier range. The next full run will show whether week 2 lowered it. If it did, the rule that picks which question stays should put the proof question first.
+    - Nothing in the "problems in what people read" list came up in either pair.
+    - The lead's name reads naturally, for example "Who arranged for you to be in these meetings with Amina?".
+    - **One new problem, once in 186 turns:** the model's closing sentence stayed in front of the product's last question. Tobi read "This check-in will continue in two weeks." and then "One more before this closes." in the same turn. It never happened in the four runs before, and not in the second pair. The fix is to drop the model's closing sentence when the product's last question is added. I have not built it, because there was not enough time left tonight to re-run it twice.
+- **The screens workspace's newest work is merged in** (`338c4dbe`, 21 commits). The one conflict was in the import lines of `grounds.service.ts`, and I kept what both sides use. It brought no migrations. The one privacy test it changed only gained a constructor argument, and its checks are the same.
+- **Every test, at 05:09, on the merged code.** All 10,408 API tests pass. The client passes 3,215 of 3,217. The two that fail are the screens workspace's sidebar tests, as before.
+- **Every test, at 04:45 on `f75afe50`.** All 10,399 API tests pass. The client passes 3,195 of 3,198. The three that fail are the screens workspace's sidebar tests, which depend on the date or the time, not on engine code. The client's plain-wording check had caught one engine line joined with a colon. I rewrote it as two full sentences, and it passes now (`f75afe50`). One older test pinned the old form of the record-line code, and I updated it to pin the same rule (`cc0fb346`).
+- **A privacy fix from the screens workspace's request 43** (`59a62cc3`). On a report still being put together, a participant who had already answered was served every other person's rating: how specific each person's answers were, and how sure the picture of them was. The released report already took these out, and this one did not. Now it does, and a test checks that every place a report is served takes them out. The screen never showed these, but the backend sent them.
 - Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
 
 **What needs Hafsah:**
+- **A privacy decision: should a lead be sent how each person's answers were rated?** The rule in CLAUDE.md says "Leads never see how a person's answers were rated." But the code in `api/src/modules/reports/own-reads-only.ts` sends the lead and an org admin everyone's ratings on purpose. Its comment says the lead sees everyone's reads "because leading is what the board is for". The screens workspace found this (request 43). I have not changed it, because it is a privacy rule and the two disagree. If you say the written rule stands, the fix is small: take the ratings out on the lead's path too. The lead's board would then need checking, in case it uses them.
 - **Approve the 49 plain pattern names** in `docs/pattern-names.md`, and settle B5's name. Patterns stay switched off until then. Also approve the three-day and one-week windows before a lead sees a person's pattern.
 - **Replace `docs/decisions.md` with `docs/decisions-merged.md`.** The file is protected; the step is below.
 - **The thresholds for verdicts, and who counts as a person's lead for approvals.** Decision 33 says these are decided when that work starts: weeks 10, 11 and 21 of the weekly plan.

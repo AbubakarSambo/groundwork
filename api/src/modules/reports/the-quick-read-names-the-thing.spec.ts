@@ -33,12 +33,13 @@ describe('the quick read names the thing', () => {
     expect(t.sub).toBe('Legal to review the contract, on Tunde');
   });
 
-  /* A tile is glanced at. A blocker somebody typed three sentences into is cut, not wrapped. */
-  it('and cuts a long one rather than filling the tile with it', () => {
-    const long = 'Marketing stopped sending leads in August and nobody has picked it up since then, which means the whole pipeline is running on old names';
+  /* A tile is glanced at. A blocker somebody typed three sentences into shows its first sentence,
+     whole, and never a piece of one: see what-this-session-holds (a tile shows a whole sentence). */
+  it('and shows the first sentence of a long one rather than filling the tile with it', () => {
+    const long = 'Marketing stopped sending leads in August. Nobody has picked it up since then, which means the whole pipeline is running on old names.';
     const t = tile(atAGlanceTiles({ ...base, stillOpen: 0, blocked: 1, theBlocker: long }), 'Blockers');
-    expect(t.sub.length).toBeLessThanOrEqual(72);
-    expect(t.sub.endsWith('...')).toBe(true);
+    expect(t.sub).toBe('Marketing stopped sending leads in August');
+    expect(t.sub).not.toContain('...');
   });
 
   /* And where there is nothing to name, every word it said before is still what it says. */
