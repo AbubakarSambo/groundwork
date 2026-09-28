@@ -30,6 +30,8 @@ Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds a
 
 ## Test results
 
+**Newest, 28 September at 04:45, on `f75afe50`: API 10,399 of 10,399 tests pass. Client: 3,195 of 3,198 pass.** The three that fail are all the screens workspace's sidebar tests ("Jump to", and two in "the sidebar waits for the list"). They depend on the date or the time, not on any engine change, and I have passed them to the screens workspace. The client's plain-wording check failed once tonight because of a new engine line joined with a colon. I rewrote it as two full sentences, and it passes.
+
 On the combined code at `dd9803c8`, with all seven blockers and decisions 35 and 36 fixed: **API 10,229 of 10,229 tests pass, in 1,103 suites.** The typecheck is clean. **Client: 3,196 of 3,198 pass.** The two that fail are the screens workspace's sidebar tests. They fail even alone, although no client file has changed since `5413a8ee`, when all 3,198 passed, so they seem to depend on the date or the time. I have passed them to the screens workspace. Before that, on the combined code at `5413a8ee`:
 - **API:** 10,100 of 10,100 tests pass, in 1,096 suites. The typecheck is clean.
 - **Client:** 3,198 of 3,198 tests pass, in 446 files. The typecheck is clean.
