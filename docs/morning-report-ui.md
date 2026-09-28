@@ -180,6 +180,7 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **28 September: keep the specificity rating.** It rates how specific and checkable the answers in a check-in are, not the person or their work, and it is needed. The lead's own report keeps showing her the rating of her own answers, and the "How checkable" card on the Done page stays as it passed in U.8. Request 51's "a lead is never shown even her own rating" no longer applies. Who sees which rating, and how it is worded, follows the prototype. (Recorded here because `docs/decisions.md` is protected.)
 - **28 September: deploy soon with what works, then improve the product every week.** The reviews, U.19 and U.20 carry on as planned. No screen is hidden yet: the engine workspace is checking whether some capabilities are really missing, and you will decide from its evidence. If something is to be hidden at release, the list comes in `docs/answers-from-engine.md`. When the screens are ready, I write `docs/ready-to-deploy-screens.md`: what is finished, every test result, every known problem and why it is safe.
 - **27 September: to go faster, a module gets a full review only in its first round; a re-review checks
   only what was found, plus one quick click-through of the main path. The builder fixes all findings in
@@ -318,6 +319,8 @@ is the engine's code, so I have asked the engine workspace (request 41).
 **Update, 28 September:** the engine workspace has closed half of this (request 43, `59a62cc3`). A participant's report, forming or released, now carries only their own rating. The other half is yours to decide: the engine gives the lead and an admin everyone's ratings on purpose, while CLAUDE.md says leads never see how a person's answers were rated. Until you decide, the Done page keeps its wording, as the engine workspace asked.
 
 **A second question, from the U.9 review:** a person's own report, and the Done page, show them the rating of their own answers ("How specific this session was", "How checkable today's check-in was"), to them alone. I have kept that, because it is their own and only they see it. Request 51 says a lead is never shown a rating, even of her own answers. Please say whether a person, lead or not, may see the rating of their own answers.
+
+**Answered by you, 28 September:** yes. Keep the specificity rating; it rates the answers, not the person. See your decisions near the top. One thing to know: the prototype's example boards (`docs/prototype/screens/G1-example-check-ins/`) show the lead "Nothing checkable" beside a person, for example "Omondi: nothing checkable". The engine workspace took that line off the board on 27 September (request 8), under your rule that nothing on a screen may read as a score of a person. I have not changed it back. Please say whether the board should follow the prototype there too.
 
 **Found by the U.8 review on 27 September.** CLAUDE.md's rule is plain: "Leads never see how a
 person's answers were rated." Two places in the engine's own code disagree with it. `own-reads-only.ts`,
