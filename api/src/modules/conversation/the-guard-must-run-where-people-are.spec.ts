@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 import { readFileSync } from 'fs';
 import {
   truncationsOfTheirWords, namesNobodySaid, namesWorthReporting, restoreTheirWords,
@@ -28,10 +29,14 @@ function body(startsWith: string): string {
 }
 
 describe('both paths repair what the model invented', () => {
+  /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route). A guard on the plain path is a guard on the stream, and the stream has no reply-building of its own that could skip one. */
   const paths: [string, string][] = [
-    ['the streaming path, which is the one the chat uses', 'async *sendMessageStream('],
-    ['the non-streaming path, which is its fallback', 'async sendMessage('],
+    ['the plain path, which the streaming path now runs', 'async sendMessage('],
   ];
+
+  it('and the streaming path, which is the one the chat uses, runs it', () => {
+    expect(theStreamedRouteRunsThePlainRoute(SRC)).toBe(true);
+  });
 
   it.each(paths)('%s screens what it sends, rather than only reporting on it', (_name, sig) => {
     /*
@@ -57,20 +62,18 @@ describe('both paths repair what the model invented', () => {
 });
 
 describe('the streamed text and the repaired text are not confused', () => {
-  it('stores exactly what the person saw', () => {
+  it('the screen ends on exactly what is stored', () => {
     /*
-     * `shown` is the concatenation of the deltas that actually left. Storing anything else - the raw
-     * text, or a second pass over it - means the record and the screen agree only by both arriving
-     * at the same answer twice, and they will eventually disagree.
-     *
-     * The old tail-slicing is gone with it: there is no unsent remainder to flush, because the gate
-     * decides what leaves and flushes its own.
+     * Changed 28 Sep 2026. This pinned "stores exactly what the person saw": the stream stored the
+     * deltas it had sent. Now the stream shows the first draft as it is written and then `done`
+     * carries the plain route's final reply, which ChatPage puts in place of the draft - so what the
+     * person is left looking at and what is stored are the same text, from one place. The behaviour
+     * is proven in the-streamed-route-is-the-plain-route.spec.ts.
      */
-    const stream = body('async *sendMessageStream(');
-    expect(stream).toMatch(/let reply = shown\.trim\(\);/);
-    expect(stream).toMatch(/reply = ASK_AGAIN;/);
-    const persist = stream.slice(stream.indexOf('conversationTurn.create'));
-    expect(persist).toMatch(/content: reply/);
+    expect(theStreamedRouteRunsThePlainRoute(SRC)).toBe(true);
+    const draft = body('private async streamTheDraft(');
+    expect(draft).not.toMatch(/conversationTurn\.(create|update)/);
+    expect(draft).toMatch(/gate\.push\(/);
     expect(SRC).not.toMatch(/const tail = streamedText\.slice\(/);
   });
 });
@@ -101,9 +104,9 @@ describe('a tidy-up of their own word, in lower case', () => {
   });
 
   it('and both paths report it', () => {
-    for (const sig of ['async *sendMessageStream(', 'async sendMessage(']) {
-      expect(body(sig)).toMatch(/truncationsOfTheirWords\(/);
-    }
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route). A guard on the plain path is a guard on the stream, and the stream has no reply-building of its own that could skip one. */
+    expect(body('async sendMessage(')).toMatch(/truncationsOfTheirWords\(/);
+    expect(theStreamedRouteRunsThePlainRoute(SRC)).toBe(true);
   });
 });
 
@@ -151,7 +154,7 @@ describe('the end of the reply is not lost', () => {
     /* The tail is now the DIFF between what was shown and the whole cleaned reply, which is the
        same guarantee without the character arithmetic: forHumans is not prefix-stable, so a slice
        by length could cut a word in half. What matters is unchanged - it reaches the gate first. */
-    const stream = body('async *sendMessageStream(');
+    const stream = body('private async streamTheDraft(');
     const withheld = stream.indexOf('const withheld = whatIsNewSince(cleanShown, cleanedWhole)');
     const pushed = stream.indexOf('gate.push(withheld)');
     const flush = stream.indexOf('gate.flush()');
@@ -201,7 +204,7 @@ describe('words do not fuse across a delta boundary', () => {
      * ending "you're " lost its trailing space, the next began "focused", and a real check-in showed
      * somebody "you'refocused". Invisible in a terminal; obvious in the stored turn.
      */
-    const stream = body('async *sendMessageStream(');
+    const stream = body('private async streamTheDraft(');
     expect(stream).toMatch(/const cleanedSoFar = forHumans\(raw\.slice\(0, safeUpTo\)\)/);
     expect(stream).not.toMatch(/gate\.push\(forHumans\(chunk\)\)/);
   });
@@ -209,7 +212,7 @@ describe('words do not fuse across a delta boundary', () => {
   it('and the withheld tail is a diff of cleaned text, never an offset into it', () => {
     /* Cleaning changes lengths, so a raw offset into cleaned text is off by however much was
        stripped - which would drop or repeat the end of every reply. The diff cannot drift. */
-    const stream = body('async *sendMessageStream(');
+    const stream = body('private async streamTheDraft(');
     expect(stream).toMatch(/whatIsNewSince\(cleanShown, cleanedWhole\)/);
     expect(stream).not.toMatch(/\.slice\(cleanEmitted\)/);
   });

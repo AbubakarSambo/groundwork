@@ -1351,7 +1351,16 @@ export class ConversationService {
     );
   }
 
-  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string) {
+  /*
+   * THE STREAMED ROUTE RUNS THIS SAME CODE. Hafsah, 28 September 2026: the streamed route must have
+   * the same safety net as the plain route. It used to be a copy of this method, written before most
+   * of the second tries below existed, and it had none of them: a banned word, a management word,
+   * or two questions the save could not split went out on the stream as the model wrote them. Now
+   * the stream is this method with one difference: the first draft is shown as it is written,
+   * through `streamDraft`. Everything after the draft is the same code, and the final text, which is
+   * what is saved, replaces the draft on the screen. See sendMessageStream.
+   */
+  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void } = {}) {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model.
        Straight after the door, before anything reads the message. See documents/bank-details-are-never-kept. */
@@ -1450,7 +1459,9 @@ export class ConversationService {
     try {
       const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
       const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
-      let rawReply = await this.anthropic.respond(fullSystem, history);
+      let rawReply = how.streamDraft
+        ? await this.streamTheDraft(checkIn as any, fullSystem, history, turns, message, how.streamDraft)
+        : await this.anthropic.respond(fullSystem, history);
       /*
        * AN EMPTY ANSWER IS ASKED FOR AGAIN BEFORE ANYBODY IS TOLD IT DID NOT COME OUT RIGHT. Grace,
        * the tractor owner, said "I will buy another tractor. The demand is there." and was told "That
@@ -2424,6 +2435,15 @@ export class ConversationService {
      */
     const tookTheNumbers = await this.whatTheDocumentWaitsFor(checkIn as any, message);
     /*
+     * AND WHAT WE SAID BEFORE THE MODEL SPOKE IS KEPT IN THE TURN, so the transcript holds it too. The
+     * streamed route always did this ("nine targets were written and the screen said only 'Right.
+     * The Q4 targets are clear.'"); since both routes are one, this is where it happens for both.
+     */
+    const ourOwnWords = [contextNotSaid, tookTheNumbers].filter(Boolean).join('\n\n');
+    if (ourOwnWords) {
+      aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: `${ourOwnWords}\n\n${aiTurn.content}` } });
+    }
+    /*
      * AND THE WORKING NOTES, AFTER THE REPLY AND NEVER IN FRONT OF IT.
      *
      * Fire and forget: it costs a model call and the person waiting for this answer should not pay
@@ -2611,280 +2631,87 @@ export class ConversationService {
    */
   async *sendMessageStream(checkInId: string, requestingUserId: string, message: string):
     AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[] }, void, unknown> {
-    /* The door people actually use. It had no lock for as long as the guard lived only on sendMessage(). See openTheDoor. */
+    /*
+     * THE SAME CODE AS THE PLAIN ROUTE, WITH THE DRAFT SHOWN AS IT IS WRITTEN. Hafsah, 28 September
+     * 2026. What the person reads last is `done.reply`, which is exactly what sendMessage returns and
+     * saves: every second try, the one-question rule, the closing line and the goodbye rule included.
+     * ChatPage already replaces the streamed text with it.
+     */
+    /* The same door first, so a refused session is refused before the stream opens. sendMessage checks it again. */
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
-    /* Decision 35, as in sendMessage. */
-    message = withoutBankDetails(message);
-    const againStreaming = await this.theSameAnswerAgain(checkIn.id, message);
-    if (againStreaming.kind !== 'a new answer') {
-      const say =
-        againStreaming.kind === 'the same answer, already answered'
-          ? againStreaming.reply
-          : STILL_ON_YOUR_LAST_ANSWER;
-      yield { type: 'delta', text: say };
-      yield { type: 'done', reply: say, sessionComplete: false };
-      return;
+    this.logger?.debug?.(`Check-in ${checkIn.id}: streaming the plain route.`);
+    const waiting: string[] = [];
+    let wake: (() => void) | null = null;
+    let finished = false;
+    let result: Awaited<ReturnType<ConversationService['sendMessage']>> | null = null;
+    let failure: unknown = null;
+    const running = this.sendMessage(checkInId, requestingUserId as any, message, {
+      streamDraft: (text) => { waiting.push(text); wake?.(); },
+    })
+      .then((r) => { result = r; }, (err) => { failure = err; })
+      .finally(() => { finished = true; wake?.(); });
+    for (;;) {
+      while (waiting.length) yield { type: 'delta', text: waiting.shift() as string };
+      if (finished) break;
+      await new Promise<void>((resolve) => { wake = resolve; });
+      wake = null;
     }
+    await running;
+    if (failure) throw failure;
+    const r = result as any;
+    yield {
+      type: 'done',
+      reply: r.reply,
+      sessionComplete: !!r.sessionComplete,
+      ...(Array.isArray(r.suggestedAnswers) && r.suggestedAnswers.length ? { suggestedAnswers: r.suggestedAnswers } : {}),
+    };
+  }
 
-    const personTurnCount = await this.prisma.conversationTurn.count({
-      where: { checkInId: checkIn.id, role: TurnRole.PERSON },
-    });
-    if (personTurnCount >= A_CHECK_IN_TAKES_ANSWERS) {
-      /*
-       * A refusal that says their record is safe and what to do, rather than naming a limit nobody
-       * mentioned. `canContinue: false` because this one really cannot be answered by typing more —
-       * unlike the too-short refusal, where it can. See
-       * there-is-a-ceiling-and-it-is-not-a-surprise.ts.
-       */
-      throw new BadRequestException({ message: theCeilingIsReached(), canFinish: true });
-    }
-
-    const fullSystem = await this.composeSystemPrompt(checkIn, message);
-    const personTurn = await this.prisma.conversationTurn.create({
-      data: { checkInId: checkIn.id, role: TurnRole.PERSON, content: message },
-    });
-    await this.keepTheDocumentDescription(checkIn.id, personTurn.id, message).catch((err) =>
-      this.logger.warn(`Could not keep a document description on ${checkIn.id}: ${err?.message}`),
+  /**
+   * The first draft, streamed to the screen as it is written, and returned whole for the plain
+   * route's own checks. What is shown live goes through the same sentence gate the stream always
+   * had, and the close marker is held back until it can be told apart from ordinary text. Only the
+   * draft: whatever the checks after it change arrives in `done`.
+   */
+  private async streamTheDraft(
+    checkIn: { id: string; participant?: { user?: { firstName?: string | null; lastName?: string | null } } },
+    fullSystem: string,
+    history: ChatTurn[],
+    turns: { role: TurnRole; content: string | null }[],
+    message: string,
+    show: (text: string) => void,
+  ): Promise<string> {
+    const personWords = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '').concat(message);
+    const known = personWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
+    const readerName = theFirstNameFrom(checkIn.participant?.user?.firstName, checkIn.participant?.user?.lastName);
+    const gate = new SentenceGate(
+      known,
+      readerName,
+      turns.map((t) => t.content ?? ''),
+      [...personWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])],
     );
-    await this.noteIfTheySaidWhy(checkIn as any, message);
-
     let raw = '';
-    try {
-      const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id }, orderBy: { createdAt: 'asc' } });
-      const history: ChatTurn[] = turns.map((t) => ({ role: t.role === TurnRole.AI ? 'assistant' : 'user', content: t.content }));
-      // Hold back a tail the length of the marker so a marker split across two
-      // deltas can never flash up in the person's chat before being stripped.
-      /*
-       * NOTHING UNCHECKED LEAVES. The marker hold-back was already here; this adds the screen.
-       *
-       * Until now a delta went to the screen the moment it arrived, so an invented name was read
-       * before anything inspected it, and the repair at the end could only correct what somebody
-       * had already seen. There is no way to un-send a delta - so the gate holds each sentence until
-       * it is finished, checks it, and emits only what survives.
-       *
-       * The cost is a sentence of latency instead of a word, paid on every reply rather than only
-       * the bad ones. That is the whole price of "nothing invented reaches a person".
-       */
-      const streamPersonWords = turns
-        .filter((t) => t.role === TurnRole.PERSON)
-        .map((t) => t.content ?? '')
-        .concat(message);
-      const streamKnown = streamPersonWords.concat(this.knownForThisTurn.get(checkIn.id) ?? []);
-      this.knownForThisTurn.delete(checkIn.id);
-      const streamReaderName = theFirstNameFrom((checkIn as any).participant?.user?.firstName, (checkIn as any).participant?.user?.lastName);
-      const gate = new SentenceGate(
-        streamKnown,
-        streamReaderName,
-        turns.map((t) => t.content ?? ''),
-        [...streamPersonWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])],
-      );
-      this.theirEarlierWordsForThisTurn.delete(checkIn.id);
-      let shown = '';
-
-      /*
-       * THE DOCUMENT'S OWN WORDS GO FIRST, BEFORE A SINGLE DELTA.
-       *
-       * See the-line-that-touches-what-they-said.ts. On this path the quotation cannot be added
-       * afterwards - the person has already read the reply, and there is no un-sending a delta. So
-       * it is emitted before the model starts, which is also where it reads best: the fact, then
-       * the question.
-       *
-       * It is not passed through the gate. The gate exists to catch words the MODEL invented; this
-       * sentence was written here, from the file, and checking our own quotation against the
-       * person's vocabulary would drop it for not sounding like them.
-       */
-      const owedUpFront = this.takeCitationFor(checkIn.id);
-      if (owedUpFront) {
-        shown += `${owedUpFront}\n\n`;
-        yield { type: 'delta', text: `${owedUpFront}\n\n` };
+    let emitted = 0;
+    let cleanShown = '';
+    for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
+      raw += delta;
+      const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
+      if (safeUpTo > emitted) {
+        const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
+        const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
+        if (fresh) cleanShown = cleanedSoFar;
+        emitted = safeUpTo;
+        const clean = fresh ? gate.push(fresh) : '';
+        if (clean) show(clean);
       }
-
-      /* And what a document holds, where nobody has been told yet. Same place, same reason: it is our
-         own sentence about a file, and it reads best before the question. See theContextNotYetSaid. */
-      const contextFirst = await this.theContextNotYetSaid(checkIn as any);
-      if (contextFirst) {
-        shown += `${contextFirst}\n\n`;
-        yield { type: 'delta', text: `${contextFirst}\n\n` };
-      }
-
-      /*
-       * AND A YES TO WHAT A DOCUMENT HOLDS IS WHERE ITS NUMBERS ARE WRITTEN - ON THIS PATH TOO.
-       *
-       * Found in the browser rather than in the code: the screen streams, so wiring this into
-       * `sendMessage` alone meant a lead said yes, saw "Great. What moved this week?", and nothing
-       * was written. The non-streaming path is the API's; this one is the product's.
-       */
-      const tookFromTheSheet = await this.whatTheDocumentWaitsFor(checkIn as any, message);
-      if (tookFromTheSheet) {
-        shown += `${tookFromTheSheet}\n\n`;
-        yield { type: 'delta', text: `${tookFromTheSheet}\n\n` };
-      }
-
-      let emitted = 0;
-      /** How much of the CLEANED text has gone. Cleaning changes lengths, so raw offsets do not fit. */
-      /*
-       * CLEANING IS NOT PREFIX-STABLE, SO THE LIVE TEXT IS DIFFED, NOT SLICED. See whatIsNewSince:
-       * slicing the newly cleaned prefix at the length of the last one skipped words and cut one in
-       * half ("That's a clea writing the text"). `cleanShown` is the cleaned text handed to the gate.
-       */
-      let cleanShown = '';
-      for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
-        raw += delta;
-        const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
-        if (safeUpTo > emitted) {
-          const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
-          const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
-          if (fresh) cleanShown = cleanedSoFar;
-          emitted = safeUpTo;
-          const clean = fresh ? gate.push(fresh) : '';
-          if (clean) { shown += clean; yield { type: 'delta', text: clean }; }
-        }
-      }
-      const cleanedWhole = forHumans(raw);
-      const withheld = whatIsNewSince(cleanShown, cleanedWhole);
-      const fromWithheld = withheld ? gate.push(withheld) : '';
-      if (fromWithheld) { shown += fromWithheld; yield { type: 'delta', text: fromWithheld }; }
-      const tailFromGate = gate.flush();
-      if (tailFromGate) { shown += tailFromGate; yield { type: 'delta', text: tailFromGate }; }
-      const strippedStream = { text: cleanedWhole, hadMarker: textHadCloseMarker(raw) };
-      if (!strippedStream.text) throw new Error('AI returned an empty response');
-      /*
-       * THE RECORD IS THE WHOLE REPLY, CLEANED WHOLE AND SCREENED WHOLE. What streamed is a preview
-       * and can be short where cleaning moved earlier text. The stored turn and the `done` event
-       * carry this, and the client replaces the preview with it.
-       */
-      const whole = screen(cleanedWhole, streamKnown, streamReaderName, turns.map((t) => t.content ?? ''));
-      shown = whole.text;
-
-      /*
-       * WHAT THEY SAW IS WHAT IS KEPT. `shown` is the concatenation of the deltas that actually
-       * left, so the stored turn and the screen agree by construction rather than by a second pass
-       * arriving at the same answer twice.
-       *
-       * Everything being dropped is rare and has to be handled rather than left to produce an empty
-       * bubble. The reply asks them to say it again: from their side nothing went wrong, and telling
-       * somebody the model hallucinated is alarming and useless to them.
-       */
-      /*
-       * EVERY HIT IS WRITTEN DOWN AND NOTHING IS REMOVED. See DELETES_WHAT_IT_FINDS in the gate.
-       * The branch that used to ask the model again when NOTHING survived cannot arise now that
-       * nothing is dropped, and it went with the other three re-asks for the same reason: measured
-       * live, they fired four times and won nothing.
-       */
-      let reply = shown.trim();
-      for (const h of whole.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'noted, not removed'));
-      const reachedAPatternOnTheStream = thePatternLine(checkIn.id, reply);
-      if (reachedAPatternOnTheStream) this.logger.log(reachedAPatternOnTheStream);
-      if (!reply) {
-        for (const h of gate.hits) this.logger.warn(hitLogLine(checkIn.id, h, 'nothing came back'));
-        reply = ASK_AGAIN;
-        yield { type: 'delta', text: reply };
-      }
-
-      /*
-       * THE OTHER TWO CHECKS, WHICH REPORT RATHER THAN REMOVE.
-       *
-       * A shortened version of their own word and a causal claim they did not make are both real
-       * faults, and neither is an invention of a person - so neither justifies deleting a sentence
-       * somebody is waiting to read. They are written down; the rate is what decides whether they
-       * ever become drops too.
-       */
-      const streamTruncated = truncationsOfTheirWords(reply, streamPersonWords);
-      if (streamTruncated.length) {
-        this.logger.warn(
-          `Shortened one of their own words on check-in ${checkIn.id}: ${streamTruncated.join(', ')}.`,
-        );
-      }
-      const streamCausal = causalClaimNobodyMade(reply, streamPersonWords);
-      if (streamCausal.length) {
-        this.logger.warn(
-          `Causal claim nobody made on ${checkIn.id}: ${streamCausal.join(', ')}. ${ASK_INSTEAD_OF_CONCLUDING}`,
-        );
-      }
-
-      /*
-       * WHAT WE SAID BEFORE THE MODEL SPOKE HAS TO SURVIVE THE END OF THE STREAM.
-       *
-       * `done` carries the whole reply and ChatPage replaces the streamed text with it - the comment
-       * fifteen lines below has said so for weeks. So anything yielded as a delta and not folded into
-       * `reply` is wiped the moment the stream finishes: what a document holds, and the receipt for
-       * taking its numbers, both appeared and then vanished. Found in the browser: a lead said yes,
-       * nine targets were written, and the screen said "Right. The Q4 targets are clear."
-       */
-      /* Same guard, same reason, on the path the screen uses - see the note on the turn path. */
-      const streamHonest = withoutQuotesTheyDidNotSay(reply, streamPersonWords);
-      if (streamHonest !== reply) {
-        this.logger.warn(`Check-in ${checkIn.id}: a quotation nobody said lost its marks.`);
-        reply = streamHonest;
-      }
-
-      const ourOwnWords = [contextFirst, tookFromTheSheet].filter(Boolean).join('\n\n');
-      if (ourOwnWords) reply = `${ourOwnWords}\n\n${reply}`;
-
-      reply = await this.theTurnAsItIsSaved(checkIn as any, reply);
-      const streamAiTurn = await this.prisma.conversationTurn.create({
-        data: { checkInId: checkIn.id, role: TurnRole.AI, content: reply, askedFor: stampWhatItAskedFor(reply) },
-      });
-      const signalled = strippedStream.hadMarker || this.closesInOtherWords(reply, message);
-      const close: { ready: boolean; ask?: string; sayFirst?: string } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
-      if (close.ready && !close.ask && isAnApology(message)) close.sayFirst = NOTHING_TO_APOLOGISE_FOR;
-      if (close.ask) {
-        /* Same as the turn path: a refused close may not keep its goodbye. The stream has already
-           put the farewell on the screen, so the whole reply is re-sent rather than appended to. */
-        const earlierAi = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI, id: { not: streamAiTurn.id } }, select: { content: true } }).then((rows) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
-        const stillOpen = withoutWhatWasAlreadySaid(withoutTheGoodbye(reply), earlierAi);
-        reply = withTheOneMoreLine(stillOpen, close.ask);
-        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
-        /* The farewell is already on the screen by now, and `done` carries the whole corrected
-           reply - ChatPage replaces the streamed text with it. So the delta only has to add the
-           question; no second event type is invented for something the page already does. */
-        yield { type: 'delta', text: `\n\n${close.ask}` };
-      } else if (!close.ready && hasAGoodbye(reply)) {
-        /* Same as the turn path: no goodbye in a turn that is not the last (request 47). The stream
-           has already shown it; `done` carries the corrected reply and ChatPage replaces the text. */
-        reply = withAQuestion(withoutTheGoodbye(reply), { closing: false });
-        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
-      } else if (close.ready && close.sayFirst) {
-        reply = `${reply}\n\n${close.sayFirst}`;
-        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
-        yield { type: 'delta', text: `\n\n${close.sayFirst}` };
-      }
-      const noLastOne = withoutTheLastOne(reply, (checkIn as any).sessionNumber);
-      if (noLastOne.changed) {
-        reply = noLastOne.text;
-        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
-        this.logger.warn(`Check-in ${checkIn.id}: a reference to a previous session came out of a first-session reply.`);
-      }
-      /*
-       * AND THE SAME READ OF WHAT THIS CONVERSATION MAY PROMISE, for the same reason and in the
-       * same place: after the close has been assembled. The streamed text is already on the screen
-       * word by word, so the correction rides on the final reply - which is what the page keeps -
-       * exactly as the previous-session fix above it does.
-       */
-      const scenarioHere = await this.prisma.ground
-        .findUnique({ where: { id: checkIn.groundId }, select: { scenario: true } })
-        .then((g) => g?.scenario ?? null)
-        .catch(() => null);
-      if (theReportIsNotTheirsYet(scenarioHere)) {
-        const honest = withoutPromisingTheReport(reply);
-        if (honest !== reply) {
-          reply = honest;
-          await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
-          this.logger.warn(`Check-in ${checkIn.id}: a streamed reply promised a report that is the organiser's to release; said what happens instead.`);
-        }
-      }
-
-      /* The same working notes as the other path, and for the same reasons: after the reply, fire
-         and forget, never in front of the person waiting. See noteWhatTheySaid. */
-      this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
-        this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
-      /* Suggested answers under the question, as on the other path. */
-      const suggestedAnswers = close.ready ? [] : await this.suggestedAnswersFor(streamAiTurn.id, reply, message);
-      yield { type: 'done', reply, sessionComplete: close.ready, ...(suggestedAnswers.length ? { suggestedAnswers } : {}) };
-    } catch (err) {
-      await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
-      throw err;
     }
+    const cleanedWhole = forHumans(raw);
+    const withheld = whatIsNewSince(cleanShown, cleanedWhole);
+    const fromWithheld = withheld ? gate.push(withheld) : '';
+    if (fromWithheld) show(fromWithheld);
+    const tail = gate.flush();
+    if (tail) show(tail);
+    return raw;
   }
 
   /**

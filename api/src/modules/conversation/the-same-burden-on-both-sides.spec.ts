@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -127,7 +128,9 @@ describe('and it reaches the assembled prompt', () => {
   });
 
   it('and stamps every AI turn as it is written', () => {
-    expect((SRC.match(/askedFor: stampWhatItAskedFor\(/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    expect((SRC.match(/askedFor: stampWhatItAskedFor\(/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(theStreamedRouteRunsThePlainRoute(SRC)).toBe(true);
   });
 
   /** On a solo check-in there is no other side to be uneven with, and no query worth running. */

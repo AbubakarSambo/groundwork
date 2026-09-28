@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { suggestAnswers, suggestionsThatHold, endsWithAQuestion, theQuestionIn } from './suggested-answers';
@@ -50,8 +51,10 @@ describe('suggested answers under each question', () => {
 
   it('is served on the opening, each reply, the stream, and stored for the transcript', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect((src.match(/await this\.suggestedAnswersFor\(/g) ?? []).length).toBe(3);
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    expect((src.match(/await this\.suggestedAnswersFor\(/g) ?? []).length).toBe(2);
     expect(src).toMatch(/data: \{ suggestedAnswers: answers \}/);
-    expect(src).toMatch(/yield \{ type: 'done', reply, sessionComplete: close\.ready, \.\.\.\(suggestedAnswers\.length \? \{ suggestedAnswers \} : \{\}\) \}/);
+    expect(src).toMatch(/suggestedAnswers: r\.suggestedAnswers/);
+    expect(theStreamedRouteRunsThePlainRoute(src)).toBe(true);
   });
 });

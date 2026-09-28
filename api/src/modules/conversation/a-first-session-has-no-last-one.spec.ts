@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 import { withoutTheLastOne, aFirstSessionHasNoLastOne } from './a-first-session-has-no-last-one';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -44,6 +45,8 @@ describe('a first session has no last one', () => {
   });
 
   it('runs on both reply paths', () => {
-    expect(SERVICE.match(/withoutTheLastOne\(/g)!.length).toBeGreaterThanOrEqual(2);
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    expect(SERVICE.match(/withoutTheLastOne\(/g)!.length).toBeGreaterThanOrEqual(1);
+    expect(theStreamedRouteRunsThePlainRoute(SERVICE)).toBe(true);
   });
 });

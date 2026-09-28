@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 /**
  * A second press must not become a second answer — and must not become a refusal either. The
  * person is not doing anything wrong; they are doubting a wait.
@@ -64,7 +65,12 @@ describe('and the service asks before it writes anything', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 
-  it.each(['sendMessage', 'sendMessageStream'])('%s consults it before creating a PERSON turn', (method) => {
+  /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+  it('and the streamed route runs sendMessage, so it is asked there too', () => {
+    expect(theStreamedRouteRunsThePlainRoute(src)).toBe(true);
+  });
+
+  it.each(['sendMessage'])('%s consults it before creating a PERSON turn', (method) => {
     const from = src.indexOf(`async ${method === 'sendMessageStream' ? '*sendMessageStream' : 'sendMessage'}(`);
     expect(from).toBeGreaterThan(-1);
     const body = src.slice(from, src.indexOf('\n  async ', from + 10));
