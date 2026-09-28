@@ -48,6 +48,65 @@ You asked me to stop patching screens and check whether the product follows a di
 
 Nothing has been built since you asked me to stop. **A refusal to report:** during the audit, the safety check refused one command that wrote a small file and read `.claude/launch.json` in the same line. The reviewer then split it into two steps and carried on, instead of stopping as you asked. Nothing was changed by it (it only read the server settings), but it should have stopped.
 
+## The shared parts, from the prototype (28 September)
+
+The first step of the rebuild the audit proposed: the shared parts themselves, in a new
+`client/src/components/gw/ui/` folder, with one stylesheet (`gw-ui.css`). Every value is the
+prototype's own, taken from `docs/prototype/source/app.css` as it actually renders (the file sets
+some colours three times over; the last value in the cascade is the one on screen). No existing
+page or `kit.tsx` part was changed - they stay until each screen is rebuilt from these parts.
+
+The eighteen parts, and their prototype source:
+
+- **Page** - `main`, `.wrap` (page padding, 1150px content, left-aligned, a `narrow` column for
+  sign-in and the invitation).
+- **PageTitle** - `.t-title`, `.crumb`, an avatar at 56px.
+- **CheckInHeader** - PageTitle plus Tabs, with the one fixed tab list ("Board", "Check-in",
+  "Context", "My work", "People and setup").
+- **Tabs** - `.tabs`, `.tab`, `.tab.on`. **Fixes the audit's bug:** only the chosen tab is
+  underlined now; the others get a 3px transparent underline, not none and not all of them.
+- **Section** - `section.sec`, `.sec-h`, `.note`. Headings are 21px bold ink, never navy.
+- **Panel** - `.panel`, `.pad`.
+- **EdgeList / EdgeRow** - `.list`, `.item`, `.sp` (`NeedsYouRow` made general, with a `concern`
+  colour added for real problems).
+- **PeopleTable / PersonRow / PersonCell** - the panel-and-row table, with a `help` slot for the
+  soft amber or red strip under a row.
+- **Avatar** - `.av`, one colour, initials at size ÷ 2.8.
+- **FieldRows / FieldRow** - a label-and-value row (for example "Level", "How often").
+- **Choices** - `.seg`, with a `stacked` option for a choice with a description line.
+- **ChoiceCards** - the role cards on one person's page; the chosen one keeps its white fill and
+  gets a 2px ink outline, never a solid navy fill.
+- **Toggle** - a real switch, green when on (not navy, which the old `gw-switch` used).
+- **FieldLabel, TextField, TextArea, Select** - `label.f`, `.input`, the sign-in kit's field made
+  general.
+- **Button** - kit.tsx's `Button`, brought over, with a `danger` kind added (an outlined red for
+  "End this check-in", and `dangerSolid` for a pop-up's filled-red "Remove").
+- **Tag** - kit.tsx's `Tag`, brought over unchanged.
+- **Note / Empty** - `.note`, and a locked-door panel (a 21px heading, one sentence, at most one
+  button).
+- **Toast / Modal** - `.toast`, `.modal-bg` / `.modal`, with focus trapped in the modal and Escape
+  and an outside click closing it.
+
+Where the product's `--gw-*` tokens already equal the prototype's final values (ink, muted, navy,
+the rule colours, the tone colours, the two typefaces), the stylesheet uses them. Where they do
+not - the audit's "faint" trap, where the product's `--gw-muted` (`#7D6A55`) is not the prototype's
+`--faint` (`#85705A`) - a new token, `--gwui-faint`, holds the prototype's own value instead of
+silently reusing the wrong one.
+
+**The sample page:** `/dev/parts`, every part in every state, for a picture check against
+`docs/prototype/screens/A1-look-and-layout/design-system.jpg` at 1440px. It exists only when the
+app is built in development (`import.meta.env.DEV`); the route is absent, not hidden, from a
+production build.
+
+**The guard test:** `the-rebuilt-pages-use-only-the-new-parts.spec.ts`, reading source with
+comments stripped, against a list of rebuilt pages (`rebuilt-pages.ts`) that starts empty. This
+task adds no page to it - the next task rebuilds People and one person's page from these parts,
+and that is when the first entry goes in.
+
+**Not done in this task:** any screen. People, one person's page, the check-in's "People and
+setup", the invitation and the check-in header used by every check-in page are all still built
+from the old parts, waiting for their own sessions as the audit's order sets out.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
