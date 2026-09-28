@@ -133,32 +133,46 @@ export function SharedReportForAParty({
               TheReportIsAListOfSessions for the lead's side of the same rule. */}
           {mySessions.length > 0 && (
             <details open={!(ground as any).boardRenders} style={{ marginBottom: 12 }}>
+              {/*
+                U.9 REVIEW FIX 13: FULL SENTENCES, FOLLOWING THE LEAD'S "EVERY SESSION" PATTERN.
+                "Your sessions · 1" and "each one has its own report" were a count and a fragment
+                stitched together with a dot. Below, each row read "Session 1" then "Finished 27
+                Sept 2026 · specific in places" - a date and a rating of what was said, joined the
+                same way. Each is now its own sentence.
+              */}
               <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
-                <span>Your sessions · {mySessions.length}</span>
-                <span style={{ fontSize: 11.5 }}>each one has its own report</span>
+                <span>Your sessions</span>
+                <span style={{ fontSize: 11.5 }}>
+                  {mySessions.length === 1 ? 'You have one finished session, with its own report.' : `You have ${mySessions.length} finished sessions, each with its own report.`}
+                </span>
               </summary>
               <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden', marginTop: 6 }}>
-                {mySessions.map((ci: any, i: number) => (
-                  <button
-                    key={ci.id}
-                    onClick={() => navigate(`/checkin/${ci.id}/report`)}
-                    style={{
-                      display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
-                      gap: 10, padding: '11px 13px', background: 'white', border: 'none',
-                      borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
-                      cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    }}
-                  >
-                    <span>
-                      <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
-                      <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>
-                        {ci.completedAt ? `Finished ${whenItWas(ci.completedAt, 'day')}` : 'Finished'}
-                        {howCheckable(specificityBySession?.[ci.sessionNumber])}
+                {mySessions.map((ci: any, i: number) => {
+                  const checkable = howCheckable(specificityBySession?.[ci.sessionNumber])
+                  return (
+                    <button
+                      key={ci.id}
+                      onClick={() => navigate(`/checkin/${ci.id}/report`)}
+                      style={{
+                        display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between',
+                        gap: 10, padding: '11px 13px', background: 'white', border: 'none',
+                        borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined,
+                        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                      }}
+                    >
+                      <span>
+                        <span style={{ fontSize: 13, fontWeight: 700, display: 'block' }}>Session {ci.sessionNumber}</span>
+                        <span style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'block' }}>
+                          {ci.completedAt ? `You checked in on ${whenItWas(ci.completedAt, 'day')}.` : 'You checked in.'}
+                        </span>
+                        {checkable && (
+                          <span style={{ fontSize: 11.5, color: 'var(--gw-sub)', display: 'block' }}>{checkable}</span>
+                        )}
                       </span>
-                    </span>
-                    <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
-                  </button>
-                ))}
+                      <span style={{ fontSize: 13, color: 'var(--gw-navy)' }}>&rarr;</span>
+                    </button>
+                  )
+                })}
               </div>
             </details>
           )}
@@ -255,7 +269,7 @@ export function SharedReportForAParty({
               <details style={{ marginTop: 4 }}>
                 <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px', display: 'flex', justifyContent: 'space-between' }}>
                   <span>The shared picture</span>
-                  <span style={{ fontSize: 11.5 }}>the written report, everyone's</span>
+                  <span style={{ fontSize: 11.5 }}>The written report, shared with everyone.</span>
                 </summary>
                 <div style={{ marginTop: 6 }}><TheSharedPictureAPartyReads report={report} /></div>
               </details>

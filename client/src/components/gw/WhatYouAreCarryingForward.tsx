@@ -99,10 +99,14 @@ export function WhatYouAreCarryingForward({
               Your private report will become visible to everyone else in this check-in:
             </div>
             <ul style={{ margin: '0 0 14px', paddingLeft: 18 }}>
+              {/*
+                U.9 REVIEW FIX 13: JUST THE NAME. "Amani Wekesa · amani.u8@example.test" put an
+                email address on a screen for its own sake, joined to the name with a dot. The name
+                is who is about to see the report; the address adds nothing she needs to read here.
+              */}
               {otherParties.map((p) => (
                 <li key={p.id} style={{ fontSize: 13, color: 'var(--gw-text)', marginBottom: 2 }}>
                   {p.name}
-                  {p.email ? <span style={{ color: 'var(--gw-muted)' }}> · {p.email}</span> : null}
                 </li>
               ))}
             </ul>
