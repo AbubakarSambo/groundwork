@@ -6,6 +6,7 @@ import { WhatSuccessLooksLike } from './WhatSuccessLooksLike'
 import { HowMuchThereIsToGoOn } from './HowMuchThereIsToGoOn'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WhereToFocus } from './where-to-focus'
+import { atTheStart } from '@/lib/a-colleague'
 
 /**
  * ONE SESSION'S SHARED REPORT.
@@ -100,18 +101,26 @@ const LABEL: React.CSSProperties = {
   color: 'var(--gw-sub-d)', marginBottom: 10,
 }
 
+/** "Note from Tuskys Kilimani.txt", "team-plan.txt" - a source cited by its own filename, never a
+    person's name. Used to decide how the sentence under it reads. */
+function looksLikeAFilename(who: string): boolean {
+  return /\.[a-z0-9]{2,4}$/i.test(who.trim())
+}
+
+/**
+ * U.9 RE-REVIEW, ITEM A: A SENTENCE UNDER THE QUOTE, NOT "NAME · FROM A DOCUMENT".
+ * "Baraka Mwangi · from memory" and "Note from Tuskys Kilimani.txt · a typed document" each joined
+ * a name (or a filename, when the source is a document rather than a person) to a fact with a
+ * dot. `who` is sometimes a person who said the line and sometimes the document it came from; each
+ * now reads as its own sentence, in the phrasing that fits which one it is.
+ */
 function Cite({ who, documented, figureIs }: { who: string; documented?: boolean; figureIs?: string }) {
+  const sentence = looksLikeAFilename(who)
+    ? `${who} is a typed document.`
+    : `${who} said this${figureIs ? ` ${figureIs}` : ''}.${documented && !figureIs ? ' A document backs it.' : ''}`
   return (
     <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--gw-muted)' }}>
-      {who}{documented ? ' · from a document' : ''}
-      {/*
-        A FIGURE THE READER CANNOT CHECK SAYS SO, BESIDE THE LINE AND NOWHERE ELSE.
-
-        "About a third of the way there I would say" and a count read off a system arrive here as
-        two sentences with numbers in them. On the page somebody uses to decide what to do about a
-        person, they look identical. This says which; it is about the figure, never about them.
-      */}
-      {figureIs ? <span style={{ color: 'var(--gw-amber-t)' }}> · {figureIs}</span> : null}
+      {sentence}
     </div>
   )
 }
@@ -147,30 +156,27 @@ function Quotes({ items, yourName }: { items: { text: string; who?: string | nul
  * draws them in that order. `note` is the right-hand half and is never decoration: it says what the
  * block is for, which is the thing a first-time reader does not have.
  */
-function Row({ label, note, children, style }: {
+function Row({ label, children, style }: {
   /** Kept on the interface so call sites (and the-order-comes-from-one-place test) are unchanged;
       no longer drawn - see the note below. */
   n?: number
   label?: string
-  note?: string
   children: React.ReactNode
   style?: React.CSSProperties
 }) {
   return (
     <div style={{ ...ROW, ...style }}>
-      {label && (
-        <div style={{ ...LABEL, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          {/*
-            U.9 REVIEW FIX 7 AND 12: NO NUMBER ON THE LABEL EITHER.
-            "01 What this sits under" numbered every block, which is what produced "Session 1 /
-            Session 1 / Session 1" once the masthead above also carried a number and a title. `n`
-            still says where a block sits in THE_ORDER, for the order-comes-from-one-place test,
-            but nothing about a report needs a person to count blocks to read it.
-          */}
-          <span>{label}</span>
-          {note && <span style={{ color: 'var(--gw-sub)', fontWeight: 400 }}>{note}</span>}
-        </div>
-      )}
+      {/*
+        U.9 REVIEW FIX 7 AND 12, AND THE RE-REVIEW: ONE PLAIN LABEL, NOTHING UNDER IT.
+        "01 What this sits under" numbered every block, which is what produced "Session 1 /
+        Session 1 / Session 1" once the masthead above also carried a number and a title; a
+        second, lower-case line under the label ("what the objective serves") then read as a
+        second fact stacked on the heading rather than one sentence. `n` still says where a block
+        sits in THE_ORDER, for the order-comes-from-one-place test, but nothing about a report
+        needs a person to count blocks to read it, and each label below now says everything it
+        needs to in one line.
+      */}
+      {label && <div style={LABEL}>{label}</div>}
       {children}
     </div>
   )
@@ -392,23 +398,38 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
 
       {/* ── Where the room points, on a one-time session: the lists, most-named first, under the finding. */}
       {direction && (
-        <Row n={next()} note="what the room named, most-named first" label="The direction">
+        <Row n={next()} label="What the room named, most-named first">
           <WhereToFocus direction={direction} />
         </Row>
       )}
 
-      {/* ── At a glance. Four states in a row, each a whole clause about what its number is of. */}
+      {/*
+        ── At a glance. Four states in a row, each said as one sentence.
+        U.9 RE-REVIEW, ITEM A: the label used to sit above the figure as its own shouted
+        two-tier heading ("MOVEMENT" over "Nothing yet" over a lower-case clause). The figure and
+        the clause saying what it is of are now one sentence; the label stays, for anybody using a
+        screen reader, without being shown as a heading of its own.
+      */}
       {(d.atAGlance ?? []).length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', borderTop: '1px solid var(--gw-border)' }}>
-          {d.atAGlance.map((r: any, i: number) => (
-            <div key={r.label} className={i > 0 ? 'gw-tile gw-tile-n' : 'gw-tile'}>
-              <div className="gw-tile-l" style={{ color: 'var(--gw-sub-d)', marginBottom: 4 }}>{r.label}</div>
-              <div className="gw-tile-v" style={{ color: r.tone === 'good' ? 'var(--gw-green-t)' : r.tone === 'watch' ? 'var(--gw-amber-t)' : 'var(--gw-text)' }}>{r.value}</div>
-              {/* `sub` is the whole clause saying what the number is OF - a tile that is a label
-                  and a figure is a scoreboard, and the clause is what stops it being one. */}
-              {r.sub && <div className="gw-tile-s" style={{ color: 'var(--gw-sub)', marginTop: 4 }}>{r.sub}</div>}
-            </div>
-          ))}
+          {d.atAGlance.map((r: any, i: number) => {
+            const value = (r.value ?? '').trim()
+            const sub = (r.sub ?? '').trim()
+            const endsSentence = (s: string) => /[.!?]$/.test(s)
+            return (
+              <div key={r.label} className={i > 0 ? 'gw-tile gw-tile-n' : 'gw-tile'}>
+                <span className="gw-sr-only">{r.label}</span>
+                <div className="gw-tile-v" style={{ color: r.tone === 'good' ? 'var(--gw-green-t)' : r.tone === 'watch' ? 'var(--gw-amber-t)' : 'var(--gw-text)' }}>
+                  {value}{value && !endsSentence(value) ? '.' : ''}
+                </div>
+                {sub && (
+                  <div className="gw-tile-s" style={{ color: 'var(--gw-sub)', marginTop: 4 }}>
+                    {sub.charAt(0).toUpperCase() + sub.slice(1)}{!endsSentence(sub) ? '.' : ''}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
@@ -426,7 +447,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         headings say those.
       */}
       {d.cascade && (
-        <Row n={next()} note="what the objective serves" label={d.cascade.isCascade ? 'What this sits under' : 'This is the top of it'}>
+        <Row n={next()} label={d.cascade.isCascade ? 'What this sits under, and what the objective serves' : 'This is the top of it; nothing sits above it'}>
           {d.cascade.parentNamed && (
             <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
           )}
@@ -436,7 +457,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
 
       {/* ── What this is for. The full band: the stated objective and each person's own version. */}
       {d.againstSuccess && (
-        <Row n={next()} note="the objective, and each person's own version of it" label="What everybody said good looks like">
+        <Row n={next()} label="What everybody said good looks like, and each person's own version of it">
           <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} headingIsTheCallers />
           {definitions.length > 0 && (
             <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
@@ -453,7 +474,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
 
       {/* ── Where things stand. Still open leads: it is the half somebody can act on. */}
       {(settled.length > 0 || open.length > 0) && (
-        <Row n={next()} note="what is not settled, and what is" label="Where things stand">
+        <Row n={next()} label="Where things stand">
           <div style={{ display: 'grid', gap: 8 }}>
             {openReasoned.length
               ? openReasoned.map((o, i) => (
@@ -539,8 +560,11 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
               {byPerson
                 ? (d.whatEachPersonSaid ?? []).map((p: any, i: number) => (
                   <div key={i}>
+                    {/* U.9 RE-REVIEW, ITEM A: "a colleague" as a heading is capitalised, like the
+                        start of any other sentence or line - `atTheStart` only touches the plain
+                        phrases this can fall back to, never a real name. */}
                     <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>
-                      {p.isYou ? `${p.who} (you)` : p.who}
+                      {p.isYou ? `${p.who} (you)` : atTheStart(p.who)}
                     </div>
                     {p.saying && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{p.saying}</div>}
                     {/* The product's own finding for this person, from the record: purpose, standing, the lead's number against theirs, the gap. */}
@@ -570,7 +594,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
 
       {/* ── The picture from everybody. The long read of the finding, after the sharp part. */}
       {rest.length > 0 && (
-        <Row n={next()} note="the long read of the finding above" label="The picture from everybody">
+        <Row n={next()} label="The picture from everybody">
           <div style={{ display: 'grid', gap: 10 }}>
             {rest.map((l) => <p key={l.key} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{l.text}</p>)}
           </div>
@@ -579,7 +603,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
 
       {/* ── What went quiet. Somebody was waiting on it and nobody has said it is resolved. */}
       {d.whatWentQuiet && (
-        <Row n={next()} note="waiting on somebody, and gone quiet" label="Not raised again">
+        <Row n={next()} label="Not raised again, after somebody was waiting on it">
           <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.whatWentQuiet}</p>
         </Row>
       )}
@@ -597,14 +621,14 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
           <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.45, fontWeight: 600, color: 'var(--gw-text)', maxWidth: '58ch' }}>{d.theConversationWorthHaving}</p>
         </div>
       ) : d.whyNoQuestion ? (
-        <Row n={next()} note="the one thing to settle first" label="The conversation worth having now">
+        <Row n={next()} label="The conversation worth having now">
           <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{d.whyNoQuestion}</p>
         </Row>
       ) : null}
 
       {/* ── What this rests on. The method, last and folded: a caveat above what it qualifies is
              read as a verdict on it. */}
-      <Row n={next()} note="how solid this is, and what it is built from" label="What this is built from">
+      <Row n={next()} label="What this is built from">
         <Folded summary="How much there is to go on, and what it is built from">
           <div style={{ marginTop: 10 }}>
             {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} />}

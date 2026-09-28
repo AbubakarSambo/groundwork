@@ -26,7 +26,15 @@ const REPORT = strip(readFileSync(join(__dirname, 'TheSessionsReport.tsx'), 'utf
 const drawn = [...REPORT.matchAll(/<Row\b[^>]*?label=(?:"([^"]+)"|\{[^}]*?'([^']+)'[^}]*?\})/g)]
   .map((m) => m[1] ?? m[2])
 
-const at = (label: string) => drawn.findIndex((l) => l === label)
+/*
+ * U.9 RE-REVIEW, ITEM A: LABELS NOW SAY MORE THAN ONE WORD OF CONTENT IN ONE SENTENCE.
+ * "What this sits under" and "What everybody said good looks like" used to be a short name with a
+ * separate lower-case note under it ("what the objective serves", "the objective, and each
+ * person's own version of it"); the note is folded into the same sentence as the label now, so the
+ * label text itself is longer. This still checks the label a reader sees BEGINS with the same
+ * words, which is what "comes before" means here - the block itself has not moved.
+ */
+const at = (label: string) => drawn.findIndex((l) => l.startsWith(label))
 
 describe('the order comes from one place', () => {
   it('draws what this sits under before the objective it qualifies', () => {
