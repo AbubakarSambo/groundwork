@@ -11,6 +11,11 @@ import { SentenceGate } from './nothing-invented-reaches-them';
  * 21 the product's own "One more before this closes." line under a reply that was still asking, and
  * 2 the lead's decision question under that same line.
  *
+ * Measured with the checker's own counts over the same turns: keeping the first question lost
+ * thirteen "specific detail", four "blocker checked" and three "proof asked for" turns; keeping the
+ * question that carries the check loses four, two and none, all of them under the close line, which is kept because in nine of the
+ * twenty-five close cases the harness never reached another turn.
+ *
  * What is checked is what the person reads: the sentence that comes out, whole.
  */
 const marks = (s: string) => (s.match(/\?/g) ?? []).length;
@@ -55,6 +60,24 @@ describe('a turn asks one thing', () => {
     expect(asAnExample('For the remaining applications, how many are in the pipeline, and where is each one stuck?')).toBeNull();
     /* And a claim is never made out of a question: "They became less responsive?" is not said as a fact. */
     expect(asAnExample('They became less responsive?')).toBeNull();
+  });
+
+  it('the question that carries the check is the one kept: the number and the date (realign, run 10)', () => {
+    expect(oneThingAsked('The referral scheme. What does success look like for that? For instance, what is the number of referrals you are aiming for, and by when?').text)
+      .toBe('The referral scheme. What is the number of referrals you are aiming for, and by when?');
+    /* And proof: "a bank statement" is what makes it checkable (loans, run 9). */
+    expect(oneThingAsked('The record states the payments are behind. What would tell us that you have repaid every installment on time? For instance, do you have receipts, payment confirmations, or a bank statement?').text)
+      .toBe('The record states the payments are behind. Do you have receipts, payment confirmations, or a bank statement?');
+  });
+
+  it('but an example is never the one kept: it stays as an example under the question (workplan, run 8)', () => {
+    expect(oneThingAsked('What would you say is the one thing that will tell you these approvals have actually landed? For instance, a signed document, a confirmed budget transfer, an email from a specific person?').text)
+      .toBe('What would you say is the one thing that will tell you these approvals have actually landed? For instance, a signed document, a confirmed budget transfer, an email from a specific person.');
+  });
+
+  it('"whose records, which system, or who reads it" is joined to the question it finishes (renewal, run 12)', () => {
+    expect(oneThingAsked('The consistent lateness has been the biggest frustration. Where would the number for the late deliveries come from? Whose records, which system, or who reads it?').text)
+      .toBe('The consistent lateness has been the biggest frustration. Where would the number for the late deliveries come from, whose records, which system, or who reads it?');
   });
 
   it('the product close line stays, and the question the model had left above it goes (sales, run 8)', () => {

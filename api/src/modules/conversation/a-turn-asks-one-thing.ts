@@ -27,8 +27,9 @@
  * WHICH QUESTION STAYS. The product's own lines first, because they are why the check-in exists and
  * the model cannot be relied on to ask them: the question the lead confirmed word for word, the
  * question that says a date back to check it, the lead's decision question, and the close's "one
- * more" line. Otherwise the first question, for the reason one-question-per-turn gives: keeping it is
- * the only choice that cannot change what the turn is about.
+ * more" line. Then a question that carries the check: the specific detail, a blocker checked, or
+ * proof (see CARRIES_THE_CHECK). Otherwise the first question, for the reason one-question-per-turn
+ * gives: keeping it is the only choice that cannot change what the turn is about.
  *
  * WHAT IS NOT A SECOND QUESTION. A question mark inside quotation marks is somebody's own words
  * said back to them, and a question the lead confirmed is one question however it is punctuated.
@@ -173,6 +174,26 @@ export function asAnExample(sentence: string, alreadyGaveAnExample = false): str
   return `${lead}${capital(body)}.${space}`;
 }
 
+/**
+ * THE QUESTION THAT CARRIES THE CHECK. Where the model asked two, and one of them asks for the
+ * specific detail (how many, which, by when), checks a blocker (who exactly, what have you tried) or
+ * asks for proof (a document, a photo, a statement), that is the one kept. Keeping the first lost
+ * those asks in about one turn in twenty of the ones repaired, measured on runs 8, 9, 10 and 12, and
+ * they are the engine's value (docs/engine-value.md): what makes a check-in checkable.
+ */
+const CARRIES_THE_CHECK = /\b(?:how many|how much|which|what date|what day|when exactly|by when|what number|who (?:exactly|is it|are you waiting)|what have you tried|what did you try|photo|picture|document|screenshot|receipt|statement|proof|a copy|send (?:me|it|us)|attach|upload)\b/i;
+
+/**
+ * "Whose records, which system, or who reads it?" Nothing but short asks joined by commas and "or",
+ * each of them a few words. It is the question before it, said again in parts.
+ */
+export function aShortListOfWhich(sentence: string): boolean {
+  const body = (sentence ?? '').trim().replace(/\?$/, '');
+  if (marksIn(body) > 0 || !aList(body)) return false;
+  const parts = body.split(/,\s*(?:or\s+)?|\s+or\s+/).map((x) => x.trim()).filter(Boolean);
+  return parts.length >= 2 && parts.every((x) => x.split(/\s+/).length <= 5 && STILL_ASKING.test(x.split(/\s+/)[0]));
+}
+
 export type OneThing = {
   text: string;
   changed: boolean;
@@ -196,13 +217,31 @@ export function oneThingAsked(reply: string, mustAsk: string[] = []): OneThing {
   if (asking.length <= 1) return { text, changed: false, saidAsAnExample: 0, leftOut: 0 };
 
   const ours = asking.filter((p) => p.mustAsk);
-  const keep = ours.length ? ours[ours.length - 1] : asking[0];
+  /* An example or a short list stays in the turn whichever question is kept, so it is never the one chosen. */
+  const aQuestionOfItsOwn = (p: Piece) => !asAnExample(p.text) && !aShortListOfWhich(p.text);
+  const keep = ours.length ? ours[ours.length - 1] : asking.find((p) => aQuestionOfItsOwn(p) && CARRIES_THE_CHECK.test(p.text)) ?? asking[0];
+  /* Kept on its own, "For instance, what is the number…?" is the question now, not an example of one. */
+  let keptText = keep !== asking[0] && !keep.mustAsk ? keep.text.replace(/^(\s*)(?:for instance|for example|e\.g\.|say)\s*[,:]?\s*(\S)/i, (_m, lead: string, c: string) => `${lead}${c.toUpperCase()}`) : keep.text;
   let saidAsAnExample = 0;
   let leftOut = 0;
   let gaveAnExample = pieces.some((p) => !asks(p) && /\b(for instance|for example|such as|something like)\b/i.test(p.text));
   const out: string[] = [];
   for (const p of pieces) {
-    if (p === keep || !asks(p)) { out.push(p.text); continue; }
+    if (p === keep) { out.push(keptText); continue; }
+    if (!asks(p)) { out.push(p.text); continue; }
+    /*
+     * "Where would those numbers come from? Whose records, which system, or who reads it?" The list
+     * is the rest of the question just asked, so it is joined to it as one sentence with one mark,
+     * which is the prompt's own allowance for two halves of one fact.
+     */
+    const before = out.length ? out[out.length - 1] : '';
+    if (out.length && before === keptText && aShortListOfWhich(p.text) && /\?\s*$/.test(before)) {
+      const list = p.text.trim();
+      out[out.length - 1] = before.replace(/\?\s*$/, `, ${list.charAt(0).toLowerCase()}${list.slice(1)}${p.text.match(/\s*$/)?.[0] ?? ''}`);
+      keptText = out[out.length - 1];
+      saidAsAnExample++;
+      continue;
+    }
     const said = asAnExample(p.text, gaveAnExample);
     if (said) {
       out.push(said);
