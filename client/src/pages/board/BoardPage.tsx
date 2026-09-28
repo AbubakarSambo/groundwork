@@ -30,6 +30,7 @@ import { useIsAPhone } from '@/lib/a-phone-is-not-a-narrow-desktop'
 import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-not-a-phone-screen'
 import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
 import { theLeadsNote } from '@/lib/the-leads-note'
+import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -348,9 +349,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * `shown` is the one place a section's real condition lives, and both the zone and its content
    * read it. A zone cannot render unless something under it will.
    */
+  /*
+   * U.10 RE-REVIEW ITEM A: THE SWITCHBOARD SAYS WHAT'S ON, PER SITUATION - "nothing that's off".
+   * `has()` is the server's own per-FAMILY gate; this is the finer per-SITUATION layer from G2 on
+   * top of it, for the 8 sections this pass can map. See what-the-switchboard-allows.ts.
+   */
+  const allowed = (boardSection: string) => whatTheSwitchboardAllows(b.scenario, boardSection)
+
   const shown = {
-    quickRead: has('quickRead') && !!b.quickRead,
-    startingState: has('startingState') && !!b.startingState,
+    quickRead: has('quickRead') && allowed('quickRead') && !!b.quickRead,
+    startingState: has('startingState') && allowed('startingState') && !!b.startingState,
     decisions: has('decisions') && !!b.decisions?.length,
     /*
      * THE ONLY WAY TO SET A TARGET WAS INSIDE A SECTION THAT ONLY APPEARED ONCE A TARGET EXISTED.
@@ -369,16 +377,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      * So it shows when there is something to show, OR when the reader is the person who can add
      * the first one. A party who cannot edit still sees nothing rather than an empty heading.
      */
-    objectives: has('objectives') && (!!b.objectives?.length || !!b.canEditFrame),
+    objectives: has('objectives') && allowed('objectives') && (!!b.objectives?.length || !!b.canEditFrame),
     cascade: has('cascade') && !!b.cascade,
     hiddenContributors: has('hiddenContributors') && !!b.hiddenContributors?.rows?.length,
-    divergence: has('divergence') && !!b.divergence,
+    divergence: has('divergence') && allowed('divergence') && !!b.divergence,
     /* The note stands in for the block before a round has closed, so either one is enough to show. */
-    whatTheRoomIsAbout: has('whatTheRoomIsAbout')
+    whatTheRoomIsAbout: has('whatTheRoomIsAbout') && allowed('whatTheRoomIsAbout')
       && (!!b.whatTheRoomIsAbout?.aims.length || !!b.whatTheRoomIsAbout?.places.length
         || !!b.whatTheRoomIsAbout?.things.length || !!b.whatTheRoomIsAboutNote),
     whoOwnsWhat: has('whoOwnsWhat') && !!b.whoOwnsWhat,
-    dependencies: has('dependencies') && !!b.dependencies,
+    dependencies: has('dependencies') && allowed('dependencies') && !!b.dependencies,
     checkInGrid: has('checkInGrid') && !!b.checkInGrid,
     /* Lead-only and absent for everybody else, so there is nothing to gate on here beyond its
        presence: the server does not send it to a reader who may not have it. */
@@ -393,7 +401,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      */
     contribution: has('contribution') && !!b.contribution && viewerRunsThisCheckIn,
     coverage: has('coverage') && !!b.coverage && viewerRunsThisCheckIn,
-    patterns: has('patterns') && !!b.patterns,
+    patterns: has('patterns') && allowed('patterns') && !!b.patterns,
   }
   // Only the caller's own availability is theirs to toggle.
   const myIds = new Set(b.myParticipantId ? [b.myParticipantId] : [])

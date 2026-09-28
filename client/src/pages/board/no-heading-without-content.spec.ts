@@ -58,7 +58,12 @@ describe('a zone renders only when its content will', () => {
      * So the exception is exactly as wide as the reason: empty renders only for a reader who can
      * add the first one. A party who cannot edit still gets no empty heading, which is the rule
      * this file is here to protect.
+     *
+     * U.10 RE-REVIEW ITEM A added `allowed('objectives') &&` in front of the length/canEditFrame
+     * check - the switchboard's own per-situation gate (see what-the-switchboard-allows.ts), which
+     * sits ahead of this exception rather than replacing it: a situation that never turns Targets on
+     * still shows no heading, but one that does keeps exactly the behaviour this test protects.
      */
-    expect(CODE).toMatch(/objectives: has\('objectives'\) && \(!!b\.objectives\?\.length \|\| !!b\.canEditFrame\)/)
+    expect(CODE).toMatch(/objectives: has\('objectives'\) && allowed\('objectives'\) && \(!!b\.objectives\?\.length \|\| !!b\.canEditFrame\)/)
   })
 })
