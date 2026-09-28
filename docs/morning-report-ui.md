@@ -5463,11 +5463,10 @@ page and the others still waiting will be.
   **"Out of time"** (`client/src/pages/grounds/OutOfTime.tsx`, join-outoftime.txt) are the same
   rebuild. Out of time's amber tag now sits above the heading, where the picture has it - it used to
   sit under the sentence.
-- **A new shared part, `Mark`** (`components/gw/ui/Mark.tsx`): the three bars and "Groundwork",
-  with an optional short caption above it, taken word for word from each prototype screen
-  (join-waiting.txt: "Waiting for an admin", join-outoftime.txt: "Out of time", join-expired.txt:
-  "An expired link", join-invite.txt: "The invitation"). Also new: `Callout` and `Note`'s `tone`
-  (`components/gw/ui/NoteEmpty.tsx`) for an inline error line. All three have their own tests.
+- **A new shared part, `Mark`** (`components/gw/ui/Mark.tsx`): the three bars and "Groundwork".
+  (Its first version also drew a short caption above the mark; removed in the fifth review below -
+  it was never part of the screen.) Also new: `Callout` and `Note`'s `tone`
+  (`components/gw/ui/NoteEmpty.tsx`) for an inline error line. All have their own tests.
 - **Every privacy rule is unchanged.** The two sentences "Nobody else reads your answers." and
   "Wairimu reads the report, not your words." are still held back, exactly as the page's own comment
   says, while you decide. The invitation still carries nothing of the lead's private words about the
@@ -5481,6 +5480,42 @@ page and the others still waiting will be.
   new shell. No test of behaviour, wording the person reads, or privacy was weakened.
 - **DONE.** `npx tsc -b` is clean; every test in `components/gw/ui/`, `pages/invite/`, the two moved
   pages, and every spec that reads these files by name, passes (190 tests, 20 files).
+
+#### The invitation, fifth review: five things the 1440px picture check found
+
+You pictured the invitation at 1440 (fresh, held for a seat, already joined) next to the
+prototype's join-invite and sent five things back. All five fixed:
+
+1. **The caption above the mark was never part of the screen.** It was the prototype PICTURE's own
+   frame header (the label the screenshot tool prints for whoever is browsing the exported
+   screens), not something the real screen draws. `Mark` no longer takes a caption at all - every
+   state now opens on the plain wordmark, nothing above it.
+2. **"What it asks" and "Who sees your answers" were 21px `Section` headings, jammed against the
+   next one.** They are the prototype's smaller kind of heading, about 15px bold ink. New shared
+   part: `SubHeading` (`components/gw/ui/SubHeading.tsx`, with its own test), paired with plain
+   15-16px text and a 20px gap between blocks.
+3. **"What happens to what you write" made the page twice the prototype's length.** It is now a
+   plain link, "What happens to what you write", sitting under the button's own line, that opens
+   the same four claims - unchanged words - in the shared `Modal`. The literal text stays in
+   `InvitePage.tsx` (a pinned test reads it from the page's own source), just not printed by
+   default any more.
+4. **"Held for a seat" put two sentences in the heading.** `heldForASeatCard` (`InvitePage.tsx`)
+   splits the server's one fixed sentence into a short heading, "This check-in cannot start for you
+   yet", and the sentence under it, "There is no seat for you on the plan yet. You will get your
+   invitation as soon as there is one." - same meaning, the prototype's own two-line pattern.
+5. **The name fields touched the button.** Regrouped as the prototype groups fields - `FieldLabel`
+   over `TextField`, the "Your name is optional…" note as the field pair's own help line beneath
+   it - and the button now has a normal 20px gap above it.
+
+Tests changed for this round, each with its reason inline: `Mark.spec.tsx`'s caption tests are gone
+(replaced by "no caption" and "takes no props"), with two new `SubHeading` tests added;
+`OutOfTime.spec.tsx` and `four-things-one-screen.spec.tsx`'s "look" test are back to checking a
+single mark, no caption; `four-things-one-screen.spec.tsx`'s word-order test now expects the link
+after the button rather than before it, since that is where it moved to; `a-held-invitation.spec.tsx`
+checks the new heading and sentence rather than the old two-sentence heading;
+`InvitePage.onePath.spec.tsx` opens the link before checking the four claims are still there. No
+test of behaviour or privacy was weakened. `npx tsc -b` is clean; the same 20 files, 193 tests
+(three added), all pass.
 
 ## Found on the way, for later tasks
 
