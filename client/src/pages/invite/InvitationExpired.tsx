@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { participantsApi } from '@/api/participants'
-import { Button } from '@/components/gw/kit'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
-import { AuthCard, AuthError, AuthField, AuthNotice } from '@/pages/auth/auth-kit'
+import { Page, Mark, PageTitle, Button, Note, FieldLabel, TextField } from '@/components/gw/ui'
 
 /**
- * "THIS LINK HAS EXPIRED", FOR AN INVITATION (A3, #/join/expired). The words are join-expired.txt's.
+ * "THIS LINK HAS EXPIRED", FOR AN INVITATION (A3, #/join/expired). The words are join-expired.txt's,
+ * rebuilt from `components/gw/ui` only (design-audit.md section 4; the invitation task).
  *
  * Invitations last 14 days (Hafsah, 26 September). The person does not need a new invitation, only a
  * fresh link, so this asks for the address and the server sends one to it if, and only if, it is the
@@ -44,21 +44,26 @@ export function InvitationExpired({ token, leadFirstName }: { token: string; lea
     : 'If this isn’t the address you were invited at, ask the person who invited you to add the right one. We don’t show who invited an address we don’t recognise.'
 
   return (
-    <AuthCard title="This link has expired" sub="Invitation links last 14 days. You don’t need a new invitation, just a fresh link.">
+    <Page narrow>
+      <Mark caption="An expired link" />
+      <PageTitle title="This link has expired" subtitle="Invitation links last 14 days. You don’t need a new invitation, just a fresh link." />
       {says ? (
-        <AuthNotice>{says}</AuthNotice>
+        <Note>{says}</Note>
       ) : (
         <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
-          <AuthField id="fresh-link-email" label="Email" type="email" value={email} onChange={v => { setEmail(v); setProblem('') }} autoComplete="email" autoFocus />
-          {problem && <AuthError>{problem}</AuthError>}
-          <div className="gw-auth-actions">
-            <Button type="submit" wide size="big" disabled={send.isPending}>
+          <FieldLabel htmlFor="fresh-link-email">
+            Email
+            <TextField id="fresh-link-email" type="email" value={email} onChange={e => { setEmail(e.target.value); setProblem('') }} autoComplete="email" autoFocus />
+          </FieldLabel>
+          {problem && <Note tone="error">{problem}</Note>}
+          <div style={{ marginTop: 14 }}>
+            <Button type="submit" size="big" wide disabled={send.isPending}>
               {send.isPending ? 'Sending…' : 'Send me a fresh link'}
             </Button>
           </div>
         </form>
       )}
-      <p className="gw-auth-small">{foot}</p>
-    </AuthCard>
+      <Note>{foot}</Note>
+    </Page>
   )
 }

@@ -48,9 +48,17 @@ export function oldClassesUsed(stripped: string): string[] {
 }
 
 describe('a rebuilt page never falls back to the old parts', () => {
-  it('the rebuilt-pages list starts empty, and this task adds no page to it', () => {
-    // This task is only the shared parts and this guard, not any screen (see rebuilt-pages.ts).
-    expect(REBUILT_PAGES).toEqual([])
+  /*
+   * WAS: "the rebuilt-pages list starts empty, and this task adds no page to it" - true of the
+   * task that built this guard and nothing else. The invitation task (design-audit.md section 3)
+   * is the first screen rebuilt from these parts, so the list now names it; this spec's job is to
+   * keep proving that every listed page stays off the old parts, not to keep the list at zero.
+   */
+  it('names the pages rebuilt so far', () => {
+    expect(REBUILT_PAGES).toEqual([
+      'pages/invite/InvitePage.tsx',
+      'pages/invite/InvitationExpired.tsx',
+    ])
   })
 
   it('every listed page imports none of the old kit parts, and writes none of the old classes', () => {

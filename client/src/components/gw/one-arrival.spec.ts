@@ -24,6 +24,13 @@ import { describe, it, expect } from 'vitest'
  * branches, to save some markup.
  *
  * The chrome is shared, which is the part a person sees. The mechanics stay where they are tested.
+ *
+ * U.20 UPDATE (the invitation's rebuild, design-audit.md section 3): `/invite` is no longer one of
+ * the three `Arrival` pages. It is the first screen rebuilt from `components/gw/ui`
+ * (rebuilt-pages.ts), whose own `Page narrow` + `Mark` is now the prototype-accurate version of the
+ * same idea `Arrival`'s `plain` mode approximated - a cream page, a small mark, no header band. The
+ * other two routes are unaffected and still share `Arrival` exactly as before; only `/invite`
+ * moved, and this file says so rather than silently dropping the route from its checks.
  */
 const P = (p: string) => readFileSync(join(__dirname, '../../pages', p), 'utf8')
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
@@ -34,14 +41,30 @@ const ARRIVALS = {
   '/verify-email': 'auth/MagicVerifyPage.tsx',
 }
 
+/** The two routes still built on the old `Arrival` shell. `/invite` is rebuilt (see above). */
+const STILL_ON_ARRIVAL = {
+  '/join': ARRIVALS['/join'],
+  '/verify-email': ARRIVALS['/verify-email'],
+}
+
 describe('every arrival uses the same shell', () => {
-  for (const [route, file] of Object.entries(ARRIVALS)) {
+  for (const [route, file] of Object.entries(STILL_ON_ARRIVAL)) {
     it(`${route} renders inside Arrival`, () => {
       const code = strip(P(file))
       expect(code).toMatch(/import \{ Arrival \} from '@\/components\/gw\/Arrival'/)
       expect(code).toMatch(/<Arrival/)
     })
+  }
 
+  it('/invite renders inside the shared Page/Mark instead, now that it is rebuilt', () => {
+    const code = strip(P(ARRIVALS['/invite']))
+    expect(code).not.toMatch(/from '@\/components\/gw\/Arrival'/)
+    expect(code).toMatch(/import \{[^}]*\bPage\b[^}]*\bMark\b[^}]*\} from '@\/components\/gw\/ui'/)
+    expect(code).toMatch(/<Page narrow>/)
+    expect(code).toMatch(/<Mark/)
+  })
+
+  for (const [route, file] of Object.entries(ARRIVALS)) {
     it(`${route} no longer rolls its own full-height page`, () => {
       /**
        * The specific divergence: each of these built its own `minHeight: 100vh` wrapper with its own
@@ -51,7 +74,7 @@ describe('every arrival uses the same shell', () => {
     })
   }
 
-  it('and the shell is the thing that carries the header', () => {
+  it('and the shell is the thing that carries the header, for the two still on it', () => {
     const shell = strip(readFileSync(join(__dirname, 'Arrival.tsx'), 'utf8'))
     expect(shell).toMatch(/className="gw-hdr"/)
     expect(shell).toMatch(/<GroundworkLogo \/>/)
