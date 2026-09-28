@@ -34,8 +34,15 @@ export interface SharedReportForAPartyProps {
   ground: any
   /** Open the team board. A prop, because the route is the page's business and not this view's. */
   onOpenBoard: () => void
-  /** Per-session specificity, so a row can say how checkable that account was. */
-  specificityBySession?: Record<number, number>
+  /**
+   * Per-session specificity, so a row can say how checkable that account was.
+   *
+   * U.9 THIRD REVIEW, ITEM 6: THE SAME `specificityLevel` THE SESSION'S OWN METER READS, NOT A
+   * DIFFERENT NUMBER. Was a raw 0-1 score, banded with its own thresholds in `howCheckable`; that
+   * could - and did - disagree with the categorical level `HowSpecificThisSessionWas` reads for
+   * the very same session. Now a level string, so both surfaces read one fact.
+   */
+  specificityBySession?: Record<number, string | null>
   /** Who is reading, so their own finished sessions can be listed and nobody else's. */
   viewerUserId?: string | null
 }

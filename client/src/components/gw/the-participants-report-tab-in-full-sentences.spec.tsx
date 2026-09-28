@@ -29,7 +29,14 @@ function renderReportTab(props: Partial<React.ComponentProps<typeof SharedReport
             participants: [{ id: 'p2', userId: 'u-miriam' }],
           }}
           onOpenBoard={() => {}}
-          specificityBySession={{ 1: 0.5 }}
+          /*
+           * U.9 THIRD REVIEW, ITEM 6: A LEVEL STRING, NOT A RAW SCORE. `specificityBySession` used
+           * to carry a continuous 0-1 figure from a different field than the one the session's own
+           * meter reads, which could disagree with it for the same session - see
+           * how-checkable-was-that-session.ts. It now carries the same `specificityLevel` the
+           * meter reads; 'directional' is the same band the old 0.5 score fell into.
+           */
+          specificityBySession={{ 1: 'directional' }}
           viewerUserId="u-miriam"
           {...props}
         />

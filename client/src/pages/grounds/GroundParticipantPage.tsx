@@ -818,9 +818,22 @@ export function GroundParticipantPage() {
               report={report}
               ground={ground}
               onOpenBoard={() => navigate(`/grounds/${id}/board`)}
-              /* Per-session specificity on the row it is about. Same read as the bars above it on
-                 My record; here it is the words, because a row is a line of text. */
-              specificityBySession={Object.fromEntries(((specificity?.scores ?? []) as number[]).map((v, i) => [i + 1, v]))}
+              /*
+                U.9 THIRD REVIEW, ITEM 6: THE SAME RATING THE SESSION'S OWN METER READS, NOT A
+                SEPARATE NUMBER. This used to come from `specificity.scores`, a continuous 0-1
+                figure banded with its own thresholds - which could disagree with the level
+                `HowSpecificThisSessionWas` shows on the session page for that very session (walked
+                live: "specific in places" here, "Mostly general" there, same person, same
+                session). `ground.checkIns[].specificityLevel` is the field the meter itself reads,
+                already filtered to this reader's own rows alone (`howCheckableIsYoursAlone`), so
+                using it here means the two surfaces can no longer read two different ratings of
+                one account.
+              */
+              specificityBySession={Object.fromEntries(
+                (((ground as any)?.checkIns ?? []) as any[])
+                  .filter((c) => (((ground as any)?.participants ?? []) as any[]).some((p) => p.id === c.participantId && p.userId === user?.id))
+                  .map((c) => [c.sessionNumber, c.specificityLevel ?? null]),
+              )}
               viewerUserId={user?.id}
             />
           </div>
