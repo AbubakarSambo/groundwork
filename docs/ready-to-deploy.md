@@ -1,6 +1,6 @@
 # Ready to deploy?
 
-**Updated on 28 September 2026, at night.** The full 24-scenario proof for task 1.6 and the deploy blockers is run-12, below. Run-13 is going, and its results are added when it finishes.
+**Updated on 28 September 2026, at night.** The full 24-scenario proof for task 1.6 and the deploy blockers is run-12, below. Run-13, the second full run, confirmed it.
 
 Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds all of the screens workspace's work up to `185ff692` (`wip/prototype-ui`), plus the engine's work.
 
@@ -42,7 +42,14 @@ On the combined code at `dd9803c8`, with all seven blockers and decisions 35 and
   - **No invited person read any of the lead's private words about them.** The check matched four people, and each match was that person's own words. That is two full runs in a row with none.
   - **Quotes:** 479 of 482 were word for word in the record. The other 3 were in lines built when a page is opened, which is now covered too (`4efa6a74`). Replayed over run-12's pages, it is 480 of 480.
   - **The judgements:** 18 clearly right of the 20 that could be tested and had complete reports, which is 90%.
-  - **The checker's verdict:** it failed run-12 on three conversation numbers ("specific detail asked for", "blocker checked", and "turns asking more than one question"). Re-running the two scenarios that lost the most, twice on the same build, brought them back into the usual range. So it was variation between runs, not a change. Run-13 checks it again.
+  - **Run-13, the next full run, on `e7b9cd65`:**
+    - the checker says nothing is worse than the baseline;
+    - every problem count is 0 again;
+    - 799 of 799 quotes are word for word from the record;
+    - no board or report carries a pattern;
+    - no invited person read any of the lead's private words, the third run in a row with none;
+    - the judgements are 17 right of 21, or 81%, so task 1.5's bar of two runs in a row at 90% is not met yet.
+  - **The checker's verdict on run-12:** it failed run-12 on three conversation numbers ("specific detail asked for", "blocker checked", and "turns asking more than one question"). Re-running the two scenarios that lost the most, twice on the same build, brought them back into the usual range. So it was variation between runs, not a change. Run-13 checks it again.
 
 ## The deploy blockers, and whether each is fixed
 

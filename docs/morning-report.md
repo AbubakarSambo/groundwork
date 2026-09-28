@@ -12,6 +12,24 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **Is the engine ready to deploy?** Not yet, but close. All seven deploy blockers are fixed in code, with tests, and every API test passes. The last step is the proof on a full run of all 24 scenarios. **That run is run-12, started at about 01:15 on `5b01fe58`.** It includes everything up to the guests in Ask Groundwork. This line is updated when it has finished.
 
+**Run-13's results, tonight's second full run, on `e7b9cd65`, read against the database and the actual sentences:**
+- **The checker says nothing is worse than the baseline.** "Blocker checked" is back up to 42, and "specific detail asked for" to 85. That confirms run-12's low numbers were variation.
+- **Every problem count in the scorer is 0 again,** so task 1.6's bar holds on two full runs in a row.
+- **Quotes:** 799 of 799 served are word for word in the record, including the lines built when a page is opened.
+- **Patterns:** none on any board or report.
+- **The lead's private words:** none reached any invited person. The one match was Tobi's own words, "My role is to manage the relationships with our five largest clients". That is three full runs in a row with none.
+- **Jargon in reports and boards rose to 180,** still far below the baseline of 511. It is mostly "pipeline" in sales and "bottleneck" in openread, which are the people's own words.
+- **The judgements: 17 clearly right of the 21 that count, which is 81%.**
+  - **Loans is clearly right for the first time:** "the problem is the loan program itself, which expects repayments before a new business can earn anything".
+  - **Crisis** was flagged incomplete at five minutes. Its captured report holds all 3 findings and would count as right, but under the rule I have used every night I have left it out.
+  - **Couldn't be tested:** advisor and shock again. Week 1 was in this run, but in both scenarios the simulated person still never said the fact.
+  - **Not right:**
+    - project: it says the team is blocked, not that they disagree on scope;
+    - realign: it says one of the two directions came from the lead;
+    - sales: Kwame's miscount again;
+    - snapshot: the lead's own signature appears only as "follow up with Ravi".
+- **So task 1.5 is not met.** Run-12 met Hafsah's bar, with 18 of 20, which is 90%. Run-13 did not, with 17 of 21, which is 81%. The bar needs two runs in a row.
+
 **Run-12's results, read against the database and the actual sentences:**
 - **The run is sound.** All 24 scenarios finished. Two reports were incomplete (implementation and newmanager, 2 findings for 3 people each), and those two are left out.
 - **Task 1.6 is met: every problem count in the scorer is 0 across all 24 scenarios.** On run-10 there were 114 internal labels, 36 role descriptions used as a name, and 2 sentences starting in lower case.
