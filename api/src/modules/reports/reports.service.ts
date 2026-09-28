@@ -5715,10 +5715,17 @@ happened, and what is in the way.`;
       return {
         /* THE LEAD'S LAYER COMES OFF HERE TOO. A forming report carries the same stored row, so a
            participant who has answered read the judgement about the room before it was released. */
-        ...whatAParticipantMayRead(
+        /* AND OTHER PEOPLE'S RATINGS OFF, as in the released branch below. This branch skipped
+           withoutOtherPeoplesReads, so a participant who had answered read every other person's
+           specificity read on a forming report (screens request 43, 28 September 2026). */
+        ...whatAParticipantMayRead(withoutOtherPeoplesReads(
           this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
-          { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null },
-        ),
+          {
+            viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
+            viewerParticipantId: participant?.id ?? null,
+            viewerIsLead: isInitiator || isOrgAdmin,
+          },
+        ), { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }),
         activated: true,
         forming: true,
         /* NAMED, LIKE EVERYTHING ELSE SOMEBODY READS. overTime is assembled after the name pass,
