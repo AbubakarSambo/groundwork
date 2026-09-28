@@ -502,6 +502,33 @@ this kind of read about somebody else (if one ever should). That is a change to 
 *serves*, which is shared ground with the engine workspace - not something to make unilaterally.
 Flagging it here rather than deciding it.
 
+### 0g. The invitation contradicts itself on who reads your words
+
+**Found during the invitation's first review (U.20 sixth round), reading the page as a person
+receiving it, not just checking it against the prototype's picture.** `InvitePage.tsx` says two
+different things about the same question, one line apart in what a person can reach.
+
+The tinted box at the top, always visible, says:
+
+> "The people in this check-in, including your manager, can see what you say in it."
+
+"What happens to what you write", one click away (the link under the button), says:
+
+> "Nobody you work with reads it. Not your manager, not whoever set this up, not an admin. What
+> they see is the shared report, which is built by comparing what everyone said."
+
+Both live in `client/src/pages/invite/InvitePage.tsx`, one screen apart; the second is also held as
+one of the four claims in `components/gw/what-happens-to-what-you-write.ts` ("still render on the
+invitation and the admin guide", per that file's own comment and
+`pages/chat/what-happens-to-what-you-write.spec.tsx` - though today only the invitation actually
+renders them). Read together, a person
+is told in the same breath that their manager can see what they say, and that their manager cannot.
+I have not tried to reconcile them or pick a side - it is privacy wording, and CLAUDE.md is plain
+that check-in words may be shown to the people in the check-in, so this needs your decision on what
+is actually true and which sentence is wrong (or how both are true at once, if a "team report" is
+not the same thing as seeing "what you say"). Flagging it, not fixing it. Neither sentence has been
+changed.
+
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
 **Fixed on 26 September** by the engine workspace, in the way suggested below (`theResendClient()` in
@@ -5516,6 +5543,78 @@ checks the new heading and sentence rather than the old two-sentence heading;
 `InvitePage.onePath.spec.tsx` opens the link before checking the four claims are still there. No
 test of behaviour or privacy was weakened. `npx tsc -b` is clean; the same 20 files, 193 tests
 (three added), all pass.
+
+#### The invitation, sixth round: the first review's full list
+
+**0. Nothing is ever exposed beyond this Mac.** Both dev servers listened on every network address,
+not only this one. Fixed: `client/vite.config.ts`'s dev `server.host` is now `'localhost'` (build
+and preview, what a deploy runs, are untouched); `api/src/main.ts` now binds `127.0.0.1` whenever
+`NODE_ENV` is not `'production'` (production keeps `'0.0.0.0'`, unchanged). A test for each
+(`client/vite.config.spec.ts`, `api/src/nothing-is-ever-exposed-beyond-this-mac.spec.ts`).
+
+1. **`LinkProblem` (the "this link did not work" screen, shared by `/invite`, `/join` and sign-in)
+   is rebuilt** from `components/gw/ui` - `PageTitle`, `Note`, the standard `Button`, no more 40px
+   `gw-btn`, no more red ✕ (no prototype screen in this family has one). Its detail sentence on
+   `/invite` now reads "If you have already joined, sign in with your email. If you have not, ask
+   the person who added you for a new invitation." And the second, contradicting toast ("sign in
+   with the password you set. Your setup link is in your email.") is gone: `participantsApi.preview`
+   now sets `skipNotFoundToast` (the page already says its own thing on a 404), the same pattern
+   already used across a dozen other calls in `client/src/api/`.
+2. **`gw-er` is gone from `InvitePage.tsx`** (now `Note tone="error"`), and every remaining inline
+   `fontSize`/`margin`/`padding`/`gap`/`border*` in `InvitePage.tsx` and `InvitationExpired.tsx` is
+   gone too, replaced by parts or new classes in the parts' stylesheet (`gwui-panel-text`,
+   `gwui-fine`, `gwui-foot-divider`, and the new `Stack` component, below). The guard test now also
+   fails if a listed page's failure sits behind `gw-er`/`gw-sub-t`/`gw-sec`/`gw-card`/`gw-label`, if
+   anything it imports from `components/gw/...` (one level deep) uses an old part - this is what
+   caught `LinkProblem` - or if it sets a banned property with an inline `style={{ }}`.
+3. **Wording:** "Open that one: it takes you straight to your check-in and works for 24 hours." is
+   now two sentences. "You've already joined" now has a curly apostrophe. Its line now names the
+   check-in: "Pick up your check-in, "Check how the same role is going". If this is a new device, we
+   will email you a sign-in link." The expired-link field is labelled "Your email", the prototype's
+   own word (join-expired.txt), not "Email".
+4. **Sizes, checked against the prototype:** a panel's body text is now 14.5px on a 21px line (new
+   `gwui-panel-text`/`-muted` classes), not the 16px meant for a labelled field's value. "About two
+   minutes…" is 13px muted (new `gwui-fine`). `SubHeading` is 14.5px, not 15px. Out of time's "Your
+   answers are kept" is a `SubHeading` now, its line 14.5px muted. `PageTitle` takes
+   `subtitleTone="ink"`, used on "Almost in", "Out of time" and the expired link, as the prototype
+   has it. **TextField's corners: checked, not changed.** The prototype's own source
+   (`docs/prototype/source/app.css` line 91, `.input{border-radius:10px...}`) has one definition of
+   this field, and it is 10px, matching what `components/gw/ui/FormFields.tsx` already draws. I did
+   not find an 8px value anywhere in the prototype's source for this field. Flagging the mismatch
+   rather than guessing which is right - if there is a second, more specific rule I have missed,
+   point me at it and I will fix it.
+5. **A new shared part, `Stack`** (`components/gw/ui/Stack.tsx`, gaps of 10/12/18/19px, own test):
+   the prototype's own gaps for this family of screens - a tag 12px above its title, a panel 18px
+   below the line under a heading (the invitation's tinted box to its facts panel, 19px), a button
+   10px above the note under it - nested to carry a whole screen's chain of different gaps without
+   a single inline style. `Steps` now reads as a `Panel` (12px corners, 20/22px inside, rows on a
+   38px pitch, the mark bold 16px - green for a done step, amber for the one still to come), sat
+   18px under the title. "We'll email you the moment…" is now the prototype's 16px ink body line
+   (`gwui-pt-sub gwui-pt-sub-ink`), not the 13.5px muted `Note`. The "Sign out" link on "Almost in"
+   is gone - join-waiting.jpg has none. Once let in, the account rail has it
+   ("the-way-home-and-the-way-out.spec.ts": "Sign out is in the rail, so it is on every page"); this
+   route (`/join/waiting`) has no rail while still waiting (it is in `AppShell`'s own `CHROMELESS`
+   list), so for the few minutes somebody is on this exact screen there is, honestly, no in-page way
+   to sign out other than the address `/signout` directly - said here rather than left silent. The
+   pop-up's fourth heading ("And the part we are not going to dress up") is a `SubHeading` now, like
+   the other three, not plain bold text.
+6. **Out of time no longer renders inside the app's sidebar.** `GroundParticipantPage` returns it
+   directly, and that route always keeps `AppShell`'s rail (it is not in `CHROMELESS`), so the
+   person saw two Groundwork marks - this component's own and the rail's - where the prototype
+   draws a bare page. A new class, `.gwui-full-page-cover` (`components/gw/ui/gw-ui.css`) - a fixed,
+   full-viewport div, the same trick `Modal` already uses to sit above everything - covers the
+   frame, rather than reworking which routes get a sidebar for one state inside one of them.
+
+**New "Needs Hafsah" item, 0g:** the invitation says two different things about who reads what you
+write - the tinted box says your manager can see it, "What happens to what you write" says nobody
+you work with reads it. Quoted in full under "Needs Hafsah" above, with where each sentence lives.
+Neither has been changed - it is privacy wording, yours to decide.
+
+Tests: `an-error-says-which-one.spec.tsx`'s `gw-er` pin now expects `Note tone="error"`;
+`an-expired-invitation.spec.tsx`'s label checks and "says what to do once" text are updated for
+"Your email" and the new sentence; `Mark.spec.tsx`'s `SubHeading` size test is 14.5px now.
+`npx tsc -b` is clean (client and api); 208 client tests across 23 files pass, plus the 2 new api
+tests (jest).
 
 ## Found on the way, for later tasks
 
