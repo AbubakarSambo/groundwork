@@ -41,28 +41,37 @@ export function HowThisHasMoved({ groundId }: { groundId: string }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {moved.map(m => {
           /*
-           * U.9 RE-REVIEW, ITEM B: ONE SENTENCE, WITH A READABLE DATE.
-           * "Round 2026-09-27. 1 read differed." printed the raw date the server sends and split
-           * the round, the date and the count of differences across two pieces of one row. This is
-           * now one sentence, with the date through the shared formatter, and the session word the
-           * rest of the product uses (see GroundAdminPage: "session" everywhere, "round" almost
-           * nowhere). Nothing is invented: `m.round` is always sent for a closed round, so it is
-           * always there to say.
+           * U.9 THIRD REVIEW: THE SESSION NUMBER, LEFT OUT WHEN THE SERVER DOES NOT SEND IT, AND
+           * THE DIFFERENCES SAID FOR WHAT THEY ARE.
+           *
+           * "At the end of session undefined, on 27 September, and one read differed." was wrong
+           * three ways. `m.round` came back undefined on every real read: the route that builds
+           * this list selects `sessionNumber` off the round, not `round` (reports.service.ts,
+           * `rounds()`), so `howThisHasMoved`'s own `round: r.round` was always undefined and JSON
+           * drops it on the way over - engine request 59 asks for the field to actually be sent.
+           * Until it is, the sentence leaves the session number out rather than print "undefined".
+           * The stray "and" joined the date and the difference count as if the sentence had a list
+           * in it with nothing before "and". And `m.differences` is how many accounts differed
+           * WITHIN that session's own reading, not a change from the session before - so it now
+           * says "people saw N things differently", never "differed from the one before".
            */
           const dateText = whenItWas(m.takenAt, 'dayAndMonthLong')
-          const differsClause = m.differences > 0
-            ? `, and ${m.differences === 1 ? 'one read differed' : `${m.differences} reads differed`} from the one before`
-            : ''
+          const opening = m.round != null
+            ? `At the end of session ${m.round}${dateText ? `, on ${dateText}` : ''}`
+            : dateText ? `On ${dateText}` : 'At the end of this session'
+          const sawDifferently = m.differences > 0
+            ? `${opening}, people saw ${m.differences === 1 ? 'one thing' : `${m.differences} things`} differently.`
+            : `${opening}, everybody saw it the same way.`
           return (
           <div
-            key={m.round}
+            key={m.round ?? m.takenAt}
             style={{
               border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-card)',
               padding: '11px 14px',
             }}
           >
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-              {`At the end of session ${m.round}${dateText ? `, on ${dateText}` : ''}${differsClause}.`}
+              {sawDifferently}
             </div>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{m.says}</div>
             {m.amended && (

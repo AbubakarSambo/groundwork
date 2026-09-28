@@ -75,12 +75,21 @@ describe('what it must never become', () => {
   })
 
   it('counts where people differed without characterising it', () => {
-    /* "accounts differed" - "account" is banned in copy a person reads; it means what somebody said
-       and everywhere else in a product it means a login. The count and the refusal to characterise
-       it are what this protects. */
+    /*
+     * "accounts differed" - "account" is banned in copy a person reads; it means what somebody said
+     * and everywhere else in a product it means a login. The count and the refusal to characterise
+     * it are what this protects.
+     *
+     * U.9 THIRD REVIEW: "reads differed from the one before" implied a change from the session
+     * before this one, when `m.differences` is only ever a count of how many accounts differed
+     * WITHIN that session's own reading (`divergences.length`, see how-this-has-moved.ts). It now
+     * says "people saw N things differently", which does not claim a comparison it cannot make.
+     */
     const near = strip(PANEL).slice(strip(PANEL).indexOf('m.differences'))
-    expect(near).toContain('reads differed')
+    expect(near).toContain('people saw')
+    expect(near).toContain('differently')
     expect(near).not.toContain('accounts differed')
+    expect(near).not.toContain('from the one before')
     expect(near).not.toMatch(/\b(concern|problem|risk|bad)\b/i)
   })
 })
