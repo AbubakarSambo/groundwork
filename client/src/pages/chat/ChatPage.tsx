@@ -151,23 +151,28 @@ export function ChatPage() {
   const checkInName: string = groundLabel || (ground.data as any)?.label || ''
   const [brief, setBrief] = useState<CheckInBrief | null>(null)
   /*
-   * `mayCompleteAfter` USED TO GATE WHEN "FINISH MY CHECK-IN NOW" APPEARED - the server's own turn
-   * floor for this check-in, so the offer would only show once the server was expected to honour it.
+   * WHEN THE SCREEN MAY OFFER TO FINISH. The server holds a check-in to a turn floor - five answers
+   * for a full check-in, three for a team update, one for a correction - and this page used to keep
+   * its own copy of that number. The copies drifted (the server's went to five on 11 September, this
+   * one stayed at three), and for ten days the page offered "Complete session" two answers before the
+   * server would honour it: "a few more exchanges are needed" as a pop-up, on the button the page had
+   * just shown. The server now says the number with the session, and this page reads it. Five until
+   * it does, which is the stricter of the two and cannot offer early.
    *
-   * U.8 FOURTH REVIEW: THE FLOOR AND THE CLOSING MESSAGE CAN DISAGREE (request 47). Walked live: the
-   * engine wrote "...Your report is ready now. Speak soon." after three short answers - its own
-   * close-readiness check said the record was done - and pressing "That's right, finish" then had the
-   * completion gate refuse it as too thin, on the SAME session. `sessionComplete` stayed false, so no
-   * end card came up either, and the manual button below was still gated on a floor of five: the
-   * person had answered, was told to finish, and had no way to press anything until two more answers
-   * later. "Please finish my check-in" got the same closing reply, again and again.
-   *
-   * The offer is now available from the first landed answer, always, so nobody is ever left with
-   * nothing to press. Pressing it before the record is actually ready reaches the same 400 refusal
-   * this page already turns into a plain sentence in the conversation, with the composer handed back
-   * (see the completion mutation's `onError` below) - so an early press costs one exchange, never a
-   * dead end. Nothing on this page reads the server's turn floor any more, so it is not stored here.
+   * U.8 FOURTH REVIEW TRIED REMOVING THIS GATE ENTIRELY (offering from the first answer, always),
+   * because the engine's closing message and its own completion gate can disagree on the SAME
+   * session - the engine wrote "...Your report is ready now" while the gate still refused as too
+   * thin (request 47). But `one-floor-not-two.spec.ts` is the engine's own rule for exactly this: the
+   * engine, the server's refusal, and this page's offer all read ONE floor
+   * (`theFloorFor`/`mayCompleteAfter`), because a live check-in has deadlocked when the screen and
+   * the server disagreed about when finishing was allowed - the engine offers the close, the
+   * composer disables because the session reads as over, the person presses finish, and the server
+   * refuses for being one turn short with no way left to add one. Removing the gate here reintroduced
+   * exactly the two-sources-of-truth shape that rule exists to prevent, in the other direction. So
+   * this reads `mayCompleteAfter` again, as it always has; the dead end above is still real and still
+   * the engine's to close, tracked as request 47 - not something this page's gate can fix by itself.
    */
+  const [mayCompleteAfter, setMayCompleteAfter] = useState(5)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
   const isFinalSession: boolean = (location.state as any)?.isFinal ?? false
 
@@ -318,6 +323,7 @@ export function ChatPage() {
       setMsgs([{ id: 'ai-open', role: 'AI', content: res.reply, suggestedAnswers: res.suggestedAnswers }])
       if (res.groundId && !groundId) setGroundId(res.groundId)
       if (res.brief) setBrief(res.brief)
+      if (res.mayCompleteAfter) setMayCompleteAfter(res.mayCompleteAfter)
       setOpened(true)
       setOpenFailed(false)
     },
@@ -557,6 +563,7 @@ export function ChatPage() {
           */
           if (t.brief) setBrief(t.brief)
           if (t.endCard) setEndCard(t.endCard)
+          if (t.mayCompleteAfter) setMayCompleteAfter(t.mayCompleteAfter)
           /*
             AND WHICH SESSION THIS IS, FOR THE SAME REASON AS THE BAND ABOVE.
 
@@ -1208,15 +1215,19 @@ export function ChatPage() {
               has acknowledged are counted now, so the offer never appears on the
               strength of an echo that never landed.
 
-              THE THRESHOLD ITSELF IS NOW ONE, ALWAYS (U.8 fourth review), not the
-              server's turn floor (`mayCompleteAfter`). That floor and the engine's
-              own closing message can disagree - request 47 - so gating the button
-              on it could leave someone told "your report is ready now" with
-              nothing to press for two more answers. One landed answer is enough
-              to offer a way out; pressing it before the record is ready reaches
-              the friendly refusal below and hands the composer straight back, so
-              trying early costs an exchange, never a dead end. */}
-          {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= 1 && (
+              THE THRESHOLD IS THE SERVER'S OWN FLOOR (`mayCompleteAfter`), NOT A NUMBER OF ITS
+              OWN (restored, U.8 end-of-module suites - `one-floor-not-two.spec.ts`). U.8's fourth
+              review tried offering from the first landed answer always, reasoning that the
+              engine's closing message and its own completion gate can disagree on the same
+              session (request 47) - but that rule exists precisely so the engine, the server's
+              refusal, and this offer never disagree about when finishing is allowed: a live
+              check-in has deadlocked with the composer disabled, the session read as over, and
+              the server refusing to close it, exactly when two sources of truth about the floor
+              drifted apart. Removing the gate here recreated that shape from the other side. The
+              refusal below still hands the composer back in plain words on an early press either
+              way - that part of the fourth review's fix stands - but the offer itself now waits
+              for the one floor everybody reads. */}
+          {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
             <div style={{ textAlign: 'center', padding: '6px 0' }}>
               <button
                 onClick={() => setDone(true)}

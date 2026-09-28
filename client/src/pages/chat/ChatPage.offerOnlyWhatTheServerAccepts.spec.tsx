@@ -6,11 +6,12 @@ import { ChatPage } from './ChatPage'
 import { conversationApi, streamMessage } from '@/api/conversation'
 
 /**
- * DO NOT OFFER TO FINISH SOMETHING THE SERVER HAS NOT SEEN.
+ * DO NOT OFFER TO FINISH SOMETHING THE SERVER WILL REFUSE.
  *
- * The manual fallback ("Finish my check-in now") counted every PERSON message on
- * screen, including the ones echoed locally the instant somebody pressed send,
- * before the server had seen anything.
+ * The manual fallback ("Finish my check-in now", once "Not seeing a wrap-up? Complete session") appears once
+ * three answers exist. It counted every PERSON message on screen, including the
+ * ones echoed locally the instant somebody pressed send, before the server had
+ * seen anything.
  *
  * So a dropped send inflated the count, the offer appeared, the person pressed
  * it, and the server turned them down:
@@ -29,21 +30,6 @@ import { conversationApi, streamMessage } from '@/api/conversation'
  * WORTH KNOWING: the first version of this fix simply excluded local messages,
  * and nothing ever promoted them, so the offer became unreachable forever. That
  * would have been worse than the bug. These pin both directions.
- *
- * U.8 FOURTH REVIEW: THE THRESHOLD ITSELF IS NOW ONE LANDED ANSWER, NOT THE
- * SERVER'S TURN FLOOR (request 47). The floor the server states with a session
- * (`mayCompleteAfter`, three or five depending on the kind of check-in) and the
- * engine's own decision to write a closing reply can disagree on the very same
- * session - the fourth review watched the engine say "...Your report is ready
- * now" after three answers while the completion gate refused those same three
- * answers as too thin. Gating the button on the floor left the person with
- * nothing to press until two answers later. It is one now, always: pressing it
- * before the record is ready reaches the same friendly refusal this page
- * already turns into a plain sentence with the composer handed back (see
- * ChatPage.thinRecordRefusal.spec.tsx), so an early press costs one exchange,
- * never a dead end. What must still hold, and is what this file pins, is that
- * the one answer counted is one the SERVER has acknowledged, never a local
- * echo that has not landed yet.
  */
 
 vi.mock('@/stores/auth', () => ({
@@ -74,15 +60,15 @@ const serverTurns = (personCount: number) =>
     content: i % 2 === 0 ? 'What moved this week?' : `Answer number ${Math.ceil(i / 2)}`,
   }))
 
-describe('the completion offer is available from the first landed answer, always', () => {
+describe('the completion offer follows the server, not the screen', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('appears once a single answer is actually on the record', async () => {
+  it('appears once three answers are actually on the record', async () => {
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 2, groundId: 'g1' },
-      /* The server still states its own turn floor, and nothing here reads it any more (U.8 fourth review, request 47). */
+      /* The server states its turn floor with every session since 22 Sep 2026; three here, as it was when these were written. */
       mayCompleteAfter: 3,
-      turns: serverTurns(1),
+      turns: serverTurns(3),
     })
     renderChat()
     // The transcript load is deferred by up to 2s of jitter, so the default
@@ -90,15 +76,25 @@ describe('the completion offer is available from the first landed answer, always
     expect(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 5000 })).toBeTruthy()
   })
 
-  it('says nothing about finishing before any answer has landed', async () => {
-    // Zero on record: an opening question with nothing said back yet.
+  it('does not appear on two answers, however many are on screen', async () => {
+    // THE REGRESSION. Two stored, and the offer must stay away.
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 2, groundId: 'g1' },
+      /* The server states its turn floor with every session since 22 Sep 2026; three here, as it was when these were written. */
       mayCompleteAfter: 3,
-      turns: [{ id: 't0', role: 'AI', content: 'What moved this week?' }],
+      turns: serverTurns(2),
     })
     renderChat()
-    await screen.findByText(/What moved this week/i, {}, { timeout: 5000 })
+    /**
+     * WAIT FOR THE CONVERSATION TO ACTUALLY LOAD FIRST.
+     *
+     * The first version of this waited for the composer, which renders
+     * immediately whether or not anything has loaded. So it asserted the offer
+     * was absent before the transcript had even arrived, and would have passed
+     * against any implementation at all - including one that shows the offer on
+     * two answers, which is the exact bug it claims to prevent.
+     */
+    await screen.findByText(/Answer number 2/i, {}, { timeout: 5000 })
     expect(screen.queryByText(/Finish my check-in now/i)).toBeNull()
   })
 
@@ -111,6 +107,7 @@ describe('the completion offer is available from the first landed answer, always
      */
     ;(conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 2, groundId: 'g1' },
+      /* The server states its turn floor with every session since 22 Sep 2026; three here, as it was when these were written. */
       mayCompleteAfter: 3,
       turns: serverTurns(4),
     })
@@ -126,17 +123,15 @@ describe('a send that never lands does not unlock the offer', () => {
    * Those load a transcript, so every message already has a server id and no
    * local echo exists. Reverting the fix left them all green, which means they
    * were pinning nothing. The bug only appears when somebody SENDS.
-   *
-   * Zero on record now, not two (U.8 fourth review): the threshold to offer is
-   * one landed answer, so starting from two would already show the button
-   * before anybody typed anything, and these tests would be pinning nothing.
    */
   beforeEach(() => vi.clearAllMocks())
 
-  const nothingOnRecordYet = () =>
+  const twoOnRecord = () =>
     (conversationApi.transcript as any).mockResolvedValue({
       checkIn: { status: 'IN_PROGRESS', sessionNumber: 2, groundId: 'g1' },
-      turns: [{ id: 't0', role: 'AI', content: 'What moved this week?' }],
+      /* The server states its turn floor with every session since 22 Sep 2026; three here, as it was when these were written. */
+      mayCompleteAfter: 3,
+      turns: serverTurns(2),
     })
 
   async function typeAndSend(text: string) {
@@ -145,32 +140,32 @@ describe('a send that never lands does not unlock the offer', () => {
     fireEvent.click(screen.getByRole('button', { name: /Send message/i }))
   }
 
-  it('keeps the offer away when the first answer never reaches the server', async () => {
-    // THE REGRESSION. Nothing on record, one typed and lost. On screen it
-    // looks like one has landed. The server has none and will refuse a close.
-    nothingOnRecordYet()
+  it('keeps the offer away when the third answer never reaches the server', async () => {
+    // THE REGRESSION. Two on record, a third typed and lost. On screen it looks
+    // like three. The server has two and will refuse a close.
+    twoOnRecord()
     ;(streamMessage as any).mockRejectedValue(new Error('network'))
     ;(conversationApi.send as any).mockRejectedValue(new Error('network'))
 
     renderChat()
-    await screen.findByText(/What moved this week/i, {}, { timeout: 5000 })
-    await typeAndSend('My first answer, which never arrives')
+    await screen.findByText(/Answer number 2/i, {}, { timeout: 5000 })
+    await typeAndSend('My third answer, which never arrives')
 
     await waitFor(() => expect(screen.getByText(/never arrives/i)).toBeTruthy())
     expect(screen.queryByText(/Finish my check-in now/i)).toBeNull()
   })
 
-  it('offers it once the first answer is acknowledged by a reply', async () => {
+  it('offers it once the third answer is acknowledged by a reply', async () => {
     // The reply is the proof: it can only exist if the turn was stored.
-    nothingOnRecordYet()
+    twoOnRecord()
     ;(streamMessage as any).mockImplementation(async (_id: string, _m: string, h: any) => {
       h.onDelta('Noted.')
       h.onDone({ reply: 'Noted.', sessionComplete: false })
     })
 
     renderChat()
-    await screen.findByText(/What moved this week/i, {}, { timeout: 5000 })
-    await typeAndSend('My first answer, which does land')
+    await screen.findByText(/Answer number 2/i, {}, { timeout: 5000 })
+    await typeAndSend('My third answer, which does land')
 
     expect(await screen.findByText(/Finish my check-in now/i, {}, { timeout: 5000 })).toBeTruthy()
   })
