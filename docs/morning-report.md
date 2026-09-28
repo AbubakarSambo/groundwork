@@ -6,6 +6,16 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 28 SEPTEMBER, NIGHT: THE PULL REQUEST WORK IS STOPPED, AND THE BRANCH IS SAVED LOCALLY
+
+Hafsah decided there will be no pull requests for now. The whole build is finished first and released once, at the end. I stopped both helpers: the one building the last privacy fixes on the bug-fix branch, and the one researching the second pull request.
+
+The bug-fix branch is `fix/privacy-conversation-crash`, in the folder `groundwork-pr1`, and it is committed up to `a89fd13f`. Nine of its ten fixes are finished and tested. The last one (labels, the person's own session and the coaching note) was stopped partway. It compiles, but it has no tests yet. The details are in `docs/pr-1.md`. `docs/pr-2-plan.md` records that the research had found nothing yet when it was stopped.
+
+**Needs Hafsah: the push of the bug-fix branch was refused.** The safety check refused `git push mine fix/privacy-conversation-crash:wip/fix-privacy-conversation-crash`. It then refused `git push mine wip/fix-privacy-conversation-crash` as well, after I had given the commit a local branch of that name. As you asked, I stopped there and did not try another way. The branch exists only on this computer. If you want the copy saved to GitHub, you can push it yourself from the `groundwork-pr1` folder with `git push mine wip/fix-privacy-conversation-crash`.
+
+Next, I am back on `wip/plain-reports`: first the hidden-target tests, then week 6 of `docs/weekly-plan.md`.
+
 ## 28 SEPTEMBER, DAY: HAFSAH'S DECISIONS ON RATINGS AND PATTERNS
 
 **Ratings are never sent to anyone but the person they are about** (`828b4837`, decision 38 in `docs/decisions-merged.md`).
