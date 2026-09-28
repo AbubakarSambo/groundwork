@@ -200,6 +200,26 @@ export interface Ground {
   overdue?: number
   contextNotes?: string[]
   participants: GroundParticipant[]
+  /**
+   * The lead's first name alone, sent to anyone in the check-in - even a participant on a check-in
+   * that hides everyone else. Her own row is filtered out of `participants` then, which used to
+   * mean the only three sentences naming her ("Rukia knows who is here", "Rukia also answers a
+   * check-in") fell back to "Your lead" (U.8 fourth review). Null when there is no lead account yet.
+   */
+  leadFirstName?: string | null
+  /** Whether the lead is a party who answers a check-in herself, not only someone who manages it. */
+  leadAnswersToo?: boolean
+  /**
+   * Whether more than one party answers this check-in - a plain yes/no, never a count, so a check-in
+   * that hides peers from each other does not learn its own size from this field (U.8 fifth review).
+   * Read from the raw participants, unaffected by that filter, unlike the old `howManyAnswer(ground) > 1`.
+   */
+  aTeamReportComes?: boolean
+  /**
+   * Whether this round already has two people counted in it - a plain yes/no, from the same raw
+   * participants as `aTeamReportComes`, unaffected by the peer-hiding filter (U.8 fifth review).
+   */
+  atLeastTwoInThisRound?: boolean
   leadContextNotes?: LeadContextNote[]
   /**
    * WHAT PEOPLE ARE DOWN AS DOING. `participantId` null means nobody owns it, which is most of what

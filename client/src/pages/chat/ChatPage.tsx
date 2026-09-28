@@ -13,6 +13,7 @@ import { TheCheckInYouJustFinished } from '@/components/gw/TheCheckInYouJustFini
 import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
+import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
@@ -157,6 +158,19 @@ export function ChatPage() {
    * server would honour it: "a few more exchanges are needed" as a pop-up, on the button the page had
    * just shown. The server now says the number with the session, and this page reads it. Five until
    * it does, which is the stricter of the two and cannot offer early.
+   *
+   * U.8 FOURTH REVIEW TRIED REMOVING THIS GATE ENTIRELY (offering from the first answer, always),
+   * because the engine's closing message and its own completion gate can disagree on the SAME
+   * session - the engine wrote "...Your report is ready now" while the gate still refused as too
+   * thin (request 47). But `one-floor-not-two.spec.ts` is the engine's own rule for exactly this: the
+   * engine, the server's refusal, and this page's offer all read ONE floor
+   * (`theFloorFor`/`mayCompleteAfter`), because a live check-in has deadlocked when the screen and
+   * the server disagreed about when finishing was allowed - the engine offers the close, the
+   * composer disables because the session reads as over, the person presses finish, and the server
+   * refuses for being one turn short with no way left to add one. Removing the gate here reintroduced
+   * exactly the two-sources-of-truth shape that rule exists to prevent, in the other direction. So
+   * this reads `mayCompleteAfter` again, as it always has; the dead end above is still real and still
+   * the engine's to close, tracked as request 47 - not something this page's gate can fix by itself.
    */
   const [mayCompleteAfter, setMayCompleteAfter] = useState(5)
   const isInitiator: boolean  = (location.state as any)?.isInitiator ?? false
@@ -197,8 +211,6 @@ export function ChatPage() {
   const [loading, setLoading]         = useState(false)
   /* True once a reply has been outstanding long enough for somebody to start doubting it. */
   const [waitedAWhile, setWaitedAWhile] = useState(false)
-  /* True once opening the session has been outstanding long enough to say so. See the effect below. */
-  const [openingIsSlow, setOpeningIsSlow] = useState(false)
   const [opened, setOpened]           = useState(false)
   const [done, setDone]               = useState(false)
   const [completed, setCompleted]     = useState(false)
@@ -329,11 +341,7 @@ export function ChatPage() {
    * as the reply wait above, is where somebody starts wondering if anything is happening.
    */
   const openingNow = openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)
-  useEffect(() => {
-    if (!openingNow) { setOpeningIsSlow(false); return }
-    const t = setTimeout(() => setOpeningIsSlow(true), 4000)
-    return () => clearTimeout(t)
-  }, [openingNow])
+  const openingIsSlow = useAfterAWhile(openingNow)
 
 
   const decline = useMutation({
@@ -409,11 +417,18 @@ export function ChatPage() {
        * they would answer in is already switched off. The person is told what to do and given no
        * way to do it, which is the dead end behind "I could not complete my check-in".
        *
-       * The server marks those two refusals `canContinue`, so re-open the session rather than
-       * leaving them looking at a disabled box and an instruction. Not matched on the wording:
-       * rewording the sentence would otherwise quietly bring the trap back.
+       * READS `canContinue` FIRST, THE 400 STATUS AS A FALLBACK (U.8 end-of-module suites,
+       * `a-refusal-that-asks-must-be-answerable.spec.ts`). The server marks these two refusals
+       * `canContinue: true` - the explicit signal that this 400 is answerable, not a hard stop like
+       * a closed ground or a hold, which never carry it. A shared filter once rebuilt every error
+       * body between the exception and the client and dropped that field entirely, so the live 400
+       * carried no `canContinue` at all and this branch never ran; the filter has been fixed to
+       * keep the field, and the `=== 400` fallback stays for exactly that history - if the field
+       * were ever dropped again, every completion refusal that is not "already complete" is, by
+       * construction, this same case (the gate has only these two throw branches). The server's own
+       * sentence is still never shown - only ours.
        */
-      if (err?.response?.data?.canContinue) {
+      if (err?.response?.data?.canContinue || err?.response?.status === 400) {
         /**
          * SAY IT WHERE THE CONVERSATION IS, NOT IN A POP-UP THAT FADES.
          *
@@ -941,7 +956,7 @@ export function ChatPage() {
                   session runs several model calls and can take up to a minute with nothing else on
                   screen, which read as a hang. */}
               {openingIsSlow && (
-                <div style={{ marginTop: 6 }}>Getting your first question ready. This can take up to a minute.</div>
+                <div style={{ marginTop: 6 }}>{GETTING_YOUR_FIRST_QUESTION_READY}</div>
               )}
             </div>
           )}
@@ -1173,7 +1188,7 @@ export function ChatPage() {
           {done && !completed && !declined && (
             <TheEndCard
               engine={endCard}
-              leadName={whoElseAnswers(ground.data as any, user?.id)}
+              leadName={whoElseAnswers(ground.data as any)}
               nextOpens={whenTheNextOneOpens(myStatus.data?.checkIns, checkInId)}
               finishing={complete.isPending}
               /*
@@ -1199,8 +1214,21 @@ export function ChatPage() {
               more exchanges are needed before this check-in can close". The
               person is invited to finish and immediately turned down.
               Seen four times in one twelve-session run. Only messages the server
-              has acknowledged are counted now, so the offer appears exactly when
-              the server will honour it. */}
+              has acknowledged are counted now, so the offer never appears on the
+              strength of an echo that never landed.
+
+              THE THRESHOLD IS THE SERVER'S OWN FLOOR (`mayCompleteAfter`), NOT A NUMBER OF ITS
+              OWN (restored, U.8 end-of-module suites - `one-floor-not-two.spec.ts`). U.8's fourth
+              review tried offering from the first landed answer always, reasoning that the
+              engine's closing message and its own completion gate can disagree on the same
+              session (request 47) - but that rule exists precisely so the engine, the server's
+              refusal, and this offer never disagree about when finishing is allowed: a live
+              check-in has deadlocked with the composer disabled, the session read as over, and
+              the server refusing to close it, exactly when two sources of truth about the floor
+              drifted apart. Removing the gate here recreated that shape from the other side. The
+              refusal below still hands the composer back in plain words on an early press either
+              way - that part of the fourth review's fix stands - but the offer itself now waits
+              for the one floor everybody reads. */}
           {!done && !completed && !declined && opened && msgs.filter(m => m.role === 'PERSON' && !m.id.startsWith('local-')).length >= mayCompleteAfter && (
             <div style={{ textAlign: 'center', padding: '6px 0' }}>
               <button

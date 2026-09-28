@@ -4,6 +4,37 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## At a glance, 28 September
+
+**Reviewed and passed:** 8 of the 20 modules are reviewed, passed and ticked (U.1 to U.8). U.8, the
+check-in screens, passed its sixth review and its full test run this morning (10,376 API tests and
+3,244 screen tests, all passing), and is ticked. That makes 8 of 20.
+
+**What is left:** the reviews of U.9 to U.19, one module at a time, oldest first; finishing U.19
+(billing) and U.20; the screens for the engine's new pattern shape and its answer box (patterns stay
+switched off until you approve their names); the table of Ask Groundwork, the switchboard and every
+kind of board; and `docs/ready-to-deploy-screens.md`.
+
+**Are the screens ready to deploy? Not yet.** Eleven modules still need their review (U.9 to U.19), and U.20 is not built yet. Four privacy
+problems are open, and each is in the live product too: the lead's private description reaching an
+invitation (item 0, fixed on this branch), the check-ins list sending participants the lead's setup
+brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c; a
+participant now gets only their own, and the lead's and admins' part waits for your decision) and someone held for a seat reading a released report (item 0d, engine code,
+request 49). The last two need the engine workspace.
+
+**What I finished tonight:** U.8 went through six reviews, and everything they found is fixed. A
+person can now always finish their check-in, and a refusal to finish is said plainly in the
+conversation. The "How checkable" card no longer tells people they left out things they said. Names
+are first names, not email addresses or roles, even on a check-in where people don't see each other.
+The Done page says truthfully whether a team report is coming and when it can be read. The
+organisation switcher gets the organisation's name straight from sign-in. Someone held for a seat is no
+longer offered a check-in or a report on Today. I also merged the engine workspace's latest work.
+
+**What needs you:** items 0 to 0d near the top of "Needs Hafsah" (privacy, most urgent: 0c and 0d
+need the engine workspace, and 0 and 0b need fixing on the live product too); item 31 (what admins who
+don't run a check-in may see and change, and whether a decision about a person may be a target that
+person reads); and the older items further down.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
@@ -13,10 +44,10 @@ in, with every decision you made), U.3 (organisations and joining, passed on its
 (people, roles and access, passed on its fifth), U.5 (Today and the check-ins list, passed on its
 third), U.6 (starting a check-in, passed on its seventh; the lead's first check-in card still waits
 for you, in item 17) and U.7 (context, passed on its fifth; it found that the check-ins list sent
-participants the lead's setup brief, also in the live product, item 0b).
+participants the lead's setup brief, also in the live product, item 0b) and U.8 (the check-in screens,
+passed on its sixth).
 
-**Built and tested, but not ticked:** U.8 (the check-in
-screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
+**Built and tested, but not ticked:** U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
 onboarding, leave requests, time sheets, performance reviews, when someone leaves, the role map,
@@ -164,7 +195,7 @@ to find.
 | U.5 Today and the check-ins list | Yes | **Passed** on 27 September, on the third round |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | **Passed** on 27 September, on the seventh round |
 | U.7 Context | Yes | **Passed** on 27 September, on the fifth round |
-| U.8 The check-in screens | Yes | Waiting |
+| U.8 The check-in screens | Yes | **Passed** on 28 September, on the sixth round |
 | U.9 Reports and sharing | Yes | Waiting |
 | U.10 The board | Yes | Waiting |
 | U.11 Ending a check-in, probation review, handover | Yes | Waiting |
@@ -284,6 +315,8 @@ is the engine's code, so I have asked the engine workspace (request 41).
 
 ### 0c. Every reader of a report gets everyone's rating, not only their own, and the Done page's "Only you see it" is not true yet
 
+**Update, 28 September:** the engine workspace has closed half of this (request 43, `59a62cc3`). A participant's report, forming or released, now carries only their own rating. The other half is yours to decide: the engine gives the lead and an admin everyone's ratings on purpose, while CLAUDE.md says leads never see how a person's answers were rated. Until you decide, the Done page keeps its wording, as the engine workspace asked.
+
 **Found by the U.8 review on 27 September.** CLAUDE.md's rule is plain: "Leads never see how a
 person's answers were rated." Two places in the engine's own code disagree with it. `own-reads-only.ts`,
 the file that is supposed to enforce exactly this rule, strips a participant's report down to their own
@@ -313,6 +346,34 @@ on both the forming and the released report.
 `reports.service.ts` are engine code, and this branch has not touched either file; nothing about this
 defect is specific to `wip/prototype-ui`. **My recommendation:** treat request 43 as urgent on the live
 product as well, not only on this branch.
+
+### 0d. Someone not let into the organisation could read a released report, in full
+
+**Found by the U.8 third review on 28 September.** Faraji joined a check-in through an open link while
+there was no free seat for him. His account and his participant row both exist - he is a real party to
+the check-in, not a stranger, and the ground-level rule that decides who may read a check-in
+(`who-may-read-this-check-in.ts`) is right to say so - but he is still `awaitingOrgApproval`: queued for
+an admin to let him into the organisation, the same hold the "Almost in" page reads (item 5 of this
+review, U.8 third). `GET /grounds/9028f0ad-…/report` returned 200 with the released team report, names
+included, and Today separately offered him "The report for Sales team, Q3 is ready… Read it" and "Your
+first check-in… Start it".
+
+**The question is a plain one, and it is yours: may somebody held for a seat, or otherwise not yet let
+into an organisation, read a check-in's shared report at all - and if not, at what point does that
+change? The moment an admin lets them in? Only once they have answered themselves?** Nothing in this
+branch, or as far as I can tell in the live product, currently asks that question anywhere in the report
+read itself.
+
+**What I have fixed, screens-side:** Today (`what-needs-you.ts` / `what-needs-you.service.ts`) no longer
+offers him "Read it" or "Start it" while he is held - one cheap read of his own account, and the two
+"my own turn" / "my own report" needs are skipped while it is true. The report endpoint itself
+(`reports.service.ts`) is engine code, so I have not touched it: it still answers 200 to a direct
+request for the URL, whether or not Today ever points him at it, and the check-in conversation itself
+already refuses him (`conversation.service.ts`, `CANNOT_CHECK_IN_YET`) - the report is the one door
+still open. Written up as request 49, URGENT.
+
+**This is very likely in the live product too**, for the same reason 0c is: `reports.service.ts` is
+engine code this branch has not touched.
 
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
@@ -3206,6 +3267,155 @@ changed), `colleagues.spec.ts` (updated source match) plus two new specs
 `joining-by-email-domain.spec.ts` (updated: their prisma doubles needed the fuller user-with-org shape
 `userShapeFor` now reads), and `almost-in-names-the-admin-after-a-real-invitation.spec.ts` (extended
 for the seat check). Only the tests for files changed run (`--maxWorkers=2`), both type checks clean.
+
+### U.8 The check-in screens: third review's findings, all fixed in one round
+
+- **The thin-record fix never actually ran.** The completion gate throws `BadRequestException({
+  message, canContinue: true })`, but `GlobalExceptionFilter` rebuilt every error body from
+  `message`/`errors`/`code` alone and silently dropped `canContinue` - so the live 400 never carried
+  it, and the previous round's fix only ever worked against a spec that faked the response. The
+  filter now passes `canContinue` through explicitly, as a boolean only, the same narrow way `code`
+  already is - never the whole exception, never a stack or class name (checked against
+  `the-filter-hides-the-database.spec.ts` and `nobody-should-read-an-exception-class-name.spec.ts`,
+  both still pass unchanged). The client no longer depends on that one field surviving a shared
+  filter: any 400 from `/complete` that is not "already complete" is treated as "answer a little
+  more, then try again" - the gate has only these two throw branches, so there is no other real 400
+  it can mean.
+- **Names, not roles, for who can see whom, and the lead never reads a sentence about herself.**
+  "Your lead knows who is here; you will not see the others…" named a role and joined two facts with
+  a semicolon; it is "Rukia knows who is here. You will not see the others or what they wrote, and
+  they will not see you." now, and the lead reading her own check-in gets her own true sentence
+  instead: "People on this check-in answer without seeing each other. You can see who is here."
+- **The slow-open sentence, on the check-in's own page too.** Only `/checkin` explained that opening
+  a session can take up to a minute; the check-in's own page (the ground page's "Check in now"
+  button) said only "Opening…" for as long as 70 seconds. Both now share one sentence and one timer
+  (`opening-is-slow.ts`). Also: the header could promise "The next session opens on 12 October" while
+  the current one was still being opened - nothing is said about a later session while this one is.
+- **PRIVACY: Today offered a check-in and a released report to somebody not let into the
+  organisation.** Faraji is `awaitingOrgApproval`, the same hold "Almost in" reads - the conversation
+  itself already refuses him, but Today did not know to ask the question. It does now
+  (`what-needs-you.ts`'s `reader.notLetIn`), and neither "Start it" nor "Read it" is offered while he
+  is held. The report endpoint itself is engine code and, as far as I can read it, still answers 200
+  to a direct request regardless - written up urgently (request 49) and as Needs Hafsah item 0d,
+  since whether someone in his position may ever read a shared report is a decision, not a bug.
+- **Request only:** three more engine-written sentences joined with a colon or otherwise malformed,
+  added to request 40: "The objectives on record:", a doubled word ("by by 9 October"), a sentence
+  said to Rukia about herself in the third person, and "One thing for next time: I want to finish
+  now." (the person's own words handed back as if they were advice).
+
+**Tests:** `canContinue-reaches-the-live-body.spec.ts` (new, runs the real filter on the real
+exception shape), `ChatPage.alreadyComplete.spec.tsx` (updated: its "genuine failure" case was in
+fact the same refusal every completion 400 is, so it now proves the status-based match and gained a
+companion test for an actually different failure), `ChatPage.thinRecordRefusal.spec.tsx` (updated:
+no `canContinue` in the mock any more, on purpose), `who-is-in-this.spec.tsx` (updated) plus
+`who-is-in-this-when-peers-are-hidden.spec.tsx` (new), `GroundChat.openIsSlow.spec.tsx` (new, fake
+timers) and `nothing-about-next-while-the-current-one-opens.spec.tsx` (new, a full render with the
+`?open=1` handoff and a POST that never resolves), and `what-needs-you.service.spec.ts` (extended
+for the "not let in" case). Only the tests for files changed run (`--maxWorkers=2`), both type
+checks clean.
+
+### U.8 The check-in screens: fourth review's findings, all fixed in one round
+
+- **The lead's name fell back to "Your lead" on exactly the check-ins that hide her own row.** A
+  participant on a hidden check-in reads only her own participant row from the server; the three
+  sentences that name the lead ("Rukia knows who is here", "Rukia also answers a check-in" on the
+  end card and the Done page) all looked her up inside that same filtered list, found nobody, and
+  fell back to the role word. `GET /grounds/:id` now sends `leadFirstName` and `leadAnswersToo` at
+  the top level, read off the raw participants before the peer filter runs, so all three sentences
+  say her actual name regardless of who else is hidden. The invitation that got a participant here
+  already named the lead in full, so this reveals nothing new - only her first name goes out, and
+  nothing else about her.
+- **A dead end: told "your report is ready", then given nothing to press.** The engine can write a
+  closing reply ("...Your report is ready now. Speak soon.") on the same response that sends
+  `sessionComplete: false`, so no end card comes up and "done" never becomes true - and the manual
+  "Finish my check-in now" fallback was still gated on the server's own turn floor, so a person could
+  be left with nothing to press for two more answers, repeating "Please finish my check-in" into the
+  identical closing reply each time. The offer now appears from the first landed answer, always;
+  pressing it before the record is ready reaches the completion gate's own refusal, which this page
+  already turns into a plain sentence with the composer handed back, so an early press costs one
+  exchange, never a dead end. The disagreement itself - the engine writing a closing sentence while
+  its own flag says the session did not close - is the engine's to fix (request 47, updated).
+- **"This can take up to a minute" was not true.** A real first open was timed at 90 to 130 seconds.
+  The shared opening-wait sentence now says "This can take a minute or two", which is true of that
+  range.
+
+**Tests:** `the-lead-is-named-even-when-hidden.spec.ts` (new, server: a participant on a hidden
+check-in gets only her own row plus the two top-level fields), `the-lead-is-named-even-when-hidden.spec.tsx`
+(new, client: the end card, the Done page and the topic card all render the lead's name from that
+same real shape), `what-the-end-of-a-check-in-can-say.spec.ts` (updated: `whoElseAnswers` no longer
+takes a participants list to search, so its fixture is the real shape rather than one carrying a
+lead row the server never sends), `ChatPage.offerOnlyWhatTheServerAccepts.spec.tsx` (updated: two
+tests asserted the offer must not appear on two landed answers, which was pinning the old defective
+threshold rather than a real rule - rewritten around the new one, one landed answer is enough, while
+still proving a local echo the server has not acknowledged never counts), `ChatPage.openIsSlow.spec.tsx`
+and `GroundChat.openIsSlow.spec.tsx` (updated to the new wording). Only the tests for files changed
+run (`--maxWorkers=2`), both type checks clean.
+
+### U.8 The check-in screens: fifth review's findings, all fixed in one round
+
+- **"Two reports come from this" and the team's report card vanished on a hidden check-in.** The
+  Done page decided this from `howManyAnswer(ground) > 1`, counting `ground.participants` - the same
+  array a check-in that hides peers from each other reduces to the reader's own row alone, so a real
+  team of four read "Your own report" and nothing else. `GET /grounds/:id` now sends
+  `aTeamReportComes`, a plain yes/no read off the raw participants before that filter runs - never a
+  count, so a hidden check-in still cannot learn its own size from this field.
+- **Swept the rest of the participant-facing screens for the same mistake and found two more of it,
+  both on GroundParticipantPage.** The Report tab's "the shared report compares two accounts... it
+  will build once somebody is added" notice counted `ground.participants` the same wrong way; it now
+  reads a new `atLeastTwoInThisRound`, computed with the same rule the client already uses for who
+  counts in a round (a managing-only lead counts in round one, except on a "lead only asks"
+  scenario). And "X of Y have answered" on My record's coverage strip fell back to counting
+  `ground.participants` once the report releases (the moment its own primary source,
+  `sessionProgress`, stops being computed) - it now falls back to `aTeamReportComes ? 2 : 1`, a
+  boolean rather than the true count, trading exact numbers on a team of three or more for not
+  learning a hidden check-in's real size. Chat, the end card and the Done page's own "also answers"
+  sentence were already fixed in the fourth review; Today's one name-bearing line is gated on
+  `mayName` (the lead or an admin), which a hidden check-in's participant never reaches. The board's
+  own version of this bug (`onlyOnePersonHere` in `BoardPage.tsx`, fed by `board.service.ts`) is the
+  engine workspace's file to fix - written up as request 50.
+- **`leadFirstName` held a whole name.** Signup stores "Your name" whole as `firstName`, so a lead
+  who typed "Rukia Otieno" had that entire string in a field called `leadFirstName`, printing her
+  surname in a sentence the prototype never puts one in. Trimmed to the first word at the one place
+  the field is built.
+
+**Tests:** `a-team-report-comes-is-a-yes-no.spec.ts` and `at-least-two-in-this-round-is-a-yes-no.spec.ts`
+(new, server: a real team of four handed only its own row still reads both fields true; a genuine
+solo check-in reads false; a managing-only lead is handled correctly both ways; both survive the
+report releasing), extended `the-lead-is-named-even-when-hidden.spec.tsx` (client: the Done page's
+team-report card renders from `aTeamReportComes` alone) and a new
+`GroundParticipantPage.atLeastTwoInThisRound.spec.tsx` (a full render of the Report tab from the
+real hidden-check-in row shape), extended `the-lead-is-named-even-when-hidden.spec.ts` (server: a
+whole name at signup trims to its first word). Only the tests for files changed run
+(`--maxWorkers=2`), both type checks clean.
+
+### U.8, end-of-module suites: four failures from our own commits, all fixed
+
+Running every suite (not only the files this module touched) at the end of U.8 found four
+failures, all self-inflicted:
+
+- **"Finish my check-in now" reads the server's floor again, not one landed answer.** The fourth
+  review's fix offered the manual finish button from the first landed answer, always, reasoning
+  that the engine's closing message and its own completion gate can disagree on the same session
+  (request 47). `api/src/modules/conversation/one-floor-not-two.spec.ts` is the engine's own
+  deliberate rule against exactly that shape: the engine, the server's refusal, and this page's
+  offer must all read ONE floor, because a live check-in has deadlocked when the screen and the
+  server disagreed about when finishing was allowed. Offering from the first answer always
+  recreated that same two-sources-of-truth shape from the other side, so the gate is restored to
+  `mayCompleteAfter`, the server's own number. The dead end itself - the engine's closing message
+  can still say "your report is ready now" while its own gate disagrees - is unchanged and stays
+  the engine's to close; noted on request 47 that the screens' floor gate is deliberately restored
+  to the engine's own rule, and why, so nobody re-removes it for the same reason again.
+- **The completion refusal reads `canContinue` first.** Changed to
+  `err?.response?.data?.canContinue || err?.response?.status === 400`, per
+  `a-refusal-that-asks-must-be-answerable.spec.ts` - the explicit signal first, the status as the
+  fallback for the history where a shared filter once dropped the field.
+- **A stale test fixture.** `the-check-in-as-a-person-reads-it.spec.tsx`'s SALES fixture predated
+  `leadFirstName`/`leadAnswersToo`/`aTeamReportComes`; added them as the server actually sends
+  them, with `report.releasedAt` (not `roundCompletions` alone) in the "everyone has answered"
+  case - every existing assertion unchanged.
+- **A guard that pinned the retired read.** `a-shared-report-needs-two-people-and-the-page-says-so.spec.ts`
+  pinned `whoIsInRound(ground.participants, ...)`; updated to pin `atLeastTwoInThisRound` instead,
+  the sentence itself unchanged.
 
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 

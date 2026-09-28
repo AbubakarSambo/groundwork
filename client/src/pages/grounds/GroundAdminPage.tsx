@@ -1793,6 +1793,12 @@ export function GroundAdminPage() {
                 the check-in, so it is not one of them.
               */
               peersHidden={(ground as any).peersVisibleEffective === false && !canRunThisGround}
+              /* Names, not roles (U.8 third review): whoever runs the check-in, by their own name. */
+              leadName={(() => {
+                const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+                return lead ? personLabel(lead) : null
+              })()}
+              viewerIsTheLead={isInitiator}
               parties={(ground.participants ?? [])
                 .filter((p: any) => !p.managingOnly)
                 .map((p: any) => {

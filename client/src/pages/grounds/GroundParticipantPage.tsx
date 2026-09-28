@@ -1,7 +1,6 @@
 import { howItEnded, hasStalled } from '@/lib/a-ground-that-has-ended'
 import { OutOfTime } from './OutOfTime'
 import { plannedSessionsFor } from '@/lib/sessionCount'
-import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -16,6 +15,7 @@ import { groundTabs } from './ground-tabs'
 import { GroundTabRow } from '@/components/gw/GroundTabRow'
 import { apiClient } from '@/api/client'
 import { peopleLabels, atTheStart } from '@/lib/utils'
+import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
@@ -386,7 +386,17 @@ export function GroundParticipantPage() {
    * against a period that has not happened.
    */
   const openAvailableFrom = (openCheckIn as any)?.availableFrom ?? null
-  const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now()
+  /*
+   * NOTHING ABOUT "NEXT" WHILE THE CURRENT ONE IS STILL OPENING (U.8 third review).
+   *
+   * The auto-open handoff above (`?open=1`, from the ground page's own "Check in" button) calls
+   * `probeSession.mutate()` the moment this page mounts, and that request can take up to a minute
+   * (ConversationService.open). The lead landed here mid-open and read "Your next check-in opens
+   * 12 October" while her FIRST one had not even finished opening - a promise about the session
+   * after this one, before this one exists. Excluded here rather than only where it is shown, so
+   * every reader of `opensLater` (the header line and the composer's own line) agrees.
+   */
+  const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now() && !probeSession.isPending
   const dueNow = !!openCheckIn && !opensLater
 
 
@@ -615,6 +625,15 @@ export function GroundParticipantPage() {
              * session 3 answers "is anybody else doing session 3", which is the question.
              */
             peersHidden={(ground as any).peersVisibleEffective === false}
+            /*
+              NAMES, NOT ROLES, AND NEVER SAID TO THE LEAD ABOUT HERSELF (U.8 third review).
+              This is "Rukia knows who is here" - true whenever there is a lead, whether or not she
+              also answers a check-in - so it reads `whoRunsThis`, not `whoElseAnswers` (U.8 fourth
+              review). `GroundTopic` shows the lead her own true sentence instead when
+              `viewerIsTheLead` is set, which is exactly `isInitiatorHere` computed above.
+            */
+            leadName={whoRunsThis(ground as any)}
+            viewerIsTheLead={isInitiatorHere}
             parties={(ground.participants ?? [])
               .filter((p: any) => !p.managingOnly)
               .map((p: any) => {
@@ -703,8 +722,21 @@ export function GroundParticipantPage() {
               coverage={{
                 iHaveCheckedIn: completedCheckIns.length > 0,
                 answered: (ground as any)?.sessionProgress?.completed ?? completedCheckIns.length,
+                /*
+                 * `sessionProgress` GOES NULL ONCE THE REPORT RELEASES, and the fallback used to
+                 * count `ground.participants` - the array a hidden check-in reduces to this reader's
+                 * own row alone, so it read "1" for a real team of four the moment its report
+                 * released (U.8 fifth review, same bug as `aTeamReport` on the Done page).
+                 *
+                 * NOT A FABRICATED "2" EITHER (U.8 fifth review, second pass). That first fix
+                 * invented a total, which `WhatTheReportCanSayYet` printed as "X of 2 have
+                 * answered" - untrue the moment the real team had three or more people in it. A
+                 * genuinely solo check-in (`aTeamReportComes` false) still gets its true count, 1;
+                 * a team of unknown size gets `null`, which the component reads as "more than one,
+                 * exact number not known" and says something true instead of a guessed total.
+                 */
                 parties: (ground as any)?.sessionProgress?.total
-                  ?? (ground.participants ?? []).filter((p: any) => !p.managingOnly).length,
+                  ?? ((ground as any)?.aTeamReportComes ? null : 1),
                 /* Empty where peers are hidden, and the component says "one person" instead. A page
                    being private to its reader does not make somebody else's name theirs to know. */
                 waitingOn: (ground as any)?.peersVisibleEffective === false
@@ -768,7 +800,14 @@ export function GroundParticipantPage() {
               can never release one - the rule refuses outright below two - and the page said
               "forming" for ever. The truth, and who can change it (fix plan B17).
             */}
-            {whoIsInRound((ground.participants ?? []) as any[], (ground as any).sessionProgress?.sessionNumber ?? 1, (ground as any).scenario).length < 2 && (
+            {/*
+              READ FROM `ground.atLeastTwoInThisRound`, NOT `whoIsInRound(ground.participants, ...)`
+              (U.8 fifth review). `ground.participants` is reduced to this reader's own row alone on
+              a check-in that hides peers from each other, so this always counted as one - a real
+              team of four read "It will build once somebody is added" for ever. The server sends
+              the same rule's answer, computed off the raw participants before that filter runs.
+            */}
+            {!(ground as any).atLeastTwoInThisRound && (
               <div role="status" style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
                 The shared report compares two accounts. {isInitiator ? 'Add somebody and this will build.' : 'It will build once the person running this check-in adds somebody.'} Your own record is yours to read in the meantime.
               </div>

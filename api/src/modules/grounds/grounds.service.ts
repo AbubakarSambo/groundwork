@@ -1872,6 +1872,48 @@ export class GroundsService {
     const peersKeepTheirNumbers =
       !viewerIsInitiator && ((ground as any).whoSeesTargets ?? 'THEIR_OWN') !== 'EVERYBODY';
 
+    /**
+     * THE LEAD'S FIRST NAME, TO ANYONE IN THE CHECK-IN, EVEN WHEN THE PEER RULE HIDES EVERYONE ELSE.
+     *
+     * `participantsWithCheckIns` below filters the lead's own row out of `participants` for a
+     * participant on a hidden check-in - that is the peer rule doing its job, and it must keep doing
+     * it. But three sentences on the screens ("Rukia knows who is here", "Rukia also answers a
+     * check-in") looked the lead up IN that same filtered list, so the name silently fell back to
+     * "Your lead" on exactly the check-ins the peer rule protects (U.8 fourth review).
+     *
+     * The invitation a participant read to get here already named the lead in full ("Rukia Otieno
+     * invited you"), so her first name is not new information to anyone reading this - only her
+     * first name goes out, and nothing else about her (no email, no role, no status).
+     *
+     * `leadAnswersToo` carries the one other fact those sentences need and the filtered list can no
+     * longer supply: whether the lead is a party who answers a check-in herself, or manages without
+     * one (`managingOnly`). Read here, off the RAW participants, before the peer filter runs.
+     *
+     * ONLY HER FIRST WORD (U.8 fifth review). Signup asks for "Your name" in one field and stores
+     * whatever was typed as `firstName` (AuthPage.tsx, auth.service.ts), so a lead who signed up as
+     * "Rukia Otieno" had that whole string sitting in a field called `leadFirstName` - which is not
+     * what it says it is, and prints her surname in a sentence ("Rukia Otieno also answers a
+     * check-in.") that the prototype never puts a surname in. Trimmed to one word here, at the one
+     * place this field is built, rather than by every reader of it.
+     */
+    const leadParticipantRaw = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR') as any;
+    const leadFirstName = (leadParticipantRaw?.user?.firstName ?? '').trim().split(/\s+/)[0] || null;
+    const leadAnswersToo = !!leadParticipantRaw?.userId && !leadParticipantRaw?.managingOnly;
+    /**
+     * WHETHER A TEAM REPORT COMES FROM THIS AT ALL - A BOOLEAN, NOT A COUNT (U.8 fifth review).
+     *
+     * The Done page decides "Two reports come from this" / "The team's report" card from
+     * `howManyAnswer(ground) > 1`, which counts `ground.participants` - the exact array the peer
+     * rule reduces to the reader's own row alone on a hidden check-in. A participant there read
+     * "Your own report" with no team card at all, whatever the true size of the team, because the
+     * filtered list she was handed always looked like a check-in of one.
+     *
+     * Read here off the RAW participants, same as `leadFirstName` above, and sent as a plain yes/no:
+     * whether more than one party answers, never how many. A hidden check-in must not learn its own
+     * size from a field meant to answer a different question.
+     */
+    const aTeamReportComes = (ground.participants ?? []).filter((p: any) => !p.managingOnly).length > 1;
+
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
       .map((p: any) => {
@@ -1994,6 +2036,21 @@ export class GroundsService {
     const requestingUserIsMissing = !!(
       sessionProgress && requestingParticipant && sessionProgress.missingParticipantIds.includes(requestingParticipant.id)
     );
+    /**
+     * WHETHER THIS ROUND ALREADY HAS TWO PEOPLE COUNTED IN IT - A YES/NO, NOT A COUNT (U.8 fifth
+     * review). GroundParticipantPage's Report tab says "The shared report compares two accounts...
+     * It will build once the person running this check-in adds somebody" from
+     * `whoIsInRound(ground.participants, ...).length < 2` - the same `ground.participants` a hidden
+     * check-in reduces to the reader's own row alone, so a real team of four read that notice
+     * forever. Read here off the RAW participants, with the same rule the client's `countsInRound`
+     * uses (a managing-only lead counts in round one, unless the scenario is one where the lead
+     * only asks and never answers - `waitsOnAManagingOnlyLead`), so this agrees with the client's own
+     * rule rather than a cruder count.
+     */
+    const roundSessionNumber = sessionProgress?.sessionNumber ?? 1;
+    const atLeastTwoInThisRound = (ground.participants ?? []).filter((p: any) =>
+      !p.managingOnly || waitsOnAManagingOnlyLead((ground as any).scenario, roundSessionNumber),
+    ).length > 1;
 
     // Read-back of private lead-context notes: ONLY the initiator who wrote them
     // sees them. They are never returned to any other party (that is the private
@@ -2189,6 +2246,14 @@ export class GroundsService {
         ? ((rest as any).checkIns ?? []).filter((c: any) => participantsWithCheckIns.some((p: any) => p.id === c.participantId))
         : (rest as any).checkIns,
       participants: participantsWithCheckIns,
+      /** The lead's first name alone, to anyone in the check-in - see the note on `leadFirstName` above. */
+      leadFirstName,
+      /** Whether the lead is also a party who answers a check-in, not only someone who manages it. */
+      leadAnswersToo,
+      /** Whether more than one party answers this check-in - a yes/no, not a count. See the note above. */
+      aTeamReportComes,
+      /** Whether this round already has two people counted in it - a yes/no. See the note above. */
+      atLeastTwoInThisRound,
       /**
        * WHAT THE PEER RULE IS ACTUALLY DOING, not what is stored. W14-4.
        *

@@ -53,23 +53,41 @@ export function whenTheNextOneOpens(
  * The lead's first name, when the lead also answers this check-in and the reader is someone else.
  * "Wairimu also answers a check-in" is only true then: a lead who only manages does not answer, and
  * the lead reading their own end card is not told about themselves.
+ *
+ * READS `ground.leadFirstName`/`leadAnswersToo`, NOT `ground.participants` (U.8 fourth review). The
+ * lead's own row is filtered out of `participants` for a participant on a check-in that hides
+ * everyone else - correctly, that is the peer rule doing its job - which meant this fell back to
+ * null on exactly the check-ins where somebody most needed to be told who reads their words. The
+ * server now sends her first name, and whether she answers too, straight on the ground, unaffected
+ * by who else the peer rule is hiding. See the note on `leadFirstName` in `grounds.service.ts`.
  */
 export function whoElseAnswers(
-  ground: { participants?: { partyType?: string; userId?: string | null; managingOnly?: boolean | null; user?: { firstName?: string | null } | null }[] } | null | undefined,
-  myUserId: string | null | undefined,
+  ground: { leadFirstName?: string | null; leadAnswersToo?: boolean; viewerIsInitiator?: boolean } | null | undefined,
 ): string | null {
-  const lead = (ground?.participants ?? []).find(p => p.partyType === 'INITIATOR')
-  if (!lead || !lead.userId || lead.userId === myUserId) return null
-  if (lead.managingOnly) return null
+  if (!ground || ground.viewerIsInitiator || !ground.leadAnswersToo) return null
   /* Signup asks for "Your name" in one field and stores it whole (AuthPage.tsx, auth.service.ts),
      so a lead who typed "Wairimu Kamau" has that whole string in `firstName`. The prototype's own
      line says only the first name ("Wairimu also answers a check-in"), never the surname too. */
-  return firstWordOfAName(lead.user?.firstName)
+  return firstWordOfAName(ground.leadFirstName)
 }
 
-/** How many people answer this check-in, the reader included, as far as the reader may see. */
-export function howManyAnswer(
-  ground: { participants?: { managingOnly?: boolean | null }[] } | null | undefined,
-): number {
-  return (ground?.participants ?? []).filter(p => !p.managingOnly).length
+/**
+ * The lead's first name, for "Rukia knows who is here" (the peers-hidden sentence on the topic
+ * card) - true whenever there is a lead, whether or not she also answers a check-in herself.
+ * Different question from `whoElseAnswers` above, and answered from the same field.
+ */
+export function whoRunsThis(
+  ground: { leadFirstName?: string | null } | null | undefined,
+): string | null {
+  return firstWordOfAName(ground?.leadFirstName)
 }
+
+/*
+ * `howManyAnswer` used to live here: `(ground.participants ?? []).filter(p => !p.managingOnly).length`,
+ * used only to decide `aTeamReport = howManyAnswer(ground) > 1` on the Done page. Removed (U.8 fifth
+ * review): `ground.participants` is reduced to the reader's own row alone on a check-in that hides
+ * peers, so this always read as a check-in of one there, whatever the true size of the team, and the
+ * Done page dropped "Two reports come from this" and the team's report card. The server now sends
+ * `ground.aTeamReportComes`, a plain yes/no read off the raw participants before that filter runs -
+ * use that instead of counting `participants` for this question.
+ */
