@@ -67,7 +67,7 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
           background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10,
           padding: '14px 16px', marginBottom: 4,
         }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.4px', color: 'var(--gw-navy)', marginBottom: 5 }}>THE GAP</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.4px', color: 'var(--gw-navy)', marginBottom: 5 }}>The gap</div>
           <div style={{ fontSize: 15.5, color: 'var(--gw-text)', lineHeight: 1.55, fontWeight: 600 }}>{it.theGap}</div>
         </div>
       )}

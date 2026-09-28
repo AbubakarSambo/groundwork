@@ -41,4 +41,11 @@ describe('whoSeesThisDifferently', () => {
     expect(whoSeesThisDifferently(undefined, null)).toBe('This is seen differently.')
     expect(whoSeesThisDifferently([], null)).toBe('This is seen differently.')
   })
+
+  /* U.10 re-review: the server has already turned the reader's own side into "You". Read live as
+     Amani: "Rukia Otieno and You see this differently." */
+  it('treats the served "You" as the reader, first and in the right case', () => {
+    expect(whoSeesThisDifferently([{ who: 'Rukia Otieno' }, { who: 'You' }], 'Amani Wekesa')).toBe('You and Rukia Otieno see this differently.')
+    expect(whoSeesThisDifferently([{ who: 'You' }, { who: 'Rukia Otieno' }], null)).toBe('You and Rukia Otieno see this differently.')
+  })
 })

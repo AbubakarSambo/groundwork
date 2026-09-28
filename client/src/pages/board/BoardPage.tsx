@@ -121,8 +121,11 @@ export function whoSeesThisDifferently(positions: { who?: string }[] | undefined
   if (who.length < 2) return 'This is seen differently.'
   if (who.includes('A colleague')) return 'People see this differently.'
   /* The reader reads themselves first: "You and Amani Wekesa", never "Amani Wekesa and You". */
-  if (myName && who.includes(myName)) who = [myName, ...who.filter((w) => w !== myName)]
-  const say = (w: string) => (myName && w === myName ? 'You' : w)
+  /* The server has usually already turned the reader's own side into "You"; a real name standing
+     in for the reader counts the same. Either way the reader comes first, as "You". */
+  const isMe = (w: string) => w === 'You' || (!!myName && w === myName)
+  if (who.some(isMe)) who = [who.find(isMe)!, ...who.filter((w) => !isMe(w))]
+  const say = (w: string) => (isMe(w) ? 'You' : w)
   return `${say(who[0])} and ${say(who[1])} see this differently.`
 }
 
@@ -1432,7 +1435,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'}
                     </Pill>
                   </div>
-                  {d.then && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{d.then}</div>}
+                  {d.then && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>When this arrives, {d.from} says: “{String(d.then).replace(/[.\s]+$/, '')}.”</div>}
                 </Row>
                 )
               })}
@@ -1500,7 +1503,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <td style={td}><span style={{ fontWeight: 700, color: 'var(--gw-dark)' }}>{nameOnTheBoard(b, r.participantId, r.name)}</span></td>
                         {anyRoleToShow && (
                           <td style={{ ...td, color: 'var(--gw-sub)' }}>
-                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : r.managingOnly ? 'Managing only' : ' - '}
+                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : r.managingOnly ? 'Managing only' : <span aria-label="No role given" />}
                           </td>
                         )}
                         {b.checkInGrid!.sessions.map((s) => {
@@ -1683,7 +1686,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   {/* The signal is ALWAYS coupled to the reason it cannot self-determine. */}
                   <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.4, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 9, padding: '7px 10px' }}>
                     <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>
-                      Which of the four this is
+                      Which of these this is
                     </span>
                     {r.reasonText}
                   </div>
@@ -1835,7 +1838,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {has('poll') && (
           <>
             <Zone label="Logistics" />
-            <Sec title="Find a time" src="The only thing on this board you set up yourself." />
+            <Sec title="Find a time" src={b.canEditFrame ? 'The only thing on this board you set up yourself.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`} />
             <Card>
               {b.canEditFrame && (
                 <div style={{ padding: '8px 0', borderBottom: b.poll ? '1px solid var(--gw-border)' : 'none' }}>
