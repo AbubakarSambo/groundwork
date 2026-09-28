@@ -17,6 +17,8 @@ import { useAuthStore } from '@/stores/auth'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
+import { plannedSessionsFor } from '@/lib/sessionCount'
+import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 
 /**
  * U.9 RE-REVIEW: "WHAT YOU SHARED:" IS A LABEL BOLTED ONTO A SENTENCE WITH A COLON.
@@ -127,14 +129,44 @@ export default function SessionReportPage() {
     onError: () => toast.error('That did not start. Nothing has changed - try again.'),
   })
 
+  const plannedSessions = ground ? plannedSessionsFor((ground as any).timelineDays, (ground as any).cadence, (ground as any).plannedSessions) : null
+
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 16px 60px' }}>
-      <button
-        onClick={() => navigate(-1)}
-        style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
-      >
-        &larr; Back
-      </button>
+    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 60px' }}>
+      {/*
+        U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SHARED HEADER, ONCE THE PAGE HAS SOMETHING TO
+        SHOW. Matching U.9 RE-REVIEW ITEM A just below (neither the old heading nor this one is
+        drawn on a page that refused you): the header needs `data.groundId`, which only exists
+        once the session report itself has loaded, so it is gated the same way. Loading and error
+        states keep the plain "← Back" they already had. This is always the viewer's own report
+        (the server refuses anyone else's), so `isAParty` is always true here.
+      */}
+      {!isLoading && !isError && data?.groundId ? (
+        <TheCheckInHeader
+          id={data.groundId as string}
+          title={(ground as any)?.label ?? 'Check-in'}
+          cadence={(ground as any)?.cadence ?? null}
+          plannedSessions={plannedSessions}
+          canRunThisCheckIn={amTheInitiator}
+          isAParty
+          active="report"
+          tabs={[
+            { key: 'board', label: 'Board', to: `/grounds/${data.groundId}/board` },
+            { key: 'chat', label: 'Check-in', to: `/grounds/${data.groundId}` },
+            { key: 'context', label: 'Context', to: `/grounds/${data.groundId}?tab=context` },
+            { key: amTheInitiator ? 'sessions' : 'record', label: 'My work', to: `/grounds/${data.groundId}?tab=${amTheInitiator ? 'sessions' : 'record'}` },
+            { key: 'settings', label: 'People and setup', to: `/grounds/${data.groundId}?tab=settings` },
+            { key: 'report', label: 'Report', to: `/grounds/${data.groundId}?tab=report` },
+          ]}
+        />
+      ) : (
+        <button
+          onClick={() => navigate(-1)}
+          style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14 }}
+        >
+          &larr; Back
+        </button>
+      )}
 
       {/*
         U.9 RE-REVIEW, ITEM A: NEITHER LINE APPEARS ON A PAGE THAT HAS REFUSED YOU.
@@ -145,7 +177,7 @@ export default function SessionReportPage() {
       */}
       {!isError && (
         <>
-          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2, marginTop: 20 }}>
             {data?.sessionNumber ? `Session ${data.sessionNumber}` : 'Your session'}
           </div>
           {/*
