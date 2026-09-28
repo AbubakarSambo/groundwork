@@ -1,3 +1,4 @@
+import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { whoIsInTheRound } from './how-many-have-answered';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
@@ -2638,7 +2639,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
     return adminsThisOrg(user, { organizationId: groundOrganizationId });
   }
 
+  /** Where things stand against what success was said to be, through the same last read. */
   async whereAgainstSuccess(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    const served = await this.whereAgainstSuccessAsBuilt(groundId, requestingUserId, requestingUserOrgId);
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+  }
+
+  private async whereAgainstSuccessAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -3580,7 +3587,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
     };
   }
 
+  /** The rounds, through the same last read as every other report read. */
   async rounds(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    const served = await this.roundsAsBuilt(groundId, requestingUserId, requestingUserOrgId);
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+  }
+
+  private async roundsAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -4727,6 +4740,8 @@ happened, and what is in the way.`;
         : v;
     const walk = (v: any): any => {
       if (typeof v === 'string') return t(v);
+      /* A Date is not a plain object: Object.entries on it is empty, so it arrived as {} (request 53). */
+      if (v instanceof Date) return v;
       if (Array.isArray(v)) return v.map(walk);
       if (v && typeof v === 'object') {
         const out: Record<string, any> = {};
@@ -4761,6 +4776,7 @@ happened, and what is in the way.`;
     const NEVER_NAMED = new Set(['label', 'participantLabel']);
     const walkTextOnly = (v: any): any => {
       if (typeof v === 'string') return t(v);
+      if (v instanceof Date) return v;
       if (Array.isArray(v)) return v.map(walkTextOnly);
       if (v && typeof v === 'object') {
         const out: Record<string, any> = {};
@@ -5675,8 +5691,8 @@ happened, and what is in the way.`;
     const ground = await (this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        initiatorId: true, organizationId: true, whoSeesTargets: true,
-        participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        initiatorId: true, organizationId: true, whoSeesTargets: true, scenario: true, peersVisibleToEachOther: true,
+        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
         objectives: { select: { ownerParticipantId: true, target: true } },
       } as any,
     }) as Promise<any>).catch(() => null);
@@ -5693,7 +5709,13 @@ happened, and what is in the way.`;
       return [full, first, (p?.nameGiven ?? '').trim()].filter((n: string) => n && n.length > 1);
     };
     const hiddenTargets = targetsHiddenFrom({ participantId: me?.id ?? null, isTheLead: isInitiator }, ground.whoSeesTargets, ground.objectives ?? [], namesOfPerson);
-    return withoutHiddenTargetsIn(withoutPrivateFileNamesIn(served, privateNames), hiddenTargets);
+    /* And no internal label reaches anyone, whichever field it sits in. See no-internal-label-reaches-anyone. */
+    const called = whatEachLabelIsCalled(ground.participants ?? [], {
+      viewerParticipantId: me?.id ?? null,
+      viewerIsLead: isInitiator || isOrgAdmin,
+      peersAreNamed: this.peersAreNamed(ground as any),
+    });
+    return withoutInternalLabelsIn(withoutHiddenTargetsIn(withoutPrivateFileNamesIn(served, privateNames), hiddenTargets), called);
   }
 
   private async getAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {

@@ -1063,6 +1063,8 @@ export function theVerbAgreesWithYouIn(input: string): string {
                found while fixing the title in a name). Verbs of accounting again, all regular. */
             'agrees', 'disagrees', 'confirms', 'mentions', 'recalls', 'understands', 'considers',
             'suggests', 'argues', 'insists', 'admits', 'explains', 'hopes',
+            /* Read live on the session report (screens requests 54 and 65, 28 September 2026). */
+            'sends', 'assumes', 'asks', 'waits', 'works', 'leads', 'wishes', 'finishes', 'misses',
           ].join('|') +
           ')\\b',
         'gi',
