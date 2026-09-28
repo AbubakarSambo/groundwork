@@ -45,9 +45,15 @@ export function howManyNeverReachedIt(n: number): string {
   return `${n} conversations never reached this.`
 }
 
-/** "Start with: Aisha" was a label and a colon. `startWith` is who to begin with, so it becomes one sentence. */
+/**
+ * "Start with: Aisha" was a label and a colon. `startWith` is who to begin with, so it becomes one
+ * sentence. And "Start with You." is nobody's own sentence about themselves - a reader is "you" to
+ * the product, not a name it hands back to them, so when the answer is the reader, it reads "Start
+ * with yourself."
+ */
 export function startWith(who: string): string {
   const w = who.trim().replace(/^start with\s+/i, '').replace(/^(The|A|An|Each|Every|All|Any)\b/, (d) => d.toLowerCase())
+  if (/^you$/i.test(w)) return 'Start with yourself.'
   return `Start with ${w}${/[.!?]$/.test(w) ? '' : '.'}`
 }
 
