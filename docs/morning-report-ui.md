@@ -3901,6 +3901,60 @@ headings that are that convention working as designed everywhere else in the pro
 **Tests run:** only the tests for the files this round changed, by path, `--maxWorkers=2`, plus
 `npx tsc -b` (client) and `npx tsc --noEmit` (api). All passed.
 
+### U.10 The board, third round: the three remaining NOT DONE items finished
+
+**28 September, finishing capitals headings, the switchboard's order, and the head-count root
+cause.** All three of the second round's NOT DONE items, as Hafsah asked.
+
+- **1. Capitals headings (DONE).** Checked against two prototype screens: B5's
+  `board-as-lead.jpg`/`.txt` and B4's `team-report.jpg` - every heading in both is sentence case,
+  bold, never capitals. `kit.tsx`'s `Zone` and `Sec` ("every section heading in the product uses
+  this") drew every one of them in capitals via `textTransform: uppercase`; removed from both,
+  product-wide, since their content was already written in sentence case. Also fixed `BoardPage.tsx`'s
+  one local duplicate of the same convention ("How to read and use this board"). Ran the tests for
+  every file that imports `Zone`/`Sec` from `kit.tsx` by path, then the full client suite (477 files,
+  3,334 tests) as the safest way to catch indirect users too - all pass. Two tests pinned the old
+  shape and were updated, with the reason in each: `api/wired-endpoints.spec.ts` pinned
+  `shown.startingState`'s exact expression, which item A had already changed without this file being
+  run at the time; `one-vocabulary.spec.ts` pinned `Sec`'s dark-mode colour as a guard against
+  reintroducing near-identical whites, so rather than edit that guard, the colour itself was left
+  unchanged (only the transform and letter-spacing moved).
+- **2. Order (DONE).** `orderedSwitchboardSections()` is now wired into `BoardPage.tsx` for real. The
+  7 G2-mapped sections used to sit in three separate zones in an order nobody had checked against the
+  switchboard - **moves made:** objectives moved out of "Against the plan" (it sat far down the page)
+  to the top, with cascade and "what success looks like" (which sit directly above it and qualify it)
+  moving with it; divergence moved out of the very top of the page (an earlier review's deliberate
+  choice, made before the switchboard existed) to third, after objectives and startingState;
+  startingState and quickRead moved out of "At a glance" - startingState to second, quickRead to
+  fifth; whatTheRoomIsAbout moved out of the old "Against the plan" area to fourth. dependencies and
+  patterns were **not** moved - their existing positions already put them after the new group, in the
+  right relative order. The "Against the plan" zone divider is gone entirely (all three of its
+  sections moved into the new group); "At a glance" now gates only on decisions/eachPerson, which
+  stayed where they were. Wiring the function in for real caught a real bug in it: it had sorted "on"
+  sections before "optional" ones, which is not G2's own order (the 30-row table interleaves them);
+  fixed to sort by the table's own position, which is what the prototype's board actually draws in.
+  New test `the-board-draws-the-switchboards-order.spec.ts` reads `BoardPage.tsx`'s own source and
+  checks its document order against what the function computes, for two real situations and every
+  row in the switchboard, so the layout and the function cannot drift apart silently again.
+- **3. Head counts (DONE, root cause found and written up; the client side made consistent).**
+  Hafsah found it: the board's count is `howItIsGoing.glance.progress.ofPeople`
+  (`board.service.ts` ~509 → `how-a-check-in-is-going.ts` → `what-a-manager-needs-at-a-glance.ts`
+  ~106 → `how-many-have-answered.ts`'s `whoIsExpected`), a deliberately rich population (joined OR
+  answered OR still holding a live, unexpired invitation), while the check-in's own header counts a
+  narrower one client-side with `whoIsInRound` (managing-only counts only for session 1, no
+  invitation-lapse check at all) - the two agree once everybody has joined and disagree the moment
+  somebody is still mid-invitation, which is exactly the gap she found. Request 69 rewritten with
+  this exact chain (file, line, function, the population each one uses) and a direct question: which
+  population should be the one everyone reads. On the screens: `WhatYourRecordCanSupport`'s
+  `waitingOn` list filtered `!p.managingOnly` on its own, a different rule from `countsInRound`,
+  which the same card's `parties` count already used via `whoIsInRound` - two counts of the same
+  population on one card. Both now use the same predicate. The server's own number is unchanged on
+  screen, as asked.
+
+**Tests run:** the files each change touched, by path, plus the full client suite once (for item 1's
+broad blast radius) and `pages/grounds` in full (for item 3's `GroundAdminPage.tsx` change), plus
+`npx tsc -b` and `npx tsc --noEmit`. All pass.
+
 ### U.11 Ending a check-in, the probation review, handover: built and tested, not yet reviewed
 
 **What was missing, against the prototype (the gap list):** a decision with its reason (the lead
