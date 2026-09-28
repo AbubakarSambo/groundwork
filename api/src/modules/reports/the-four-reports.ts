@@ -466,7 +466,8 @@ export const WHAT_THE_BLOCK_IS_CALLED: Record<string, string> = {
   stillOpenForYou: 'What is still open for you',
   whatYouCarry: 'What you carry into the next one',
   /* The folded one says "this one" on the page, because it is about the sitting rather than the run. */
-  howMuchYouGaveIt: 'How much you gave this one',
+  /* The prototype's own words (B3 done.txt), Hafsah 28 Sep 2026: who sees which rating, and how it is worded, follows the prototype (screens request 62). */
+  howMuchYouGaveIt: 'How checkable today’s check-in was',
 
   /* B - everybody's half, one sitting. */
   /* Was "Against what good looks like", which is the product describing its own structure. The
