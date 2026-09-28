@@ -18,7 +18,7 @@ import { Pill } from './kit'
  * could read off the board. What a manager can act on is how long something has sat against what
  * has actually been tried, and one move to put to them.
  */
-export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing to do'
+export type Reason = 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'
 
 export interface Row {
   participantId: string
@@ -28,24 +28,28 @@ export interface Row {
   target: number | null
   count: number
   reason: Reason
+  /** What happened and what would change it, a full sentence from the server. Shown under the pill in place of a fixed phrase. */
+  says: string
   ask: string | null
   /** The product's finding for this person, written from the record. See the-finding-per-person on the API. */
   finding?: string | null
   hasGap?: boolean
 }
 
-/** What the word means, said once here rather than left for the reader to infer from a colour. */
-const MEANS: Record<Reason, string> = {
-  'has not answered': 'has not checked in for the round that is open',
-  'stuck and not chasing': 'something has sat a fortnight or more and has only been asked about',
-  'behind the pace': 'further behind their number than the rounds gone would suggest',
-  'nothing to do': 'nothing here needs you this week',
+/** The pill's label for each reason, said as the prototype writes it. */
+const LABEL: Record<Reason, string> = {
+  'has not answered': 'has not answered',
+  'stuck and not chasing': 'stuck and not chasing',
+  'behind the pace': 'behind the pace',
+  'nothing checkable': 'Nothing checkable',
+  'nothing to do': 'nothing to do',
 }
 
 const TONE: Record<Reason, 'bad' | 'warn' | 'info' | 'flat'> = {
   'has not answered': 'bad',
   'stuck and not chasing': 'bad',
   'behind the pace': 'warn',
+  'nothing checkable': 'warn',
   'nothing to do': 'flat',
 }
 
@@ -79,10 +83,10 @@ export function WhereEachPersonIs({ rows }: { rows: Row[] }) {
                   {r.count} of {r.target}
                 </span>
               )}
-              <Pill tone={TONE[r.reason]}>{r.reason}</Pill>
+              <Pill tone={TONE[r.reason]}>{LABEL[r.reason]}</Pill>
             </span>
           </div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{MEANS[r.reason]}</div>
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{r.says}</div>
           {/* The whole point of the row. Absent where there is nothing to ask for, rather than
               padded with something to say. */}
           {r.ask && (

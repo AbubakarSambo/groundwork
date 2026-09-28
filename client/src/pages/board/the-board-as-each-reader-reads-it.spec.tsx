@@ -58,8 +58,8 @@ const AS_THE_LEAD = {
   ...base, myParticipantId: 'p-lead', canEditFrame: true, readOnlyNote: null,
   objectives: [TEAM_TARGET, AISHAS],
   eachPerson: [
-    { participantId: 'p-aisha', who: 'Aisha Otieno', target: 5, count: 4, reason: 'nothing to do', ask: null },
-    { participantId: 'p-miriam', who: 'Miriam Wanjiku', target: null, count: 0, reason: 'nothing to do', ask: null },
+    { participantId: 'p-aisha', who: 'Aisha Otieno', target: 5, count: 4, reason: 'nothing to do', says: 'Aisha Otieno has checked in, and nothing here needs you this week.', ask: null },
+    { participantId: 'p-miriam', who: 'Miriam Wanjiku', target: null, count: 0, reason: 'nothing to do', says: 'Miriam Wanjiku has checked in, and nothing here needs you this week.', ask: null },
   ],
 }
 const AS_MIRIAM = { ...base, myParticipantId: 'p-miriam', canEditFrame: false, readOnlyNote: null, objectives: [TEAM_TARGET] }

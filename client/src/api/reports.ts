@@ -44,8 +44,10 @@ export const reportsApi = {
       )
       .then(r => r.data),
 
+  /* The route replies with when it happened, not the whole report (engine answer 43a) - the
+     report itself is refetched separately once the release invalidates its query. */
   release: (groundId: string) =>
-    apiClient.post<Report>(`/grounds/${groundId}/report/release`).then(r => r.data),
+    apiClient.post<{ groundId: string; releasedAt: string }>(`/grounds/${groundId}/report/release`).then(r => r.data),
 
   /** The lead's button: this round's report to everyone who answered and asked for it, once each. */
   /* `as` is the organiser's choice of what the respondents receive, made at the moment of sending.
