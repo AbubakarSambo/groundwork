@@ -49,9 +49,13 @@ export function HowThisHasMoved({ groundId }: { groundId: string }) {
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 3 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)' }}>Round {m.round}</span>
               <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>
+                {/*
+                  ONE SENTENCE, NOT TWO FACTS JOINED BY A DOT. "2026-09-27 · 1 read differed" read
+                  as a table row; a count is never a characterisation, so it stays plain, but it is
+                  now said as its own clause rather than stitched to the date.
+                */}
                 {m.takenAt}
-                {/* A count, never a characterisation. What it means is the reader's. */}
-                {m.differences > 0 && ` · ${m.differences} ${m.differences === 1 ? 'read differed' : 'reads differed'}`}
+                {m.differences > 0 ? `. ${m.differences} ${m.differences === 1 ? 'read differed' : 'reads differed'}.` : ''}
               </span>
             </div>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{m.says}</div>
