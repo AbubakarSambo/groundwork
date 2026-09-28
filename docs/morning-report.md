@@ -19,6 +19,12 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 What is left before release is not the engine: it is the steps below, which need Abubakar and Hafsah. The judgement, task 1.5, is not yet at Hafsah's bar. Run-12 was 90% and run-13 was 81%, and the bar is two runs in a row at 90%. Hafsah decided the aim is deployment, with the judgement improving every week after.
 
+**The last hour, 04:36 to 05:15:**
+- Week 2 was measured live, twice, and kept. No turn asks two questions any more. One number to watch is below.
+- A privacy fix: a participant was sent other people's ratings on a report still being put together. That is fixed, with a test.
+- One privacy question is for Hafsah: the code sends the lead everyone's ratings on purpose, and CLAUDE.md says it must not. It is the first item under "What needs Hafsah".
+- The screens workspace's newest work is merged in, and every API test passes on the merged code.
+
 **Run-13's results, tonight's second full run, on `e7b9cd65`, read against the database and the actual sentences:**
 - **The checker says nothing is worse than the baseline.** "Blocker checked" is back up to 42, and "specific detail asked for" to 85. That confirms run-12's low numbers were variation.
 - **Every problem count in the scorer is 0 again,** so task 1.6's bar holds on two full runs in a row.
@@ -98,21 +104,24 @@ What is left before release is not the engine: it is the steps below, which need
     - When the product's closing line goes under a model question, the model's question is dropped so that the closing line is never lost. The other choice, holding the closing line for a later turn, would have lost it in more than a third of the cases seen.
     - "Your manager" is not changed, because it is often a person's own manager, who is not always the lead.
     - A few scenario packs in the database script two questions in one line, such as "How are you carrying this? What is the worry underneath it?". The code now repairs them when a turn is saved, but the real fix is in the packs, and those are yours to switch on (decision 20).
-  - **Measuring it live:** sales and seniorhire, twice each, on the newest build. The first pair finished at 04:50. The second pair started at 04:51.
+  - **Measured live, and kept:** sales and seniorhire, twice each, on the newest build, finished at 05:11.
 
-    | Sales and seniorhire together | Runs before week 2 (run-12, run-13, and two re-runs) | Week 2, first pair |
-    | --- | --- | --- |
-    | Turns that ask more than one question | 5, 6, 5, 10 | **0** |
-    | Proof asked for | 9, 5, 10, 9 | 5 |
-    | Specific detail asked for | 26, 28, 42, 30 | 29 |
-    | Blocker checked | 9, 16, 19, 11 | 11 |
-    | Past words brought back | 34, 32, 37, 26 | 27 |
-    | Commitments recorded | 31, 42, 46, 20 | 29 |
+    | Sales and seniorhire together | Runs before week 2 (run-12, run-13, and two re-runs) | Week 2, first pair | Week 2, second pair |
+    | --- | --- | --- | --- |
+    | Turns that ask more than one question | 5, 6, 5, 10 | **0** | **0** |
+    | Proof asked for | 9, 5, 10, 9 | 5 | 5 |
+    | Specific detail asked for | 26, 28, 42, 30 | 29 | 41 |
+    | Blocker checked | 9, 16, 19, 11 | 11 | 15 |
+    | Past words brought back | 34, 32, 37, 26 | 27 | 36 |
+    | Commitments recorded | 31, 42, 46, 20 | 29 | 35 |
 
-    - No turn asks two questions now. The other numbers are inside the range of the four runs before week 2, though on the low side, so the second pair decides.
-    - Nothing in the "problems in what people read" list came up.
+    - No turn asks two questions now, in either pair. Every other number is inside the range of the four runs before week 2, so I have kept week 2.
+    - **One number to watch:** proof asked for was 5 both times, the bottom of the earlier range. The next full run will show whether week 2 lowered it. If it did, the rule that picks which question stays should put the proof question first.
+    - Nothing in the "problems in what people read" list came up in either pair.
     - The lead's name reads naturally, for example "Who arranged for you to be in these meetings with Amina?".
-    - **One new problem, once in 186 turns:** the model's closing sentence stayed in front of the product's last question. Tobi read "This check-in will continue in two weeks." and then "One more before this closes." in the same turn. It never happened in the four runs before. The fix is to drop the model's closing sentence when the product's last question is added. I have not built it, because there was not enough time left tonight to re-run it twice.
+    - **One new problem, once in 186 turns:** the model's closing sentence stayed in front of the product's last question. Tobi read "This check-in will continue in two weeks." and then "One more before this closes." in the same turn. It never happened in the four runs before, and not in the second pair. The fix is to drop the model's closing sentence when the product's last question is added. I have not built it, because there was not enough time left tonight to re-run it twice.
+- **The screens workspace's newest work is merged in** (`338c4dbe`, 21 commits). The one conflict was in the import lines of `grounds.service.ts`, and I kept what both sides use. It brought no migrations. The one privacy test it changed only gained a constructor argument, and its checks are the same.
+- **Every test, at 05:09, on the merged code.** All 10,408 API tests pass. The client passes 3,215 of 3,217. The two that fail are the screens workspace's sidebar tests, as before.
 - **Every test, at 04:45 on `f75afe50`.** All 10,399 API tests pass. The client passes 3,195 of 3,198. The three that fail are the screens workspace's sidebar tests, which depend on the date or the time, not on engine code. The client's plain-wording check had caught one engine line joined with a colon. I rewrote it as two full sentences, and it passes now (`f75afe50`). One older test pinned the old form of the record-line code, and I updated it to pin the same rule (`cc0fb346`).
 - **A privacy fix from the screens workspace's request 43** (`59a62cc3`). On a report still being put together, a participant who had already answered was served every other person's rating: how specific each person's answers were, and how sure the picture of them was. The released report already took these out, and this one did not. Now it does, and a test checks that every place a report is served takes them out. The screen never showed these, but the backend sent them.
 - Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
