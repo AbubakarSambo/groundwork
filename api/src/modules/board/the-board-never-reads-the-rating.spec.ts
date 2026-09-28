@@ -5,7 +5,16 @@ import { ReportsService } from '../reports/reports.service';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
 
 /**
- * THE BOARD NEVER READS HOW A PERSON'S ANSWERS WERE RATED (CLAUDE.md, privacy; request 8).
+ * CHANGED 28 SEPTEMBER 2026, on Hafsah's correction. This spec pinned request 8's rule (a1747927):
+ * the board never reads how checkable a person's answers were, and the lead is served the same rows
+ * however every check-in was rated. Hafsah: the rating of how specific and checkable a person's
+ * answers are is needed; it rates the answers, not the person or their work, so decision 11 does not
+ * cover it, and the prototype shows it on the lead's board as "Nothing checkable". So the rating
+ * now decides exactly one thing, that reason, and every other protection here stays: nobody but
+ * whoever runs the check-in reads these rows, no raw rating value is ever served, no sentence rates
+ * the person, and nothing else on a row moves with the rating.
+ *
+ * WHAT IT SAID BEFORE: THE BOARD NEVER READS HOW A PERSON'S ANSWERS WERE RATED (CLAUDE.md, privacy; request 8).
  *
  * "Where each person is" told the lead a person said "nothing checkable", and that was worked out
  * from `specificityLevel` and `specificityDimensions`, the engine's rating of their answers. A lead
@@ -104,51 +113,53 @@ function boardRatedAs(rating: keyof typeof RATINGS) {
 
 const served = (b: any) => (b.eachPerson ?? []).map((r: any) => ({ who: r.who, reason: r.reason, says: r.says }));
 
-describe('the board never reads how a person’s answers were rated', () => {
-  it('serves the lead exactly the same rows however every check-in was rated', async () => {
+describe('the board reads how checkable the answers were, and nothing more', () => {
+  it('the rating decides "nothing checkable" and nothing else on the row', async () => {
     const best = served(await boardRatedAs('mostFlattering'));
     const worst = served(await boardRatedAs('leastFlattering'));
     expect(best.length).toBe(4);
-    expect(worst).toEqual(best);
+    const others = (rows: any[]) => rows.filter((r) => r.reason !== 'nothing checkable' && r.reason !== 'nothing to do');
+    expect(others(worst)).toEqual(others(best));
+    expect(best.some((r: any) => r.reason === 'nothing checkable')).toBe(false);
   });
 
-  it('and what the lead reads is what the record holds, said in full sentences', async () => {
+  it("and what the lead reads is said in full sentences, in the prototype's words", async () => {
     expect(served(await boardRatedAs('leastFlattering'))).toEqual([
       { who: 'Femi Adeyemi', reason: 'has not answered', says: 'Femi Adeyemi has not checked in for this round yet.' },
-      { who: 'Miriam Wanjiku', reason: 'nothing to count yet', says: 'What Miriam Wanjiku said this round has no number, no date and no document with it yet, so there is nothing new to count. A number or a date for what moved would change that.' },
+      /* In name order within a reason; Miriam's first round had nothing checkable either. */
+      { who: 'Aisha Otieno', reason: 'nothing checkable', says: 'Nothing Aisha Otieno said this round can be checked yet. A number, a date or a document for what moved would change that.' },
+      { who: 'Miriam Wanjiku', reason: 'nothing checkable', says: 'Nothing Miriam Wanjiku said this round can be checked yet. This is the second week in a row. A number, a date or a document for what moved would change that.' },
       /* Somebody with no name is "A colleague", never the lead's description of them (request 36). */
-      { who: 'A colleague', reason: 'nothing to count yet', says: 'What a colleague said this round has no number, no date and no document with it yet, so there is nothing new to count. A number or a date for what moved would change that.' },
-      { who: 'Aisha Otieno', reason: 'nothing to do', says: 'Aisha Otieno has checked in, and nothing here needs you this week.' },
+      { who: 'A colleague', reason: 'nothing checkable', says: 'Nothing a colleague said this round can be checked yet. A number, a date or a document for what moved would change that.' },
     ]);
   });
 
-  it('no sentence rates or labels the person', async () => {
+  it('with what to ask next', async () => {
+    const b = await boardRatedAs('leastFlattering');
+    const miriam = (b.eachPerson ?? []).find((r: any) => r.who === 'Miriam Wanjiku');
+    /* This rating has no proof part, so the ask is for a number or a date. See the unit spec for proof. */
+    expect(miriam.ask).toBe('Ask Miriam Wanjiku for a number or a date for what moved this round.');
+  });
+
+  it('no sentence rates or labels the person, and no raw rating value is served', async () => {
     for (const rating of ['mostFlattering', 'leastFlattering'] as const) {
       const b = await boardRatedAs(rating);
       for (const r of b.eachPerson ?? []) {
-        expect(r.says).not.toMatch(/checkable|vague|specific|rating|score|not chasing|\blow\b|poor/i);
+        expect(r.says).not.toMatch(/vague|specific|rating|score|not chasing|\blow\b|poor/i);
+        expect(r.ask ?? '').not.toMatch(/vague|specific|rating|score|\blow\b|poor/i);
       }
-      expect(JSON.stringify(b.eachPerson)).not.toMatch(/specificity|nothing checkable|managed|vague/i);
+      expect(JSON.stringify(b.eachPerson)).not.toMatch(/specificity|managed|vague|"specific"/i);
     }
   });
 });
 
-describe('and the code that builds each row asks the rating nothing', () => {
-  /* Comments stripped first: a sentence that names the rating must not satisfy the guard, or fail it. */
+describe('and only whoever runs the check-in reads it', () => {
   const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const board = strip(readFileSync(join(__dirname, 'board.service.ts'), 'utf8'));
-  const start = board.indexOf('const openRound = whichRoundIsOpen(checkIns as any);');
-  const block = board.slice(start, board.indexOf("if (has('checkInGrid')) {", start));
-  const rows = strip(readFileSync(join(__dirname, 'where-each-person-is-against-their-number.ts'), 'utf8'));
-
-  it('the eachPerson block and the rule never mention specificityLevel or specificityDimensions', () => {
+  it('the rows are built only when the reader runs the check-in', () => {
+    expect(board).toMatch(/const runsThisGround = isInitiator \|\| isSetupAdmin \|\| adminHere;/);
+    const start = board.indexOf("if (has('checkInGrid') && runsThisGround) {");
     expect(start).toBeGreaterThan(0);
-    expect(block).toContain('out.eachPerson = whereEachPersonIs(');
-    expect(block).not.toMatch(/specificity/i);
-    expect(rows).not.toMatch(/specificity/i);
-  });
-
-  it('and the board does not even ask the database for the rating', () => {
-    expect(board).not.toMatch(/specificityLevel: true|specificityDimensions: true/);
+    expect(board.indexOf('out.eachPerson = whereEachPersonIs(')).toBeGreaterThan(start);
   });
 });
