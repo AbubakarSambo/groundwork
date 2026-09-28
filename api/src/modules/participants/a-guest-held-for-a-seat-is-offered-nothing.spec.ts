@@ -50,7 +50,7 @@ describe('a held guest is offered no check-in', () => {
       groundParticipant: { findUnique: async () => ({ id: 'p1', groundId: 'sales', email: 'baraka@ouma.co', userId: null, awaitingSeat, inviteToken: 't', inviteTokenExpiresAt: new Date(Date.now() + 86_400_000) }) },
       ground: { findUnique: async () => ({ id: 'sales', organizationId: 'baridi', initiatorId: 'wairimu', status: 'OPEN' }) },
     };
-    return new ParticipantsService(prisma, {} as any, {} as any);
+    return new ParticipantsService(prisma, {} as any, {} as any, {} as any);
   }
 
   it('opening the invitation link, even one the lead copied, is refused in a sentence, and nothing is made', async () => {
@@ -85,7 +85,7 @@ describe('the invitation page of a held guest (U.4 third review)', () => {
       groundParticipant: { findUnique: async () => ({ id: 'p1', groundId: 'sales', email: 'baraka@ouma.co', userId: null, awaitingSeat: true, roleAsDescribed: 'Agent, Mombasa', inviteToken: 't', inviteTokenExpiresAt: new Date(Date.now() + 86_400_000) }) },
       ground: { findUnique: async () => { throw new Error('the check-in must not be read for a held guest'); } },
     };
-    const answer = await new ParticipantsService(prisma, {} as any, {} as any).preview('t');
+    const answer = await new ParticipantsService(prisma, {} as any, {} as any, {} as any).preview('t');
     expect(answer).toEqual({ heldForASeat: true, saying: HELD_FOR_A_SEAT });
   });
 });

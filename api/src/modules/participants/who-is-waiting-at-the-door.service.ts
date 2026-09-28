@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { MembershipRequestStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { BillingService } from '../billing/billing.service';
 
 /**
  * THE QUEUE AN ADMIN ANSWERS.
@@ -26,6 +27,7 @@ export class WhoIsWaitingAtTheDoorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly billing: BillingService,
   ) {}
 
   /**
@@ -50,6 +52,18 @@ export class WhoIsWaitingAtTheDoorService {
     const inviter = request.requestedByUserId
       ? await this.prisma.user.findUnique({ where: { id: request.requestedByUserId }, select: { firstName: true } })
       : null;
+    /**
+     * THE TRUE REASON, WHEN IT IS SEATS AND NOT "FROM OUTSIDE" (U.8 re-review).
+     *
+     * Faraji has this organisation's own address - he is not from outside it at all - but the plan
+     * simply has no free seat, so an admin still has to make room before he can start. This page
+     * said "You're from outside Kilima Traders U8" regardless, because `needsApproval` (the rule
+     * that decided he had to wait) knows nothing about seats: it is asked before his account even
+     * exists, so it cannot yet tell "a stranger" from "one of ours with nowhere to sit". Whether
+     * seats are the actual blocker is knowable now, from the organisation's own billing state, so
+     * it is checked here and said honestly instead of guessing at the reason from the queue alone.
+     */
+    const seats = await this.billing.canInviteMember(request.organizationId);
     return {
       waiting: true as const,
       organisationName: request.organization.name,
@@ -57,6 +71,7 @@ export class WhoIsWaitingAtTheDoorService {
       admin: admin ? { name: [admin.firstName, admin.lastName].filter(Boolean).join(' ').trim(), firstName: admin.firstName } : null,
       inviterFirstName: request.viaInvitation ? (inviter?.firstName ?? null) : null,
       canRemindFrom: this.nextRemindAt(request).toISOString(),
+      heldForASeat: !seats.allowed,
     };
   }
 

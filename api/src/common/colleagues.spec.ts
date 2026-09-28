@@ -1,4 +1,4 @@
-import { colleaguesOf, theAddressOfAColleague, onlyNameRoleAndTeam } from './colleagues';
+import { colleaguesOf, theAddressOfAColleague, theColleaguePickedById, onlyNameRoleAndTeam } from './colleagues';
 
 /**
  * WHO SOMEBODY MAY SEE AS A COLLEAGUE (U.4, Hafsah's decision of 26 September): a member sees the
@@ -69,7 +69,7 @@ const db: any = {
     findFirst: async ({ where }: any) => {
       const m = memberships.find((x) => x.organizationId === where.organizationId && x.userId === where.userId);
       const p = m && people.find((x) => x.id === m.userId);
-      return m && p && userOk(p, where.user) ? { user: { email: p.email } } : null;
+      return m && p && userOk(p, where.user) ? { user: { email: p.email, firstName: p.firstName, lastName: p.lastName } } : null;
     },
   },
   user: { findUnique: async ({ where }: any) => people.find((p) => p.id === where.id) ?? null },
@@ -134,6 +134,16 @@ describe('a colleague picked by id is looked up on the server, in this organisat
     expect(await theAddressOfAColleague(db, 'baridi', 'miriam')).toBe('miriam@baridi.co.ke');
     expect(await theAddressOfAColleague(db, 'ouma', 'miriam')).toBeNull();
   });
+
+  /**
+   * THEIR REAL NAME COMES BACK TOO (U.8 re-review), not only the address - picking somebody from
+   * the colleague list is not a cold, typed-email invite, and the name is what lets the add path
+   * write it onto the participant row instead of leaving every reader to guess one from the address.
+   */
+  it('and their real name alongside it', async () => {
+    expect(await theColleaguePickedById(db, 'baridi', 'miriam')).toEqual({ email: 'miriam@baridi.co.ke', name: 'Miriam Wanjiku' });
+    expect(await theColleaguePickedById(db, 'ouma', 'miriam')).toBeNull();
+  });
 });
 
 describe('both doors that add a picked colleague look the address up on the server', () => {
@@ -142,7 +152,14 @@ describe('both doors that add a picked colleague look the address up on the serv
   const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('adding to a running check-in, and queuing in setup', () => {
     const grounds = strip(readFileSync(join(__dirname, '..', 'modules', 'grounds', 'grounds.service.ts'), 'utf8'));
-    expect(grounds).toMatch(/if \(dto\.colleagueId\) \{\s*const address = await theAddressOfAColleague\(this\.prisma as any, organizationId, dto\.colleagueId\);\s*if \(!address\) throw new BadRequestException\(NOT_SOMEONE_HERE\);/);
+    /*
+     * U.8 re-review: the running-check-in door now keeps the colleague's real name alongside the
+     * address (`theColleaguePickedById`), and writes it as `nameGiven` on the participant it
+     * creates - so somebody picked from the list is never shown a name guessed from their address
+     * before they accept. The queuing-in-setup door still uses the address-only lookup for now.
+     */
+    expect(grounds).toMatch(/if \(dto\.colleagueId\) \{\s*const found = await theColleaguePickedById\(this\.prisma as any, organizationId, dto\.colleagueId\);\s*if \(!found\) throw new BadRequestException\(NOT_SOMEONE_HERE\);/);
+    expect(grounds).toMatch(/colleagueName \? \{ nameGiven: colleagueName \} : \{\}/);
     const entry = strip(readFileSync(join(__dirname, '..', 'modules', 'entry', 'entry.service.ts'), 'utf8'));
     expect(entry).toMatch(/dto = \{ \.\.\.dto, contributors: await this\.withColleaguesAddressed\(organizationId,/);
   });

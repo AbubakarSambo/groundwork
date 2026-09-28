@@ -3286,7 +3286,10 @@ export function EntryChatPage() {
                             onChange={e => { const f = e.target.files?.[0]; if (f) handleDocFileUpload(f) }} />
                         </label>
                       )}
-                      <input type="text" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
+                      {/* U.8 review, found on the way: this field had a placeholder and nothing a screen
+                          reader announces as its name - a placeholder disappears the moment somebody
+                          types, and is not read as a label to begin with. */}
+                      <input type="text" aria-label="What is it?" placeholder="What is this? e.g. the onboarding guide I shared" value={docLabel}
                         onChange={e => setDocLabel(e.target.value)}
                         style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 6, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 6 }} />
                       <textarea placeholder={docTab === 'upload' ? 'File contents will appear here once read. You can edit before sending.' : 'Paste the document text here…'}
@@ -3396,11 +3399,17 @@ export function EntryChatPage() {
                 five setup questions, a person cannot tell that the sixth is a
                 different sort of question unless something says so.
               */}
+              {/*
+                U.8 REVIEW: "Setup done · your check-in starts here", in capitals, joined with a
+                dot. CLAUDE.md's wording rule is the same one everywhere else on the product: plain,
+                full sentences, no pieces joined with dots, no work-label capitals. This is the same
+                seam the comment above it explains, said as a sentence a person would actually read.
+              */}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 12px 10px' }}>
                   <Rule />
-                  <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-sub)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                    Setup done · your check-in starts here
+                  <span style={{ fontSize: 11.5, color: 'var(--gw-sub)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    Setup is done. Your check-in starts here.
                   </span>
                   <Rule />
                 </div>
@@ -3509,9 +3518,12 @@ export function EntryChatPage() {
                 </label>
                 <input ref={fileRef} type="file" id="entry-doc-upload-chip" accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.png,.jpg,.jpeg,.md" style={{ display: 'none' }} onChange={handleFileChange} />
                 <div style={{ marginLeft: 'auto' }}>
+                  {/* No arrow (U.8 review): a button says what it does, and the other "End session"
+                      button on this same screen (the natural-close prompt above) already says it
+                      without one. */}
                   <button onClick={() => setShowEndConfirm(true)} disabled={loading}
                     style={{ padding: '5px 12px', borderRadius: 20, fontSize: 12, border: '1px solid var(--gw-border)', background: 'transparent', color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
-                    End session →
+                    End session
                   </button>
                 </div>
               </div>
@@ -3611,7 +3623,9 @@ export function EntryChatPage() {
 
           {/* Report header */}
           <div style={{ background: 'var(--gw-dark)', color: 'white', padding: '20px 22px 16px' }}>
-            <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'Session 1 · you set the context' : 'Session 1 · your private report'}</div>
+            {/* Full sentence, no dot, no capitals label (U.8 review): CLAUDE.md's wording rule
+                applies here the same as everywhere else a person reads. */}
+            <div style={{ fontSize: 11.5, color: 'var(--gw-green-b)', fontWeight: 700, marginBottom: 6 }}>{skippedCheckin ? 'This is session 1. You set the context here.' : 'This is session 1. It is your private report.'}</div>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em', lineHeight: 1.2 }}>{groundName || 'What you said is on record.'}</div>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
               <div style={{ flexShrink: 0, marginTop: 2, background: 'white', borderRadius: 4, padding: '2px 3px' }}><VennIcon size={22} /></div>
@@ -3640,9 +3654,12 @@ export function EntryChatPage() {
                * records as decided may not come back - is gone with the grade word.
                */
               const turns = history.filter(m => m.role === 'user').length
+              /* A full sentence, not a label ("Depth:") joined to a clause with a dot (U.8 review). */
+              const said = `You gave ${turns} ${turns === 1 ? 'answer' : 'answers'}.`
+              const more = turns < 4 ? ' More answers make the report stronger.' : ''
               return (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>Depth: {turns} {turns === 1 ? 'exchange' : 'exchanges'}{turns < 4 ? ' · more exchanges strengthen the report' : ''}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.55)' }}>{said}{more}</span>
                 </div>
               )
             })()}

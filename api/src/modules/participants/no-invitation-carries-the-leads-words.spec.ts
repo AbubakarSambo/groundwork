@@ -62,7 +62,7 @@ function expectNothingPrivateIn(what: string, text: string) {
 describe('no invitation carries the lead\'s words about the person', () => {
   it('the invitation page\'s preview', async () => {
     const prisma = prismaStub();
-    const preview = await new ParticipantsService(prisma, {} as any, {} as any).preview('tok');
+    const preview = await new ParticipantsService(prisma, {} as any, {} as any, {} as any).preview('tok');
     expectNothingPrivateIn('preview', JSON.stringify(preview));
   });
 
@@ -74,7 +74,7 @@ describe('no invitation carries the lead\'s words about the person', () => {
     await email.sendTheInviteThisGroundSends(ground, participant.email, 'Hafsah', 'tok', undefined, { kind: 'REMINDER', participantId: participant.id, groundId: ground.id });
     await email.sendParticipantInvite(participant.email, 'Hafsah', ground.label, 'tok', undefined, { kind: 'PARTICIPANT_INVITE', participantId: participant.id, groundId: ground.id });
     /* "Send me a fresh link", through the real service. */
-    await new ParticipantsService(prisma, {} as any, email).sendAFreshLink('tok', 'daniel@x.test');
+    await new ParticipantsService(prisma, {} as any, email, {} as any).sendAFreshLink('tok', 'daniel@x.test');
     await email.sendInviteAboutToLapse(participant.email, ground.label, 'http://x/invite?token=tok', participant.id);
     expect(sent.length).toBeGreaterThanOrEqual(5);
     for (const m of sent) {

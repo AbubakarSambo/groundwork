@@ -29,7 +29,9 @@ export function MorePage() {
   const pages = items.filter(i => !(i as { adminOnly?: boolean }).adminOnly && !(i as { platformAdminOnly?: boolean }).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings' && i.to !== '/today')  /* Today is in the phone's bar */
   const adminItems = items.filter(i => (i as { adminOnly?: boolean }).adminOnly)
   const staffItems = items.filter(i => (i as { platformAdminOnly?: boolean }).platformAdminOnly)
-  const orgName = user?.organizationName ?? 'Your organisation'
+  /* Never a name that isn't the organisation's own (U.8 review): see AppShell.tsx's orgName for
+     why an absent organizationName means "not known yet", not "none". */
+  const orgName = user?.organizationName ?? ''
 
   return (
     <div className="gw-more">

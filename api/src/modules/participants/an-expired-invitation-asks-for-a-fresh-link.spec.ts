@@ -33,7 +33,7 @@ function make(row: any) {
     checkIn: { count: jest.fn(async () => 0) },
   };
   const email: any = { sendTheInviteThisGroundSends: jest.fn(async (...a: any[]) => { sent.push(a); return {}; }) };
-  const service = new ParticipantsService(prisma, {} as any, email);
+  const service = new ParticipantsService(prisma, {} as any, email, {} as any);
   return { service, sent, updates };
 }
 

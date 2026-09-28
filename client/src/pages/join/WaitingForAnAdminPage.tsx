@@ -86,9 +86,18 @@ export function WaitingForAnAdminPage() {
   )
 }
 
-/** "You're from outside Baridi Appliances, so an admin there has to let you in. We've asked Grace Achieng." */
-export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>, 'organisationName' | 'admin'>): string {
+/**
+ * "You're from outside Baridi Appliances, so an admin there has to let you in. We've asked Grace
+ * Achieng." OR, when the true reason is that the plan simply has no free seat - which is not the
+ * same thing as being a stranger, and was said as though it were - "Kilima Traders U8 has no free
+ * seat right now, so an admin there has to make room before you can start. We've asked Grace
+ * Achieng."
+ */
+export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>, 'organisationName' | 'admin' | 'heldForASeat'>): string {
   const asked = w.admin?.name ? ` We’ve asked ${w.admin.name}.` : ' We’ve asked the admins there.'
+  if (w.heldForASeat) {
+    return `${w.organisationName} has no free seat right now, so an admin there has to make room before you can start.${asked}`
+  }
   return `You’re from outside ${w.organisationName}, so an admin there has to let you in.${asked}`
 }
 

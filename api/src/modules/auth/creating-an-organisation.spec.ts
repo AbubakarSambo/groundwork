@@ -27,13 +27,22 @@ function make(opts: { ownsOne?: boolean } = {}) {
   };
   const prisma: any = {
     user: {
-      findUnique: jest.fn(async () => ({ id: 'u1', email: 'wairimu@baridi.test', firstName: 'Wairimu', lastName: 'Kamau', organizationId: 'org-old' })),
+      /*
+       * `userShapeFor` (U.8 re-review) reads the user back with its organisation included, once
+       * `switchOrganization` has moved them into the new one - so this includes an `organization`
+       * object, matching the one `organizationMembership.findUnique` below names.
+       */
+      findUnique: jest.fn(async () => ({
+        id: 'u1', email: 'wairimu@baridi.test', firstName: 'Wairimu', lastName: 'Kamau', organizationId: 'org-old', role: 'ADMIN', isPlatformAdmin: false,
+        organization: { id: 'org-new', name: 'Baridi Foundation', slug: 'baridi-foundation', careFeeStatus: null, email: null, companyStage: null, subscriptionPlan: null, whoMayOpenCheckIns: 'EVERYONE', checkInsNeedApproval: false },
+      })),
       update: jest.fn(async ({ data }: any) => ({ id: 'u1', email: 'wairimu@baridi.test', firstName: 'Wairimu', lastName: 'Kamau', organizationId: data.organizationId, role: data.role, isPlatformAdmin: false })),
     },
     organization: { findUnique: jest.fn(async () => null) },
     organizationMembership: {
       findFirst: jest.fn(async () => (opts.ownsOne ? { organizationId: 'org-mine' } : null)),
       findUnique: jest.fn(async () => ({ role: 'ADMIN', organization: { id: 'org-new', name: 'Baridi Foundation', slug: 'baridi-foundation' } })),
+      count: jest.fn(async () => 0),
     },
     $transaction: jest.fn(async (fn: any) => fn(tx)),
   };

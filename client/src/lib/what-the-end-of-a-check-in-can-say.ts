@@ -1,4 +1,5 @@
 import { whenItWas } from './a-date-reads-the-same-everywhere'
+import { firstWordOfAName } from './the-first-word-of-a-name'
 
 /**
  * WHAT THE END OF A CHECK-IN CAN SAY, FROM WHAT THE RECORD HOLDS (B3).
@@ -29,8 +30,16 @@ export function whenTheNextOneOpens(
     .sort((a, b) => a.sessionNumber - b.sessionNumber)
   const next = later[0]
   if (!next) return null
-  const opens = next.availableFrom ? new Date(next.availableFrom) : null
-  if (!opens || Number.isNaN(opens.getTime()) || opens.getTime() <= now.getTime()) {
+  /*
+   * A ROW WITH NO availableFrom IS NOT YET SCHEDULED, NOT ALREADY OPEN (U.8 review). The next
+   * session's row can exist before it has a date - lead-path-dates.spec.ts locks `availableFrom`
+   * as `null` in exactly that case - and this read `null` the same as "the date has passed",
+   * claiming "Your next check-in is open now." on a check-in that was not open, and might not be
+   * for weeks. Nothing is known yet, so nothing is said, same as when there is no next row at all.
+   */
+  if (!next.availableFrom) return null
+  const opens = new Date(next.availableFrom)
+  if (Number.isNaN(opens.getTime()) || opens.getTime() <= now.getTime()) {
     return 'Your next check-in is open now.'
   }
   const day = (d: Date) => whenItWas(d, 'day')
@@ -52,8 +61,10 @@ export function whoElseAnswers(
   const lead = (ground?.participants ?? []).find(p => p.partyType === 'INITIATOR')
   if (!lead || !lead.userId || lead.userId === myUserId) return null
   if (lead.managingOnly) return null
-  const name = lead.user?.firstName?.trim()
-  return name || null
+  /* Signup asks for "Your name" in one field and stores it whole (AuthPage.tsx, auth.service.ts),
+     so a lead who typed "Wairimu Kamau" has that whole string in `firstName`. The prototype's own
+     line says only the first name ("Wairimu also answers a check-in"), never the surname too. */
+  return firstWordOfAName(lead.user?.firstName)
 }
 
 /** How many people answer this check-in, the reader included, as far as the reader may see. */

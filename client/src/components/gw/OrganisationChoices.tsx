@@ -9,11 +9,20 @@ import { useYourOrganisations, initialsOf, roleWord, whyYouAreIn } from './your-
 export function OrganisationChoices() {
   const user = useAuthStore(s => s.user)
   const { myOrgs, chooseOrganisation, onlyOneNotChosen, startMyOwnWorkspace } = useYourOrganisations()
-  const orgName = user?.organizationName ?? 'Your organisation'
+  /*
+   * NEVER A NAME THAT ISN'T THE ORGANISATION'S OWN (U.8 review, Hafsah's instruction of 27
+   * September). This fallback row is only reached before `myOrganisations` has answered, or on a
+   * genuinely broken account - and "Your organisation" / "Takes part" read as fact either way, on
+   * a profile a join link can leave as a placeholder with no organisation name at all (see
+   * JoinConfirmPage.tsx). `organizationName` arrives with every real profile read; its absence
+   * means the real one is not known yet, so nothing is shown in its place rather than a name that
+   * was never true.
+   */
+  const orgName = user?.organizationName ?? ''
 
   return (
     <>
-      {myOrgs.length === 0 && (
+      {myOrgs.length === 0 && orgName && (
         <div className="gw-rl-menu-item static">
           <span className="gw-rl-sq" aria-hidden>{initialsOf(orgName)}</span>
           <span style={{ flex: 1, minWidth: 0 }}><b>{orgName}</b><span className="gw-rl-org-role">{roleWord(user?.role)}</span></span>

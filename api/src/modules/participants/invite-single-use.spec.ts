@@ -60,6 +60,7 @@ function makeService(participant: any) {
     prisma,
     { sign: () => 'jwt' } as any,
     { sendAddPasswordEmail: async () => undefined, sendMagicLinkEmail: async () => undefined } as any,
+    { userShapeFor: jest.fn(async (id: string) => ({ id })) } as any,
   );
   return { svc, prisma, update };
 }

@@ -783,7 +783,16 @@ export function AppSidebar() {
 
   const fullName = user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : user?.email ?? ''
   const initials = user ? (((user.firstName?.[0] ?? '') + (user.lastName?.[0] ?? '')) || user.email?.[0] || 'U').toUpperCase() : 'U'
-  const orgName = user?.organizationName ?? 'Your organisation'
+  /*
+   * NEVER A NAME THAT ISN'T THE ORGANISATION'S OWN (U.8 review, Hafsah's instruction of 27
+   * September). "Your organisation" read as if it were the name, on a placeholder profile a join
+   * link can leave standing (see JoinConfirmPage.tsx).
+   * `organizationName` is sent by every real profile read (theUserShape), so its absence means the
+   * real one has not arrived yet, never that there is none - and showing nothing is honest where
+   * showing a made-up name is not. `roleWord` reads the same signal: the placeholder's role is
+   * indistinguishable from a genuine MEMBER, but the organisation's name always arrives with it.
+   */
+  const orgName = user?.organizationName ?? ''
 
   function startRename(g: Ground) {
     setRenamingId(g.id)
@@ -986,14 +995,14 @@ export function AppSidebar() {
                 <>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <b className="gw-rl-org-name">{orgName}</b>
-                    <span className="gw-rl-org-role">{roleWord(user?.role)}</span>
+                    {orgName && <span className="gw-rl-org-role">{roleWord(user?.role)}</span>}
                   </span>
                   <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden style={{ flex: 'none', color: 'var(--gw-sub)' }}>
                     <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </>
               )}
-              {collapsed && <span className="gw-sr-only">{orgName}, {roleWord(user?.role)}</span>}
+              {collapsed && orgName && <span className="gw-sr-only">{orgName}, {roleWord(user?.role)}</span>}
             </button>
             {orgOpen && (
               <div className="gw-rl-menu gw-rl-menu-org" style={{ left: collapsed ? 70 : 10 }}>

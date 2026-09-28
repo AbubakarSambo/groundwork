@@ -18,6 +18,7 @@ import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 import { toast } from 'sonner'
 
 /** ONE LIST. The OS dialog offered 23 extensions, the label's title a third list of 9, and the validator refused everything outside these 10 - so the dialog invited a refusal the product then issued. */
@@ -196,6 +197,8 @@ export function ChatPage() {
   const [loading, setLoading]         = useState(false)
   /* True once a reply has been outstanding long enough for somebody to start doubting it. */
   const [waitedAWhile, setWaitedAWhile] = useState(false)
+  /* True once opening the session has been outstanding long enough to say so. See the effect below. */
+  const [openingIsSlow, setOpeningIsSlow] = useState(false)
   const [opened, setOpened]           = useState(false)
   const [done, setDone]               = useState(false)
   const [completed, setCompleted]     = useState(false)
@@ -318,6 +321,20 @@ export function ChatPage() {
     },
   })
 
+  /*
+   * OPENING A SESSION RUNS SEVERAL MODEL CALLS (ConversationService.open) BEFORE IT ANSWERS, and
+   * that is 14 to 60 seconds of "Opening your session…" with nothing else said. Measured against
+   * the booted API for the closing wait (SlowStep's own note) and found the same shape here: a
+   * silence long enough to read as a hang unless it explains itself. Four seconds, same threshold
+   * as the reply wait above, is where somebody starts wondering if anything is happening.
+   */
+  const openingNow = openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)
+  useEffect(() => {
+    if (!openingNow) { setOpeningIsSlow(false); return }
+    const t = setTimeout(() => setOpeningIsSlow(true), 4000)
+    return () => clearTimeout(t)
+  }, [openingNow])
+
 
   const decline = useMutation({
     mutationFn: () => conversationApi.decline(checkInId!),
@@ -397,8 +414,23 @@ export function ChatPage() {
        * rewording the sentence would otherwise quietly bring the trap back.
        */
       if (err?.response?.data?.canContinue) {
+        /**
+         * SAY IT WHERE THE CONVERSATION IS, NOT IN A POP-UP THAT FADES.
+         *
+         * A toast carrying the server's own gate wording ("the record is still thin") is jargon,
+         * and it disappears in a few seconds while the end card came down with it - so the person
+         * was left looking at a plain, silent composer with no idea why "finish" did not work.
+         * The explanation belongs in the conversation itself, in plain words, as a permanent line
+         * they can still see after the toast would have gone. The composer comes back with focus so
+         * there is somewhere to act on it straight away.
+         */
         setDone(false)
-        toast.error(message || 'A little more is needed before this can close.')
+        setMsgs(v => [...v, {
+          id: `ai-cannot-finish-yet-${Date.now()}`,
+          role: 'AI',
+          content: 'Groundwork needs one or two more answers before this can finish. Say a little more and then finish again.',
+        }])
+        requestAnimationFrame(() => taRef.current?.focus())
         return
       }
       toast.error(message || 'Could not complete this session.')
@@ -730,11 +762,17 @@ export function ChatPage() {
     navigate(groundId ? `/grounds/${groundId}${isInitiator ? '' : '/p'}` : '/grounds')
   }
 
+  /*
+   * NO LONE "Session 1" AT THE BOTTOM OF AN ORDINARY SESSION (U.8 review). The prototype's own
+   * check-in screens (docs/prototype/screens/B3-the-check-in/*.txt) never print a bare session
+   * number in the bottom bar - only when there is something to say ABOUT the session, closing one
+   * or correcting one, is there a sentence here. An ordinary session says nothing in this spot.
+   */
   const privacyLabel = isFinalSession
     ? `Closing session ${sessionNumber} · This is the last word on the record. Take the time to be thorough - what you document here is what the final report weighs.`
     : correctingSession != null
       ? `Correcting session ${correctingSession} · nothing is overwritten - this is recorded alongside what you said then.`
-      : `Session ${sessionNumber}`
+      : null
 
   /**
    * WHAT HAPPENS TO WHAT YOU WRITE, BEFORE YOU ARE ASKED ANYTHING. (G40)
@@ -802,7 +840,7 @@ export function ChatPage() {
     return (
       <div style={{ minHeight: 'calc(100dvh - var(--gw-bottom-nav, 0px))', background: 'var(--gw-page)', overflowY: 'auto' }}>
         <TheDonePage
-          firstName={user?.firstName}
+          firstName={firstWordOfAName(user?.firstName)}
           checkInId={checkInId}
           groundId={groundId}
           sessionNumber={sessionNumber}
@@ -896,8 +934,16 @@ export function ChatPage() {
           {/* From mount, not from the mutation: the transcript fetch sits behind a deliberate jitter of up to
               two seconds, and openSession.isPending cannot be true until after it, so every arrival opened on
               a blank screen. The jitter stays; the sentence starts earlier. */}
-          {(openSession.isPending || (!opened && msgs.length === 0 && !completed && !declined)) && (
-            <div role="status" style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>Opening your session…</div>
+          {openingNow && (
+            <div role="status" style={{ fontSize: 13, color: 'var(--gw-muted)', textAlign: 'center', padding: 16 }}>
+              Opening your session…
+              {/* Said only once the wait is long enough to need explaining (U.8 review): opening a
+                  session runs several model calls and can take up to a minute with nothing else on
+                  screen, which read as a hang. */}
+              {openingIsSlow && (
+                <div style={{ marginTop: 6 }}>Getting your first question ready. This can take up to a minute.</div>
+              )}
+            </div>
           )}
 
           {/*
@@ -1229,7 +1275,7 @@ export function ChatPage() {
               {/* When the next one opens: the thing people asked after finishing. See YourNextCheckIn. */}
               <YourNextCheckIn groundId={groundId} />
               {/* And, for whoever is running it, the state of the round they are now waiting on. */}
-              {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} />}
+              {isInitiator && <WhoIsStillOut groundId={groundId} sessionNumber={sessionNumber} myUserId={user?.id} />}
               {/*
                 * WHERE THE REPORT LIVES, AND WHERE THE PEOPLE GO.
                 *
@@ -1310,6 +1356,8 @@ export function ChatPage() {
         {/* Bottom bar */}
         <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
           <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Always the spacer, whether or not there is a sentence to put in it: the buttons after
+                it are laid out against this flex item, not against whether it has words in it. */}
             <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
             {/*
               * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
@@ -1464,11 +1512,22 @@ export function ChatPage() {
           <div style={{ background: 'white', borderRadius: '14px 14px 0 0', padding: '20px 20px 32px', width: '100%', maxWidth: 560 }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--gw-border)', margin: '0 auto 16px' }} />
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>📋 Paste text</div>
+            {/*
+              U.8 REVIEW: "Slack thread" AND "THE TOOL" ARE WORK JARGON, AND THE PANEL NEVER SAID
+              WHAT THE UPLOAD MODAL RIGHT NEXT TO IT ALREADY SAYS - that this starts private, the
+              same as a photo or a document (see the upload label below "Add a photo or a
+              document"). Pasted text goes up through the same upload endpoint as a file
+              (documentsApi.upload), so it already gets the same OWN-by-default privacy
+              (who-can-see-a-document.ts); this only makes the panel say so.
+            */}
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 12, lineHeight: 1.55 }}>
-              Paste an email, Slack thread, meeting notes, or any text that supports what you are describing. The tool will use it to ask sharper questions.
+              Paste an email, a message or your notes. It starts private to you.
             </div>
+            <label htmlFor="paste-label" style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', marginBottom: 4 }}>
+              What is it? You can skip this.
+            </label>
             <input
-              placeholder="Label (optional) e.g. Q2 update email, project brief"
+              id="paste-label"
               value={pasteLabel}
               onChange={e => setPasteLabel(e.target.value)}
               style={{ width: '100%', padding: '8px 12px', fontSize: 13, border: '1px solid var(--gw-border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
@@ -1486,7 +1545,7 @@ export function ChatPage() {
               </button>
               <button onClick={submitPaste} disabled={!pasteText.trim() || uploadDoc.isPending}
                 style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: pasteText.trim() && !uploadDoc.isPending ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: pasteText.trim() && !uploadDoc.isPending ? 1 : 0.5 }}>
-                {uploadDoc.isPending ? 'Adding…' : 'Add to session'}
+                {uploadDoc.isPending ? 'Adding…' : 'Add it'}
               </button>
             </div>
           </div>

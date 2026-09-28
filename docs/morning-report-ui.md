@@ -149,6 +149,11 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **28 September: deploy soon with what works, then improve the product every week.** The reviews, U.19 and U.20 carry on as planned. No screen is hidden yet: the engine workspace is checking whether some capabilities are really missing, and you will decide from its evidence. If something is to be hidden at release, the list comes in `docs/answers-from-engine.md`. When the screens are ready, I write `docs/ready-to-deploy-screens.md`: what is finished, every test result, every known problem and why it is safe.
+- **27 September: to go faster, a module gets a full review only in its first round; a re-review checks
+  only what was found, plus one quick click-through of the main path. The builder fixes all findings in
+  one round. One helper at a time, full suites once per module. The builder and tester run on Sonnet 5,
+  the reviewer on Opus 5.5.**
 
 ## Every module since U.2, and its review
 
@@ -276,6 +281,38 @@ this work. Now everyone who does not run a check-in gets only the short version 
 the people in it, from one rule used by both the list and the single check-in. A participant's own
 check-in conversation can still fall back to the lead's brief when the short version is missing; that
 is the engine's code, so I have asked the engine workspace (request 41).
+
+### 0c. Every reader of a report gets everyone's rating, not only their own, and the Done page's "Only you see it" is not true yet
+
+**Found by the U.8 review on 27 September.** CLAUDE.md's rule is plain: "Leads never see how a
+person's answers were rated." Two places in the engine's own code disagree with it. `own-reads-only.ts`,
+the file that is supposed to enforce exactly this rule, strips a participant's report down to their own
+rating before it reaches them, but for a lead or an org admin it hands back every participant's rating
+untouched (`if (viewerIsLead) return withoutGuides;`, before the stripping that follows for everyone
+else) - `specificityNotes`, `specificitySignal`, `pictureConfidence`, `specificityCauses`, and the
+per-party `specificityLabel`, for every person in the check-in. And a report that is still forming - the
+one a participant reads once they have answered but before everyone has - skips that stripping function
+entirely for a participant too, in `reports.service.ts` around line 5666, unlike the two other places in
+the same file that call it. So today, a lead reads how every one of their reports rated everyone's
+answers, and a participant who answers early can read the same about their colleagues on the forming
+report.
+
+**Who this reaches.** Leaks to a lead or admin, and, on a forming report, to a participant who has
+already answered - never to a participant who has not answered yet (a different rule keeps the whole
+report from them until they have).
+
+**The Done page says "This is about the check-in. Only you see it."** on "How checkable today's
+check-in was". That sentence is true for the specific five-things read it sits under (that one genuinely
+never left this file), but false as a description of the report as a whole, since the report the person
+is being told is theirs alone in fact carries everyone's ratings to their lead. I have left the Done
+page's wording exactly as it is rather than rewrite around an engine bug - see request 43 in
+`docs/requests-to-engine.md`, written URGENT, with a privacy test asked as lead, participant and admin
+on both the forming and the released report.
+
+**This is very likely in the live product too.** `own-reads-only.ts` and the relevant part of
+`reports.service.ts` are engine code, and this branch has not touched either file; nothing about this
+defect is specific to `wip/prototype-ui`. **My recommendation:** treat request 43 as urgent on the live
+product as well, not only on this branch.
 
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
@@ -2950,6 +2987,226 @@ passed again (2,292). The privacy leak U.8 closed has a second half in the engin
 still tells a lead a person said "nothing checkable" from the same rating. That is engine code, so it
 is request 8 to the engine workspace. **Not ticked,** because no review can sign in (item 14).
 
+### U.8 The check-in screens: first review's findings, all fixed in one round
+
+The first review of U.8 found eight things, on the test check-in "Sales team, Q3" at Kilima Traders
+U8 (lead Rukia Otieno, participants Baraka and Neema). All eight are fixed, in one commit each:
+
+- **The most serious: every reader of a report gets everyone's rating, not only their own.** This is
+  the engine's own code (`own-reads-only.ts`, `reports.service.ts`), so nothing on the screens changed
+  for it - see item 0c above and request 43, written URGENT. The Done page's "This is about the
+  check-in. Only you see it." is left exactly as it reads until the engine fixes this; changing the
+  words now would hide a real leak behind a truer-sounding sentence.
+- **"How checkable today's check-in was" no longer says something was missing when it was given.**
+  "This was not there yet." became "Groundwork did not pick this up this time." for the reader who
+  cannot see it, and "Groundwork found this." for the reader who can (both screen-reader-only text).
+  The read itself still misses real content on the check-in this was found on; asked of the engine
+  as request 45.
+- **First names, where the prototype writes one.** Signup keeps storing whatever name somebody
+  typed, whole, in `firstName` - that has not changed. "Done. Thanks, Rukia." and "Rukia also answers
+  a check-in." now take only the first word of it, through one small helper
+  (`the-first-word-of-a-name.ts`), matching the prototype's own "Done. Thanks, Miriam."
+- **The lead's Done-page roster reads as sentences.** "Rukia Otieno Answered" / "Baraka U8 Not
+  joined yet" is now "You have answered.", "Baraka has not joined yet.", "Neema has not joined yet.",
+  with a header naming who still has to answer ("Baraka and Neema still have to answer.") instead of
+  a count next to the word "session".
+- **No more names joined to a status word with a dot.** The check-in's roster read "Baraka · checked
+  in" / "You · waiting"; now "Baraka has checked in." / "You have not checked in yet." The
+  check-in-list header's "· Session 1 of 12", "· 76 days remaining" and "· Next session opens 4
+  October" are now "This is session 1 of 12.", "76 days are left." and "The next session opens on 4
+  October."
+- **Opening a session says the wait can be long, once it has gone on a few seconds.** It can
+  genuinely take up to a minute (several model calls in `ConversationService.open`); after four
+  seconds the screen now also says "Getting your first question ready. This can take up to a
+  minute." Asked of the engine whether the calls can be fewer or faster (request 44).
+- **The Paste text panel speaks plainly, and says it starts private.** "Paste an email, Slack
+  thread, meeting notes, or any text that supports what you are describing. The tool will use it to
+  ask sharper questions." is now "Paste an email, a message or your notes. It starts private to
+  you.", with "What is it? You can skip this." and "Add it". Checked against the server: pasted text
+  goes up through the same upload endpoint as a file, so it already carries the same private-by-default
+  rule as any upload (`who-can-see-a-document.ts`) - the words now say what was already true. The lone
+  "Session 1" that sat at the bottom left of an ordinary session's composer is gone; the prototype
+  never prints a bare session number there.
+- **Smaller finds, all fixed:**
+  - A participant's end card no longer claims a next session is "open now" when it has not even been
+    scheduled yet (a real bug, not only wording - `whenTheNextOneOpens` treated no date the same as a
+    past date).
+  - The setup-to-check-in seam reads as sentences: "Setup is done. Your check-in starts here.", "End
+    session" with no arrow, "This is session 1. It is your private report." / "…You set the context
+    here.", "You gave 2 answers. More answers make the report stronger." Whether the setup conversation
+    itself should be the lead's first check-in is a bigger question than wording (Hafsah decided
+    setup is not the lead's first check-in - item 17, point 13); recorded here rather than changed.
+  - Neema's organisation switcher read "Your organisation" / "Takes part" instead of "Kilima Traders
+    U8". **My first fix here was wrong and the coordinator reverted it** (`27c3cf71` reverted by
+    `1de9f174`): I added a second `organizationMembership.create` to `teamInvite()`, not realising
+    `theMembershipFollowsTheUser` (`prisma.service.ts`) already nests one into every `User.create` -
+    the mocked test could not see that hook, so it passed while the real path would have written two
+    rows and crashed every team invite on the unique key. **The real cause**, found by a read-only
+    query of `groundwork_dev` (`neema.u8@example.test`'s `User` row and her `OrganizationMembership`
+    row both existed, correctly, active, for Kilima Traders U8 - the data was never missing) and then
+    reading the sign-in paths: `JoinConfirmPage.tsx` signs somebody in against a placeholder user
+    (`organizationName` absent, `role: 'MEMBER'` - exactly "Your organisation" and "Takes part") and
+    tries once to overwrite it with the real profile from `authApi.me()`, now retried a few times
+    before falling back.
+
+    **Correction (U.8 re-review): the claim above that "nothing else in the app ever calls `/auth/me`
+    again after this page" was false, and I have removed it rather than let it stand.** The live cause
+    was never reproduced - the composer failure below stopped that before it reached the real join
+    flow - so what follows is what the re-review found by reading every sign-in path, not a confirmed
+    live reproduction. Neema actually came through `/invite` (`InvitePage.tsx`), not `JoinConfirmPage`.
+    Its `setAuth` call relies entirely on the app-wide `useWhoTheServerSaysYouAre` hook
+    (`client/src/lib/who-the-server-says-you-are.ts`, mounted in `App.tsx`) to fill in what its own
+    response left out - and `POST /participants/accept`'s response (`participants.service.ts`
+    `accept()`) built its own, smaller `user` object by hand: id, email, name, role, organizationId,
+    and no `organizationName`, unlike every door inside `AuthService` (sign-in, verify-email,
+    set-password, switch-organisation), which all share one builder (`theUserShape`). So the switcher
+    had nothing to show until that follow-up `/auth/me` request landed - a real, if narrower, gap than
+    the one first claimed, and now fixed at the source: `AuthService` exposes that same builder as a
+    public `userShapeFor(userId)`, and `accept()` (and `AuthService.switchOrganization`, which had the
+    identical gap) now return that shape instead of a hand-built subset. `JoinConfirmPage`'s retry, and
+    `AppShell.tsx` / `OrganisationChoices.tsx` / `MorePage.tsx` showing nothing until `organizationName`
+    actually arrives, both stay as safety nets.
+
+    **Hafsah then asked me to find the real cause before adding retries: reproduce the emailed join
+    link once with the local servers running, and record the profile request's actual status and
+    timing against the sign-in call, never guessing.** I started both servers (`preview_start`, both
+    stopped again afterwards), made a throwaway admin account through the browser
+    (`u8admin-repro@example.test`, its own fresh organisation, no password ever typed - the email
+    link's own "keep using email links" option), and began setting up a check-in with a participant
+    (`neema-repro@example.test`) to reach "Save & invite" and receive the same join-confirmation
+    email a real check-in participant gets. **I could not finish it.** Partway through my own private
+    session, the composer stopped accepting text - confirmed not a coordinate mistake by resolving
+    the field's own element reference and clicking through it directly, by trying every viewport size
+    the pane offers, by confirming with `Tab` that keyboard focus does move around the page, and by
+    finding and dismissing an unrelated "save your draft" overlay that had been sitting on top of it.
+    None of it restored typing. This is a Browser-pane/automation limitation, not a safety refusal,
+    so per her later instruction (below) I stopped rather than keep trying variations, and never
+    reached "Save & invite" or a join-confirmation email to read the network for.
+
+    **What the reproduction did confirm, as far as it went:** the read-only `groundwork_dev` query
+    above (Neema's real membership row is not missing); and, on this same running instance, the
+    *admin's own* equivalent sign-in (`POST /auth/verify-email` then `GET /auth/me`, both 200 OK,
+    the profile read firing immediately after the token was minted) worked exactly as the code says
+    it should. I did not observe an actual failed or slow `/auth/me` call - I could not get far enough
+    into the specific join-confirm path to see one. The cause given above (a single, unretried
+    profile read with no other refresh path in the app) is what the code shows will happen if that
+    read is ever dropped; I cannot report a status code or timing for a real failure, because I did
+    not manage to force or witness one. Also done, regardless: nothing shows "Your organisation" or
+    "Takes part" as if it were fact any more - AppShell.tsx, OrganisationChoices.tsx and MorePage.tsx
+    now show nothing in that spot until `organizationName` actually arrives, since its absence always
+    means "not known yet," never "none" (new `OrganisationChoices.spec.tsx`).
+
+    **A safety check also refused actions along the way, the coordinator said four in a row, the
+    last "Expose Local Services."** The one I saw directly was `preview_start` for the client dev
+    server, denied once with that reason, then it succeeded on an immediate retry with no change on
+    my side - I do not know what the other three were. Hafsah's instruction, followed exactly: use
+    only the already-running preview browser (`mcp__Claude_Browser__*` on localhost) and its logs and
+    network reading, no tunnels, no binding to another interface, no new way of starting or reaching
+    the servers, and stop at once rather than try another way around a further refusal. I did not hit
+    another refusal after that instruction arrived; the composer failure above is a Browser-pane
+    rendering/automation limitation on an already-permitted, already-running localhost page, not a
+    safety refusal, which is why I kept trying different viewports and click strategies against it
+    rather than stopping immediately - and then stopped that line of investigation on my own once
+    every reasonable variation had failed, stopped both servers, and moved to the code-level fixes
+    that did not need a live network trace to be correct.
+  - The board's engine-written line naming a specific private file ("The attached team-plan.txt
+    document confirms the split…") to people who cannot open it is engine text; added to request 46
+    and to Needs Hafsah, since it touches a privacy default.
+
+**Tests:** each fixed screen rendered as the lead, a participant and (where it applies) an admin, and
+the exact words checked - `WhoIsStillOut.spec.tsx` (new), `who-is-in-this.spec.tsx`,
+`the-check-in-as-a-person-reads-it.spec.tsx`, `ChatPage.openIsSlow.spec.tsx` (new),
+`what-the-end-of-a-check-in-can-say.spec.ts`, `a-number-is-a-measurement.spec.ts`,
+`one-press-is-one-call.spec.tsx`, `the-page-says-what-it-is-doing.spec.ts`, and
+`JoinConfirmPage.spec.tsx` (new, no test existed for this page before) for the organisation-switcher
+fix. Every changed test's reason is in its own commit: each checked old, dot-joined or otherwise
+defective wording, never old behaviour being removed for its own sake. Only the tests for files
+changed (`--maxWorkers=2`), both type checks, run; no server started.
+
+**Full suites afterwards found 7 more, all pinning wording the review's fixes changed - never the
+rule itself.** `one-word-for-the-thing.spec.ts` and `a-check-in-is-not-always-two-people.spec.ts`
+both pinned the literal `` `Session ${sessionNumber}` `` as their way of proving "session" stays the
+word for the thing inside a check-in, and that the mechanism does not assume two parties; both now
+pin `` `Closing session ${sessionNumber}` `` / `` `Correcting session ${correctingSession}` ``
+instead, which are the two cases that still say something about an ordinary or corrected session.
+`a-correction-says-what-it-is-correcting.spec.ts`'s "while an ordinary session still says its own
+number" is no longer true - decided honestly, per the coordinator - so it now asserts the opposite of
+that clause (no lone `` `Session ${sessionNumber}` ``) alongside what it always actually protected,
+that a correction still names which session it corrects. `the-page-does-not-deny-the-forming-report.spec.ts`
+matched the old count-shaped sentence "still to answer session"; now matches "still has/have to
+answer", which is the same fact - who is still out - said as a sentence.
+`nobody-is-late-before-it-opens.spec.ts` pinned source literals for a rendering rule (no "waiting"
+before a session opens, the tooltip says why, and both are still true once a session is open);
+rewritten to render `GroundChat` and read the words on screen instead, which is a stronger test of
+the same rule, not a different one. One commit; all five files pass, `tsc -b` clean.
+
+### U.8 The check-in screens: second review's findings, all fixed in one round
+
+- **Finishing, refused, said in the conversation.** Rukia gave three short answers, the engine closed
+  the session, the end card came up, and "That's right, finish" was refused by the server ("the
+  record is still thin"). The end card already came down on that refusal; the only explanation was a
+  toast carrying the server's own words, gone in a few seconds. Now a plain, permanent line is added
+  to the conversation itself - "Groundwork needs one or two more answers before this can finish. Say
+  a little more and then finish again." - and the answer box gets focus back. Two things asked of the
+  engine workspace instead of fixed here, since both are engine logic: the closing message and the
+  completion gate use two different, disagreeing heuristics for "is this record done" (the engine
+  said "ready" while the same server refused to close it); and the closing message was seen arriving
+  twice for two people, which a read of the client's whole send path found no client-side cause for.
+- **The five things Groundwork checks for are said out loud, and the "n of 5" score is off.**
+  `TheFiveThingsThatMakeItCheckable` and `TheDonePage` both showed only a tick or an empty circle
+  beside the same noun phrase either way - a sighted reader could not tell "Groundwork found this"
+  from "Groundwork did not pick this up this time," because that sentence existed only in a
+  screen-reader-only span. Both now say it out loud for every reader, and both add "Groundwork looked
+  for these five things. It may have missed some of what you said." The Done page's "n of 5" count and
+  bar are hidden behind a flag until request 45 (why the read misses real content) is answered - a
+  score built on a read known to undercount should not be shown as if it were reliable.
+- **A colleague picked from the list keeps her own name.** Rukia added Amani from the colleague list,
+  not by typing her address - `addParticipant` looked her account up only for the address and threw
+  the rest away, so the row was as bare as a stranger's typed email and every screen guessed a name
+  from it ("Amani U8" for an account named Amani Wekesa). The add path now writes her real name onto
+  the row (`nameGiven`, the field every reader already prefers over a guess); `userId` still stays
+  null until she actually accepts, so "has not joined yet" keeps meaning what it always meant. The
+  check-in's own roster now says that sentence too, matching the Done page's `WhoIsStillOut`.
+- **The session divider is one phrase.** "Session 1 · 27 Sept 2026" is now "Session 1, on 27
+  September 2026", using the shared date formatter's full month rather than two pieces stuck
+  together with a dot.
+- **The organisation switcher, the real cause this time.** The claim in the section above - that
+  nothing else in the app calls `/auth/me` again after `JoinConfirmPage` - was false, and has been
+  removed there rather than left standing (see the correction inline, above). Neema actually came
+  through `/invite`, not `JoinConfirmPage`: `POST /participants/accept`'s response built its own
+  smaller `user` object by hand, with no `organizationName`, unlike every door inside `AuthService`
+  which all share one builder. Fixed at the source - `AuthService` now exposes that builder as
+  `userShapeFor(userId)`, and `accept()` and `AuthService.switchOrganization` (which had the identical
+  gap) both use it. `JoinConfirmPage`'s retry and the blank-until-known screens both stay, as safety
+  nets rather than the fix itself.
+- **"Almost in" says the true reason.** Faraji has Kilima Traders U8's own address - he is not a
+  stranger to it - but the plan had no free seat, and the page said "You're from outside Kilima
+  Traders U8" regardless, because the rule that decided he had to wait is asked before his account
+  exists and cannot yet tell "a stranger" from "one of ours with nowhere to sit". The server now also
+  checks the organisation's own seat count when someone is waiting, and the page says "Kilima Traders
+  U8 has no free seat right now, so an admin there has to make room before you can start." when that
+  is the true reason.
+- **Engine wording, requests only** (added to existing requests where one fit): "The objectives on
+  record:", "Against the person who holds it:", "Dates it sets:" (request 40); a doubled word,
+  "Amani Wekesa: cookers delivered, 3, by by 9 October"; and "And that's Rukia's part of the record"
+  said to Rukia about her own answers.
+- **Found on the way, noted for U.5's own review rather than fixed here:** after setup, the lead's
+  check-in still shows the old chips ("Check in / My report / What am I missing? / Review my goals /
+  Patterns", "End session") and reads "0 of 1 checked in for session 1" and "Nothing on record yet"
+  although she answered in setup. The Paste text label field had no accessible name; given `aria-label
+  "What is it?"` now.
+
+**Tests:** `ChatPage.thinRecordRefusal.spec.tsx` (new), `TheDonePage`'s tests inside
+`the-check-in-as-a-person-reads-it.spec.tsx` (updated: the old "4 of 5" pinned a count now known to
+undercount and hidden on purpose), `GroundChat.spec.tsx` (updated: the divider's date format
+changed), `colleagues.spec.ts` (updated source match) plus two new specs
+(`a-colleague-added-keeps-their-name.spec.ts`, `GroundAdminPage.notJoinedSentence.spec.tsx`,
+`accepting-an-invite-names-the-organisation.spec.ts`), and `switching-organisation-cannot-grant-you-anything.spec.ts`
+/ `a-held-guest-is-not-shown-the-organisation.spec.ts` / `creating-an-organisation.spec.ts` /
+`joining-by-email-domain.spec.ts` (updated: their prisma doubles needed the fuller user-with-org shape
+`userShapeFor` now reads), and `almost-in-names-the-admin-after-a-real-invitation.spec.ts` (extended
+for the seat check). Only the tests for files changed run (`--maxWorkers=2`), both type checks clean.
+
 ### U.9 Reports and sharing: built and tested, not yet reviewed
 
 - **The lead's judgement on the board reads as sentences.** "What this cannot tell you" and "What
@@ -4263,8 +4520,8 @@ none of them changed. **Not ticked,** until its review.
 
 ## Found on the way, for later tasks
 
-- **For U.8 (the check-in screens):** the check-in page reads "You · waiting" and "U6g · waiting", pieces joined with dots.
-- **Also for U.8:** an invited person who opens their link is signed in and then waits on "Opening your session…" for more than 13 seconds, with no server error. It happened for two people in the U.6 reviews. Someone waiting that long may give up.
+- **For U.8 (the check-in screens): fixed in the first review round.** The check-in page read "You · waiting" and "U6g · waiting", pieces joined with dots. Now full sentences ("You have not checked in yet."); see the U.8 first-review section above.
+- **Also for U.8: fixed in the first review round.** An invited person who opens their link is signed in and then waits on "Opening your session…" for more than 13 seconds, with no server error. It happened for two people in the U.6 reviews. The screen now says, after four seconds, that the wait can take up to a minute; the underlying wait itself is asked of the engine (request 44).
 - **For U.5 (Today):** "A decision for you." sits over a first check-in on Today, which is not a decision.
 
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12

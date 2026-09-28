@@ -26,7 +26,7 @@ describe('the lead\'s words about someone', () => {
       },
       checkIn: { count: jest.fn(async () => 0) },
     };
-    const preview: any = await new ParticipantsService(prisma, {} as any, {} as any).preview('tok');
+    const preview: any = await new ParticipantsService(prisma, {} as any, {} as any, {} as any).preview('tok');
     expect(preview.roleAsDescribed).toBeUndefined();
     expect(JSON.stringify(preview)).not.toContain('sales manager');
     expect(JSON.stringify(preview)).not.toContain('who you said');

@@ -10,7 +10,7 @@ import { WhoIsWaitingAtTheDoorService } from './who-is-waiting-at-the-door.servi
  */
 const HOUR = 60 * 60 * 1000;
 
-function make(opts: { viaInvitation?: boolean; createdAt?: Date; lastRemindedAt?: Date | null; owner?: string | null; none?: boolean } = {}) {
+function make(opts: { viaInvitation?: boolean; createdAt?: Date; lastRemindedAt?: Date | null; owner?: string | null; none?: boolean; seatsFull?: boolean } = {}) {
   const request = {
     id: 'r1', userId: 'u-peter', email: 'peter@ouma.test', organizationId: 'o1', groundId: 'g1', requestedByUserId: 'u-wairimu',
     createdAt: opts.createdAt ?? new Date(Date.now() - 30 * HOUR), lastRemindedAt: opts.lastRemindedAt ?? null,
@@ -34,7 +34,8 @@ function make(opts: { viaInvitation?: boolean; createdAt?: Date; lastRemindedAt?
     ground: { findUnique: jest.fn(async () => ({ label: 'Sales team, Q3' })) },
   };
   const email: any = { sendSomebodyIsWaiting: jest.fn(async (...a: any[]) => { sent.push(a); }) };
-  return { door: new WhoIsWaitingAtTheDoorService(prisma, email), sent, updates, request };
+  const billing: any = { canInviteMember: jest.fn(async () => ({ allowed: !opts.seatsFull })) };
+  return { door: new WhoIsWaitingAtTheDoorService(prisma, email, billing), sent, updates, request };
 }
 
 describe('the person waiting reads their own request', () => {
@@ -63,6 +64,22 @@ describe('the person waiting reads their own request', () => {
   it('somebody else, or somebody not waiting, reads nothing', async () => {
     const { door } = make();
     expect(await door.myOwnRequest('u-someone-else')).toEqual({ waiting: false });
+  });
+
+  /**
+   * THE TRUE REASON, WHEN IT IS SEATS (U.8 re-review). Faraji has this organisation's own address -
+   * he is not a stranger to it - but the plan has no free seat, and the page used to say "You're
+   * from outside" regardless, because `needsApproval` (what decided he had to wait) is asked before
+   * his account exists and cannot yet tell "a stranger" from "one of ours with nowhere to sit".
+   */
+  it('says when the true reason is that the plan has no free seat, not that they are a stranger', async () => {
+    const { door } = make({ seatsFull: true });
+    expect(((await door.myOwnRequest('u-peter')) as any).heldForASeat).toBe(true);
+  });
+
+  it('and says otherwise when there is room, so an admin genuinely does have to say yes', async () => {
+    const { door } = make({ seatsFull: false });
+    expect(((await door.myOwnRequest('u-peter')) as any).heldForASeat).toBe(false);
   });
 });
 

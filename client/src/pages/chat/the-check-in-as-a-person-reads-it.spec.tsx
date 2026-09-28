@@ -178,6 +178,23 @@ describe('the + button', () => {
     expect(screen.getByText('It starts private to you. You choose who can read it.')).toBeTruthy()
   })
 
+  it('the paste panel says plainly what it is for, in full sentences, not work jargon (U.8 review)', async () => {
+    /*
+     * "Paste an email, Slack thread, meeting notes, or any text that supports what you are
+     * describing. The tool will use it to ask sharper questions." named a specific chat tool and
+     * a specific kind of workplace document ("Slack thread"), and never said the one thing the
+     * upload option right above it already says: that this starts private. Now matched to it.
+     */
+    renderChat()
+    fireEvent.click(await findByRole('button', { name: 'Add a photo, a document or some text' }, { timeout: 5000 }))
+    fireEvent.click(screen.getByText('Paste text'))
+    expect(screen.getByText('Paste an email, a message or your notes. It starts private to you.')).toBeTruthy()
+    expect(screen.getByText('What is it? You can skip this.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add it' })).toBeTruthy()
+    expect(screen.queryByText(/Slack thread/i)).toBeNull()
+    expect(screen.queryByText(/the tool will use it/i)).toBeNull()
+  })
+
   it('uploads for real, with what the person said it shows, and says only they can open it', async () => {
     ;(documentsApi.upload as any).mockResolvedValue({ id: 'd1', name: 'green-mart-quote.heic', mimeType: 'image/heic', uploadedAt: '', assessment: null, visibility: 'OWN' })
     renderChat()
@@ -320,8 +337,19 @@ describe('the Done page, after “That’s right, finish”', () => {
     const saved = screen.getByRole('heading', { name: 'That’s saved' }).parentElement!
     expect(saved.textContent).toBe('That’s savedWhy answering matters: Wairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
     const checkable = screen.getByRole('region', { name: 'How checkable today’s check-in was' })
-    expect(within(checkable).getByText('4 of 5')).toBeTruthy()
-    expect(within(checkable).getByText('One date, number or document')).toBeTruthy()
+    /**
+     * "4 of 5" no longer shows (U.8 re-review, request 45 to the engine workspace): it is a score
+     * built from a read of the session that is known to miss real content, so it stays off until
+     * that is answered. What a sighted reader gets instead is the same plain sentence a screen
+     * reader always got - "Groundwork found this." or "Groundwork did not pick this up this time." -
+     * for every one of the five, not only the icon.
+     */
+    expect(within(checkable).queryByText('4 of 5')).toBeNull()
+    expect(within(checkable).getByText(
+      'Groundwork looked for these five things. It may have missed some of what you said.',
+    )).toBeTruthy()
+    expect(within(checkable).getByText(/One date, number or document\. Groundwork did not pick this up this time\./)).toBeTruthy()
+    expect(within(checkable).getByText(/What you did, not just what was happening\. Groundwork found this\./)).toBeTruthy()
     expect(within(checkable).getByText('This is about the check-in. Only you see it.')).toBeTruthy()
   })
 

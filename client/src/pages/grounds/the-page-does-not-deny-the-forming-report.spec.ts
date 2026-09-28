@@ -33,7 +33,10 @@ describe('waiting for the others', () => {
     const CHAT = read('..', 'chat', 'ChatPage.tsx')
     expect(CHAT).toContain('<WhoIsStillOut')
     const WHO = read('..', '..', 'components', 'gw', 'WhoIsStillOut.tsx')
-    expect(WHO).toContain('still to answer session')
+    /* U.8 REVIEW: "n people still to answer session N" (a count next to the word "session") became
+       a sentence naming who ("Baraka and Neema still have to answer."). What this test guards - that
+       the lead can see who is still out - is unweakened: it still names whoever has not answered. */
+    expect(WHO).toMatch(/still (has|have) to answer/)
     expect(WHO).toContain('Remind')
   })
 })

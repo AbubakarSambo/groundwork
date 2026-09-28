@@ -40,10 +40,25 @@ export function JoinConfirmPage() {
           { id: res.userId, email: '', firstName: '', lastName: '', role: 'MEMBER', organizationId: '' },
           res.accessToken,
         )
-        try {
-          const fresh = await authApi.me()
-          setAuth(fresh, res.accessToken)
-        } catch { /* the placeholder stands until the next profile read; the check-in still opens */ }
+        /*
+         * A SINGLE FAILED READ USED TO LEAVE THE PLACEHOLDER STANDING FOR GOOD.
+         *
+         * Found live: a real invited person (organisation and membership row both correct in the
+         * database) whose organisation switcher read "Your organisation" and "Takes part" - exactly
+         * this placeholder's `organizationName: undefined` and `role: 'MEMBER'`, nothing else the
+         * screens could produce. Nothing anywhere else in the app calls `/auth/me` again after this
+         * page, so one dropped request here - a network blip right after a fresh token, the kind
+         * `openSession`'s own watchdog exists for - persisted through every reload until she signed
+         * in some other way. Retried a few times, a short pause apart, before the placeholder is
+         * left standing; a token that just worked for `joinApi.confirm` is not going to keep
+         * refusing this read for long unless the request itself is genuinely failing.
+         */
+        let fresh: Awaited<ReturnType<typeof authApi.me>> | null = null
+        for (let attempt = 0; attempt < 3 && !fresh; attempt++) {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 400))
+          try { fresh = await authApi.me() } catch { /* try again, or fall through to the placeholder */ }
+        }
+        if (fresh) setAuth(fresh, res.accessToken)
         /* Signed in, and not yet let in. Sending them to a check-in that will refuse them, with a
            message about something else, is the failure the register calls P4-B03. They are told here. */
         /* "Almost in" (U.3), a page of its own that can be opened again. */

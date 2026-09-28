@@ -61,7 +61,16 @@ describe('the person who signs up with that domain', () => {
     const created: any[] = [];
     const prisma: any = {
       user: {
-        findUnique: jest.fn(async () => ({ email: o.email ?? 'miriam@baridi.co.ke', isEmailVerified: o.verified ?? true })),
+        /*
+         * `userShapeFor` (U.8 re-review) reads the user back with its organisation included, after
+         * `joinByDomain` switches them into Baridi - so this always names that organisation, the
+         * same one `organizationMembership.findUnique` below returns.
+         */
+        findUnique: jest.fn(async () => ({
+          id: 'u1', email: o.email ?? 'miriam@baridi.co.ke', isEmailVerified: o.verified ?? true, firstName: 'M', lastName: '',
+          organizationId: 'baridi', role: 'MEMBER', isPlatformAdmin: false,
+          organization: { id: 'baridi', name: 'Baridi Appliances', slug: 'baridi', careFeeStatus: null, email: null, companyStage: null, subscriptionPlan: null, whoMayOpenCheckIns: 'EVERYONE', checkInsNeedApproval: false },
+        })),
         update: jest.fn(async ({ data }: any) => ({ id: 'u1', email: 'm', firstName: 'M', lastName: '', organizationId: data.organizationId, role: data.role, isPlatformAdmin: false })),
       },
       organizationMembership: {
@@ -71,6 +80,7 @@ describe('the person who signs up with that domain', () => {
           return { role: 'MEMBER', organization: { id: 'baridi', name: 'Baridi Appliances', slug: 'baridi' } };
         }),
         create: jest.fn(async ({ data }: any) => { created.push(data); return data; }),
+        count: jest.fn(async () => 0),
       },
       organization: {
         findMany: jest.fn(async ({ where }: any) => (where.joinDomain === 'baridi.co.ke' ? [{ id: 'baridi', name: 'Baridi Appliances' }] : [])),

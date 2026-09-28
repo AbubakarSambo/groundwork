@@ -10,8 +10,23 @@ import { AuthService } from './auth.service';
 function make(memberships: any[]) {
   const prisma: any = {
     user: {
-      findUnique: jest.fn(async () => ({ organizationId: 'pembe', role: 'ADMIN' })),
-      update: jest.fn(async (a: any) => ({ id: 'baraka', email: 'b@pembe.test', firstName: 'Baraka', lastName: '', isPlatformAdmin: false, ...a.data })),
+      /*
+       * `userShapeFor` (U.8 re-review) reads the user back, with its organisation included, after
+       * a switch - so this returns whichever organisation the (fake) row's `organizationId` names,
+       * looked up in the same membership list `myOrganizations` reads. Stateful across calls
+       * because `switchOrganization` reads the user again straight after writing it.
+       */
+      _row: { id: 'baraka', organizationId: 'pembe', role: 'ADMIN' },
+      findUnique: jest.fn(async function (this: any) {
+        const row = prisma.user._row;
+        const m = memberships.find((x) => x.organizationId === row.organizationId);
+        return {
+          id: 'baraka', email: 'b@pembe.test', firstName: 'Baraka', lastName: '', isPlatformAdmin: false,
+          organizationId: row.organizationId, role: row.role,
+          organization: { id: row.organizationId, name: m?.name ?? row.organizationId, slug: row.organizationId, careFeeStatus: null, email: null, companyStage: null, subscriptionPlan: null, whoMayOpenCheckIns: 'EVERYONE', checkInsNeedApproval: false },
+        };
+      }),
+      update: jest.fn(async (a: any) => { Object.assign(prisma.user._row, a.data); return { id: 'baraka', email: 'b@pembe.test', firstName: 'Baraka', lastName: '', isPlatformAdmin: false, ...a.data }; }),
     },
     organizationMembership: {
       findMany: jest.fn(async ({ where }: any) => memberships
@@ -21,6 +36,7 @@ function make(memberships: any[]) {
         const m = memberships.find((x) => x.organizationId === where.userId_organizationId.organizationId);
         return m ? { role: m.role, heldForASeat: m.heldForASeat, organization: { id: m.organizationId, name: m.name, slug: m.organizationId } } : null;
       }),
+      count: jest.fn(async ({ where }: any) => memberships.filter((m) => m.organizationId !== where.organizationId.not).length),
     },
     person: { findMany: jest.fn(async () => []) },
     organization: { findUnique: jest.fn(async () => null) },
