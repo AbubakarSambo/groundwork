@@ -216,9 +216,19 @@ function atTime(d: Date | string): string {
  * such as a check-in, a document or a number from another system." (team-report.txt). The
  * prototype adds who checked in ("when Miriam checked in"); nothing served says what the change
  * was, so that part waits for the engine (request 9).
+ *
+ * DRAWS NOTHING WHEN THE DATE ISN'T A REAL DATE. The server can send `{}` for `updatedAt` (an
+ * engine bug that turns a `Date` into an empty object on its way through `applyNames`, requested
+ * as engine request 53). Before this guard, that produced "Last updated on  at . It only changes
+ * ..." - two blank spots either side of "at", read as a broken sentence rather than as nothing.
+ * `whenItWas` already returns '' for a date it cannot parse, so an empty weekday or time means the
+ * date was never real, and the whole line is withheld rather than shown half-empty.
  */
-export function lastUpdated(at: Date | string): string {
-  return `Last updated on ${whenItWas(at, 'weekdayAndDay')} at ${atTime(at)}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`
+export function lastUpdated(at: Date | string): string | null {
+  const weekday = whenItWas(at, 'weekdayAndDay')
+  const time = atTime(at)
+  if (!weekday || !time) return null
+  return `Last updated on ${weekday} at ${time}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`
 }
 
 export function TheSessionsReport({ groundId, sessionNumber }: { groundId: string; sessionNumber: number }) {
@@ -243,6 +253,7 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
     retry: false,
   })
   const lastChanged: string | null = (current as any)?.updatedAt ?? (current as any)?.createdAt ?? null
+  const lastChangedLine = lastChanged ? lastUpdated(lastChanged) : null
   /* The read is computed when asked for and takes ten to twenty seconds. Say so, or it looks stuck. */
   if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading everybody&apos;s side of this session. It takes a moment.</div>
   if (isError || !data) return null
@@ -303,12 +314,15 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
     <div className="gw-sr" style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
       <style>{SHEET}</style>
 
-      {/* ── The masthead: what this is for, and where you are in it. */}
+      {/*
+        ── The masthead: where you are in it. No title of its own here any more - every page that
+        draws this card already carries its own "Session N" heading above it (SessionReportPage,
+        RoundReportPage), so a second one here, falling back to the same words when nobody had set
+        an objective, read three times on one screen: the page's own heading, this one, then
+        "Session N" again inside the count sentence below. One heading, said once, above the card.
+      */}
       <div style={{ padding: '16px 20px' }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.3 }}>
-          {d.againstSuccess?.stated?.trim() || `Session ${d.sessionNumber}`}
-        </div>
-        <div style={{ marginTop: 4, fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.5 }}>
           {sessionAndWhoCheckedIn(d.sessionNumber, d.plannedSessions ?? null, answered, ofPeople)}
         </div>
         {final && (
@@ -571,8 +585,8 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
 
       {/* ── The promise, and what state this is in. */}
       <div style={{ ...ROW, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-        {!final && lastChanged && (
-          <span style={{ display: 'block', marginBottom: 4 }}>{lastUpdated(lastChanged)}</span>
+        {!final && lastChangedLine && (
+          <span style={{ display: 'block', marginBottom: 4 }}>{lastChangedLine}</span>
         )}
         {!final
           ? 'People are still answering, so this moves. '

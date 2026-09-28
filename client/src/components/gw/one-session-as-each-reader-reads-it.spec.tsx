@@ -90,4 +90,21 @@ describe('one session, as each reader reads its top', () => {
     expect(hasCheckedIn({ who: 'Brian', isYou: true, answered: false })).toBe('You have not checked in yet.')
     expect(lastUpdated('2026-09-23T18:30:00.000Z')).toMatch(/^Last updated on Wednesday 23 September at 6:30pm\. /)
   })
+
+  it('draws nothing for "last updated" when the date is not a real date, the shape the server sends today', async () => {
+    /*
+     * ENGINE REQUEST 53: applyNames' walk turns a Date into {} on its way through the wrapper
+     * that swaps names in, so `updatedAt` arrives as `{}` rather than an ISO string or a Date.
+     * `whenItWas` already returns '' for a date it cannot parse, so before this fix the sentence
+     * still printed with two blank spots either side of "at" - "Last updated on  at . It only
+     * changes ..." - a broken sentence rather than nothing. This is the real shape, not a string
+     * standing in for it.
+     */
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue(aSession({ state: 'forming', counting: [] }) as any)
+    vi.mocked(reportsApi.get).mockResolvedValue({ updatedAt: {} } as any)
+    renderIt()
+    await screen.findByText('People are still answering, so this moves.', { exact: false })
+    expect(document.body.textContent).not.toContain('Last updated')
+    expect(document.body.textContent).not.toMatch(/on  at \./)
+  })
 })
