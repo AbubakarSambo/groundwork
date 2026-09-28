@@ -131,6 +131,24 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **What is next, in your order:** measure weeks 4 and 5 live, twice, then carry on with the weekly plan.
 
+## 28 SEPTEMBER, AFTERNOON: THE PER-PERSON RATINGS, FOR HAFSAH TO DECIDE
+
+**None of the engine's per-person ratings is shown to a lead or an admin in the prototype, except "Nothing checkable".** Four have something close on a lead's screen, but it is a different kind of thing. Until you decide, decision 38 stays: these are not sent to a lead or an admin, except as decision 40 says.
+
+| Rating the engine makes | Does the prototype show it to a lead? | To an admin? | What the prototype shows instead, in its words |
+| --- | --- | --- | --- |
+| How specific each person's account was: high, moderate or low | No | No | One sentence in the weekly report, not a label: "Aisha and Miriam consistently get to specific customer needs and next steps." |
+| Notes on each part of a person's account, such as "vague on evidence in session 8" | No | No | A pattern named after it comes up again and again, on the lead's board: "Visits without the shop's name, for 2 weeks in a row". |
+| The cause of low or high specificity | No | No | Nothing. The ending screen names causes of outcomes ("Nobody set it up", "Improved after feedback"), not of how specific someone was. |
+| How sure the picture of each person is | No | No | One level for the whole report: "How much this report can rely on: medium." |
+| Whether a person's account rests on memory | Not per person | No | A mark on each line: "Proven", "Confirmed by the person who received it", "Only someone's word", "From memory only". |
+| A closing tier for each person, such as MIXED or STRONG | No | No | A suggestion with its counts: "Groundwork suggests keeping Kwame on". The admin's review screen says "No scores." |
+| How checkable one check-in's answers were | Only as "Nothing checkable" beside the name (decision 40) | No | The person sees their own: "How checkable today's check-in was, 4 of 5. This is about the check-in. Only you see it." |
+
+**Other labels the prototype shows a lead beside a person's name**, none of them to an admin: "Drifting" (check-ins missed), "Behind the pace" and "On pace" (a count against the target), "Stops before the date" and "Stuck on a dependency" (patterns), and counts such as "8 of 9 commitments kept this month". The lead's setup screen also has a "Check-in grades" switch, turned off for some situations: "Check-in grades would feel like a judgement on the person here, so they stay off."
+
+**So the choice is mostly whether any of these report ratings should reach the lead in some form.** The prototype's answer, read literally, is no: it shows patterns, marks on lines and counts, never a per-person rating.
+
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
 *This section is kept up to date through the night. It was started at 00:36. The work stops at 05:36.*
