@@ -118,6 +118,22 @@ function kindOfFile(name: string): string {
 }
 
 /**
+ * U.9 RE-REVIEW: "WHAT THIS IS BUILT FROM" STILL SHOWED THE SERVER'S OWN "<FILE> · <KIND>" JOIN.
+ * `evidence[].text` (reports.service.ts, `rounds()`'s neighbour `sessionReport()`, around line
+ * 2928) sends "Note from Tuskys Kilimani.txt · a typed document" and "chandarana-quote.png · a
+ * photo" as one already-joined string, drawn verbatim as if it were a quote. A request is written
+ * for the server to send this as a sentence, or as two fields, so nothing has to be parsed back
+ * apart here; until then this turns the join into "<file> is <kind>." before it is drawn. Only a
+ * line shaped exactly "<one piece> · <one piece>" is touched - anything else (a real quote that
+ * happens to contain a "·", or a bare filename with no kind) is left exactly as it is.
+ */
+const MIDDLE_DOT = String.fromCharCode(183)
+export function asFileIsKindSentence(text: string): string {
+  const parts = text.split(` ${MIDDLE_DOT} `)
+  return parts.length === 2 ? `${parts[0]} is ${parts[1]}.` : text
+}
+
+/**
  * U.9 RE-REVIEW, ITEM A: A SENTENCE UNDER THE QUOTE, NOT "NAME · FROM A DOCUMENT".
  * "Baraka Mwangi · from memory" and "Note from Tuskys Kilimani.txt · a typed document" each joined
  * a name (or a filename, when the source is a document rather than a person) to a fact with a
@@ -780,7 +796,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
             {restsOn.map((sec: any) => (
               <div key={sec.title} style={{ marginTop: 12 }}>
                 {sec.items.length > 0
-                  ? <Quotes items={sec.items} yourName={yourName} />
+                  ? <Quotes items={sec.items.map((it: any) => ({ ...it, text: asFileIsKindSentence(it.text) }))} yourName={yourName} />
                   : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{sec.saying}</div>}
               </div>
             ))}
