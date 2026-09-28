@@ -12,6 +12,7 @@ import { greeting } from './a-greeting-with-no-name';
 import { howLongInWords } from '../auth/how-long-a-link-lasts';
 import { withWhatGroundworkIs } from './what-groundwork-is';
 import { whatTheTeamGets, whatTheLeadGets, THE_TEAM_BUTTON, THE_LEAD_BUTTON } from './one-line-one-link-one-report';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
 /**
  * Groundwork email library. Per the product rules, every message names
@@ -1103,16 +1104,70 @@ export class EmailService implements OnModuleInit {
     }, undefined, 'sendJoinConfirmation');
   }
 
+  /**
+   * THE TIME RAN OUT. AND THIS EMAIL USED TO SAY SOMETHING THAT WAS NOT TRUE.
+   *
+   * "If you want to continue, either party can reopen the conversation from the check-in page."
+   * There was no reopen on the check-in page or anywhere else - STALLED sat with RESOLVED and
+   * CLOSED and had no exit at all - so the one email anybody got about it pointed them at a button
+   * that did not exist. Reported by a customer who went looking for it: "no clear way to open them
+   * back up. i can't easily see where to reopen them or to extend the timeline."
+   *
+   * There is one now, it belongs to whoever runs the check-in, and this says so.
+   */
   async sendStalledNotification(email: string, groundLabel: string, groundUrl: string): Promise<void> {
     await this.sendEmail({
       to: email,
-      subject: `"${groundLabel}" has stalled`,
+      subject: `"${groundLabel}" ran out of time`,
       html: this.layout(
-        `<p>The check-in <strong>${escapeHtml(groundLabel)}</strong> has reached the end of its timeline without a confirmed outcome.</p>
-         <p>Both records remain intact and accessible. If you want to continue, either party can reopen the conversation from the check-in page.</p>
+        `<p>The check-in <strong>${escapeHtml(groundLabel)}</strong> has passed the time it was given, so nothing can be added to it right now.</p>
+         <p>Everything already answered is kept, exactly as it is. Whoever runs this check-in can give it more time, and it opens again from where it left off.</p>
          <p><a href="${groundUrl}">View check-in</a></p>`,
       ),
     }, undefined, 'sendStalledNotification');
+  }
+
+  /**
+   * IT IS OPEN AGAIN, and everybody who was told it stalled is told this too.
+   *
+   * Leaving them with "it stalled" as the last word while the lead looks at a live check-in is how
+   * somebody decides it is not worth answering - which is the thing the customer was actually
+   * worried about: "the whole thing would be of little to no use even if many of the users checked
+   * in."
+   */
+  async sendReopenedNotification(email: string, groundLabel: string, groundUrl: string, endsAt: Date | null): Promise<void> {
+    const until = endsAt ? ` It now runs until ${whenItWas(endsAt, 'day')}.` : '';
+    await this.sendEmail({
+      to: email,
+      subject: `"${groundLabel}" is open again`,
+      html: this.layout(
+        `<p><strong>${escapeHtml(groundLabel)}</strong> has been given more time and is open again.${escapeHtml(until)}</p>
+         <p>Everything already in it is still there. If it was your turn before, it is your turn now.</p>
+         <p><a href="${groundUrl}">Check in</a></p>`,
+      ),
+    }, undefined, 'sendReopenedNotification');
+  }
+
+  /**
+   * AND THE WARNING THAT NEVER EXISTED.
+   *
+   * Every check-in that ever stalled did so with no notice: the sweep ran at 3am and the first
+   * anybody heard was an email saying it was over. The customer's own account of it - "i let a few
+   * check-ins wait" - is the ordinary thing that happens to a busy person, and the product's answer
+   * was to write the whole check-in off. This goes to whoever runs it, once, while there is still
+   * time to do something.
+   */
+  async sendTimeRunningOut(email: string, groundLabel: string, groundUrl: string, endsAt: Date, daysLeft: number): Promise<void> {
+    const when = whenItWas(endsAt, 'day');
+    await this.sendEmail({
+      to: email,
+      subject: `"${groundLabel}" runs out in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`,
+      html: this.layout(
+        `<p><strong>${escapeHtml(groundLabel)}</strong> is set to finish on ${escapeHtml(when)}. After that nothing can be added to it until somebody gives it more time.</p>
+         <p>If people are still checking in, give it more time now and nothing is interrupted.</p>
+         <p><a href="${groundUrl}">Give it more time</a></p>`,
+      ),
+    }, undefined, 'sendTimeRunningOut');
   }
 
   /** Someone proposed an end state and the recipient has not yet confirmed. (GW-22) */
@@ -1123,7 +1178,7 @@ export class EmailService implements OnModuleInit {
       subject: `${proposerLabel} suggested how to wrap this up`,
       html: this.layout(
         `<p><strong>${escapeHtml(proposerLabel)}</strong> thinks this is where it lands: <em>${escapeHtml(endStateLabel)}</em>.</p>
-         <p>It only closes when everybody still involved says the same thing. Have a look, and either agree or say where you see it differently.</p>
+         <p>Whoever runs the check-in decides how it ends. Have a look, and if you see it differently, say so in your own check-in - what you said stays on the record beside what they decided.</p>
          <p><a href="${groundUrl}">Have a look</a></p>`,
       ),
     }, undefined, 'sendResolutionProposal');

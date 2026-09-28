@@ -14,7 +14,7 @@ import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
 import { addressesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
 import { RolloutFacts } from './where-a-rollout-has-got-to';
-import { isSubscribed } from '../../common/subscription';
+import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
 
@@ -56,7 +56,7 @@ export class UsersService {
       this.prisma.ground.count({ where: { organizationId } }),
       this.prisma.organization.findUnique({
         where: { id: organizationId },
-        select: { subscriptionPlan: true, subscriptionStatus: true },
+        select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
       }),
       this.prisma.apiCredential.count({ where: { organizationId, revokedAt: null } }),
     ]);
@@ -64,8 +64,9 @@ export class UsersService {
       people,
       admins,
       checkIns,
-      /* The one definition of paying, rather than a sixth comparison against a bare string. */
-      paying: isSubscribed(org ?? { subscriptionPlan: null, subscriptionStatus: null }),
+      /* Covered, not paying: a month given away is cover, and reading it as unpaid told a customer
+         to subscribe to something we had already given them. See grounds.service.addParticipant. */
+      paying: isCovered(org ?? { subscriptionPlan: null, subscriptionStatus: null }),
       connected: keys > 0,
     };
   }

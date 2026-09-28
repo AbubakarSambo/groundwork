@@ -13,10 +13,17 @@
  * WHY NOT RENAME THE OLD ONE. Somebody may have the old one open, linked or bookmarked, and a
  * label that changes under them is worse than two that match. The new one takes the suffix.
  */
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 
-/** Day and month in the short form the rest of the product uses. */
+/**
+ * Day and month in the short form the rest of the product uses.
+ *
+ * Through the one formatter, not its own call: this module hard-coded en-GB and Africa/Lagos, which
+ * is the exact thing `one-date-format-everywhere` exists to stop - a fourth date format, and one
+ * that ignores the display timezone the customer set. Caught by that guard the same day.
+ */
 function theDay(when: Date): string {
-  return when.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Africa/Lagos' });
+  return whenItWas(when, 'dayAndMonth');
 }
 
 /**

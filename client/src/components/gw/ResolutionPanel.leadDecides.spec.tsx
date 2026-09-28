@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ResolutionPanel } from './ResolutionPanel'
@@ -81,7 +83,7 @@ describe('what the new hire sees', () => {
   it('says plainly who decides, and that their account still counts', async () => {
     ;(resolutionApi.get as any).mockResolvedValue(state())
     renderPanel()
-    expect(await screen.findByText(/Your lead decides which one it is/i)).toBeTruthy()
+    expect(await screen.findByText(/Whoever runs it decides which one it is/i)).toBeTruthy()
     expect(screen.getByText(/account stays on the record either way/i)).toBeTruthy()
   })
 
@@ -110,13 +112,28 @@ describe('what the lead sees on the same ground', () => {
   })
 })
 
-describe('peers are untouched', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('still asks both cofounders, and still says nobody closes it alone', async () => {
-    ;(resolutionApi.get as any).mockResolvedValue(state({ leadDecides: false, viewerIsLead: false }))
-    renderPanel()
-    expect(await screen.findByText('This is my answer')).toBeTruthy()
-    expect(screen.getByText(/nobody closes it alone/i)).toBeTruthy()
+/**
+ * AND THERE ARE NO PEERS LEFT TO BE UNTOUCHED.
+ *
+ * This described the other half of a rule that no longer exists: a cofounder ground needed both
+ * cofounders to pick the same outcome, and the panel said "nobody closes it alone". Her call, 24
+ * September 2026: "the lead is meant to close it, nothing like agreement."
+ *
+ * The component still branches on `leadDecides` from the server rather than assuming, so what is
+ * checked here is that the sentence it used to show is gone from the file entirely - there is no
+ * state of the server that can bring it back.
+ */
+describe('the agreement wording', () => {
+  it('is not in the component at all any more', () => {
+    /* Comments stripped first: the file explains what the old line was and why it went, and that
+       history is worth keeping. What must not survive is the line itself. */
+    const src = readFileSync(join(__dirname, 'ResolutionPanel.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '')
+    expect(src).not.toMatch(/nobody closes it alone/i)
+    expect(src).not.toMatch(/everyone picks the same/i)
+    /* And the tally of who has answered goes with it: one answer closes it, so there is nothing
+       to count. */
+    expect(src).toMatch(/totalActive > 0 && !leadDecides/)
   })
 })

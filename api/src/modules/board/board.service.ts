@@ -59,7 +59,7 @@ import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-sessi
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { whereEachPersonIs } from './where-each-person-is-against-their-number';
-import { whatTheLeadShouldKnow } from './whose-number-is-whose-business';
+import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
 import { whichRoundIsOpen } from './which-round-is-open';
 import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-splits-by-what-people-did';
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
@@ -134,7 +134,7 @@ export class BoardService {
       include: {
         participants: {
           select: {
-            id: true, email: true, userId: true, partyType: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true,
+            id: true, email: true, userId: true, partyType: true, createdAt: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true,
             managingOnly: true, signedOffAt: true,
             /* What the population rule reads: still holding a live invitation counts as expected. */
             invitedAt: true, inviteTokenExpiresAt: true,
@@ -483,6 +483,28 @@ export class BoardService {
       whatTheAnswersSay: (isInitiator || (ground as any).report?.releasedAt)
         ? ((ground as any).report?.networkPicture ?? null)
         : null,
+      /*
+       * THE JUDGEMENT, AND THE TABLE IT WAS WRITTEN FROM.
+       *
+       * Same door as the network read above it: whoever runs the check-in sees it, and everybody
+       * else once the report has been released to them. It is a read across every answer, so it is
+       * the shared picture across the whole run - the board's own cell in the four-report map - and
+       * it has nowhere else to be.
+       *
+       * The table travels with it because a count is the only reason to believe a sentence, and
+       * because the test for the whole thing is that it can be laid out as rows and columns.
+       */
+      theJudgement: (isInitiator || (ground as any).report?.releasedAt)
+        ? ((ground as any).report?.theJudgement ?? null)
+        : null,
+      theTable: isInitiator ? ((ground as any).report?.theTable ?? null) : null,
+      /*
+       * AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION - commitments, dependencies, patterns, gaps,
+       * what is still open. The lead's own surface, because it is the lead who has to decide
+       * something, and because three of these were empty in the report on the one engagement that
+       * was entirely about them. See what-the-record-shows-over-time.
+       */
+      overTime: isInitiator ? ((ground as any).report?.overTime ?? null) : null,
       myParticipantId: me?.id ?? null,
       // Whether the caller may set the frame (targets, the poll question). The
       // board is otherwise read-only, so the client should not offer controls it
@@ -581,7 +603,26 @@ export class BoardService {
         .then((rows: { text: string }[]) => rows.map((r) => (r.text ?? '').trim()).filter(Boolean))
         .catch(() => [] as string[]);
 
-      out.objectives = ground.objectives.map((o) => ({
+      /*
+       * WHOSE NUMBERS THIS READER MAY SEE, THROUGH THE RULE THAT OWNS IT.
+       *
+       * `targetsFor` sits in this module's own folder - whose-number-is-whose-business - written the
+       * day a salesperson opened his first check-in and read every colleague's quota, from the best
+       * seller's 40 down to the newest person's 13. It had one caller: the conversation. The board
+       * showed every owned target to everybody and read `whoSeesTargets` for one purpose only,
+       * telling the lead their privacy setting was doing nothing on the targets that had no owner.
+       *
+       * The lead keeps everything, as they do everywhere else - `runsThisGround`, which is the
+       * board's own word for it and covers an admin standing in for an absent lead.
+       */
+      const mayRead = targetsFor(
+        ground.objectives as any[],
+        me?.id ?? null,
+        (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
+        { isLead: runsThisGround },
+      ).shown as typeof ground.objectives;
+
+      out.objectives = mayRead.map((o) => ({
         journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),

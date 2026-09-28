@@ -4,6 +4,8 @@ import { plannedSessionsFor } from '@/lib/sessionCount'
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { useState } from 'react'
 import { railAttention } from '@/lib/rail-attention'
+import { whenItRunsOut } from '@/lib/when-it-runs-out'
+import { hasStalled } from '@/lib/a-ground-that-has-ended'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
@@ -57,6 +59,26 @@ function whatThisWants(g: Ground, myUserId: string | null | undefined) {
    */
   if ((g as any).reportWaitingForMe) {
     return { text: 'Your report is ready', bg: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }
+  }
+  /*
+   * AND A CHECK-IN ABOUT TO RUN OUT SAYS SO FROM THE LIST.
+   *
+   * "have a risk of stalling show, don't just stall." Above the turn states on purpose: whether
+   * this check-in survives the week outranks whose turn it is, and somebody scanning the list is
+   * exactly who can still do something about it. See lib/when-it-runs-out.
+   */
+  const out = whenItRunsOut(g as any)
+  if (out.state === 'out') {
+    return { text: 'Time is up', bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
+  }
+  if (out.state === 'soon') {
+    return { text: out.daysLeft === 1 ? 'Runs out tomorrow' : `Runs out in ${out.daysLeft} days`,
+             bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
+  }
+  /* And one that already has, which the rail reads as nothing to do - because there is nothing to
+     do until somebody gives it more time, and that is what the badge says. */
+  if (hasStalled(g.status)) {
+    return { text: 'Out of time', bg: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
   }
   const a = railAttention(g as any, myUserId)
   switch (a.kind) {

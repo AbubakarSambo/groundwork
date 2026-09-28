@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { openLinkApi } from '@/api/entry'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
+import { WhatYouGaveUs, type WhatYouGave } from '@/components/gw/WhatYouGaveUs'
 
 /**
  * ANSWER FIRST, SAY WHO YOU ARE AT THE END.
@@ -25,11 +26,42 @@ export function AnswerFirstPage() {
   const token = params.get('t') ?? ''
   const [what, setWhat] = useState<{ groundLabel: string; theQuestion: string | null; askedBy: string | null } | null>(null)
   const [problem, setProblem] = useState('')
-  const [key, setKey] = useState<string | null>(null)
+  /*
+   * THE KEY OUTLIVES THE TAB, BECAUSE THE ANSWER DOES.
+   *
+   * "That answer does not belong to anything" - read on 23 September 2026, and it is the honest
+   * server response to a key it has never seen. The key only ever lived in React state, so a
+   * refresh, a phone locking, a tab restored by the browser, or being signed out mid-answer lost
+   * it - and the person was then told their answer belonged to nothing, while every word of it sat
+   * safely on the server against a row they could no longer reach.
+   *
+   * Kept per link, so somebody who answers two different check-ins on one phone does not resume
+   * the wrong one. Wrapped, because storage throws in a private window and an answer page must
+   * open regardless - see the artifact storage rule this codebase follows elsewhere.
+   */
+  /* `gw-` so the sign-out sweep reaches it. signing-out-leaves-nothing-behind counts every key the
+     app writes and refuses one it cannot clear - and it caught this on the first run. */
+  const keyFor = `gw-answer-${token}`
+  const [key, setKey] = useState<string | null>(() => {
+    try { return window.localStorage.getItem(keyFor) } catch { return null }
+  })
+  const remember = (k: string | null) => {
+    setKey(k)
+    try { k ? window.localStorage.setItem(keyFor, k) : window.localStorage.removeItem(keyFor) } catch { /* private window */ }
+  }
   const [turns, setTurns] = useState<Turn[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
-  const [phase, setPhase] = useState<'reading' | 'talking' | 'address' | 'done'>('reading')
+  /*
+   * SOMEBODY WHO HAD ALREADY STARTED PICKS UP WHERE THEY WERE.
+   *
+   * With the key surviving the tab, a returning person would otherwise land on "Start" and mint a
+   * SECOND row - two half-answers from one person, which is the duplicate the open link's own merge
+   * exists to clean up. If a key is on this device for this link, the conversation is already open.
+   */
+  const [phase, setPhase] = useState<'reading' | 'talking' | 'address' | 'done'>(() => {
+    try { return window.localStorage.getItem(`gw-answer-${token}`) ? 'talking' : 'reading' } catch { return 'reading' }
+  })
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   /* WHO THEY ANSWERED FOR. On a link sent across a network the organisation is the unit the whole
@@ -37,6 +69,7 @@ export function AnswerFirstPage() {
   const [org, setOrg] = useState('')
   /* The question "do you want the report?" is gone: the page promises it before the first answer,
      so asking afterwards had one real answer and cost the record a name. See the address step. */
+  const [whatYouGave, setWhatYouGave] = useState<WhatYouGave | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
@@ -54,7 +87,7 @@ export function AnswerFirstPage() {
     setBusy(true)
     try {
       const started = await openLinkApi.start(token)
-      setKey(started.key)
+      remember(started.key)
       setPhase('talking')
       if (started.reply) setTurns([{ who: 'it', text: started.reply }])
     } catch (err: any) {
@@ -112,6 +145,11 @@ export function AnswerFirstPage() {
       /* The name goes either way; the address and the wish for the report only where they said yes. */
       const done = await openLinkApi.finish(key, withEmail ? email.trim() : undefined, name.trim() || undefined, withEmail, org.trim() || undefined)
       setSentTo(done.at)
+      /* What we measured about their own answers, told to them. See WhatYouGaveUs. */
+      if ((done as any)?.whatYouGave) setWhatYouGave((done as any).whatYouGave as WhatYouGave)
+      /* Finished, so the key is spent. The next person to open this link on this phone - at an
+         event, that happens - starts their own answer rather than resuming somebody else's. */
+      remember(null)
       setPhase('done')
     } catch (err: any) {
       const said = err?.response?.data?.message ?? 'That did not finish. Try again.'
@@ -149,12 +187,34 @@ export function AnswerFirstPage() {
   return (
     <div style={{ background: 'var(--gw-bg)', minHeight: '100dvh' }}>
       <div style={card}>
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 11.5, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
-            {what.askedBy ? `${what.askedBy} asked` : 'You have been asked'}
+        {/*
+          THE BRIEF STOPS EATING A THIRD OF THE PHONE.
+          
+          Measured at 375x812: the heading is 240 of 812 pixels, and it was printed above the
+          conversation on every single turn - a paragraph somebody reads once, permanently occupying
+          thirty per cent of the screen, with the opener restating most of it directly underneath.
+          Hafsah, 23 September 2026: "that page does not seem mobile friedly."
+          
+          It stays whole while they are deciding whether to start, because that is the moment it is
+          for. Once they are answering it folds to one line they can open again.
+        */}
+        {phase === 'reading' ? (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11.5, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
+              {what.askedBy ? `${what.askedBy} asked` : 'You have been asked'}
+            </div>
+            <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion || what.groundLabel}</h1>
           </div>
-          <h1 style={{ fontSize: 20, margin: '6px 0 0', lineHeight: 1.3 }}>{what.theQuestion || what.groundLabel}</h1>
-        </div>
+        ) : (
+          <details style={{ marginBottom: 14 }}>
+            <summary style={{ fontSize: 12.5, color: 'var(--gw-sub)', cursor: 'pointer', listStyle: 'none' }}>
+              {what.askedBy ? `What ${what.askedBy} asked` : 'What you were asked'} &middot; tap to read it again
+            </summary>
+            <p style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--gw-text)', margin: '8px 0 0' }}>
+              {what.theQuestion || what.groundLabel}
+            </p>
+          </details>
+        )}
 
         {phase === 'reading' && (
           <div>
@@ -195,8 +255,33 @@ export function AnswerFirstPage() {
           </div>
         )}
 
+        {/* Said only where the page opened straight into a conversation nobody can see the start of. */}
+        {phase === 'talking' && turns.length === 0 && (
+          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
+            You had already started this. Everything you said is saved - carry on below, or press
+            &ldquo;I am done&rdquo; to finish.
+          </div>
+        )}
+
         {phase === 'talking' && (
-          <div style={{ marginTop: 14 }}>
+          /*
+            PINNED TO THE BOTTOM, AND FINISHING IS NOT HIDDEN UNDER IT.
+            
+            Two faults on a phone. The composer scrolled away with the page, so after a few answers
+            the box you type in was below the fold and the transcript had to be scrolled past to
+            reach it. And "I am done" was a thirteen-pixel underlined link BENEATH the input - the
+            one place a phone keyboard covers - on the control Hafsah specifically asked to be
+            visible: "make sure the people can see i'm done".
+            
+            So the whole thing sticks to the bottom of the viewport, the transcript scrolls under
+            it, and the two actions sit on one row: finishing on the left where a thumb rests,
+            sending on the right. `env(safe-area-inset-bottom)` keeps it clear of the home bar.
+          */
+          <div style={{
+            position: 'sticky', bottom: 0, marginTop: 14,
+            paddingTop: 10, paddingBottom: `calc(10px + env(safe-area-inset-bottom, 0px))`,
+            background: 'var(--gw-bg)', borderTop: '1px solid var(--gw-border)',
+          }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <textarea
                 id="open-answer" value={input} rows={1}
@@ -209,10 +294,21 @@ export function AnswerFirstPage() {
                 ↑
               </button>
             </div>
-            <button onClick={() => setPhase('address')}
-              style={{ marginTop: 12, background: 'none', border: 'none', color: 'var(--gw-sub)', textDecoration: 'underline', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-              I am done
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, gap: 10 }}>
+              <button onClick={() => setPhase('address')}
+                style={{
+                  background: 'white', border: '1px solid var(--gw-border)', borderRadius: 20,
+                  color: 'var(--gw-navy)', fontSize: 13.5, fontWeight: 600, padding: '8px 15px',
+                  cursor: 'pointer', fontFamily: 'inherit', minHeight: 40,
+                }}>
+                I am done
+              </button>
+              {/* What pressing it does, so nobody presses it wondering whether it throws away the
+                  answers they have just given. */}
+              <span style={{ fontSize: 11.5, color: 'var(--gw-muted)', textAlign: 'right', lineHeight: 1.4 }}>
+                Finish and say where to send the report
+              </span>
+            </div>
           </div>
         )}
 
@@ -274,6 +370,12 @@ export function AnswerFirstPage() {
                 ? `The consolidated report goes to ${sentTo} at the end.`
                 : 'Your answers are saved.'}
             </p>
+            {/*
+              AND WHAT THEY GAVE, WHICH IS THE ONLY THING THIS PRODUCT GIVES BACK BEFORE THE REPORT.
+              Somebody who followed a link once has no board, no next session and nothing else to
+              read; this is the whole of what they get for five minutes of their own work.
+            */}
+            <WhatYouGaveUs it={whatYouGave} />
           </div>
         )}
       </div>

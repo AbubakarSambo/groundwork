@@ -46,7 +46,15 @@ describe('the finding, per person, written by the product', () => {
     const o = theOverview(fs, 5);
     expect(o).toMatch(/^The record shows a gap for \d of the 5 people who answered: /);
     expect(o).not.toMatch(/\ball\b/i);
-    expect(theOverview([findingFor(grace, 3)!], 1)).toContain('shows no gap');
+    /*
+     * WHAT THE CHECK COMPARED, not "no gap". Every finding reads one person against their OWN
+     * stated purpose, so a consultant who did none of his job reads as consistent - and his
+     * client's report opened with "the record shows no gap". True of the person, false about the
+     * check, and the reader could not tell.
+     */
+    expect(theOverview([findingFor(grace, 3)!], 1)).toContain('nothing in any single account contradicts');
+    expect(theOverview([findingFor(grace, 3)!], 1)).not.toContain('shows no gap');
+    expect(theOverview([findingFor(grace, 3)!], 1, 2)).toContain('The accounts differ on 2 things');
     expect(thePictureTheProductWrites(fs, 5).split('\n\n')).toHaveLength(4);
   });
 

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
 import { IsBoolean, MinLength } from 'class-validator';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { IsOptional, IsInt, Min, IsEnum, IsIn } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsEnum, IsIn, IsArray } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { GroundsService } from './grounds.service';
 import { ConversationService } from '../conversation/conversation.service';
@@ -105,9 +105,45 @@ class UpdateTimelineDto {
   @IsEnum(Cadence)
   cadence?: Cadence;
 
+  /**
+   * WHICH DAYS THIS TEAM WORKS, which could be said at creation and never afterwards.
+   *
+   * "He cannot choose to set check-ins to happen outside of weekends." The days were already
+   * stored, every cadence already honoured them and the entry flow already offered them - but this
+   * is the only place the rhythm can be changed once a check-in exists, and it did not carry them.
+   * So a lead watching their check-ins land on Sundays had nowhere to say so.
+   *
+   * 0 is Sunday, the same numbering as Date.getDay. An empty list means nobody said, which is not
+   * the same as every day and is rendered as what it is - see which-days-this-team-works.
+   */
+  @ApiPropertyOptional({ example: [1, 2, 3, 4, 5], description: 'Days a check-in may open on. 0 = Sunday. Empty means any day.' })
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(0, { each: true })
+  @Max(6, { each: true })
+  workingDays?: number[];
+
   @ApiPropertyOptional({ description: 'Append a context note to this ground' })
   @IsOptional()
   contextNote?: string;
+}
+
+class AddContextLineDto {
+  @ApiPropertyOptional({ enum: ['STRATEGY', 'WAY_OF_WORKING', 'DECISION', 'UNSETTLED', 'NOTE'] })
+  @IsIn(['STRATEGY', 'WAY_OF_WORKING', 'DECISION', 'UNSETTLED', 'NOTE'])
+  kind!: string;
+
+  @ApiPropertyOptional({ description: 'The line, in the lead\'s own words' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  text!: string;
+
+  @ApiPropertyOptional({ enum: ['LEAD_ONLY', 'EVERYONE'], description: 'Who reads it. Everyone by default.' })
+  @IsOptional()
+  @IsIn(['LEAD_ONLY', 'EVERYONE'])
+  audience?: 'LEAD_ONLY' | 'EVERYONE';
 }
 
 class AddLeadContextDto {
@@ -319,6 +355,20 @@ export class GroundsController {
     @Body() dto: { status: string },
   ) {
     return this.grounds.setMyCommitment(id, userId, itemId, dto?.status);
+  }
+
+  /**
+   * ONE LINE OF WHAT THIS CHECK-IN KNOWS, TYPED IN. See addContextLine: the chat is still the way
+   * in, and this is the door for a check-in that has no chat.
+   */
+  @Post(':id/context')
+  @ApiOperation({ summary: "Add one line of what this check-in knows (lead or org admin)" })
+  async addContextLine(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: AddContextLineDto,
+  ) {
+    return this.grounds.addContextLine(id, userId, dto);
   }
 
   @Patch(':id/context/:itemId')

@@ -53,6 +53,8 @@ import { whatTheyCouldTry } from './what-you-could-try-next';
 import { theQuestionOnly } from './the-question-ends-at-the-question-mark';
 import { whatSituationThisIsAbout } from './what-situation-this-report-is-about';
 import { totalSessionsFor } from '../grounds/session-count';
+import { hasEnded } from '../grounds/a-ground-that-has-ended';
+import { nobodyHasSaidWhoArrangedAnything } from '../conversation/who-secured-that-meeting';
 import { oneBlockerPerThingWaitedOn, theyNamedWhatTheyAreWaitingOn } from '../board/a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
   CORRECTION_WINDOW_KEY,
@@ -66,6 +68,19 @@ import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
 import { PrismaService } from '../prisma/prisma.service';
 import { readAsANetwork, theNetworkInstruction, THE_NETWORK_REPORT_SCHEMA } from './a-hundred-accounts-are-not-two';
+import type { AField } from '../conversation/what-a-complete-answer-holds';
+import type { AFittedAnswer } from './fitting-an-answer-into-the-frame';
+import {
+  whatTheNumbersSay, howGoodIsThis, theTable, theJudgementInstruction, THE_JUDGEMENT_SCHEMA,
+  thisIsARoom, theRoom, theJudgementOverARoom, THE_ROOM_JUDGEMENT_SCHEMA,
+  everySentenceCarriesANumber, talksLikeAPerson,
+} from './the-judgement-over-the-answers';
+import { onePerPerson, howManyPeople, AnAnswerInItsSession } from './one-person-is-one-answer';
+import { howFarBehind } from './a-report-behind-the-answers';
+import {
+  commitmentsOverTime, dependenciesOverTime, patternsOverTime, gapsOverTime, theOnesStillOpen,
+  whatThisCannotTellYou, theRecordOverTime, toSettleFirst, overTimeForThisReader, WhatTheRecordShowsOverTime,
+} from './what-the-record-shows-over-time';
 import { namesTheyMayRead, nothingIdentifyingIn, isHowItWasShared, type HowItWasShared } from './what-the-respondents-get';
 import { computeArcSignals, tierCopy, ArcSignals } from './arc-features';
 import { endStatesFor } from '../resolution/end-states';
@@ -81,9 +96,9 @@ import { canShowMovement } from '../grounds/an-objective-belongs-to-a-person';
 import { LEADERSHIP_PATTERNS, buildLeadershipPatternBlock } from '../board/coverage';
 import { AN_UNCLAIMED_ADDRESS } from '../entry/the-open-link.service';
 import { findDeferrals, findWaitingBehind, buildDeferralNotice } from './deferrals';
-import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence } from '@prisma/client';
+import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType, ReportActivationStatus, PatternStatus, RecordEntryType, Cadence, Prisma } from '@prisma/client';
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
-import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode } from '../patterns/pattern-library';
+import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
 import { howThisHasMoved } from './how-this-has-moved';
@@ -170,6 +185,26 @@ export const POST_REPORT_GUIDE_PROMPT = [
   'DO NOT ASSUME A MEETING. There may be no conversation scheduled, and there may never be a room. Never write "in the room", "in our meeting", "on the call", or "this session". The opening line is something they could say in a corridor, a message, or a one-to-one - so write it as words they could use, not as an agenda item for an event that may not exist.',
   '',
   'Brief and direct - no more than 3 sentences per item.',
+].join('\n');
+
+/**
+ * AND WHEN THE RUN IS OVER, IT IS A DIFFERENT CONVERSATION.
+ *
+ * Live run, 24 September 2026. Final report of a three-month consulting engagement the client was
+ * about to end, and the guide handed her: "I have been thinking about what needs to happen in the
+ * next two weeks, and it seems we have different ideas about the right pace for the work." A pace
+ * conversation, two weeks out, on an engagement with no next fortnight in it. Everything in the
+ * prompt above is written for a run that continues, because until now that was the only case it
+ * knew about.
+ */
+export const THE_RUN_IS_OVER = [
+  '',
+  'THIS IS THE LAST ROUND. There is no next session and there may be no next fortnight of this work at all.',
+  '',
+  'So the conversation is not about pace, or about the next two weeks, or about how to work better together',
+  'from here. Write it as the conversation people have at the end of something: what this came to, what is',
+  'settled and what is not, and what each person needs in order to decide what happens next. Never assume the',
+  'arrangement continues, and never assume it ends.',
 ].join('\n');
 
 // Admin profile - extract preference signals from an initiator's check-in records.
@@ -905,7 +940,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const parties = await this.prisma.groundParticipant.findMany({
       where: { groundId },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, partyType: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true },
+      select: { id: true, partyType: true, createdAt: true, roleAsDescribed: true, managingOnly: true, nameGiven: true, organisationGiven: true, remitAsGiven: true },
     });
     /* Whether this ground's lead only asks - see the-lead-who-only-asks. It changes one roster line. */
     const itsSituation = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { scenario: true } });
@@ -985,6 +1020,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       select: {
         id: true,
         partyType: true,
+        createdAt: true,
         checkIns: {
           select: {
             turns: { select: { id: true, role: true, content: true } },
@@ -1372,10 +1408,35 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * words lifted verbatim from one person's entry, because a long enough lifted phrase identifies
      * its author as surely as a name and the picture promises synthesis, not quotation.
      */
+    /*
+     * AND THE CORPUS IS EVERYTHING THE PRODUCT ITSELF PUT IN FRONT OF THE MODEL, NOT ONLY THE
+     * RECORD ENTRIES.
+     *
+     * Live run, 24 September 2026, ten agribusinesses on one open link. The picture was refused
+     * twice and the report kept a severe fault, for this: `it named "Nigeria", which is not a party
+     * here and appears in nobody's record`. Nigeria is in the brief the lead wrote and in the
+     * ground's own label. It is in nobody's record entry because people naming their own state say
+     * "Kwara", and the check only ever read the entries.
+     *
+     * So a guard built to catch a fabricated "Alex Smith" spent two extra model calls and several
+     * minutes rejecting the name of the country the whole check-in is about - and on a ground with
+     * ten unrelated organisations, that is the ordinary case rather than the edge one.
+     *
+     * What is added is only what the product supplied or a person typed about themselves: the
+     * brief, the label, and the names and organisations people gave. None of it can reveal anything
+     * the reader does not already have, and a genuinely invented name is still caught, because an
+     * invented name is in none of these either.
+     */
+    const whatThisCheckInIsAbout = [
+      (ground as any)?.brief ?? '',
+      (ground as any)?.label ?? '',
+      ...parties.map((p: any) => `${p.nameGiven ?? ''} ${p.organisationGiven ?? ''} ${p.roleAsDescribed ?? ''}`),
+    ].join('\n');
     const corpusText = records.map((r) => r.text).join('\n');
-    const corpusDigits = new Set(corpusText.match(/\d+/g) ?? []);
+    const everythingSaid = `${corpusText}\n${whatThisCheckInIsAbout}`;
+    const corpusDigits = new Set(everythingSaid.match(/\d+/g) ?? []);
     const knownWords = new Set(
-      [...labelById.values(), ...(corpusText.match(/\b[A-Z][a-zA-Z]+\b/g) ?? [])]
+      [...labelById.values(), ...(everythingSaid.match(/\b[A-Z][a-zA-Z]+\b/g) ?? [])]
         .flatMap((w) => w.split(/\s+/))
         .map((w) => w.toLowerCase()),
     );
@@ -1975,7 +2036,20 @@ Close the report by framing - neutrally, without recommending one - the choice n
           .map((o) => ({ name: o.name, target: o.target, count: o.count ?? 0, yours: o.ownerParticipantId === p.id, setByThem: o.setByParticipantId === p.id })),
       }, roundNow))
       .filter((f): f is NonNullable<typeof f> => !!f);
-    const productHalf = thePictureTheProductWrites(findings, findings.length);
+    const howManyDifferences = Array.isArray((result as any).divergences) ? (result as any).divergences.length : 0;
+    /*
+     * HOW MANY ANSWERED, NOT HOW MANY WERE WRITTEN UP, AND THEY ARE NOT THE SAME NUMBER.
+     *
+     * This passed `findings.length` as the count of people who answered, so the sentence was always
+     * "N of N people have given an account" - true by construction and therefore saying nothing. On
+     * the live open link it read "6 of 6" on the same page as a table headed "9 people answered this
+     * check-in": a person whose answer produced no finding is still a person who answered.
+     */
+    const peopleWhoAnswered = await (this.prisma.checkIn?.findMany?.({
+      where: { groundId, status: CheckInStatus.COMPLETED },
+      select: { participantId: true },
+    }) ?? Promise.resolve([] as any[])).then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size).catch(() => findings.length);
+    const productHalf = thePictureTheProductWrites(findings, Math.max(peopleWhoAnswered, findings.length), howManyDifferences);
     if (productHalf) {
       const modelHalf = String((result as any).sharedPicture ?? '').trim();
       (result as any).sharedPicture = modelHalf ? `${productHalf}\n\n${modelHalf}` : productHalf;
@@ -2018,10 +2092,66 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }
     }
 
+    /*
+     * AND THE JUDGEMENT OVER EVERY ANSWER: CLASSIFY, ASSESS, THEN RECOMMEND, IN THAT ORDER.
+     *
+     * Two customers read a report that listed what people said and called it worthless - "it did not
+     * classify things or assess or recommend well", "too abstract, talked in parables". They were
+     * right, and the report was not where it went wrong: a hundred differently shaped answers cannot
+     * be counted, ranked or cut by kind of organisation, so the only thing left to write was
+     * atmosphere.
+     *
+     * Each answer is now fitted into the lead's own fields as its person finishes, so this is rows.
+     * The counts and the standing of each field are arithmetic and no model touches them. Only the
+     * last part is written, and it is handed nothing but the table, with every sentence required to
+     * carry a number that is already in it.
+     */
+    const theJudgement = await this.judgeTheAnswers(groundId, {
+      /*
+       * THE ROOM, for a ground too small for counts to mean anything. Built from what synthesis has
+       * already computed - the per-person findings, the surfaced patterns, the open commitments and
+       * the differences - rather than from the frame's field counts, which on four people produce
+       * "3 of 4 are blocked" about three people in three different situations. See thisIsARoom.
+       */
+      people: (parties as any[]).filter((p) => !p.managingOnly).map((p) => ({
+        who: labelById.get(p.id) ?? 'a party',
+        isLead: p.partyType === PartyType.INITIATOR,
+        role: (p.remitAsGiven ?? p.roleAsDescribed ?? null) as string | null,
+        finding: findings.find((f) => f.participantId === p.id)?.text ?? null,
+        participantId: p.id,
+      })),
+      leadName: (parties as any[]).filter((p) => p.partyType === PartyType.INITIATOR).map((p) => labelById.get(p.id) ?? null)[0] ?? null,
+      differences: (Array.isArray((result as any).divergences) ? (result as any).divergences : []).map((d: any) => ({
+        topic: String(d?.topic ?? ''),
+        positions: (Array.isArray(d?.positions) ? d.positions : []).map((x: any) => ({
+          who: String(x?.participantLabel ?? 'a party'), view: String(x?.view ?? ''),
+        })),
+      })),
+    }).catch((err: any) => {
+      this.logger.warn(`The judgement on ${groundId} did not run, so the report is what it was: ${err?.message}`);
+      return null;
+    });
+
+    /*
+     * AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION, WHICH IS ARITHMETIC OVER ROWS.
+     *
+     * Commitments, dependencies, patterns, gaps and what is still open. Three of these were empty on
+     * a live three-month engagement while the facts for all three sat in tables the report never
+     * read - see what-the-record-shows-over-time. Best effort like every other read here: a report
+     * that is already written is never lost to this.
+     */
+    const overTime = await this.readTheRecordOverTime(groundId, parties as any, labelById).catch((err: any) => {
+      this.logger.warn(`The longitudinal read on ${groundId} did not run: ${err?.message}`);
+      return null;
+    });
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
         groundId,
+        ...(theJudgement ? { theJudgement: theJudgement.judgement as any, theTable: theJudgement.table } : {}),
+        ...(overTime ? { overTime: overTime as any } : {}),
+        builtFromAnswers: howManyAnswered,
         // A tally is how a shared picture becomes a verdict by arithmetic. It
         // cannot be stripped the way a stiff opener can - cutting "two of the
         // three" out of a sentence changes what the sentence says - so it is
@@ -2119,6 +2249,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
         arcSignals: (Object.keys(arcByParticipant).length ? arcByParticipant : undefined) as any,
         /* A failed second read leaves the one already stored alone rather than blanking it. */
         networkPicture: (networkPicture ?? undefined) as any,
+        /* Same rule: a judgement that could not be written this time leaves the last one standing. */
+        ...(theJudgement ? { theJudgement: theJudgement.judgement as any, theTable: theJudgement.table } : {}),
+        ...(overTime ? { overTime: overTime as any } : {}),
+        builtFromAnswers: howManyAnswered,
       },
     });
 
@@ -2230,7 +2364,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         initiatorId: true,
         participants: {
           select: {
-            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true, nameGiven: true, organisationGiven: true,
+            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
         },
@@ -2322,7 +2456,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             /* The function detection columns, so the conversation question can read the role map of
                the round's clearest function. Same tier as roleAsDescribed: a fact about the work. */
             detectedFunction: true, detectedFunctionConfidence: true,
-            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, email: true, nameGiven: true, organisationGiven: true,
+            id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true,
             user: { select: { firstName: true, lastName: true } },
           },
         },
@@ -3492,6 +3626,330 @@ happened, and what is in the way.`;
    * Extract preference signals from the initiator's check-in records and upsert
    * into their AdminProfile. Called fire-and-forget after each synthesis.
    */
+  /**
+   * THE JUDGEMENT OVER EVERY ANSWER TO ONE BRIEF.
+   *
+   * Three parts in one order, because the order is what makes it defensible rather than confident.
+   * The counts and each field's standing are arithmetic over the fitted answers. The judgement is
+   * the only part a model writes and it is given nothing but the table - every sentence has to carry
+   * a number that is in it, which is checked rather than requested, because you cannot be abstract
+   * about twenty-nine out of thirty-four.
+   *
+   * IT NEEDS A FRAME AND IT NEEDS ROWS. A check-in whose brief was too short to specify anything
+   * gets no frame, and one where nobody has finished yet has no rows - both return nothing, and the
+   * report is exactly what it was before. See the-judgement-over-the-answers.
+   */
+  /**
+   * THE LONGITUDINAL READ, FROM ROWS.
+   *
+   * Nothing here asks a model anything. Every model in this file can be having a bad day and this
+   * section still says the same true thing, which is the point of it: the three sections that came
+   * back empty on a live engagement were the three that depended on a model routing into them.
+   */
+  private async readTheRecordOverTime(
+    groundId: string,
+    parties: { id: string; roleAsDescribed: string | null; managingOnly: boolean; remitAsGiven?: string | null }[],
+    labelById: Map<string, string>,
+  ): Promise<WhatTheRecordShowsOverTime | null> {
+    const labelOf = (id: string | null) => (id ? labelById.get(id) ?? 'a party' : 'nobody named');
+
+    const [commitmentRows, dependencyRows, patternRows, checkIns, documents, entries] = await Promise.all([
+      (this.prisma.groundCommitment?.findMany?.({
+        where: { groundId },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          participantId: true, text: true, whenSaid: true, explicit: true, status: true, source: true,
+          statedInSession: true, saidAgainIn: true,
+        },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+      (this.prisma.groundDependency?.findMany?.({
+        where: { groundId },
+        orderBy: { createdAt: 'asc' },
+        select: { what: true, fromParticipantId: true, onParticipantId: true, onLabel: true, status: true, escalatedAt: true, createdAt: true },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+      (this.prisma.patternDetection?.findMany?.({
+        where: { groundId },
+        select: { participantId: true, code: true, observationText: true, seenInSessions: true, periodsObserved: true, lastPeriodNumber: true, status: true },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+      (this.prisma.checkIn?.findMany?.({
+        where: { groundId, status: CheckInStatus.COMPLETED },
+        select: { participantId: true, sessionNumber: true },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+      (this.prisma.groundDocument?.count?.({ where: { groundId } }) ?? Promise.resolve(0)).catch(() => 0),
+      (this.prisma.recordEntry?.findMany?.({
+        where: { participant: { groundId }, disputedAt: null },
+        select: { participantId: true, verifiability: true, anchoredDocumentId: true, text: true },
+      }) ?? Promise.resolve([])).catch(() => [] as any[]),
+    ]);
+
+    const sessionsSoFar = Math.max(0, ...(checkIns as any[]).map((c) => c.sessionNumber ?? 0));
+    if (!sessionsSoFar) return null;
+
+    /* A dependency has no session of its own, so it takes the session its person was in when it landed. */
+    const firstSessionOf = new Map<string, number>();
+    for (const c of (checkIns as any[]).slice().sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))) {
+      if (!firstSessionOf.has(c.participantId)) firstSessionOf.set(c.participantId, c.sessionNumber ?? 1);
+    }
+
+    /*
+     * DID ANYBODY EVER SAY WHO ARRANGED ANYTHING? Read from the words themselves by the
+     * conversation's own detector, not inferred from how checkable a line is - see
+     * who-secured-that-meeting. Two different questions, and the first version asked the wrong one.
+     */
+    const saidWhoArranged = !nobodyHasSaidWhoArrangedAnything(
+      (entries as any[]).map((e) => ({ text: String(e.text ?? ''), session: 1 })),
+    );
+
+    const commitments = commitmentsOverTime(commitmentRows as any[], labelOf, sessionsSoFar);
+    const dependencies = dependenciesOverTime(
+      (dependencyRows as any[]).map((d) => ({ ...d, statedInSession: firstSessionOf.get(d.fromParticipantId) ?? null })),
+      labelOf,
+      sessionsSoFar,
+    );
+    const patterns = patternsOverTime(patternRows as any[], (code) => nameOfPattern(code), labelOf, sessionsSoFar);
+
+    const gaps = gapsOverTime(parties.filter((p) => !p.managingOnly).map((p) => {
+      const theirs = (entries as any[]).filter((e) => e.participantId === p.id);
+      return {
+        participantId: p.id,
+        label: labelOf(p.id),
+        /*
+         * THE REMIT FIRST, THE TITLE ONLY IF THAT IS ALL THERE IS.
+         *
+         * `note` is what the lead wrote when they added the person - what they are accountable for -
+         * and `roleAsDescribed` is a job title. Reading the title as the remit produced "Government
+         * Liaison Consultant was taken on for: Government Liaison Consultant".
+         */
+        expected: ((p as any).remitAsGiven ?? '').trim() || (p.roleAsDescribed ?? '').trim(),
+        lines: theirs.length,
+        checkable: theirs.filter((e) => e.verifiability === 'HIGH' || !!e.anchoredDocumentId).length,
+        documented: theirs.filter((e) => !!e.anchoredDocumentId).length,
+        openCommitments: commitments.filter((c) => c.participantId === p.id && String(c.status).toUpperCase() === 'UNKNOWN').length,
+        owedToOthers: dependencies.filter((d) => d.onParticipantId === p.id).length,
+        sessions: (checkIns as any[]).filter((c) => c.participantId === p.id).length,
+      };
+    }));
+
+    /* Still open: their own words for what is in the way, and the promises nobody closed. */
+    const stillOpen = [
+      ...dependencies.map((d) => d.say),
+      ...theOnesStillOpen(commitments).slice(0, 10).map((c) => c.say),
+    ];
+
+    const answered = new Set((checkIns as any[]).map((c) => c.participantId)).size;
+    const cannotTellYou = whatThisCannotTellYou({
+      documentsAttached: Number(documents ?? 0),
+      peopleWhoAnswered: answered,
+      peopleInvited: parties.filter((p) => !p.managingOnly).length,
+      /*
+       * WHETHER ANYBODY ACTUALLY SAID WHO ARRANGED ANYTHING, read from the words.
+       *
+       * The first version of this used HIGH verifiability as a proxy, which is not the same
+       * question at all - a specific sentence about an email is HIGH and says nothing about who
+       * secured a meeting. The conversation's own detector answers it exactly.
+       */
+      anybodyAskedWhoArrangedThings: saidWhoArranged,
+    });
+
+    const settleFirst = toSettleFirst({
+      commitments, dependencies, patterns,
+      documentsAttached: Number(documents ?? 0),
+      anybodySaidWhoArrangedThings: saidWhoArranged,
+    });
+
+    return theRecordOverTime({
+      sessions: sessionsSoFar, commitments, dependencies, patterns, gaps, stillOpen, cannotTellYou,
+      toSettleFirst: settleFirst,
+    });
+  }
+
+  private async judgeTheAnswers(
+    groundId: string,
+    room?: {
+      people: { who: string; isLead: boolean; role: string | null; finding: string | null; participantId: string }[];
+      leadName: string | null;
+      differences: { topic: string; positions: { who: string; view: string }[] }[];
+    },
+  ): Promise<{ judgement: any; table: string } | null> {
+    /*
+     * READ OFF THE GROUND RATHER THAN ASKED FOR, and that is deliberate. The conversation derives
+     * the frame on the first turn and keeps it there; going through the conversation service to get
+     * it would point reports at conversation while conversation already points at this module's
+     * fitting prompt, and a cycle between the two is not worth one property access.
+     */
+    const frame = await this.prisma.ground
+      .findUnique({ where: { id: groundId }, select: { whatACompleteAnswerHolds: true } })
+      .then((g) => (((g as any)?.whatACompleteAnswerHolds ?? []) as AField[]))
+      .catch(() => [] as AField[]);
+    if (!Array.isArray(frame) || !frame.length) return null;
+
+    const rows = await this.prisma.checkIn.findMany({
+      /*
+       * `DbNull`, NOT `null`, AND THE DIFFERENCE IS THE WHOLE QUERY.
+       *
+       * On a Json column Prisma reads `equals: null` as the JSON value null, not as an absent
+       * column. This one is never written until an answer is fitted, so every unfitted row is a SQL
+       * NULL and `NOT { equals: null }` matched none of them - the judgement would have found zero
+       * answers on a ground with a hundred and five of them and quietly written nothing. Measured
+       * against the real run: 0 rows with the wrong filter, 105 with this one.
+       *
+       * The same idiom appears on `holds` elsewhere and happens to work there, because that column
+       * IS written as JSON null when a document has nothing read out of it. Left alone rather than
+       * churned, and noted here so the next person knows which of the two they are looking at.
+       */
+      where: { groundId, status: CheckInStatus.COMPLETED, NOT: { theirAnswerFitted: { equals: Prisma.DbNull } } },
+      select: { sessionNumber: true, theirAnswerFitted: true, participant: { select: { specificityHistory: true, recordEntries: { select: { verifiability: true, anchoredDocumentId: true } } } } },
+    }).catch(() => [] as any[]);
+    const perSession: AnAnswerInItsSession[] = rows.map((r: any) => {
+      const fit = r.theirAnswerFitted ?? {};
+      const history: number[] = (r.participant?.specificityHistory as number[]) ?? [];
+      return {
+        ...fit,
+        sessionNumber: r.sessionNumber ?? 0,
+        /*
+         * WHAT THE CONVERSATION MEASURED, JOINED ON HERE RATHER THAN AT THE FIT.
+         *
+         * Both of these are facts about the person's participation rather than about their answer,
+         * they change after the fit is written, and they are what the lead asked to see: "he can not
+         * see in clear terms if the team gave evidence", "he can not see clearly people who provided
+         * specifics versus not".
+         */
+        specificity: history.length ? Math.round((history.reduce((a, b) => a + b, 0) / history.length) * 100) / 100 : null,
+        gaveEvidence: (r.participant?.recordEntries ?? []).some((e: any) => e.verifiability === 'HIGH' || !!e.anchoredDocumentId),
+      } as AFittedAnswer;
+    }).filter((a) => Array.isArray((a as any).values)) as AnAnswerInItsSession[];
+
+    /*
+     * ONE ROW PER PERSON, NOT PER CHECK-IN. Six fortnights by two people is twelve rows here and
+     * two people in the world, and the arithmetic below cannot tell the difference - see
+     * one-person-is-one-answer.ts for what that produced in front of a customer.
+     */
+    const answers = onePerPerson(perSession);
+    if (!answers.length) return null;
+
+    const reads = whatTheNumbersSay(frame, answers);
+    const assessments = reads.map(howGoodIsThis);
+    const table = theTable(reads, assessments, howManyPeople(answers));
+
+    /*
+     * A ROOM IS NOT A POPULATION. Below the counting floor the table is every field marked THIN and
+     * the judgement writes recommendations off proportions of four. The room read is written from
+     * the people instead. Same schema out, so nothing downstream knows which one ran.
+     */
+    const asARoom = !!room?.people?.length && thisIsARoom(room.people.length);
+    let material = table;
+    let instruction = theJudgementInstruction(
+      'whoever called this check-in',
+      'what to do next about the people and the work it covers',
+    );
+    if (asARoom) {
+      const open = await (this.prisma.groundCommitment?.findMany?.({
+        where: { groundId, status: 'UNKNOWN' },
+        select: { text: true, participantId: true },
+      }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+      const seen = await (this.prisma.patternDetection?.findMany?.({
+        where: { groundId, status: 'SURFACED' },
+        select: { code: true, observationText: true, seenInSessions: true, participantId: true },
+      }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+      const sessions = Math.max(0, ...rows.map((r: any) => r.sessionNumber ?? 0));
+      material = theRoom(
+        room!.people.map((p) => ({
+          who: p.who,
+          isLead: p.isLead,
+          role: p.role,
+          finding: p.finding,
+          patterns: (seen as any[])
+            .filter((x) => x.participantId === p.participantId && (x.observationText ?? '').trim())
+            .map((x) => ({ code: x.code, name: nameOfPattern(x.code), observation: String(x.observationText).trim(), seenInSessions: x.seenInSessions ?? [] })),
+          openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => String(c.text)),
+        })),
+        room!.differences,
+        sessions,
+      );
+      instruction = theJudgementOverARoom(
+        'whoever called this check-in',
+        'what to do next about the people and the work it covers',
+        room!.leadName,
+      );
+      this.logger.log(`The judgement on ${groundId} is a room read: ${room!.people.length} people, ${sessions} session(s).`);
+    }
+
+    const judgement = await this.anthropic.extract<any>(
+      instruction,
+      [{ role: 'user', content: material }],
+      /* Same field names, asking for a person where the other asks for a count - the room's
+         whatToDo came back empty against the population schema. See THE_ROOM_JUDGEMENT_SCHEMA. */
+      (asARoom ? THE_ROOM_JUDGEMENT_SCHEMA : THE_JUDGEMENT_SCHEMA) as any,
+      { patient: true },
+    ).catch((err: any) => {
+      this.logger.warn(`The judgement on ${groundId} did not read: ${err?.message}`);
+      return null;
+    });
+    if (!judgement) return null;
+
+    /*
+     * AND IT IS HELD TO ITS ONE RULE RATHER THAN TRUSTED WITH IT.
+     *
+     * The prompt says it in the strongest terms available and that has never been enough - the
+     * report promise, the filler sentence and the goodbye each arrived anyway. A finding carrying no
+     * count is dropped rather than softened: the reader has already said what an ungrounded sentence
+     * is worth to him.
+     *
+     * BUT THE RULE IS THE POPULATION'S, AND A ROOM'S RULE IS ITS OPPOSITE.
+     *
+     * The nine-borrower cohort logged "7 finding(s) carried no number and were dropped" and its
+     * `whatToDo` came back empty twice running. Of course it did: the room instruction says every
+     * sentence must name a PERSON and never a proportion, and this filter then deleted every
+     * sentence that had a person in it and no digits. The only lines that survived were the two
+     * that happened to quote a weekly figure. The guard was doing exactly what it was built to do,
+     * to output built under the opposite instruction.
+     *
+     * A room's finding is grounded in a NAMED PERSON rather than in a count, and that is the thing
+     * checked here instead - so an ungrounded sentence is still dropped, by the standard the
+     * sentence was actually written to.
+     */
+    /*
+     * AND IT MATCHES HOW A PERSON IS ACTUALLY REFERRED TO, NOT THE WHOLE LABEL.
+     *
+     * The first version required the sentence to contain the label in full. Labels on a roster
+     * ground are long - "Relationship officer, Ikeja. Target 14 approved facilities this quarter." -
+     * and the model writes "the Ikeja officer", so four findings that named people perfectly well
+     * were dropped for naming them the way a person would. A word that belongs to ONE person's
+     * label and to nobody else's is that person: "Ikeja" is, "officer" is not.
+     */
+    const generic = new Set(['the', 'and', 'for', 'this', 'that', 'with', 'from', 'their', 'they', 'target',
+      'quarter', 'month', 'year', 'week', 'total', 'team', 'initiator', 'party', 'participant', 'borrower',
+      'officer', 'relationship', 'manager', 'lead', 'director', 'approved', 'facilities', 'loan', 'machine']);
+    const handlesOf = (who: string): string[] => (who ?? '').toLowerCase().match(/[a-z]{4,}/g)?.filter((w) => !generic.has(w)) ?? [];
+    const theirOwnWords = new Map<string, string[]>();
+    for (const p of room?.people ?? []) {
+      const others = (room?.people ?? []).filter((x) => x.who !== p.who).flatMap((x) => handlesOf(x.who));
+      theirOwnWords.set(p.who, handlesOf(p.who).filter((w) => !others.includes(w)));
+    }
+    const namesSomebody = (text: string | null | undefined): boolean => {
+      const t = (text ?? '').toLowerCase().trim();
+      if (!t) return false;
+      for (const p of room?.people ?? []) {
+        if (p.who && t.includes(p.who.toLowerCase())) return true;
+        if ((theirOwnWords.get(p.who) ?? []).some((w) => t.includes(w))) return true;
+      }
+      return false;
+    };
+    const grounded = asARoom ? namesSomebody : everySentenceCarriesANumber;
+    const kept = {
+      ...judgement,
+      whatTheNumbersSay: (judgement.whatTheNumbersSay ?? []).filter((x: any) => grounded(x?.says)),
+      whatToDo: (judgement.whatToDo ?? []).filter((x: any) => grounded(x?.because) || grounded(x?.startWith) || grounded(x?.move)),
+    };
+    const dropped = (judgement.whatTheNumbersSay ?? []).length - kept.whatTheNumbersSay.length
+      + (judgement.whatToDo ?? []).length - kept.whatToDo.length;
+    const parables = talksLikeAPerson([kept.theGap, ...kept.whatTheNumbersSay.map((x: any) => x.says)].join(' '));
+    if (dropped) this.logger.warn(`The judgement on ${groundId}: ${dropped} finding(s) ${asARoom ? 'named nobody' : 'carried no number'} and were dropped.`);
+    if (parables.length) this.logger.warn(`The judgement on ${groundId} used ${parables.length} phrase(s) a person would not: ${parables.join(', ')}`);
+    this.logger.log(`Judged ${answers.length} answer(s) on ${groundId} over ${frame.length} fields.`);
+    return { judgement: kept, table };
+  }
+
   private async extractAndStoreLeadSignals(groundId: string, initiatorUserId: string): Promise<void> {
     const initiatorParticipant = await this.prisma.groundParticipant.findFirst({
       where: { groundId, partyType: PartyType.INITIATOR },
@@ -3836,7 +4294,20 @@ happened, and what is in the way.`;
       divergences: walk(report.divergences),
       finalSynthesis: walk(report.finalSynthesis),
       leadershipGaps: walk(report.leadershipGaps),
-      engagement: walkTextOnly(report.engagement),
+      /*
+       * AND A NAME BESIDE THE LABEL, WITHOUT TOUCHING THE LABEL.
+       *
+       * Ten agribusinesses gave their name and their organisation at the end of an open link, and
+       * their own lead's report listed them as "Participant A", "Participant B", "Participant C",
+       * "Participant D" - while the paragraph above named them. `label` is deliberately never
+       * substituted (the note above says why: own-reads-only filters on the raw label and a name in
+       * that field silently keeps the wrong person's quality read), so the fix is not to resolve it
+       * but to carry the resolved name alongside it.
+       *
+       * `who` is what a page prints. `label` is what the filters match. Same permission rule as
+       * every other name on this read: a reader who may not see somebody gets the label back.
+       */
+      engagement: theNamesBesideTheLabels(walkTextOnly(report.engagement), visible),
       inferences: walkTextOnly(report.inferences),
     };
   }
@@ -4222,7 +4693,18 @@ happened, and what is in the way.`;
   ) {
     if (!viewerIsLead) return null;
     const held = await this.whatTheRecordHoldsFor(groundId, ground);
-    const planned = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
+    /*
+     * WHICH ROUND THIS IS, FROM THE READ THAT ALWAYS HAS IT.
+     *
+     * `ground.checkIns` is not selected on every path into here, and where it is missing this fell
+     * back to 1 - which made `earlyDays` true, and printed "with no escalation on record. This early
+     * that is worth showing them rather than asking about" on the sixth and final session of a
+     * three-month engagement. `held.sessions` is the completed-check-in read this function already
+     * does, so it is the same number and it is always there.
+     */
+    const fromTheRecord = Math.max(0, ...held.sessions.map((c: any) => c.sessionNumber ?? 0));
+    const fromTheGround = (ground.checkIns ?? []).reduce((n: number, c: any) => Math.max(n, c.sessionNumber ?? 0), 0);
+    const planned = Math.max(fromTheRecord, fromTheGround);
     const thisRound = planned > 0 ? planned : 1;
 
     const reads = (ground.participants ?? [])
@@ -4679,6 +5161,20 @@ happened, and what is in the way.`;
         ...this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin),
         activated: true,
         forming: true,
+        overTime: overTimeForThisReader((ground.report as any)?.overTime as any, {
+          isLead: isInitiator || isOrgAdmin,
+          participantId: participant?.id ?? null,
+        }),
+        /* A forming report is partial by definition, so it is the one that most needs to say how
+           partial. Same read as the released branch - see a-report-behind-the-answers. */
+        /* Optional-chained like every other read here: a caller whose prisma double does not stub a
+           model must get an empty read rather than a crash mid-report. */
+        behindTheAnswers: howFarBehind(
+          await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } }) ?? Promise.resolve([] as any[]))
+            .then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size)
+            .catch(() => 0),
+          (ground.report as any)?.builtFromAnswers ?? null,
+        ),
         nextStep: isInitiator ? 'release' : isOrgAdmin ? 'wait' : undefined,
         soloArtifact,
         myRows: await this.theirOwnRows(participant?.id),
@@ -4806,6 +5302,30 @@ happened, and what is in the way.`;
         },
       ),
       activated: true,
+      /*
+       * AND THE LONGITUDINAL READ, NARROWED TO THIS READER.
+       *
+       * The board gates this on `isInitiator`; the report returns the whole row, so a participant's
+       * own report carried other people's commitments and dependencies. See overTimeForThisReader.
+       */
+      overTime: overTimeForThisReader((ground.report as any)?.overTime as any, {
+        isLead: isInitiator || isOrgAdmin,
+        participantId: participant?.id ?? null,
+      }),
+      /*
+       * WHETHER THESE NUMBERS ARE OLDER THAN THE ANSWERS.
+       *
+       * A synthesis that fails keeps the report that is already there, silently, and on an open
+       * link somebody finishes every few minutes. A lead reading "4 people answered" on a check-in
+       * ten people answered cannot tell a thin response rate from a stale page, and those call for
+       * opposite decisions. See a-report-behind-the-answers.
+       */
+      behindTheAnswers: howFarBehind(
+        await (this.prisma.checkIn?.findMany?.({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } }) ?? Promise.resolve([] as any[]))
+          .then((rows: any[]) => new Set(rows.map((r) => r.participantId)).size)
+          .catch(() => 0),
+        (ground.report as any)?.builtFromAnswers ?? null,
+      ),
       postReportGuide,
       coaching,
       /* Only a discovery session has one; everything else gets null and renders nothing. */
@@ -5047,6 +5567,27 @@ happened, and what is in the way.`;
       })),
     );
 
+    /*
+     * IS THERE A NEXT SESSION? Two ways a run is over and both count: somebody closed it, or the
+     * last planned session has been held. Read once for everybody, because the answer is about the
+     * check-in and not about a person.
+     */
+    const theRunIsOver = await (async () => {
+      const g = await this.prisma.ground.findUnique({
+        where: { id: report.groundId },
+        select: {
+          status: true, timelineDays: true, cadence: true,
+          checkIns: { select: { sessionNumber: true, isFinal: true, status: true } },
+        },
+      }).catch(() => null);
+      if (!g) return false;
+      if (hasEnded(g.status as any)) return true;
+      if ((g.checkIns ?? []).some((c: any) => c.isFinal && c.status === CheckInStatus.COMPLETED)) return true;
+      const planned = totalSessionsFor((g as any).timelineDays, (g as any).cadence) ?? null;
+      const held = Math.max(0, ...(g.checkIns ?? []).map((c: any) => c.sessionNumber ?? 0));
+      return planned !== null && held >= planned;
+    })().catch(() => false);
+
     await Promise.all(
       participantIds.map(async (participantId) => {
         try {
@@ -5061,7 +5602,8 @@ happened, and what is in the way.`;
           const corpus = `SHARED SYNTHESIS:\n${synthesisText}\n\nTHIS PARTY'S RECORD:\n${partyRecord}`;
 
           const result = await this.anthropic.extract<PostReportGuide>(
-            POST_REPORT_GUIDE_PROMPT,
+            /* The end of a run is a different conversation - see THE_RUN_IS_OVER. */
+            theRunIsOver ? POST_REPORT_GUIDE_PROMPT + THE_RUN_IS_OVER : POST_REPORT_GUIDE_PROMPT,
             [{ role: 'user', content: corpus }],
             POST_REPORT_GUIDE_SCHEMA,
           );
@@ -5228,6 +5770,44 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
    * HOURLY, not daily. The gap between a ground closing and its lead opening the
    * report is usually minutes.
    */
+  /**
+   * AND THE REPORTS THAT FELL BEHIND THE ANSWERS.
+   *
+   * A synthesis that fails keeps the report that is already there, which is right - a report with
+   * four people in it beats no report at all. What was missing is anybody going back for the rest.
+   * Measured on a live open link, 24 September 2026: ten people answered over ten minutes, two
+   * syntheses failed to parse and one was refused by a guard, and the report the lead read was
+   * built from four answers and stayed that way. Nothing said so and nothing retried.
+   *
+   * Hourly and idempotent by construction: a ground stops matching the moment its report has read
+   * as many answers as the ground holds.
+   */
+  @Cron('35 * * * *', { timeZone: 'UTC' })
+  async catchUpReportsLeftBehind(): Promise<void> {
+    try {
+      const reports = await this.prisma.report.findMany({
+        where: { ground: { status: { notIn: [GroundStatus.CLOSED, GroundStatus.RESOLVED] } } },
+        select: { groundId: true, builtFromAnswers: true },
+        take: 200,
+      });
+      for (const r of reports) {
+        const answered = await this.prisma.checkIn
+          .findMany({ where: { groundId: r.groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } })
+          .then((rows) => new Set(rows.map((x) => x.participantId)).size)
+          .catch(() => 0);
+        /* Null means it was written before this column existed; leave those alone rather than
+           re-synthesising every old report in the database on the first run after a deploy. */
+        if (r.builtFromAnswers === null || r.builtFromAnswers === undefined) continue;
+        if (answered <= r.builtFromAnswers) continue;
+        this.logger.log(`Report on ${r.groundId} read ${r.builtFromAnswers} answer(s) and ${answered} are on record. Writing it again.`);
+        await this.synthesize(r.groundId).catch((err: any) =>
+          this.logger.warn(`Catching up the report on ${r.groundId} failed again: ${err?.message}`));
+      }
+    } catch (err: any) {
+      this.logger.warn(`The catch-up sweep did not run: ${err?.message}`);
+    }
+  }
+
   @Cron('20 * * * *', { timeZone: 'UTC' })
   async finishClosingSynthesesThatFailed(): Promise<void> {
     try {
@@ -5319,4 +5899,22 @@ A previous attempt had to be discarded in part. Rewrite it so that no field name
       this.logger.error(`Weekly outcome learning report failed: ${err.message}`);
     }
   }
+}
+
+/**
+ * A name beside each label in the engagement header, leaving every label exactly as it was.
+ *
+ * Structural only: it adds one key and changes nothing else, so nothing that matches on `label`
+ * can be affected by it.
+ */
+export function theNamesBesideTheLabels(engagement: any, visible: Map<string, string>): any {
+  if (!engagement || typeof engagement !== 'object' || !Array.isArray(engagement.parties)) return engagement;
+  return {
+    ...engagement,
+    parties: engagement.parties.map((p: any) => {
+      const label = typeof p?.label === 'string' ? p.label : null;
+      const name = label ? visible.get(label) : null;
+      return name ? { ...p, who: name } : { ...p, who: label ?? null };
+    }),
+  };
 }

@@ -156,6 +156,21 @@ export const authApi = {
       .then(r => r.data),
 
   /**
+   * THE DOOR OUT OF SOMEBODY ELSE'S ORGANISATION.
+   *
+   * Somebody whose address was on a roster is joined to that organisation when they verify. Right
+   * for an employee, wrong for a respondent or a contact who signed up to use Groundwork for their
+   * own work - and with one membership there was nothing to switch to. Returns a token scoped to
+   * the new workspace, exactly like a switch, because that is what it ends with.
+   */
+  startMyOwnWorkspace: () =>
+    apiClient
+      .post<{ accessToken: string; user: any; organization: { id: string; name: string; slug: string } }>(
+        '/auth/start-my-own-workspace',
+      )
+      .then(r => r.data),
+
+  /**
    * Switch the active organisation. Returns a NEW token - every org-scoped query
    * reads the org off the token, so the old one still points at the old org.
    */

@@ -115,8 +115,22 @@ describe('the free limits are one number each, not nine', () => {
       'utf8',
     ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
-    expect(grounds, 'the per-check-in cap should take the free member limit, not its own digit')
-      .toContain('freeParticipantCap: DEFAULT_FREE_MEMBER_LIMIT')
+    /*
+     * THE CAP MAY BE WIDENED BY THE SITUATION, AND THE LIMIT IS STILL WHERE IT STARTS FROM.
+     *
+     * This used to require the literal `freeParticipantCap: DEFAULT_FREE_MEMBER_LIMIT`, which was
+     * the whole shape until a cohort check-in - many people in the same role who do not work
+     * together - was refused at creation on a free organisation because eight borrowers were
+     * counted as staff. The limit now passes through `howManyTheFreePlanCovers`, which returns it
+     * unchanged for an ordinary check-in and widens it for the situations where a head count is not
+     * a payroll.
+     *
+     * So the assertion moves from "is the constant" to "derives from the constant", and the half
+     * that catches the original defect is untouched: a digit written in this file is still a second
+     * copy of a number that lives in the database.
+     */
+    expect(grounds, 'the per-check-in cap should derive from the free member limit, not its own digit')
+      .toMatch(/freeParticipantCap:[^\n]*DEFAULT_FREE_MEMBER_LIMIT/)
     expect(grounds).not.toMatch(/freeParticipantCap: (?:dto\.freeParticipantCap \?\? )?\d+/)
   })
 

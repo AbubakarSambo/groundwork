@@ -138,6 +138,17 @@ export function runsTheirOwnBusiness(roleAsDescribed: string | null | undefined)
   return RUNS_THEIR_OWN_BUSINESS.test(roleAsDescribed ?? '');
 }
 
+/**
+ * How many hits the WINNING function needs before it is named.
+ *
+ * Two. One word that happens to sit on a function's list is what everybody's speech does - a
+ * consultant who mentioned building a relationship read as ENGINEERING off a single hit. Two hits
+ * of the same function is the least that can be called a signal, and it is deliberately not higher:
+ * a real account of closing a deal carries two or three sales words in its first sentence, and
+ * refusing to read that would be its own kind of wrong.
+ */
+export const ENOUGH_SIGNALS_TO_NAME_A_FUNCTION = 2;
+
 export function detectFunction(
   roleAsDescribed: string | null | undefined,
   accountTexts: string[],
@@ -176,6 +187,34 @@ export function detectFunction(
   const [topFn, topHits] = ranked[0];
   const secondHits = ranked[1]?.[1] ?? 0;
   const total = ranked.reduce((s, [, h]) => s + h, 0);
+
+  /*
+   * AND TWO WORDS IN A WHOLE CONVERSATION ARE NOT A JOB.
+   *
+   * Live run, 24 September 2026, first session of a government liaison consultant: "In-session
+   * function read: none -> ENGINEERING (0.51). Account shows engineering work most (1 signals of
+   * 2)." One hit, out of two in the entire transcript, named a man who writes letters to ministries
+   * as an engineer - and 0.51 clears the coaching threshold, so the next question came off the
+   * engineering map.
+   *
+   * The arithmetic did what it was built to do: dominance is 1 of 2, which reads as a clear winner,
+   * and the volume term can only pull a confident read down by a fraction. What was missing is a
+   * floor. Below it there is no read, which is the honest answer and costs nothing - the map only
+   * decides which question is asked next, and the general questions are the ones everybody gets.
+   */
+  if (topHits < ENOUGH_SIGNALS_TO_NAME_A_FUNCTION) {
+    return prior
+      ? {
+        fn: prior.fn,
+        confidence: Math.min(prior.confidence, 0.45),
+        basis: `The account carries one word of ${topFn.toLowerCase().replace(/_/g, ' ')} work and nothing more, which is too little to read a function from. The stated role stands, held provisional.`,
+      }
+      : {
+        fn: null,
+        confidence: 0,
+        basis: `One word of ${topFn.toLowerCase().replace(/_/g, ' ')} work in the whole account, out of ${total}, and no stated role. Too little to name a function.`,
+      };
+  }
 
   // Dominance: how clearly the top function beats the runner-up. A near-tie is
   // exactly the case where forcing a bucket would be wrong.

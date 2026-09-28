@@ -58,8 +58,8 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
       setConfirming(false)
       toast.success(
         state?.resolution?.closedAt
-          ? 'Everyone chose the same outcome. This check-in is closed.'
-          : 'Your choice is recorded. This closes when everyone picks the same one.',
+          ? 'That is how this check-in ended. It is closed.'
+          : 'Your choice is recorded.',
       )
     },
     onError: () => toast.error('Could not record that. Please try again.'),
@@ -100,21 +100,24 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
         </div>
       ) : (
         <>
-          {/* WHO DECIDES, SAID PLAINLY, AND ONLY THE RIGHT PERSON IS ASKED.
-              A new hire was shown "Let them go" with a button asking him to
-              choose it, and the ground could not close until he picked the same
-              option as his manager. He still sees what is coming; he is no
-              longer asked to agree to his own exit. */}
+          {/*
+            WHO DECIDES, SAID PLAINLY, AND ONLY THE RIGHT PERSON IS ASKED.
+
+            Whoever called the check-in closes it. There used to be a third version of this line for
+            the scenarios that needed everybody to pick the same outcome - "nobody closes it alone" -
+            and it is gone with the rule: "the lead is meant to close it, nothing like agreement."
+
+            `leadDecides` comes off the server and is now true for every scenario. The branch stays
+            because the server owns the answer, not this component, and a page that assumes it would
+            be wrong the day one scenario needs something else.
+          */}
           <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 }}>
-            {!leadDecides ? (
-              <>Each person picks the outcome they think what everybody shared supports. The check-in closes
-              only when everyone picks the same one, and nobody closes it alone.</>
-            ) : viewerIsLead ? (
+            {viewerIsLead ? (
               <>This one is yours to decide. Everyone in the check-in can see the possible outcomes and
               where things stand, and what each person shared stays whichever way you go.</>
             ) : (
-              <>These are the outcomes this check-in can reach. Your lead decides which one it is. Your
-              account stays on the record either way, and you can still correct or add to it.</>
+              <>These are the outcomes this check-in can reach. Whoever runs it decides which one it is.
+              Your account stays on the record either way, and you can still correct or add to it.</>
             )}
           </div>
 
@@ -174,7 +177,7 @@ export function ResolutionPanel({ groundId, nearTheEnd }: {
           */}
           {canChoose && confirming && picked && (
             <Confirm danger={false}
-              saying={`Record "${options.find(o => o.value === picked)?.label ?? picked}" as your answer? It is kept on the record with your name against it. ${leadDecides ? 'As the lead, your answer closes this check-in.' : 'This check-in closes only when everyone picks the same outcome, and nobody closes it alone.'} Everybody's accounts stay on the record whichever way it goes.`}
+              saying={`Record "${options.find(o => o.value === picked)?.label ?? picked}" as your answer? It is kept on the record with your name against it. As the lead, your answer closes this check-in. Everybody's accounts stay on the record whichever way it goes.`}
               confirmLabel="Yes, that is my answer" keepLabel="Not yet" pending={proposeMut.isPending} pendingLabel="Saving…"
               onConfirm={() => proposeMut.mutate(picked)} onKeep={() => setConfirming(false)}
             />

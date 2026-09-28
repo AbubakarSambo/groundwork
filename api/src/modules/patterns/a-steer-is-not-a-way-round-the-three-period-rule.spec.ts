@@ -4,13 +4,24 @@ const row = (code: string, lastPeriodNumber: number | null, observationText: str
   ({ code, lastPeriodNumber, observationText });
 
 describe('a steer is not a way round the three-period rule', () => {
-  it('shows only the period immediately before this one', () => {
+  /*
+   * THE WINDOW IS THREE PERIODS NOW, most recent first, and the reason is in the module: one period
+   * of memory meant a single miss erased the detector's own words for a behaviour, which made the
+   * next miss likelier. Measured live: E2 seen in fortnight two and fortnight six of six, nothing
+   * said to the lead in three months.
+   */
+  it('shows the recent periods, most recent first', () => {
     const seen = whatWasSeenLastPeriod([row('D1', 4), row('B2', 3), row('K3', 2)], 5);
-    expect(seen.map((s) => s.code)).toEqual(['D1']);
+    expect(seen.map((s) => s.code)).toEqual(['D1', 'B2', 'K3']);
   });
 
-  it('shows nothing from a period the gap rule has already discarded', () => {
-    expect(whatWasSeenLastPeriod([row('D1', 2)], 5)).toEqual([]);
+  it('shows nothing from further back than the window', () => {
+    expect(whatWasSeenLastPeriod([row('D1', 1)], 5)).toEqual([]);
+  });
+
+  /* And never this period's own row, which would be the model reading its own answer back. */
+  it('never shows this period', () => {
+    expect(whatWasSeenLastPeriod([row('D1', 5)], 5)).toEqual([]);
   });
 
   it('shows nothing on a first period', () => {
@@ -24,6 +35,12 @@ describe('a steer is not a way round the three-period rule', () => {
   it('never grows past five, so the steer cannot become the list', () => {
     const many = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((c) => row(c, 4));
     expect(whatWasSeenLastPeriod(many, 5)).toHaveLength(5);
+  });
+
+  it('says how old each line is, so nothing reads as this period', () => {
+    const block = lastPeriodBlockFor(whatWasSeenLastPeriod([row('D1', 4), row('B2', 3)], 5), 5);
+    expect(block).toContain('D1 (last period)');
+    expect(block).toContain('B2 (2 periods ago)');
   });
 
   it('adds nothing to the prompt when there is nothing to recognise', () => {

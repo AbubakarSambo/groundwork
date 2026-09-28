@@ -12,7 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { SEAT_RELATION_COUNT } from '../../common/seats';
-import { isSubscribed } from '../../common/subscription';
+import { isCovered } from '../../common/subscription';
 import { A_CUSTOMER, A_REAL_CHECK_IN } from '../prompts/what-the-platform-has-actually-done';
 import { COACHING_LIVE_KEY } from '../conversation/conversation.service';
 import {
@@ -629,7 +629,7 @@ export class AdminService implements OnApplicationBootstrap {
         note: r.note,
         askedAt: r.createdAt,
         orgName: r.organization?.name ?? 'an organisation',
-        paying: isSubscribed(r.organization ?? { subscriptionPlan: null, subscriptionStatus: null }),
+        paying: isCovered(r.organization ?? { subscriptionPlan: null, subscriptionStatus: null }),
         who: [byId.get(r.requestedById)?.firstName, byId.get(r.requestedById)?.lastName]
           .filter(Boolean).join(' ').trim()
           || byId.get(r.requestedById)?.email || 'somebody',

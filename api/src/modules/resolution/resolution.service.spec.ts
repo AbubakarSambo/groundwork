@@ -36,7 +36,9 @@ describe('ResolutionService.propose - GW-16 confirmation reset on re-propose', (
       email: 'a@test.com',
       roleAsDescribed: 'the founder',
       userId: USER_ID,
-      partyType: PartyType.PARTICIPANT,
+      /* The lead, because closing is the lead's - see the-lead-decides-everywhere-it-applies. This
+         said PARTICIPANT while a peer scenario still let any party propose. */
+      partyType: PartyType.INITIATOR,
     };
   }
 

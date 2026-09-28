@@ -695,6 +695,17 @@ export function AppSidebar() {
     retry: false,
   })
   const setAuth = useAuthStore(s => s.setAuth)
+  /* The door out, for somebody whose only membership is one they were listed into. */
+  const startOwn = useMutation({
+    mutationFn: () => authApi.startMyOwnWorkspace(),
+    onSuccess: (res: any) => {
+      setAuth(res.accessToken, res.user)
+      window.location.assign('/grounds')
+    },
+    /* A failure is never a success: the one refusal this has is "you already have one", and the
+       person needs to be told which, not left looking at a button that did nothing. */
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not start. Try again.'),
+  })
   const switchOrg = useMutation({
     mutationFn: (organizationId: string) => authApi.switchOrganization(organizationId),
     onSuccess: (res) => {
@@ -756,6 +767,17 @@ export function AppSidebar() {
      anybody else offers something that will be refused. The rule is shared with the server's, in
      `who-may-rename-a-check-in`, so the two cannot drift apart again. */
   const mayRename = (g: Ground) => mayRenameACheckIn(g, user)
+
+  /*
+   * THE ONES THAT NEED THIS PERSON, for the collapsed rail. Same read as the expanded list uses,
+   * so the two cannot disagree about whose turn it is, and capped because a column of coloured
+   * squares stops being scannable somewhere around eight.
+   */
+  const needsYou = grounds
+    .map((g: any) => ({ g, attention: railAttention(g as any, user?.id) }))
+    .filter(({ attention }) => attention.kind === 'overdue' || attention.kind === 'yours')
+    .sort((a, b) => railRank(a.attention) - railRank(b.attention))
+    .slice(0, 8)
 
   const sidebarWidth = collapsed ? 60 : 240
 
@@ -1049,6 +1071,43 @@ export function AppSidebar() {
                 </NavLink>
               )
             })}
+
+            {/*
+              AND THE CHECK-INS THAT NEED YOU, WHICH COLLAPSING USED TO THROW AWAY.
+              
+              The rail's whole job is to say which check-in needs you - it is ordered by exactly
+              that, and the note on the expanded list says so. Collapsing it left seven nav icons
+              and nothing about the work, so the one thing the rail is for was the one thing that
+              did not survive being made narrow.
+              
+              Narrow enough to fit: the first letter, coloured by whether it is yours to answer and
+              how late it is, with the name and the reason on the tooltip. Only the ones that need
+              somebody - a collapsed rail has no room for a list, and a list nobody has to act on is
+              what the expanded one is for.
+            */}
+            {needsYou.length > 0 && (
+              <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,.07)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                {needsYou.map(({ g, attention }) => (
+                  <NavLink
+                    key={g.id}
+                    to={`/grounds/${g.id}`}
+                    title={attention.kind === 'overdue'
+                      ? `${g.label} - session ${attention.sessionNumber} is ${attention.daysLate} days past its date`
+                      : attention.kind === 'yours'
+                        ? `${g.label} - session ${attention.sessionNumber} is ready for you`
+                        : g.label}
+                    style={{
+                      width: 28, height: 28, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 800, textDecoration: 'none', flexShrink: 0,
+                      background: attention.kind === 'overdue' ? 'var(--gw-red-b-soft)' : 'var(--gw-green-b)',
+                      color: attention.kind === 'overdue' ? 'var(--gw-red-b)' : 'white',
+                    }}
+                  >
+                    {(g.label ?? '?').trim().charAt(0).toUpperCase()}
+                  </NavLink>
+                ))}
+              </div>
+            )}
           </nav>
         )}
 
@@ -1139,11 +1198,47 @@ export function AppSidebar() {
           an ordinary member of a client's, and the token carries the membership's role,
           not the person's.
         */}
-        {isAuthenticated && !collapsed && myOrgs.length > 1 && (
+        {/*
+          AND THE PERSON WITH ONE MEMBERSHIP THEY DID NOT CHOOSE.
+          
+          Hafsah, 23 September 2026: "someone is my account and created their own account and keep
+          showing up to my account. And they cannot switch to their."
+          
+          They could not, and this line is why: the whole block renders only at more than one
+          organisation. Somebody joined to a company because their address was on its roster has
+          exactly one, so there was no switcher, no list, and no way out - see
+          a-roster-row-is-not-a-life-sentence on the API for why the joining rule itself stands.
+          
+          The block now also shows for somebody whose single membership is not one they administer,
+          and offers the door.
+        */}
+        {isAuthenticated && !collapsed && (myOrgs.length > 1 || (myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN')) && (
           <div style={{ padding: '10px 12px', borderTop: '1px solid rgba(255,255,255,.07)', flexShrink: 0 }}>
             <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px', color: 'rgba(255,255,255,.55)', fontWeight: 700, marginBottom: 6 }}>
               Organisation
             </div>
+            {myOrgs.length === 1 && myOrgs[0].role?.toUpperCase() !== 'ADMIN' && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,.62)', lineHeight: 1.5, marginBottom: 6 }}>
+                  You are in {myOrgs[0].name} because your address was on their list.
+                </div>
+                <button
+                  onClick={() => {
+                    if (startOwn.isPending) return
+                    if (!window.confirm('Start your own workspace? You stay in ' + myOrgs[0].name + ' and can switch back at any time.')) return
+                    startOwn.mutate()
+                  }}
+                  disabled={startOwn.isPending}
+                  style={{
+                    width: '100%', textAlign: 'left', padding: '7px 9px', borderRadius: 7,
+                    background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.16)',
+                    color: 'white', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  {startOwn.isPending ? 'Starting…' : 'Start my own workspace'}
+                </button>
+              </div>
+            )}
             {myOrgs.map(o => (
               <button
                 key={o.id}
@@ -1417,7 +1512,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           :root { --gw-bottom-nav: calc(60px + env(safe-area-inset-bottom)); }
           .gw-sidebar-desktop { display: none !important; }
           .gw-sidebar-mobile  { display: flex !important; }
-          .gw-main-content    { margin-left: 0 !important; padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+          /*
+            CLEAR OF THE NAV, AND OF THE TWO THINGS FLOATING ABOVE IT.
+
+            This was the nav's 60px exactly, so the last thing on every page ended level with the
+            top of the nav bar and underneath the feedback pill and the help button, which sit at
+            76 and 128 from the bottom. Measured on a real check-in at 375px: the lowest content
+            ended at 752 on an 812 screen, with both floats over it.
+
+            166 is where the help button's top edge is; the rest is a thumb's worth of room so the
+            last line is readable rather than merely uncovered.
+          */
+          .gw-main-content    { margin-left: 0 !important; padding-bottom: calc(180px + env(safe-area-inset-bottom)); }
           /* A bottom sheet is the right shape on a phone - thumb reach, and there is no middle to
              speak of. It was being drawn that way on every screen, which is the bug. */
           .gw-fb-overlay      { align-items: flex-end !important; padding: 0 !important; }

@@ -140,6 +140,9 @@ export function ContextPage({
    * to replace it with something they do not mean.
    */
   const [briefDraft, setBriefDraft] = useState<string | null>(null)
+  /* Which bucket is being typed into, and what. Only offered where there is no chat to say it in. */
+  const [typingInto, setTypingInto] = useState<string | null>(null)
+  const [lineDraft, setLineDraft] = useState('')
   const saveBrief = useMutation({
     mutationFn: (text: string) => groundsApi.update(id, { brief: text }),
     onSuccess: () => {
@@ -207,6 +210,25 @@ export function ContextPage({
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save. Try again in a moment.'),
   })
 
+  /*
+   * TYPING A LINE IN, WHERE THERE IS NO CONVERSATION TO SAY IT IN.
+   *
+   * Item B: the page could change a line, share it, make it private and retire it, and could not
+   * create one - every line arrived through the chat. On a check-in where the chat is off, the lead
+   * read five empty buckets each saying "say it in the conversation above", with no conversation
+   * above. A page whose every empty state points at a control that is not there.
+   */
+  const addLine = useMutation({
+    mutationFn: ({ kind, text }: { kind: string; text: string }) => groundsApi.addContextLine(id, { kind, text }),
+    onSuccess: () => {
+      setTypingInto(null)
+      setLineDraft('')
+      toast.success('Added')
+      qc.invalidateQueries({ queryKey: ['ground', id] })
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'That did not save - what you typed is still here, try again.'),
+  })
+
   const changeLine = useMutation({
     mutationFn: ({ itemId, ...change }: { itemId: string; text?: string; audience?: 'LEAD_ONLY' | 'EVERYONE'; closed?: boolean }) =>
       groundsApi.changeContextLine(id, itemId, change),
@@ -224,7 +246,8 @@ export function ContextPage({
    */
   const BUCKETS: { kind: string; title: string; sub: string }[] = [
     { kind: 'STRATEGY', title: 'The strategy', sub: 'how we win work and what we lead with' },
-    { kind: 'WAY_OF_WORKING', title: 'How we work', sub: 'the rules, as the lead wrote them' },
+    /* "as you wrote them" to the person who wrote them - item D. See the source lines below. */
+    { kind: 'WAY_OF_WORKING', title: 'How we work', sub: isTheLead ? 'the rules, as you wrote them' : 'the rules, as the lead wrote them' },
     { kind: 'DECISION', title: 'Still to decide', sub: 'nobody has decided these yet' },
     { kind: 'UNSETTLED', title: 'Not settled', sub: 'not treated as fact or as a target' },
     { kind: 'NOTE', title: 'Notes', sub: 'kept because somebody said it' },
@@ -348,9 +371,19 @@ export function ContextPage({
               n={band()}
               title="What this check-in is for"
               src={
-                theBrief && objectives.length > 0 ? 'from setup, and the lead\u2019s own check-in'
-                : theBrief ? 'from setup, in the lead\u2019s own words'
-                : 'from the lead\u2019s own check-in'
+                /*
+                 * WHOSE WORDS, SAID TO WHOEVER IS READING.
+                 *
+                 * "why would you say it comes from the leads own check or context chat when i am
+                 * actually the lead." Three source lines here named the lead in the third person to
+                 * the lead's own face, which reads as the product talking about somebody else in
+                 * the room. Saved as item D on the Context fix list, 23 September 2026.
+                 */
+                theBrief && objectives.length > 0
+                  ? (isTheLead ? 'from setup, and your own check-in' : 'from setup, and the lead\u2019s own check-in')
+                : theBrief
+                  ? (isTheLead ? 'from setup, in your own words' : 'from setup, in the lead\u2019s own words')
+                : (isTheLead ? 'from your own check-in' : 'from the lead\u2019s own check-in')
               }
             />
             {theBrief && (
@@ -1148,29 +1181,92 @@ export function ContextPage({
             {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
               <>
                 <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'what you put here guides every check-in \u00b7 change any line in it' : 'the lead\u2019s framing, never quoted as a finding'} />
-                {isTheLead && contextEnabled && (
+                {/*
+                  A PLACE TO TYPE A LINE, BESIDE THE CONVERSATION RATHER THAN INSTEAD OF IT.
+
+                  Item B: the page could change a line of what a check-in knows, share it, make it
+                  private and retire it, and could not create one. Every line arrived through the
+                  chat, so five empty buckets each said "say it in the conversation at the top" and
+                  nothing on the page put anything anywhere.
+
+                  MY FIRST FIX WAS DEAD CODE, AND IT WAS THE FAULT I HAVE BEEN FIXING ALL DAY. I
+                  gated this on `!contextEnabled`, having read that as a per-check-in setting. It is
+                  a global flag and it is on - her decision, "context is always enabled", with an env
+                  var kept only to kill it in an emergency. So the form rendered for nobody. A
+                  control that agrees with you and does nothing.
+
+                  The conversation is still the better route and still the first one: the chips hand
+                  it the sentence, because it asks the follow-up a form cannot. This is for the lead
+                  who knows exactly what the line is and does not want a conversation about it.
+                */}
+                {isTheLead && (
                   <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 10, maxWidth: 720 }}>
                     <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
                       {theBuckets.some((b) => b.lines.length > 0)
-                        ? 'Add to any of these by saying it in the conversation at the top.'
-                        : 'Nothing here yet. Say any of these in the conversation at the top and it lands in the right place - and every check-in is guided by it.'}
+                        ? 'Add a line. Every check-in is guided by what is here.'
+                        : 'Nothing here yet. Put anything the check-ins should know in the right place, and every check-in is guided by it.'}
                     </div>
                     <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
                       {BUCKETS.map((b) => (
                         <button
                           key={b.kind}
-                          onClick={() => changeThisInTheChat(THE_WAY_IN[b.kind] ?? '')}
+                          onClick={() => { setTypingInto(typingInto === b.kind ? null : b.kind); setLineDraft('') }}
                           title={b.sub}
                           style={{
-                            fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-bg)',
-                            border: '1px solid var(--gw-border)', borderRadius: 20, padding: '5px 11px',
-                            cursor: 'pointer', fontFamily: 'inherit',
+                            fontSize: 12, fontWeight: 600, borderRadius: 20, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit',
+                            border: `1px solid ${typingInto === b.kind ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
+                            background: typingInto === b.kind ? 'var(--gw-blue-bg)' : 'var(--gw-bg)',
+                            color: 'var(--gw-navy)',
                           }}
                         >
                           {b.title}
                         </button>
                       ))}
                     </div>
+                    {typingInto && (
+                      <div style={{ marginTop: 10 }}>
+                        <textarea
+                          className="gw-ta"
+                          autoFocus
+                          rows={3}
+                          maxLength={2000}
+                          value={lineDraft}
+                          onChange={(e) => setLineDraft(e.target.value)}
+                          placeholder={THE_WAY_IN[typingInto] ?? ''}
+                        />
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <button
+                            onClick={() => addLine.mutate({ kind: typingInto, text: lineDraft })}
+                            disabled={!lineDraft.trim() || addLine.isPending}
+                            style={{ padding: '7px 13px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: lineDraft.trim() ? 1 : 0.4 }}
+                          >
+                            {addLine.isPending ? 'Saving\u2026' : 'Everyone here reads this'}
+                          </button>
+                          <button
+                            onClick={() => { setTypingInto(null); setLineDraft('') }}
+                            style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                          >
+                            Cancel
+                          </button>
+                          {/*
+                            AND THE CONVERSATION, WHICH IS STILL THE BETTER ROUTE.
+
+                            A typed line is one sentence with nothing around it. The chat can ask
+                            what the figure rests on, who agreed it, and what happens if it slips -
+                            which is why it is the way in and why this hands the half-written
+                            sentence over rather than competing with it.
+                          */}
+                          {contextEnabled && (
+                            <button
+                              onClick={() => { changeThisInTheChat(lineDraft.trim() || (THE_WAY_IN[typingInto] ?? '')); setTypingInto(null); setLineDraft('') }}
+                              style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                            >
+                              Say it in the conversation instead
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, maxWidth: 720 }}>

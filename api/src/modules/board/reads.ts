@@ -75,6 +75,8 @@ export type ReadDependency = {
    * column existed, and on those the word-list rule stands in - see theyNamedWhatTheyAreWaitingOn.
    */
   namedTheThing?: boolean | null;
+  /** When somebody escalated it, where they did. The record that it was chased. */
+  escalatedAt?: Date | null;
   /** Sort key only. A number is enough and keeps fixtures readable. */
   createdAt?: Date | number;
 };
@@ -587,7 +589,17 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
           /* Says what it counted. "4 of 19 things named" read as an invented number to the judge of run 10 (21 Sep
              2026); "19 lines taken from what they said, 4 with a name, a number or a date in them" is the same count
              with its source in the sentence, and the lines are on the page to check it against. */
-          `${completed} check-in${completed === 1 ? '' : 's'} on record. ${myEntries.length} line${myEntries.length === 1 ? '' : 's'} taken from what they said, ${checkable} with a name, a number or a date in ${checkable === 1 ? 'it' : 'them'}${high ? `, ${high} backed by a document` : ''}.`,
+          /*
+           * AND `high` IS VERIFIABILITY, NOT A DOCUMENT.
+           *
+           * It said "6 backed by a document" on a check-in where `restsOn.documents` was empty and
+           * the engagement header said `documentsAttached: 0`, in the same report. Two numbers about
+           * the same thing, disagreeing, in the read a lead uses to decide about somebody. `high` is
+           * the top of the HIGH/MEDIUM/LOW verifiability scale - a line specific enough that
+           * somebody could go and check it - and nothing here knows whether a document exists. The
+           * only claims about documents in this product come from `anchoredDocumentId`.
+           */
+          `${completed} check-in${completed === 1 ? '' : 's'} on record. ${myEntries.length} line${myEntries.length === 1 ? '' : 's'} taken from what they said, ${checkable} with a name, a number or a date in ${checkable === 1 ? 'it' : 'them'}${high ? `, ${high} of those specific enough for somebody else to go and check` : ''}.`,
         );
         const shape = shapeOf(bySession, lastSession);
         // The same protection the coverage read gives the quiet load-bearer has
@@ -602,15 +614,66 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         );
       }
       if (corroborations > 0) {
-        reasonParts.push(
-          `${corroborations} of these ${corroborations === 1 ? 'was' : 'were'} independently named by someone else, which is worth more than the count of what was said.`,
+        /*
+         * WHO CREDITED THEM, AND WHETHER THAT PERSON IS ALSO WAITING ON THEM.
+         *
+         * Live run, 24 September 2026. A consultant who had secured nothing in three months read:
+         * "11 of these were independently named by someone else, which is worth more than the count
+         * of what was said." All eleven came from one person - the client who had hired him, found
+         * the contacts, arranged the meetings and was waiting on him for nine things. Her own
+         * account of work she had done became evidence for him, and the sentence told the reader to
+         * weigh it above everything else.
+         *
+         * The count stays, because it is true and because the credit is often real - she genuinely
+         * credited him with a budget-cycle warning that mattered. What is added is who it came from.
+         * One person is one account however many times they say it, and a person who is waiting on
+         * you is not an independent check on whether you delivered.
+         */
+        const whoCredited = new Set(
+          input.mentions
+            .filter((m) => m.aboutParticipantId === p.id && m.sourceParticipantId !== p.id && m.kind === 'CREDIT')
+            .map((m) => m.sourceParticipantId),
         );
+        const waitingOnThem = dedupeDependencies(input.dependencies)
+          .filter((d) => d.onParticipantId === p.id && String(d.status).toUpperCase() !== 'CLEARED');
+        const allFromOne = whoCredited.size === 1;
+        const theOne = [...whoCredited][0] ?? null;
+        const thatOneIsWaiting = allFromOne && waitingOnThem.some((d) => d.fromParticipantId === theOne);
+
+        reasonParts.push(
+          `${corroborations} of these ${corroborations === 1 ? 'was' : 'were'} named by someone else as well${
+            allFromOne ? `, all of them by one person` : `, by ${whoCredited.size} different people`
+          }.`,
+        );
+        if (thatOneIsWaiting) {
+          reasonParts.push(
+            `That person is also waiting on them for ${waitingOnThem.length} ${waitingOnThem.length === 1 ? 'thing' : 'things'}, so read it as one account rather than as confirmation that the work arrived.`,
+          );
+        } else if (!allFromOne) {
+          reasonParts.push('Separate people naming the same work is worth more than the count of what anybody said.');
+        }
       }
       if (isBlocked) {
-        // Blocked must NEVER read as behind. This is the protection the
-        // engineering and PM maps both call for, applied generally.
+        /*
+         * BLOCKED MUST NEVER READ AS BEHIND - and "blocked" has to mean somebody else holds it.
+         *
+         * A consultant whose only blocker was that nobody had answered his own emails read: "Part
+         * of this is blocked on someone else, which is different from being behind. Separate the
+         * two before reading anything into it." Nothing was on anybody's desk. He had written to a
+         * ministry and was waiting, which is the work, not an obstacle to it - and the sentence
+         * steered his client away from the only read that mattered.
+         *
+         * So the protection applies where another PERSON holds it: somebody here, or somebody
+         * outside who has been escalated to, which is the record showing it was chased. Waiting on
+         * an organisation with nothing on record about chasing it is said plainly instead.
+         */
+        const theirs = dedupeDependencies(input.dependencies)
+          .filter((d) => d.fromParticipantId === p.id && String(d.status).toUpperCase() !== 'CLEARED');
+        const somebodyHoldsIt = theirs.some((d) => !!d.onParticipantId || !!d.escalatedAt);
         reasonParts.push(
-          'Part of this is blocked on someone else (see what people are waiting on), which is different from being behind. Separate the two before reading anything into it.',
+          somebodyHoldsIt
+            ? 'Part of this is blocked on someone else (see what people are waiting on), which is different from being behind. Separate the two before reading anything into it.'
+            : `What they say is in the way is outside this check-in${theirs[0]?.onLabel ? ` (${theirs[0].onLabel})` : ''}, with nothing on record about escalating it. That is a thing to ask about, not a reason to read this as blocked.`,
         );
       }
       /*

@@ -370,9 +370,16 @@ describe('claiming to be blocked is not enough on its own', () => {
 });
 
 describe('contribution is read as corroboration, not as volume', () => {
-  it('says out loud when someone else independently named the work', () => {
+  it('says out loud when someone else named the work, and who it was', () => {
     const con = buildContribution(realRun(), nameOf).find((x) => x.participantId === 'abubakar')!;
-    expect(con.reason).toMatch(/independently named by someone else/);
+    expect(con.reason).toMatch(/named by someone else as well/);
+    /*
+     * AND HOW MANY PEOPLE IT WAS, which is the half that was missing. A consultant who secured
+     * nothing in three months read "11 of these were independently named by someone else, which is
+     * worth more than the count of what was said" - all eleven from the one client who was waiting
+     * on him for nine things. One person is one account however many times they say it.
+     */
+    expect(con.reason).toMatch(/all of them by one person|by \d+ different people/);
   });
 
   it('does not let a quiet stretch read as a stop when colleagues kept crediting them', () => {

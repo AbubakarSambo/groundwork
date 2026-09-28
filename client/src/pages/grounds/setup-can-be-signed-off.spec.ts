@@ -21,8 +21,10 @@ const PAGE = strip(readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8'))
 
 describe('signing off a setup question', () => {
   it('is reached by opening it', () => {
-    /* Still gated on `open`: a tick beside a heading nobody has read is a tick pressed unread. */
-    expect(PAGE).toContain('{open && onCheck && (')
+    /* Still gated on the fold being open: a tick beside a heading nobody has read is a tick pressed
+       unread. `isOpen` is `open` plus the one forced-open case - the out-of-time banner sending
+       somebody to the control that lifts it, which is a heading they have just been shown. */
+    expect(PAGE).toContain('{isOpen && onCheck && (')
     expect(PAGE).toContain('I have read this - sign it off')
   })
 
@@ -35,8 +37,8 @@ describe('signing off a setup question', () => {
    * its own bar, which is where somebody arrives having read it.
    */
   it('and sits after the content rather than above it', () => {
-    const content = PAGE.indexOf("{open && <div style={{ padding: '2px 14px 14px'")
-    const signOff = PAGE.indexOf('{open && onCheck && (')
+    const content = PAGE.indexOf("{isOpen && <div style={{ padding: '2px 14px 14px'")
+    const signOff = PAGE.indexOf('{isOpen && onCheck && (')
     expect(content).toBeGreaterThan(-1)
     expect(signOff).toBeGreaterThan(content)
   })

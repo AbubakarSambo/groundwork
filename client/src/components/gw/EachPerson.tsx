@@ -222,7 +222,16 @@ export function EachPerson({
                     <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', marginBottom: 5, flexWrap: 'wrap' }}>
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.5, minWidth: 180 }}>{t.text}</span>
                       {t.whenSaid && <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{t.whenSaid}</span>}
-                      {!t.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>the lead's words, not theirs</span>}
+                      {/*
+                        WHOSE WORDS, TO WHOEVER IS READING - and the commitments band two bands
+                        below already said "your words, not theirs" about the same fact, so the page
+                        named the lead in the third person and in the second within one scroll.
+                      */}
+                      {!t.explicit && (
+                        <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>
+                          {isLead ? 'your words, not theirs' : 'the lead\u2019s words, not theirs'}
+                        </span>
+                      )}
                       {isMe && onSetToDo && (
                         <span style={{ display: 'flex', gap: 8 }}>
                           <Small onClick={() => onSetToDo(t.id, 'DONE')}>Done</Small>
