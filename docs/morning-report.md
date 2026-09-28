@@ -107,9 +107,29 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   2. Make the runner use the streamed route, so that the runs measure what people get.
   The second can be done now, without changing what anyone sees. I would do both, in that order.
 
-**Week 3's first re-run set started at 12:02** (sales, seniorhire, loans).
+**Week 3, measured live twice and kept** (sales, seniorhire and loans, 12:02 to 12:51).
 
-**What is next, in your order:** week 3 re-runs twice, then week 4 of the weekly plan (asking for proof kindly), which is where "proof asked for" is fixed.
+| Sales, seniorhire and loans together | Run-12 | Run-13 | Run-14 | Week 3, first | Week 3, second |
+| --- | --- | --- | --- | --- | --- |
+| Jargon in Groundwork's turns | 17 | 20 | 19 | 21 | 15 |
+| Proof asked for | 10 | 8 | 11 | 13 | 15 |
+| Specific detail asked for | 31 | 30 | 46 | 36 | 46 |
+| Blocker checked | 10 | 17 | 14 | 16 | 23 |
+| Past words brought back | 34 | 32 | 33 | 28 | 28 |
+| Commitments recorded | 31 | 44 | 30 | 29 | 25 |
+| Turns that ask more than one question | 8 | 10 | 0 | 0 | 0 |
+
+- **Jargon went down only a little, as expected.** The new check fired 9 times in the first set and made the reply plainer 3 times. Of the 21 jargon words left, 15 were the person's own word handed back, mostly "pipeline". That part is your decision, above.
+- **"Past words brought back" was 28 in both sets.** That is inside the spread for these scenarios, 26 to 37 across eight earlier sets, and the openings still start from last time in 13 and 11 of 14 later check-ins. So I kept week 3, but I am telling you plainly that it came in at the low end both times. The next full run will show whether it holds.
+- **A fault found in the openings, and fixed** (`8d86e0db`): "Since then, 5 of the 4 people involved in this check-in have submitted". It came from an older line that counted finished check-ins rather than people.
+- **Nothing in the "problems in what people read" list came up.**
+
+**Weeks 4 and 5 are built, and not yet measured live.**
+- **Week 4, task 2.5, asking for proof kindly** (`a0449e5a`). When someone says a piece of work is done, such as "I submitted the last of the eleven on May 23rd", and nothing shows it yet, Groundwork asks once, kindly, for the smallest thing that would show it, and says what it is for: "A photo of the signed order is enough. Then it counts as proven." Offline on run-14 it would have come up in 17 of 87 check-ins, 6 of them ones that never asked for proof at all.
+- **Week 4, task 2.8, never commenting on shorter answers** (`f46a4b42`). The prompt already forbids it, and no turn in seven runs did it. The remarks are now also on the list of phrases the check-in never writes, so a slip is rewritten rather than sent.
+- **Week 5, task 2.6, suggested answers** (`e313b579`). Each question now comes with two to four short answers the person might give, such as "Sent it. They want to wait until after December." and "Not yet.". They are built only from the question and the person's own last answer. They are stored on the turn, so they survive a reload, which needs one new empty column. That migration is applied only to the local test database.
+
+**What is next, in your order:** measure weeks 4 and 5 live, twice, then carry on with the weekly plan.
 
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
