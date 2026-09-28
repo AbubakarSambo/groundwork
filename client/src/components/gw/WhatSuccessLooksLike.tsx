@@ -60,7 +60,7 @@ const STATE: Record<'everyone' | 'only-yours', Record<ConditionState, { word: st
 
 const Heading = ({ children, note }: { children: React.ReactNode; note?: string | null }) => (
   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--gw-muted)' }}>
+    <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1px', color: 'var(--gw-muted)' }}>
       {children}
     </div>
     {note ? <div style={{ fontSize: 11, color: 'var(--gw-muted)', flexShrink: 0 }}>{note}</div> : null}

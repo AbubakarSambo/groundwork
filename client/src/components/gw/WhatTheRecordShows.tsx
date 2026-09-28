@@ -28,7 +28,7 @@ export interface TheRecordOverTime {
 }
 
 const Head = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--gw-sub)', margin: '18px 0 7px' }}>
+  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1px', color: 'var(--gw-sub)', margin: '18px 0 7px' }}>
     {children}
   </div>
 )

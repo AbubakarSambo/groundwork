@@ -329,7 +329,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     return (
       <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px' }}>
         <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '22px 24px' }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
+          <div style={{ fontSize: 13, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
             No shared board here
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--gw-text)', marginBottom: 16 }}>{data.reason}</div>
@@ -358,7 +358,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     return (
       <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px' }}>
         <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '22px 24px' }}>
-          <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.1em', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
+          <div style={{ fontSize: 13, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
             Your answer first
           </div>
           <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--gw-text)', marginBottom: 16 }}>{(data as any).saying}</div>
@@ -747,7 +747,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.cascade && b.cascade && (
           <Card>
             <Row first>
-              <div style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 6 }}>
+              <div style={{ fontSize: 12.5, letterSpacing: '.1px', color: 'var(--gw-muted)', marginBottom: 6 }}>
                 {b.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}
               </div>
               {b.cascade.parentNamed && (
@@ -786,7 +786,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.objectives && b.objectives && (
           <>
-            <Sec title="What we are aiming for" src="the lead sets these" />
+            <Sec title="What we are aiming for" src="The lead sets these targets." />
             {/* The privacy setting is on and some numbers still have nobody's name on them, so
                 everybody can read those. Said to the only person who can fix it. */}
             {/* One total, ten people, from the export they already have. Above the form, because
@@ -982,7 +982,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             the only block here that no check-in can revise. */}
         {shown.startingState && b.startingState && (
           <>
-            <Sec title="What was agreed at the start" src="set when this was opened, before any check-in" />
+            <Sec title="What was agreed at the start" src="Set when this was opened, before any check-in." />
             <Card>
               <Row first>
                 <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
@@ -1005,7 +1005,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {shown.divergence && b.divergence && (
           <>
-            <Sec title="Where people differ" src="from what each person said" />
+            <Sec title="Where people differ" src="Built from what each person said in their check-in." />
             <Card>
               {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
                 /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
@@ -1114,7 +1114,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.whatTheRoomIsAbout && (
           <>
-            <Sec title="What people are after, and where" src="from what everybody said" />
+            <Sec title="What people are after, and where" src="Built from what everybody said." />
             {b.whatTheRoomIsAboutNote && (
               <Card><div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{b.whatTheRoomIsAboutNote}</div></Card>
             )}
@@ -1173,7 +1173,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.quickRead && b.quickRead && (
           <>
-            <Sec title="The quick read" src="alignment and trust from the report" />
+            <Sec title="The quick read" src="How much the team agrees, and how much the report can rely on." />
             {/*
               FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
 
@@ -1194,14 +1194,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 return onAPhone ? (
                   <div key={q.label} style={{ padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub-d)', fontWeight: 700 }}>{q.label}</span>
+                      <span style={{ fontSize: 12, letterSpacing: '.1px', color: 'var(--gw-sub-d)', fontWeight: 700 }}>{q.label}</span>
                       <span style={{ fontSize: 15, fontWeight: 700, color: tone, textAlign: 'right' }}>{q.value}</span>
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{q.sub}</div>
                   </div>
                 ) : (
                   <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
+                    <div style={{ fontSize: 11.5, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
                     <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: tone }}>{q.value}</div>
                     <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
                   </div>
@@ -1245,7 +1245,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {(b as any).overTime && (
           <>
-            <Sec title="What the record shows" src="across every session so far" />
+            <Sec title="What the record shows" src="Read across every session so far." />
             <WhatTheRecordShows it={(b as any).overTime} />
           </>
         )}
@@ -1260,7 +1260,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               and what it cannot tell you - which is the thing a reader opens a board for. A summary
               above the detail, the way every other read on this page is arranged.
             */}
-            <Sec title="What the answers say" src="from everybody who has answered so far" />
+            <Sec title="What the answers say" src="Built from everybody who has answered so far." />
             <TheJudgement it={(b as any).theJudgement} />
             {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
           </>
@@ -1268,7 +1268,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.eachPerson && (
           <>
-            <Sec title="Where each person is" src="ordered by what needs you, not by name" />
+            <Sec title="Where each person is" src="Ordered by what needs you, not listed by name." />
             <WhereEachPersonIs rows={b.eachPerson!} />
           </>
         )}
@@ -1283,7 +1283,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {!!b.stillUnanswered?.length && (
           <>
-            <Sec title="Asked for, not answered" src="the check-in stopped asking" />
+            <Sec title="Asked for, not answered" src="The check-in asked twice, then stopped." />
             <Card>
               {b.stillUnanswered.map((g, i) => (
                 <Row key={`${g.who}-${g.what}`} first={i === 0}>
@@ -1309,7 +1309,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.decisions && b.decisions && (
           <>
-            <Sec title="Decisions needed" src="raised by what differs or is stuck" />
+            <Sec title="Decisions needed" src="Raised by what people see differently, or what is stuck." />
             <Card>
               {b.decisions.map((d, i) => (
                 <Row key={i} first={i === 0}>
@@ -1341,8 +1341,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <>
             {/* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */}
             {b.family === 'UPDATE'
-              ? <Sec title="What each person said" src="their answers to the question, in their words" />
-              : <Sec title="Who owns what" src="read from what people said in their check-ins" />}
+              ? <Sec title="What each person said" src="Their own answers to the question, in their words." />
+              : <Sec title="Who owns what" src="Read from what people said in their check-ins." />}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 14 }}>
               {b.whoOwnsWhat.map((p) => (
                 <Card key={p.participantId} pad={false}>
@@ -1384,7 +1384,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.dependencies && b.dependencies && (
           <>
-            <Sec title="Waiting on" src="handoffs between people" />
+            <Sec title="Waiting on" src="Handoffs between people, read from their check-ins." />
             {/*
               Nothing to offer in the empty state, so it says where this comes from
               instead. A handoff is extracted from what people say in their check-ins -
@@ -1430,7 +1430,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           const sessionState = new Map((b.phaseSpine?.sessions ?? []).map((ps) => [ps.n, ps.state]))
           return (
           <>
-            <Sec title="Sessions this phase" src="from each session so far" />
+            <Sec title="Sessions this phase" src="Each session so far, and who has checked in." />
             <Card>
               {/*
                 A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
@@ -1459,7 +1459,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         Dropped when no row has anything to put in it, kept the moment one does.
                       */}
                       {['Person', ...(anyRoleToShow ? ['Role'] : []), ...b.checkInGrid.sessions.map((s) => `Session ${s}`)].map((h) => (
-                        <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700, borderBottom: '1px solid var(--gw-border)' }}>{h}</th>
+                        <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 11, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, borderBottom: '1px solid var(--gw-border)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1528,7 +1528,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.contribution && b.contribution && (
           <>
-            <Sec title="Contribution against role" src="measured against each person’s own role" />
+            <Sec title="Contribution against role" src="Measured against each person’s own role." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Is the role clear, and what does the record actually hold for each person, read in their own function's terms.
@@ -1607,7 +1607,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.coverage && b.coverage && (
           <>
-            <Sec title="Where work is landing" src="whose work is landing where" />
+            <Sec title="Where work is landing" src="Whose work is landing where." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 A drop in ownership shows up as your responsibilities landing more and more in what other people describe as theirs.
@@ -1617,7 +1617,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {/* Both variants ship so the "does a bar read as a verdict" question
                   gets answered by real use rather than a guess. */}
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', margin: '8px 0 4px' }}>
-                <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.3px' }}>Showing</span>
+                <span style={{ fontSize: 11.5, color: 'var(--gw-muted)', fontWeight: 700, letterSpacing: '.1px' }}>Showing</span>
                 {(['text', 'bar'] as CoverageVariant[]).map((v) => (
                   <button key={v} onClick={() => setVariant(v)} style={{
                     fontSize: 10.5, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
@@ -1702,7 +1702,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
          */}
         {has('patterns') && viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
           <>
-            <Sec title="How the leading is landing" src="two sides of the same leadership" />
+            <Sec title="How the leading is landing" src="Two sides of the same leadership." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Where one person's read of how this team is being led differs from another's. Neither is called wrong.
@@ -1749,7 +1749,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {shown.hiddenContributors && b.hiddenContributors && (
           <>
-            <Sec title="Named here, and not in this check-in" src="from what people said" />
+            <Sec title="Named here, and not in this check-in" src="Built from what people said." />
             <Card>
               {b.hiddenContributors.rows.map((r, i) => (
                 <Row key={r.label + i} first={i === 0}>
@@ -1768,7 +1768,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.patterns && b.patterns && (
           <>
-            <Sec title="Patterns this phase" src="work patterns only" />
+            <Sec title="Patterns this phase" src="Patterns about the work only." />
             <Card>
               {b.patterns.length === 0 ? (
                 <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No patterns have repeated often enough to show yet. A pattern needs three periods before it appears here.</div></Row>
@@ -1810,7 +1810,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {has('poll') && (
           <>
             <Zone label="Logistics" />
-            <Sec title="Find a time" src="the only thing you set up here" />
+            <Sec title="Find a time" src="The only thing on this board you set up yourself." />
             <Card>
               {b.canEditFrame && (
                 <div style={{ padding: '8px 0', borderBottom: b.poll ? '1px solid var(--gw-border)' : 'none' }}>
@@ -2013,7 +2013,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               { h: 'Honest closes', p: 'Decisions rarely finish clean, so it names what is aligned, what is open, and the question the whole thing turns on. It never gives a verdict on a person.' },
             ].map((cell, i) => (
               <div key={i}>
-                <div style={{ fontSize: 10.5, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>{cell.h}</div>
+                <div style={{ fontSize: 12, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>{cell.h}</div>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{cell.p}</div>
               </div>
             ))}

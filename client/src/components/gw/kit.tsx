@@ -161,7 +161,7 @@ export function Stat({ label, value, caption, tone }: { label: string; value: st
   const colour = tone === 'good' ? 'var(--gw-green-t)' : tone === 'warn' ? 'var(--gw-amber-t)' : tone === 'bad' ? 'var(--gw-red-t)' : 'var(--gw-navy)'
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', flex: 1, minWidth: 150 }}>
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 12, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700 }}>{label}</div>
       <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: colour }}>{value}</div>
       {caption && <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{caption}</div>}
     </div>

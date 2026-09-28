@@ -121,23 +121,27 @@ describe('the board reads as sentences', () => {
   })
 
   /*
-   * U.10 RE-REVIEW ITEM B: "make it read rendered text and also flag textTransform uppercase in
-   * these components." The captions this round put a sentence right after them on one line ("WHY
-   * IT MATTERS If the delays...", "WHAT PEOPLE SAID The role...") no longer rely on CSS capitals
-   * for meaning - checked here by inline style, which is what these components actually set, rather
-   * than by scanning literal text content (which CSS text-transform never touches).
+   * U.10 RE-REVIEW, THIRD ROUND: "MAKE YOUR GUARD SPEC READ COMPUTED STYLE ON THE RENDERED BOARD."
    *
-   * Zone and Sec headings (kit.tsx) are NOT covered by this check: they are the one CSS-uppercase
-   * convention "every section heading in the product uses", applied consistently everywhere, not a
-   * board-specific bug - see the morning report and the commit for this round.
+   * The previous version of this check only asked three named elements whether THEY carried
+   * `textTransform: uppercase` - so "Nothing above this", the quick-read tile labels and the
+   * bottom legend ("What is open, first", "Each gap names both sides", "Honest closes") all kept
+   * drawing in capitals, unnoticed, because nothing had asked them by name. Zone and Sec (kit.tsx)
+   * no longer use `textTransform: uppercase` either (this round removed it there too, product-wide
+   * - see the commit), so there is no longer any known-good exception to carve out: this walks
+   * every element actually rendered on the board and fails if `getComputedStyle` reports
+   * `uppercase` on ANY of them, wherever it came from.
    */
-  it('the fixed captions no longer set textTransform: uppercase', async () => {
+  it('nothing on the rendered board is drawn in capitals by textTransform, anywhere', async () => {
     renderBoard()
-    const whyItMatters = await screen.findByText('Why it matters')
-    const whatPeopleSaid = await screen.findByText('What people said')
-    const whichOfTheFour = await screen.findByText('Which of the four this is')
-    for (const el of [whyItMatters, whatPeopleSaid, whichOfTheFour]) {
-      expect(el.style.textTransform).not.toBe('uppercase')
-    }
+    await screen.findByText('Sales team, Q3')
+    const offenders: string[] = []
+    document.querySelectorAll('body *').forEach((el) => {
+      const cs = window.getComputedStyle(el as Element)
+      if (cs.textTransform === 'uppercase' && (el.textContent ?? '').trim()) {
+        offenders.push(`${el.tagName.toLowerCase()}: ${(el.textContent ?? '').trim().slice(0, 60)}`)
+      }
+    })
+    expect(offenders).toEqual([])
   })
 })
