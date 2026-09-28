@@ -56,6 +56,33 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **Run-14, the full run, started at 10:28 on `9e808ab9`,** with every fix above in it. It checks "proof asked for" after week 2, and task 1.5's bar again.
 
+**Hafsah's correction: "Nothing checkable" is back on the lead's board** (`01379c6e`, decision 40 in `docs/decisions-merged.md`).
+
+*What `a1747927` (27 September) changed, exactly:*
+1. The board stopped reading the check-in's rating of how checkable the answers were. It looked instead for a number, a date or a document in the record of that round.
+2. The reason "nothing checkable" was renamed "nothing to count yet".
+3. Each person's row gained a sentence, `says`, in full sentences with the person's name, for every reason.
+4. A stop-gap from before it, which turned "nothing checkable" into "nothing to do" so the lead never saw it, was removed.
+5. A privacy test was added that proved the lead's board was the same however the check-ins were rated.
+
+*What is put back, as the prototype words it:*
+- The rating decides it again, as it did before `a1747927`. A check-in not yet rated is judged by its record instead, so nobody is marked "nothing checkable" just because the rating has not run.
+- The reason is "nothing checkable" again. The screen shows the reason beside the name, so the lead sees "Nothing checkable", as in the prototype's "Omondi: nothing checkable".
+- The sentence under it now reads, for example: "Nothing Miriam Wanjiku said this round can be checked yet. This is the second week in a row. A number, a date or a document for what moved would change that." The count of weeks in a row is new, from the prototype's "for 2 weeks in a row".
+- What to ask next is new, from the prototype. Where nothing else is in the way: "Ask Miriam for a photo, a message or a document that shows what moved" when proof was missing, and otherwise "Ask Miriam for a number or a date for what moved this round".
+
+*What is kept from `a1747927`, because it protects privacy:*
+- Only whoever runs the check-in, and an admin, is sent these rows. A new test proves a participant gets none.
+- No raw rating value is ever sent, and no sentence uses a rating word about the person.
+- The rating changes only this one reason. Nothing else on a row moves with it.
+- The full sentences for every reason stay.
+
+*For Hafsah:*
+- Decision 40 is written as the one exception to decision 38 from this morning. A report's other per-person ratings are still not sent to the lead or an admin. Say if you want those back as well.
+- The prototype's "He says “worked on it”, but gives no error, code link or what he tried" comes from a pattern. Patterns stay switched off until you approve the names.
+- Not yet checked live. The API keeps run-14's build until that run finishes, and then I will read the lead's board as the lead, a participant and an admin.
+- The four tests that pinned `a1747927`'s rule now pin the corrected rule and every protection above.
+
 **Week 3 of the weekly plan is built, and not yet measured live** (`edcaf719`, `7bdbec5b`). Run-14 is on the build before it.
 - **Task 2.3, plain words.** The check-in's own word guard never looked for management words, although the rulebook bans them and the checker counts them. Now, when Groundwork itself brings in "pipeline", "escalate", "deliverable", "bottleneck" and the like, the reply is asked for again once, with the sentence quoted and a plain way offered, for example "sales not yet closed" instead of "pipeline". A word the person used first is left alone.
 - **Task 2.4, good news first.** Openings of later check-ins already start from what the person said last time: 12 of 14 on both run-12 and run-13. Now the opener is also given last time's good news, in the person's own words, and says it back first, plainly, with no praise.
