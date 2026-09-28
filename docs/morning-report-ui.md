@@ -18,8 +18,8 @@ kind of board; and `docs/ready-to-deploy-screens.md`.
 **Are the screens ready to deploy? Not yet.** Eleven modules still need their review (U.9 to U.19), and U.20 is not built yet. Four privacy
 problems are open, and each is in the live product too: the lead's private description reaching an
 invitation (item 0, fixed on this branch), the check-ins list sending participants the lead's setup
-brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c,
-engine code, request 43) and someone held for a seat reading a released report (item 0d, engine code,
+brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c; a
+participant now gets only their own, and the lead's and admins' part waits for your decision) and someone held for a seat reading a released report (item 0d, engine code,
 request 49). The last two need the engine workspace.
 
 **What I finished tonight:** U.8 went through six reviews, and everything they found is fixed. A
@@ -314,6 +314,8 @@ check-in conversation can still fall back to the lead's brief when the short ver
 is the engine's code, so I have asked the engine workspace (request 41).
 
 ### 0c. Every reader of a report gets everyone's rating, not only their own, and the Done page's "Only you see it" is not true yet
+
+**Update, 28 September:** the engine workspace has closed half of this (request 43, `59a62cc3`). A participant's report, forming or released, now carries only their own rating. The other half is yours to decide: the engine gives the lead and an admin everyone's ratings on purpose, while CLAUDE.md says leads never see how a person's answers were rated. Until you decide, the Done page keeps its wording, as the engine workspace asked.
 
 **Found by the U.8 review on 27 September.** CLAUDE.md's rule is plain: "Leads never see how a
 person's answers were rated." Two places in the engine's own code disagree with it. `own-reads-only.ts`,
