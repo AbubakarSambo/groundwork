@@ -1,3 +1,5 @@
+import { neverAnAddressAsAName } from './an-address-that-can-receive-mail'
+
 /**
  * WHAT TO PROBE EACH PERSON ON. THE LEAD SEES THIS AND NOBODY ELSE DOES.
  *
@@ -101,7 +103,7 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote }: {
       )}
         {(reads ?? []).map((r) => (
           <div key={r.participantId} style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-text)' }}>{r.who}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-text)' }}>{neverAnAddressAsAName(r.who)}</div>
             <Block title="Worth asking" lines={r.probe} />
             <Block title="Worth saying" lines={r.encourage} />
             <Block title="What they said they did about being stuck" lines={[r.triedToUnblock]} />
