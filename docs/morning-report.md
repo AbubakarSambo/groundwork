@@ -149,6 +149,21 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **So the choice is mostly whether any of these report ratings should reach the lead in some form.** The prototype's answer, read literally, is no: it shows patterns, marks on lines and counts, never a per-person rating.
 
+**Hafsah decided (decision 43): keep decision 38, and follow the prototype.** The lead and admins get only the prototype's plain forms. Whether the engine produces each today:
+
+| The plain form | Does the engine produce it today? |
+| --- | --- |
+| "Nothing checkable" beside the name, with what to ask next | **Yes**, since `01379c6e` this afternoon. |
+| One level for how much the whole report can rely on | **Yes.** The session report carries "how much there is to go on", and the released report carries a band of strong, moderate or thin. The prototype's words are "How much this report can rely on: medium", so the screens should say it that way. |
+| The pattern, once it keeps coming up | **Built, and switched off** until you approve the plain names (week 8). |
+| The mark on each line: proven, confirmed, only their word, from memory | **Only in part.** Lines with a figure are marked "counted", "estimated" or "from memory". There is no mark on every line, and "confirmed by the person who received it" does not exist yet. Now in the plan as week 6b, after week 6 adds the field. |
+| The suggestion with its counts | **No.** Nothing reaches a suggestion yet (weeks 9 to 11, which need your thresholds). |
+| The sentence in the weekly report | **No.** There is no weekly report yet. Now in the plan as week 12b. |
+
+None of the missing ones joins the release. They are in `docs/weekly-plan.md`.
+
+**Run-15 is running on the streamed route, with the safety net fixed.** Checked against the build rather than from memory. The runner's log for run-15 says "Messages go through the streamed route." The API it talks to was built at 13:22, a minute after the fix (`e9301d42`), and the built code has it in. During the run, the log shows the streamed route asking the model again for management words, banned words and replies that ask two questions.
+
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
 *This section is kept up to date through the night. It was started at 00:36. The work stops at 05:36.*

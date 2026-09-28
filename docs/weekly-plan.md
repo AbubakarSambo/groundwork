@@ -33,6 +33,9 @@ The order follows Hafsah's: the check-in conversation first; then judging, and m
 **Week 6. The three-part ending, with a mark on each line.** Task 2.7: proven, confirmed, their word, or memory. This needs one new field, for "confirmed by the person who received the work" (screens request 7b).
 - **Screens later:** the end card, and the Done page's "what changed".
 
+**Week 6b. The same four marks on every line of the reports (decision 43).** The prototype marks each line a lead reads: "Proven", "Confirmed by the person who received it", "Only someone's word", "From memory only". Today the reports mark only lines with a figure ("counted", "estimated", "from memory"). This uses the field week 6 adds.
+- **Screens later:** the legend and the marks on the report pages.
+
 **Week 7. The lead confirms the exact question (decision 34).** *Built on the engine's side 28 September; the screens' card is theirs.* When the lead sets a question for a person, Groundwork writes the question once, the way it will ask it. The lead sees exactly that and confirms it, and the check-in then asks it word for word.
 - **Screens later:** the confirmation card on the Context page.
 
@@ -58,6 +61,9 @@ The order follows Hafsah's: the check-in conversation first; then judging, and m
 - **Screens later:** any changes to the reviews board.
 
 **Week 12. Who is slipping, said as what happened.** *Partly done 28 September (`b450fbf2`): no row says "nothing here needs you" and then gives something to ask, "waiting 0 days" is gone, and nobody is asked to speak to a thing. The alert in the prototype's words is still to do.* Each person's line on the board says what needs the lead. It never says "nothing here needs you" and then names a blocker. It fixes "waiting 0 days". The alert reads like the prototype's "Samuel has chased the same 5 leads for 3 check-ins". Never a label on a person.
+
+**Week 12b. The weekly report's sentence about each person (decision 43).** The prototype's weekly report says, in one plain sentence, how people's accounts read, for example "Aisha and Miriam consistently get to specific customer needs and next steps." The engine has no weekly report yet (screens request 9). This writes that sentence from the record, never from the rating itself, and never as a label.
+- **Screens later:** the weekly report page.
 
 ---
 
