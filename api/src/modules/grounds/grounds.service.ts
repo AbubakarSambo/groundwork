@@ -2823,7 +2823,7 @@ export class GroundsService {
       where: { groundId, participantId: me.id, NOT: { holds: { equals: null as any } } },
       orderBy: { createdAt: 'desc' },
       take: 3,
-      select: { id: true, fileName: true, holds: true },
+      select: { id: true, fileName: true, holds: true, visibility: true },
     });
     for (const d of docs) {
       const holds = (d.holds ?? {}) as any;
@@ -2848,7 +2848,10 @@ export class GroundsService {
         data: {
           groundId,
           kind: ContextItemKind.NOTE,
-          text: `The numbers on this check-in come from ${d.fileName}.`,
+          /* This note reaches everybody's check-in, so a file only the lead can open is not named (request 46). */
+          text: (d as any).visibility === 'OPEN'
+            ? `The numbers on this check-in come from ${d.fileName}.`
+            : 'The numbers on this check-in come from a document that was attached when it was set up.',
           audience: ContextNoteAudience.EVERYONE,
           source: 'PASTE',
           authorUserId: requestingUserId,

@@ -1,3 +1,4 @@
+import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { howToSayIt, NEVER_CONCLUDE_FROM_A_KIND, WHAT_IT_MEANS, WHO_CAN_MOVE_IT } from '../board/what-kind-of-thing-is-in-the-way';
 import { howItReads, WHAT_A_NUMBER_IS_NOT, NEVER_CONCLUDE_FROM_A_NUMBER } from '../public-api/a-number-does-not-argue';
@@ -1374,6 +1375,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
       roundNow,
     );
 
+    const privateFileNames = namesNotEverybodyMayOpen(
+      await (this.prisma.groundDocument?.findMany?.({ where: { groundId }, select: { fileName: true, visibility: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+    );
     const corpus =
       groundContextHeader +
       roster +
@@ -1390,7 +1394,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       records.map((r) => {
         const label = labelById.get(r.participant.id) ?? 'a party';
         const session = r.checkIn?.sessionNumber ? ` session ${r.checkIn.sessionNumber}` : '';
-        return `[${label}${session}] (${r.type}) ${r.text}`;
+        /* A file only its owner can open is not named in what everybody reads. See a-private-file-is-not-named. */
+        return `[${label}${session}] (${r.type}) ${withoutPrivateFileNames(r.text, privateFileNames)}`;
       }).join('\n');
 
     const NEW_STARTING_SCENARIOS: GroundScenario[] = [
@@ -2792,8 +2797,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
         : Promise.resolve(null),
     ]);
 
+    /* Only the documents this reader may open are listed by name: every OPEN one, and their own.
+       This listed every document of every readable person, whoever could open it (request 46). */
     const docs = await this.prisma.groundDocument.findMany({
-      where: { groundId, participantId: { in: readableParticipantIds } },
+      where: {
+        groundId,
+        participantId: { in: readableParticipantIds },
+        OR: [{ visibility: 'OPEN' as any }, ...(me ? [{ participantId: me.id }] : [])],
+      },
       select: { fileName: true, participantId: true, origin: true },
     });
 
