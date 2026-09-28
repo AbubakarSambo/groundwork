@@ -27,7 +27,30 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   - "Please finish my check-in" was not heard as asking to finish, though "finish this check-in" was. Now it is, and so are a bare "Finish" and "Please finish.". A sentence such as "I want to finish the proposal by Friday" still is not.
 - **Re-runs:** sales, seniorhire and snapshot, twice each. Snapshot is where the goodbye showed most.
 
-**What is next, in your order:** request 46 (a helper is tracing how a private file's name reaches the board), then the next full run to check "proof asked for", then the weekly plan.
+  | Sales, seniorhire and snapshot together | Run-12 | Run-13 | First re-run | Second re-run |
+  | --- | --- | --- | --- | --- |
+  | A goodbye in a turn that was not the last | 4 | 3 | **0** | (running) |
+  | A goodbye before "One more before this closes" | 0 | 0 | **0** | |
+  | Check-ins that closed naturally | about half | about half | **15 of 23** | |
+  | Proof asked for | 13 | 7 | 10 | |
+  | Specific detail asked for | 26 | 30 | 33 | |
+  | Blocker checked | 9 | 18 | 15 | |
+  | Past words brought back | 34 | 32 | 33 | |
+  | Commitments recorded | 32 | 43 | 29 | |
+  | Differences, agreements, per-person findings | 11, 18, 23 | 11, 16, 22 | 13, 19, 23 | |
+  | Turns that ask more than one question | 5 | 6 | 0 | |
+
+**Request 46: a private file's name on the board** (`fc82c0a5`, `9758c050`).
+- **How it got there.** When the lead attaches a file in her own check-in, Groundwork's reply names it: "Here is the context we have from team-plan.txt". Her answer echoed it, the line went on the record, and the report and board are written from every record line, whoever may open the document behind it.
+- **Fixed in four places.**
+  - The report is now written from the record with private file names taken out. The stored line is not changed.
+  - A note that goes to everyone, "The numbers on this check-in come from team-plan.txt", now names the file only if everyone may open it.
+  - Lines that anyone but the lead reads, on the check-in's page and in their own check-in, lose private file names, so notes stored before the fix are covered.
+  - The session report lists by name only the documents the reader may open.
+- **Seen for real in the local test database.** A note shared with everyone names `harvestline-q4-targets.xlsx`, a file only its owner can open, and participants were sent it. I will check it again as a participant once the API is rebuilt.
+- **What stays:** what a document showed can still be said. Only which file it was is the owner's to share.
+
+**What is next, in your order:** the second closing re-run, then the next full run, on a build with every fix, to check "proof asked for", then the weekly plan.
 
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
