@@ -4012,6 +4012,80 @@ if anything unexpected turns up).
 
 **A refusal by the safety check, 28 September (U.10 picture check).** The reviewer was cutting the prototype's very tall pictures into readable strips inside its own scratch folder. The command began by clearing two of its own test crops, `rm -f pc/*`, after moving into the scratch folder. The safety check read the relative path as a folder inside the repository and refused it. Nothing ran and nothing was deleted. The reviewer stopped and reported it, as you asked. It then carried on without deleting anything, writing its crops to a new scratch folder by its full path. The two test crops are still in the scratch folder, outside the repository.
 
+### U.10 The board, fifth round: the 1440-pixel picture check's own differences, item by item
+
+**28 September, from Hafsah's own side-by-side picture check against board-as-lead.jpg and
+board-as-participant.jpg.** The earlier rounds fixed wording and capitals; this round made the page
+itself look like the prototype, not only read like it.
+
+1. **Page colour (DONE).** The board painted itself `#EEF0F6` directly; it now uses `var(--gw-page)`,
+   the same cream token every other page in the product already uses.
+2. **The check-in header and tabs (DONE).** "← Back to the check-in" above a dark navy card
+   (`rgb(10,22,40)`, a dropdown pill, a purple chip, a green-ruled summary) is gone. A new shared
+   component, `TheCheckInHeader.tsx`, draws the prototype's breadcrumb, serif title, cadence line,
+   "Your check-in"/"Start my check-in" button, "Ask" link and tab bar, and is wired into the board.
+   Tab map to the product's existing routes, and what has no page yet ("Views ▾"), are written in
+   that file's own comment. Wiring it into `GroundAdminPage.tsx` and `GroundParticipantPage.tsx` too
+   is real further work on two large, heavily-tested files, and is **NOT DONE** in this round - they
+   keep their own existing header and tab row for now. The summary paragraph and the session spine
+   are kept, restyled as plain text under the new header rather than dropped.
+3. **Section headings (DONE).** `Sec` gained a `size="board"` variant (22px/700/var(--gw-text), a
+   right-aligned grey subtitle) used only by the board, so every other page's heading is unchanged.
+   The `Zone` dividers ("AT A GLANCE", "THE WORK", …) are removed from the board; the prototype has
+   no banded rule between sections, only each section's own heading.
+4. **"The team today" (DONE).** "Where each person is" is renamed to the prototype's own heading and
+   redrawn on a white table with each row's last-10-session squares under the summary line. The
+   prototype's rightmost column, "what keeps coming up", needs pattern detection - off while
+   patterns are off - so it is left out rather than faked.
+5. **"Blockers" (DONE).** One white card per blocker (a bold title, an outlined status pill, "Waiting
+   on:", the sentence, the "then" quote) in place of one shared card of borderless-pill sentences.
+   `Pill` gained an `outline` prop, additive, for the prototype's bordered pills. The missing columns
+   (Raised with dates, Affects, Promised, What the proof shows) were already covered by request 11.
+6. **"Who checked in" (DONE).** Renamed from "Sessions this phase"; redrawn as one row per person -
+   name, then the last-10 squares - instead of a table with a "Session N" header per column.
+7. **"Reports" (DONE).** A new white table, one row per session, built from `sessionRows` - lifted
+   out of `GroundAdminPage.tsx`'s own inline counting into `lib/session-rows.ts` so the Report tab
+   and the board's table are the exact same rows, never a second copy that could disagree. Gated on
+   `shown.checkInGrid` (see the privacy note below). "How this has moved" now sits under its own
+   "Over time" heading with a Show/Hide link, closed by default. The prototype's weekly-digest row
+   has no data model yet - requested (71a).
+8. **The Ask bar (DONE).** A full-width input at the foot, the prototype's exact words, wired to the
+   existing Ask Groundwork panel: typing a question and pressing Ask opens the panel already asking
+   it. `stores/ask.ts` gained `pendingMessage`/`showWith`, additive.
+9. **The extra sections (DONE).** The dark indigo "How to read and use this board" card is now a
+   small grey line and link, words unchanged. `WhatTheRecordShows` and `TheJudgement` no longer cap
+   themselves at 760px. The quick-read tiles are a fixed four-column row, not `auto-fit` (which
+   wrapped three-plus-one at some widths). "Decisions needed"'s owner is plain text, not a red pill.
+10. **The participant board (DONE, as far as data allows).** The header now says "Start my check-in"
+    for a party and "Your check-in" for whoever runs it, and "People and setup" is unconditional
+    (`ground-tabs.ts` always includes it; my first pass had wrongly gated it to the lead). Every
+    other section already follows the switchboard's own reader gating. The amber "Today's team
+    picture isn't shared yet" card is **NOT DONE**: nothing served today carries whether the current
+    round's report has shared, or whether the party's own is ready - requested (71b) rather than
+    guessed from `withheldUntilYouCheckIn` or `readOnlyNote`, neither of which is that fact.
+
+**A privacy fix found while building item 10.** The new Reports table (item 7) first had no gate of
+its own - it would have shown a participant the whole team's session-completion and share state,
+which board-as-participant.txt never shows them. Caught before review, gated on `shown.checkInGrid`
+(the board's own existing, server-driven signal for "this reader may see everyone's session state"),
+rather than a second client-only rule.
+
+**Left for a request, not built.** docs/requests-to-engine.md gains request 71: the Reports table's
+weekly-digest row, and the fact the participant's amber card needs. Everything else this pass
+touched that has no data yet (the forecast question, "Every deal, day by day", "Reported vs criteria
+met", "Waiting on other teams", "Open issues", "Where this is heading", "Help nobody mentioned") was
+already covered by requests 6, 11 and 70, so nothing here duplicates them.
+
+**Tests:** `no-heading-without-content.spec.ts`'s Zone-count assertion updated from ">4" to "0" (the
+Zone dividers are gone from the board entirely; the rule it protects - no heading over empty content
+- is unchanged and still enforced by `shown`). Two tests that pinned the literal presence of the
+session-row counting code inside `GroundAdminPage.tsx` (`the-report-tab-shows-the-reports.spec.ts`,
+`the-lead-sees-the-ground-not-a-blank.spec.tsx`) updated to check `lib/session-rows.ts`, where that
+code now lives, for the same reason: extraction, not a behaviour change. A new
+`the-board-uses-the-page-token-and-shared-header.spec.ts` guards the page token and the shared
+header from coming back. `npx tsc -b` and the full board, grounds, company, Ask Groundwork and
+AppShell suites pass.
+
 ### U.11 Ending a check-in, the probation review, handover: built and tested, not yet reviewed
 
 **What was missing, against the prototype (the gap list):** a decision with its reason (the lead
@@ -5222,7 +5296,9 @@ none of them changed. **Not ticked,** until its review.
 - **The check-ins list (U.5)** shows clipped pieces to every reader, for example "Progress 6 of 12
   rounds · 2 of 5 answered this round", "In the way 1 · the sales deck", and "IN PROGRESS" in capital
   letters. The progress number shows 0 first, then the real figure.
-- **The board (U.10)** is still grey-blue with dark cards, not cream.
+- **The board (U.10)** was still grey-blue with dark cards, not cream. **Fixed in U.10's fifth
+  round, 28 September** (page colour, the header, section headings and the other picture-check
+  items below).
 - **Any member can list everyone in the organisation.** `/users/colleagues` returns every person
   in the organisation to any member. "Jump to" does not use it for that reason. **Answered by you on
   26 September, to do in U.4:** a member may see colleagues' names, roles and teams, as the
