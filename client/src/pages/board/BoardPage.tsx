@@ -377,6 +377,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const endedSaying = howItEnded({ status: (b as any)?.groundStatus, endState: (b as any)?.endState })
   const has = (s: string) => b.sections.includes(s as any)
   /* Said once, at the top - and the divergence card below stays short rather than repeating it. */
+  /*
+   * ITEM D, CHECKED AND DELIBERATELY LEFT AS IT WAS. `whoIsInRound` answers a different question
+   * (who is expected to check in this round - a managing-only lead still counts for session 1) from
+   * this one (are there two ACCOUNTS to compare - a managing-only lead never gives one, ever).
+   * Tried unifying them; it broke "a managing-only lead is not the second account"
+   * (a-shared-picture-needs-two-accounts.spec.tsx), a rule this board already tests deliberately, so
+   * it was reverted. This board has no other client-computed count of people to point at
+   * `whoIsInRound` - every other figure on it (answered this round, checked-in counts) already
+   * comes straight off the server (`howItIsGoing.glance`, `checkInGrid`), so there is nothing here
+   * for two different counting rules to disagree about. See the morning report.
+   */
   const onlyOnePersonHere = (b.participants ?? []).filter(p => !p.managingOnly).length < 2
   /* The reader's own name, as this board already resolves it, so "who sees this differently" can say "You". */
   const myName = b.myParticipantId ? (b.participants ?? []).find((p) => p.id === b.myParticipantId)?.name ?? null : null
