@@ -3,6 +3,7 @@
  * place: `import { Page, PageTitle, ... } from '@/components/gw/ui'`.
  */
 export { Page } from './Page'
+export { Mark } from './Mark'
 export { PageTitle, type Crumb } from './PageTitle'
 export { CheckInHeader, CHECK_IN_TABS, type CheckInTabKey } from './CheckInHeader'
 export { Tabs, type TabItem } from './Tabs'
@@ -18,6 +19,7 @@ export { Toggle } from './Toggle'
 export { FieldLabel, TextField, TextArea, Select } from './FormFields'
 export { Button, type ButtonKind } from './Button'
 export { Tag, type TagTone } from './Tag'
-export { Note, Empty } from './NoteEmpty'
+export { Note, Callout, Empty } from './NoteEmpty'
+export { Steps, Step } from './Steps'
 export { Toast } from './Toast'
 export { Modal } from './Modal'
