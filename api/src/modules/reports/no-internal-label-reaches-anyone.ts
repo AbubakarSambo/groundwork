@@ -17,6 +17,7 @@ import { labelsForParties, namesVisibleTo, plainWordsByPerson, readsWithNamesOf,
  * Nothing else in a string is touched: people's own words stay exactly as they wrote them.
  */
 const A_LABEL = /\b(?:[Tt]he initiator|[Tt]he person who set this up|[Pp]articipants? ([A-Z])(?:(?:, | and |, and )([A-Z]))*)\b/g;
+const A_WHOLE_LABEL = /^(?:[Tt]he initiator|[Pp]articipants? [A-Z])$/;
 const ONE_LETTER = /\b[Pp]articipants? ((?:[A-Z](?:, | and |, and )?)+)\b/;
 
 export interface WhoIsReading {
@@ -78,7 +79,13 @@ export function withoutInternalLabelsIn<T>(value: T, called: Map<string, string>
     if (v instanceof Date || v === null || typeof v !== 'object') return v;
     if (Array.isArray(v)) return v.map(walk);
     const out: Record<string, any> = {};
-    for (const [k, x] of Object.entries(v)) out[k] = walk(x);
+    /* A label as a key is a label on the wire too: engagement.sessionCounts, pictureConfidence and
+       specificitySignal were keyed "Participant A" (read live on run-16, 28 Sep 2026). A key that is a
+       label becomes the same words as the text. Nothing on the screens looks these up by label. */
+    for (const [k, x] of Object.entries(v)) {
+      const key = typeof k === 'string' && A_WHOLE_LABEL.test(k) ? withoutInternalLabels(k, called) : k;
+      out[key in out ? k : key] = walk(x);
+    }
     return out;
   };
   return walk(value);

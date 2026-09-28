@@ -33,6 +33,7 @@ const PLANTED = {
   whatEachPersonSaid: [{ who: 'Participant A', finding: 'Participant A sold four.' }],
   rounds: [{ sharedPicture: 'In round one the initiator and participant B agreed.' }],
   somethingAddedLater: { deep: ['Nobody has thought of this field yet, and it says Participant A.'] },
+  engagement: { sessionCounts: { 'Participant A': 1, 'the initiator': 1, total: 2 }, specificitySignal: { 'Participant A': 'high' } },
 };
 
 const ground = (peersVisible: boolean): any => ({
