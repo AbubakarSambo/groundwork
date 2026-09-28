@@ -26,7 +26,10 @@ export function WhatToSettleTogether({ question, tone = 'light' }: {
     : { label: 'var(--gw-muted)', body: 'var(--gw-text)', note: 'var(--gw-sub)' }
   return (
     <>
-      <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', color: ink.label, fontWeight: 700, marginBottom: 3 }}>
+      {/* U.9 THIRD REVIEW, ITEM 4: A HEADING IS SAID, NOT SHOUTED. Capitals and letter-spacing
+          turned a plain heading into "WHAT TO SETTLE TOGETHER", the same pattern already fixed
+          elsewhere on the report and the session pages. */}
+      <div style={{ fontSize: 10.5, color: ink.label, fontWeight: 700, marginBottom: 3 }}>
         What to settle together
       </div>
       <div style={{ fontSize: 13, color: ink.body, lineHeight: 1.6, maxWidth: '68ch' }}>{question}</div>

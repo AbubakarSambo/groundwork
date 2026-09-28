@@ -104,7 +104,10 @@ export function WhatToProbeThemOn({ reads, weigh, weighNote }: {
       )}
         {(reads ?? []).map((r) => (
           <div key={r.participantId} style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-text)' }}>{neverAnAddressAsAName(r.who)}</div>
+            {/* U.9 THIRD REVIEW, ITEM 5: A HEADING STARTS WITH A CAPITAL, LIKE ANY OTHER SENTENCE.
+                The fallback name is "a colleague" everywhere else it is used mid-sentence; here it
+                opens a heading of its own, so it reads "A colleague". */}
+            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--gw-text)' }}>{neverAnAddressAsAName(r.who, 'A colleague')}</div>
             <Block title="Worth asking" lines={r.probe} />
             <Block title="Worth saying" lines={r.encourage} />
             <Block title="What they said they did about being stuck" lines={[r.triedToUnblock]} />

@@ -23,6 +23,20 @@ function CardTitle({ children, weight = 600 }: { children: ReactNode; weight?: 6
   return <div style={{ fontSize: 'var(--er-lead)', fontWeight: weight, color: 'var(--gw-text)', marginBottom: 2 }}>{children}</div>
 }
 
+/**
+ * U.9 THIRD REVIEW, ITEM 4: "SETTLED." AND "STILL OPEN." WERE A ONE-WORD LABEL BOLTED ONTO A
+ * SENTENCE, NOT A SENTENCE OF THEIR OWN. Each line is now its own full sentence: what is settled
+ * is said as something everybody agrees, and what is open says so before naming it.
+ */
+function lowerFirst(s: string): string {
+  const t = s.trim()
+  return t ? t.charAt(0).toLowerCase() + t.slice(1) : t
+}
+function capitalize(s: string): string {
+  const t = s.trim()
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : t
+}
+
 export interface TheReportYouSawAtTheEndProps {
   /** Settled and still open, from the session report's engines. */
   stands?: { settled: string[]; open: string[] } | null
@@ -331,8 +345,8 @@ export function TheReportYouSawAtTheEnd({
         <Block n={next()} label="Where this leaves you, settled and still open">
           {(stands?.settled.length || stands?.open.length)
             ? <div style={{ display: 'grid', gap: 6 }}>
-                {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}><b>Settled.</b> {t}</div>)}
-                {stands!.open.map((t, i) => <div key={`o${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}><b>Still open.</b> {t}</div>)}
+                {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`Everyone agrees that ${lowerFirst(t)}`}</div>)}
+                {stands!.open.map((t, i) => <div key={`o${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}>{`This is still open. ${capitalize(t)}`}</div>)}
               </div>
             : <div style={{ fontSize: 'var(--er-lead)', color: 'var(--gw-sub)', lineHeight: 1.5 }}>Nothing is settled or unsettled yet. That comes once more than one person has checked in.</div>}
           <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-muted)', marginTop: 8 }}>

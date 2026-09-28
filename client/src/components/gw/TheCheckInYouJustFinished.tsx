@@ -301,9 +301,14 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
             with it, it is a statement about what this person is answerable for - which is the only
             reason their own half opens with it.
           */}
+          {/*
+            U.9 THIRD REVIEW, ITEM 4: A SENTENCE, NOT A LABEL WITH A COLON JOINING A LIST WITH
+            SEMICOLONS. "Your part: {A}; {B}." read as a form field, not something anybody would
+            say. The label is folded into the sentence, and the list is said as a sentence too.
+          */}
           {yours.length > 0 && (
             <p className="gw-p" style={{ margin: '10px 0 0', color: 'var(--gw-text)', maxWidth: '68ch' }}>
-              <b>Your part:</b> {yours.map((c: any) => c.text).join('; ')}.
+              {`Your own part of this is ${yours.map((c: any) => c.text).join(', ')}.`}
             </p>
           )}
         </Block>
@@ -436,7 +441,10 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
       */}
       {d?.howClearThisWas?.level && (
         <div className="gw-blk" style={{ paddingTop: 0, paddingBottom: 0 }}>
-          <Folded summary="How much you gave this one">
+          {/* U.9 THIRD REVIEW, ITEM 4: THE PROTOTYPE'S OWN WORDS, NOT A PARAPHRASE OF THEM.
+              docs/prototype/screens/B3-the-check-in/done.txt: "How checkable today's check-in
+              was". */}
+          <Folded summary="How checkable today’s check-in was">
             {/* The bar says how much; these five say of WHAT, which is the difference between a
                 reading somebody can act on and a mark they cannot. Same read as the one on the
                 run-long page, scoped to this sitting rather than across every one. */}

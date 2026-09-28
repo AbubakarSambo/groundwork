@@ -24,10 +24,15 @@ export interface ConfidenceRead {
   note?: string | null
 }
 
-const BAND_LABEL: Record<ConfidenceRead['band'], string> = {
-  thin: 'Thin',
-  partial: 'Partial',
-  solid: 'Solid',
+/*
+ * U.9 THIRD REVIEW, ITEM 4: ONE SENTENCE, NOT A HEADING AND A ONE-WORD LABEL SITTING NEXT TO IT.
+ * "How much there is to go on" over "Solid" read as two pieces of one fact rather than one thing
+ * to read. Each band now says the same thing as its own sentence.
+ */
+const BAND_SENTENCE: Record<ConfidenceRead['band'], string> = {
+  thin: 'There is a thin amount to go on.',
+  partial: 'There is a partial amount to go on.',
+  solid: 'There is a solid amount to go on.',
 }
 
 export function HowMuchThereIsToGoOn({ read }: { read: ConfidenceRead }) {
@@ -39,18 +44,13 @@ export function HowMuchThereIsToGoOn({ read }: { read: ConfidenceRead }) {
         padding: '16px 18px', marginBottom: 30,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <h3 style={{ fontSize: 13.5, fontWeight: 800, margin: 0, color: 'var(--gw-text)' }}>
-          How much there is to go on
-        </h3>
-        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--gw-navy)' }}>
-          {BAND_LABEL[read.band]}
-        </span>
-      </div>
+      <h3 style={{ fontSize: 13.5, fontWeight: 800, margin: 0, color: 'var(--gw-text)' }}>
+        {BAND_SENTENCE[read.band]}
+      </h3>
 
       <div
         role="img"
-        aria-label={`${BAND_LABEL[read.band]}. ${read.saying}`}
+        aria-label={`${BAND_SENTENCE[read.band]} ${read.saying}`}
         style={{ height: 6, borderRadius: 3, background: 'var(--gw-bg)', margin: '10px 0 9px', overflow: 'hidden' }}
       >
         <div style={{ width: `${pct}%`, height: '100%', background: 'var(--gw-navy)' }} />

@@ -28,7 +28,14 @@ describe('"What to ask each person" never shows an address where a name belongs'
       who: 'zawadi.u8@example.test', participantId: 'p-zawadi',
       probe: ['Ask what is holding up the delivery.'], encourage: [], triedToUnblock: 'Nothing yet.',
     }]} />)
-    expect(screen.getByText('a colleague')).toBeTruthy()
+    /*
+     * U.9 THIRD REVIEW, ITEM 5: "A COLLEAGUE", CAPITALISED, BECAUSE IT OPENS A HEADING.
+     * The fallback word is lower case everywhere it sits mid-sentence (see the two tests above);
+     * this component uses it as the whole of a per-person heading, which - like any other heading
+     * or sentence - starts with a capital letter. `WhatToProbeThemOn` now passes its own capitalised
+     * placeholder for this one call site rather than changing the function's default.
+     */
+    expect(screen.getByText('A colleague')).toBeTruthy()
     expect(screen.queryByText('zawadi.u8@example.test')).toBeNull()
   })
 })

@@ -251,7 +251,10 @@ export default function SessionReportPage() {
           </div>
           {(groundReport as any).soloArtifact.whatToCarry && (
             <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--gw-sub)', marginTop: 8, borderTop: '1px solid var(--gw-border)', paddingTop: 8 }}>
-              <b style={{ color: 'var(--gw-text)' }}>What to carry into the next one. </b>
+              {/* U.9 THIRD REVIEW, ITEM 4: "WHAT TO CARRY INTO THE NEXT ONE" IS A HEADING, NOT AN
+                  INSTRUCTION TO THE READER. It described the section rather than telling them what
+                  to do with it, which the prototype's own wording does instead. */}
+              <b style={{ color: 'var(--gw-text)' }}>Carry this into your next check-in. </b>
               {(groundReport as any).soloArtifact.whatToCarry}
             </div>
           )}
