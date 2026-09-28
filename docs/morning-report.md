@@ -10,7 +10,14 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 *This section is kept up to date through the night. It was started at 00:36. The work stops at 05:36.*
 
-**Is the engine ready to deploy?** Not yet, but close. All seven deploy blockers are fixed in code, with tests, and every API test passes. The last step is the proof on a full run of all 24 scenarios. **That run is run-12, started at about 01:15 on `5b01fe58`.** It includes everything up to the guests in Ask Groundwork. This line is updated when it has finished.
+**Is the engine ready to deploy? Yes, on the engine's side.** All seven deploy blockers are fixed, with tests, and proven on two full runs of all 24 scenarios, run-12 and run-13.
+- On both runs every problem count in the scorer is 0, which meets task 1.6.
+- No board or report carries a pattern.
+- No invited person read any of the lead's private words.
+- On run-13, every one of the 799 quotes served was word for word in the record.
+- The checker passes run-13 with nothing worse than the baseline. It failed run-12 on three conversation numbers, and re-running the same build showed that was variation.
+
+What is left before release is not the engine: it is the steps below, which need Abubakar and Hafsah. The judgement, task 1.5, is not yet at Hafsah's bar. Run-12 was 90% and run-13 was 81%, and the bar is two runs in a row at 90%. Hafsah decided the aim is deployment, with the judgement improving every week after.
 
 **Run-13's results, tonight's second full run, on `e7b9cd65`, read against the database and the actual sentences:**
 - **The checker says nothing is worse than the baseline.** "Blocker checked" is back up to 42, and "specific detail asked for" to 85. That confirms run-12's low numbers were variation.
