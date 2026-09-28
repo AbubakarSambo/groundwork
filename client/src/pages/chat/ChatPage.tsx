@@ -417,16 +417,18 @@ export function ChatPage() {
        * they would answer in is already switched off. The person is told what to do and given no
        * way to do it, which is the dead end behind "I could not complete my check-in".
        *
-       * NOT MATCHED ON `canContinue` ALONE ANY MORE (U.8 third review). The server marks these
-       * refusals `canContinue: true`, but a shared filter rebuilds every error body between the
-       * exception and the client, and it dropped that field entirely - so the live 400 carried no
-       * `canContinue` at all, this branch never ran, and the end card sat over a disabled box for
-       * real people. The filter has been fixed to keep the field, but this branch must not depend
-       * on it staying kept: every completion refusal that is not "already complete" is, by
-       * construction, exactly this case (the gate has only these two branches), so ANY 400 here
-       * is treated the same way. The server's own sentence is still never shown - only ours.
+       * READS `canContinue` FIRST, THE 400 STATUS AS A FALLBACK (U.8 end-of-module suites,
+       * `a-refusal-that-asks-must-be-answerable.spec.ts`). The server marks these two refusals
+       * `canContinue: true` - the explicit signal that this 400 is answerable, not a hard stop like
+       * a closed ground or a hold, which never carry it. A shared filter once rebuilt every error
+       * body between the exception and the client and dropped that field entirely, so the live 400
+       * carried no `canContinue` at all and this branch never ran; the filter has been fixed to
+       * keep the field, and the `=== 400` fallback stays for exactly that history - if the field
+       * were ever dropped again, every completion refusal that is not "already complete" is, by
+       * construction, this same case (the gate has only these two throw branches). The server's own
+       * sentence is still never shown - only ours.
        */
-      if (err?.response?.status === 400) {
+      if (err?.response?.data?.canContinue || err?.response?.status === 400) {
         /**
          * SAY IT WHERE THE CONVERSATION IS, NOT IN A POP-UP THAT FADES.
          *
