@@ -872,7 +872,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           </div>
                         </>
                       ) : (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 92, textAlign: 'right' }}>no number set</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 92, textAlign: 'right' }}>No number is set yet.</div>
                       )}
                     </div>
                     {o.notSettled && (
@@ -1389,7 +1389,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           {b.family !== 'UPDATE' && WHAT_THIS_ITEM_IS[it.type] && (
                             <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{WHAT_THIS_ITEM_IS[it.type]}</span>
                           )}
-                          {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>from session {it.sessionNumber}</span>}
+                          {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>Said in session {it.sessionNumber}.</span>}
                         </div>
                       </div>
                     ))}
