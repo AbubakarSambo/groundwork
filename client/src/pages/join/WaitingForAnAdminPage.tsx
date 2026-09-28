@@ -116,10 +116,16 @@ export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>,
   return `You’re from outside ${w.organisationName}, so an admin there has to let you in.${asked}`
 }
 
-/** "yesterday at 16:12", "today at 09:05", or "on 20 September at 16:12", in the shared date format. */
+/**
+ * "yesterday at 4:12pm", "today at 9:05am", or "on 20 September at 4:12pm" - the prototype's own
+ * way of writing a time (join-waiting.txt: "Grace was asked, yesterday at 4:12pm"), not the 24-hour
+ * clock `whenItWas(d, 'time')` gives. Hafsah's first review, U.20 seventh round: it read "yesterday
+ * at 22:21". Same trick as `what-the-end-of-a-check-in-can-say.ts`'s `aTime`: the shared formatter's
+ * `hourOfDay` purpose, its space and leading zero stripped, lower-cased.
+ */
 export function whenItWasAsked(iso: string, now: Date = new Date()): string {
   const d = new Date(iso)
-  const time = whenItWas(d, 'time')
+  const time = whenItWas(d, 'hourOfDay').replace(/\s/g, '').replace(':00', '').toLowerCase()
   const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
   const diff = Math.round((day(now) - day(d)) / 86_400_000)
   if (diff === 0) return `today at ${time}`

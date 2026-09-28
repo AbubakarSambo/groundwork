@@ -43,10 +43,15 @@
 }
 
 /* ── STACK (the invitation and its hand-off screens: tighter groups inside Page's 30px stack) ── */
-.gwui-stack-10 > * + * { margin-top: 10px; }
-.gwui-stack-12 > * + * { margin-top: 12px; }
-.gwui-stack-18 > * + * { margin-top: 18px; }
-.gwui-stack-19 > * + * { margin-top: 19px; }
+/* The doubled class (".gwui-stack-18.gwui-stack-18") raises specificity above a plain single-class
+   reset a Stack's own child might carry (e.g. .gwui-steps sets `margin: 0`, same specificity as a
+   single-class rule here, and - later in this file - would otherwise win the cascade and cancel
+   the gap. Found live, U.20 seventh round: "Almost in" read with Steps touching the line above
+   it.). A Stack's own gap must always win over whatever a child resets itself to. */
+.gwui-stack-10.gwui-stack-10 > * + * { margin-top: 10px; }
+.gwui-stack-12.gwui-stack-12 > * + * { margin-top: 12px; }
+.gwui-stack-18.gwui-stack-18 > * + * { margin-top: 18px; }
+.gwui-stack-19.gwui-stack-19 > * + * { margin-top: 19px; }
 
 /* ── PAGE TITLE (prototype: .t-title, .crumb, .t-small, .av at 56px) ────── */
 .gwui-pt-eyebrow { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }

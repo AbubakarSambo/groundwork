@@ -25,3 +25,17 @@ describe('the dev server only listens on this machine', () => {
     expect(CONFIG).not.toMatch(/preview:\s*\{/)
   })
 })
+
+/**
+ * THE PROXY MUST REACH THE API ON THE SAME ADDRESS THE API ACTUALLY BINDS. The API binds
+ * '127.0.0.1' in development (api/src/main.ts, the same review). The proxy's default target used
+ * to say 'localhost', which Node can resolve to '::1' first - nothing is listening there - so the
+ * two could miss each other. Fixed by naming '127.0.0.1' directly.
+ */
+describe('the dev proxy targets the address the API actually binds', () => {
+  it('defaults to 127.0.0.1, not localhost', () => {
+    const proxy = CONFIG.slice(CONFIG.indexOf('proxy: {'))
+    expect(proxy).toMatch(/target: process\.env\.VITE_PROXY_TARGET \?\? 'http:\/\/127\.0\.0\.1:3000'/)
+    expect(proxy).not.toMatch(/\?\? 'http:\/\/localhost:3000'/)
+  })
+})
