@@ -64,6 +64,16 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   - **No stored prompt changed.** It is context built in code.
   - **For Hafsah:** to find the set, a participant's session may now use the item names from the lead's own check-in words, such as the three bank names. It never uses the lead's sentence, and never people's names. It is used only on shared check-ins where people see each other. This rests on decision 4, but it is new, and the gate is one line if you want it narrower.
   - **Measuring it:** advisor and shock, twice each, after run-12.
+- **Week 2 of the weekly plan (tasks 2.1 and 2.2) is built, and measured offline, not yet live** (`6f8e7036`, `91e3dc73`, `504f7271`, `5d65a68b`).
+  - **One question per turn.** The gate that found a second question only logged it; a setting from 17 September had switched off the removal. Now every way a turn is saved keeps one question. It keeps the product's own question first, then the question that asks for a specific detail, a blocker or proof, then the first. An example written as a question stays as a statement.
+    - Offline over runs 8, 9, 10 and 12, turns asking more than one question go from 132 to 0.
+    - The first version lost too many detail and blocker questions, so the rule was changed. Now the checker's counts fall by at most 2 in any run, which is inside its allowance.
+  - **The lead's name.** In turns to a participant, "your lead", "the lead" and "the person who opened this check-in for you, Michael Achebe" now become the lead's first name, for example "This record goes to Amaka." A sales lead and "take the lead" are left alone. Offline, 24 turns change.
+  - **For Hafsah:**
+    - When the product's closing line goes under a model question, the model's question is dropped so that the closing line is never lost. The other choice, holding the closing line for a later turn, would have lost it in more than a third of the cases seen.
+    - "Your manager" is not changed, because it is often a person's own manager, who is not always the lead.
+    - A few scenario packs in the database script two questions in one line, such as "How are you carrying this? What is the worry underneath it?". The code now repairs them when a turn is saved, but the real fix is in the packs, and those are yours to switch on (decision 20).
+  - **Measuring it live:** sales and seniorhire twice each, after run-13.
 - Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
 
 **What needs Hafsah:**
