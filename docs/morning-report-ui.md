@@ -3554,6 +3554,49 @@ Two more lines went to the engine as requests, added to request 58: "nobody else
 said when others had, and the "4 of 5" in the session report's own generated text (alongside
 request 56, the same count disagreeing with the check-in header).
 
+**U.9's third review, 28 September, sent back six more, plus one already-fixed rating question.**
+
+1. `HowThisHasMoved` read "At the end of session undefined, on 27 September, and one read
+   differed." three ways wrong: the session number was undefined, because `/report/rounds` selects
+   `sessionNumber` off the round and not `round`, so `howThisHasMoved`'s own `round: r.round` was
+   always undefined and dropped by JSON on the way over (engine request 59); a stray "and"; and
+   `differences` was read as a change from the session before when it is a count within that
+   session's own reading. Now: "At the end of session 1, on 27 September, people saw one thing
+   differently.", with the session number left out when the server does not send it.
+2. The "At a glance" tiles were still a label, a bare figure and a lower-case fragment stacked on
+   top of each other. Each is now `tileSentence()`'s full sentence, built from the same
+   label/value/sub the server sends: "People see one thing differently. The main obstacle to
+   signing new shops is seen differently.", "Nothing has moved yet. Two targets are set, and no
+   session has closed to measure them against.", "One thing is blocking work, the discount
+   decision.", "15 of every 100 things people said have a document behind them."
+3. The cascade block's headings ("This is the top of it; nothing sits above it", "What this sits
+   under, and what the objective serves") described the product's own structure without saying
+   what "it" was. Now: "This is part of a bigger goal." or "Nobody has said what bigger goal this
+   is part of."
+4. More of the same colon/dot/semicolon family, across the check-in and report cards: a cited file
+   now says "is a photo" for an image rather than calling everything "a typed document"; "Carry
+   this into your next check-in." replaces a heading that described itself; "Everyone agrees that…"
+   and "This is still open…" replace a one-word label bolted onto a sentence with a full stop;
+   "WHAT TO SETTLE TOGETHER" is a plain heading; "There is a solid amount to go on." replaces a
+   heading sitting next to a bare band word; "How checkable today's check-in was" is the
+   prototype's own wording (`done.txt`); "Your own part of this is X, Y." replaces a colon-and-
+   semicolon-joined line. One of these - the private closing summary's own "What you shared:"
+   opening - is the engine's prompt (`conversation.service.ts`), not the screen's, so it went to
+   the engine as request 60.
+5. "What to ask each person"'s fallback name read "a colleague" as the whole of a heading; it now
+   passes its own capitalised "A colleague" for that call site. A quote under the reader's own name
+   read "Rukia Otieno (you) said this."; it now reads "You said this."
+6. Amani's Report tab and her session's own meter disagreed about the same session - "specific in
+   places" against "Mostly general." The two read different engine fields for the same session (a
+   continuous trend score against a stored category); rather than pick a winner across an engine
+   boundary, the Report tab's line now reads the same `specificityLevel` the meter reads, so the
+   two surfaces can no longer disagree about one session.
+
+`a-label-is-a-sentence-not-a-shout.spec.ts` was extended to two more files
+(`what-to-settle-together.tsx`, `HowMuchThereIsToGoOn.tsx`) and two more patterns (a label joined
+to a sentence with a colon, a list joined with "; "), plus a named check for the two one-word-
+label-beside-a-heading instances the third review found.
+
 ### U.10 The board: built and tested, not yet reviewed
 
 **What was missing, against the prototype's board (the gap list):** the line saying when the board
