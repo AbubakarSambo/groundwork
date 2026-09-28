@@ -6,16 +6,16 @@ same file.
 
 ## At a glance, 28 September
 
-**Reviewed and passed:** 7 of the 20 modules are reviewed, passed and ticked (U.1 to U.7). U.8, the
-check-in screens, passed its sixth review this morning, and its last full test run is going now; it is
-ticked once that passes.
+**Reviewed and passed:** 8 of the 20 modules are reviewed, passed and ticked (U.1 to U.8). U.8, the
+check-in screens, passed its sixth review and its full test run this morning (10,376 API tests and
+3,244 screen tests, all passing), and is ticked. That makes 8 of 20.
 
 **What is left:** the reviews of U.9 to U.19, one module at a time, oldest first; finishing U.19
 (billing) and U.20; the screens for the engine's new pattern shape and its answer box (patterns stay
 switched off until you approve their names); the table of Ask Groundwork, the switchboard and every
 kind of board; and `docs/ready-to-deploy-screens.md`.
 
-**Are the screens ready to deploy? Not yet.** Eleven modules still need their review. Four privacy
+**Are the screens ready to deploy? Not yet.** Eleven modules still need their review (U.9 to U.19), and U.20 is not built yet. Four privacy
 problems are open, and each is in the live product too: the lead's private description reaching an
 invitation (item 0, fixed on this branch), the check-ins list sending participants the lead's setup
 brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c,
@@ -44,10 +44,10 @@ in, with every decision you made), U.3 (organisations and joining, passed on its
 (people, roles and access, passed on its fifth), U.5 (Today and the check-ins list, passed on its
 third), U.6 (starting a check-in, passed on its seventh; the lead's first check-in card still waits
 for you, in item 17) and U.7 (context, passed on its fifth; it found that the check-ins list sent
-participants the lead's setup brief, also in the live product, item 0b).
+participants the lead's setup brief, also in the live product, item 0b) and U.8 (the check-in screens,
+passed on its sixth).
 
-**Built and tested, but not ticked:** U.8 (the check-in
-screens), U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
+**Built and tested, but not ticked:** U.9 (reports and sharing), U.10 (the board), U.11 (ending a check-in), U.12 (the You
 board), U.13 (suggestions from verdicts, and appeals), U.14 (Ask Groundwork), U.15 (the Company page),
 U.16 (links between check-ins, and each person's load), U.17 (the Suites page and all ten suites:
 onboarding, leave requests, time sheets, performance reviews, when someone leaves, the role map,
@@ -195,7 +195,7 @@ to find.
 | U.5 Today and the check-ins list | Yes | **Passed** on 27 September, on the third round |
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | **Passed** on 27 September, on the seventh round |
 | U.7 Context | Yes | **Passed** on 27 September, on the fifth round |
-| U.8 The check-in screens | Yes | Waiting |
+| U.8 The check-in screens | Yes | **Passed** on 28 September, on the sixth round |
 | U.9 Reports and sharing | Yes | Waiting |
 | U.10 The board | Yes | Waiting |
 | U.11 Ending a check-in, probation review, handover | Yes | Waiting |
