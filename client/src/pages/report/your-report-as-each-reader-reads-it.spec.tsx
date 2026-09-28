@@ -54,4 +54,25 @@ describe('a session’s page, as its owner reads it', () => {
     const text = document.body.textContent ?? ''
     expect(text).not.toMatch(/Yours alone|The shared report|Something here is wrong/)
   })
+
+  /*
+   * U.9 REVIEW FIX 8: "IT UPDATES AS PEOPLE CHECK IN" WAS SAID EVEN ON A REPORT THAT HAD CLOSED.
+   * The lead's Sessions tab told the truth further down the same page ("Closed 27 Sept 2026. This
+   * does not change."), and this line above it claimed the opposite about the same report. It now
+   * agrees with what `shape.state` actually says, with the closed date through the shared
+   * formatter, not a hand-written one.
+   */
+  it('says the team’s report still updates while it is forming, and that it has closed once it has', async () => {
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue({ correctable: true, state: 'forming' } as any)
+    renderIt()
+    expect(await screen.findByText(/it updates as people check in/)).toBeTruthy()
+    expect(document.body.textContent).not.toContain('This does not change.')
+  })
+
+  it('says the team’s report has closed, with the date through the shared formatter, once it has', async () => {
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue({ correctable: false, whyNotCorrectable: 'The window to correct it has closed.', state: 'final', takenAt: '2026-09-27T10:00:00.000Z' } as any)
+    renderIt()
+    expect(await screen.findByText('Closed 27 Sept 2026. This does not change. What each person said about their own work can appear here. What anyone said about somebody else never does.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/it updates as people check in/)
+  })
 })

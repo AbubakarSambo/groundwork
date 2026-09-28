@@ -453,10 +453,17 @@ export default function SessionReportPage() {
             other half: your own words about your own work can appear here, what you said about
             somebody else never does.
           */}
+          {/*
+            U.9 REVIEW FIX 8: "IT UPDATES AS PEOPLE CHECK IN" IS NOT TRUE ONCE IT HAS CLOSED.
+            A released report reads "Closed 27 Sept 2026. This does not change." further down, on
+            TheSessionsReport itself - so this line, above it on the same page, was claiming the
+            opposite about the same report. It now says the same true thing `shape` already knows,
+            in a sentence, with the date through the one shared formatter every other page uses.
+          */}
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 14, lineHeight: 1.55 }}>
-            Everybody's side of this session, together, and it updates as people check in. What
-            each person said about their own work can appear here. What anyone said about somebody
-            else never does.
+            {shape?.state === 'final'
+              ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. What anyone said about somebody else never does.`
+              : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. What anyone said about somebody else never does.'}
           </div>
           <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
         </section>
