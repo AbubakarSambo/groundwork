@@ -6,6 +6,22 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 28 SEPTEMBER, DAY: HAFSAH'S DECISIONS ON RATINGS AND PATTERNS
+
+**Ratings are never sent to anyone but the person they are about** (`828b4837`, decision 38 in `docs/decisions-merged.md`).
+- **Before:** a lead or an org admin opening a report was sent every person's rating: how specific each person's answers were, how sure the picture of them was, and a closing tier for each person.
+- **Now:** every reader, the lead and an admin included, is sent only the rating of their own answers. An admin who gave no answers of their own gets none.
+- **I kept a person's own rating.** Your decision says ratings are never served to any reader. I read that together with the earlier decision of 1 September, that a person sees their own rating as a nudge, and with the prototype's Done page, which shows a person "How checkable today's check-in was, 4 of 5" and says "Only you see it". If you meant that nobody at all, not even the person, is sent a rating, it is one line to change, and the Done page would lose that panel.
+- **A second leak, found while checking every route:** pressing Release on a report sent the admin the whole stored report. That included every person's rating, every person's private preparation for the talk afterwards, and the concerns about people. It now sends back only when the report was released. The screen never used what came back.
+- **Checked on what a person actually receives,** on two real check-ins from last night, as the lead and as each participant. Reports carry only the reader's own rating. Check-ins carry only the reader's own. Boards carry none, and they still load.
+- **A test** checks that the lead, an org admin and a participant each leave with nobody else's rating, and that Release returns no stored report.
+- **One old test changed.** It checked the old rule, "a lead still sees everyone's reads". It now checks the new rule.
+- **Tests:** all 10,413 API tests pass. The client passes 3,216 of 3,217. The one that fails is the screens workspace's "Jump to" sidebar test, as before.
+
+**Pattern windows approved, with your addition** (`68ea3eab`, decision 39). When the lead sees a pattern the person has not answered, it now says so plainly. For example: "Femi saw this first and has not answered yet." Or, if Femi never opened it: "Femi has not seen this yet, and has not answered yet. It is shown to you because a week has passed since it came up for the third time." Patterns stay switched off until you approve the names, so for now only the tests prove this.
+
+**What is next, in your order:** the closing problem with two re-runs, then requests 46 and 47 when the screens workspace sends the check-in ids, then the next full run to check "proof asked for", then the weekly plan.
+
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
 *This section is kept up to date through the night. It was started at 00:36. The work stops at 05:36.*
@@ -127,7 +143,7 @@ What is left before release is not the engine: it is the steps below, which need
 - Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
 
 **What needs Hafsah:**
-- **A privacy decision: should a lead be sent how each person's answers were rated?** The rule in CLAUDE.md says "Leads never see how a person's answers were rated." But the code in `api/src/modules/reports/own-reads-only.ts` sends the lead and an org admin everyone's ratings on purpose. Its comment says the lead sees everyone's reads "because leading is what the board is for". The screens workspace found this (request 43). I have not changed it, because it is a privacy rule and the two disagree. If you say the written rule stands, the fix is small: take the ratings out on the lead's path too. The lead's board would then need checking, in case it uses them.
+- ~~A privacy decision on ratings.~~ **Decided by Hafsah and done on 28 September.** See the day section at the top.
 - **Approve the 49 plain pattern names** in `docs/pattern-names.md`, and settle B5's name. Patterns stay switched off until then. Also approve the three-day and one-week windows before a lead sees a person's pattern.
 - **Replace `docs/decisions.md` with `docs/decisions-merged.md`.** The file is protected; the step is below.
 - **The thresholds for verdicts, and who counts as a person's lead for approvals.** Decision 33 says these are decided when that work starts: weeks 10, 11 and 21 of the weekly plan.
