@@ -32,11 +32,24 @@ export function WhoIsStillOut({ groundId, sessionNumber }: { groundId: string; s
   const people = ((ground as any)?.participants ?? []) as any[]
   if (people.length < 2) return null
 
+  const progress = (ground as any)?.sessionProgress as
+    | { sessionNumber: number; missingParticipantIds: string[]; declinedParticipantIds: string[] }
+    | null
+    | undefined
+  const round = progress?.sessionNumber ?? sessionNumber
+  const missing = new Set(progress?.missingParticipantIds ?? [])
+  const declined = new Set(progress?.declinedParticipantIds ?? [])
+
   const rows = people.map((p) => {
     const theirs = (((ground as any)?.checkIns ?? []) as any[]).filter(
-      (c) => c.participantId === p.id && c.sessionNumber === sessionNumber,
+      (c) => c.participantId === p.id && c.sessionNumber === round,
     )
-    const done = theirs.some((c) => c.status === 'COMPLETED')
+    /* Whether THIS person answered this round comes from sessionProgress (the round everyone is
+       actually being counted against), not from matching a local session number against their
+       check-in rows - completing a round spawns everyone's next-round row immediately, so a raw
+       row match can miss someone who already answered. */
+    const done = !progress ? theirs.some((c) => c.status === 'COMPLETED') : !missing.has(p.id) && !declined.has(p.id)
+    const isDeclined = progress ? declined.has(p.id) : theirs.some((c) => c.status === 'DECLINED')
     const going = theirs.some((c) => c.status === 'IN_PROGRESS')
     const open = theirs.find((c) => c.status !== 'COMPLETED')
     return {
@@ -44,8 +57,8 @@ export function WhoIsStillOut({ groundId, sessionNumber }: { groundId: string; s
       name: personLabel(p),
       joined: !!p.userId,
       done,
-      state: done ? 'Answered' : going ? 'Part way through' : !p.userId ? 'Not joined yet' : 'Not started',
-      remindable: !done && !!p.userId && !!open?.id ? (open.id as string) : null,
+      state: done ? 'Answered' : isDeclined ? 'Declined' : going ? 'Part way through' : !p.userId ? 'Not joined yet' : 'Not started',
+      remindable: !done && !isDeclined && !!p.userId && !!open?.id ? (open.id as string) : null,
     }
   })
 
@@ -55,10 +68,10 @@ export function WhoIsStillOut({ groundId, sessionNumber }: { groundId: string; s
     <div style={{ maxWidth: 460, margin: '14px auto 0' }}>
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 7, lineHeight: 1.55 }}>
         {waiting === 0
-          ? `Everyone has answered session ${sessionNumber}.`
+          ? `Everyone has answered session ${round}.`
           : waiting === 1
-            ? `One person still to answer session ${sessionNumber}.`
-            : `${waiting} people still to answer session ${sessionNumber}.`}
+            ? `One person still to answer session ${round}.`
+            : `${waiting} people still to answer session ${round}.`}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {rows.map((r) => (
