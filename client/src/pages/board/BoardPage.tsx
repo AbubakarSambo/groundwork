@@ -1802,7 +1802,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           could become a list of sessions.
         */}
         <div style={{ marginTop: 26 }}>
-          <HowThisHasMoved groundId={id!} />
+          <HowThisHasMoved groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} />
         </div>
         {/*
           AND HOW IT ENDS, BUT ONLY NEAR THE END.

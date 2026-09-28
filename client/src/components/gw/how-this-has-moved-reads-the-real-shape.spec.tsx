@@ -19,11 +19,11 @@ vi.mock('@/lib/a-date-reads-the-same-everywhere', async (orig) => {
 })
 import { reportsApi } from '@/api/reports'
 
-function renderPanel() {
+function renderPanel(viewerRunsThisCheckIn = true) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <HowThisHasMoved groundId="g1" />
+      <HowThisHasMoved groundId="g1" viewerRunsThisCheckIn={viewerRunsThisCheckIn} />
     </QueryClientProvider>,
   )
 }
@@ -39,6 +39,20 @@ describe('HowThisHasMoved reads the real wire shape', () => {
     })
     renderPanel()
     expect(await screen.findByText('At the end of session 1, on 27 September, people saw one thing differently.')).toBeTruthy()
+    expect(await screen.findByText('You are aiming for six shops.')).toBeTruthy()
+  })
+
+  it('never shows says, which is written to whoever runs the check-in, to a reader who does not', async () => {
+    (reportsApi.rounds as any).mockResolvedValue({
+      rounds: [],
+      moved: [{
+        sessionNumber: 1, takenAt: '2026-09-27', says: 'You have received answers from all three people.',
+        differences: 0, amended: null,
+      }],
+    })
+    renderPanel(false)
+    expect(await screen.findByText('At the end of session 1, on 27 September, everybody saw it the same way.')).toBeTruthy()
+    expect(screen.queryByText('You have received answers from all three people.')).toBeNull()
   })
 
   it('leaves the session number out when the row has none, rather than say "undefined"', async () => {

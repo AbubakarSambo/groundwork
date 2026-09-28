@@ -16,7 +16,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * and nothing re-decides it now. Whether the movement is improvement is the reader's judgement -
  * an arrow here would make this a rating, which is the one thing this product must not become.
  */
-export function HowThisHasMoved({ groundId }: { groundId: string }) {
+export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId: string; viewerRunsThisCheckIn: boolean }) {
   const { data } = useQuery({
     queryKey: ['report-rounds', groundId],
     queryFn: () => reportsApi.rounds(groundId),
@@ -71,7 +71,17 @@ export function HowThisHasMoved({ groundId }: { groundId: string }) {
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
               {sawDifferently}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{m.says}</div>
+            {/*
+             * WRITTEN TO THE LEAD, SHOWN TO EVERYBODY. "You have received answers from all three
+             * people." is `says`, written as a line addressed to whoever runs the check-in - and it
+             * was rendered here for every reader, so Amani and Juma read a sentence about what they
+             * themselves had received. The server carries nothing that says who a line is for
+             * (request to the engine), so until it does, this shows `says` only to whoever runs
+             * this check-in and says nothing here for anybody else.
+             */}
+            {viewerRunsThisCheckIn && (
+              <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{m.says}</div>
+            )}
             {m.amended && (
               <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginTop: 5 }}>
                 {m.amended}
