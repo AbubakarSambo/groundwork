@@ -110,10 +110,22 @@ describe('and the page shows it once, with the actionable half', () => {
      * the row and under it.
      */
     expect(PAGE).toMatch(/mostUseful/);
-    /* The badge marks WHICH one; the line under the list says why. They both used to open "Most
-       useful for you", which is the same statement twice, so the line keeps only the reason. */
-    expect(PAGE).toMatch(/most useful<\/span>/);
-    expect(PAGE).toMatch(/\{mostUseful\.says/);
+    /*
+     * U.9 END-OF-MODULE API SUITE: THE RENDERING MOVED TO TheFiveThingsThatMakeItCheckable.tsx,
+     * AND THE BADGE IS NOW A SENTENCE, NOT A SHOUTED SPAN.
+     *
+     * "MOST USEFUL", set as its own `<span>` with `most useful</span>` in the source, read as a
+     * shouted label bolted onto the sentence beside it (the U.9 review fix that removed capitals
+     * and shouted badges everywhere else on this card). It is now the sentence's own words, on the
+     * row itself: "This is the one worth adding first." The rule this test protects is unchanged -
+     * the actionable half reaches the person, twice: marked on the row, and said again under the
+     * list.
+     */
+    expect(PAGE).toMatch(/This is the one worth adding first\./);
+    /* The line under the list says why. It used to open "Most useful for you:", the same
+       statement the badge already made, so it keeps only the reason - mostUseful.says, said as its
+       own sentence rather than interpolated bare into a template string. */
+    expect(PAGE).toMatch(/mostUseful\.says\.charAt/);
   });
 
   it('their own strongest answer is rendered', () => {
