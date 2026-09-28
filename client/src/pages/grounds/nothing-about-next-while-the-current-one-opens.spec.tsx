@@ -76,7 +76,14 @@ describe('the header says nothing about the next session while this one is openi
     renderPage('?open=1')
 
     await waitFor(() => expect(apiClient.post).toHaveBeenCalledWith('/check-ins/c1/open', {}, expect.anything()))
-    await screen.findByText(/Jordan - Probation/i)
+    /*
+     * U.10 PICTURE-CHECK ROUND 6, ITEM I: THE TITLE NOW APPEARS TWICE, ON PURPOSE.
+     * The shared check-in header (TheCheckInHeader.tsx) draws the ground's name both in its
+     * breadcrumb ("Check-ins / Jordan - Probation") and as the page's own <h1> - a real UI change
+     * (item I), not a regression this test happens to have caught. findByText (singular) fails the
+     * moment there is more than one match, so this now waits for at least one.
+     */
+    await screen.findAllByText(/Jordan - Probation/i)
     expect(screen.queryByText(/The next session opens on/i)).toBeNull()
   })
 

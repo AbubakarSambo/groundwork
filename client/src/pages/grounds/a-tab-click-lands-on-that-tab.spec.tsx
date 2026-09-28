@@ -59,19 +59,32 @@ describe('a tab click lands on the tab that was clicked', () => {
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 const PAGES = ['GroundAdminPage.tsx', 'GroundParticipantPage.tsx'] as const
 
-describe('the row is given the shared keys, and translation happens once', () => {
+/**
+ * U.10 PICTURE-CHECK ROUND 6, ITEM I: THE ROW MOVED TO TheCheckInHeader.
+ *
+ * `<GroundTabRow>` is retired from both ground pages in favour of the shared check-in header
+ * (TheCheckInHeader.tsx), which draws the tab bar itself and takes the same two things this test
+ * always cared about: the shared, unmapped key/label pairs (`tabs`), and one translation back to
+ * the page's own vocabulary (`onSelectTab`, still going through `FROM_TAB_KEY`). The rule these
+ * tests protect - the row must not be handed a re-keyed copy, and a click must be translated once,
+ * not twice - is unchanged; only the component that draws the row is. `<GroundTabRow>` itself is
+ * unaffected (still rendered directly, and covered by the tests above) and stays in the codebase.
+ */
+describe('the header is given the shared keys, and translation happens once', () => {
   for (const f of PAGES) {
     const code = strip(readFileSync(join(__dirname, f), 'utf8'))
 
-    it(`${f}: hands the row the shared list rather than a re-keyed copy`, () => {
-      const row = code.slice(code.indexOf('<GroundTabRow'), code.indexOf('/>', code.indexOf('<GroundTabRow')))
-      expect(row).not.toMatch(/tabs=\{tabs\.map\(/)
-      expect(row).toMatch(/tabs=\{(?:tabs|groundTabs\()/)
+    it(`${f}: hands the header the shared list rather than a re-keyed copy`, () => {
+      const header = code.slice(code.indexOf('<TheCheckInHeader'), code.indexOf('/>', code.indexOf('<TheCheckInHeader')))
+      /* Not re-keyed: `t.key` is read straight off the shared tab, never a renamed literal. An
+         extra literal entry for "Board" (its own route, not one of groundTabs()'s tabs) is fine
+         alongside it - that one is not part of the shared list this rule is about. */
+      expect(header).toMatch(/tabs=\{\[[\s\S]*tabs\.map\(\(t\) => \(\{ key: t\.key, label: t\.label \}\)\)/)
     })
 
     it(`${f}: translates the clicked key through its own map, once`, () => {
-      const row = code.slice(code.indexOf('<GroundTabRow'), code.indexOf('/>', code.indexOf('<GroundTabRow')))
-      expect(row).toMatch(/onPick=\{k =>[\s\S]*FROM_TAB_KEY\[k\]/)
+      const header = code.slice(code.indexOf('<TheCheckInHeader'), code.indexOf('/>', code.indexOf('<TheCheckInHeader')))
+      expect(header).toMatch(/onSelectTab=\{[\s\S]*FROM_TAB_KEY\[/)
     })
   }
 })
