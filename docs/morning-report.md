@@ -20,7 +20,7 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **Pattern windows approved, with your addition** (`68ea3eab`, decision 39). When the lead sees a pattern the person has not answered, it now says so plainly. For example: "Femi saw this first and has not answered yet." Or, if Femi never opened it: "Femi has not seen this yet, and has not answered yet. It is shown to you because a week has passed since it came up for the third time." Patterns stay switched off until you approve the names, so for now only the tests prove this.
 
-**The closing problem, and request 47 with it** (`75a28ddd`, `1a9ffa59`). Being re-run twice now.
+**The closing problem, and request 47 with it** (`75a28ddd`, `1a9ffa59`). Done, and re-run twice.
 - **"This check-in will continue in two weeks."** is now read as a goodbye. When the product adds its last question, the goodbye comes off first. The person's own "You will continue to follow up" is never taken for one. Across every past run this matches 1 of 15,543 turns, the one Tobi read.
 - **Request 47, the screens workspace's check-ins.** Those ids are in a database on the other computer, so I worked from the code and the description. I found two causes:
   - When the product decided the check-in was not over, and had no last question of its own to add, the model's "Your report is ready now. Speak soon." went out as written, and the check-in stayed open. This happened in 10 of 3,550 turns in last night's runs, for example "…Your report is ready now. Speak soon. What else should I know?". Now the goodbye comes off, and if nothing is left asking, Groundwork's usual question goes on. The streamed reply does the same.
@@ -29,16 +29,20 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
   | Sales, seniorhire and snapshot together | Run-12 | Run-13 | First re-run | Second re-run |
   | --- | --- | --- | --- | --- |
-  | A goodbye in a turn that was not the last | 4 | 3 | **0** | (running) |
-  | A goodbye before "One more before this closes" | 0 | 0 | **0** | |
-  | Check-ins that closed naturally | about half | about half | **15 of 23** | |
-  | Proof asked for | 13 | 7 | 10 | |
-  | Specific detail asked for | 26 | 30 | 33 | |
-  | Blocker checked | 9 | 18 | 15 | |
-  | Past words brought back | 34 | 32 | 33 | |
-  | Commitments recorded | 32 | 43 | 29 | |
-  | Differences, agreements, per-person findings | 11, 18, 23 | 11, 16, 22 | 13, 19, 23 | |
-  | Turns that ask more than one question | 5 | 6 | 0 | |
+  | A goodbye in a turn that was not the last | 4 | 3 | **0** | **0** |
+  | A goodbye before "One more before this closes" | 0 | 0 | **0** | **0** |
+  | Check-ins that closed naturally | about half | about half | **15 of 23** | **13 of 23** |
+  | Proof asked for | 13 | 7 | 10 | 16 |
+  | Specific detail asked for | 26 | 30 | 33 | 34 |
+  | Blocker checked | 9 | 18 | 15 | 16 |
+  | Past words brought back | 34 | 32 | 33 | 28 |
+  | Commitments recorded | 32 | 43 | 29 | 27 |
+  | Differences, agreements, per-person findings | 11, 18, 23 | 11, 16, 22 | 13, 19, 23 | 9, 19, 23 |
+  | Turns that ask more than one question | 5 | 6 | 0 | 0 |
+
+  - **Kept.** In both re-runs no goodbye came before a question or in a turn that was not the last, and more check-ins closed naturally.
+  - Commitments recorded was a little lower in both. Per scenario it is inside the usual spread: sales has ranged from 11 to 38 across eleven runs, and seniorhire from 2 to 24. The re-runs gave sales 22 and 14, and seniorhire 7 and 12.
+  - Nothing in the "problems in what people read" list came up.
 
 **Request 46: a private file's name on the board** (`fc82c0a5`, `9758c050`).
 - **How it got there.** When the lead attaches a file in her own check-in, Groundwork's reply names it: "Here is the context we have from team-plan.txt". Her answer echoed it, the line went on the record, and the report and board are written from every record line, whoever may open the document behind it.
@@ -50,7 +54,7 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 - **Seen for real in the local test database.** A note shared with everyone names `harvestline-q4-targets.xlsx`, a file only its owner can open, and participants were sent it. I will check it again as a participant once the API is rebuilt.
 - **What stays:** what a document showed can still be said. Only which file it was is the owner's to share.
 
-**What is next, in your order:** the second closing re-run, then the next full run, on a build with every fix, to check "proof asked for", then the weekly plan.
+**What is next, in your order:** the next full run, on a build with every fix, to check "proof asked for", then the weekly plan.
 
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
