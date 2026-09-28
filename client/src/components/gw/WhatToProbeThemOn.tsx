@@ -27,11 +27,12 @@ export interface ProbeRead {
   triedToUnblock: string
 }
 
+/* U.9 RE-REVIEW, ITEM A: a plain heading, not a shout ("WORTH ASKING", "WORTH SAYING"). */
 function Block({ title, lines }: { title: string; lines: string[] }) {
   if (!lines.length) return null
   return (
     <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 4 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-sub-d)', marginBottom: 4 }}>
         {title}
       </div>
       <div style={{ display: 'grid', gap: 6 }}>

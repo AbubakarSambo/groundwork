@@ -186,12 +186,12 @@ export function SharedReportForAParty({
             <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 24, textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--gw-muted)', marginBottom: 4 }}>
                 {ground?.sessionProgress
-                  ? `Report pending - ${ground.sessionProgress.completed} of ${ground.sessionProgress.total} checked in`
+                  ? `Report pending. ${ground.sessionProgress.completed} of ${ground.sessionProgress.total} checked in.`
                   : 'No report yet.'}
               </div>
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
                 {ground?.sessionProgress?.requestingUserIsMissing
-                  ? "You haven't completed this session yet - that's part of what's holding the report."
+                  ? "You haven't completed this session yet. That's part of what's holding the report."
                   : 'The report generates once all parties have checked in.'}
               </div>
             </div>
