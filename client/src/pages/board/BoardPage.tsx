@@ -707,12 +707,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         may not see who somebody is does not learn it here. Rendering it is a read
                         of what was already on the wire, not a new disclosure.
                       */}
+                      {/*
+                        "Rukia Otieno - Rukia Otieno's opening brief..." read on a live board: the
+                        name and what they said, joined with a dash, which reads as one run-on
+                        clause rather than a name followed by their words. Stacked instead, the way
+                        every other name-then-quote on this page is already shown.
+                      */}
                       {Array.isArray(d.positions) && d.positions.length > 0 && (
                         <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
                           {d.positions.map((pos: any, j: number) => (
                             <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
-                              <span style={{ fontWeight: 700 }}>{pos.who ?? 'A colleague'}</span>
-                              <span style={{ color: 'var(--gw-sub)' }}>{pos.view ? ` - ${pos.view}` : ''}</span>
+                              <div style={{ fontWeight: 700 }}>{pos.who ?? 'A colleague'}</div>
+                              {pos.view && <div style={{ color: 'var(--gw-sub)' }}>{pos.view}</div>}
                             </div>
                           ))}
                         </div>
