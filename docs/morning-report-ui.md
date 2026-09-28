@@ -3609,6 +3609,41 @@ request 56, the same count disagreeing with the check-in header).
 to a sentence with a colon, a list joined with "; "), plus a named check for the two one-word-
 label-beside-a-heading instances the third review found.
 
+**U.9's re-review, 28 September, found four more, all from this round's commits: fixed.** `HowThisHasMoved`
+was still reading `m.round`, when a real `GET /grounds/:id/report/rounds` request sends
+`sessionNumber`; it now reads the field the server actually sends. `tileSentence`'s "is seen
+differently" could double when the topic it was given already said so ("…is seen differently is
+seen differently."); it now checks, case-insensitively and ignoring a trailing full stop, before
+appending it. Amani's own report still opened "What you shared: You are aiming for…" - the
+engine's own prompt (request 60, still open); `SessionReportPage.tsx` now turns that stored
+opening into "Here is what you shared. " before drawing it. And a document under "What this is
+built from" still read the server's own "<file> · <kind>" join verbatim, as if it were a quote;
+it now reads "<file> is <kind>." (engine request 61, still open, asks for a sentence or two fields
+instead of the pre-joined string).
+
+**U.9's end-of-module API suite found three more, from this round's commits: fixed, one genuine
+question left open.** Two block labels had grown extra description beyond the plain heading
+`the-four-reports.ts` declares (`WHAT_THE_BLOCK_IS_CALLED`), which broke
+`the-order-is-the-order-on-screen.spec.ts`; put back to "What this is for" and "What everybody
+said good looks like", with the dropped clauses left in the block's own body, where they were
+already true. Fixing that surfaced three more of the same pattern that predate this round
+(`the-order-is-the-order-on-screen.spec.ts` throws on the first mismatch per surface, so later
+ones were hidden until the earlier ones passed): "Where you are against it", "What you said" and
+"What is still open for you" are now the plain declared headings too. One label is left as a
+genuine disagreement rather than resolved unilaterally: `howMuchYouGaveIt` is declared "How much
+you gave this one", but the third review asked for the prototype's own wording, "How checkable
+today's check-in was", which the screen now says - written up as request 62 and recorded under
+Needs Hafsah, item 20.10, per CLAUDE.md's rule to ask when the prototype and the backend disagree
+and `docs/backend-map.md` does not say which way to go. `the-template-is-on-the-screens.spec.ts`'s
+"four states, and each one says what it means" and
+`specificity-belongs-to-the-person.spec.ts`'s "what would help is rendered" were also updated,
+each for wording this round changed on purpose (the tile's clause folded into `tileSentence`'s own
+sentence; the "most useful" badge and its line moved to
+`TheFiveThingsThatMakeItCheckable.tsx` and reworded), with the reason recorded in each commit; a
+note was added to request 58 for the tile-clause change, since the engine workspace wrote that
+test's own comment and may want to reword it now that the check is one level removed from the
+literal string on the page.
+
 ### U.10 The board: built and tested, not yet reviewed
 
 **What was missing, against the prototype's board (the gap list):** the line saying when the board
