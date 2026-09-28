@@ -15,6 +15,7 @@ import { Choices } from './Choices'
 import { ChoiceCards } from './ChoiceCards'
 import { FieldRows, FieldRow } from './FieldRow'
 import { Toast } from './Toast'
+import { PeopleTable, PeopleTableHead, PersonRow } from './PeopleTable'
 
 /**
  * THE SHARED PARTS, AGAINST THE PROTOTYPE'S OWN VALUES (design-audit.md section 4, step 3: "render
@@ -176,6 +177,45 @@ describe('EdgeRow', () => {
   })
 })
 
+describe('PeopleTable / PersonRow / PersonCell', () => {
+  /**
+   * FIX: the name column was squashed to about 60px, because a caller could place `PersonCell`
+   * (the avatar plus up to three lines of text) into whatever narrow column it liked - the first
+   * time this was built, that was the 34px avatar-only column. `PersonRow` and `PeopleTableHead`
+   * now build the name column themselves, and it is never something a caller's `extraColumns`
+   * string can shrink.
+   */
+  it('always gives PersonCell the wide name column, whatever extraColumns says', () => {
+    render(
+      <PeopleTable>
+        <PeopleTableHead extraColumns="190px 160px" labels={['Person', 'Status', 'Role']} />
+        <PersonRow
+          extraColumns="190px 160px"
+          person={{ initials: 'MW', name: 'Miriam Wanjiku', level: 'Sales rep, reports to Wairimu Kamau', email: 'miriam@baridi.co.ke' }}
+        >
+          <span>Checking in</span>
+          <Tag tone="action">Owner</Tag>
+        </PersonRow>
+      </PeopleTable>,
+    )
+    const row = screen.getByRole('row', { name: /Miriam Wanjiku/ })
+    expect(row).toHaveStyle({ gridTemplateColumns: 'minmax(240px, 1.2fr) 190px 160px' })
+    // the level and email are readable as one line each, not wrapped word by word
+    expect(screen.getByText('Sales rep, reports to Wairimu Kamau')).toBeInTheDocument()
+    expect(screen.getByText('miriam@baridi.co.ke')).toBeInTheDocument()
+  })
+
+  it('a Tag in a later column keeps its own natural width - the grid does not stretch it', () => {
+    expect(CSS).toMatch(/\.gwui-person-row \{[^}]*justify-items: start/)
+    expect(CSS).toMatch(/\.gwui-people-head \{[^}]*justify-items: start/)
+  })
+
+  it('the name column is never narrower than 240px, wide enough for the avatar and its text', () => {
+    const src = readFileSync(join(__dirname, 'PeopleTable.tsx'), 'utf8')
+    expect(src).toContain("export const PEOPLE_NAME_COLUMN = 'minmax(240px, 1.2fr)'")
+  })
+})
+
 describe('Avatar', () => {
   it('is a 34px circle by default, initials at size / 2.8', () => {
     render(<Avatar initials="MW" />)
@@ -265,6 +305,16 @@ describe('FieldRow', () => {
     expect(CSS).toMatch(/\.gwui-field-row-label \{[^}]*font-size: 16px/)
     expect(CSS).toMatch(/\.gwui-field-row \{[^}]*border-bottom: 1px solid var\(--gw-border\)/)
   })
+
+  /**
+   * FIX: the row used to sit flush against a panel's left border (padding: 14px 0, no sides), so
+   * inside a pad={false} Panel - the way PeopleTable's own rows already work - the label had no
+   * air around it at all. The row now carries the panel's own inside space itself, 22px at the
+   * sides, matching Panel's `.pad` (20px top/bottom, 22px sides).
+   */
+  it('carries the panel\'s own 22px side padding itself, not just 14px top and bottom', () => {
+    expect(CSS).toMatch(/\.gwui-field-row \{[^}]*padding: 14px 22px/)
+  })
 })
 
 describe('Toast', () => {
@@ -285,5 +335,31 @@ describe('Toast', () => {
 describe('the faint token', () => {
   it('is the prototype\'s own value (#85705A), not the product\'s different --gw-muted (#7D6A55)', () => {
     expect(CSS).toMatch(/--gwui-faint: #85705A/)
+  })
+})
+
+describe('an EdgeRow action is the standard Button, not a small one', () => {
+  /**
+   * FIX: the sample page's "What needs you" section used `size="small"` (36px, 14.5px) for
+   * "Read it", "Decide", "Open" and "Fix the address". The prototype (#/system, and the Today
+   * screen) draws these as the ordinary 44px, 16px bold button, the same as any other primary
+   * action on the page - `small` is for a button living inside an already-compact space, like a
+   * table row's "Copy" or "Change", not for what needs you.
+   */
+  it('renders at the standard 44px height, not the 36px small one', () => {
+    render(
+      <EdgeList label="What needs you">
+        <EdgeRow kind="ready" title="Today's report is ready" actions={<Button kind="secondary">Read it</Button>} />
+      </EdgeList>,
+    )
+    const b = screen.getByRole('button', { name: 'Read it' })
+    expect(b).toHaveClass('gwui-btn')
+    expect(b).not.toHaveClass('gwui-btn-small')
+  })
+
+  it('the sample page itself uses no small button inside "What needs you"', () => {
+    const src = readFileSync(join(__dirname, '..', '..', '..', 'pages', 'dev', 'PartsSamplePage.tsx'), 'utf8')
+    const section = src.slice(src.indexOf('heading="What needs you"'), src.indexOf('</Section>', src.indexOf('heading="What needs you"')))
+    expect(section).not.toMatch(/size="small"/)
   })
 })
