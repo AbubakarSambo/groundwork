@@ -5716,7 +5716,9 @@ happened, and what is in the way.`;
       viewerIsLead: isInitiator || isOrgAdmin,
       peersAreNamed: this.peersAreNamed(ground as any),
     });
-    return withoutInternalLabelsIn(withoutHiddenTargetsIn(withoutPrivateFileNamesIn(served, privateNames), hiddenTargets), called);
+    /* Labels become names FIRST: the hidden-target read looks for a person's name, and a line still
+       saying "Participant B" hid nothing (read live, 28 Sep 2026). */
+    return withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames), hiddenTargets);
   }
 
   private async getAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {

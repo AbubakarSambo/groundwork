@@ -145,7 +145,7 @@ describe('every board and report read goes through it', () => {
     expect(REPORTS).toMatch(new RegExp(`const served = await this\\.${built}\\([^)]*\\);\\s*return this\\.whatTheLeadHasNotShared\\(`));
   });
   it('and the last read and the board both take out every label', () => {
-    expect(REPORTS).toMatch(/return withoutInternalLabelsIn\(withoutHiddenTargetsIn\(/);
-    expect(BOARD).toMatch(/withoutInternalLabelsIn\(withoutHiddenTargetsIn\(withoutPrivateFileNamesIn\(out/);
+    expect(REPORTS).toMatch(/return withoutHiddenTargetsIn\(withoutPrivateFileNamesIn\(withoutInternalLabelsIn\(served, called\)/);
+    expect(BOARD).toMatch(/withoutHiddenTargetsIn\(withoutPrivateFileNamesIn\(withoutInternalLabelsIn\(out, called\)/);
   });
 });

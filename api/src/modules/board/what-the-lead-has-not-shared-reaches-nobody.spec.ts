@@ -113,7 +113,8 @@ describe('and in the report', () => {
     const svc = Object.create(ReportsService.prototype) as any;
     svc.prisma = prismaFor(role);
     svc.isAnAdminOf = async () => role === 'ADMIN';
-    const built = { sharedPicture: SAID, findings: GROUND.report.findings, updatedAt: new Date('2026-09-23T15:02:00Z') };
+    /* And a line still in labels, as the session report's findings reach this read (live, 28 Sep 2026). */
+    const built = { sharedPicture: SAID, findings: GROUND.report.findings, stillInLabels: ['Participant A has four so far. A target of 5 sales appears in the record for Participant A.'], updatedAt: new Date('2026-09-23T15:02:00Z') };
     return svc.whatTheLeadHasNotShared('g-sales', userId, 'org-1', built);
   };
 
@@ -149,6 +150,11 @@ describe('the rule, on its own', () => {
     /* It errs on the side of hiding: a sentence naming Aisha with her target's number goes, even when
        the number counts something else. A fact lost from a line is better than a target shown. */
     expect(withoutHiddenTargets('Aisha visited five shops. Miriam is aiming for 3 sales.', hidden)).toBe('Miriam is aiming for 3 sales.');
+  });
+
+  it('and the sentence after one that names them, as read live', () => {
+    expect(withoutHiddenTargets('Aisha has four so far. A target of 5 sales appears in the plan.', hidden)).toBe('Aisha has four so far.');
+    expect(withoutHiddenTargets('The lead set no plans. The team has 5 open deals.', hidden)).toBe('The lead set no plans. The team has 5 open deals.');
   });
 
   it('shares nothing it should not when targets are shared with everybody, or with the lead', () => {

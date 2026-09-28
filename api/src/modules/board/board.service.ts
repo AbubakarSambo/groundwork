@@ -1408,7 +1408,8 @@ export class BoardService {
       }
       /* And no internal label reaches anyone, whichever section it sits in. See reports/no-internal-label-reaches-anyone. */
       const called = whatEachLabelIsCalled(ground.participants as any[], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsThisGround, peersAreNamed: !!peersVisible });
-      let walled = withoutInternalLabelsIn(withoutHiddenTargetsIn(withoutPrivateFileNamesIn(out, privateNames), hiddenTargets), called) as any;
+      /* Labels become names first, so the hidden-target read can find the person (see reports.service). */
+      let walled = withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(out, called), privateNames), hiddenTargets) as any;
       /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
       return walled;

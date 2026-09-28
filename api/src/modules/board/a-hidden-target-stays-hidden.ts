@@ -51,9 +51,18 @@ const sentencesOf = (text: string) => text.match(/[^.!?]+(?:[.!?]+|$)\s*/g) ?? [
 /** The text with every sentence that gives a hidden target taken out. */
 export function withoutHiddenTargets(text: string, hidden: readonly AHiddenTarget[], opts: { aboutOnly?: AHiddenTarget } = {}): string {
   if (!text || (!hidden.length && !opts.aboutOnly)) return text;
-  const kept = sentencesOf(text).filter((s) => {
+  const sentences = sentencesOf(text);
+  const names = (h: AHiddenTarget, s: string) => h.names.some((name) => name && new RegExp(`\\b${escape(name)}\\b`, 'i').test(s));
+  /*
+   * THE SENTENCE, OR THE ONE JUST BEFORE IT. Read live, 28 Sep 2026: "Kwame Mensah has three so far.
+   * ... A target of 17 approved facilities appears in..." - the number's own sentence did not name
+   * him; the one before did. A sentence two away is left: "Bisi reports the team has 11 approved
+   * facilities" is the team's own count, whoever else carries eleven.
+   */
+  const kept = sentences.filter((s, i) => {
     if (opts.aboutOnly && givesTheNumber(s, opts.aboutOnly.target)) return false;
-    return !hidden.some((h) => givesTheNumber(s, h.target) && h.names.some((name) => name && new RegExp(`\\b${escape(name)}\\b`, 'i').test(s)));
+    const before = i > 0 ? sentences[i - 1] : '';
+    return !hidden.some((h) => givesTheNumber(s, h.target) && (names(h, s) || names(h, before)));
   });
   return kept.join('').replace(/\s{2,}/g, ' ').trim();
 }
