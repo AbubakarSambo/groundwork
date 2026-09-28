@@ -47,5 +47,5 @@ export function askForProofKindly(claim: string | null): string {
   if (!claim) return '';
   return `AND ONE THING THEY SAID IS DONE, WITH NOTHING THAT SHOWS IT YET:
 "${claim}"
-Once in this check-in, in this turn or the next, ask kindly for the smallest thing that would show it, and say what it is for. For example: "A photo of the signed order is enough. Then it counts as proven." Or: "If you can forward the approval email, it goes on the record as confirmed." Never sound as if you doubt them. If they cannot, that is an answer: take it and do not ask again.`;
+Ask kindly for the smallest thing that would show it, and say what it is for. Ask once in this check-in, in this turn or the next. For example: "A photo of the signed order is enough. Then it counts as proven." Or: "If you can forward the approval email, it goes on the record as confirmed." Never sound as if you doubt them. If they cannot, that is an answer: take it and do not ask again.`;
 }

@@ -2693,17 +2693,33 @@ export class ConversationService {
     let raw = '';
     let emitted = 0;
     let cleanShown = '';
-    for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
-      raw += delta;
-      const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
-      if (safeUpTo > emitted) {
-        const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
-        const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
-        if (fresh) cleanShown = cleanedSoFar;
-        emitted = safeUpTo;
-        const clean = fresh ? gate.push(fresh) : '';
-        if (clean) show(clean);
+    try {
+      for await (const delta of this.anthropic.respondStream(fullSystem, history)) {
+        raw += delta;
+        const safeUpTo = Math.max(0, raw.length - SESSION_CLOSE_MARKER.length);
+        if (safeUpTo > emitted) {
+          const cleanedSoFar = forHumans(raw.slice(0, safeUpTo));
+          const fresh = whatIsNewSince(cleanShown, cleanedSoFar);
+          if (fresh) cleanShown = cleanedSoFar;
+          emitted = safeUpTo;
+          const clean = fresh ? gate.push(fresh) : '';
+          if (clean) show(clean);
+        }
       }
+    } catch (err: any) {
+      /*
+       * A STREAM THAT FAILS IS ASKED FOR AGAIN THE WAY THE PLAIN ROUTE ASKS. Run-15, 28 September
+       * 2026, the first full run on the streamed route: eight check-ins stopped on "The reply could
+       * not be finished", because the stream did not open within 20 seconds, the fetch failed, or the
+       * model was busy (429). respond() retries on exactly those; respondStream() did not. So the
+       * draft falls back to respond(), shown whole rather than in pieces, and `done` carries it as
+       * always. Only if that fails too does the person see the error.
+       */
+      this.logger.warn(`Check-in ${checkIn.id}: the stream failed (${err?.message ?? err}); asking the plain way.`);
+      raw = await this.anthropic.respond(fullSystem, history);
+      const whole = forHumans(raw);
+      const fresh = whatIsNewSince(cleanShown, whole);
+      if (fresh) { cleanShown = whole; const clean = gate.push(fresh); if (clean) show(clean); }
     }
     const cleanedWhole = forHumans(raw);
     const withheld = whatIsNewSince(cleanShown, cleanedWhole);

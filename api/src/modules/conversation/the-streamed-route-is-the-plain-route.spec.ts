@@ -72,3 +72,30 @@ describe('the streamed route is the plain route', () => {
     expect(shown.join('')).toBe('What moved this week?');
   });
 });
+
+describe('a stream that fails is asked for again the plain way', () => {
+  it('falls back to respond(), with its retries, and shows the reply whole', async () => {
+    const svc = Object.create(ConversationService.prototype) as any;
+    svc.logger = { warn: () => undefined };
+    svc.anthropic = {
+      respondStream: async function* () { throw new Error('Gemini respondStream() did not open after 20s'); },
+      respond: async () => 'What moved this week?',
+    };
+    svc._knownForThisTurn = new Map(); svc._theirEarlierWordsForThisTurn = new Map();
+    const shown: string[] = [];
+    const raw = await svc.streamTheDraft({ id: 'c-1' }, 'system', [], [], 'hi', (t: string) => shown.push(t));
+    expect(raw).toBe('What moved this week?');
+    expect(shown.join('')).toBe('What moved this week?');
+  });
+
+  it('and only if that fails too does the person see the error', async () => {
+    const svc = Object.create(ConversationService.prototype) as any;
+    svc.logger = { warn: () => undefined };
+    svc.anthropic = {
+      respondStream: async function* () { throw new Error('fetch failed'); },
+      respond: async () => { throw new Error('busy'); },
+    };
+    svc._knownForThisTurn = new Map(); svc._theirEarlierWordsForThisTurn = new Map();
+    await expect(svc.streamTheDraft({ id: 'c-1' }, 'system', [], [], 'hi', () => undefined)).rejects.toThrow('busy');
+  });
+});
