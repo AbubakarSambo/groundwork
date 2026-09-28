@@ -48,7 +48,10 @@ describe('my record', () => {
   it('puts how checkable a session was on that session', () => {
     expect(REPORT_TAB).toContain('specificityBySession')
     expect(PHRASE).toContain('specific enough to check')
-    expect(PHRASE).toContain('little in it that can be checked')
+    /* U.9 review fix 13: the phrase is now its own full sentence ("There was little in what you
+       said that can be checked."), not a " · phrase" suffix - so it says "what you said", not
+       "it". */
+    expect(PHRASE).toContain('little in what you said that can be checked')
   })
 
   it('says nothing rather than guessing for a session that has not been read', () => {
