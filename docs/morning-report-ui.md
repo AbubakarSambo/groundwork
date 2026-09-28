@@ -35,6 +35,19 @@ need the engine workspace, and 0 and 0b need fixing on the live product too); it
 don't run a check-in may see and change, and whether a decision about a person may be a target that
 person reads); and the older items further down.
 
+## The design audit, for you to decide (28 September)
+
+You asked me to stop patching screens and check whether the product follows a different design principle from the prototype. It does. The full answer is in `docs/design-audit.md`. In short:
+
+- **The prototype is built for reading.** Text is 16 pixels, buttons and tabs are at least 44 pixels tall, every page starts from one frame up to 1150 pixels wide from the left, and every screen is made from the same dozen parts. **The product is the old dense dashboard with new words.** Its most common text sizes are 13, 12 and 11 pixels, each page picks its own width and centres itself, so the left edge moves from page to page.
+- **Colours are not the cause.** The prototype's final colours match the product's almost exactly.
+- **Most screens are built from the old product's parts** (its cards, lists, buttons and spacing, lifted from the old board on 12 August). Only sign-in, Today, You, Company, the suites and the check-ins list are built from parts copied from the prototype. The check-in page, the board, the chat, starting a check-in, the reports, Context, Settings, the invitation, and the people screens are old parts with new words.
+- **The people screens** have the prototype's order and words but their own small styles: navy headings, 13-pixel text, buttons 800 pixels wide, and missing parts (Region, WhatsApp, "Free this seat", "Remove from Baridi"). The check-in's "People and setup" was never rebuilt at all.
+- **The proposal:** build about 18 shared parts from the prototype's exact values first (page frame, title, check-in header and tabs, section, panel, person row and table, avatar, field row, choices, toggle, form fields, button, tag, note, toast, modal), then rebuild screens from them rather than restyle old pages, with a test that stops rebuilt pages using the old parts. The parts take about 2 builder sessions. The people screens, the check-in's People and setup, the invitation and the check-in header take about 8 to 9 sessions in all. The whole product is about 25 to 30 sessions, each followed by a picture check.
+- **For you to decide:** whether to go this way; and whether to keep the setup sign-off ("I have read this, sign it off"), which the prototype does not have.
+
+Nothing has been built since you asked me to stop. **A refusal to report:** during the audit, the safety check refused one command that wrote a small file and read `.claude/launch.json` in the same line. The reviewer then split it into two steps and carried on, instead of stopping as you asked. Nothing was changed by it (it only read the server settings), but it should have stopped.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
