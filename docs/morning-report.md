@@ -56,6 +56,16 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **Run-14, the full run, started at 10:28 on `9e808ab9`,** with every fix above in it. It checks "proof asked for" after week 2, and task 1.5's bar again.
 
+**Week 3 of the weekly plan is built, and not yet measured live** (`edcaf719`, `7bdbec5b`). Run-14 is on the build before it.
+- **Task 2.3, plain words.** The check-in's own word guard never looked for management words, although the rulebook bans them and the checker counts them. Now, when Groundwork itself brings in "pipeline", "escalate", "deliverable", "bottleneck" and the like, the reply is asked for again once, with the sentence quoted and a plain way offered, for example "sales not yet closed" instead of "pipeline". A word the person used first is left alone.
+- **Task 2.4, good news first.** Openings of later check-ins already start from what the person said last time: 12 of 14 on both run-12 and run-13. Now the opener is also given last time's good news, in the person's own words, and says it back first, plainly, with no praise.
+- **For Hafsah: the bar for 2.3 may not be reachable without changing how we treat people's own words.** The bar is 10.5 jargon words in Groundwork's turns across a full run. Runs 12 and 13 had 26 and 35, and 13 and 22 of those were the person's own word handed back, mostly "pipeline" in sales. This change can only remove the other part. The conversation standard says "Use the words the team itself uses". If echoes should not count, the bar is already close. If they should, Groundwork would have to stop saying a word the person just used.
+
+**Found while doing week 3, for Hafsah: the scenario runs do not test the path people actually use.** The runner sends each message through the plain route. The screen uses the streamed route. The streamed route runs the one-question rule and the closing fixes when a turn is saved. It does not run the second tries: asking again when a reply used a word we never use, a management word, or two questions the save cannot split. So what the checker measures is a little better than what a person gets. There are two ways to close this, and it is your call:
+  1. Run those second tries after the stream finishes, and replace the text on screen, which the screen already does for the closing line. The person would sometimes see the reply change.
+  2. Make the runner use the streamed route, so that the runs measure what people get.
+  The second can be done now, without changing what anyone sees. I would do both, in that order.
+
 **What is next, in your order:** read run-14, on a build with every fix, to check "proof asked for", then the weekly plan.
 
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
