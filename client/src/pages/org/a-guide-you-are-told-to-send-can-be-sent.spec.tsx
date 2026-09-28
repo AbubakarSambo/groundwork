@@ -33,7 +33,14 @@ describe('the lead guide', () => {
   it('is linked from the check-in screen before the first session, not only from the admin roster', () => {
     expect(MEMBERS).toContain("navigate('/org/guide')")
     expect(ADMIN).toContain("navigate('/org/guide')")
-    /* The link is for the moment before the first session; after that the page is a reference, not a briefing. */
-    expect(ADMIN).toMatch(/sessionsDone === 0 && <TextAction onClick=\{\(\) => navigate\('\/org\/guide'\)\}/)
+    /*
+     * The link is for the moment before the first session; after that the page is a reference, not
+     * a briefing. U.10 PICTURE-CHECK ROUND 7, ITEM 3: the header's "pieces side by side" became one
+     * plain-sentence paragraph, and the "How to run one" link now sits inside a fragment after that
+     * sentence rather than directly after the `sessionsDone === 0` gate - the gate itself, and the
+     * `!ended` addition (no guide link once the check-in has finished), are unchanged in spirit.
+     */
+    expect(ADMIN).toMatch(/sessionsDone === 0 && !ended && \(/)
+    expect(ADMIN).toMatch(/<TextAction onClick=\{\(\) => navigate\('\/org\/guide'\)\}/)
   })
 })

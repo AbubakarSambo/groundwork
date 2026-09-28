@@ -104,8 +104,20 @@ describe('one report, not two', () => {
     expect(REPORT).toMatch(/if \(embedded\) return/)
   })
 
-  /** The header's read and the report's own headline were the same sentence, on one screen. */
-  it('the header stops repeating the report headline on that tab', () => {
-    expect(ADMIN).toMatch(/\{tab !== 'report' && \(/)
+  /**
+   * The header's read and the report's own headline were the same sentence, on one screen.
+   *
+   * U.10 PICTURE-CHECK ROUND 7, ITEM 3: THE HEADER'S OWN COPY OF THE HEADLINE IS GONE ENTIRELY,
+   * NOT JUST HIDDEN ON THE REPORT TAB. `{tab !== 'report' && (alignRead ? ...)}` was the corner
+   * that repeated the report's headline ("2 agreed, nothing still open") everywhere except the one
+   * tab where the report itself already said it. Hafsah's instruction dropped that corner outright
+   * - a clipped fragment, not a sentence - rather than keep the per-tab gate around it. The rule
+   * this test protects (the header must not repeat the report's own headline) is not weaker for
+   * that: there is no headline left in the header on ANY tab now, which is a stronger form of the
+   * same rule, not a smaller one.
+   */
+  it('the header stops repeating the report headline anywhere, not only on that tab', () => {
+    expect(ADMIN).not.toContain('alignRead')
+    expect(ADMIN).not.toMatch(/agreed,.*still open/)
   })
 })

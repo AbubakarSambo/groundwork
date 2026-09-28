@@ -25,7 +25,6 @@ import { personLabel as onePersonsLabel, peopleLabels, atTheStart } from '@/lib/
 import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
 import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { buildSessionRows } from '@/lib/session-rows'
-import { alignmentLabel } from '@/lib/alignment'
 import { reportsApi } from '@/api/reports'
 import { conversationApi } from '@/api/conversation'
 import { participantRequestsApi } from '@/api/participantRequests'
@@ -47,7 +46,7 @@ import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 import { billingApi } from '@/api/billing'
-import { scenarioLabel, SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
+import { SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
 import { whoIsInRound, countsInRound } from '@/lib/who-is-in-this-round'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
@@ -1081,9 +1080,6 @@ export function GroundAdminPage() {
   /* There is no lead page (10 Sep 2026): a ground is open from the moment it is made, and the person
      leading it goes straight to their check-in like everybody else. */
 
-  // The report's own read, or nothing at all. "{conf}/5 {band}" counted
-  // completed check-ins and called the result "Aligned".
-  const alignRead = alignmentLabel((ground as any).alignment)
   /* One source of attention for the header, computed once (fix plan C16): it decides which of three chips may speak. */
   const attention = railAttention(ground as any, user?.id)
 
@@ -1277,25 +1273,18 @@ export function GroundAdminPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
-      {/* Sticky header */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-bg)', borderBottom: '1px solid var(--gw-border)' }}>
-        {/*
-          U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SAME SHARED HEADER EVERY CHECK-IN PAGE NOW USES.
+      {/*
+        U.10 PICTURE-CHECK ROUND 7, ITEM 2: THE BOARD'S OWN HEADER PLACEMENT, EXACTLY.
 
-          "← Check-ins" and the bare 15px <h1> are gone - TheCheckInHeader's own breadcrumb
-          ("Check-ins / {title}") and 30px serif title replace them, with the tab bar (the same
-          `groundTabs()` output GroundTabRow always drew, unchanged in key or label - see
-          GroundParticipantPage.tsx for why the labels are kept rather than forced to the board's
-          prototype wording) now at the TOP of the header, matching the prototype's own shape
-          (board-as-lead.jpg: breadcrumb, title, cadence, buttons, then tabs, then everything else).
-
-          EVERYTHING BELOW THIS - the moment pill and admin note, the report-state corner, the
-          attention line, the "runs out"/"out of time" banners, the scenario/session/days row - is
-          kept exactly where it was, just now sitting under the header and its tabs instead of
-          above the header's own old tab row. None of it duplicates anything TheCheckInHeader
-          says (it has no session-progress figure of its own, no report state, no banners), so
-          nothing here was dropped for the new header to be added.
-        */}
+        A second picture check found the header still sitting `position: sticky` on its own
+        full-width beige band (var(--gw-bg)), flush against the sidebar - the shared header
+        component was in place (round 6, item I), but the WRAPPER around it was untouched, and
+        that wrapper is what actually draws the placement, margin, width and background a person
+        sees. The board wraps its header in `maxWidth: 1060, margin: '0 auto', padding: '20px 20px
+        0'` on the page's own cream; this now does the same - not sticky, not full width, not
+        beige, same left margin as the board's content column.
+      */}
+      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 0', width: '100%' }}>
         <TheCheckInHeader
           id={id!}
           title={ground.label}
@@ -1310,103 +1299,26 @@ export function GroundAdminPage() {
           ]}
           onSelectTab={(k) => goTab(FROM_TAB_KEY[k] ?? 'chat')}
         />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', padding: '10px 16px 12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                {/*
-                  "STARTING", ON A GROUND WITH TWELVE OF TWELVE SESSIONS DONE. W8-66.
+        {/*
+          U.10 PICTURE-CHECK ROUND 7, ITEM 3: ONE PLAIN LINE, NOT PIECES SIDE BY SIDE.
 
-                  This pill is the ground's MOMENT - what it was opened for - and the
-                  moment for a new hire is genuinely STARTING for the ground's whole life.
-                  But a small pill under the title, next to a green live dot, is where
-                  every product on earth puts a status, so it reads as one, and on a
-                  finished ground it reads as a lie.
+          "Everyone in it can see this, and you are an admin here, not its lead." is real signal
+          (which of the two views this is), kept as its own small sentence. The green "live" dot,
+          the old moment pill and its comments are gone with it - the moment pill was already
+          replaced by the scenario line below, and the dot duplicated what "ACTIVE" already says
+          nowhere a reader needed it twice.
 
-                  Same word, labelled, so it cannot be mistaken for the state of the
-                  ground. The state is the green dot beside it and the line under the
-                  title, which were both already right.
-                */}
-                {/* The moment pill ('Opened for: Starting') went: the scenario pill on the next line says what kind of check-in this is, and an enum is not a sentence. */}
-                {ground.status === 'ACTIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--gw-green-b)', display: 'inline-block' }} />}
-                {/*
-                  WHICH OF THE TWO VIEWS THIS IS, PERMANENTLY.
-                  
-                  One check-in has two pages - this one, which runs it, and the party page, which is
-                  somebody's own account - and a button moves between them. Neither said which it was,
-                  so anybody who crossed over had no way to tell why the screen had changed. It is a
-                  standing label rather than a one-time announcement, because the confusion recurs
-                  every time you come back.
-                */}
-                {/* Wraps. It was `nowrap` when the text was "running this check-in"; the longer
-                    label that replaced it pushed a 375px page out to 403 and made the whole report
-                    scroll sideways. Found by measuring the report on mobile, not by reading this. */}
-                {/*
-                  AND IT HAS TO BE TRUE OF WHOEVER IS READING IT.
-
-                  This page serves two people: the lead, who runs the check-in, and an admin of the
-                  organisation, who does not. It said "you are running this" to both - two inches
-                  above a banner that reads "You are looking at this as an admin, not as its lead".
-                  Seen on a real org's second admin: the header and the banner contradicting each
-                  other on the same screen.
-
-                  Both labels say the same thing about the view - it is everyone's state, not your
-                  own account - and differ only on the half that is about the reader.
-                */}
-                {/* 'Everyone in it - you are running this' went too: the rail, the card and 'Led by' already say it. The admin variant stays, because that one is news. */}
-                {!isInitiator && <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>Everyone in it can see this, and you are an admin here, not its lead.</span>}
-              </div>
-            </div>
-          </div>
-          {/*
-            THE DOOR IS GONE, BECAUSE THERE IS NOWHERE IT NEEDED TO GO.
-
-            This was "My check-ins", then "My own account", then "Just my own" - three names for a
-            button whose job was to send a lead to a second page that looked identical to this one,
-            because the things that were theirs lived only over there.
-
-            They are here now: My record holds their record and their private report, and Setup
-            holds their role and standing. A lead has no reason to leave, so the button that took
-            them away is the last thing to remove rather than the next thing to rename.
-
-            `/grounds/:id/p` is untouched and still serves a participant, who is sent there by
-            `GroundPage`. What is gone is the SECOND door for somebody who was already on their own
-            page - the thing that made two views of one check-in impossible to tell apart.
-          */}
-          {/*
-            THE BOARD KEEPS ITS PAGE. WHAT IT LOSES IS ITS SECOND DOOR. W-UX-3.
-            
-            "Team board" was a pill up here AND a tab in the bar below, both going to the same
-            place on the same screen. The audit counted the board as existing twice; it does not -
-            it exists once with two entrances, which is worse, because a person who tries one and
-            then the other cannot tell whether they have seen everything.
-            
-            The tab bar is the entrance, for the board and for every other part of a check-in. The
-            board itself is untouched.
-          */}
-          {/*
-            NOT ON THE TAB THAT ALREADY SAYS IT.
-            
-            "All 2 areas still open" was printed here AND as the report's own headline, and once the
-            report moved into the tab they appeared on one screen, six centimetres apart. The report
-            saying what it holds is the report doing its job; a header repeating it is a second copy
-            of one fact, and a reader who spots both has to work out whether they mean the same thing.
-            
-            It stays on every other tab, where the report is not on screen to say it.
-          */}
-          {tab !== 'report' && (
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              {/* ONE STATUS, NOT THREE. "No report yet" printed beside "report being written" (the same fact from two
-                  computations) and beside "Your turn". The attention line has precedence; the report state speaks next;
-                  this fallback only when neither has anything to say. */}
-              {alignRead
-                ? <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', maxWidth: 160, lineHeight: 1.35 }}>{alignRead}</div>
-                : (reportState === 'no report yet' && attention.kind === 'none')
-                  ? <div style={{ fontSize: 11, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>No report yet</div>
-                  : null}
-            </div>
-          )}
-        </div>
+          THE "2 agreed, nothing still open" CORNER IS GONE. It was a clipped fragment (no subject,
+          no verb) sitting opposite the title, and duplicated the report's own headline the moment
+          the report tab existed - the same reasoning that already dropped it while `report` was
+          the active tab. Dropped everywhere now, per the instruction, rather than turned into a
+          sentence this pass cannot verify is true.
+        */}
+        {!isInitiator && (
+          <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '10px 16px 0' }}>
+            Everyone in it can see this, and you are an admin here, not its lead.
+          </p>
+        )}
 
         {/* Sessions are per-participant-per-session, so count DISTINCT session
             numbers, not check-in rows. */}
@@ -1499,80 +1411,57 @@ export function GroundAdminPage() {
             )}
           </div>
         )}
-        <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
-          {ground.scenario && (
-            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub-d)' }}>
-              {scenarioLabel(ground.scenario, (ground as any).brief)}
-            </span>
-          )}
-          {ground.resolutionState && (
-            <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-blue-bg)', color: 'var(--gw-navy)' }}>{ground.resolutionState}</span>
-          )}
-          {/* PROGRESS IS COUNTED IN SESSIONS, NOT DAYS.
-              A ground eight sessions into twelve read "90 days remaining",
-              which is arithmetically true - the calendar really had not moved -
-              and useless, because the work is measured in check-ins. Sessions
-              lead; the calendar follows in the quieter line, and only while it
-              still has something to say. */}
-          {/* WHAT ENDED IT COMES FIRST, and the session clock stops. See lib/a-ground-that-has-ended. */}
-          {ended ? (
-            /* Green says "this went well", which is the wrong thing to say about a check-in that
-               ran out of time with people still to answer. */
-            <span style={{ fontWeight: 700, color: hasStalled(ground.status) ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>{ended}</span>
-          ) : allSessionsDone ? (
-            <span>every session done</span>
-          ) : (
-            <>
-              {plannedSessions != null && (
-                <span style={{ fontWeight: 700 }}>Session {Math.min(sessionsDone + 1, plannedSessions)} of {plannedSessions}</span>
-              )}
+        {/*
+          U.10 PICTURE-CHECK ROUND 7, ITEM 3: ONE OR TWO PLAIN SENTENCES, LIKE THE BOARD'S.
+
+          "Set goals and keep the team on track | Session 1 of 12 | How to run one | Ends 13 Dec
+          2026 | 4 of 6 checked in for session 1" was five things joined by pipes and pills, not
+          sentences a person reads. This says the same facts (minus the scenario/resolution pills,
+          which the board's own header does not carry either) as one flowing paragraph - "Session 1
+          of 12. It ends on 13 December 2026. 4 of 6 people have checked in for session 1." - with
+          "How to run one" kept as its own link rather than a piece of the sentence.
+        */}
+        {(() => {
+          const parts: string[] = []
+          if (ended) {
+            parts.push(ended)
+          } else if (allSessionsDone) {
+            parts.push('Every session is done.')
+          } else {
+            /* PROGRESS IS COUNTED IN SESSIONS, NOT DAYS. A ground eight sessions into twelve read
+               "90 days remaining", which is arithmetically true and useless, because the work is
+               measured in check-ins, not the calendar. */
+            if (plannedSessions != null) parts.push(`Session ${Math.min(sessionsDone + 1, plannedSessions)} of ${plannedSessions}.`)
+            /* THE DAY IT ENDS, ON EVERY CHECK-IN THAT HAS ONE, unless the days-left sentence is about to say the same thing more urgently. */
+            if (ground.endsOn && !(ground.daysLeft != null && ground.daysLeft <= 3)) parts.push(`It ends on ${whenItWas(ground.endsOn, 'full')}.`)
+            if (ground.daysLeft != null && ground.daysLeft <= 3) parts.push(ground.daysLeft === 0 ? 'It is due today.' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remain.`)
+            /*
+              THE ROUND IS NAMED, BECAUSE THE TWO NUMBERS ON THIS SCREEN COUNT DIFFERENT THINGS.
+              This counts the OPEN round; the report panel counts the one that just closed. Naming
+              the session it counts costs three words and removes the question. SESSION, NOT ROUND:
+              "session" appears in 159 visible strings and "round" in 25.
+            */
+            if ((ground.participants ?? []).length > 0) {
+              const total = whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length
+              parts.push(`${roundDone} of ${total} people have checked in for session ${openRound}.`)
+            }
+            if (roundWentBack) parts.push(`It went back to session ${openRound}, because somebody new was added. Nothing anybody wrote is lost.`)
+          }
+          /* Report state only while there is something to say about it. */
+          if (reportState !== 'report sent to everyone' && reportState !== 'no report yet') {
+            parts.push(`${reportState.charAt(0).toUpperCase()}${reportState.slice(1)}.`)
+          }
+          if (!parts.length && sessionsDone !== 0) return null
+          return (
+            <p style={{ fontSize: 13.5, color: ended && hasStalled(ground.status) ? 'var(--gw-amber-t)' : ended ? 'var(--gw-green-t)' : 'var(--gw-sub)', lineHeight: 1.55, margin: '8px 16px 0' }}>
+              {parts.join(' ')}
               {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
-              {sessionsDone === 0 && <TextAction onClick={() => navigate('/org/guide')} size={12}>How to run one</TextAction>}
-              {/* THE DAY IT ENDS, ON EVERY CHECK-IN THAT HAS ONE. Hafsah, 22 Sep 2026: the one set up from the
-                  entry chat "still doesn't have an end date". This line spoke up only in the last three days. */}
-              {ground.endsOn && !(ground.daysLeft != null && ground.daysLeft <= 3) && (
-                <span>Ends {whenItWas(ground.endsOn, 'day')}</span>
+              {sessionsDone === 0 && !ended && (
+                <>{parts.length ? ' ' : ''}<TextAction onClick={() => navigate('/org/guide')} size={13}>How to run one</TextAction></>
               )}
-              {ground.daysLeft != null && ground.daysLeft <= 3 ? (
-                <span style={{ fontWeight: 700, color: 'var(--gw-red-t)' }}>{ground.daysLeft === 0 ? 'Due today' : `${ground.daysLeft} day${ground.daysLeft === 1 ? '' : 's'} remaining`}</span>
-              ) : null}
-              {/*
-                THE STATE, IN THE PLACE THAT ALREADY HOLDS THE STATE. Overview's stat row moved here.
-                
-                Three numbers do not need a page. They needed to stop contradicting the header they
-                sat under - "SESSIONS 1 of 6" and "THIS ROUND 0 of 1" beneath a header reading
-                "Session 2 of 6" are all correct and read as three contradictions. On one line, in one
-                order, with the session named once, there is nothing left to reconcile.
-              */}
-              {(ground.participants ?? []).length > 0 && (
-                <span style={{ color: 'var(--gw-sub)' }}>
-                  {/*
-                    * THE ROUND IS NAMED, BECAUSE THE TWO NUMBERS ON THIS SCREEN COUNT DIFFERENT THINGS.
-                    *
-                    * This counts the OPEN round. The report panel below counts the one that just closed.
-                    * Both are right, and together they read as a contradiction: "0 of 2 checked in" above
-                    * "2 of 2 have checked in for this round", which is enough to make somebody doubt the
-                    * record. Naming the session it counts costs three words and removes the question.
-                    *
-                    * SESSION, NOT ROUND. The first version of this said "Round 2 · 0 of 2 checked
-                    * in", which introduced a third word for a thing that already had two. Her call,
-                    * and the codebase agreed before she made it: "session" appears in 159 visible
-                    * strings and "round" in 25. One word, and it is session.
-                    */}
-                  {roundDone} of {whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length} checked in for session {openRound}
-                </span>
-              )}
-              {roundWentBack && (
-                <span style={{ color: 'var(--gw-muted)' }}>
-                  Back to session {openRound}, because somebody new was added. A session stays open
-                  until everybody has done it, and nothing anybody wrote is lost.
-                </span>
-              )}
-            </>
-          )}
-          {/* Report state only while there is something to say about it; 'report sent to everyone' beside 'Session 3 of 6' was a fourth fact for no reader. */}
-          {reportState !== 'report sent to everyone' && reportState !== 'no report yet' && <span style={{ color: 'var(--gw-sub)' }}>{reportState}</span>}
-        </div>
+            </p>
+          )
+        })()}
 
         {/*
           U.10 PICTURE-CHECK ROUND 6, ITEM I: THE TAB ROW MOVED TO THE TOP OF THE HEADER.

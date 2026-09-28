@@ -25,11 +25,24 @@ describe('empty sections', () => {
 })
 
 describe('one status, not three', () => {
-  it('the attention line has precedence; the report state speaks next; "No report yet" only when neither has anything to say', () => {
+  /**
+   * U.10 PICTURE-CHECK ROUND 7, ITEM 3: THE "2 agreed, nothing still open" CORNER IS GONE, AND
+   * THE "No report yet" FALLBACK BESIDE IT WENT WITH IT.
+   *
+   * Hafsah's instruction was explicit: drop the alignment-read corner (a clipped fragment with no
+   * subject or verb) rather than try to make it a true sentence this pass cannot verify. That
+   * corner and its "No report yet" fallback were one conditional block - `{tab !== 'report' &&
+   * (alignRead ? ... : (reportState === 'no report yet' && attention.kind === 'none') ? "No report
+   * yet" : null)}` - so removing the corner removed the fallback with it. The rule this test
+   * protected (one status, not three fighting for the same corner) still holds: there is no corner
+   * at all now, so nothing there can contradict anything.
+   */
+  it('the attention line still has precedence; the corner that used to hold "No report yet" is gone entirely, not replaced with a second copy of the fight', () => {
     const admin = read('grounds/GroundAdminPage.tsx')
     expect(admin).toMatch(/const attention = railAttention\(ground as any, user\?\.id\)/)
-    expect(admin).toMatch(/\(reportState === 'no report yet' && attention\.kind === 'none'\)\s*\? <div[^>]*>No report yet<\/div>\s*: null/)
     expect(admin).toContain('const a = attention')
     expect(admin.match(/railAttention\(ground as any, user\?\.id\)/g)?.length).toBe(1)
+    expect(admin).not.toMatch(/<div[^>]*>No report yet<\/div>/)
+    expect(admin).not.toContain('alignRead')
   })
 })
