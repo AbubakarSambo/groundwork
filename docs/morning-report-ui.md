@@ -5429,6 +5429,59 @@ none of them changed. **Not ticked,** until its review.
 - **U.6 passed its seventh review on 27 September and is ticked.** The lead's first check-in card still waits for you (item 17).
 - **For you to know, not changed:** a note the lead types on the check-in's page ("Add a note to send with your link") goes into the invitation email. That is intended: she chose to send it to that person.
 
+### Rebuilt from the parts: the invitation
+
+Design-audit.md, section 3, said the invitation was still built from the old parts: the old header
+band, the old buttons, a page-only tan note class. This round rebuilt it, and the three pages it
+hands over to when somebody cannot answer today, from `components/gw/ui` only, the way the People
+page and the others still waiting will be.
+
+- **The invitation itself** (`client/src/pages/invite/InvitePage.tsx`, join-invite.jpg) now opens
+  with `Page narrow` and the small `Mark` - a wordmark that goes home, the way every Groundwork
+  mark does - in place of the old `Arrival`/`gw-hdr` chrome. The heading is `PageTitle`, in
+  Literata, as the prototype has it. The privacy line ("The people in this check-in, including your
+  manager, can see what you say in it…") sits in a new `Callout`, the tinted box the prototype's own
+  code injects above this heading, built from the prototype's own colour rather than the old
+  page-only `gw-invite-note` class. "What it asks" and "Who sees your answers" sit in a `Panel` with
+  `Section`s, and the button is the standard big `Button`.
+- **"What happens to what you write"** was a folding `<details>` panel; the prototype has no folding
+  panel anywhere on this screen, so it is now a plain section, always there to read rather than
+  hidden behind a click. The four claims are exactly the ones already agreed (unchanged words), just
+  no longer collapsed away.
+- **The first/last name fields** stay - the check-in still needs a name to put on the shared report,
+  and the prototype's own invite screen does not show this step at all (it goes straight from the
+  privacy panel to the button), so there is no prototype pattern to match here. They are now the
+  shared `FieldLabel`/`TextField`, 48px, 16px text, matching the sign-in fields.
+- **"You've already joined" and "held for a seat"** have no prototype screen of their own, so each
+  is now the nearest prototype pattern - the small mark, a short `PageTitle` heading, one sentence
+  under it - with the old white header bar, the "GROUNDWORK" wordmark, the 👋 emoji and the "→"
+  arrows on the buttons all gone, as asked.
+- **"Almost in"** (`client/src/pages/join/WaitingForAnAdminPage.tsx`, join-waiting.jpg) is the same
+  rebuild, plus a new shared part, `Steps`/`Step` (`components/gw/ui/Steps.tsx`), for the ticked
+  list of what has and has not happened yet - the old page-only `gw-steps` class is gone.
+- **"An expired link"** (`client/src/pages/invite/InvitationExpired.tsx`, join-expired.txt) and
+  **"Out of time"** (`client/src/pages/grounds/OutOfTime.tsx`, join-outoftime.txt) are the same
+  rebuild. Out of time's amber tag now sits above the heading, where the picture has it - it used to
+  sit under the sentence.
+- **A new shared part, `Mark`** (`components/gw/ui/Mark.tsx`): the three bars and "Groundwork",
+  with an optional short caption above it, taken word for word from each prototype screen
+  (join-waiting.txt: "Waiting for an admin", join-outoftime.txt: "Out of time", join-expired.txt:
+  "An expired link", join-invite.txt: "The invitation"). Also new: `Callout` and `Note`'s `tone`
+  (`components/gw/ui/NoteEmpty.tsx`) for an inline error line. All three have their own tests.
+- **Every privacy rule is unchanged.** The two sentences "Nobody else reads your answers." and
+  "Wairimu reads the report, not your words." are still held back, exactly as the page's own comment
+  says, while you decide. The invitation still carries nothing of the lead's private words about the
+  person (`no-invitation-carries-the-leads-words.spec.ts` and friends pass unchanged). What the
+  server sends is untouched - only how the client draws it.
+- **Tests changed, each with its reason in the commit:** the guard test's "starts empty" assertion
+  now names the four rebuilt pages; three specs that pinned the *old* markup (`gw-arrival-plain
+  .gw-auth-brand`, `gw-invite-note`, `.gw-steps li`, the `<details>` element, the literal `<div
+  role="status">Loading invite…</div>`) now pin the same guarantee against the new markup; one spec
+  (`one-arrival.spec.ts`) now says which two routes still share `Arrival` and which one moved to the
+  new shell. No test of behaviour, wording the person reads, or privacy was weakened.
+- **DONE.** `npx tsc -b` is clean; every test in `components/gw/ui/`, `pages/invite/`, the two moved
+  pages, and every spec that reads these files by name, passes (190 tests, 20 files).
+
 ## Found on the way, for later tasks
 
 - **For U.8 (the check-in screens): fixed in the first review round.** The check-in page read "You · waiting" and "U6g · waiting", pieces joined with dots. Now full sentences ("You have not checked in yet."); see the U.8 first-review section above.
