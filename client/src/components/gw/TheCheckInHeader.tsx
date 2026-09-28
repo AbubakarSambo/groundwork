@@ -14,23 +14,27 @@ import type { GroundCadence } from '@/api/grounds'
  * / My work / People and setup / "Views ▾"). The board drew none of this - it had "← Back to the
  * check-in" above a dark navy card (rgb(10,22,40)) of its own invention.
  *
- * SCOPE OF THIS PASS. This component is built to be shared by every check-in page, and is wired
- * into the board now. GroundAdminPage.tsx and GroundParticipantPage.tsx are large, heavily-tested
- * pages with their own header and tab-row already (GroundTabRow.tsx, ground-tabs.ts) - carrying
- * this component to them too is real further work, and is left undone rather than rushed into files
- * this task does not own testing time for. See the morning report and docs/requests-to-engine.md
- * for what that would need.
+ * ROUND 6, ITEM I: NOW SHARED BY EVERY CHECK-IN PAGE, NOT ONLY THE BOARD.
+ * Two ways to drive the tab bar: pass nothing and get the board's own five Link-based tabs
+ * (unchanged from the first pass), or pass `tabs` (each `{key,label,to?}`) and `onSelectTab` -
+ * GroundAdminPage.tsx and GroundParticipantPage.tsx do this, because their tabs switch a local
+ * `tab` state and rewrite `?tab=` rather than navigating to a different route (`ground-tabs.ts`,
+ * `GroundTabRow.tsx`, which this replaces on both pages). An entry with its own `to` (only "Board",
+ * a genuinely different route) still renders as a real link even inside a callback-driven tab row.
  *
- * TAB MAP, prototype → product's existing routes:
- *   Board             → /grounds/:id/board (this page)
- *   Check-in          → /grounds/:id (opens on the chat tab, ground-tabs.ts FIRST_TAB)
- *   Context           → /grounds/:id?tab=context
- *   My work           → /grounds/:id?tab=sessions (whoever runs it) or ?tab=record (a party) -
- *                        the two tabs ground-tabs.ts split "Sessions" (everyone's state) and
- *                        "What I shared" (your own) into, kept as they are named there
- *   People and setup  → /grounds/:id?tab=settings (labelled "Setup" there; holds access and roles)
+ * TAB MAP, prototype → product's existing routes/tabs:
+ *   Board             → /grounds/:id/board (its own route)
+ *   Check-in          → the `chat` tab (ground-tabs.ts FIRST_TAB)
+ *   Context           → the `context`/`documents` tab
+ *   My work           → the `sessions` tab (whoever runs it) or `record` (a party) - the two tabs
+ *                        ground-tabs.ts already splits "everyone's state" from "your own" into
+ *   People and setup  → the `settings` tab (labelled "Setup" there; holds access and roles)
  *   Views ▾            → NOT BUILT. Nothing in the product answers "what does this menu offer" -
  *                        no alternate board views exist yet. Left out rather than a dead button.
+ *   (no prototype tab) → `report` ("Report") has no equivalent in the prototype's five tabs - the
+ *                        prototype folds a session list into the board itself, but this product's
+ *                        Report tab does more (the forming picture, every session, release). Kept
+ *                        reachable as a sixth tab rather than dropped.
  */
 export function TheCheckInHeader({
   id,
@@ -44,6 +48,8 @@ export function TheCheckInHeader({
   isAParty,
   active,
   trailing,
+  tabs: tabsOverride,
+  onSelectTab,
 }: {
   id: string
   title: string
@@ -55,7 +61,7 @@ export function TheCheckInHeader({
   endedSaying?: string | null
   canRunThisCheckIn: boolean
   isAParty: boolean
-  active: 'board' | 'chat' | 'context' | 'sessions' | 'record' | 'settings'
+  active: string
   /**
    * U.10 PICTURE-CHECK ROUND 6, ITEM A: drawn at the right of the tab row, in the same slot the
    * prototype's own "Views ▾" sits in (not built - nothing answers what it would offer). Used by
@@ -63,6 +69,14 @@ export function TheCheckInHeader({
    * anywhere else on the page.
    */
   trailing?: ReactNode
+  /**
+   * ROUND 6, ITEM I: an override for the board's own default five tabs. An entry with `to` is a
+   * real link (a different route - "Board" from a ground page, say); an entry with none calls
+   * `onSelectTab(key)` instead (a local `tab` state and a `?tab=` rewrite, the way GroundAdminPage
+   * and GroundParticipantPage already switch tabs).
+   */
+  tabs?: { key: string; label: string; to?: string }[]
+  onSelectTab?: (key: string) => void
 }) {
   const showAsk = useAskStore((s) => s.show)
 
@@ -84,7 +98,7 @@ export function TheCheckInHeader({
    * too, which agrees: kept unconditional here, matching that file rather than my first guess.
    */
   const myWorkTab = canRunThisCheckIn ? 'sessions' : 'record'
-  const tabs: { key: string; label: string; to: string }[] = [
+  const tabs: { key: string; label: string; to?: string }[] = tabsOverride ?? [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     { key: 'chat', label: 'Check-in', to: `/grounds/${id}` },
     { key: 'context', label: 'Context', to: `/grounds/${id}?tab=context` },
@@ -136,21 +150,30 @@ export function TheCheckInHeader({
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginTop: 18, borderBottom: '1px solid var(--gw-border)', overflowX: 'auto' }}
       >
         <div style={{ display: 'flex', gap: 20 }}>
-          {tabs.map((t) => (
-            <Link
-              key={t.key}
-              to={t.to}
-              aria-current={t.key === active ? 'page' : undefined}
-              style={{
-                padding: '0 0 10px', fontSize: 13.5, fontWeight: t.key === active ? 700 : 500,
-                color: t.key === active ? 'var(--gw-text)' : 'var(--gw-sub)', textDecoration: 'none',
-                borderBottom: t.key === active ? '2px solid var(--gw-navy)' : '2px solid transparent',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {t.label}
-            </Link>
-          ))}
+          {tabs.map((t) => {
+            const tabStyle: CSSProperties = {
+              padding: '0 0 10px', fontSize: 13.5, fontWeight: t.key === active ? 700 : 500,
+              color: t.key === active ? 'var(--gw-text)' : 'var(--gw-sub)', textDecoration: 'none',
+              borderBottom: t.key === active ? '2px solid var(--gw-navy)' : '2px solid transparent',
+              whiteSpace: 'nowrap', background: 'none', border: 'none', borderBottomWidth: 2, borderBottomStyle: 'solid',
+              cursor: 'pointer', fontFamily: 'inherit',
+            }
+            return t.to ? (
+              <Link key={t.key} to={t.to} aria-current={t.key === active ? 'page' : undefined} style={tabStyle}>
+                {t.label}
+              </Link>
+            ) : (
+              <button
+                key={t.key}
+                type="button"
+                aria-current={t.key === active ? 'page' : undefined}
+                onClick={() => onSelectTab?.(t.key)}
+                style={tabStyle}
+              >
+                {t.label}
+              </button>
+            )
+          })}
         </div>
         {trailing && <div style={{ paddingBottom: 8, flexShrink: 0 }}>{trailing}</div>}
       </nav>
