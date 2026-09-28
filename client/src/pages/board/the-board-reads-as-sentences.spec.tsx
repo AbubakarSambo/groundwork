@@ -119,4 +119,25 @@ describe('the board reads as sentences', () => {
     expect(await screen.findByText('Rukia Otieno’s opening brief said nine shops had signed.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/Rukia Otieno - Rukia Otieno/)
   })
+
+  /*
+   * U.10 RE-REVIEW ITEM B: "make it read rendered text and also flag textTransform uppercase in
+   * these components." The captions this round put a sentence right after them on one line ("WHY
+   * IT MATTERS If the delays...", "WHAT PEOPLE SAID The role...") no longer rely on CSS capitals
+   * for meaning - checked here by inline style, which is what these components actually set, rather
+   * than by scanning literal text content (which CSS text-transform never touches).
+   *
+   * Zone and Sec headings (kit.tsx) are NOT covered by this check: they are the one CSS-uppercase
+   * convention "every section heading in the product uses", applied consistently everywhere, not a
+   * board-specific bug - see the morning report and the commit for this round.
+   */
+  it('the fixed captions no longer set textTransform: uppercase', async () => {
+    renderBoard()
+    const whyItMatters = await screen.findByText('Why it matters')
+    const whatPeopleSaid = await screen.findByText('What people said')
+    const whichOfTheFour = await screen.findByText('Which of the four this is')
+    for (const el of [whyItMatters, whatPeopleSaid, whichOfTheFour]) {
+      expect(el.style.textTransform).not.toBe('uppercase')
+    }
+  })
 })
