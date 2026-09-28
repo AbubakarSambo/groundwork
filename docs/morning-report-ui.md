@@ -400,6 +400,30 @@ given their own.
 `reports.service.ts` is engine code this branch has not touched. Written up as request 51 to the
 engine workspace, URGENT.
 
+### 0f. Should a participant read the board's read on each colleague?
+
+**Found doing item 21.1, carried forward again by the U.10 review.** The product today shows a lead
+three sections the prototype's board never pictures: "Contribution against role", "Where work is
+landing" ("Where the leading is landing" carries this too), and "How the leading is landing". These
+are the board's own read on how each person's work is going, against their role - not something any
+prototype screen shows to anyone. This pass has kept them, lead-only, under plain headings below the
+prototype's own sections, and stopped "How the leading is landing" from drawing at all while
+patterns are off (it is a pattern claim, and a lead should not read "seen across 2 sessions" from
+one session).
+
+**The open question is who else should read them.** Today, if a participant is ever served
+`contribution` or `coverage` on the board (a family that includes those sections, and a viewer who
+is not the lead), the same read of them appears - a colleague's own read of how another colleague's
+work is landing, on a shared board. The prototype's own design answer, everywhere it shows a shared
+board, is: a participant sees their own part and the shared picture once it has been shared, never a
+read of a colleague framed against that colleague's role.
+
+**My recommendation is to follow the prototype:** serve `contribution` and `coverage` to the lead
+only, the way `eachPerson` already is, until a screen exists that is designed to show a participant
+this kind of read about somebody else (if one ever should). That is a change to what the board
+*serves*, which is shared ground with the engine workspace - not something to make unilaterally.
+Flagging it here rather than deciding it.
+
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
 **Fixed on 26 September** by the engine workspace, in the way suggested below (`theResendClient()` in
@@ -3704,6 +3728,73 @@ module serves the board, though no engine text was touched: opening the board ne
 anything now, and a lead is never shown the checkability rating. Because the board module is shared
 ground, I have told the engine workspace exactly what changed (request 12), so it can take them over.
 **Not ticked,** because no review can sign in (item 14).
+
+### U.10 The board, first review: what changed and what still needs you
+
+**28 September, one round of fixes against the first review's findings.** Each commit below is
+small, on its own, with the reason for any changed test in the commit itself.
+
+- **The switchboard's G2 table (item 1).** The prototype's 24 situations and 5 groups, and the
+  "Help someone get back on track" example row's Switched on, Optional and Off by design legend,
+  written as data in `client/src/pages/board/the-switchboard-g2-table.ts`, checked against
+  `docs/prototype/screens/B1-starting-a-check-in/switchboard.txt` by a test rather than by eye.
+  **Not done:** the full 24-by-30 grid, because `switchboard.jpg` at the resolution this session
+  could read it does not reliably show which square is filled, hollow or crossed - see the file's
+  own comment. Making the board actually draw each situation's own set of sections needs that grid,
+  plus a decision on how the backend's 16 `BoardSection` keys should grow to cover the prototype's
+  30 named sections (most of which - "Blocker check", "Evidence index", "Requirements review" and
+  the rest of the purple, scenario-specific columns - have no served data at all yet). That is
+  requests 63 and 65 and a larger piece of work than this round had room for; `PROTOTYPE_SECTION_TO_BOARD_SECTION`
+  in the same file lists which of the 30 names this pass could responsibly map today (8 of them)
+  and which cannot be, with the reason for each.
+- **"Nothing checkable" (item 2).** The pill now reads "Nothing checkable" as the prototype writes
+  it, and every reason's fixed phrase under the pill is gone in favour of the server's own `says`
+  sentence, now that the engine sends `nothing checkable` as its own reason again (decision "8,
+  changed back"). `reportsApi.release`'s type now matches what the route actually sends.
+- **The board header (item 3).** "A team working together / - to 13 Dec ·" happened because the
+  date helper stood in a bare dash for a missing start date, joined regardless with a middle dot.
+  It now builds a sentence from only the parts the board has: "Session 38 of 65. Runs until 30
+  September." with the prototype's cadence clause left out, since nothing serves it yet. `endsAt`
+  is the check-in's own scheduled end, not a target's deadline - the two can differ, and the header
+  is rightly about the check-in.
+- **The wrong reader (item 5).** `/report/rounds moved[].says`, written to whoever runs the
+  check-in, was shown to every reader of "How this has moved"; it is now shown only to whoever
+  runs the check-in, with request 66 asking the engine for a field that names a line's audience
+  properly.
+- **Admin's "Sessions this phase" (item 6).** "Faraji Odhiambo / Not started for 1 of 1, and not on
+  the other 1." now reads "Faraji Odhiambo has not started session 1." - a sentence built from the
+  same shape the grid already computes, with a new test (the component had none before).
+- **Board chrome wording (item 4), bounded.** Fixed: the "cross-referenced" jargon subtitle and
+  empty state, the "differs"/"agreed" pills that glued onto the sentence before them, the four
+  record-kind tags said as sentences, the "Why:" and "What people said:" colon labels, the coverage
+  panel's "ownership drop" and "coupled to..." jargon, and a name dash-joined to what they said. A
+  new guard spec, `the-board-reads-as-sentences.spec.tsx`, renders the board and fails on a middle
+  dot, a capitalised "Label: " opening, or three or more literal capital words in a row, so a
+  regression in any of these is caught without knowing which section it landed in. **Not chased
+  down:** "Everything above it - what the accounts agree on…", which this pass could not find in
+  the current code and may already be fixed or may be a different screen; and the head-count
+  consistency half of item 5 ("Four of the 6 people" / "4 of 5 answered this round" / "2 of 6 people
+  have not given their account" from one count) - the exact mismatch was not reproduced this round,
+  so it was not chased without a concrete instance to fix against.
+- **Item 10.** `managerAlignment` ("How the leading is landing") is now never drawn while patterns
+  are off, checking `sections.includes('patterns')` client-side (request 64 asks the engine to gate
+  the field itself, not only its drawing). `hiddenContributors` was already correctly gated on
+  having rows, in both the board and the report page - nothing to fix there.
+- **Outside U.10, found in passing:** the [DEV EMAIL] that told Faraji his report was ready before
+  he had ever checked in was a real bug in the reveal-reminder sweep (`grounds.cron.ts`), not the
+  engine's - fixed directly, with a test.
+- **Engine requests:** 46 updated, and 63 to 66 added (the hidden target number leaking to an admin,
+  managerAlignment served while patterns are off, a list of engine text found wrong on a live board
+  and report, and the says-audience field for "How this has moved").
+- **Needs Hafsah 0f, added near the top of that section:** whether a participant should ever read
+  the board's read on a colleague (contribution, coverage), with the recommendation to follow the
+  prototype and keep those lead-only until a screen is designed for showing them more widely.
+
+**Tests run:** only the tests for the files this round changed, by path, `--maxWorkers=2`, plus
+`npx tsc -b` (client) and `npx tsc --noEmit` (api). All passed. The full suite and the scenario run
+were not run this round, per the task's own instruction to run only the changed files' tests.
+**Still not ticked:** items 1 (the full switchboard grid) and parts of items 4 and 5 remain, and no
+review could sign in (item 14) to check any of this as a real person yet.
 
 ### U.11 Ending a check-in, the probation review, handover: built and tested, not yet reviewed
 
