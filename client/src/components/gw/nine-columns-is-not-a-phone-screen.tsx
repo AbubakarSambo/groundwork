@@ -76,7 +76,34 @@ export function theShapeOfIt(cells: Record<string, string>, sessions: (number | 
     /** How many of the run they were never on, for the one line that says so. */
     notOn: sessions.length - each.length,
     rest: each.filter((e) => e.state !== usual),
+    /** The one session number, when there is only one - so a single-session row can be said by name
+        ("session 1") rather than as a count of one. */
+    onlySession: each.length === 1 ? each[0].s : null,
   }
+}
+
+/**
+ * A SENTENCE A PERSON CAN FOLLOW, not "Not started for 1 of 1, and not on the other 1." (read on a
+ * live admin board about Faraji Odhiambo, who is on one session in this phase and has not started
+ * it - two numbers that are the same fact stated twice, and neither one named "session 1").
+ */
+const VERB_FOR: Record<Cell, string> = {
+  'done': 'has checked in for',
+  'in-progress': 'is partway through',
+  'declined': 'has declined',
+  'not-started': 'has not started',
+  'na': 'was not on',
+}
+
+export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOfIt>): string | null {
+  if (shape.of === 0) return `${name} is not on any of these sessions.`
+  if (!shape.usual) return shape.notOn > 0 ? `${name} is on ${shape.of} of these sessions.` : null
+  const verb = VERB_FOR[shape.usual]
+  const who = shape.onlySession != null
+    ? `${verb} session ${shape.onlySession}`
+    : `${verb} ${shape.howMany} of ${shape.of} sessions this phase`
+  const rest = shape.notOn > 0 ? `, and was not part of the other ${shape.notOn}` : ''
+  return `${name} ${who}${rest}.`
 }
 
 export function NineColumnsIsNotAPhoneScreen({ rows, sessions }: {
@@ -87,30 +114,23 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions }: {
     <div style={{ display: 'grid', gap: 16 }}>
       {rows.map((r) => {
         const shape = theShapeOfIt(r.cells, sessions)
+        const name = r.name ?? 'A colleague'
+        const sentence = theSentenceFor(name, shape)
         return (
           <div key={r.participantId} style={{ display: 'grid', gap: 7 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{r.name ?? 'A colleague'}</span>
+              <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 15 }}>{name}</span>
               {r.role && r.role !== r.name && (
                 <span data-leads-note style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{theLeadsNote(r.role)}</span>
               )}
               {!r.role && r.managingOnly && <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Managing only</span>}
             </div>
 
-            {shape.of === 0 ? (
-              <div style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-                Not on any of these rounds.
+            {sentence && (
+              <div style={{ fontSize: 14, color: shape.usual ? 'var(--gw-text)' : 'var(--gw-sub)', lineHeight: 1.5 }}>
+                {sentence}
               </div>
-            ) : shape.usual ? (
-              <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.5 }}>
-                {WHAT_A_CELL_MEANS[shape.usual]} for {shape.howMany} of {shape.of}
-                {shape.notOn > 0 ? `, and not on the other ${shape.notOn}` : ''}.
-              </div>
-            ) : shape.notOn > 0 ? (
-              <div style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-                On {shape.of} of these rounds.
-              </div>
-            ) : null}
+            )}
 
             {/* Every session the usual state does not cover, named rather than counted. */}
             {shape.rest.length > 0 && (
