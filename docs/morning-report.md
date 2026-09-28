@@ -146,7 +146,7 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 **Four more privacy requests from the screens workspace, for Hafsah:**
 - **Request 49: may someone held for a seat read a check-in's report?** Faraji joined through an open link while no seat was free. He is waiting for an admin to let him into the organisation. The check-in itself refuses him, but the report did not. Should he be refused until he is let in, or until he has answered himself?
 - **Request 57: may any admin release a report, or only the lead?** Today any admin of the organisation can. The screens tell other admins that "sharing the report and ending the check-in are Rukia's to decide".
-- Requests 51 and 52 break rules already written, so I am fixing them next: the session report was sent to a participant who had not answered, and one more rating field (`parties[].confidence`) reached other participants.
+- **Requests 51 and 52 are fixed** (`ef212298`), because they broke rules already written. Before the report is released, a session's report now waits until the participant has answered that session, as the main report does. And one more rating field (`parties[].confidence`) no longer reaches other participants.
 
 ## 28 SEPTEMBER, AFTERNOON: THE PER-PERSON RATINGS, FOR HAFSAH TO DECIDE
 
