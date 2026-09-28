@@ -375,6 +375,24 @@ still open. Written up as request 49, URGENT.
 **This is very likely in the live product too**, for the same reason 0c is: `reports.service.ts` is
 engine code this branch has not touched.
 
+### 0e. A session's own report gives an unanswered participant the team's findings, and a rating of the lead's own answers
+
+**Found by the U.9 review on 28 September.** `GET /grounds/:id/report/session/:n` (`sessionReport()`
+in `reports.service.ts`, around line 2700) has no version of `get()`'s "not until you have answered"
+rule. A participant who has not checked in for this session can still be given the team's synthesis
+for it (`whatEachPersonSaid[].finding`) and a rating of the lead's own answers
+(`confidence.saying`, which read "Nothing named so far could be checked by anyone else" on a real
+check-in). `GET /grounds/:id/report`, on the same check-in, correctly withholds both, with "You can
+read it as soon as you have given yours."
+
+**Who this reaches.** A participant who has not answered this particular session - which is exactly
+the person the rest of the product is careful never to show the team's picture to before they have
+given their own.
+
+**This is very likely in the live product too**, for the same reason 0c and 0d are:
+`reports.service.ts` is engine code this branch has not touched. Written up as request 51 to the
+engine workspace, URGENT.
+
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
 **Fixed on 26 September** by the engine workspace, in the way suggested below (`theResendClient()` in
@@ -1242,6 +1260,15 @@ engine answers. Until then, "When I end it" stays off the screen.
    "Start with Brian and Miriam." The way back from a session: "← Every session". Under a session's
    heading: "Everything about this session, on 23 September. Your report first, then the team’s
    report."
+9. **Should any admin be able to release a report, or only its lead?** Found on the fourth review:
+   `POST /grounds/:id/report/release` is guarded only by `@Roles(Role.ADMIN)`, and `release()` never
+   checks whether the caller is the check-in's own lead - so any admin of the organisation can
+   release a check-in's report even when they did not run it, while the lead's own Sessions tab
+   tells other admins "Sharing the report and ending the check-in are Rukia's to decide." That is a
+   product decision as much as a bug: should releasing stay the lead's alone, enforced on the
+   server, or should an organisation admin also be allowed to, perhaps with a warning that they are
+   not its lead? Written up as request 57 to the engine workspace either way, since the check is
+   missing regardless of which answer you give.
 
 ### 21. The board (U.10): what needs you
 
@@ -3468,6 +3495,39 @@ The other is a test in the engine workspace's own report module that still expec
 this" part, which the engine workspace itself asked us to remove. It is theirs to update (request 10).
 The only other failure is the engine's own comment guard (request 4). **Not ticked,** because no
 review can sign in (item 14).
+
+**U.9's first review, and what it found fixed, 28 September.** The review read the session report
+and the participant's Report tab as the lead, a participant and an admin, and found thirteen things
+wrong. All thirteen are fixed on this branch, in thirteen small commits.
+
+The session report no longer shows "Session 1 / Session 1 / Session 1" on one screen: the card's own
+title, which used to repeat the number a second time, is gone, since every page that draws this card
+already has its own "Session N" heading above it. Its "Last updated" line draws nothing, rather than
+a broken sentence with two blank spots in it, when the date it is given is not a real one - which is
+what the server sends today (engine request 53). The team's report line above it no longer claims
+"it updates as people check in" once it has actually closed; it now says the true thing, with the
+closed date through the shared date formatter. The lead's Sessions tab no longer tells a lead the
+report waits for everyone once it has already been shared early - it reads whether it has, and says
+which is true, as a sentence rather than two clauses joined with a dash. Two more of the same
+dash-joined sentences on that page are now full sentences, and so is the board's own "1 read
+differed" beside its date. "Start with You." now reads "Start with yourself." The session's own
+block labels no longer shout in capitals with a number in front of them ("01 THIS IS THE TOP OF IT"),
+and a person's own name under a quote is no longer styled the same way ("RUKIA OTIENO (YOU)") - the
+words underneath were already plain sentences; only the shouting is gone. Two sentences that used to
+join a label to its content with a colon ("Why it matters:", "What settles it:") are now a caption
+above its own sentence. The participant's Report tab reads "Your sessions" and each finished session
+as its own sentences, following the lead's "Every session" pattern, and no longer joins a count or a
+rating to the row with a dot; the share-confirmation list no longer shows an email address beside a
+person's name. The session report's own count now agrees with the check-in header's count when the
+two would otherwise disagree, and nothing on a screen this session owns ever shows an email address
+where a name belongs. And, outside U.9 but the same kind of thing: the session page's "What now?"
+actions no longer appear on the page that tells somebody the session is not theirs to open.
+
+Eight things found could not be fixed on this branch, because the words themselves are the engine's:
+requests 51 to 58 to the engine workspace, one URGENT (item 0e above: a session's own report gives an
+unanswered participant the team's findings and a rating of the lead's own answers - the same shape of
+privacy gap as 0c and 0d, in a different endpoint). One of the eight is a question rather than a bug:
+whether any admin may release a report, or only its lead (item 20.9 above).
 
 ### U.10 The board: built and tested, not yet reviewed
 
