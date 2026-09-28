@@ -34,9 +34,14 @@ describe('after a real invitation', () => {
     open()
     expect(await screen.findByText('You’re from outside Baridi Appliances, so an admin there has to let you in. We’ve asked Grace Achieng.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Almost in' })).toBeTruthy()
-    const steps = [...document.querySelectorAll('.gw-steps li')].map(li => li.textContent)
+    /* U.20 (the invitation's rebuild): the page now uses the shared `Steps`/`Step` part
+       (components/gw/ui), whose class is `gwui-steps` rather than the old page-only `gw-steps` -
+       the rows and their words are unchanged, only the markup they come from. */
+    const steps = [...document.querySelectorAll('.gwui-steps li')].map(li => li.textContent)
     expect(steps[0]).toBe('✓Done. You accepted the invitation')
-    expect(steps[1]).toMatch(/^✓Done\. Grace was asked, (yesterday|on \d+ \w+) at \d{2}:\d{2}$/)
+    /* U.20 seventh round (Hafsah's first review): the prototype's own way of writing a time
+       (join-waiting.txt: "yesterday at 4:12pm"), not the 24-hour clock. */
+    expect(steps[1]).toMatch(/^✓Done\. Grace was asked, (yesterday|on \d+ \w+) at \d{1,2}:\d{2}(am|pm)$/)
     expect(steps[2]).toBe('○Still to happen. Grace lets you in')
     expect(screen.getByText('We’ll email you the moment Grace does, and your first check-in will be waiting.')).toBeTruthy()
     expect(screen.getByText('You can remind Grace once a day. Wairimu can see you’re waiting too.')).toBeTruthy()
@@ -89,12 +94,15 @@ describe('after a link shared with many people', () => {
 })
 
 describe('when it was asked, in words', () => {
-  /* In the product's one date format (lib/a-date-reads-the-same-everywhere.ts), so 16:12, not 4:12pm. */
+  /* U.20 seventh round (Hafsah's first review): the prototype's own way of writing a time
+     (join-waiting.txt: "yesterday at 4:12pm"), read live as "yesterday at 22:21" - the 24-hour
+     clock, not the prototype's 12-hour one. Fixed with the same "hourOfDay" trick
+     what-the-end-of-a-check-in-can-say.ts's aTime() already uses. */
   it('today, yesterday, or a date', () => {
     const now = new Date(2026, 8, 26, 12, 0)
-    expect(whenItWasAsked(new Date(2026, 8, 26, 9, 5).toISOString(), now)).toBe('today at 09:05')
-    expect(whenItWasAsked(new Date(2026, 8, 25, 16, 12).toISOString(), now)).toBe('yesterday at 16:12')
-    expect(whenItWasAsked(new Date(2026, 8, 20, 16, 12).toISOString(), now)).toBe('on 20 September at 16:12')
+    expect(whenItWasAsked(new Date(2026, 8, 26, 9, 5).toISOString(), now)).toBe('today at 9:05am')
+    expect(whenItWasAsked(new Date(2026, 8, 25, 16, 12).toISOString(), now)).toBe('yesterday at 4:12pm')
+    expect(whenItWasAsked(new Date(2026, 8, 20, 16, 12).toISOString(), now)).toBe('on 20 September at 4:12pm')
   })
 })
 

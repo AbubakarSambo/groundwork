@@ -32,7 +32,7 @@ describe('an expired invitation', () => {
     open()
     expect(await screen.findByRole('heading', { name: 'This link has expired' })).toBeTruthy()
     expect(screen.getByText('Invitation links last 14 days. You don’t need a new invitation, just a fresh link.')).toBeTruthy()
-    expect(screen.getByLabelText('Email')).toBeTruthy()
+    expect(screen.getByLabelText('Your email')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Send me a fresh link' })).toBeTruthy()
     expect(screen.getByText('If this isn’t the address Wairimu invited, ask them to add the right one. We don’t show who invited an address we don’t recognise.')).toBeTruthy()
   })
@@ -41,7 +41,7 @@ describe('an expired invitation', () => {
     ;(participantsApi.preview as any).mockResolvedValue({ expired: true, leadFirstName: 'Wairimu' })
     ;(participantsApi.freshLink as any).mockResolvedValue({ says: 'If that is the address the invitation went to, a fresh link is on its way. Open it from your email.' })
     open()
-    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: ' Peter@Ouma-Agencies.test ' } })
+    fireEvent.change(await screen.findByLabelText('Your email'), { target: { value: ' Peter@Ouma-Agencies.test ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
     await waitFor(() => expect(participantsApi.freshLink).toHaveBeenCalledWith('tok', 'peter@ouma-agencies.test'))
     expect(await screen.findByText('If that is the address the invitation went to, a fresh link is on its way. Open it from your email.')).toBeTruthy()
@@ -50,7 +50,7 @@ describe('an expired invitation', () => {
   it('an address that does not look right is said, and nothing is sent', async () => {
     ;(participantsApi.preview as any).mockResolvedValue({ expired: true, leadFirstName: null })
     open()
-    fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'peter@' } })
+    fireEvent.change(await screen.findByLabelText('Your email'), { target: { value: 'peter@' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send me a fresh link' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('That address does not look right.')
     expect(participantsApi.freshLink).not.toHaveBeenCalled()
@@ -64,7 +64,11 @@ describe('a link we do not recognise', () => {
     open()
     expect(await screen.findByText('This invite link did not work')).toBeTruthy()
     const body = document.body.textContent ?? ''
-    expect(body).toContain('ask whoever added you to send a new invite.')
+    /* U.20 sixth round (Hafsah's first review): the page's own sentence changed - "sign in with
+       your email - and if you have not, ask whoever added you to send a new invite." is now two
+       full sentences, "If you have already joined, sign in with your email. If you have not, ask
+       the person who added you for a new invitation." Still said once, not twice. */
+    expect(body).toContain('ask the person who added you for a new invitation.')
     expect(body).not.toContain('Ask whoever invited you to send a new one')
   })
 })

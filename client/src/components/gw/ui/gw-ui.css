@@ -26,6 +26,12 @@
   --gwui-faint: #85705A;
 }
 
+/* ── FULL-PAGE COVER (a bare narrow screen met from inside the app's own frame -
+   GroundParticipantPage's "out of time" is the first: the prototype draws it as a plain page, but
+   the route it is met on always keeps AppShell's sidebar. This covers it, rather than reworking
+   which routes get a sidebar for one state inside one of them.) ─────────────────────────────── */
+.gwui-full-page-cover { position: fixed; inset: 0; z-index: 40; background: var(--gw-page); overflow: auto; }
+
 /* ── PAGE (prototype: .main, .wrap) ──────────────────────────────────────── */
 .gwui-page-main { padding: 32px 48px 72px; min-width: 0; }
 .gwui-page-wrap { max-width: 1150px; }
@@ -35,6 +41,17 @@
 @media (max-width: 860px) {
   .gwui-page-main { padding: 20px 18px 100px; }
 }
+
+/* ── STACK (the invitation and its hand-off screens: tighter groups inside Page's 30px stack) ── */
+/* The doubled class (".gwui-stack-18.gwui-stack-18") raises specificity above a plain single-class
+   reset a Stack's own child might carry (e.g. .gwui-steps sets `margin: 0`, same specificity as a
+   single-class rule here, and - later in this file - would otherwise win the cascade and cancel
+   the gap. Found live, U.20 seventh round: "Almost in" read with Steps touching the line above
+   it.). A Stack's own gap must always win over whatever a child resets itself to. */
+.gwui-stack-10.gwui-stack-10 > * + * { margin-top: 10px; }
+.gwui-stack-12.gwui-stack-12 > * + * { margin-top: 12px; }
+.gwui-stack-18.gwui-stack-18 > * + * { margin-top: 18px; }
+.gwui-stack-19.gwui-stack-19 > * + * { margin-top: 19px; }
 
 /* ── PAGE TITLE (prototype: .t-title, .crumb, .t-small, .av at 56px) ────── */
 .gwui-pt-eyebrow { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }
@@ -51,6 +68,46 @@
   .gwui-pt-title { font-size: 24px; }
 }
 .gwui-pt-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin-top: 6px; }
+/* "Almost in", "Out of time", "This link has expired" (prototype): the line under the title is ink, not muted. */
+.gwui-pt-sub-ink { color: var(--gw-text); }
+
+/* ── MARK (prototype: the three bars and "Groundwork", .brand) ──────────── */
+.gwui-mark {
+  display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none;
+  font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 32px;
+}
+.gwui-mark:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 3px; border-radius: 4px; }
+
+/* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
+   `background:var(--chat);border-radius:10px;padding:10px 14px`, class `t-small`) ─────────── */
+.gwui-callout { background: var(--gw-bg); color: var(--gw-text); border-radius: 10px; padding: 10px 14px; font-size: 14.5px; line-height: 1.45; margin: 0; }
+
+/* ── SUB-HEADING (join-invite.jpg: "What it asks", "Who sees your answers") ─────────── */
+.gwui-subheading { font-family: var(--gw-font-ui); font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin: 0 0 6px; }
+.gwui-subheading-list { display: grid; gap: 20px; }
+
+/* ── PANEL TEXT (prototype: a fact's body, inside a panel - 14.5px, 21px line) ─────────── */
+.gwui-panel-text { font-size: 14.5px; line-height: 21px; color: var(--gw-text); margin: 0; }
+.gwui-panel-text-muted { font-size: 14.5px; line-height: 21px; color: var(--gw-sub); margin: 0; }
+
+/* ── FINE PRINT (prototype: the sentence under a button, e.g. "About two minutes…") ─────── */
+.gwui-fine { font-size: 13px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
+
+/* ── FOOT DIVIDER (a "not right now"/decline footer, set off by a rule above it) ─────────── */
+.gwui-foot-divider { padding-top: 18px; border-top: 1px solid var(--gw-border); text-align: center; }
+
+/* ── FIELD PAIR / HELP / FORM ACTIONS (a labelled pair of fields, its help line, its button) ── */
+.gwui-field-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.gwui-field-help { font-size: 13.5px; color: var(--gw-sub); margin: 8px 0 0; }
+.gwui-form-actions { margin-top: 20px; }
+
+/* ── STEPS (a numbered list of what has and has not happened yet, join-waiting.jpg) ───────────
+   Reads as a Panel: 12px corners, 20px top/bottom and 22px sides inside, rows on a 38px pitch,
+   the mark bold 16px (green ✓ for a done step, amber ○ for the one still to come). */
+.gwui-steps { list-style: none; margin: 0; padding: 20px 22px; border: 1px solid var(--gw-border); border-radius: 12px; background: var(--gw-card); display: grid; }
+.gwui-step { display: flex; align-items: center; gap: 12px; min-height: 38px; font-size: 15px; line-height: 1.45; color: var(--gw-text); }
+.gwui-step-mark { width: 18px; flex: none; font-size: 16px; font-weight: 700; color: var(--gw-amber-t); }
+.gwui-step-done .gwui-step-mark { color: var(--gw-green-t); }
 
 /* ── CHECK-IN HEADER (prototype: PageTitle + .tabs, 18px below) ─────────── */
 .gwui-cih-tabs { margin-top: 18px; }
@@ -247,6 +304,7 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 
 /* ── NOTE / EMPTY (prototype: .note, an empty sentence, a locked door) ────── */
 .gwui-note { font-size: 13.5px; color: var(--gw-sub); }
+.gwui-note-error { color: var(--gw-red-t); }
 .gwui-empty-line { font-size: 14.5px; color: var(--gw-sub); }
 .gwui-empty-panel { max-width: 640px; }
 .gwui-empty-panel-title {

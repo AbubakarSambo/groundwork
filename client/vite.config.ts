@@ -13,7 +13,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true, // Allow access from network
+    /*
+     * NOTHING IS EVER EXPOSED BEYOND THIS MAC (Hafsah). `host: true` bound every network address
+     * this machine has, not only itself, so the dev server answered anyone on the same network.
+     * 'localhost' is this machine alone. Dev server only - `build` and `preview` (what a deploy
+     * runs) are untouched.
+     */
+    host: 'localhost',
     proxy: {
       '/api': {
         /**
@@ -24,7 +30,10 @@ export default defineConfig({
          * meant either killing the one already running on 3000 or editing this file
          * and remembering to put it back.
          */
-        target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:3000',
+        /* '127.0.0.1', not 'localhost': the API now binds 127.0.0.1 only in development (nothing
+           is ever exposed beyond this Mac), and Node's 'localhost' can resolve to '::1' first -
+           where nothing is listening - so the two would miss each other. */
+        target: process.env.VITE_PROXY_TARGET ?? 'http://127.0.0.1:3000',
         changeOrigin: true,
         /*
          * ONE ORIGIN FOR THE DEV CLIENT, HOWEVER IT IS ADDRESSED. The API's allow-list names

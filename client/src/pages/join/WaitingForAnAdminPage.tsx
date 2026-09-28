@@ -1,10 +1,9 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { authApi, type MyWaiting } from '@/api/auth'
-import { Button } from '@/components/gw/kit'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { AuthCard, AuthError, AuthNotice } from '@/pages/auth/auth-kit'
+import { Page, Mark, PageTitle, Button, Note, Steps, Step, Stack } from '@/components/gw/ui'
 
 /**
  * "ALMOST IN" (A3, #/join/waiting). The words are join-waiting.txt's, with three changes said here:
@@ -16,6 +15,18 @@ import { AuthCard, AuthError, AuthNotice } from '@/pages/auth/auth-kit'
  * The admin is named only when the person accepted a real invitation (Hafsah, 26 September); after a
  * link shared with many people it says "an admin" and offers no reminder. Which admin, and the once a
  * day rule for "Remind", are the server's (who-is-waiting-at-the-door.service.ts).
+ *
+ * Rebuilt from `components/gw/ui` only (design-audit.md section 4; the invitation task): the small
+ * `Mark`, `PageTitle`, `Steps` in place of the old `gw-steps` list, and the standard `Button`.
+ *
+ * Hafsah's first review (U.20 sixth round): the title's line reads in ink, as the prototype has it
+ * (`subtitleTone="ink"`); `Steps` sits 18px below it, not the page's ordinary 30; "We'll email…" is
+ * the prototype's 16px ink body line, not the 13.5px muted `Note`; and the "Sign out" link is gone
+ * - join-waiting.jpg has none, and it was never the only way to sign out. Once let in, the account
+ * rail (`AppShell`, "Sign out is in the rail, so it is on every page") has it; while still waiting,
+ * this route is chromeless (no rail - see `AppShell`'s `CHROMELESS` list), so for the few minutes
+ * somebody is on this exact screen, /signout is reachable only by address - said here rather than
+ * silently dropped.
  */
 export function WaitingForAnAdminPage() {
   const qc = useQueryClient()
@@ -31,21 +42,23 @@ export function WaitingForAnAdminPage() {
     onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That reminder did not send. Try again.'),
   })
 
-  if (isLoading) return <AuthCard title="Almost in" sub="One moment." />
+  if (isLoading) return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="One moment." subtitleTone="ink" /></Page>
   if (isError || !data) {
-    return <AuthCard title="Almost in" sub="We could not read where your request has got to. Reload the page to try again." />
+    return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="We could not read where your request has got to. Reload the page to try again." subtitleTone="ink" /></Page>
   }
   /*
-   * NOT WAITING (U.3 review). "You’re in. Nobody needs to let you in any more." read oddly to somebody
+   * NOT WAITING (U.3 review). "You're in. Nobody needs to let you in any more." read oddly to somebody
    * who never waited. So: somebody this page saw waiting, and who has since been let in, is told so
    * plainly; anybody else who reaches this address was never waiting, and goes to Today.
    */
   if (!data.waiting) {
     if (!sawWaiting.current) return <Navigate to="/today" replace />
     return (
-      <AuthCard title="You’re in" sub="An admin has let you in. You can open your check-ins now.">
-        <div className="gw-auth-actions"><Button to="/grounds" wide size="big">Open my check-ins</Button></div>
-      </AuthCard>
+      <Page narrow>
+        <Mark />
+        <PageTitle title="You’re in" subtitle="An admin has let you in. You can open your check-ins now." subtitleTone="ink" />
+        <Button to="/grounds" size="big" wide>Open my check-ins</Button>
+      </Page>
     )
   }
   sawWaiting.current = true
@@ -56,33 +69,35 @@ export function WaitingForAnAdminPage() {
   const canRemindNow = new Date(w.canRemindFrom).getTime() <= Date.now()
 
   return (
-    <AuthCard title="Almost in" sub={youAreFromOutside(w)}>
-      <ol className="gw-steps">
-        <li className="done"><span aria-hidden>✓</span><span className="gw-sr-only">Done. </span>{admin ? 'You accepted the invitation' : 'You asked to join'}</li>
-        <li className="done"><span aria-hidden>✓</span><span className="gw-sr-only">Done. </span>{who ?? 'An admin'} was asked, {whenItWasAsked(w.askedAt)}</li>
-        <li><span aria-hidden>○</span><span className="gw-sr-only">Still to happen. </span>{who ?? 'An admin'} lets you in</li>
-      </ol>
-      <p className="gw-auth-sub" style={{ marginTop: 16 }}>
-        We’ll email you the moment {who ?? 'they do'}{who ? ' does' : ''}, and your first check-in will be waiting.
+    <Page narrow>
+      <Mark />
+      <Stack gap={18}>
+        <PageTitle title="Almost in" subtitle={youAreFromOutside(w)} subtitleTone="ink" />
+        <Steps>
+          <Step done>{admin ? 'You accepted the invitation' : 'You asked to join'}</Step>
+          <Step done>{`${who ?? 'An admin'} was asked, ${whenItWasAsked(w.askedAt)}`}</Step>
+          <Step>{`${who ?? 'An admin'} lets you in`}</Step>
+        </Steps>
+      </Stack>
+
+      <p className="gwui-pt-sub gwui-pt-sub-ink">
+        {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first check-in will be waiting.`}
       </p>
 
-      {problem && <AuthError>{problem}</AuthError>}
-      {reminded && <AuthNotice>{`We reminded ${who}.`}</AuthNotice>}
+      {problem && <Note tone="error">{problem}</Note>}
+      {reminded && <Note>{`We reminded ${who}.`}</Note>}
 
       {admin && who && (
-        <>
-          <div className="gw-auth-actions">
-            <Button kind="secondary" wide size="big" onClick={() => remind.mutate()} disabled={remind.isPending || reminded || !canRemindNow}>
-              {`Remind ${who}`}
-            </Button>
-          </div>
-          <p className="gw-auth-small" style={{ textAlign: 'center' }}>
+        <Stack gap={10}>
+          <Button kind="secondary" size="big" wide onClick={() => remind.mutate()} disabled={remind.isPending || reminded || !canRemindNow}>
+            {`Remind ${who}`}
+          </Button>
+          <p className="gwui-fine" style={{ textAlign: 'center' }}>
             {`You can remind ${who} once a day.`}{w.inviterFirstName ? ` ${w.inviterFirstName} can see you’re waiting too.` : ''}
           </p>
-        </>
+        </Stack>
       )}
-      <p className="gw-auth-small" style={{ textAlign: 'center' }}><Link to="/signout" className="gw-auth-link">Sign out</Link></p>
-    </AuthCard>
+    </Page>
   )
 }
 
@@ -101,10 +116,16 @@ export function youAreFromOutside(w: Pick<Extract<MyWaiting, { waiting: true }>,
   return `You’re from outside ${w.organisationName}, so an admin there has to let you in.${asked}`
 }
 
-/** "yesterday at 16:12", "today at 09:05", or "on 20 September at 16:12", in the shared date format. */
+/**
+ * "yesterday at 4:12pm", "today at 9:05am", or "on 20 September at 4:12pm" - the prototype's own
+ * way of writing a time (join-waiting.txt: "Grace was asked, yesterday at 4:12pm"), not the 24-hour
+ * clock `whenItWas(d, 'time')` gives. Hafsah's first review, U.20 seventh round: it read "yesterday
+ * at 22:21". Same trick as `what-the-end-of-a-check-in-can-say.ts`'s `aTime`: the shared formatter's
+ * `hourOfDay` purpose, its space and leading zero stripped, lower-cased.
+ */
 export function whenItWasAsked(iso: string, now: Date = new Date()): string {
   const d = new Date(iso)
-  const time = whenItWas(d, 'time')
+  const time = whenItWas(d, 'hourOfDay').replace(/\s/g, '').replace(':00', '').toLowerCase()
   const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
   const diff = Math.round((day(now) - day(d)) / 86_400_000)
   if (diff === 0) return `today at ${time}`

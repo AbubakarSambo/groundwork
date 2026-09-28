@@ -46,6 +46,11 @@ function open(preview: any = PREVIEW) {
 }
 
 describe('the invitation a participant reads', () => {
+  /*
+   * U.20 fifth review (Hafsah, pictured at 1440px): "What happens to what you write" moved from an
+   * always-open section before the form to a plain link under the button's own line, so the person
+   * reads the button before that link now, where it used to be the other way round.
+   */
   it('in the prototype\'s words, in its order', async () => {
     open()
     expect(await screen.findByRole('heading', { name: 'Wairimu invited you to “Sales team, Q3”' })).toBeTruthy()
@@ -57,9 +62,9 @@ describe('the invitation a participant reads', () => {
       'A short check-in each weekday.',
       'Who sees your answers',
       'You see your own report straight away. Wairimu shares a team report',
-      'What happens to what you write',
       'Answer today’s check-in now',
       'About two minutes. You make your account afterwards.',
+      'What happens to what you write',
     ].map(t => text.replace(/\s+/g, ' ').indexOf(t))
     expect(order.every(i => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)
@@ -121,13 +126,20 @@ describe('the rest of the page, as the participant reads it (U.3 review)', () =>
     expect(read()).not.toMatch(/contribution record|By joining, you agree/)
   })
 
+  /*
+   * U.20 (the invitation's rebuild, design-audit.md section 3): the page is now built from
+   * components/gw/ui only - `Page narrow` and `Mark` in place of the old `Arrival`/`gw-auth-brand`
+   * chrome, `Callout` in place of the page-only `gw-invite-note`. The same three things the
+   * prototype's picture shows - a small mark, no header band, the privacy line in a tinted box -
+   * are still true; only the class names they come from changed.
+   */
   it('has the prototype\'s look: the small mark, no header band, the note in beige', async () => {
     open()
     await screen.findByText('Who sees your answers')
-    expect(document.querySelector('.gw-arrival-plain .gw-auth-brand')).not.toBeNull()
+    expect(document.querySelector('.gwui-page-narrow .gwui-mark')).not.toBeNull()
     expect(document.querySelector('.gw-hdr')).toBeNull()
     expect(document.querySelector('.gw-box-blue')).toBeNull()
-    expect(document.querySelector('.gw-invite-note')?.textContent).toMatch(/^\s*The people in this check-in, including your manager, can see what you say in it\./)
+    expect(document.querySelector('.gwui-callout')?.textContent).toMatch(/^\s*The people in this check-in, including your manager, can see what you say in it\./)
   })
 })
 
@@ -177,6 +189,8 @@ describe('the opening day is not under "What happens to what you write" (U.6 rev
     const line = await screen.findByText('Your first check-in opens on Monday 5 October.')
     const heading = screen.getByText('What happens to what you write')
     expect(line.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(heading.closest('details')?.contains(line)).toBe(false)
+    /* U.20: the panel is no longer a folding <details> (the prototype has none on join-invite.jpg),
+       so there is nothing left that could hide the line inside it - this is now simply true. */
+    expect(heading.closest('details')).toBeNull()
   })
 })

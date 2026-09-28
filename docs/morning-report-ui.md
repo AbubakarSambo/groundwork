@@ -502,6 +502,46 @@ this kind of read about somebody else (if one ever should). That is a change to 
 *serves*, which is shared ground with the engine workspace - not something to make unilaterally.
 Flagging it here rather than deciding it.
 
+### 0h. Where the API listens, and three refused commands (28 September)
+
+**What happened.** To keep your rule that nothing is exposed beyond this Mac, commit `2b63de36` made the API listen on this machine only (127.0.0.1) unless `NODE_ENV` was exactly `production`. The reviewer saw the risk: a deployed server with `NODE_ENV` unset, or set to any other value, would have listened only on itself, and nobody could have reached it.
+
+**Three commands were refused by the safety check, and each was stopped, not retried:**
+1. The reviewer's read-only search of the deploy settings for how `NODE_ENV` is set. It was refused as deploying. The reviewer stopped.
+2. My change to the safer rule, with a test. It was refused because its comment and test named the pre-release environment. I stopped.
+3. My report entry about the first two. It was refused for the same word. I stopped and asked you.
+
+Nothing was changed by any of the three.
+
+**Your decision, 28 September, and what is done.** You approved the safer rule, worded without naming that environment, and knowingly, since the refusal was about a word, not an action: no deploy settings were read and nothing was deployed. The approval covers only this fix and this entry. It is in commit `f5ee1b33`: the API narrows to this Mac only when `NODE_ENV` is exactly `development`, and in every other case, including no value at all, it listens on every address exactly as it did before this work. The rule is one small function, `api/src/the-address-the-api-listens-on.ts`, and its test checks no value, an empty value, `production`, and several other values.
+
+### 0g. The invitation contradicts itself on who reads your words
+
+**Found during the invitation's first review (U.20 sixth round), reading the page as a person
+receiving it, not just checking it against the prototype's picture.** `InvitePage.tsx` says two
+different things about the same question, one line apart in what a person can reach.
+
+The tinted box at the top, always visible, says:
+
+> "The people in this check-in, including your manager, can see what you say in it."
+
+"What happens to what you write", one click away (the link under the button), says:
+
+> "Nobody you work with reads it. Not your manager, not whoever set this up, not an admin. What
+> they see is the shared report, which is built by comparing what everyone said."
+
+Both live in `client/src/pages/invite/InvitePage.tsx`, one screen apart; the second is also held as
+one of the four claims in `components/gw/what-happens-to-what-you-write.ts` ("still render on the
+invitation and the admin guide", per that file's own comment and
+`pages/chat/what-happens-to-what-you-write.spec.tsx` - though today only the invitation actually
+renders them). Read together, a person
+is told in the same breath that their manager can see what they say, and that their manager cannot.
+I have not tried to reconcile them or pick a side - it is privacy wording, and CLAUDE.md is plain
+that check-in words may be shown to the people in the check-in, so this needs your decision on what
+is actually true and which sentence is wrong (or how both are true at once, if a "team report" is
+not the same thing as seeing "what you say"). Flagging it, not fixing it. Neither sentence has been
+changed.
+
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
 **Fixed on 26 September** by the engine workspace, in the way suggested below (`theResendClient()` in
@@ -5428,6 +5468,166 @@ none of them changed. **Not ticked,** until its review.
 - **After the seventh review, two last wording fixes.** A second check-in named with the same question now reads "What moved this week, and what is stuck? From 27 September.", where it read "…stuck?, from 27 September". Ordinary names keep ", from 27 September". Under "Say we are trying this out" the hint now reads "This adds one sentence to the invite. It reads “We are trying this out to see if this new tool can help us be aligned, and your answers go into one summary that gives us a shared picture.”", where it joined the two with a colon.
 - **U.6 passed its seventh review on 27 September and is ticked.** The lead's first check-in card still waits for you (item 17).
 - **For you to know, not changed:** a note the lead types on the check-in's page ("Add a note to send with your link") goes into the invitation email. That is intended: she chose to send it to that person.
+
+### Rebuilt from the parts: the invitation
+
+Design-audit.md, section 3, said the invitation was still built from the old parts: the old header
+band, the old buttons, a page-only tan note class. This round rebuilt it, and the three pages it
+hands over to when somebody cannot answer today, from `components/gw/ui` only, the way the People
+page and the others still waiting will be.
+
+- **The invitation itself** (`client/src/pages/invite/InvitePage.tsx`, join-invite.jpg) now opens
+  with `Page narrow` and the small `Mark` - a wordmark that goes home, the way every Groundwork
+  mark does - in place of the old `Arrival`/`gw-hdr` chrome. The heading is `PageTitle`, in
+  Literata, as the prototype has it. The privacy line ("The people in this check-in, including your
+  manager, can see what you say in it…") sits in a new `Callout`, the tinted box the prototype's own
+  code injects above this heading, built from the prototype's own colour rather than the old
+  page-only `gw-invite-note` class. "What it asks" and "Who sees your answers" sit in a `Panel` with
+  `Section`s, and the button is the standard big `Button`.
+- **"What happens to what you write"** was a folding `<details>` panel; the prototype has no folding
+  panel anywhere on this screen, so it is now a plain section, always there to read rather than
+  hidden behind a click. The four claims are exactly the ones already agreed (unchanged words), just
+  no longer collapsed away.
+- **The first/last name fields** stay - the check-in still needs a name to put on the shared report,
+  and the prototype's own invite screen does not show this step at all (it goes straight from the
+  privacy panel to the button), so there is no prototype pattern to match here. They are now the
+  shared `FieldLabel`/`TextField`, 48px, 16px text, matching the sign-in fields.
+- **"You've already joined" and "held for a seat"** have no prototype screen of their own, so each
+  is now the nearest prototype pattern - the small mark, a short `PageTitle` heading, one sentence
+  under it - with the old white header bar, the "GROUNDWORK" wordmark, the 👋 emoji and the "→"
+  arrows on the buttons all gone, as asked.
+- **"Almost in"** (`client/src/pages/join/WaitingForAnAdminPage.tsx`, join-waiting.jpg) is the same
+  rebuild, plus a new shared part, `Steps`/`Step` (`components/gw/ui/Steps.tsx`), for the ticked
+  list of what has and has not happened yet - the old page-only `gw-steps` class is gone.
+- **"An expired link"** (`client/src/pages/invite/InvitationExpired.tsx`, join-expired.txt) and
+  **"Out of time"** (`client/src/pages/grounds/OutOfTime.tsx`, join-outoftime.txt) are the same
+  rebuild. Out of time's amber tag now sits above the heading, where the picture has it - it used to
+  sit under the sentence.
+- **A new shared part, `Mark`** (`components/gw/ui/Mark.tsx`): the three bars and "Groundwork".
+  (Its first version also drew a short caption above the mark; removed in the fifth review below -
+  it was never part of the screen.) Also new: `Callout` and `Note`'s `tone`
+  (`components/gw/ui/NoteEmpty.tsx`) for an inline error line. All have their own tests.
+- **Every privacy rule is unchanged.** The two sentences "Nobody else reads your answers." and
+  "Wairimu reads the report, not your words." are still held back, exactly as the page's own comment
+  says, while you decide. The invitation still carries nothing of the lead's private words about the
+  person (`no-invitation-carries-the-leads-words.spec.ts` and friends pass unchanged). What the
+  server sends is untouched - only how the client draws it.
+- **Tests changed, each with its reason in the commit:** the guard test's "starts empty" assertion
+  now names the four rebuilt pages; three specs that pinned the *old* markup (`gw-arrival-plain
+  .gw-auth-brand`, `gw-invite-note`, `.gw-steps li`, the `<details>` element, the literal `<div
+  role="status">Loading invite…</div>`) now pin the same guarantee against the new markup; one spec
+  (`one-arrival.spec.ts`) now says which two routes still share `Arrival` and which one moved to the
+  new shell. No test of behaviour, wording the person reads, or privacy was weakened.
+- **DONE.** `npx tsc -b` is clean; every test in `components/gw/ui/`, `pages/invite/`, the two moved
+  pages, and every spec that reads these files by name, passes (190 tests, 20 files).
+
+#### The invitation, fifth review: five things the 1440px picture check found
+
+You pictured the invitation at 1440 (fresh, held for a seat, already joined) next to the
+prototype's join-invite and sent five things back. All five fixed:
+
+1. **The caption above the mark was never part of the screen.** It was the prototype PICTURE's own
+   frame header (the label the screenshot tool prints for whoever is browsing the exported
+   screens), not something the real screen draws. `Mark` no longer takes a caption at all - every
+   state now opens on the plain wordmark, nothing above it.
+2. **"What it asks" and "Who sees your answers" were 21px `Section` headings, jammed against the
+   next one.** They are the prototype's smaller kind of heading, about 15px bold ink. New shared
+   part: `SubHeading` (`components/gw/ui/SubHeading.tsx`, with its own test), paired with plain
+   15-16px text and a 20px gap between blocks.
+3. **"What happens to what you write" made the page twice the prototype's length.** It is now a
+   plain link, "What happens to what you write", sitting under the button's own line, that opens
+   the same four claims - unchanged words - in the shared `Modal`. The literal text stays in
+   `InvitePage.tsx` (a pinned test reads it from the page's own source), just not printed by
+   default any more.
+4. **"Held for a seat" put two sentences in the heading.** `heldForASeatCard` (`InvitePage.tsx`)
+   splits the server's one fixed sentence into a short heading, "This check-in cannot start for you
+   yet", and the sentence under it, "There is no seat for you on the plan yet. You will get your
+   invitation as soon as there is one." - same meaning, the prototype's own two-line pattern.
+5. **The name fields touched the button.** Regrouped as the prototype groups fields - `FieldLabel`
+   over `TextField`, the "Your name is optional…" note as the field pair's own help line beneath
+   it - and the button now has a normal 20px gap above it.
+
+Tests changed for this round, each with its reason inline: `Mark.spec.tsx`'s caption tests are gone
+(replaced by "no caption" and "takes no props"), with two new `SubHeading` tests added;
+`OutOfTime.spec.tsx` and `four-things-one-screen.spec.tsx`'s "look" test are back to checking a
+single mark, no caption; `four-things-one-screen.spec.tsx`'s word-order test now expects the link
+after the button rather than before it, since that is where it moved to; `a-held-invitation.spec.tsx`
+checks the new heading and sentence rather than the old two-sentence heading;
+`InvitePage.onePath.spec.tsx` opens the link before checking the four claims are still there. No
+test of behaviour or privacy was weakened. `npx tsc -b` is clean; the same 20 files, 193 tests
+(three added), all pass.
+
+#### The invitation, sixth round: the first review's full list
+
+**0. Nothing is ever exposed beyond this Mac.** Both dev servers listened on every network address,
+not only this one. Fixed: `client/vite.config.ts`'s dev `server.host` is now `'localhost'` (build
+and preview, what a deploy runs, are untouched); `api/src/main.ts` now binds `127.0.0.1` whenever
+`NODE_ENV` is not `'production'` (production keeps `'0.0.0.0'`, unchanged). A test for each
+(`client/vite.config.spec.ts`, `api/src/nothing-is-ever-exposed-beyond-this-mac.spec.ts`).
+
+1. **`LinkProblem` (the "this link did not work" screen, shared by `/invite`, `/join` and sign-in)
+   is rebuilt** from `components/gw/ui` - `PageTitle`, `Note`, the standard `Button`, no more 40px
+   `gw-btn`, no more red ✕ (no prototype screen in this family has one). Its detail sentence on
+   `/invite` now reads "If you have already joined, sign in with your email. If you have not, ask
+   the person who added you for a new invitation." And the second, contradicting toast ("sign in
+   with the password you set. Your setup link is in your email.") is gone: `participantsApi.preview`
+   now sets `skipNotFoundToast` (the page already says its own thing on a 404), the same pattern
+   already used across a dozen other calls in `client/src/api/`.
+2. **`gw-er` is gone from `InvitePage.tsx`** (now `Note tone="error"`), and every remaining inline
+   `fontSize`/`margin`/`padding`/`gap`/`border*` in `InvitePage.tsx` and `InvitationExpired.tsx` is
+   gone too, replaced by parts or new classes in the parts' stylesheet (`gwui-panel-text`,
+   `gwui-fine`, `gwui-foot-divider`, and the new `Stack` component, below). The guard test now also
+   fails if a listed page's failure sits behind `gw-er`/`gw-sub-t`/`gw-sec`/`gw-card`/`gw-label`, if
+   anything it imports from `components/gw/...` (one level deep) uses an old part - this is what
+   caught `LinkProblem` - or if it sets a banned property with an inline `style={{ }}`.
+3. **Wording:** "Open that one: it takes you straight to your check-in and works for 24 hours." is
+   now two sentences. "You've already joined" now has a curly apostrophe. Its line now names the
+   check-in: "Pick up your check-in, "Check how the same role is going". If this is a new device, we
+   will email you a sign-in link." The expired-link field is labelled "Your email", the prototype's
+   own word (join-expired.txt), not "Email".
+4. **Sizes, checked against the prototype:** a panel's body text is now 14.5px on a 21px line (new
+   `gwui-panel-text`/`-muted` classes), not the 16px meant for a labelled field's value. "About two
+   minutes…" is 13px muted (new `gwui-fine`). `SubHeading` is 14.5px, not 15px. Out of time's "Your
+   answers are kept" is a `SubHeading` now, its line 14.5px muted. `PageTitle` takes
+   `subtitleTone="ink"`, used on "Almost in", "Out of time" and the expired link, as the prototype
+   has it. **TextField's corners: checked, not changed.** The prototype's own source
+   (`docs/prototype/source/app.css` line 91, `.input{border-radius:10px...}`) has one definition of
+   this field, and it is 10px, matching what `components/gw/ui/FormFields.tsx` already draws. I did
+   not find an 8px value anywhere in the prototype's source for this field. Flagging the mismatch
+   rather than guessing which is right - if there is a second, more specific rule I have missed,
+   point me at it and I will fix it.
+5. **A new shared part, `Stack`** (`components/gw/ui/Stack.tsx`, gaps of 10/12/18/19px, own test):
+   the prototype's own gaps for this family of screens - a tag 12px above its title, a panel 18px
+   below the line under a heading (the invitation's tinted box to its facts panel, 19px), a button
+   10px above the note under it - nested to carry a whole screen's chain of different gaps without
+   a single inline style. `Steps` now reads as a `Panel` (12px corners, 20/22px inside, rows on a
+   38px pitch, the mark bold 16px - green for a done step, amber for the one still to come), sat
+   18px under the title. "We'll email you the moment…" is now the prototype's 16px ink body line
+   (`gwui-pt-sub gwui-pt-sub-ink`), not the 13.5px muted `Note`. The "Sign out" link on "Almost in"
+   is gone - join-waiting.jpg has none. Once let in, the account rail has it
+   ("the-way-home-and-the-way-out.spec.ts": "Sign out is in the rail, so it is on every page"); this
+   route (`/join/waiting`) has no rail while still waiting (it is in `AppShell`'s own `CHROMELESS`
+   list), so for the few minutes somebody is on this exact screen there is, honestly, no in-page way
+   to sign out other than the address `/signout` directly - said here rather than left silent. The
+   pop-up's fourth heading ("And the part we are not going to dress up") is a `SubHeading` now, like
+   the other three, not plain bold text.
+6. **Out of time no longer renders inside the app's sidebar.** `GroundParticipantPage` returns it
+   directly, and that route always keeps `AppShell`'s rail (it is not in `CHROMELESS`), so the
+   person saw two Groundwork marks - this component's own and the rail's - where the prototype
+   draws a bare page. A new class, `.gwui-full-page-cover` (`components/gw/ui/gw-ui.css`) - a fixed,
+   full-viewport div, the same trick `Modal` already uses to sit above everything - covers the
+   frame, rather than reworking which routes get a sidebar for one state inside one of them.
+
+**New "Needs Hafsah" item, 0g:** the invitation says two different things about who reads what you
+write - the tinted box says your manager can see it, "What happens to what you write" says nobody
+you work with reads it. Quoted in full under "Needs Hafsah" above, with where each sentence lives.
+Neither has been changed - it is privacy wording, yours to decide.
+
+Tests: `an-error-says-which-one.spec.tsx`'s `gw-er` pin now expects `Note tone="error"`;
+`an-expired-invitation.spec.tsx`'s label checks and "says what to do once" text are updated for
+"Your email" and the new sentence; `Mark.spec.tsx`'s `SubHeading` size test is 14.5px now.
+`npx tsc -b` is clean (client and api); 208 client tests across 23 files pass, plus the 2 new api
+tests (jest).
 
 ## Found on the way, for later tasks
 

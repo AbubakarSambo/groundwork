@@ -39,7 +39,11 @@ describe('waits are statuses', () => {
   const ALLOWED_BARE = ['pages/enter/EntryChatPage.tsx', 'pages/ops/', 'pages/admin/', 'pages/prompts/', 'components/gw/AppShell.tsx', 'pages/join/JoinPage.tsx', 'pages/join/JoinConfirmPage.tsx', 'pages/grounds/', 'pages/report/ReportPage.tsx', 'pages/settings/', 'pages/org/', 'pages/billing/', 'pages/auth/', 'components/']
   it('the loading lines this batch names sit on status elements', () => {
     const pins: [string, RegExp][] = [
-      ['pages/invite/InvitePage.tsx', /<div role="status"[^>]*>Loading invite…<\/div>/],
+      /* U.20 (the invitation's rebuild): rebuilt from components/gw/ui, the loading line is now a
+         <p>, not a <div>, and says "Loading your invitation…" rather than the clipped "Loading
+         invite…" (CLAUDE.md: plain, full sentences) - still role="status", still the only thing on
+         the screen while the preview loads. */
+      ['pages/invite/InvitePage.tsx', /<p role="status"[^>]*>Loading your invitation…<\/p>/],
       ['pages/report/SessionReportPage.tsx', /<div role="status" aria-live="polite"[^>]*>Getting your report\.\.\.<\/div>/],
       ['pages/board/BoardPage.tsx', /<div role="status"[^>]*>Loading the board…<\/div>/],
       /* U.8 review: opening a session can take up to a minute, and after four seconds of silence

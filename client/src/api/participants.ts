@@ -38,8 +38,12 @@ export interface AcceptInviteResponse {
 }
 
 export const participantsApi = {
+  /* `skipNotFoundToast`: the invite page already says this itself (LinkProblem, on InvitePage's
+     own isError branch). Without it, a 404 here also raised "That is not here any more" with the
+     server's own sentence for its description - a second, differently-worded message on top of
+     the page's one, Hafsah's first review, U.20 sixth review. */
   preview: (token: string) =>
-    apiClient.get<InvitePreview | ExpiredInvitePreview | HeldInvitePreview>('/participants/invite', { params: { token } }).then((r) => r.data),
+    apiClient.get<InvitePreview | ExpiredInvitePreview | HeldInvitePreview>('/participants/invite', { params: { token }, skipNotFoundToast: true } as any).then((r) => r.data),
   /** "Send me a fresh link" (U.3). Always the same reply, whoever asks. */
   freshLink: (token: string, email: string) =>
     apiClient.post<{ says: string }>('/participants/fresh-link', { token, email }).then((r) => r.data),

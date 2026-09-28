@@ -39,8 +39,12 @@ describe('the screens', () => {
     expect(read('grounds/GroundParticipantPage.tsx')).toMatch(/onError: \(e: any\) => toast\.error\(e\?\.message \?\? 'Could not start session\. Try again\.'\)/)
   })
   it('the invite and join pages keep a failure on the page', () => {
+    /* U.20 sixth round (Hafsah's first review): the invite page's failure moved from the old
+       gw-er class to the shared Note tone="error" - still kept on the page, still role="alert"
+       (NoteEmpty.tsx), just from the parts' stylesheet rather than an old class. */
     const invite = read('invite/InvitePage.tsx')
-    expect(invite).toMatch(/\{failed && <div className="gw-er" role="alert"/)
+    expect(invite).toMatch(/\{failed && <Note tone="error">\{failed\}<\/Note>\}/)
+    expect(invite).not.toContain('gw-er')
     const join = read('join/JoinPage.tsx')
     expect(join).toMatch(/\{failure && <div className="gw-er" role="alert">\{failure\}<\/div>\}/)
     expect(join).not.toContain('toast.error(')

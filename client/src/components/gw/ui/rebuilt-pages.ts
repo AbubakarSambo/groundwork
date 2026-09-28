@@ -6,7 +6,16 @@
  * From that moment, the-rebuilt-pages-use-only-the-new-parts.spec.ts fails the build if that file
  * ever imports one of kit.tsx's old parts, or writes one of the old CSS classes, again.
  *
- * Starts empty: this task is only the shared parts and this guard, not any screen. The screens
- * workspace adds to this list one entry at a time, in the order docs/design-audit.md sets out.
+ * THE INVITATION (design-audit.md section 3, "The invitation"; the invitation task) is the first
+ * entry: the invite landing and the three states it hands over to when someone cannot answer
+ * today - held for a seat, waiting for an admin to let them in, and a check-in out of time. Each
+ * is now `Page narrow` with the small `Mark`, `PageTitle` in Literata, the standard `Button`, and
+ * (where the prototype has one) `Callout`/`Panel`/`Section`/`Steps` - no `Arrival`, no `AuthCard`,
+ * no old CSS class.
  */
-export const REBUILT_PAGES: string[] = []
+export const REBUILT_PAGES: string[] = [
+  'pages/invite/InvitePage.tsx',
+  'pages/invite/InvitationExpired.tsx',
+  'pages/join/WaitingForAnAdminPage.tsx',
+  'pages/grounds/OutOfTime.tsx',
+]
