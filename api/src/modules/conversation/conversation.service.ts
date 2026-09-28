@@ -90,6 +90,7 @@ import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
 import { stillAsking } from './one-question-per-turn';
+import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
 import { restoreTheirWords, namesWorthReporting, truncationsOfTheirWords, causalClaimNobodyMade, ASK_INSTEAD_OF_CONCLUDING } from './the-record-holds-what-was-said';
 import { theThingsThatCannotBeMissed } from './the-last-thing-it-reads-is-the-thing-it-must-not-miss';
@@ -1056,9 +1057,16 @@ export class ConversationService {
      * decides when to ask it, and where it asked it its own way the confirmed sentence is put back.
      * Here because every path a turn is saved by - the opener, the turn, the stream - comes through.
      */
-    const asConfirmed = (checkIn as any)?.id ? this.withTheLeadsQuestionsAsConfirmed((checkIn as any).id, raw) : raw;
+    const asConfirmed = (checkIn as any)?.id ? this.withTheLeadsQuestionsAsConfirmed((checkIn as any).id, raw) : { text: raw, confirmed: [] as string[] };
+    /*
+     * AND ONE QUESTION, ON EVERY PATH. The opener, the turn and the stream all save through here, so
+     * this is the one place a second question cannot get past. The question the lead confirmed is the
+     * one kept where there are two. See a-turn-asks-one-thing, which counts the shapes this repairs.
+     */
+    const oneThing = oneThingAsked(asConfirmed.text, asConfirmed.confirmed);
+    if (oneThing.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a turn asked more than one question; ${oneThing.saidAsAnExample} said as an example, ${oneThing.leftOut} left out.`);
     /* AND NO SENTENCE STARTS IN LOWER CASE. See a-sentence-starts-with-a-capital. */
-    const capitalised = aSentenceStartsWithACapital(asConfirmed);
+    const capitalised = aSentenceStartsWithACapital(oneThing.text);
     if (capitalised.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a sentence started in lower case and was repaired before saving.`);
     const text = capitalised.text;
     if (!text || !/\bperson who set this up\b/i.test(text)) return text;
@@ -1991,6 +1999,33 @@ export class ConversationService {
        * succeeding more often, because its rewrites were reaching people unchecked. Running last
        * means whatever actually ships is what got read.
        */
+      /*
+       * AND ONE QUESTION. Where the reply asks two real questions, it is asked for once more with the
+       * rule named, because only the model can say which one it meant. An example written as a
+       * question is not asked for again: the save point says it as an example, which loses nothing.
+       * If the second try asks two as well, the first stands and the save point keeps its first
+       * question. See a-turn-asks-one-thing.
+       */
+      if (wouldLeaveAQuestionOut(screened.text)) {
+        this.logger.warn(`Check-in ${checkIn.id}: the reply asked more than one question; asking again.`);
+        const once = await this.anthropic
+          .respond(`${fullSystem}\n\n${ASK_ONE_THING}`, history)
+          .catch(() => '');
+        const second = once.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(once), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (
+          second?.text && !second.hits.length && !asksMoreThanOneThing(second.text) &&
+          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
+          !opensByRepeatingThem(message, second.text) && !alreadyAskedTwice(second.text, earlierAsks)
+        ) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try asked one question.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try asked more than one too; the first question stands.`);
+        }
+      }
+
       const notOurWords = wordsWeDoNotUse(screened.text, theirWords);
       if (notOurWords.length) {
         this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
@@ -2211,9 +2246,10 @@ export class ConversationService {
          a question underneath it told a lead the session was over and then that it was not. */
       const earlierAi = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI, id: { not: aiTurn.id } }, select: { content: true } }).then((rows) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
       const stillOpen = withoutWhatWasAlreadySaid(withoutTheGoodbye(aiTurn.content ?? ''), earlierAi);
+      /* And the close line is the one question: what the model left above it asking goes. See withTheOneMoreLine. */
       aiTurn = await this.prisma.conversationTurn.update({
         where: { id: aiTurn.id },
-        data: { content: stillOpen ? `${stillOpen}\n\n${close.ask}` : close.ask },
+        data: { content: withTheOneMoreLine(stillOpen, close.ask) },
       });
     } else if (close.ready && close.sayFirst) {
       /* A close that records something before the goodbye: the goodbye stays, the fact goes in front of it. */
@@ -2730,7 +2766,7 @@ export class ConversationService {
            put the farewell on the screen, so the whole reply is re-sent rather than appended to. */
         const earlierAi = await this.prisma.conversationTurn.findMany({ where: { checkInId: checkIn.id, role: TurnRole.AI, id: { not: streamAiTurn.id } }, select: { content: true } }).then((rows) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
         const stillOpen = withoutWhatWasAlreadySaid(withoutTheGoodbye(reply), earlierAi);
-        reply = stillOpen ? `${stillOpen}\n\n${close.ask}` : close.ask;
+        reply = withTheOneMoreLine(stillOpen, close.ask);
         await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
         /* The farewell is already on the screen by now, and `done` carries the whole corrected
            reply - ChatPage replaces the streamed text with it. So the delta only has to add the
@@ -2898,16 +2934,19 @@ export class ConversationService {
   }
 
   /** The reply with each confirmed question in its confirmed words, where the model asked it in its own. */
-  private withTheLeadsQuestionsAsConfirmed(checkInId: string, reply: string): string {
+  /* The reply, and the confirmed questions it now asks word for word, so the one-question rule keeps those. */
+  private withTheLeadsQuestionsAsConfirmed(checkInId: string, reply: string): { text: string; confirmed: string[] } {
     const questions = this.questionsForThisTurn.get(checkInId) ?? [];
     this.questionsForThisTurn.delete(checkInId);
     let out = reply;
+    const confirmed: string[] = [];
     for (const q of questions) {
       const put = withTheQuestionAsConfirmed(out, q);
       if (put.putBack) this.logger.warn(`Check-in ${checkInId}: a confirmed question was asked in other words, and its confirmed words were put back.`);
+      if (put.asked) confirmed.push(q.trim());
       out = put.text;
     }
-    return out;
+    return { text: out, confirmed };
   }
 
   private get citationForThisTurn(): Map<string, { citation: string; directive: string }> {

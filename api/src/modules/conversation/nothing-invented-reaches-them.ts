@@ -20,6 +20,7 @@
  */
 
 import { OneQuestionPerTurn } from './one-question-per-turn';
+import { asAnExample } from './a-turn-asks-one-thing';
 import { claimsTheNumbersDoNotSupport } from './a-claim-the-numbers-do-not-support';
 import { namesWorthReporting, restoreTheirWords } from './the-record-holds-what-was-said';
 import { inYourPerson } from './their-words-in-your-person';
@@ -367,7 +368,7 @@ export class SentenceGate {
   private check(sentences: string[]): string {
     const out: string[] = [];
     for (const s of sentences) {
-      const repaired = inYourPerson(restoreTheirWords(s, this.personSaid), this.personSaid);
+      let repaired = inYourPerson(restoreTheirWords(s, this.personSaid), this.personSaid);
       const why = whyItFails(repaired, this.personSaid, this.readerName, this.conversation ? [...this.conversation, ...out] : undefined);
       if (why) {
         this.droppedSentences.push(s);
@@ -376,7 +377,15 @@ export class SentenceGate {
       } else if (this.questions.isASecondQuestion(repaired)) {
         this.droppedSentences.push(s);
         this.hitRows.push({ sentence: s, check: 'a second question', offending: [] });
-        if (DELETES_WHAT_IT_FINDS) continue;
+        /*
+         * WHAT STREAMS IS WHAT IS SAVED. The saved turn keeps one question (see a-turn-asks-one-thing),
+         * so the stream does the same as it goes: an example written as a question goes out as an
+         * example, and a second real question does not go out. Otherwise the person reads a
+         * question on the screen that is gone when the reply is replaced by the saved one.
+         */
+        const said = asAnExample(repaired, false);
+        if (!said) continue;
+        repaired = said;
       }
       if (this.theirWordsForNumbers) {
         const bad = claimsTheNumbersDoNotSupport(repaired, { theirWords: this.theirWordsForNumbers });
