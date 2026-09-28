@@ -4087,6 +4087,72 @@ code now lives, for the same reason: extraction, not a behaviour change. A new
 header from coming back. `npx tsc -b` and the full board, grounds, company, Ask Groundwork and
 AppShell suites pass.
 
+### U.10 The board, sixth round: a second picture check, and every check-in page's header (items A-J)
+
+**28 September, from a second 1440-pixel side-by-side picture check, plus two items Hafsah added
+directly.** All ten items DONE except where marked.
+
+1. **The stray dropdown pill (DONE).** "Sales team, Q3 ▾" above the breadcrumb, near-invisible
+   white-on-white after the fifth round made the page cream, was `TheOtherBoardsYouAreIn` -
+   styled for the dark header the board no longer has. Restyled for a light ground and moved into
+   the tab row's own "Views ▾" slot (still not built) via a new `trailing` prop on the header.
+2. **The "Check-ins" breadcrumb (DONE).** Now a navy underlined link to /grounds, not plain text.
+3. **"The team today" (DONE).** One compact table row per person (name, summary, pill, squares in
+   a fixed column), not a stacked card. `ask` and `finding` kept as one quiet grey second line.
+4. **"Who checked in" (DONE).** Squares in their own fixed-width column, so a long lead's note
+   under a name no longer pushes that row's squares out of line with the rest.
+5. **"Over time" (DONE).** A real 22px section heading with "Show"/"Hide" on the right, not a 13px
+   navy label.
+6. **Reports (DONE).** "All 1 session" -> "1 session in all."; "Every session" is now a wide
+   outlined white button, not a pale thin-bordered bar.
+7. **The Ask bar's example (DONE).** Built from this board's own first blocker
+   ("Why is Baraka Mwangi still waiting on the discount decision?"), or a plain fallback ("Who is
+   waiting on whom?"), not the prototype's sample data ("Green Mart"), which is not in this check-in.
+8. **Card titles (DONE).** "What success looks like", the cascade card's own title, and "What the
+   target of N assumes" are now 18px/700/near-black, the prototype's card-title weight, not a
+   13px muted caption.
+
+9. **Item I: the shared header on every check-in page (DONE for five pages; one left out on
+   purpose).** `TheCheckInHeader` is now used by `BoardPage.tsx`, `GroundAdminPage.tsx`,
+   `GroundParticipantPage.tsx`, `RoundReportPage.tsx` and `SessionReportPage.tsx` - every page's own
+   old header and tab row (`GroundTabRow`, or a page-specific one) is replaced, with every existing
+   tab kept reachable (mapped in `TheCheckInHeader.tsx`'s own comment). The rich context each page
+   already had (the board's summary and session spine; the ground pages' "which view is this, a
+   guest note, ended state, session count, days left"; the report pages' "← Every session") is kept,
+   restyled as plain text under the new header rather than dropped. **Left out on purpose:**
+   `ChatPage.tsx` (`/checkin/:id`, the standalone live conversation) - it has no tab row to replace,
+   and is a deliberately chrome-free, focused conversation screen; the embedded conversation tab
+   inside GroundAdminPage/GroundParticipantPage already gets the new header. Worth a second look if
+   Hafsah wants it there too.
+
+   **A product decision worth confirming with Hafsah, flagged rather than decided alone:**
+   `one-door-per-place.spec.ts` held a 2026 decision that the board must NOT be a tab on
+   GroundAdminPage, because a board tab would navigate away unlike every other tab in the old row.
+   This task's own instruction ("map each tab to its route") and the prototype's own six-tab header
+   (board-as-lead.jpg) put "Board" in the tab bar on every check-in page, including the board's own
+   header (already built and reviewed earlier this round) - so navigating away is now what every tab
+   in the row does, not an exception. The test is updated to expect this, with the reasoning written
+   into it, but the underlying reversal is Hafsah's call to confirm, not this session's to make final.
+
+10. **Item J: a test that the switchboard decides the board for all 24 situations (DONE).** A new
+    test, `the-switchboard-decides-the-board-for-all-24-situations.spec.tsx`, renders the real board
+    for every one of the 24 situations in G2's own table (`SWITCHBOARD_MATRIX`, already fully
+    transcribed from docs/modules.md - the switchboard.jpg picture is unreadable at cell level, but
+    the text table was not), and checks exactly the sections that situation names appear, in G2's
+    own order, for all 7 sections the board actually serves. Also answers whether the report is
+    switched by situation the same way: it is not, and G2 does not say it should be - "The
+    switchboard is part of B5, the board." is G2's own words, and the report's own template
+    (`what-the-template-says.ts`) has no per-situation branch at all. Both asserted at the source,
+    not only stated here.
+
+**Tests:** `a-tab-click-lands-on-that-tab.spec.tsx` and `one-door-per-place.spec.ts` updated with
+reasons written into each (the row moved to `TheCheckInHeader`; the board becoming a real tab is a
+deliberate change, not the old duplication bug). `the-two-views-are-a-pair.spec.ts` and
+`nothing-about-next-while-the-current-one-opens.spec.tsx` updated for the same reason each time:
+real UI changes (a prop instead of an inline gate; the title now legitimately appearing twice, in
+the breadcrumb and the `<h1>`), not behaviour regressions. `npx tsc -b` and the full board, grounds,
+report, company, Ask Groundwork and stores suites pass (119 files, 739 tests).
+
 ### U.11 Ending a check-in, the probation review, handover: built and tested, not yet reviewed
 
 **What was missing, against the prototype (the gap list):** a decision with its reason (the lead
