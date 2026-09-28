@@ -23,6 +23,33 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
       .toBe('People see two things differently. Still open, as the written report reads it.')
   })
 
+  /*
+   * U.9 RE-REVIEW: NO DOUBLED "IS SEEN DIFFERENTLY". When the topic the server sends already
+   * claims the difference itself, appending "is seen differently" a second time produced "…is
+   * seen differently is seen differently." Checked case-insensitively and with or without the
+   * topic's own final full stop, since `shortly()` (what-this-session-holds.ts) strips one before
+   * sending it.
+   */
+  it('Differences, when the topic already says it is seen differently, without a full stop', () => {
+    expect(tileSentence({ label: 'Differences', value: '1', sub: 'The main obstacle to signing new shops is seen differently' }))
+      .toBe('People see one thing differently. The main obstacle to signing new shops is seen differently.')
+  })
+
+  it('Differences, when the topic already says it is seen differently, with a full stop', () => {
+    expect(tileSentence({ label: 'Differences', value: '1', sub: 'The main obstacle to signing new shops is seen differently.' }))
+      .toBe('People see one thing differently. The main obstacle to signing new shops is seen differently.')
+  })
+
+  it('Differences, when the topic already says it is seen differently, case-insensitively', () => {
+    expect(tileSentence({ label: 'Differences', value: '1', sub: 'the main obstacle to signing new shops IS SEEN DIFFERENTLY' }))
+      .toBe('People see one thing differently. The main obstacle to signing new shops IS SEEN DIFFERENTLY.')
+  })
+
+  it('Differences, with the thing itself named and more besides, not doubled', () => {
+    expect(tileSentence({ label: 'Differences', value: '3', sub: 'The main obstacle to signing new shops is seen differently, and 2 more' }))
+      .toBe('People see three things differently. The main obstacle to signing new shops is seen differently, and two more things are too.')
+  })
+
   it('Movement, targets set but no round closed yet', () => {
     expect(tileSentence({ label: 'Movement', value: 'Nothing yet', sub: '2 targets set, and no round has closed to measure from' }))
       .toBe('Nothing has moved yet. Two targets are set, and no session has closed to measure them against.')

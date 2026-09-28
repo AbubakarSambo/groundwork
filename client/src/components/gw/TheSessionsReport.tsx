@@ -300,6 +300,18 @@ function withPeriod(s: string): string {
   return /[.!?]["'”’)\]]*$/.test(t) ? t : `${t}.`
 }
 
+/*
+ * U.9 RE-REVIEW: "IS SEEN DIFFERENTLY" ONLY WHEN THE TOPIC DOES NOT ALREADY SAY SO.
+ * `differencesSentence` used to append "is seen differently" to the topic unconditionally, so a
+ * topic the report already worded as its own claim of difference ("The main obstacle to signing
+ * new shops is seen differently") came out doubled: "…is seen differently is seen differently."
+ * `endsSeenDifferently` checks case-insensitively, and ignores a final full stop, so both the
+ * worded and the unworded shape of the same topic are handled.
+ */
+function endsSeenDifferently(s: string): boolean {
+  return /is seen differently\.?$/i.test(s.trim())
+}
+
 function differencesSentence(value: string, sub: string): string {
   const n = /^\d+$/.test(value) ? Number(value) : null
   if (n != null) {
@@ -309,9 +321,12 @@ function differencesSentence(value: string, sub: string): string {
     const more = sub.match(/^(.+), and (\d+) more$/)
     if (more) {
       const extra = Number(more[2])
-      return `${lead} ${capitalize(more[1])} is seen differently, and ${smallWord(extra)} more thing${extra === 1 ? '' : 's'} ${extra === 1 ? 'is' : 'are'} too.`
+      const topic = capitalize(more[1])
+      const topicSentence = endsSeenDifferently(topic) ? withPeriod(topic) : `${topic} is seen differently.`
+      return `${lead} ${topicSentence.replace(/\.$/, '')}, and ${smallWord(extra)} more thing${extra === 1 ? '' : 's'} ${extra === 1 ? 'is' : 'are'} too.`
     }
-    return `${lead} ${capitalize(sub)} is seen differently.`
+    const topic = capitalize(sub)
+    return endsSeenDifferently(topic) ? `${lead} ${withPeriod(topic)}` : `${lead} ${topic} is seen differently.`
   }
   if (value === 'None') return `Nobody sees anything differently. ${withPeriod(capitalize(sub))}`
   return `There is nothing to compare yet. ${withPeriod(capitalize(sub))}`
