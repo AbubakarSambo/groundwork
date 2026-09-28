@@ -17,11 +17,9 @@ check-in screens, passed its sixth review and its full test run this morning (10
 switched off until you approve their names); the table of Ask Groundwork, the switchboard and every
 kind of board; and `docs/ready-to-deploy-screens.md`.
 
-**Are the screens ready to deploy? Not yet.** Ten modules still need their review (U.10 to U.19), and U.20 is not built yet. Four privacy
-problems are open, and each is in the live product too: the lead's private description reaching an
+**Are the screens ready to deploy? Not yet.** Ten modules still need their review (U.10 to U.19), and U.20 is not built yet. Privacy problems are still open, and each is in the live product too: the lead's private description reaching an
 invitation (item 0, fixed on this branch), the check-ins list sending participants the lead's setup
-brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c; a
-participant now gets only their own, and the lead's and admins' part waits for your decision) and someone held for a seat reading a released report (item 0d, engine code,
+brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c, now closed by the engine workspace: every reader gets only their own) and someone held for a seat reading a released report (item 0d, engine code,
 request 49). The last two need the engine workspace.
 
 **What I finished tonight:** U.8 went through six reviews, and everything they found is fixed. A
@@ -317,6 +315,8 @@ check-in conversation can still fall back to the lead's brief when the short ver
 is the engine's code, so I have asked the engine workspace (request 41).
 
 ### 0c. Every reader of a report gets everyone's rating, not only their own, and the Done page's "Only you see it" is not true yet
+
+**Closed, 28 September:** the engine workspace finished this on your decision (request 43, `828b4837`). Every reader of a report now gets only the rating of their own answers, leads and admins included, so the Done page's "Only you see it" is true.
 
 **Update, 28 September:** the engine workspace has closed half of this (request 43, `59a62cc3`). A participant's report, forming or released, now carries only their own rating. The other half is yours to decide: the engine gives the lead and an admin everyone's ratings on purpose, while CLAUDE.md says leads never see how a person's answers were rated. Until you decide, the Done page keeps its wording, as the engine workspace asked.
 
