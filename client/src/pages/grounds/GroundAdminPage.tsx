@@ -2996,12 +2996,17 @@ export function GroundAdminPage() {
                     aria-label="Ends on"
                     title="Ends on"
                     value={(() => {
-                      const from = startsAtOnRecord ? new Date(startsAtOnRecord) : new Date();
+                      /* Must match the server's clock anchor (see when-the-clock-starts.ts:
+                         startsAt, falling back to createdAt - never "today") or a date typed here
+                         as "N days from now" saves a timelineDays that the server measures from a
+                         different, earlier start, and a reopen can compute a deadline still in the
+                         past even though the picker showed a future date. */
+                      const from = startsAtOnRecord ? new Date(startsAtOnRecord) : new Date((ground as any).createdAt);
                       const end = new Date(from.getTime() + timelineDaysDraft * 86_400_000);
                       return Number.isFinite(end.getTime()) ? end.toISOString().slice(0, 10) : '';
                     })()}
                     onChange={(e) => {
-                      const from = startsAtOnRecord ? new Date(startsAtOnRecord) : new Date();
+                      const from = startsAtOnRecord ? new Date(startsAtOnRecord) : new Date((ground as any).createdAt);
                       const days = Math.round((new Date(e.target.value).getTime() - from.getTime()) / 86_400_000);
                       if (Number.isFinite(days) && days >= 1) setTimelineDaysDraft(days);
                     }}
