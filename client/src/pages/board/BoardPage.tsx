@@ -4,7 +4,6 @@ import { WhatSuccessLooksLikeFor } from '@/components/gw/WhatSuccessLooksLike'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { ThatIsOnTheRecord } from '@/components/gw/ThatIsOnTheRecord'
 import { TheOtherBoardsYouAreIn } from '@/components/gw/TheOtherBoardsYouAreIn'
-import { BOARD_MUTED_INK, BOARD_ACCENT_INK } from '@/components/gw/the-board-reads-on-a-dark-ground'
 import { HowItIsGoing } from '@/components/gw/how-it-is-going'
 import { WhatToSettleTogether } from '@/components/gw/what-to-settle-together'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -55,6 +54,7 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, sessionDay, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
+import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
 
 /**
  * The delivery board.
@@ -197,32 +197,11 @@ function whereTheRunIs(data: any, ground: any): { nearTheEnd: boolean; lastSessi
   return { nearTheEnd: done >= planned - 1, lastSessionDone: done >= planned }
 }
 
-/**
- * "Daily on weekdays, from 4pm. Session 38 of 65. Runs until 30 September." is the prototype's
- * header sentence. There is no field yet for the cadence's words ("Daily on weekdays, from 4pm."),
- * so that part is left out rather than guessed; the rest is built from what the board does send.
- *
- * `endsAt` is the check-in's own scheduled end, not a target's deadline - a team's number can carry
- * its own "by 20 December" while the check-in itself runs to a different date, and this sentence is
- * about the check-in.
- *
- * WAS: `${dshort(startsAt)} to ${dshort(endsAt)}`, which printed " - to 13 Dec ·" the moment
- * `startsAt` was null, because `dshort` stands a bare " - " in for a missing date rather than
- * dropping it. A full sentence cannot leave a blank where a word should be, so this builds only the
- * parts that have data.
+/*
+ * `phaseSpineSentence` moved to lib/phase-spine-sentence.ts (U.10 item 2): TheCheckInHeader.tsx
+ * builds the same "Session N of M. Runs until DATE." sentence, so this is now a shared function
+ * rather than a second copy of it there.
  */
-function phaseSpineSentence(
-  phaseSpine: { startsAt: string | null; endsAt: string | null; currentSession: number } | null | undefined,
-  planned: number | null,
-): string | null {
-  if (!phaseSpine) return null
-  const parts: string[] = []
-  if (phaseSpine.currentSession) {
-    parts.push(planned ? `Session ${phaseSpine.currentSession} of ${planned}.` : `Session ${phaseSpine.currentSession}.`)
-  }
-  if (phaseSpine.endsAt) parts.push(`Runs until ${whenItWas(phaseSpine.endsAt, 'dayAndMonthLong')}.`)
-  return parts.length ? parts.join(' ') : null
-}
 
 export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const { id: idFromRoute } = useParams<{ id: string }>()
@@ -513,150 +492,107 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     <div style={{ background: 'var(--gw-page)', minHeight: '100vh' }}>
       <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 80px' }}>
 
-        {/*
-          A WAY BACK TO THE GROUND THIS BOARD BELONGS TO.
-          
-          There were back-links in the error state and the no-board state, and none
-          on the board that actually renders - the only state anybody reaches. Her
-          words: "i have no way to get back to anywhere from the board." The rail is
-          there, so it was not a trap, but the board is a tab of a ground and there
-          was no way back to the ground.
-        */}
-        <div style={{ marginBottom: 12 }}>
-          {/*
-            AND IT SENT A LEAD TO SOMEBODY ELSE'S VIEW.
-            
-            This went to `/grounds/:id/p` for everybody. `/grounds/:id` already decides by role -
-            a lead gets the lead's page, a party gets theirs - so hard-coding the party path meant
-            the lead's own way back off the board landed them on the party view of their own
-            check-in, one tab bar away from where they started.
-          */}
-          <button
-            onClick={() => navigate(`/grounds/${id}`)}
-            style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            ← Back to the check-in
-          </button>
-        </div>
-
         {/* Somebody who has just answered from a link lands here with ?done=1: their answer landed, and where the report goes. */}
         {justAnswered && <ThatIsOnTheRecord groundId={id!} />}
 
-        {/* header + phase spine */}
-        <header style={{ background: 'var(--gw-dark)', color: 'white', borderRadius: 16, padding: '18px 22px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-            <div>
-              {/*
-                THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE. A board was a page you arrived at
-                from one check-in and left the same way - read one, back to the list, find the next,
-                open it, open its board. See the component for why the server says which have one.
-              */}
-              {/*
-                NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING. On /boards the tabs above do this
-                job, and two switchers one above the other, both listing the same check-ins, is a
-                reader asking which of them is the real one.
-              */}
-              {!groundId && <div style={{ marginBottom: 8 }}><TheOtherBoardsYouAreIn groundId={id!} /></div>}
-              <h1 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '.2px' }}>{b.title}</h1>
-              <div style={{ fontSize: 12, color: '#AEB6D6', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ background: '#2C2E52', border: '1px solid #3C3E66', color: '#C7CDF0', borderRadius: 20, padding: '2px 10px', fontSize: 10.5, fontWeight: 700 }}>
-                  {/* Say what this is, in the words the person setting it up
-                      would use. "Cohort ground" is our internal grouping name
-                      leaking onto the page - nobody describes their own
-                      situation that way. What actually distinguishes these is
-                      whether the people see each other's work, which the lead
-                      now sets directly, so that is what the badge says. */}
-                  {b.peopleWorkTogether === false
-                    ? 'Same work, separate places'
-                    : b.family === 'DELIVERY' ? 'A team working together'
-                    : b.family === 'COHORT' ? 'Same work, separate places'
-                    : b.family === 'ONBOARDING' ? 'Settling into the role'
-                    : 'A period being reviewed'}
-                </span>
-                {/*
-                  A ground with no dates set rendered "— to — · session 1", which is
-                  two em dashes standing in for information nobody entered, in the
-                  header of the best page in the product - and em dashes are against
-                  house style anyway. Say the session, and only mention dates when
-                  there are dates.
-                */}
-                {/* Once it is over, what ended it is the header, not which session is open. */}
-                {endedSaying ? (
-                  <span style={{ color: BOARD_ACCENT_INK, fontWeight: 700 }}>{endedSaying}</span>
-                ) : b.phaseSpine ? (
-                  <span>{phaseSpineSentence(b.phaseSpine, plannedSessions)}</span>
-                ) : null}
-              </div>
-            </div>
-          </div>
+        {/*
+          THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE. A board was a page you arrived at
+          from one check-in and left the same way - read one, back to the list, find the next,
+          open it, open its board. See the component for why the server says which have one.
 
-          {/*
-            HOW IT IS GOING, FIRST, WHICH IS WHY SOMEBODY OPENED THIS.
+          NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING. On /boards the tabs above do this
+          job, and two switchers one above the other, both listing the same check-ins, is a
+          reader asking which of them is the real one.
+        */}
+        {!groundId && <div style={{ marginBottom: 10 }}><TheOtherBoardsYouAreIn groundId={id!} /></div>}
 
-            "When I come in as a manager, I want progress/status and blockers/risks." The board
-            opened on "where people differ": a manager had to read three zones to work out how far
-            through it was, and the screen that knew was the check-in list they had just left.
-
-            The same component the list and the boards page draw, on the dark ground. Not a second
-            read of the same week - the server computes it once (how-a-check-in-is-going.ts) and all
-            three are handed the answer.
-          */}
-          {(b as any).howItIsGoing && (
-            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #2E3054' }}>
-              <HowItIsGoing
-                summary={(b as any).howItIsGoing.latestSummary}
-                glance={(b as any).howItIsGoing.glance}
-                tone="dark"
-              />
-            </div>
-          )}
-
-          {has('phaseSpine') && b.phaseSpine && (
-            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #2E3054' }}>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {/*
-                  A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
-                  and this was the one list not keeping it: "a finished session opens the REPORT and
-                  not the transcript - that holds for every list there is". My record keeps it, the
-                  party's report keeps it, the Report tab keeps it. These were plain divs.
-                  A session that has not happened is not a link, because there is nothing behind it
-                  yet - so the ones that have are buttons and the rest stay as they were.
-                */}
-                {b.phaseSpine.sessions.map((s) => {
-                  const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
-                  const face = sessionPillSentence(s, groundEnded)
-                  const skin = {
-                    fontSize: 11, padding: '4px 10px', borderRadius: 20,
-                    background: s.state === 'current' ? 'rgba(139,224,174,.18)' : '#2C2E52',
-                    color: s.state === 'current' ? BOARD_ACCENT_INK : BOARD_MUTED_INK,
-                    fontWeight: s.state === 'current' ? 700 : 500,
-                  } as const
-                  if (!been) return <div key={s.n} style={skin}>{face}</div>
-                  return (
-                    <button
-                      key={s.n}
-                      type="button"
-                      onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
-                      style={{ ...skin, border: '1px solid transparent', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 }}
-                    >
-                      {face}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </header>
+        {/*
+          U.10 ITEM 2: THE PROTOTYPE'S HEADER AND TABS (board-as-lead.jpg), NOT THE DARK NAVY CARD.
+          "← Back to the check-in" and a dark header of the board's own invention are gone; every
+          check-in page now has one shared shell (TheCheckInHeader.tsx) for the breadcrumb, the
+          serif title, the cadence line, "Your check-in", "Ask" and the tab bar - built to be reused
+          by GroundAdminPage.tsx and GroundParticipantPage.tsx too (see that file for what is and is
+          not wired in this pass).
+        */}
+        <TheCheckInHeader
+          id={id!}
+          title={b.title}
+          cadence={(groundForSignals as any)?.cadence ?? null}
+          plannedSessions={plannedSessions}
+          currentSession={b.phaseSpine?.currentSession ?? null}
+          endsAt={b.phaseSpine?.endsAt ?? null}
+          endedSaying={endedSaying}
+          canRunThisCheckIn={viewerRunsThisCheckIn}
+          isAParty={!!b.myParticipantId}
+          active="board"
+        />
 
         {/*
           WHEN IT LAST CHANGED, AND THAT OPENING IT CHANGES NOTHING (U.10). The same line for every
           reader, from the server's `lastChangedAt`. Then, for an admin who only reads, who runs it.
+          The prototype has this small-grey line directly under the tab bar.
         */}
-        <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '12px 0 0' }}>
+        <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '14px 0 0' }}>
           {whenTheBoardLastChanged(b.lastChangedAt)}
         </p>
         {b.readOnlyNote && (
           <p role="note" style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '8px 0 0' }}>{b.readOnlyNote}</p>
+        )}
+
+        {/*
+          HOW IT IS GOING, AND THE SESSION SPINE - KEPT, RESTYLED AS PLAIN TEXT (U.10 item 2).
+
+          "When I come in as a manager, I want progress/status and blockers/risks." The summary
+          paragraph and the glance line are the same component the list and the boards page draw
+          (how-a-check-in-is-going.ts computes it once); only the dark card they used to sit in is
+          gone, in favour of the prototype's plain first block under the header. The clickable
+          session spine - which the prototype's own header does not draw, but is real, valuable
+          navigation this board already had - is kept underneath it rather than dropped.
+        */}
+        {(b as any).howItIsGoing && (
+          <div style={{ marginTop: 16 }}>
+            <HowItIsGoing
+              summary={(b as any).howItIsGoing.latestSummary}
+              glance={(b as any).howItIsGoing.glance}
+            />
+          </div>
+        )}
+
+        {has('phaseSpine') && b.phaseSpine && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {/*
+                A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
+                and this was the one list not keeping it: "a finished session opens the REPORT and
+                not the transcript - that holds for every list there is". My record keeps it, the
+                party's report keeps it, the Report tab keeps it. These were plain divs.
+                A session that has not happened is not a link, because there is nothing behind it
+                yet - so the ones that have are buttons and the rest stay as they were.
+              */}
+              {b.phaseSpine.sessions.map((s) => {
+                const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
+                const face = sessionPillSentence(s, groundEnded)
+                const skin = {
+                  fontSize: 11, padding: '4px 10px', borderRadius: 20,
+                  background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white',
+                  border: '1px solid var(--gw-border)',
+                  color: s.state === 'current' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
+                  fontWeight: s.state === 'current' ? 700 : 500,
+                } as const
+                if (!been) return <div key={s.n} style={skin}>{face}</div>
+                return (
+                  <button
+                    key={s.n}
+                    type="button"
+                    onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
+                    style={{ ...skin, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
+                    {face}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         )}
 
         {/*
