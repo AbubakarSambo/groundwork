@@ -722,305 +722,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
-          WHERE PEOPLE DIFFER, FIRST.
+          U.10 RE-REVIEW ITEM 2: THE SWITCHBOARD'S OWN ORDER, MOVED FROM THREE SEPARATE ZONES.
 
-          It sat in "Against the plan", four zones and roughly two screens down, under the objectives
-          and the check-in grid. A lead opens this board to find out where they need to step in, and
-          the one section that tells them that was the last thing they reached; everything above it
-          they could already guess.
-
-          Moved, not changed. Same section, same rows, same order inside it. What follows it is
-          unchanged too - "At a glance" still opens the zones, and the objectives and targets still
-          lead "Against the plan" where the difference used to be.
+          G2 (docs/modules.md) and the prototype's own board (board-as-lead.txt) put these in one
+          order: Targets, then what was agreed at the start, then accounts side by side, then what
+          people are after. Objectives used to sit far down in "Against the plan"; divergence had
+          been moved to the very top in an earlier review, before the switchboard existed; starting
+          state and the quick read sat under "At a glance". All four zones are gone from this
+          group now - the prototype draws no zone dividers at all, only section headings one after
+          another - and what were once described as separate bands is one ordered run, built from
+          orderedSwitchboardSections() for every situation this pass can compute an order for.
+          Cascade and "what success looks like" stay directly above objectives, which is where the
+          plan they qualify already sat.
         */}
-        {shown.divergence && b.divergence && (
-          <>
-            <Sec title="Where people differ" src="from what each person said" />
-            <Card>
-              {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
-                /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
-                   more than one person has checked in" on a round where everybody had, three inches
-                   under a tile that said so. The server computes it from the one counter. */
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
-              ) : (
-                <>
-                  {b.divergence.items.map((d: any, i: number) => (
-                    <Row key={i} first={i === 0}>
-                      {/*
-                        A TAG GLUED TO THE SENTENCE BEFORE IT. "...12 shops.agreed" read on a live
-                        board: the pill sat right after the topic with only a CSS margin between
-                        them, which is invisible to a screen reader and to anybody copying the text.
-                        The kind is said as its own sentence now, on its own line.
-                      */}
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', marginTop: 2 }}>{whoSeesThisDifferently(d.positions, myName)}</div>
-                      {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
-                      {/*
-                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
-
-                        This section carried a headline and then a line of italics: "This is the
-                        summary. Your own report holds the detail of what each account said." So the
-                        one question the board exists to answer - what do the two of you each think
-                        is going on - was the one thing you had to leave it to find out.
-
-                        The data was already here. `divergence.items` is the report's own divergence
-                        objects, sent whole, and every string in them has been through `named()` on
-                        the way out - the same masking the rest of the board gets, so a reader who
-                        may not see who somebody is does not learn it here. Rendering it is a read
-                        of what was already on the wire, not a new disclosure.
-                      */}
-                      {/*
-                        "Rukia Otieno - Rukia Otieno's opening brief..." read on a live board: the
-                        name and what they said, joined with a dash, which reads as one run-on
-                        clause rather than a name followed by their words. Stacked instead, the way
-                        every other name-then-quote on this page is already shown.
-                      */}
-                      {Array.isArray(d.positions) && d.positions.length > 0 && (
-                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
-                          {d.positions.map((pos: any, j: number) => (
-                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
-                              <div style={{ fontWeight: 700 }}>{pos.who ?? 'A colleague'}</div>
-                              {pos.view && <div style={{ color: 'var(--gw-sub)' }}>{pos.view}</div>}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {/*
-                        "WHY IT MATTERS If the delays..." read live as one run-on line: the caption
-                        and the sentence shared a line with only a trailing space between them. The
-                        caption is now its own line, like every other caption on this page.
-                      */}
-                      {d.atStake && (
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
-                          <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>Why it matters</span>
-                          {d.atStake}
-                        </div>
-                      )}
-                    </Row>
-                  ))}
-                  {b.divergence.agreements.map((a: any, i: number) => (
-                    <Row key={`a${i}`}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
-                        {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', marginTop: 2 }}>Everybody agrees on this.</div>
-                    </Row>
-                  ))}
-                </>
-              )}
-              {/*
-                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
-
-                It read "This is the summary. Your own report holds the detail of what each account
-                said." That sentence was the only reason a fourth report surface had to exist: the
-                board named the disagreement and then sent you to another page to find out what it
-                was. Each account is now printed above, so the sentence would be sending people away
-                from the thing they are already looking at.
-              */}
-            </Card>
-          </>
-        )}
-
-        {/*
-          THE QUESTION STANDS ON ITS OWN, BECAUSE IT IS NOT ALWAYS ABOUT A DIFFERENCE.
-
-          It was drawn as the last row INSIDE "Where people differ", which reads as a question about
-          the difference above it - and on a round where nothing differed, that card says "nothing
-          cross-referenced yet" and then asked a question about nothing.
-
-          It is the same field the report and a party's shared picture draw, under one name now:
-          three places had two names between them, so somebody who read the board and then their
-          report saw what looked like two different things.
-        */}
-        {b.divergence?.centralQuestion && (
-          <Card>
-            <Row first>
-              <WhatToSettleTogether question={b.divergence.centralQuestion} />
-            </Row>
-          </Card>
-        )}
-
-        {/* ---------------------------------------------- at a glance */}
-        {(shown.quickRead || shown.startingState || shown.decisions || shown.eachPerson) && <Zone label="At a glance" />}
-
-        {/*
-          ABOVE THE QUICK READ, BECAUSE IT IS WHAT THIS PAGE IS OPENED FOR.
-
-          The quick read is four facts about the check-in. This is ten rows about ten people, each
-          with the one thing to ask for, and a manager running a team against individual numbers
-          reads it first and often reads nothing else. Putting it under the tiles would be ordering
-          the page by how long each block has existed.
-        */}
-        {/*
-          WHAT THE ANSWERS SAY, ABOVE WHO HAS NOT GIVEN ONE.
-          
-          Hafsah, 23 September 2026, on a hundred-person board: "the reports and boards needs to
-          show more reasoning, they look more like things that just do counts." The page opened on a
-          hundred identical rows saying somebody had not answered, and said nothing at all about
-          what the people who HAD answered said. The read exists - see WhatTheNetworkSaid - and it
-          belongs on the page somebody opens to see how this is going, not only on the report.
-        */}
-        {/*
-          EITHER READ IS ENOUGH TO OPEN THIS BAND.
-
-          Gating both on the network read would hide the judgement on every check-in too small for
-          one - the network read needs eight accounts before it says anything - and the judgement is
-          arithmetic over whatever has been answered, so it is there long before that. A band that
-          appears only once the bigger of its two reads exists is a band nobody sees first.
-        */}
-        {/*
-          AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION, ABOVE BOTH.
-
-          The judgement reads this round's answers. This reads the whole run - promises and whether
-          they came back, who is waiting on whom, what has been seen often enough to be a pattern,
-          and each role beside what the record holds about it. A founder deciding about somebody
-          needs the run, not the round, and three of these sections were empty in the report on the
-          one engagement that was entirely about them. Its own band, because it is on its own
-          timescale.
-        */}
-        {(b as any).overTime && (
-          <>
-            <Sec title="What the record shows" src="across every session so far" />
-            <WhatTheRecordShows it={(b as any).overTime} />
-          </>
-        )}
-
-        {((b as any).whatTheAnswersSay || (b as any).theJudgement) && (
-          <>
-            {/*
-              THE JUDGEMENT FIRST, THEN WHAT PEOPLE SAID.
-
-              "The report did not put things into buckets, do clear synthesis." The network read
-              below this is what everybody said, grouped. This is what it means, what to do about it,
-              and what it cannot tell you - which is the thing a reader opens a board for. A summary
-              above the detail, the way every other read on this page is arranged.
-            */}
-            <Sec title="What the answers say" src="from everybody who has answered so far" />
-            <TheJudgement it={(b as any).theJudgement} />
-            {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
-          </>
-        )}
-
-        {shown.eachPerson && (
-          <>
-            <Sec title="Where each person is" src="ordered by what needs you, not by name" />
-            <WhereEachPersonIs rows={b.eachPerson!} />
-          </>
-        )}
-
-        {/*
-          WHAT THE CHECK-INS ASKED FOR AND DID NOT GET.
-
-          The conversation asks twice and then lets it go, rather than pressing somebody who has
-          already declined twice. Somebody has to see the gap, and it is you. It is not a mark
-          against anybody: half the time the honest reason is that nobody could have answered -
-          a target nobody set, a dependency nobody owns.
-        */}
-        {!!b.stillUnanswered?.length && (
-          <>
-            <Sec title="Asked for, not answered" src="the check-in stopped asking" />
-            <Card>
-              {b.stillUnanswered.map((g, i) => (
-                <Row key={`${g.who}-${g.what}`} first={i === 0}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13.5, color: 'var(--gw-dark)' }}>
-                      <b style={{ fontWeight: 700 }}>{g.who}</b> &mdash; {g.what}
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
-                      {/* Some of these cannot be confirmed either way - the check-in asked and
-                          nothing on the record can prove the answer. Saying "they did not answer"
-                          about somebody who answered in their first sentence would be worse than
-                          saying nothing. */}
-                      {g.certain ? `open since session ${g.sinceRound}` : `asked in session ${g.sinceRound}, could not confirm`}
-                    </span>
-                  </div>
-                </Row>
-              ))}
-            </Card>
-          </>
-        )}
-
-        {shown.quickRead && b.quickRead && (
-          <>
-            <Sec title="The quick read" src="alignment and trust from the report" />
-            {/*
-              FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
-
-              `minmax(190px, 1fr)` puts one tile per row below about 400px, so the block a person
-              is meant to GLANCE at became four bordered cards, each with a 24px serif number and a
-              clause under it - about a phone screen and a half to read four short facts.
-
-              The clause stays: a tile that is a label and a figure is a scoreboard, and the clause
-              is the thing that stops it being one. What goes is the packaging. On a phone these
-              are four rows of one card, the value beside its label rather than under it at display
-              size, and the clause underneath in body text.
-            */}
-            <div className={onAPhone ? 'gw-qr-list' : undefined} style={onAPhone
-              ? { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 14px' }
-              : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
-              {b.quickRead.map((q, i) => {
-                const tone = q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-dark)'
-                return onAPhone ? (
-                  <div key={q.label} style={{ padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub-d)', fontWeight: 700 }}>{q.label}</span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: tone, textAlign: 'right' }}>{q.value}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{q.sub}</div>
-                  </div>
-                ) : (
-                  <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
-                    <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: tone }}>{q.value}</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
-                  </div>
-                )
-              })}
-            </div>
-          </>
-        )}
-
-        {/* What was agreed at the start, so the rest of the board has something
-            to be read against. This section has been in the DELIVERY family's
-            list since the board was built with nothing behind it - so a lead saw
-            where the work had got to and not what it was meant to be for. It is
-            the only block here that no check-in can revise. */}
-        {shown.startingState && b.startingState && (
-          <>
-            <Sec title="What was agreed at the start" src="set when this was opened, before any check-in" />
-            <Card>
-              <Row first>
-                <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
-              </Row>
-            </Card>
-          </>
-        )}
-
-        {shown.decisions && b.decisions && (
-          <>
-            <Sec title="Decisions needed" src="raised by what differs or is stuck" />
-            <Card>
-              {b.decisions.map((d, i) => (
-                <Row key={i} first={i === 0}>
-                  <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
-                    <span style={{ fontFamily: 'var(--gw-font-name)', fontSize: 17, color: 'var(--gw-navy)', minWidth: 18 }}>{i + 1}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: 'var(--gw-dark)', fontSize: 13 }}>{d.question}</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>{d.why}</div>
-                    </div>
-                    <Pill tone={d.source === 'blocker' ? 'bad' : 'warn'}>{d.owner}</Pill>
-                  </div>
-                </Row>
-              ))}
-            </Card>
-          </>
-        )}
-
-        {/* ---------------------------------------------- against the plan */}
-        {(shown.objectives || shown.divergence || shown.cascade) && <Zone label="Against the plan" />}
-
         {/*
           WHAT THIS SITS UNDER, ABOVE EVERYTHING IT QUALIFIES.
 
@@ -1261,9 +975,142 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </>
         )}
 
+        {/* What was agreed at the start, so the rest of the board has something
+            to be read against. This section has been in the DELIVERY family's
+            list since the board was built with nothing behind it - so a lead saw
+            where the work had got to and not what it was meant to be for. It is
+            the only block here that no check-in can revise. */}
+        {shown.startingState && b.startingState && (
+          <>
+            <Sec title="What was agreed at the start" src="set when this was opened, before any check-in" />
+            <Card>
+              <Row first>
+                <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
+              </Row>
+            </Card>
+          </>
+        )}
 
-        {/* ---------------------------------------------- the work */}
-        {(shown.whoOwnsWhat || shown.dependencies || shown.checkInGrid) && <Zone label="The work" />}
+        {/*
+          WHERE PEOPLE DIFFER, FIRST.
+
+          It sat in "Against the plan", four zones and roughly two screens down, under the objectives
+          and the check-in grid. A lead opens this board to find out where they need to step in, and
+          the one section that tells them that was the last thing they reached; everything above it
+          they could already guess.
+
+          Moved, not changed. Same section, same rows, same order inside it. What follows it is
+          unchanged too - "At a glance" still opens the zones, and the objectives and targets still
+          lead "Against the plan" where the difference used to be.
+        */}
+        {shown.divergence && b.divergence && (
+          <>
+            <Sec title="Where people differ" src="from what each person said" />
+            <Card>
+              {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
+                /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
+                   more than one person has checked in" on a round where everybody had, three inches
+                   under a tile that said so. The server computes it from the one counter. */
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
+              ) : (
+                <>
+                  {b.divergence.items.map((d: any, i: number) => (
+                    <Row key={i} first={i === 0}>
+                      {/*
+                        A TAG GLUED TO THE SENTENCE BEFORE IT. "...12 shops.agreed" read on a live
+                        board: the pill sat right after the topic with only a CSS margin between
+                        them, which is invisible to a screen reader and to anybody copying the text.
+                        The kind is said as its own sentence now, on its own line.
+                      */}
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                        {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', marginTop: 2 }}>{whoSeesThisDifferently(d.positions, myName)}</div>
+                      {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
+                      {/*
+                        WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
+
+                        This section carried a headline and then a line of italics: "This is the
+                        summary. Your own report holds the detail of what each account said." So the
+                        one question the board exists to answer - what do the two of you each think
+                        is going on - was the one thing you had to leave it to find out.
+
+                        The data was already here. `divergence.items` is the report's own divergence
+                        objects, sent whole, and every string in them has been through `named()` on
+                        the way out - the same masking the rest of the board gets, so a reader who
+                        may not see who somebody is does not learn it here. Rendering it is a read
+                        of what was already on the wire, not a new disclosure.
+                      */}
+                      {/*
+                        "Rukia Otieno - Rukia Otieno's opening brief..." read on a live board: the
+                        name and what they said, joined with a dash, which reads as one run-on
+                        clause rather than a name followed by their words. Stacked instead, the way
+                        every other name-then-quote on this page is already shown.
+                      */}
+                      {Array.isArray(d.positions) && d.positions.length > 0 && (
+                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+                          {d.positions.map((pos: any, j: number) => (
+                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
+                              <div style={{ fontWeight: 700 }}>{pos.who ?? 'A colleague'}</div>
+                              {pos.view && <div style={{ color: 'var(--gw-sub)' }}>{pos.view}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/*
+                        "WHY IT MATTERS If the delays..." read live as one run-on line: the caption
+                        and the sentence shared a line with only a trailing space between them. The
+                        caption is now its own line, like every other caption on this page.
+                      */}
+                      {d.atStake && (
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
+                          <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>Why it matters</span>
+                          {d.atStake}
+                        </div>
+                      )}
+                    </Row>
+                  ))}
+                  {b.divergence.agreements.map((a: any, i: number) => (
+                    <Row key={`a${i}`}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                        {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', marginTop: 2 }}>Everybody agrees on this.</div>
+                    </Row>
+                  ))}
+                </>
+              )}
+              {/*
+                THE POINTER IS GONE BECAUSE THE DETAIL ARRIVED.
+
+                It read "This is the summary. Your own report holds the detail of what each account
+                said." That sentence was the only reason a fourth report surface had to exist: the
+                board named the disagreement and then sent you to another page to find out what it
+                was. Each account is now printed above, so the sentence would be sending people away
+                from the thing they are already looking at.
+              */}
+            </Card>
+          </>
+        )}
+
+        {/*
+          THE QUESTION STANDS ON ITS OWN, BECAUSE IT IS NOT ALWAYS ABOUT A DIFFERENCE.
+
+          It was drawn as the last row INSIDE "Where people differ", which reads as a question about
+          the difference above it - and on a round where nothing differed, that card says "nothing
+          cross-referenced yet" and then asked a question about nothing.
+
+          It is the same field the report and a party's shared picture draw, under one name now:
+          three places had two names between them, so somebody who read the board and then their
+          report saw what looked like two different things.
+        */}
+        {b.divergence?.centralQuestion && (
+          <Card>
+            <Row first>
+              <WhatToSettleTogether question={b.divergence.centralQuestion} />
+            </Row>
+          </Card>
+        )}
 
         {shown.whatTheRoomIsAbout && (
           <>
@@ -1323,6 +1170,172 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             )}
           </>
         )}
+
+        {shown.quickRead && b.quickRead && (
+          <>
+            <Sec title="The quick read" src="alignment and trust from the report" />
+            {/*
+              FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
+
+              `minmax(190px, 1fr)` puts one tile per row below about 400px, so the block a person
+              is meant to GLANCE at became four bordered cards, each with a 24px serif number and a
+              clause under it - about a phone screen and a half to read four short facts.
+
+              The clause stays: a tile that is a label and a figure is a scoreboard, and the clause
+              is the thing that stops it being one. What goes is the packaging. On a phone these
+              are four rows of one card, the value beside its label rather than under it at display
+              size, and the clause underneath in body text.
+            */}
+            <div className={onAPhone ? 'gw-qr-list' : undefined} style={onAPhone
+              ? { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 14px' }
+              : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
+              {b.quickRead.map((q, i) => {
+                const tone = q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-dark)'
+                return onAPhone ? (
+                  <div key={q.label} style={{ padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-sub-d)', fontWeight: 700 }}>{q.label}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: tone, textAlign: 'right' }}>{q.value}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{q.sub}</div>
+                  </div>
+                ) : (
+                  <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.4px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
+                    <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: tone }}>{q.value}</div>
+                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+
+
+        {/* ---------------------------------------------- at a glance */}
+        {/* quickRead and startingState moved into the switchboard-ordered group above (item 2). */}
+        {(shown.decisions || shown.eachPerson) && <Zone label="At a glance" />}
+
+        {/*
+          WHAT THE ANSWERS SAY, ABOVE WHO HAS NOT GIVEN ONE.
+          
+          Hafsah, 23 September 2026, on a hundred-person board: "the reports and boards needs to
+          show more reasoning, they look more like things that just do counts." The page opened on a
+          hundred identical rows saying somebody had not answered, and said nothing at all about
+          what the people who HAD answered said. The read exists - see WhatTheNetworkSaid - and it
+          belongs on the page somebody opens to see how this is going, not only on the report.
+        */}
+        {/*
+          EITHER READ IS ENOUGH TO OPEN THIS BAND.
+
+          Gating both on the network read would hide the judgement on every check-in too small for
+          one - the network read needs eight accounts before it says anything - and the judgement is
+          arithmetic over whatever has been answered, so it is there long before that. A band that
+          appears only once the bigger of its two reads exists is a band nobody sees first.
+        */}
+        {/*
+          AND WHAT THE RECORD SHOWS ACROSS EVERY SESSION, ABOVE BOTH.
+
+          The judgement reads this round's answers. This reads the whole run - promises and whether
+          they came back, who is waiting on whom, what has been seen often enough to be a pattern,
+          and each role beside what the record holds about it. A founder deciding about somebody
+          needs the run, not the round, and three of these sections were empty in the report on the
+          one engagement that was entirely about them. Its own band, because it is on its own
+          timescale.
+        */}
+        {(b as any).overTime && (
+          <>
+            <Sec title="What the record shows" src="across every session so far" />
+            <WhatTheRecordShows it={(b as any).overTime} />
+          </>
+        )}
+
+        {((b as any).whatTheAnswersSay || (b as any).theJudgement) && (
+          <>
+            {/*
+              THE JUDGEMENT FIRST, THEN WHAT PEOPLE SAID.
+
+              "The report did not put things into buckets, do clear synthesis." The network read
+              below this is what everybody said, grouped. This is what it means, what to do about it,
+              and what it cannot tell you - which is the thing a reader opens a board for. A summary
+              above the detail, the way every other read on this page is arranged.
+            */}
+            <Sec title="What the answers say" src="from everybody who has answered so far" />
+            <TheJudgement it={(b as any).theJudgement} />
+            {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
+          </>
+        )}
+
+        {shown.eachPerson && (
+          <>
+            <Sec title="Where each person is" src="ordered by what needs you, not by name" />
+            <WhereEachPersonIs rows={b.eachPerson!} />
+          </>
+        )}
+
+        {/*
+          WHAT THE CHECK-INS ASKED FOR AND DID NOT GET.
+
+          The conversation asks twice and then lets it go, rather than pressing somebody who has
+          already declined twice. Somebody has to see the gap, and it is you. It is not a mark
+          against anybody: half the time the honest reason is that nobody could have answered -
+          a target nobody set, a dependency nobody owns.
+        */}
+        {!!b.stillUnanswered?.length && (
+          <>
+            <Sec title="Asked for, not answered" src="the check-in stopped asking" />
+            <Card>
+              {b.stillUnanswered.map((g, i) => (
+                <Row key={`${g.who}-${g.what}`} first={i === 0}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13.5, color: 'var(--gw-dark)' }}>
+                      <b style={{ fontWeight: 700 }}>{g.who}</b> &mdash; {g.what}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
+                      {/* Some of these cannot be confirmed either way - the check-in asked and
+                          nothing on the record can prove the answer. Saying "they did not answer"
+                          about somebody who answered in their first sentence would be worse than
+                          saying nothing. */}
+                      {g.certain ? `open since session ${g.sinceRound}` : `asked in session ${g.sinceRound}, could not confirm`}
+                    </span>
+                  </div>
+                </Row>
+              ))}
+            </Card>
+          </>
+        )}
+
+
+
+        {shown.decisions && b.decisions && (
+          <>
+            <Sec title="Decisions needed" src="raised by what differs or is stuck" />
+            <Card>
+              {b.decisions.map((d, i) => (
+                <Row key={i} first={i === 0}>
+                  <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
+                    <span style={{ fontFamily: 'var(--gw-font-name)', fontSize: 17, color: 'var(--gw-navy)', minWidth: 18 }}>{i + 1}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: 'var(--gw-dark)', fontSize: 13 }}>{d.question}</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>{d.why}</div>
+                    </div>
+                    <Pill tone={d.source === 'blocker' ? 'bad' : 'warn'}>{d.owner}</Pill>
+                  </div>
+                </Row>
+              ))}
+            </Card>
+          </>
+        )}
+
+        {/* ---------------------------------------------- against the plan */}
+
+
+
+
+
+        {/* ---------------------------------------------- the work */}
+        {(shown.whoOwnsWhat || shown.dependencies || shown.checkInGrid) && <Zone label="The work" />}
+
 
         {shown.whoOwnsWhat && b.whoOwnsWhat && (
           <>

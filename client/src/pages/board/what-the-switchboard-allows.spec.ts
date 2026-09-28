@@ -44,15 +44,20 @@ describe('switchboardAllows', () => {
 })
 
 describe('orderedSwitchboardSections', () => {
-  it('only includes sections that have data, in G2’s own order', () => {
-    // OKR_ALIGNMENT's "on" list (mapped ones only): Targets(objectives), Blockers(dependencies),
-    // Patterns(patterns). "Optional": Starting agreement(startingState), Accounts side by
-    // side(divergence), Change since last(quickRead).
+  /*
+   * U.10 RE-REVIEW ITEM 2: G2's TABLE POSITION, NOT "ON" SECTIONS BEFORE "OPTIONAL" ONES.
+   *
+   * OKR_ALIGNMENT turns Targets, Blockers and Patterns "on", and makes Starting agreement,
+   * Accounts side by side and Change since last "optional" - but G2's own 30-row table interleaves
+   * them: Targets(1), Starting agreement(5), Accounts side by side(6), Change since last(12),
+   * Blockers(13), Patterns(15). The order is the table's position, whichever list a section is on.
+   */
+  it('only includes sections that have data, in G2’s own table order', () => {
     const out = orderedSwitchboardSections('OKR_ALIGNMENT', {
       objectives: true, dependencies: true, patterns: true,
       startingState: false, divergence: true, quickRead: true,
     }, true)
-    expect(out).toEqual(['objectives', 'dependencies', 'patterns', 'divergence', 'quickRead'])
+    expect(out).toEqual(['objectives', 'divergence', 'quickRead', 'dependencies', 'patterns'])
   })
 
   it('never includes patterns while patterns are off, even if G2 turns it on', () => {

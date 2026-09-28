@@ -1,4 +1,4 @@
-import { SWITCHBOARD_ROW_FOR_SCENARIO, G2_SECTION_TO_BOARD_SECTION } from './the-switchboard-g2-table'
+import { SWITCHBOARD_ROW_FOR_SCENARIO, G2_SECTION_TO_BOARD_SECTION, G2_SECTION_NAMES } from './the-switchboard-g2-table'
 
 /**
  * U.10 RE-REVIEW ITEM A: "PICK A SITUATION AND ITS BOARD SHOWS WHAT'S ON, AND NOTHING THAT'S OFF."
@@ -26,11 +26,19 @@ export function switchboardAllows(scenario: string | null | undefined, boardSect
 }
 
 /**
- * THE SECTIONS TO DRAW, IN G2'S OWN ORDER, for whichever of the 8 mapped board sections this
- * situation turns on and the board actually has data for. `hasData` is the caller's own `shown.*`
- * read (already gated on `has()` and non-empty data) for the corresponding board section, keyed by
- * the SAME board section name `G2_SECTION_TO_BOARD_SECTION` uses. Patterns never appear while
- * `patternsAreOn` is false, whatever the situation says - see PATTERNS_ARE_SERVED.
+ * THE SECTIONS TO DRAW, IN G2'S OWN TABLE ORDER - not "on" sections before "optional" ones.
+ *
+ * U.10 RE-REVIEW ITEM 2 found this the first time: sorting "on" before "optional" put objectives,
+ * dependencies and patterns (OKR_ALIGNMENT's "on" list) ahead of startingState, divergence and
+ * quickRead (its "optional" list) regardless of where G2's own 30-row table puts them - the table
+ * has Targets, then Starting agreement, then Accounts side by side, then Blockers, then Patterns,
+ * then Change since last, with "on" and "optional" sections interleaved throughout it. G2's table
+ * position is the one order the prototype's own board actually draws in (board-as-lead.txt); "on"
+ * vs "optional" is a different question - whether to show a section at all - not a place in the
+ * order. So this sorts by `G2_SECTION_NAMES`'s own index, for whichever of the 7 mapped sections
+ * this situation turns on or makes optional AND the board actually has data for. `hasData` is the
+ * caller's own `shown.*` read, keyed by the same board section name `G2_SECTION_TO_BOARD_SECTION`
+ * uses. Patterns never appear while `patternsAreOn` is false, whatever the situation says.
  */
 export function orderedSwitchboardSections(
   scenario: string | null | undefined,
@@ -39,10 +47,11 @@ export function orderedSwitchboardSections(
 ): string[] {
   const row = scenario ? SWITCHBOARD_ROW_FOR_SCENARIO[scenario] : undefined
   if (!row) return []
-  const boardSectionFor = (g2Name: string) => G2_SECTION_TO_BOARD_SECTION[g2Name]
+  const named = new Set([...row.sectionsOn, ...row.optional])
   const out: string[] = []
-  for (const g2Name of [...row.sectionsOn, ...row.optional]) {
-    const boardSection = boardSectionFor(g2Name)
+  for (const g2Name of G2_SECTION_NAMES) {
+    if (!named.has(g2Name)) continue
+    const boardSection = G2_SECTION_TO_BOARD_SECTION[g2Name]
     if (!boardSection) continue
     if (boardSection === 'patterns' && !patternsAreOn) continue
     if (!hasData[boardSection]) continue
