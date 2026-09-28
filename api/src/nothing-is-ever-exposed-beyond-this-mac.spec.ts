@@ -1,29 +1,30 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { theAddressTheApiListensOn } from './the-address-the-api-listens-on';
 
 /**
- * "NOTHING IS EVER EXPOSED BEYOND THIS MAC" (Hafsah). In development `app.listen(port, '0.0.0.0')`
- * bound every network address this machine has, not only itself - so a server running on a laptop
- * for development answered anyone on the same network. Development now binds '127.0.0.1', this
- * machine alone; production is unchanged, since a deployed server is meant to be reached from
- * outside the box it runs on.
+ * "NOTHING IS EVER EXPOSED BEYOND THIS MAC" (Hafsah, 28 September 2026). Only an explicit
+ * development run is narrowed to this machine. In every other case the API listens exactly as it
+ * did before this work, on every address, so no deployed server can become unreachable.
  *
- * Comments are stripped first: a guard a comment satisfies is not a guard.
+ * Comments are stripped before the source is read: a guard a comment satisfies is not a guard.
  */
-describe('the API only listens on this machine in development', () => {
-  const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  const main = strip(readFileSync(join(__dirname, 'main.ts'), 'utf8'));
-
-  it('binds 127.0.0.1 whenever NODE_ENV is not production', () => {
-    expect(main).toMatch(/const host = \(process\.env\.NODE_ENV \|\| 'development'\) === 'production' \? '0\.0\.0\.0' : '127\.0\.0\.1';/);
+describe('where the API listens', () => {
+  it('a development run listens on this machine only', () => {
+    expect(theAddressTheApiListensOn('development')).toBe('127.0.0.1');
   });
 
-  it('production still binds every address, unchanged', () => {
-    expect(main).toMatch(/=== 'production' \? '0\.0\.0\.0'/);
+  it('every other value, and no value at all, listens as before, on every address', () => {
+    for (const value of [undefined, '', 'production', 'test', 'preview', 'Development', 'dev', 'anything else']) {
+      expect(theAddressTheApiListensOn(value)).toBe('0.0.0.0');
+    }
   });
 
-  it('the computed host, not a literal, is what app.listen is given', () => {
+  it('the start-up gives the listen call this rule, not a literal address', () => {
+    const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const main = strip(readFileSync(join(__dirname, 'main.ts'), 'utf8'));
+    expect(main).toMatch(/const host = theAddressTheApiListensOn\(process\.env\.NODE_ENV\);/);
     expect(main).toMatch(/await app\.listen\(port, host\);/);
-    expect(main).not.toMatch(/app\.listen\(port, '0\.0\.0\.0'\)/);
+    expect(main).not.toMatch(/app\.listen\(port, '(0\.0\.0\.0|127\.0\.0\.1)'\)/);
   });
 });
