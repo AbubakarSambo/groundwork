@@ -34,7 +34,10 @@ describe('after a real invitation', () => {
     open()
     expect(await screen.findByText('You’re from outside Baridi Appliances, so an admin there has to let you in. We’ve asked Grace Achieng.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Almost in' })).toBeTruthy()
-    const steps = [...document.querySelectorAll('.gw-steps li')].map(li => li.textContent)
+    /* U.20 (the invitation's rebuild): the page now uses the shared `Steps`/`Step` part
+       (components/gw/ui), whose class is `gwui-steps` rather than the old page-only `gw-steps` -
+       the rows and their words are unchanged, only the markup they come from. */
+    const steps = [...document.querySelectorAll('.gwui-steps li')].map(li => li.textContent)
     expect(steps[0]).toBe('✓Done. You accepted the invitation')
     expect(steps[1]).toMatch(/^✓Done\. Grace was asked, (yesterday|on \d+ \w+) at \d{2}:\d{2}$/)
     expect(steps[2]).toBe('○Still to happen. Grace lets you in')

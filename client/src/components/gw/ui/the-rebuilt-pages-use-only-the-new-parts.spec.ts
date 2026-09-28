@@ -58,6 +58,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
     expect(REBUILT_PAGES).toEqual([
       'pages/invite/InvitePage.tsx',
       'pages/invite/InvitationExpired.tsx',
+      'pages/join/WaitingForAnAdminPage.tsx',
     ])
   })
 
