@@ -995,7 +995,8 @@ export class ReportsService {
       }
       const endStates = endStatesFor(ground.scenario).map((o) => o.label).join(' / ');
       const arcLines = Object.entries(arcByParticipant).map(([pid, sig]) => {
-        const label = (ground.participants ?? []).find((p) => p.id === pid)?.email ?? pid;
+        /* Never an address as a name (Hafsah, 28 Sep 2026; screens requests 56, 58, 65). */
+        const label = labelsForParties((ground.participants ?? []) as any).get(pid) ?? 'a party';
         // The shared report gets record-shape language only. The negative
         // tier's advisory copy goes to the admin surface, never in here.
         return `- ${label}: ${tierCopy(sig.tier).shared} (record shape: ${sig.f1_concentration.detail}; ${sig.f5_evidenceTiming.detail})`;

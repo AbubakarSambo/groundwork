@@ -35,6 +35,12 @@ export function whatEachLabelIsCalled(parties: LabelParty[], reader: WhoIsReadin
   const plain = plainWordsByPerson(parties ?? [], visible, viewerLabel);
   const out = new Map<string, string>();
   for (const [id, label] of labels) out.set(label.toLowerCase(), visible.get(label) ?? plain.get(id) ?? 'a colleague');
+  /* And each person's address, said the same way: never an address as a name (Hafsah, 28 Sep 2026). */
+  for (const p of parties ?? []) {
+    const label = labels.get(p.id);
+    const said = (label && visible.get(label)) || plain.get(p.id) || 'a colleague';
+    for (const addr of [p.email, p.user?.email]) if (addr && addr.includes('@')) out.set(`@${addr.trim().toLowerCase()}`, said);
+  }
   return out;
 }
 
@@ -44,6 +50,18 @@ const startsASentence = (whole: string, at: number) => {
 };
 const withACapital = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const andList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+
+const AN_ADDRESS = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+
+/** A participant's address where a name belongs becomes what this reader may call them. Any other address is left. */
+export function withoutAddressesAsNames(text: string, called: Map<string, string>): string {
+  if (!text || !text.includes('@')) return text;
+  return text.replace(AN_ADDRESS, (addr, offset: number, whole: string) => {
+    const said = called.get(`@${addr.toLowerCase()}`);
+    if (!said) return addr;
+    return startsASentence(whole, offset) ? withACapital(said) : said;
+  });
+}
 
 /** One string with every label in it said the way this reader may read it. */
 export function withoutInternalLabels(text: string, called: Map<string, string>): string {
@@ -75,7 +93,7 @@ export function youTakesItsVerb(text: string): string {
 /** Through everything a reader is served. Dates and non-strings are left as they are. */
 export function withoutInternalLabelsIn<T>(value: T, called: Map<string, string>): T {
   const walk = (v: any): any => {
-    if (typeof v === 'string') return youTakesItsVerb(withoutInternalLabels(v, called));
+    if (typeof v === 'string') return youTakesItsVerb(withoutAddressesAsNames(withoutInternalLabels(v, called), called));
     if (v instanceof Date || v === null || typeof v !== 'object') return v;
     if (Array.isArray(v)) return v.map(walk);
     const out: Record<string, any> = {};
@@ -84,7 +102,8 @@ export function withoutInternalLabelsIn<T>(value: T, called: Map<string, string>
        label becomes the same words as the text. Nothing on the screens looks these up by label. */
     for (const [k, x] of Object.entries(v)) {
       const key = typeof k === 'string' && A_WHOLE_LABEL.test(k) ? withoutInternalLabels(k, called) : k;
-      out[key in out ? k : key] = walk(x);
+      /* A field that is an address by design stays one: it is not a name in a sentence. */
+      out[key in out ? k : key] = /^(email|address|replyTo|to)$/i.test(k) ? x : walk(x);
     }
     return out;
   };

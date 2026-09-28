@@ -116,6 +116,27 @@ describe('and "you" takes its verb, outside their own words', () => {
   });
 });
 
+describe('and never an address as a name (screens requests 56, 58, 65)', () => {
+  const noName = { id: 'p-zawadi', userId: null, partyType: PartyType.PARTICIPANT, email: 'zawadi.u8@example.test', nameGiven: null, organisationGiven: null, managingOnly: false, createdAt: new Date('2026-09-01T12:00:00Z'), user: null };
+  const parties = [LEAD, AISHA, noName] as any;
+  it('a sentence that uses a participant\'s address as a name reads as a name or plain words', () => {
+    const called = whatEachLabelIsCalled(parties, { viewerParticipantId: null, viewerIsLead: true, peersAreNamed: true });
+    const said = withoutInternalLabels('x', called) && require('./no-internal-label-reaches-anyone').withoutAddressesAsNames('Start with zawadi.u8@example.test. The record holds nothing about zawadi.u8@example.test.', called);
+    expect(said).not.toContain('@');
+    expect(said).toMatch(/^Start with (a|another) colleague\. The record holds nothing about (a|another) colleague\.$/);
+  });
+  it('and an address that is nobody here is left alone, as is a field that is an address', () => {
+    const called = whatEachLabelIsCalled(parties, { viewerParticipantId: null, viewerIsLead: true, peersAreNamed: true });
+    const { withoutInternalLabelsIn } = require('./no-internal-label-reaches-anyone');
+    const out = withoutInternalLabelsIn({ says: 'Write to help@supplier.test.', email: 'zawadi.u8@example.test' }, called);
+    expect(out).toEqual({ says: 'Write to help@supplier.test.', email: 'zawadi.u8@example.test' });
+  });
+  it('and displayName never returns an address, even to the lead', () => {
+    const { displayName } = require('./party-labels');
+    expect(displayName(noName, true)).toBeNull();
+  });
+});
+
 describe('every board and report read goes through it', () => {
   const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const REPORTS = strip(readFileSync(join(__dirname, 'reports.service.ts'), 'utf8'));

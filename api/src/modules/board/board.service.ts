@@ -2039,13 +2039,15 @@ export class BoardService {
        * said it; falling back to when the check-in was made keeps an in-progress one from reading
        * as nought days old.
        */
-      select: { completedAt: true, createdAt: true, participant: { select: { email: true } } },
+      select: { completedAt: true, createdAt: true, participant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } },
       orderBy: { createdAt: 'desc' },
       take: 50,
     }).catch(() => [] as any[]);
 
     for (const c of said as any[]) {
-      const who = c.participant?.email ?? 'somebody';
+      /* Never an address as a name (Hafsah, 28 Sep 2026; screens requests 56, 58, 65). */
+      const who = [c.participant?.user?.firstName, c.participant?.user?.lastName].filter(Boolean).join(' ').trim()
+        || (c.participant?.nameGiven ?? '').trim() || 'a colleague';
       needs.push({
         kind: 'ASKED_TO_BE_SHOWN',
         who,

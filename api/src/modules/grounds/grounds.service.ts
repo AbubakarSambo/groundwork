@@ -5393,7 +5393,8 @@ export class GroundsService {
         .map((pid) => {
           const p = others.find((x) => x.id === pid);
           const named = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
-          return named || p?.email || 'somebody';
+          /* Never an address as a name (Hafsah, 28 Sep 2026; screens requests 56, 58, 65). */
+          return named || (p as any)?.nameGiven?.trim() || 'a colleague';
         });
       throw new BadRequestException(
         `${who.join(' and ')} ${who.length === 1 ? 'has' : 'have'} already given an account here, so this is not a test any more - deleting it would destroy what they wrote, and they cannot get it back. Close the check-in instead: everybody keeps their record.`,

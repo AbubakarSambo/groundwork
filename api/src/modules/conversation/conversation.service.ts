@@ -3745,7 +3745,8 @@ export class ConversationService {
       uploaderNote: d.uploaderNote,
       provenance: whereThisCameFrom({
         mine: d.participant?.userId === checkIn.participant.userId,
-        who: nameOf(d.participant?.user) ?? d.participant?.email ?? null,
+        /* Never an address as a name (28 Sep 2026): the model would say it back. */
+        who: nameOf(d.participant?.user) ?? d.participant?.nameGiven ?? null,
         fromTheLead: !!d.participant?.userId && d.participant.userId === ground.initiatorId,
         sharedWithEveryone: d.visibility === 'OPEN',
       }),
@@ -3786,7 +3787,8 @@ export class ConversationService {
       .map((d) => ({
         fileName: d.fileName,
         content: d.content ?? '',
-        who: nameOf(d.participant?.user) ?? d.participant?.email ?? null,
+        /* Never an address as a name (28 Sep 2026): the model would say it back. */
+        who: nameOf(d.participant?.user) ?? d.participant?.nameGiven ?? null,
         fromTheLead: !!d.participant?.userId && d.participant.userId === ground.initiatorId,
       }));
     /*

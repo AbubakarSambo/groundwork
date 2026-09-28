@@ -58,8 +58,8 @@ const PARTIES = [LEAD, NO_NAME, AISHA] as unknown as LabelParty[];
 describe('the report\'s names, for the lead, the person themselves and a peer', () => {
   it('displayName gives nothing for somebody with no name, never the description', () => {
     expect(displayName(NO_NAME as any)).toBeNull();
-    /* To the lead and to themselves the address the lead typed may stand in, which is not the lead's words. */
-    expect(displayName(NO_NAME as any, true)).toBe('dk7@baridi.test');
+    /* Changed 28 Sep 2026, Hafsah: never an address as a name, not even to the lead or to themselves. */
+    expect(displayName(NO_NAME as any, true)).toBeNull();
   });
 
   it('the stored label is positional, and no reader\'s name for them holds the description', () => {
