@@ -10,12 +10,14 @@ same file.
 check-in screens, passed its sixth review and its full test run this morning (10,376 API tests and
 3,244 screen tests, all passing), and is ticked. That makes 8 of 20.
 
-**What is left:** the reviews of U.9 to U.19, one module at a time, oldest first; finishing U.19
+**U.9, reports and sharing, passed its review** on the fifth round. It is not ticked yet, because one of the engine workspace's tests fails on a single heading until the engine changes its label to the prototype's wording, as you decided (request 62). Everything else in both suites passes.
+
+**What is left:** the reviews of U.10 to U.19, one module at a time, oldest first; finishing U.19
 (billing) and U.20; the screens for the engine's new pattern shape and its answer box (patterns stay
 switched off until you approve their names); the table of Ask Groundwork, the switchboard and every
 kind of board; and `docs/ready-to-deploy-screens.md`.
 
-**Are the screens ready to deploy? Not yet.** Eleven modules still need their review (U.9 to U.19), and U.20 is not built yet. Four privacy
+**Are the screens ready to deploy? Not yet.** Ten modules still need their review (U.10 to U.19), and U.20 is not built yet. Four privacy
 problems are open, and each is in the live product too: the lead's private description reaching an
 invitation (item 0, fixed on this branch), the check-ins list sending participants the lead's setup
 brief (item 0b, fixed on this branch), every reader of a report getting everyone's rating (item 0c; a
@@ -197,7 +199,7 @@ to find.
 | U.6 Starting a check-in | Yes, except the lead's first check-in card | **Passed** on 27 September, on the seventh round |
 | U.7 Context | Yes | **Passed** on 27 September, on the fifth round |
 | U.8 The check-in screens | Yes | **Passed** on 28 September, on the sixth round |
-| U.9 Reports and sharing | Yes | Waiting |
+| U.9 Reports and sharing | Yes | **Passed** its review on 28 September, on the fifth round. Not ticked yet: one engine test waits on request 62 |
 | U.10 The board | Yes | Waiting |
 | U.11 Ending a check-in, probation review, handover | Yes | Waiting |
 | U.12 The You board | Yes | Waiting |
@@ -3632,9 +3634,10 @@ ones were hidden until the earlier ones passed): "Where you are against it", "Wh
 "What is still open for you" are now the plain declared headings too. One label is left as a
 genuine disagreement rather than resolved unilaterally: `howMuchYouGaveIt` is declared "How much
 you gave this one", but the third review asked for the prototype's own wording, "How checkable
-today's check-in was", which the screen now says - written up as request 62 and recorded under
-Needs Hafsah, item 20.10, per CLAUDE.md's rule to ask when the prototype and the backend disagree
-and `docs/backend-map.md` does not say which way to go. `the-template-is-on-the-screens.spec.ts`'s
+today's check-in was", which the screen now says - written up as request 62. You had already decided this today: the rating's wording follows the
+prototype. So the screen keeps "How checkable today's check-in was", and request 62 now asks the
+engine workspace to change its declared label to match. Until it does, one engine test
+(`the-order-is-the-order-on-screen.spec.ts`, A_SESSION) fails on this one label. `the-template-is-on-the-screens.spec.ts`'s
 "four states, and each one says what it means" and
 `specificity-belongs-to-the-person.spec.ts`'s "what would help is rendered" were also updated,
 each for wording this round changed on purpose (the tile's clause folded into `tileSentence`'s own
