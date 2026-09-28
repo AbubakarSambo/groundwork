@@ -76,18 +76,17 @@ const SHEET = `
 .gw-sr .gw-find-why { font-size: 12.5px; line-height: 1.6; }
 .gw-sr .gw-tile     { padding: 14px 18px; }
 .gw-sr .gw-tile-n   { border-left: 1px solid var(--gw-border); }
-.gw-sr .gw-tile-v   { font-size: 17px; font-weight: 800; line-height: 1.15; }
-.gw-sr .gw-tile-l   { font-size: 11.5px; font-weight: 700; }
-.gw-sr .gw-tile-s   { font-size: 12px; line-height: 1.45; }
+/* U.9 THIRD REVIEW: ONE CLASS, FOR ONE SENTENCE, NOT A FIGURE CLASS AND A CAPTION CLASS. Each tile
+   used to be a big figure (.gw-tile-v) over a small caption (.gw-tile-s); it is one sentence now,
+   set at a size that reads as body text rather than as a scoreboard digit. */
+.gw-sr .gw-tile-txt { font-size: 13px; font-weight: 600; line-height: 1.5; }
 @media (max-width: 640px) {
   .gw-sr .gw-find     { font-size: 15px; line-height: 1.5; font-weight: 600; }
   .gw-sr .gw-find-why { font-size: 13px; }
   /* Stacked, the divider is the rule ABOVE each tile, not a stripe down its left edge. */
   .gw-sr .gw-tile     { padding: 12px 16px; }
   .gw-sr .gw-tile-n   { border-left: none; border-top: 1px solid var(--gw-border); }
-  .gw-sr .gw-tile-v   { font-size: 16px; }
-  .gw-sr .gw-tile-l   { font-size: 12px; }
-  .gw-sr .gw-tile-s   { font-size: 13px; line-height: 1.5; }
+  .gw-sr .gw-tile-txt { font-size: 13.5px; }
 }
 `
 /*
@@ -108,16 +107,34 @@ function looksLikeAFilename(who: string): boolean {
 }
 
 /**
+ * U.9 THIRD REVIEW: A FILE'S KIND, SAID FOR WHAT IT IS, NOT ALWAYS "A TYPED DOCUMENT".
+ * "chandarana-quote.png · a photo" was joined with a dot, and even once that join was fixed the
+ * sentence still called every file "a typed document" - a photo is not a typed document. The
+ * extension decides which sentence a file gets.
+ */
+const IMAGE_EXTENSION = /\.(png|jpe?g|gif|webp|heic|heif|bmp)$/i
+function kindOfFile(name: string): string {
+  return IMAGE_EXTENSION.test(name.trim()) ? 'a photo' : 'a typed document'
+}
+
+/**
  * U.9 RE-REVIEW, ITEM A: A SENTENCE UNDER THE QUOTE, NOT "NAME · FROM A DOCUMENT".
  * "Baraka Mwangi · from memory" and "Note from Tuskys Kilimani.txt · a typed document" each joined
  * a name (or a filename, when the source is a document rather than a person) to a fact with a
  * dot. `who` is sometimes a person who said the line and sometimes the document it came from; each
  * now reads as its own sentence, in the phrasing that fits which one it is.
+ *
+ * U.9 THIRD REVIEW, ITEM 5: THE READER'S OWN NAME UNDER THEIR OWN QUOTE IS JUST "YOU". "Rukia
+ * Otieno (you) said this." named her back to herself before saying "you" - nobody would ever say
+ * that to the person they are talking to. `isYou` says this line is the reader's own, and the
+ * sentence drops the name entirely rather than repeat it.
  */
-function Cite({ who, documented, figureIs }: { who: string; documented?: boolean; figureIs?: string }) {
-  const sentence = looksLikeAFilename(who)
-    ? `${who} is a typed document.`
-    : `${who} said this${figureIs ? ` ${figureIs}` : ''}.${documented && !figureIs ? ' A document backs it.' : ''}`
+function Cite({ who, documented, figureIs, isYou }: { who: string; documented?: boolean; figureIs?: string; isYou?: boolean }) {
+  const sentence = isYou
+    ? `You said this${figureIs ? ` ${figureIs}` : ''}.${documented && !figureIs ? ' A document backs it.' : ''}`
+    : looksLikeAFilename(who)
+      ? `${who} is ${kindOfFile(who)}.`
+      : `${who} said this${figureIs ? ` ${figureIs}` : ''}.${documented && !figureIs ? ' A document backs it.' : ''}`
   return (
     <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--gw-muted)' }}>
       {sentence}
@@ -136,7 +153,12 @@ function Quotes({ items, yourName }: { items: { text: string; who?: string | nul
       {items.map((it, i) => (
         <div key={i}>
           <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{it.text}</div>
-          <Cite who={it.who == null || it.who === yourName ? (yourName ? `${yourName} (you)` : 'You') : it.who} documented={it.documented} figureIs={it.figureIs} />
+          <Cite
+            who={it.who == null || it.who === yourName ? 'You' : it.who}
+            isYou={it.who == null || it.who === yourName}
+            documented={it.documented}
+            figureIs={it.figureIs}
+          />
         </div>
       ))}
     </div>
@@ -244,6 +266,111 @@ export function lastUpdated(at: Date | string): string | null {
   const time = atTime(at)
   if (!weekday || !time) return null
   return `Last updated on ${weekday} at ${time}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`
+}
+
+/**
+ * U.9 THIRD REVIEW, ITEM 2: A TILE IS A SENTENCE, NOT A LABEL, A FIGURE AND A FRAGMENT STACKED ON
+ * TOP OF EACH OTHER.
+ *
+ * "Differences / 1. / still open, as the written report reads it" read as three disconnected
+ * pieces rather than one thing to read - the label was hidden from sight but the figure and the
+ * clause under it were still two separate lines with no sentence joining them. Each tile now says
+ * its count and what it is a count of in one or two full sentences, built from the same `label`,
+ * `value` and `sub` the server already sends (`atAGlanceTiles`, what-this-session-holds.ts) -
+ * nothing here is invented, only composed.
+ *
+ * Small counts are said as words, the way the rest of the product does ("Two targets are set"),
+ * and larger ones stay as figures ("15 of every 100").
+ */
+function smallWord(n: number): string {
+  const words = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
+  return n >= 0 && n < words.length ? words[n] : String(n)
+}
+function capitalize(s: string): string {
+  const t = s.trim()
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : t
+}
+function lowerFirst(s: string): string {
+  const t = s.trim()
+  return t ? t.charAt(0).toLowerCase() + t.slice(1) : t
+}
+function withPeriod(s: string): string {
+  const t = s.trim()
+  if (!t) return t
+  return /[.!?]["'”’)\]]*$/.test(t) ? t : `${t}.`
+}
+
+function differencesSentence(value: string, sub: string): string {
+  const n = /^\d+$/.test(value) ? Number(value) : null
+  if (n != null) {
+    const lead = `People see ${smallWord(n)} thing${n === 1 ? '' : 's'} differently.`
+    const generic = /as the written report reads it|still to answer|no agreement and no gap yet/.test(sub)
+    if (generic) return `${lead} ${withPeriod(capitalize(sub))}`
+    const more = sub.match(/^(.+), and (\d+) more$/)
+    if (more) {
+      const extra = Number(more[2])
+      return `${lead} ${capitalize(more[1])} is seen differently, and ${smallWord(extra)} more thing${extra === 1 ? '' : 's'} ${extra === 1 ? 'is' : 'are'} too.`
+    }
+    return `${lead} ${capitalize(sub)} is seen differently.`
+  }
+  if (value === 'None') return `Nobody sees anything differently. ${withPeriod(capitalize(sub))}`
+  return `There is nothing to compare yet. ${withPeriod(capitalize(sub))}`
+}
+
+function movementSentence(value: string, sub: string): string {
+  const gained = value.match(/^\+(\d+)$/)
+  if (gained) {
+    const n = Number(gained[1])
+    return `${capitalize(smallWord(n))} target${n === 1 ? '' : 's'} moved this session.`
+  }
+  if (value === 'None' && /no target moved this session/.test(sub)) return 'No target moved this session.'
+  const set = sub.match(/^(\d+) targets? set, and no round has closed to measure from$/)
+  if (set) {
+    const n = Number(set[1])
+    return `Nothing has moved yet. ${capitalize(smallWord(n))} target${n === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} set, and no session has closed to measure them against.`
+  }
+  return `Nothing has moved yet. ${withPeriod(capitalize(sub))}`
+}
+
+function blockersSentence(value: string, sub: string): string {
+  const n = /^\d+$/.test(value) ? Number(value) : null
+  if (n != null) {
+    const lead = `${capitalize(smallWord(n))} thing${n === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} blocking work`
+    if (sub === 'named as holding work up') return `${lead}.`
+    const more = sub.match(/^(.+), and (\d+) more$/)
+    if (more) {
+      const extra = Number(more[2])
+      return `${lead}, ${lowerFirst(more[1])}, and ${smallWord(extra)} more thing${extra === 1 ? '' : 's'} ${extra === 1 ? 'is' : 'are'} blocking work too.`
+    }
+    return `${lead}, ${lowerFirst(sub)}.`
+  }
+  const waiting = value.match(/^(\d+) waiting$/)
+  if (waiting) {
+    const n2 = Number(waiting[1])
+    return `${capitalize(smallWord(n2))} ${n2 === 1 ? 'person is' : 'people are'} waiting on somebody else, ${lowerFirst(sub)}.`
+  }
+  const worry = value.match(/^(\d+) worr(?:y|ies)$/)
+  if (worry) return withPeriod(capitalize(sub))
+  return `Nothing is blocking work. ${withPeriod(capitalize(sub))}`
+}
+
+function howMuchWasSaidSentence(value: string): string {
+  const pct = value.match(/^(\d+)% documented$/)
+  if (pct) return `${pct[1]} of every 100 things people said have a document behind them.`
+  if (value === 'All from memory') return 'Nothing said this session was anchored to a document. It is all from memory.'
+  return 'There is nothing on record yet, so there is nothing to check against a document.'
+}
+
+export function tileSentence(r: { label: string; value: string; sub: string }): string {
+  const value = (r.value ?? '').trim()
+  const sub = (r.sub ?? '').trim()
+  switch (r.label) {
+    case 'Differences': return differencesSentence(value, sub)
+    case 'Movement': return movementSentence(value, sub)
+    case 'Blockers': return blockersSentence(value, sub)
+    case 'How much was said': return howMuchWasSaidSentence(value)
+    default: return sub ? `${withPeriod(capitalize(value))} ${withPeriod(capitalize(sub))}` : withPeriod(capitalize(value))
+  }
 }
 
 export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }: {
@@ -404,32 +531,25 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       )}
 
       {/*
-        ── At a glance. Four states in a row, each said as one sentence.
-        U.9 RE-REVIEW, ITEM A: the label used to sit above the figure as its own shouted
-        two-tier heading ("MOVEMENT" over "Nothing yet" over a lower-case clause). The figure and
-        the clause saying what it is of are now one sentence; the label stays, for anybody using a
-        screen reader, without being shown as a heading of its own.
+        ── At a glance. Four states in a row, each said as one or two full sentences.
+        U.9 THIRD REVIEW, ITEM 2: EACH TILE WAS STILL A LABEL, A FIGURE AND A FRAGMENT, STACKED.
+        "Differences / 1. / still open, as the written report reads it" read as three disconnected
+        pieces, not one thing to read, even once the label was moved off-screen for sight. Each
+        tile now reads as `tileSentence` composes it - "People see one thing differently. The main
+        obstacle to signing new shops is seen differently." - from the same `label`, `value` and
+        `sub` the server sends. The label stays for anybody using a screen reader, without being
+        shown as a heading of its own.
       */}
       {(d.atAGlance ?? []).length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', borderTop: '1px solid var(--gw-border)' }}>
-          {d.atAGlance.map((r: any, i: number) => {
-            const value = (r.value ?? '').trim()
-            const sub = (r.sub ?? '').trim()
-            const endsSentence = (s: string) => /[.!?]$/.test(s)
-            return (
-              <div key={r.label} className={i > 0 ? 'gw-tile gw-tile-n' : 'gw-tile'}>
-                <span className="gw-sr-only">{r.label}</span>
-                <div className="gw-tile-v" style={{ color: r.tone === 'good' ? 'var(--gw-green-t)' : r.tone === 'watch' ? 'var(--gw-amber-t)' : 'var(--gw-text)' }}>
-                  {value}{value && !endsSentence(value) ? '.' : ''}
-                </div>
-                {sub && (
-                  <div className="gw-tile-s" style={{ color: 'var(--gw-sub)', marginTop: 4 }}>
-                    {sub.charAt(0).toUpperCase() + sub.slice(1)}{!endsSentence(sub) ? '.' : ''}
-                  </div>
-                )}
+          {d.atAGlance.map((r: any, i: number) => (
+            <div key={r.label} className={i > 0 ? 'gw-tile gw-tile-n' : 'gw-tile'}>
+              <span className="gw-sr-only">{r.label}</span>
+              <div className="gw-tile-txt" style={{ color: r.tone === 'good' ? 'var(--gw-green-t)' : r.tone === 'watch' ? 'var(--gw-amber-t)' : 'var(--gw-text)' }}>
+                {tileSentence(r)}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       )}
 
@@ -446,8 +566,15 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         set against each person's version of it; and where the report got what it knows. The new
         headings say those.
       */}
+      {/*
+        U.9 THIRD REVIEW, ITEM 3: STILL THE PRODUCT DESCRIBING ITS OWN STRUCTURE. "This is the top
+        of it; nothing sits above it" and "What this sits under, and what the objective serves" are
+        both about "it" without ever saying what "it" is - a heading joined with a semicolon on top
+        of that. Said plainly instead: whether this objective is part of a bigger one, or nobody has
+        said so yet.
+      */}
       {d.cascade && (
-        <Row n={next()} label={d.cascade.isCascade ? 'What this sits under, and what the objective serves' : 'This is the top of it; nothing sits above it'}>
+        <Row n={next()} label={d.cascade.isCascade ? 'This is part of a bigger goal.' : 'Nobody has said what bigger goal this is part of.'}>
           {d.cascade.parentNamed && (
             <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
           )}
@@ -464,7 +591,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
               {definitions.map((def, i) => (
                 <div key={i}>
                   <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{def.text}</div>
-                  <Cite who={def.who === null || (yourName && def.who === yourName) ? (yourName ? `${yourName} (you)` : 'You') : def.who!} />
+                  <Cite
+                    who={def.who === null || (yourName && def.who === yourName) ? 'You' : def.who!}
+                    isYou={def.who === null || (yourName && def.who === yourName) || false}
+                  />
                 </div>
               ))}
             </div>
