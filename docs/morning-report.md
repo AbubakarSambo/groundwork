@@ -54,7 +54,21 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 - **Seen for real in the local test database.** A note shared with everyone names `harvestline-q4-targets.xlsx`, a file only its owner can open, and participants were sent it. I will check it again as a participant once the API is rebuilt.
 - **What stays:** what a document showed can still be said. Only which file it was is the owner's to share.
 
-**Run-14, the full run, started at 10:28 on `9e808ab9`,** with every fix above in it. It checks "proof asked for" after week 2, and task 1.5's bar again.
+**Run-14, today's full run, on `9e808ab9`, finished at 11:45.** It has every fix above except week 3 and "Nothing checkable".
+- **The checker fails it on one number: "proof asked for" is 37, against a baseline of 42.** The allowance is 10%, so 38 would have passed. Everything else is at or above the baseline.
+- **This fall started before week 2.** Across full runs, "proof asked for" was 50, 53 and 53 on runs 8, 9 and 10, then 42 on run-12 and 38 on run-13, both before week 2, and 37 now. The one-question rule asked the model again 24 times in run-14, but the log does not say which question was dropped, so I cannot show that week 2 cost any proof questions. I have kept week 2. Week 4 of the plan is about asking for proof kindly, and its bar is exactly that this number goes up, so that is where I will fix it. Per scenario the drop is mostly seniorhire, which went from 9 and 8 to 3, 2 and 4.
+- **For the first time on a full run, no turn asks two questions:** 0, against 37 at the baseline. This is task 2.2's bar.
+- **Every problem count is 0,** the third full run in a row, so task 1.6 holds.
+- **Quotes:** 619 of 619 served are word for word in the record.
+- **The lead's private words:** none reached an invited person, the fourth full run in a row. The helper flagged six places. Four were the person's own words or the targets this check-in is set to show. In the other two, Groundwork told Patience "after six years", which is in the check-in's brief, not only in the lead's description of her.
+- **Jargon in Groundwork's turns: 29**, against a bar of 10.5. Week 3 is not in this run.
+- **The judgements: 20 could be tested, and I read 18 of them as clearly right. Two more, renewal and workplan, are close calls I would also count, which would make 20 of 20.**
+  - Sales and openread were flagged incomplete, so they are left out. Advisor and shock could not be tested again: Peter never mentions the banks, and nobody mentions the missed QBRs or the champion leaving.
+  - **Snapshot is right for the first time:** "Sign the lease document for the office move", which is waiting on the lead.
+  - **Renewal**, a close call: it says there is "a single operational cause that has been known since March" and stops the talk being about the partner's performance, but it does not say in so many words that the cause is our own change.
+  - **Workplan**, a close call: it finds both leads planning work with the same supplier, and says the plans are over budget, but calls it "two different projects" rather than one contractor counted twice.
+  - **So run-14 meets your bar for task 1.5 on its own.** Run-13 did not, so the next full run decides it.
+- **"Nothing checkable" and three faults in the lead's rows, checked live after this run** (`b450fbf2`). On openread the lead now reads "Nothing Kofi Boateng said this round can be checked yet", then "Ask Kofi Boateng for a photo, a message or a document that shows what moved". While reading the rows I fixed three faults that were already there: "Ask Jide Sanusi to speak to the handover from the current finance manager rather than write to them", "has been waiting 0 days", and a row saying "nothing here needs you this week" and then giving something to ask.
 
 **Hafsah's correction: "Nothing checkable" is back on the lead's board** (`01379c6e`, decision 40 in `docs/decisions-merged.md`).
 
@@ -93,7 +107,9 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   2. Make the runner use the streamed route, so that the runs measure what people get.
   The second can be done now, without changing what anyone sees. I would do both, in that order.
 
-**What is next, in your order:** read run-14, on a build with every fix, to check "proof asked for", then the weekly plan.
+**Week 3's first re-run set started at 12:02** (sales, seniorhire, loans).
+
+**What is next, in your order:** week 3 re-runs twice, then week 4 of the weekly plan (asking for proof kindly), which is where "proof asked for" is fixed.
 
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
