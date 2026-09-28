@@ -77,9 +77,19 @@ export const OUR_WORDS_NOT_THEIRS = [
   'surfaced to',
 ];
 
+/** Remarks about how much somebody is saying. Checked lower-case, as every phrase here is. */
+export const ABOUT_HOW_MUCH_THEY_SAY = [
+  'shorter answers', 'answers are shorter', 'answers have been shorter', 'answers have been short',
+  'your answers are short', 'you have been brief', "you've been brief", 'you are being brief',
+  'you seem quieter', 'you have been quiet', "you've been quiet", 'not saying much',
+];
+
 export const PHRASES_WE_NEVER_WRITE = [
   ...SAYS_NOTHING_ABOUT_ANYBODY,
   ...OUR_WORDS_NOT_THEIRS,
+  /* Task 2.8, week 4: never comment on someone's answers getting shorter. The prompt says so ("DO NOT
+     COMMENT ON ENGAGEMENT"); this is the code's copy, so a slip is asked for again rather than sent. */
+  ...ABOUT_HOW_MUCH_THEY_SAY,
   'it sounds like',
   'it seems like',
   'I understand',
