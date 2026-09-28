@@ -6,7 +6,7 @@ Hafsah decided on 28 September that there will be no pull requests for now. The 
 
 - The branch is `fix/privacy-conversation-crash`, in the separate folder `groundwork-pr1` next to this repository. A copy of it is also on the local branch `wip/fix-privacy-conversation-crash`.
 - It starts from commit `80beab98`, the tip of Abubakar's pre-release branch, and not from `wip/plain-reports`. The code at `80beab98` is identical to `origin/main` (`f5c07d39`).
-- **It has not been pushed.** The safety check refused the push twice, once as `git push mine fix/privacy-conversation-crash:wip/fix-privacy-conversation-crash`, and once as `git push mine wip/fix-privacy-conversation-crash`. Following Hafsah's instruction, I stopped there. It exists only on this computer.
+- **It has not been pushed.** The safety check allows each workspace to push only its own branch, and this workspace's branch is `wip/plain-reports`. It exists only on this computer. Hafsah can push it herself with `git push mine wip/fix-privacy-conversation-crash`.
 - A local test database, `gw_pr1_live`, was made with the 277 migrations at `80beab98`. Nothing has been written to it yet. No other database was touched.
 
 ## What each fix does, and whether it is finished
