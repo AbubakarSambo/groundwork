@@ -26,11 +26,11 @@ function aSession(over: Record<string, unknown>) {
   }
 }
 
-function renderIt() {
+function renderIt(totalInThisRound?: number | null) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter><TheSessionsReport groundId="g1" sessionNumber={37} /></MemoryRouter>
+      <MemoryRouter><TheSessionsReport groundId="g1" sessionNumber={37} totalInThisRound={totalInThisRound} /></MemoryRouter>
     </QueryClientProvider>,
   )
 }
@@ -89,6 +89,31 @@ describe('one session, as each reader reads its top', () => {
     expect(sessionAndWhoCheckedIn(2, null, 0, 0)).toBe('Session 2.')
     expect(hasCheckedIn({ who: 'Brian', isYou: true, answered: false })).toBe('You have not checked in yet.')
     expect(lastUpdated('2026-09-23T18:30:00.000Z')).toMatch(/^Last updated on Wednesday 23 September at 6:30pm\. /)
+  })
+
+  it('U.9 REVIEW FIX 6: agrees with the check-in header\'s count when the session report\'s own count leaves somebody out', async () => {
+    /*
+     * Engine request 56, walked live: the session report's own `counting` had 5 people, the
+     * check-in header counted 6 - it left Zawadi out of the count, not just off the list. The
+     * host page passes the header's own total (`totalInThisRound`, from the same `whoIsInRound`
+     * helper); this reads it only when it is bigger than what `counting` itself says, so a
+     * session that genuinely has fewer parties is never inflated.
+     */
+    vi.mocked(reportsApi.sessionReport).mockResolvedValue(aSession({
+      counting: [
+        { who: 'Aisha', isYou: false, answered: true },
+        { who: 'Miriam', isYou: false, answered: true },
+        { who: 'Omar', isYou: false, answered: false },
+        { who: 'Brian', isYou: false, answered: false },
+      ],
+    }) as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter><TheSessionsReport groundId="g1" sessionNumber={37} totalInThisRound={6} /></MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('Session 37 of 65. 2 of 6 people checked in.')).toBeTruthy()
   })
 
   it('draws nothing for "last updated" when the date is not a real date, the shape the server sends today', async () => {

@@ -16,6 +16,7 @@ import { HowSpecificThisSessionWas } from '@/components/gw/HowSpecificThisSessio
 import { useAuthStore } from '@/stores/auth'
 import { copy } from '@/components/gw/copying-can-fail'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
+import { whoIsInRound } from '@/lib/who-is-in-this-round'
 
 /**
  * THE REPORT ONE SESSION ENDED ON, OPENED AGAIN.
@@ -465,7 +466,11 @@ export default function SessionReportPage() {
               ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. What anyone said about somebody else never does.`
               : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. What anyone said about somebody else never does.'}
           </div>
-          <TheSessionsReport groundId={data.groundId} sessionNumber={data.sessionNumber} />
+          <TheSessionsReport
+            groundId={data.groundId}
+            sessionNumber={data.sessionNumber}
+            totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), data.sessionNumber, (ground as any).scenario).length : null}
+          />
         </section>
       )}
       {/*

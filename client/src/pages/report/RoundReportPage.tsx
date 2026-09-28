@@ -1,5 +1,8 @@
 import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { TheSessionsReport } from '@/components/gw/TheSessionsReport'
+import { groundsApi } from '@/api/grounds'
+import { whoIsInRound } from '@/lib/who-is-in-this-round'
 
 /**
  * ONE ROUND'S REPORT, FOR SOMEBODY WHO HAS NO SESSION OF THEIR OWN ON IT.
@@ -12,6 +15,18 @@ export default function RoundReportPage() {
   const { id, sessionNumber } = useParams<{ id: string; sessionNumber: string }>()
   const navigate = useNavigate()
   const n = Number(sessionNumber)
+  /*
+   * U.9 REVIEW FIX 6: THE SAME COUNT AS THE CHECK-IN HEADER.
+   * The header on GroundAdminPage counts who is in this round with `whoIsInRound`; the session
+   * report's own count can disagree with it (engine request 56). This reader has no session of
+   * their own, so their only count is this one - it should still be the product's one count.
+   */
+  const { data: ground } = useQuery({
+    queryKey: ['ground', id],
+    queryFn: () => groundsApi.get(id!),
+    enabled: !!id,
+    retry: false,
+  })
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 16px 60px' }}>
@@ -28,7 +43,13 @@ export default function RoundReportPage() {
         checked in, as the prototype's session page does.
       */}
       <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 12 }}>Session {n}</div>
-      {!!id && Number.isFinite(n) && <TheSessionsReport groundId={id} sessionNumber={n} />}
+      {!!id && Number.isFinite(n) && (
+        <TheSessionsReport
+          groundId={id}
+          sessionNumber={n}
+          totalInThisRound={ground ? whoIsInRound(((ground as any).participants ?? []), n, (ground as any).scenario).length : null}
+        />
+      )}
     </div>
   )
 }

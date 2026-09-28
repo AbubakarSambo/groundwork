@@ -231,7 +231,21 @@ export function lastUpdated(at: Date | string): string | null {
   return `Last updated on ${weekday} at ${time}. It only changes when something new comes in, such as a check-in, a document or a number from another system.`
 }
 
-export function TheSessionsReport({ groundId, sessionNumber }: { groundId: string; sessionNumber: number }) {
+export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }: {
+  groundId: string
+  sessionNumber: number
+  /**
+   * U.9 REVIEW FIX 6: THE SAME COUNT AS THE CHECK-IN HEADER.
+   *
+   * Engine request 56: this session's own `counting` can leave somebody out of the total (walked
+   * live: "4 of 5" here beside "4 of 6" on the check-in's own header, because the session report's
+   * count and the rest of the product count differently). That is the server's read to fix; on
+   * this screen, when the host page already knows the true total (the same figure the check-in's
+   * header uses, via `whoIsInRound`), it is passed in here and used instead of `counting.length`
+   * whenever the two disagree, so a reader is never shown two different totals for one check-in.
+   */
+  totalInThisRound?: number | null
+}) {
   const [byPerson, setByPerson] = useState(false)
   const { data, isLoading, isError } = useQuery({
     queryKey: ['session-shaped-report', groundId, sessionNumber],
@@ -263,7 +277,8 @@ export function TheSessionsReport({ groundId, sessionNumber }: { groundId: strin
   const amended = !!d.amendedAt
   const yourName: string | null = d.counting?.find((c: any) => c.isYou)?.who ?? null
   const answered = (d.counting ?? []).filter((c: any) => c.answered).length
-  const ofPeople = (d.counting ?? []).length
+  const countedTotal = (d.counting ?? []).length
+  const ofPeople = totalInThisRound != null && totalInThisRound > countedTotal ? totalInThisRound : countedTotal
 
   /* The board's two sections, refused by name rather than by silence: a later change to the section
      list cannot quietly put a run read back onto the page about one session. */
