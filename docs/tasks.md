@@ -47,7 +47,7 @@ Fixes 1 (the leak), 2 (the gluing) and 3 (names, not labels) are done on this br
 Read `docs/conversation-standard.md`. Work through its twelve points in this order. After each, run all 24 scenarios, score them, and have the reviewer read the four named conversations in full.
 
 - [ ] **2.1** The lead's name in every message that refers to them.
-- [ ] **2.2** One question at a time. *Done when:* "turns that ask more than one question" is 0.
+- [x] **2.2** One question at a time. *Done when:* "turns that ask more than one question" is 0. — **0 on run-14, all 24 scenarios, 28 September** (37 at the baseline), and 0 in all four week-2 re-runs. Built in `6f8e7036`, `91e3dc73`, `504f7271`, `5d65a68b`.
 - [ ] **2.3** Plain words and no curt lines in Groundwork's turns, using the rulebook. **Carries the second half of 1.4's bar** (moved here 26 September): *done when* "jargon in Groundwork's turns" is at most a quarter of the baseline, which is 10.5. It was 42 at the baseline and is 22 now. "Curt turns" must also be 0; it was 3 on run-5, all of them the single word "Understood.", and that one is already fixed.
 - [ ] **2.4** Starts from what they said last time, and good news first when there is some. Must not reduce "past words brought back".
 - [ ] **2.5** Asks for proof kindly, and says what the proof is for. Must not reduce "proof asked for".
