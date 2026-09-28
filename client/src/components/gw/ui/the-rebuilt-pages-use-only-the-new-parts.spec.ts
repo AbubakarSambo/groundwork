@@ -59,6 +59,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/invite/InvitePage.tsx',
       'pages/invite/InvitationExpired.tsx',
       'pages/join/WaitingForAnAdminPage.tsx',
+      'pages/grounds/OutOfTime.tsx',
     ])
   })
 

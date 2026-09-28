@@ -17,4 +17,5 @@ export const REBUILT_PAGES: string[] = [
   'pages/invite/InvitePage.tsx',
   'pages/invite/InvitationExpired.tsx',
   'pages/join/WaitingForAnAdminPage.tsx',
+  'pages/grounds/OutOfTime.tsx',
 ]
