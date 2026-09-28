@@ -13,7 +13,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    host: true, // Allow access from network
+    /*
+     * NOTHING IS EVER EXPOSED BEYOND THIS MAC (Hafsah). `host: true` bound every network address
+     * this machine has, not only itself, so the dev server answered anyone on the same network.
+     * 'localhost' is this machine alone. Dev server only - `build` and `preview` (what a deploy
+     * runs) are untouched.
+     */
+    host: 'localhost',
     proxy: {
       '/api': {
         /**

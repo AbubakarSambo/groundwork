@@ -220,7 +220,15 @@ async function bootstrap() {
   });
 
   const port = configService.get<number>('app.port') || 3000;
-  await app.listen(port, '0.0.0.0');
+  /**
+   * NOTHING IS EVER EXPOSED BEYOND THIS MAC (Hafsah). In development the server used to bind
+   * '0.0.0.0' - every network address the machine has, not only itself - so it answered anyone on
+   * the same network, not only the person running it. Development now binds '127.0.0.1' only,
+   * this machine alone. Production keeps '0.0.0.0': a deployed server is meant to be reached from
+   * outside the box it runs on, behind its own network controls.
+   */
+  const host = (process.env.NODE_ENV || 'development') === 'production' ? '0.0.0.0' : '127.0.0.1';
+  await app.listen(port, host);
   logger.log(`Groundwork API running on port ${port} (docs at /api/docs)`);
 }
 
