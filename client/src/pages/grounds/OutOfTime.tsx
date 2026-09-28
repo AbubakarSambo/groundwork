@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Page, Mark, PageTitle, Panel, Section, Button, Tag, Note } from '@/components/gw/ui'
+import { Page, Mark, PageTitle, Panel, SubHeading, Button, Tag, Note, Stack } from '@/components/gw/ui'
 
 /**
  * "THIS CHECK-IN REACHED ITS END DATE" (A3, #/join/outoftime), for a person taking part. The words
@@ -16,7 +16,16 @@ import { Page, Mark, PageTitle, Panel, Section, Button, Tag, Note } from '@/comp
  * "Ask Wairimu for more time" is once a day, enforced on the server (asking-for-more-time.service.ts).
  *
  * Rebuilt from `components/gw/ui` only (design-audit.md section 4; the invitation task): the small
- * `Mark`, `PageTitle`, the shared `Tag` and `Panel`/`Section`, the standard `Button`.
+ * `Mark`, `PageTitle`, the shared `Tag` and `Panel`/`SubHeading`, the standard `Button`.
+ *
+ * Hafsah's first review (U.20 sixth round): this used to render inside `GroundParticipantPage`,
+ * which is always inside `AppShell`'s sidebar (its route is not in `CHROMELESS`) - so the person
+ * saw two Groundwork marks, this component's own and the rail's, where the prototype draws a bare
+ * narrow page. `.gwui-full-page-cover` (a fixed, full-viewport div, the same trick `Modal` already
+ * uses to sit above everything) covers the frame rather than reworking which routes get a sidebar
+ * for one state inside one of them. Also from that review: the tag sits 12px above the title, the
+ * facts panel 18px below the line under it, the button 18px below the panel, and 10px between the
+ * two buttons and the note under them - the prototype's own gaps, not the page's flat 30.
  */
 export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpenMyWork: () => void }) {
   const qc = useQueryClient()
@@ -36,24 +45,33 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
   const asked = !!data?.askedAt || ask.isSuccess
 
   return (
-    <Page narrow>
-      <Mark />
-      <p><Tag tone="attention">Out of time</Tag></p>
-      <PageTitle title="This check-in reached its end date" subtitle={sub} />
-      <Panel>
-        <Section heading="Your answers are kept">
-          <p className="gwui-pt-sub">Your answers and your history stay as they are.</p>
-        </Section>
-      </Panel>
-      {problem && <Note tone="error">{problem}</Note>}
-      {asked && <Note>{`${lead ?? 'The person who runs it'} has your request.`}</Note>}
-      <Button size="big" wide onClick={() => ask.mutate()} disabled={asked || ask.isPending}>
-        {`Ask ${lead ?? 'them'} for more time`}
-      </Button>
-      <Button kind="secondary" size="big" wide onClick={onOpenMyWork}>Open my work</Button>
-      <p className="gwui-note" style={{ textAlign: 'center' }}>
-        {`${lead ?? 'They'} ${lead ? 'gets' : 'get'} your request with one button to extend it.`}
-      </p>
-    </Page>
+    <div className="gwui-full-page-cover">
+      <Page narrow>
+        <Mark />
+        <Stack gap={18}>
+          <Stack gap={12}>
+            <p><Tag tone="attention">Out of time</Tag></p>
+            <PageTitle title="This check-in reached its end date" subtitle={sub} subtitleTone="ink" />
+          </Stack>
+          <Stack gap={18}>
+            <Panel>
+              <SubHeading>Your answers are kept</SubHeading>
+              <p className="gwui-panel-text-muted">Your answers and your history stay as they are.</p>
+            </Panel>
+            <Stack gap={10}>
+              {problem && <Note tone="error">{problem}</Note>}
+              {asked && <Note>{`${lead ?? 'The person who runs it'} has your request.`}</Note>}
+              <Button size="big" wide onClick={() => ask.mutate()} disabled={asked || ask.isPending}>
+                {`Ask ${lead ?? 'them'} for more time`}
+              </Button>
+              <Button kind="secondary" size="big" wide onClick={onOpenMyWork}>Open my work</Button>
+              <p className="gwui-fine" style={{ textAlign: 'center' }}>
+                {`${lead ?? 'They'} ${lead ? 'gets' : 'get'} your request with one button to extend it.`}
+              </p>
+            </Stack>
+          </Stack>
+        </Stack>
+      </Page>
+    </div>
   )
 }

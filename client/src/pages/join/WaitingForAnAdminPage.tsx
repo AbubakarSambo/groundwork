@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { authApi, type MyWaiting } from '@/api/auth'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
-import { Page, Mark, PageTitle, Button, Note, Steps, Step } from '@/components/gw/ui'
+import { Page, Mark, PageTitle, Button, Note, Steps, Step, Stack } from '@/components/gw/ui'
 
 /**
  * "ALMOST IN" (A3, #/join/waiting). The words are join-waiting.txt's, with three changes said here:
@@ -18,6 +18,15 @@ import { Page, Mark, PageTitle, Button, Note, Steps, Step } from '@/components/g
  *
  * Rebuilt from `components/gw/ui` only (design-audit.md section 4; the invitation task): the small
  * `Mark`, `PageTitle`, `Steps` in place of the old `gw-steps` list, and the standard `Button`.
+ *
+ * Hafsah's first review (U.20 sixth round): the title's line reads in ink, as the prototype has it
+ * (`subtitleTone="ink"`); `Steps` sits 18px below it, not the page's ordinary 30; "We'll email…" is
+ * the prototype's 16px ink body line, not the 13.5px muted `Note`; and the "Sign out" link is gone
+ * - join-waiting.jpg has none, and it was never the only way to sign out. Once let in, the account
+ * rail (`AppShell`, "Sign out is in the rail, so it is on every page") has it; while still waiting,
+ * this route is chromeless (no rail - see `AppShell`'s `CHROMELESS` list), so for the few minutes
+ * somebody is on this exact screen, /signout is reachable only by address - said here rather than
+ * silently dropped.
  */
 export function WaitingForAnAdminPage() {
   const qc = useQueryClient()
@@ -33,9 +42,9 @@ export function WaitingForAnAdminPage() {
     onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That reminder did not send. Try again.'),
   })
 
-  if (isLoading) return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="One moment." /></Page>
+  if (isLoading) return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="One moment." subtitleTone="ink" /></Page>
   if (isError || !data) {
-    return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="We could not read where your request has got to. Reload the page to try again." /></Page>
+    return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="We could not read where your request has got to. Reload the page to try again." subtitleTone="ink" /></Page>
   }
   /*
    * NOT WAITING (U.3 review). "You're in. Nobody needs to let you in any more." read oddly to somebody
@@ -47,7 +56,7 @@ export function WaitingForAnAdminPage() {
     return (
       <Page narrow>
         <Mark />
-        <PageTitle title="You’re in" subtitle="An admin has let you in. You can open your check-ins now." />
+        <PageTitle title="You’re in" subtitle="An admin has let you in. You can open your check-ins now." subtitleTone="ink" />
         <Button to="/grounds" size="big" wide>Open my check-ins</Button>
       </Page>
     )
@@ -62,32 +71,32 @@ export function WaitingForAnAdminPage() {
   return (
     <Page narrow>
       <Mark />
-      <PageTitle title="Almost in" subtitle={youAreFromOutside(w)} />
+      <Stack gap={18}>
+        <PageTitle title="Almost in" subtitle={youAreFromOutside(w)} subtitleTone="ink" />
+        <Steps>
+          <Step done>{admin ? 'You accepted the invitation' : 'You asked to join'}</Step>
+          <Step done>{`${who ?? 'An admin'} was asked, ${whenItWasAsked(w.askedAt)}`}</Step>
+          <Step>{`${who ?? 'An admin'} lets you in`}</Step>
+        </Steps>
+      </Stack>
 
-      <Steps>
-        <Step done>{admin ? 'You accepted the invitation' : 'You asked to join'}</Step>
-        <Step done>{`${who ?? 'An admin'} was asked, ${whenItWasAsked(w.askedAt)}`}</Step>
-        <Step>{`${who ?? 'An admin'} lets you in`}</Step>
-      </Steps>
-
-      <Note>
+      <p className="gwui-pt-sub gwui-pt-sub-ink">
         {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first check-in will be waiting.`}
-      </Note>
+      </p>
 
       {problem && <Note tone="error">{problem}</Note>}
       {reminded && <Note>{`We reminded ${who}.`}</Note>}
 
       {admin && who && (
-        <>
+        <Stack gap={10}>
           <Button kind="secondary" size="big" wide onClick={() => remind.mutate()} disabled={remind.isPending || reminded || !canRemindNow}>
             {`Remind ${who}`}
           </Button>
-          <p className="gwui-note" style={{ textAlign: 'center' }}>
+          <p className="gwui-fine" style={{ textAlign: 'center' }}>
             {`You can remind ${who} once a day.`}{w.inviterFirstName ? ` ${w.inviterFirstName} can see you’re waiting too.` : ''}
           </p>
-        </>
+        </Stack>
       )}
-      <p className="gwui-note" style={{ textAlign: 'center' }}><Link to="/signout">Sign out</Link></p>
     </Page>
   )
 }
