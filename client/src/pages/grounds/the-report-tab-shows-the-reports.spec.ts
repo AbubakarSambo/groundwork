@@ -40,6 +40,13 @@ const TAB = (() => {
 
 const LIST = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheReportIsAListOfSessions.tsx'), 'utf8')
 const SESSION_VIEW = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'TheSessionsReport.tsx'), 'utf8')
+/**
+ * U.10: THE COUNTING MOVED, SO THIS DOES TOO.
+ * `sessionRows` used to be computed inline in GroundAdminPage.tsx; it is now `buildSessionRows` in
+ * lib/session-rows.ts, so the board's "Reports" table can use the exact same rows rather than a
+ * second copy of the same counting. The newest-first sort this test protects moved with it.
+ */
+const SESSION_ROWS = readFileSync(join(__dirname, '..', '..', 'lib', 'session-rows.ts'), 'utf8')
 
 describe('the report tab is a list of sessions', () => {
   it('opens with the team board', () => {
@@ -60,7 +67,7 @@ describe('the report tab is a list of sessions', () => {
     expect(TAB).toContain('rows={sessionRows}')
     expect(LIST).toContain('Session {r.sessionNumber}')
     expect(LIST).toMatch(/navigate\(`\/checkin\/\$\{r\.myCheckInId\}\/report`\)/)
-    expect(PAGE).toMatch(/\(a, b\) => b - a/)
+    expect(SESSION_ROWS).toMatch(/\(a, b\) => b - a/)
   })
 
   it('and every row says who it is counting, before you click', () => {

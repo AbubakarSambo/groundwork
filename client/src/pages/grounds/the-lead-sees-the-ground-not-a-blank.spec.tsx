@@ -189,6 +189,15 @@ describe('a round completion is keyed by sessionNumber, the name the server uses
   it('the page never reads roundNumber', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, 'GroundAdminPage.tsx'), 'utf8');
     expect(src).not.toMatch(/\broundNumber\b/);
-    expect(src).toMatch(/roundCompletions[\s\S]{0,80}sessionNumber === n/);
+    /*
+     * U.10: THE COUNTING MOVED TO lib/session-rows.ts, SO ITS OWN CHECK MOVES WITH IT.
+     * `sessionRows` - the thing that used to compare roundCompletions against sessionNumber inline
+     * here - is now `buildSessionRows`, shared with the board's "Reports" table. This page no
+     * longer contains that comparison at all; the file it moved to still must not use `roundNumber`
+     * either, and must still key off `sessionNumber`.
+     */
+    const sessionRowsSrc = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'lib', 'session-rows.ts'), 'utf8');
+    expect(sessionRowsSrc).not.toMatch(/\broundNumber\b/);
+    expect(sessionRowsSrc).toMatch(/roundCompletions[\s\S]{0,80}sessionNumber === n/);
   });
 });
