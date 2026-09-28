@@ -76,6 +76,14 @@ import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 const dshort = (iso?: string | null) =>
   iso ? whenItWas(iso, 'dayAndMonth') : ' - '
 
+/** What each record type under "Who owns what" is, in a sentence rather than a bare tag. */
+const WHAT_THIS_ITEM_IS: Record<string, string> = {
+  COMMITMENT: 'This is a commitment.',
+  SUCCESS_DEFINITION: 'This says what success looks like.',
+  INTENT: 'This is something they intend to do.',
+  PROGRESS: 'This is progress they reported.',
+}
+
 // ---------------------------------------------------------------- page
 
 /**
@@ -663,21 +671,27 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {shown.divergence && b.divergence && (
           <>
-            <Sec title="Where people differ" src="cross-referenced" />
+            <Sec title="Where people differ" src="from what each person said" />
             <Card>
               {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
                 /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
                    more than one person has checked in" on a round where everybody had, three inches
                    under a tile that said so. The server computes it from the one counter. */
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'Nothing to cross-reference yet.' : (b.divergence.whyNothingYet ?? 'Nothing cross-referenced yet. This fills in once more than one person has answered.')}</div></Row>
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
               ) : (
                 <>
                   {b.divergence.items.map((d: any, i: number) => (
                     <Row key={i} first={i === 0}>
+                      {/*
+                        A TAG GLUED TO THE SENTENCE BEFORE IT. "...12 shops.agreed" read on a live
+                        board: the pill sat right after the topic with only a CSS margin between
+                        them, which is invisible to a screen reader and to anybody copying the text.
+                        The kind is said as its own sentence now, on its own line.
+                      */}
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
                         {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
-                        <span style={{ marginLeft: 8 }}><Pill tone="warn">differs</Pill></span>
                       </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', marginTop: 2 }}>You see this differently.</div>
                       {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
                       {/*
                         WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
@@ -715,8 +729,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <Row key={`a${i}`}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
                         {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
-                        <span style={{ marginLeft: 8 }}><Pill tone="good">agreed</Pill></span>
                       </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', marginTop: 2 }}>Everybody agrees on this.</div>
                     </Row>
                   ))}
                 </>
@@ -1247,10 +1261,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     ) : p.items.map((it, i) => (
                       <div key={it.id} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                         <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{it.text.replace(/^\[VERIFIABILITY:[A-Z]+\]\s*/, '')}</div>
-                        <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center' }}>
-                          {/* Record types are the goal vocabulary; an update's answers are not "success definitions". */}
-                          {b.family !== 'UPDATE' && <Pill>{it.type.toLowerCase().replace(/_/g, ' ')}</Pill>}
-                          {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>session {it.sessionNumber}</span>}
+                        <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                          {/*
+                            RECORD TYPES ARE THE GOAL VOCABULARY, SAID AS A SENTENCE. "success
+                            definition", "commitment", "intent" and "progress" as bare tags are the
+                            record's own internal words, printed at somebody rather than explained
+                            to them. The lookup is the record type; the reader gets a sentence.
+                          */}
+                          {b.family !== 'UPDATE' && WHAT_THIS_ITEM_IS[it.type] && (
+                            <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{WHAT_THIS_ITEM_IS[it.type]}</span>
+                          )}
+                          {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>from session {it.sessionNumber}</span>}
                         </div>
                       </div>
                     ))}
@@ -1438,7 +1459,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <>
                       {/* A position is never shown without its reason. */}
                       <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.45 }}>
-                        <b style={{ color: 'var(--gw-dark)' }}>Why:</b> {c.reason}
+                        {c.reason}
                       </div>
                       {c.basis && (
                         <div style={{ marginTop: 6, fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45 }}>
@@ -1510,7 +1531,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   )}
 
                   <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
-                    <b style={{ color: 'var(--gw-dark)' }}>What people said:</b> {r.what}
+                    <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)' }}>What people said </span>
+                    {r.what}
                   </div>
 
                   {/* The signal is ALWAYS coupled to the reason it cannot self-determine. */}
@@ -1538,11 +1560,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               )}
 
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', marginTop: 11, paddingTop: 9, borderTop: '1px dashed var(--gw-border)', lineHeight: 1.5 }}>
-                Other people doing your work can mean four different things: an ownership drop (others covering a gap), healthy shared
-                work by design, you being blocked or overloaded, or someone else over-reaching into your role. This shows the signal and
-                the reason it cannot tell which on its own, two-sided, coupled to the waiting-on and role-clarity views, with your own
-                voice. It never concludes you stopped contributing. It surfaces a question the team should discuss, not a verdict about a
-                person. Only shown where the role is defined, an undefined boundary has no coverage to measure.
+                Other people doing your work can mean several different things. Nobody may own it any more, and others are quietly
+                covering the gap. It may be healthy work shared by design. You may be blocked or carrying too much. Or someone else may
+                be taking over your role without being asked to. This shows the signal, but it cannot tell which of these is happening on
+                its own, so it is shown alongside what you are waiting on, how clearly your role is defined, and your own voice. It never
+                concludes that you have stopped contributing. It raises a question for the team to discuss, never a verdict about a
+                person. It is only shown where the role is defined, because an undefined boundary has no coverage to measure.
               </div>
             </Card>
           </>
