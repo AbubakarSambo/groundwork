@@ -1,7 +1,7 @@
 import { BoardService } from './board.service';
 import { ReportsService } from '../reports/reports.service';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
-import { withoutHiddenTargets, targetsHiddenFrom } from './a-hidden-target-stays-hidden';
+import { withoutHiddenTargets, withoutHiddenTargetsIn, targetsHiddenFrom } from './a-hidden-target-stays-hidden';
 
 /**
  * A PRIVATE FILE'S NAME AND A HIDDEN TARGET'S NUMBER REACH NOBODY THE LEAD HAS NOT SHARED THEM WITH.
@@ -133,6 +133,36 @@ describe('and in the report', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/const served = await this\.getAsBuilt\(groundId, requestingUserId, requestingUserOrgId\);\s*return this\.whatTheLeadHasNotShared\(/);
     expect(src).toMatch(/const served = await this\.sessionReportAsBuilt\(groundId, sessionNumber, requestingUserId, requestingUserOrgId\);\s*return this\.whatTheLeadHasNotShared\(/);
+  });
+});
+
+/*
+ * TRYING TO GET PAST IT. Hafsah, 28 September 2026: "this sentence or the one before" is a rule of
+ * thumb, so these try to get round it. Each one got through the first version or would get through a
+ * narrower one.
+ */
+describe('a hidden target does not get past it', () => {
+  const kw = [{ names: ['Kwame Mensah', 'Kwame'], target: 17, participantId: 'p-kwame' }];
+  const gone = (t: string) => expect(withoutHiddenTargets(t, kw)).not.toMatch(/\b17\b|seventeen/i);
+  it('by a pronoun on the next sentence', () => gone('Kwame Mensah has three so far. His target is 17 approved facilities.'));
+  it('by a pronoun two sentences on', () => gone('Kwame Mensah has three so far. He is waiting on legal. His target is 17 approved facilities.'));
+  it('three sentences after the name', () => gone('Kwame Mensah has three so far. He is waiting on legal. The committee meets Friday. A target of 17 approved facilities is on record.'));
+  it('with the number before the name', () => gone('A target of 17 approved facilities is on record. It belongs to Kwame.'));
+  it('in a list on one line', () => gone('Targets: Kwame 17, Femi 11, Ngozi 14'));
+  it('in a list over lines', () => gone('- Kwame Mensah\n- 17 approved facilities\n- due in December'));
+  it('in words', () => gone('Kwame is aiming for seventeen approved facilities.'));
+  it('in words, behind a pronoun', () => gone('Kwame Mensah has three. He is aiming for seventeen.'));
+  it('in a row whose name is in another field', () => {
+    expect(JSON.stringify(withoutHiddenTargetsIn({ who: 'Kwame Mensah', finding: 'He has three. His target is 17 approved facilities.' }, kw))).not.toMatch(/\b17\b/);
+  });
+  it('in a row that carries only their id', () => {
+    expect(JSON.stringify(withoutHiddenTargetsIn({ participantId: 'p-kwame', says: 'The target is 17.' }, kw))).not.toMatch(/\b17\b/);
+  });
+  it('in a list of rows, name and number in separate fields', () => {
+    expect(JSON.stringify(withoutHiddenTargetsIn({ rows: [{ name: 'Kwame Mensah', target: '17 approved facilities' }] }, kw))).not.toMatch(/\b17\b/);
+  });
+  it('and a text that never names him keeps its seventeen', () => {
+    expect(withoutHiddenTargets('The team has 17 open applications.', kw)).toBe('The team has 17 open applications.');
   });
 });
 

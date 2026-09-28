@@ -19,6 +19,8 @@ The order follows Hafsah's: the check-in conversation first; then judging, and m
 
 ## The check-in conversation
 
+**Week 0 (early, and before the weeks below where it can be). Text other people read is never written with someone else's hidden target given to the model.** Today a target the lead set for one person is taken out of what others are served, sentence by sentence, after the model has written it. That is a rule of thumb: it errs on the side of hiding, and it can only catch what it recognises. The structural fix is the one decision 32 uses for the lead's private notes: when the engine writes a report, a board line or a session that someone other than the target's owner will read, it is not given that person's hidden target at all. Where one text is read by several people, it is written without anyone's hidden target, and each person's own number is added only to what they alone read. The read-side rule stays as a second net.
+
 **Week 1. Asking for what someone holds back.** *Built 28 September (`020260e4`, `3fb7edf9`).* When a person states a limit ("I could open the Equity door") or leaves out a date, the check-in asks directly about the rest ("Which of the other two banks can you open?") and asks for dates. This is what advisor and shock needed in most runs. It includes the rule that the check-in never repeats a question already answered.
 
 **Week 2. One question at a time, and the lead's name in every message about them.** *Done 28 September: 0 turns with two questions on run-14.* These are tasks 2.1 and 2.2 in `docs/tasks.md`. The check is that "turns that ask more than one question" reaches 0.

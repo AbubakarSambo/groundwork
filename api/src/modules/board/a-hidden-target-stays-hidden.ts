@@ -21,6 +21,8 @@ export interface AHiddenTarget {
   /** The ways this person is named in what is served: full name, first name, a given name. */
   names: string[];
   target: number;
+  /** Their participant id, so a row that carries it is known to be about them. */
+  participantId?: string;
 }
 
 const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
@@ -49,20 +51,24 @@ function givesTheNumber(sentence: string, n: number): boolean {
 const sentencesOf = (text: string) => text.match(/[^.!?]+(?:[.!?]+|$)\s*/g) ?? [text];
 
 /** The text with every sentence that gives a hidden target taken out. */
-export function withoutHiddenTargets(text: string, hidden: readonly AHiddenTarget[], opts: { aboutOnly?: AHiddenTarget } = {}): string {
+export function withoutHiddenTargets(text: string, hidden: readonly AHiddenTarget[], opts: { aboutOnly?: AHiddenTarget; about?: readonly AHiddenTarget[] } = {}): string {
   if (!text || (!hidden.length && !opts.aboutOnly)) return text;
   const sentences = sentencesOf(text);
   const names = (h: AHiddenTarget, s: string) => h.names.some((name) => name && new RegExp(`\\b${escape(name)}\\b`, 'i').test(s));
   /*
-   * THE SENTENCE, OR THE ONE JUST BEFORE IT. Read live, 28 Sep 2026: "Kwame Mensah has three so far.
-   * ... A target of 17 approved facilities appears in..." - the number's own sentence did not name
-   * him; the one before did. A sentence two away is left: "Bisi reports the team has 11 approved
-   * facilities" is the team's own count, whoever else carries eleven.
+   * ANYWHERE IN THE SAME TEXT, OR THE SAME ROW. "This sentence or the one before" was a rule of thumb,
+   * and tests got past it: a pronoun two sentences on ("He is waiting on legal. His target is 17"),
+   * the number before the name ("A target of 17 is on record. It belongs to Kwame."), and a row whose
+   * name is in one field and number in another ({ who: 'Kwame', finding: 'His target is 17' }). So a
+   * person named anywhere in the text, or anywhere in the row it sits in, has every sentence with
+   * their number taken out. It errs on the side of hiding: a sentence with the same number that
+   * counts something else goes too. The structural fix, never giving the model someone else's hidden
+   * target for text others read, is in docs/weekly-plan.md.
    */
-  const kept = sentences.filter((s, i) => {
+  const inScope = hidden.filter((h) => (opts.about ?? []).includes(h) || names(h, text));
+  const kept = sentences.filter((s) => {
     if (opts.aboutOnly && givesTheNumber(s, opts.aboutOnly.target)) return false;
-    const before = i > 0 ? sentences[i - 1] : '';
-    return !hidden.some((h) => givesTheNumber(s, h.target) && (names(h, s) || names(h, before)));
+    return !inScope.some((h) => givesTheNumber(s, h.target));
   });
   return kept.join('').replace(/\s{2,}/g, ' ').trim();
 }
@@ -70,15 +76,23 @@ export function withoutHiddenTargets(text: string, hidden: readonly AHiddenTarge
 /** The same, through every string in a served object. Dates and non-strings are left as they are. */
 export function withoutHiddenTargetsIn<T>(value: T, hidden: readonly AHiddenTarget[]): T {
   if (!hidden.length) return value;
-  const walk = (v: any): any => {
-    if (typeof v === 'string') return withoutHiddenTargets(v, hidden);
+  /* Whose row this is: any of its own string fields naming a person, or carrying their id. */
+  const aboutWhom = (o: Record<string, any>, inherited: readonly AHiddenTarget[]): AHiddenTarget[] => {
+    const own = Object.values(o).filter((x) => typeof x === 'string') as string[];
+    const here = hidden.filter((h) => own.some((x) => (h.participantId && x === h.participantId)
+      || (x.length <= 80 && h.names.some((n) => n && new RegExp(`\\b${escape(n)}\\b`, 'i').test(x)))));
+    return [...new Set([...inherited, ...here])];
+  };
+  const walk = (v: any, about: readonly AHiddenTarget[]): any => {
+    if (typeof v === 'string') return withoutHiddenTargets(v, hidden, { about });
     if (v instanceof Date || v === null || typeof v !== 'object') return v;
-    if (Array.isArray(v)) return v.map(walk);
+    if (Array.isArray(v)) return v.map((x) => walk(x, about));
+    const scope = aboutWhom(v, about);
     const out: Record<string, any> = {};
-    for (const [k, x] of Object.entries(v)) out[k] = walk(x);
+    for (const [k, x] of Object.entries(v)) out[k] = walk(x, scope);
     return out;
   };
-  return walk(value);
+  return walk(value, []);
 }
 
 /**
@@ -98,6 +112,6 @@ export function targetsHiddenFrom(
   const shown = new Set(targetsFor(all, reader.participantId, whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own', { isLead: reader.isTheLead }).shown.map((t) => t.name));
   return all
     .filter((t) => !shown.has(t.name) && t.ownerParticipantId && typeof t.target === 'number')
-    .map((t) => ({ names: namesOf(t.ownerParticipantId as string).filter(Boolean), target: t.target as number }))
+    .map((t) => ({ names: namesOf(t.ownerParticipantId as string).filter(Boolean), target: t.target as number, participantId: t.ownerParticipantId as string }))
     .filter((h) => h.names.length);
 }
