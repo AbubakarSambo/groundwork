@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Page, PageTitle, CheckInHeader, Tabs, Section, Panel, EdgeRow, EdgeList,
-  PeopleTable, PeopleTableHead, PersonRow, PersonCell, Avatar, FieldRows, FieldRow,
+  PeopleTable, PeopleTableHead, PersonRow, Avatar, FieldRows, FieldRow,
   Choices, ChoiceCards, Toggle, FieldLabel, TextField, TextArea, Select,
   Button, Tag, Note, Empty, Toast, Modal,
 } from '@/components/gw/ui'
@@ -86,47 +86,53 @@ export default function PartsSamplePage() {
 
       <Section heading="What needs you" note="prototype: .list, .item">
         <EdgeList label="What needs you">
+          {/*
+            THE STANDARD BUTTON, NOT A SMALL ONE. The prototype's "what needs you" row (#/system,
+            and the Today screen) uses the ordinary 44px, 16px bold button - the same one every
+            other primary action on the page uses - never the 36px `small` size, which is for a
+            button living inside an already-compact panel (a table row's "Copy", "Change").
+          */}
           <EdgeRow
             kind="ready"
             title="Today's report is ready"
             detail="3 deals moved stage. Kito Foods is cooling."
-            actions={<Button kind="secondary" size="small">Read it</Button>}
+            actions={<Button kind="secondary">Read it</Button>}
           />
           <EdgeRow
             kind="decide"
             title="Decide whether a price range counts as a budget"
             detail="Brian and Miriam both raised it. It changes 4 deals."
-            actions={<Button kind="primary" size="small">Decide</Button>}
+            actions={<Button kind="primary">Decide</Button>}
           />
           <EdgeRow
             kind="look"
             title="Samuel has chased the same 5 leads for 3 check-ins"
             detail="Talk to them before Friday."
-            actions={<Button kind="secondary" size="small">Open</Button>}
+            actions={<Button kind="secondary">Open</Button>}
           />
           <EdgeRow
             kind="concern"
             title="The email bounced"
             detail="Fix the address so the invitation can be sent again."
-            actions={<Button kind="danger" size="small">Fix the address</Button>}
+            actions={<Button kind="danger">Fix the address</Button>}
           />
         </EdgeList>
       </Section>
 
-      <Section heading="People table" note="prototype: .panel + .row">
+      <Section heading="People table" note="prototype: .panel + .row, the people screen's own column widths">
         <PeopleTable>
-          <PeopleTableHead columns="34px 1fr 160px" labels={['', 'Name', 'Role']} />
-          <PersonRow columns="34px 1fr 160px">
-            <PersonCell initials="MW" name="Miriam Wanjiku" level="Sales rep, reports to Wairimu Kamau" email="miriam@baridi.co.ke" />
-            <span />
+          <PeopleTableHead extraColumns="160px" labels={['Person', 'Role']} />
+          <PersonRow
+            extraColumns="160px"
+            person={{ initials: 'MW', name: 'Miriam Wanjiku', level: 'Sales rep, reports to Wairimu Kamau', email: 'miriam@baridi.co.ke' }}
+          >
             <Tag tone="action">Owner</Tag>
           </PersonRow>
           <PersonRow
-            columns="34px 1fr 160px"
+            extraColumns="160px"
+            person={{ initials: 'PK', name: 'Peter Kamau', level: 'Sales rep', email: 'peter@example.com' }}
             help={{ tone: 'look', text: 'Peter is from outside Baridi, so Grace Achieng, your admin, has to let him in.', action: <Button kind="secondary" size="small">Remind Grace</Button> }}
           >
-            <PersonCell initials="PK" name="Peter Kamau" level="Sales rep" email="peter@example.com" />
-            <span />
             <Tag tone="attention">Waiting for an admin</Tag>
           </PersonRow>
         </PeopleTable>
