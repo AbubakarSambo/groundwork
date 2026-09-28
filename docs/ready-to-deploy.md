@@ -6,7 +6,14 @@ Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds a
 
 ---
 
-## THE RELEASE CANDIDATE: `6fe8d1fb` (28 September 2026)
+## RELEASE PLAN, AS HAFSAH DECIDED ON 28 SEPTEMBER
+
+- **`6fe8d1fb` is a known-good point:** the engine as proven by run-16, below.
+- **The screens branch is merged in every few days, so each merge stays small.** The first was on 28 September (`f0168cff`).
+- **The release waits for the screens workspace's rebuild,** about one and a half to two weeks.
+- **The final proof is one full run on the combined code at release.**
+
+## KNOWN-GOOD POINT: `6fe8d1fb` (28 September 2026)
 
 **The engine's release candidate is commit `6fe8d1fb` on `wip/plain-reports`.** From here, nothing more joins the release unless it fixes a problem the release has. The weekly improvements go out after release.
 

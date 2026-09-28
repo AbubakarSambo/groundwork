@@ -145,7 +145,9 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   - **Task 1.5 is ticked.** Hafsah decided run-15 does not count, because it broke on a product fault now fixed. Run-14 had exactly 20 testable scenarios, so run-14 (18 of 20, 90%) and run-16 (20 of 22, 91%) are two in a row.
 - **The internal-label fix, checked live after the run, found one more route:** labels used as keys in three maps of the report. Fixed (`6fe8d1fb`). Then 85 live reads, none with a label.
 - **The release candidate is `6fe8d1fb`,** written into `docs/ready-to-deploy.md` with what it rests on. From here, nothing more joins the release unless it fixes a problem the release has.
-- **For Hafsah: I have not merged the screens branch since this morning.** It has 108 new commits, some of them backend changes that run-16 did not include. Merging them now would change the candidate after the run that justifies it. The steps before release already list "combine with the screens branch, then run every test". I suggest doing that once, on purpose, as the release step, with one more full run on the combined code. Say if you would rather I merge now.
+- **The screens branch is merged** (`f0168cff`), as Hafsah decided, and will be merged every few days from now on. `6fe8d1fb` stays in `docs/ready-to-deploy.md` as a known-good point. The final proof is one full run on the combined code at release.
+  - **On the combined code:** all 10,533 API tests pass once one label was changed to the prototype's words, "How checkable today’s check-in was" (screens request 62, which Hafsah had answered).
+  - **The client passes 3,403 of 3,407.** One failure is the "Jump to" test, as all day. The other three are the screens workspace's own tests of files they are rebuilding: an unused component (`GroundTabRow.tsx`), a heading style, and a page layout. The merge changed no client file of the engine's, so they fail on the screens branch as it stands. I have told them.
 
 ## 28 SEPTEMBER, LATE AFTERNOON: NO INTERNAL LABEL REACHES ANYONE (`0bad62f2`)
 
