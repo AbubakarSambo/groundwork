@@ -1274,6 +1274,18 @@ engine answers. Until then, "When I end it" stays off the screen.
    server, or should an organisation admin also be allowed to, perhaps with a warning that they are
    not its lead? Written up as request 57 to the engine workspace either way, since the check is
    missing regardless of which answer you give.
+10. **The declared block label and the prototype's own wording disagree, for one heading (found by
+    the U.9 end-of-module API suite).** `the-four-reports.ts`'s `WHAT_THE_BLOCK_IS_CALLED.howMuchYouGaveIt`
+    declares "How much you gave this one" as the block's plain heading, and
+    `the-order-is-the-order-on-screen.spec.ts` checks the screen against exactly that string. The
+    U.9 third review asked this same heading to be changed to the prototype's own wording
+    (`docs/prototype/screens/B3-the-check-in/done.txt`: "How checkable today's check-in was"),
+    which the screen now says. CLAUDE.md says the prototype is the target, and also says to stop
+    and ask when the prototype and the backend disagree and `docs/backend-map.md` does not say
+    which way to go - this is exactly that case, so I have not silently picked one. Written up as
+    request 62 to the engine workspace, asking them to update the declared label to match the
+    prototype, or say why the older one should stand. Until it is answered, that one assertion in
+    `the-order-is-the-order-on-screen.spec.ts` fails; everything else in that file now passes.
 
 ### 21. The board (U.10): what needs you
 

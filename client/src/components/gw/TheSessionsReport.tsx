@@ -613,9 +613,17 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       )}
 
-      {/* ── What this is for. The full band: the stated objective and each person's own version. */}
+      {/*
+        ── What this is for. The full band: the stated objective and each person's own version.
+        U.9 END-OF-MODULE API SUITE: THE LABEL IS THE ONE `the-four-reports.ts` DECLARES.
+        `the-order-is-the-order-on-screen.spec.ts` checks this block against
+        `WHAT_THE_BLOCK_IS_CALLED.againstWhatGoodLooksLike`, the engine's own plain heading "What
+        everybody said good looks like" - not this screen's longer phrasing. "Each person's own
+        version of it" is still true and still on the page, in the definitions drawn underneath;
+        it belongs there, not appended to the one string both sides have to agree on byte for byte.
+      */}
       {d.againstSuccess && (
-        <Row n={next()} label="What everybody said good looks like, and each person's own version of it">
+        <Row n={next()} label="What everybody said good looks like">
           <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} headingIsTheCallers />
           {definitions.length > 0 && (
             <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
@@ -762,9 +770,14 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </Row>
       )}
 
-      {/* ── What went quiet. Somebody was waiting on it and nobody has said it is resolved. */}
+      {/*
+        ── What went quiet. Somebody was waiting on it and nobody has said it is resolved.
+        U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `notRaisedAgain` DECLARES ("Not raised
+        again"), not this screen's longer phrasing. "After somebody was waiting on it" is still
+        true - it is what the sentence underneath says.
+      */}
       {d.whatWentQuiet && (
-        <Row n={next()} label="Not raised again, after somebody was waiting on it">
+        <Row n={next()} label="Not raised again">
           <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.whatWentQuiet}</p>
         </Row>
       )}

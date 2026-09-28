@@ -69,8 +69,15 @@ describe('the end-of-session card, as the person who just finished reads it', ()
   })
 
   it('the one thing carried forward has no heading with a number or capitals, and no date it cannot prove', async () => {
+    /*
+     * U.9 END-OF-MODULE API SUITE: THE DECLARED PLAIN HEADING, NOT THE SCREEN'S OWN LONGER ONE.
+     * `the-order-is-the-order-on-screen.spec.ts` checks this block's label against
+     * `the-four-reports.ts`'s `WHAT_THE_BLOCK_IS_CALLED.whatYouCarry`, which is "What you carry
+     * into the next one" - so the screen's "The one thing…" phrasing had to go, even though it
+     * was true (only one sentence is ever drawn under it).
+     */
     renderIt()
-    expect(await screen.findByText('The one thing you carry into the next one')).toBeTruthy()
+    expect(await screen.findByText('What you carry into the next one')).toBeTruthy()
     expect(await screen.findByText('Send the quote by Friday.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/By when, in your words/)
   })

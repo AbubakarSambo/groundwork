@@ -268,9 +268,17 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         </div>
       </div>
 
-      {/* ── What this is for. The objective leads, and this person's part of it comes second. */}
+      {/*
+        ── What this is for. The objective leads, and this person's part of it comes second.
+        U.9 END-OF-MODULE API SUITE: THE LABEL IS THE ONE `the-four-reports.ts` DECLARES.
+        `the-order-is-the-order-on-screen.spec.ts` checks the block this workspace draws against
+        `WHAT_THE_BLOCK_IS_CALLED.whatThisIsFor`, which the engine declared as the plain heading
+        "What this is for" - not this screen's own longer phrasing to add. The extra context
+        ("and your part of it") is still true and still on the page; it belongs in the block's
+        body, not appended to the one string the two sides have to agree on byte for byte.
+      */}
       {(d?.againstSuccess?.stated || mySuccess) && (
-        <Block n={next()} label="What this is for, and your part of it">
+        <Block n={next()} label="What this is for">
           {/*
             WHEN NOBODY HAS SET A STANDARD, THIS BLOCK SHOWS WHAT *YOU* SAID, NOT A PROSE
             EXPLANATION OF WHY THERE ISN'T ONE.
@@ -314,9 +322,14 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         </Block>
       )}
 
-      {/* ── 02 · Where you are against it. Your rows only - see the filter above. */}
+      {/*
+        ── 02 · Where you are against it. Your rows only - see the filter above.
+        U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `whereYouAre` DECLARES ("Where you are
+        against it"), not this screen's longer phrasing. "From your own rows only" is still true -
+        it is the note under "No score, and no on-track label" a few lines down.
+      */}
       {yours.length > 0 && (
-        <Block n={next()} label="Where you are against it, from your own rows only">
+        <Block n={next()} label="Where you are against it">
           <div style={{ display: 'grid', gap: 8 }}>
             {yours.map((c: any, i: number) => {
               const says = SAYS[c.state as string] ?? SAYS.unspoken
@@ -341,9 +354,14 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         </Block>
       )}
 
-      {/* ── 03 · What you said. Extracted lines, disputable, and the press sits with them. */}
+      {/*
+        ── 03 · What you said. Extracted lines, disputable, and the press sits with them.
+        U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `whatYouSaid` DECLARES ("What you said"),
+        not this screen's longer phrasing. "And it is yours to take back" is still true - it is
+        the sentence right underneath ("If one is wrong, say so.") and the press on every row.
+      */}
       {said.length > 0 && (
-        <Block n={next()} label="What you said, and it is yours to take back">
+        <Block n={next()} label="What you said">
           <p className="gw-small" style={{ margin: '0 0 10px', color: 'var(--gw-sub)', maxWidth: '68ch' }}>
             These were taken from what you wrote, not typed by you. If one is wrong, say so.
           </p>
@@ -360,9 +378,14 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         </Block>
       )}
 
-      {/* ── 04 · What is still open for you. See the header for what this cannot say yet. */}
+      {/*
+        ── 04 · What is still open for you. See the header for what this cannot say yet.
+        U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `stillOpenForYou` DECLARES ("What is still
+        open for you"), not this screen's longer phrasing. "What you asked for, and what you
+        raised" is still true of the block's contents, drawn below.
+      */}
       {(open.length > 0 || couldTry.length > 0) && (
-        <Block n={next()} label="What you asked for, and what you raised, is still open">
+        <Block n={next()} label="What is still open for you">
           <div style={{ display: 'grid', gap: 8 }}>
             {open.map(x => (
               <p key={x.id} className="gw-p" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{x.text}</p>
@@ -394,9 +417,14 @@ export function TheCheckInYouJustFinished({ checkInId, groundId, sessionNumber }
         </Block>
       )}
 
-      {/* ── 05 · What you carry into the next one. One thing, and the private note INSIDE it. */}
+      {/*
+        ── 05 · What you carry into the next one. One thing, and the private note INSIDE it.
+        U.9 END-OF-MODULE API SUITE: THE PLAIN HEADING `whatYouCarry` DECLARES ("What you carry
+        into the next one"), not this screen's "The one thing…" - which is still true, since only
+        one sentence is ever drawn below it.
+      */}
       {(carry || note) && (
-        <Block n={next()} label="The one thing you carry into the next one">
+        <Block n={next()} label="What you carry into the next one">
           {/* The session's own sentence, not a row echoed from block 3 - see the note on the
               type lists above. */}
           {carry && <p className="gw-big" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '68ch' }}>{carry}</p>}
