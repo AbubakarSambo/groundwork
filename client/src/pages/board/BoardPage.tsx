@@ -91,6 +91,33 @@ function sessionPillSentence(s: { n: number; state: string; date: string | null;
   return `Session ${s.n}.`
 }
 
+/**
+ * U.10 RE-REVIEW ITEM C: WHO SEES THIS DIFFERENTLY, NAMED - THE SAME NAMING RULES AS EVERYWHERE
+ * ELSE ON THIS PAGE.
+ *
+ * "You see this differently." under every difference, whoever was reading it, said nothing about
+ * who the two sides actually were. `positions[].who` already comes off the wire through the same
+ * per-reader masking every other name on this board gets (board.service.ts's `named()`, itself the
+ * one peers-are-named rule, `peers-are-named.ts`) - real names where the reader may see them, or
+ * the engine's own "A colleague" where they may not. This never re-derives that rule; it only reads
+ * what the server already decided and writes the sentence.
+ *
+ * "A colleague" is not disambiguated between two different hidden people (the server's own
+ * simplification, not this screen's), so the moment EITHER side is masked, the sentence falls back
+ * to "People see this differently." rather than risk naming the same "a colleague" twice for two
+ * different people - which is exactly the case an evaluation check-in's person being reviewed must
+ * never see peers named in anyway.
+ */
+export function whoSeesThisDifferently(positions: { who?: string }[] | undefined, myName: string | null): string {
+  let who = (positions ?? []).map((p) => p.who).filter((w): w is string => !!w)
+  if (who.length < 2) return 'This is seen differently.'
+  if (who.includes('A colleague')) return 'People see this differently.'
+  /* The reader reads themselves first: "You and Amani Wekesa", never "Amani Wekesa and You". */
+  if (myName && who.includes(myName)) who = [myName, ...who.filter((w) => w !== myName)]
+  const say = (w: string) => (myName && w === myName ? 'You' : w)
+  return `${say(who[0])} and ${say(who[1])} see this differently.`
+}
+
 /** What each record type under "Who owns what" is, in a sentence rather than a bare tag. */
 const WHAT_THIS_ITEM_IS: Record<string, string> = {
   COMMITMENT: 'This is a commitment.',
@@ -351,6 +378,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const has = (s: string) => b.sections.includes(s as any)
   /* Said once, at the top - and the divergence card below stays short rather than repeating it. */
   const onlyOnePersonHere = (b.participants ?? []).filter(p => !p.managingOnly).length < 2
+  /* The reader's own name, as this board already resolves it, so "who sees this differently" can say "You". */
+  const myName = b.myParticipantId ? (b.participants ?? []).find((p) => p.id === b.myParticipantId)?.name ?? null : null
 
   /**
    * A HEADING WITH NOTHING UNDER IT. W-UX-7.
@@ -715,7 +744,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
                         {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
                       </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', marginTop: 2 }}>You see this differently.</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', marginTop: 2 }}>{whoSeesThisDifferently(d.positions, myName)}</div>
                       {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
                       {/*
                         WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
