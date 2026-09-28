@@ -1,4 +1,4 @@
-import { theLeadByName } from './the-lead-has-a-name';
+import { theLeadByName, mentionsTheLeadByALabel } from './the-lead-has-a-name';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
@@ -1045,7 +1045,8 @@ export class ConversationService {
 
 
   /**
-   * "THE PERSON WHO SET THIS UP" BECOMES THEIR NAME BEFORE A TURN IS SAVED. See the-lead-has-a-name.
+   * "THE PERSON WHO SET THIS UP", "YOUR LEAD" AND "THE LEAD" BECOME THEIR NAME BEFORE A TURN IS SAVED.
+   * See the-lead-has-a-name, which says which of them and why so narrowly.
    *
    * Looked up only when the phrase is there, so an ordinary turn costs nothing. Not for the lead's
    * own conversation: the phrase there would be about the reader, and the setup block already tells
@@ -1069,13 +1070,13 @@ export class ConversationService {
     const capitalised = aSentenceStartsWithACapital(oneThing.text);
     if (capitalised.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a sentence started in lower case and was repaired before saving.`);
     const text = capitalised.text;
-    if (!text || !/\bperson who set this up\b/i.test(text)) return text;
+    if (!text || !mentionsTheLeadByALabel(text)) return text;
     if (checkIn?.participant?.partyType === PartyType.INITIATOR || !checkIn?.groundId) return text;
     const lead = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { initiator: { select: { firstName: true, lastName: true } } } }) ?? Promise.resolve(null))
       .then((g: any) => theFirstNameFrom(g?.initiator?.firstName, g?.initiator?.lastName))
       .catch(() => null);
     const named = theLeadByName(text, lead);
-    if (named.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: "the person who set this up" was put back as the lead's name.`);
+    if (named.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a label for the lead was put back as the lead's name.`);
     return named.text;
   }
 
