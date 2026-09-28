@@ -35,7 +35,12 @@ describe('the marker is a column, not a prefix', () => {
      * sentence that kept it and changes nothing else. Pinning the rule rather than the call, so a
      * tidy-up that leaves her words alone does not read as a marker coming back.
      */
-    expect(block).toMatch(/text: theLineWithoutItsDanglingJoin\(e\.text\)|text: e\.text\.trim\(\)/);
+    /* Since 6331337b the line is also given back the quotation marks the person typed, and stored
+       as `line` - still only their own words, with no marker on the front. The rule is the same. */
+    expect(block).toMatch(/text: theLineWithoutItsDanglingJoin\(e\.text\)|text: e\.text\.trim\(\)|text: line\b/);
+    if (/text: line\b/.test(block)) {
+      expect(SERVICE).toMatch(/const line = theirQuotationMarksBack\(theLineWithoutItsDanglingJoin\(e\.text\), whatTheyTyped\)/);
+    }
     expect(block).not.toMatch(/text: `/);
     /* The prefix is not built any more. This is the line that ends the class. */
     expect(block).not.toMatch(/\[VERIFIABILITY:\$\{/);
