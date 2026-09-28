@@ -3796,6 +3796,111 @@ were not run this round, per the task's own instruction to run only the changed 
 **Still not ticked:** items 1 (the full switchboard grid) and parts of items 4 and 5 remain, and no
 review could sign in (item 14) to check any of this as a real person yet.
 
+### U.10 The board, re-review: what changed this round
+
+**28 September, a second round against the re-review's findings.** Each item below is exactly as
+Hafsah's message named it, DONE or NOT DONE, with where.
+
+- **A, the switchboard's own 30-section grid (DONE, data and drawing; NOT DONE, order).**
+  `client/src/pages/board/the-switchboard-g2-table.ts` now carries `SWITCHBOARD_MATRIX`: all 24
+  rows of G2's "Every situation" table, parsed straight out of `docs/modules.md` by a test
+  (`the-switchboard-g2-table.spec.ts`) that fails the moment the data file and the live document
+  disagree, cell by cell. `client/src/pages/board/what-the-switchboard-allows.ts`'s
+  `switchboardAllows()` is wired into `BoardPage.tsx`'s `shown` object for the 7 sections G2 names
+  that the board can serve (objectives, startingState, divergence, whatTheRoomIsAbout, dependencies,
+  quickRead, patterns): a section only draws when this situation's row turns it on or makes it
+  optional, never when the row marks it off on purpose or does not name it at all, and patterns
+  never draw while `PATTERNS_ARE_SERVED` is off regardless of what G2 says. **Not done: the DRAWING
+  ORDER.** `orderedSwitchboardSections()` exists and is tested, but is not wired into the page's
+  actual render order - the four G2-mapped sections that could be reordered live in different zones
+  today (divergence was deliberately moved to the top of the page in an earlier review;
+  startingState sits under "At a glance"; objectives and whatTheRoomIsAbout under "Against the
+  plan"), and physically reordering across those zones per scenario would undo documented, reviewed
+  layout decisions rather than extend them. Flagged, not done unilaterally - see Needs Hafsah 0f's
+  neighbour note below if this needs a call. **List of what G2 calls for and nothing serves**, for
+  the engine (request 70): 22 of G2's 30 sections, including every "purple" one (Blocker check,
+  Evidence index, Requirements review and the rest) - `switchboardSectionsNotServed(scenario)` gives
+  the exact list per situation.
+- **The three sections lead-only until 0f (DONE).** Last round's request to draw "Contribution
+  against role", "Where work is landing" and "How the leading is landing" lead-only was written but
+  not actually wired up - `contribution` and `coverage` still drew for any reader the server served
+  them to. `BoardPage.tsx`'s `shown.contribution` / `shown.coverage` now also require
+  `viewerRunsThisCheckIn`, and `managerAlignment` requires it alongside the patterns-off gate.
+  `contribution-and-coverage-are-lead-only.spec.tsx` renders the same payload as the lead and as a
+  participant and checks the participant reads neither section.
+- **B, remaining wording (DONE, the items below; NOT DONE, the six capitals headings - see Needs
+  Hafsah).** Fixed in `BoardPage.tsx` and `where-each-person-is.tsx`: the session pill as a real
+  sentence ("Session 1 is today, 27 Sept." / "Session 1 was on 27 Sept." / "Session 2 opens on 3
+  Oct."); "A colleague · no name given" → "A colleague, who has not given a name"; the objectives
+  row's "12 · from 0, said 12" → "12, up from 0, aiming for 12", "+12 this session" → "up 12 this
+  session", the owner glued to the name ("shops· Rukia Otieno") → its own line ("Rukia Otieno's own
+  target"), and "Asked about this so far:" / "· still to be asked:" → two plain sentences; "WHAT
+  PEOPLE SAID The role…" and "WHY IT MATTERS If the delays…" (a caption sharing one line with the
+  sentence after it, with only a trailing space between them) → each caption on its own line, and
+  (with "Which of the four this is" and the "ROLE LEVEL" chip) no longer set `textTransform:
+  uppercase`; jargon `Sec` subtitles ("extracted from check-ins", "each role, own terms", "the one
+  thing you add", "from sessions", "from divergences and blockers") reworded in plain words; reason
+  pills are sentence case throughout, not just "Nothing checkable"; the target row's "-"/"+"/"x"
+  buttons now read the words "Lower"/"Raise"/"Remove" - they already carried an `aria-label`, which
+  is not the same thing as a word a sighted reader can see. The guard spec
+  (`the-board-reads-as-sentences.spec.tsx`) now also checks these captions' inline style directly
+  for `textTransform: uppercase`, since CSS text-transform never touches `textContent` and the old
+  spec could not have caught this class of bug. **NOT DONE, and why: the six literal capitals
+  headings** named this round ("HOW TO READ AND USE THIS BOARD", "AT A GLANCE", "WHO OWNS WHAT",
+  "CONTRIBUTION AND FAIRNESS", "LOGISTICS", "FIND A TIME") are every one of them the shared
+  `Zone`/`Sec` heading convention (`kit.tsx`: "every section heading in the product uses this"),
+  applied identically across the whole product, not a board-specific bug - their underlying content
+  is already sentence case ("How to read and use this board"), and it is CSS alone that draws them
+  in capitals. Removing that would be a design-system change reaching every module, not something
+  this pass has made unilaterally; it is here as a clear flag rather than deferred silently a second
+  time. **"HOW MUCH WAS SAID / 15% documented / …anchored to a document"** and **"Unblock: …"** are
+  both engine text (`reports/what-this-session-holds.ts` and `board.service.ts` respectively, both
+  off limits per CLAUDE.md), so both are requests (67, 68) with the exact replacement wording
+  carried over, not direct fixes.
+- **C, who sees this differently, named (DONE).** `whoSeesThisDifferently()` in `BoardPage.tsx`
+  reads `positions[].who` exactly as the server already resolved it (the one peers-are-named rule,
+  applied server-side) and writes "Rukia Otieno and Amani Wekesa see this differently.", "You and
+  Rukia Otieno see this differently." (the reader named first) when the reader is one of the two, or
+  "People see this differently." the instant either side is masked to "A colleague" - which is
+  exactly what happens on an evaluation check-in read by the person it is about, since the server
+  never disambiguates two different hidden people beyond that one generic label.
+  `who-sees-this-differently.spec.ts` covers the pure function; the new
+  `evaluation-check-in-never-names-peers.spec.tsx` renders a PIP board (family EVALUATION) as
+  Daniel, the person being reviewed, with one side already masked by the server, and checks the page
+  reads "People see this differently." and names nobody.
+- **D, head counts (CHECKED, nothing to unify in the board's own code).** Tried making
+  `onlyOnePersonHere` use `whoIsInRound` (the function the check-in header and the report pages
+  already share); it answers a different question here - `whoIsInRound` counts who is expected to
+  check in this round (a managing-only lead still counts for session 1), while this gate asks
+  whether there are two ACCOUNTS to compare (a managing-only lead never gives one, ever) - and
+  unifying them broke "a managing-only lead is not the second account"
+  (`a-shared-picture-needs-two-accounts.spec.tsx`), a rule this board already tests deliberately.
+  Reverted. Every other figure the board shows (answered this round, checked-in counts) already
+  comes straight off the server in one all-figures sentence each (fixed last round); no mixed
+  word-and-figure count like "Four of the 6" exists in this board's own code. If the mismatch Hafsah
+  saw is between two engine-written sentences on different pages, request 69 asks where it lives.
+- **E, the admin sessions line and unopened sessions (DONE).** "Faraji Odhiambo has not started
+  session 1, and was not part of the other 1." (naming a session that had not opened) is now
+  "Faraji Odhiambo has not started session 1." - `NineColumnsIsNotAPhoneScreen` takes a new
+  `openSessions` prop, and a session left out of it is left out of the sentence entirely rather than
+  counted as one more the person "was not part of". At desktop width, a checkInGrid cell for a
+  session that has not opened yet (cross-referenced against the phase spine's own state) now renders
+  blank with an accessible "Not open yet" instead of a dash; a cell for a session that has opened but
+  this person was simply not on keeps a dash, now labelled "Not on this session".
+
+**Engine requests added:** 67 (the quick-read tile's own text mixes a figure and a fragment,
+`reports/`), 68 (`board.service.ts`'s "Unblock: …" colon join), 69 (head counts across pages -
+nothing found in the board's own code to fix; asking where the mismatch actually lives), 70 (the 22
+switchboard sections nothing serves yet, listed per situation).
+
+**Needs Hafsah, still open:** 0f (the three lead-only sections, unchanged this round - still lead
+only, still waiting on her answer) and a new flag, not yet numbered: whether the shared `Zone`/`Sec`
+CSS-uppercase heading convention should change product-wide, since two review rounds have now named
+headings that are that convention working as designed everywhere else in the product.
+
+**Tests run:** only the tests for the files this round changed, by path, `--maxWorkers=2`, plus
+`npx tsc -b` (client) and `npx tsc --noEmit` (api). All passed.
+
 ### U.11 Ending a check-in, the probation review, handover: built and tested, not yet reviewed
 
 **What was missing, against the prototype (the gap list):** a decision with its reason (the lead
