@@ -212,8 +212,10 @@ function whoSeesIt(row: APatternRow, yours: boolean, names: WhoIsWho, now: Date)
   }
   const first = names.firstNameOf?.(row.participantId)?.trim() || 'The person it is about';
   if ((row.personAnswer ?? '').trim()) return `${first} saw this first and said what is behind it.`;
-  if (at(row.shownToPersonAt) !== null) return `${first} saw this first and has not said anything about it yet.`;
-  return `${first} has not opened this yet. It is shown to you because a week has passed since it came up for the third time.`;
+  /* Hafsah, 28 September 2026: when the lead sees a pattern the person has not answered, it says
+     plainly that they have not answered yet. */
+  if (at(row.shownToPersonAt) !== null) return `${first} saw this first and has not answered yet.`;
+  return `${first} has not seen this yet, and has not answered yet. It is shown to you because a week has passed since it came up for the third time.`;
 }
 
 /** The patterns this reader may read, in the form they may read them. */
