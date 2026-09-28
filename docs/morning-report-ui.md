@@ -317,6 +317,8 @@ is the engine's code, so I have asked the engine workspace (request 41).
 
 **Update, 28 September:** the engine workspace has closed half of this (request 43, `59a62cc3`). A participant's report, forming or released, now carries only their own rating. The other half is yours to decide: the engine gives the lead and an admin everyone's ratings on purpose, while CLAUDE.md says leads never see how a person's answers were rated. Until you decide, the Done page keeps its wording, as the engine workspace asked.
 
+**A second question, from the U.9 review:** a person's own report, and the Done page, show them the rating of their own answers ("How specific this session was", "How checkable today's check-in was"), to them alone. I have kept that, because it is their own and only they see it. Request 51 says a lead is never shown a rating, even of her own answers. Please say whether a person, lead or not, may see the rating of their own answers.
+
 **Found by the U.8 review on 27 September.** CLAUDE.md's rule is plain: "Leads never see how a
 person's answers were rated." Two places in the engine's own code disagree with it. `own-reads-only.ts`,
 the file that is supposed to enforce exactly this rule, strips a participant's report down to their own
