@@ -16,7 +16,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
-import { Sec, Card, Row, Pill, td, btn, miniBtn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
+import { Sec, Card, Row, Pill, btn, miniBtn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
 import { todayApi, type Need } from '@/api/today'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
@@ -470,6 +470,28 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   }
   // Only the caller's own availability is theirs to toggle.
   const myIds = new Set(b.myParticipantId ? [b.myParticipantId] : [])
+
+  /**
+   * U.10: THE LAST 10 CHECK-INS, AS SQUARES, WHEREVER THE BOARD DRAWS A PERSON'S ROW.
+   *
+   * "The team today" (board-as-lead.jpg) and "Who checked in" both draw the same fact - a row of
+   * ten small squares, filled navy for checked in, empty for missed, nothing for not yet open - so
+   * this is computed once from the same `checkInGrid` the session table already uses, kept to the
+   * last 10 sessions, and handed to whichever section wants it for a given participant.
+   */
+  const squaresFor = (participantId: string): { key: number; state: 'done' | 'empty' | 'upcoming' }[] => {
+    if (!b.checkInGrid) return []
+    const row = b.checkInGrid.rows.find((r) => r.participantId === participantId)
+    if (!row) return []
+    const sessionState = new Map((b.phaseSpine?.sessions ?? []).map((ps) => [ps.n, ps.state]))
+    const last10 = b.checkInGrid.sessions.slice(-10)
+    return last10.map((s) => {
+      const v = row.cells[String(s)] ?? 'na'
+      const upcoming = v === 'na' && sessionState.get(s) === 'upcoming'
+      const checkedIn = v === 'done' || v === 'in-progress'
+      return { key: s, state: upcoming ? 'upcoming' : checkedIn ? 'done' : 'empty' }
+    })
+  }
 
   return (
     <div style={{ background: 'var(--gw-page)', minHeight: '100vh' }}>
@@ -1297,8 +1319,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.eachPerson && (
           <>
-            <Sec size="board" title="Where each person is" src="Ordered by what needs you, not listed by name." />
-            <WhereEachPersonIs rows={b.eachPerson!} />
+            {/*
+              U.10: "THE TEAM TODAY", THE PROTOTYPE'S WORDING (board-as-lead.txt).
+              The rows are still ordered by what needs the lead first, not listed by name - that
+              ordering is unchanged, only the heading now reads as the prototype's screen does.
+            */}
+            <Sec size="board" title="The team today" src="Each person’s line, their last 10 check-ins, and what keeps coming up." />
+            <WhereEachPersonIs rows={b.eachPerson!} squaresFor={squaresFor} />
           </>
         )}
 
@@ -1478,9 +1505,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
            * session's cell is blank with an accessible "Not open yet" rather than a dash.
            */
           const sessionState = new Map((b.phaseSpine?.sessions ?? []).map((ps) => [ps.n, ps.state]))
+          /*
+           * U.10: "WHO CHECKED IN", THE PROTOTYPE'S WORDING AND SHAPE (board-as-lead.txt: "Who
+           * checked in / The last 10 sessions, one row each"). The prototype draws this as a
+           * name and a row of ten navy squares - not a table with a "Session N" header per column.
+           * Squares come from `squaresFor`, the same helper "The team today" uses, so both read the
+           * same checkInGrid data the same way. The role column (not in the prototype, but real
+           * data this board already had - "managing only", or a role standing in for a name nobody
+           * gave) is kept so nothing here is lost, just moved beside the name instead of its own
+           * header.
+           */
           return (
           <>
-            <Sec size="board" title="Sessions this phase" src="Each session so far, and who has checked in." />
+            <Sec size="board" title="Who checked in" src="The last 10 sessions, one row each." />
             <Card>
               {/*
                 A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
@@ -1495,78 +1532,34 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   openSessions={b.checkInGrid.sessions.filter((s) => sessionState.get(s) !== 'upcoming')}
                 />
               ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
-                  <thead>
-                    <tr>
-                      {/*
-                        A COLUMN OF DASHES IS NOT A COLUMN. W-UX-P.
-                        
-                        Since the role stopped being repeated where it is already the person's label
-                        (W-UX-4), a board whose parties all show BY role renders "Role" as four
-                        dashes - a header, a divider and no information. Seen on the running board.
-                        
-                        Dropped when no row has anything to put in it, kept the moment one does.
-                      */}
-                      {['Person', ...(anyRoleToShow ? ['Role'] : []), ...b.checkInGrid.sessions.map((s) => `Session ${s}`)].map((h) => (
-                        <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 11, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, borderBottom: '1px solid var(--gw-border)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {b.checkInGrid.rows.map((r) => (
-                      <tr key={r.participantId}>
-                        {/*
-                          Same reconciliation as the cards above (W-UX-4): when somebody has no
-                          account yet, the label falls back to their role, so printing the role again
-                          in the next column gave "Engineer | Engineer" on one row while the row above
-                          it read "Sahar Okonkwo | -".
-                        */}
-                        <td style={td}><span style={{ fontWeight: 700, color: 'var(--gw-dark)' }}>{nameOnTheBoard(b, r.participantId, r.name)}</span></td>
+                <div>
+                  {b.checkInGrid.rows.map((r, i) => (
+                    <div key={r.participantId} style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                      <div style={{ minWidth: 160 }}>
+                        <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13.5 }}>{nameOnTheBoard(b, r.participantId, r.name)}</span>
                         {anyRoleToShow && (
-                          <td style={{ ...td, color: 'var(--gw-sub)' }}>
-                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : r.managingOnly ? 'Managing only' : <span aria-label="No role given" />}
-                          </td>
+                          <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--gw-sub)' }}>
+                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : r.managingOnly ? 'Managing only' : null}
+                          </span>
                         )}
-                        {/*
-                          U.10: NAVY SQUARES, NOT PILLS. The prototype (board-as-lead.jpg, "Who
-                          checked in") draws each session as one small square: filled navy for
-                          checked in, an empty outlined square for a session that happened and this
-                          person missed, and nothing at all for a session that has not opened yet.
-                          Same `checkInGrid` data as before - only the mark changes. The accessible
-                          name for each square carries the same words a screen-reader user had
-                          before, so nothing here is lost, only redrawn.
-                        */}
-                        {b.checkInGrid!.sessions.map((s) => {
-                          const v = r.cells[String(s)] ?? 'na'
-                          const upcoming = v === 'na' && sessionState.get(s) === 'upcoming'
-                          const checkedIn = v === 'done' || v === 'in-progress'
-                          const label = upcoming ? 'Not open yet'
-                            : checkedIn ? (v === 'in-progress' ? 'In progress' : 'Checked in')
-                            : v === 'declined' ? 'Declined' : v === 'na' ? 'Not on this session' : 'Missed'
-                          return (
-                            <td key={s} style={td}>
-                              {upcoming ? (
-                                <span aria-label="Not open yet" />
-                              ) : (
-                                <span
-                                  aria-label={label}
-                                  title={label}
-                                  style={{
-                                    display: 'inline-block', width: 14, height: 14, borderRadius: 3,
-                                    background: checkedIn ? 'var(--gw-navy)' : 'transparent',
-                                    border: checkedIn ? 'none' : '1.5px solid var(--gw-border)',
-                                  }}
-                                />
-                              )}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 5 }}>
+                        {squaresFor(r.participantId).map((sq) => (
+                          <span
+                            key={sq.key}
+                            aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                            title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                            style={{
+                              display: 'inline-block', width: 14, height: 14, borderRadius: 3,
+                              background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent',
+                              border: sq.state === 'empty' ? '1.5px solid var(--gw-border)' : 'none',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </Card>
           </>

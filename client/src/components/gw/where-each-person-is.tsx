@@ -53,10 +53,22 @@ const TONE: Record<Reason, 'bad' | 'warn' | 'info' | 'flat'> = {
   'nothing to do': 'flat',
 }
 
-export function WhereEachPersonIs({ rows }: { rows: Row[] }) {
+export type Square = { key: number; state: 'done' | 'empty' | 'upcoming' }
+
+/**
+ * U.10: "THE TEAM TODAY", THE PROTOTYPE'S WHITE TABLE (board-as-lead.jpg).
+ *
+ * Name, a one-line summary, a reason pill, then ten small navy squares for the last ten
+ * check-ins. The prototype's rightmost column - "what keeps coming up" - is left out here: it
+ * needs pattern detection, which is off while patterns are off (see `shown.patterns` on the
+ * board), so nothing is faked in its place. `ask`, the whole point of a row - the one thing a
+ * lead can act on - is not in the prototype's table at all, so it is kept as a second line under
+ * the row rather than dropped, the same way `finding` already was.
+ */
+export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFor?: (participantId: string) => Square[] }) {
   if (!rows.length) return null
   return (
-    <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 16px' }}>
+    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 16px' }}>
       {/*
         A HUNDRED OF THESE IS NOT A GLANCE. The rows are ordered by what needs the lead first, so
         the few at the top are the ones this section exists for - and on a check-in run across a
@@ -90,8 +102,25 @@ export function WhereEachPersonIs({ rows }: { rows: Row[] }) {
             </span>
           </div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{r.says}</div>
+          {/* The last-10 squares, the same mark and the same data "Who checked in" draws. */}
+          {squaresFor && (
+            <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
+              {squaresFor(r.participantId).map((sq) => (
+                <span
+                  key={sq.key}
+                  aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                  title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                  style={{
+                    display: 'inline-block', width: 12, height: 12, borderRadius: 3,
+                    background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent',
+                    border: sq.state === 'empty' ? '1.5px solid var(--gw-border)' : 'none',
+                  }}
+                />
+              ))}
+            </div>
+          )}
           {/* The whole point of the row. Absent where there is nothing to ask for, rather than
-              padded with something to say. */}
+              padded with something to say. Not in the prototype's table - kept here so it is not lost. */}
           {r.ask && (
             <div style={{ fontSize: 13.5, color: 'var(--gw-text)', marginTop: 7, lineHeight: 1.55 }}>{r.ask}</div>
           )}
