@@ -502,6 +502,19 @@ this kind of read about somebody else (if one ever should). That is a change to 
 *serves*, which is shared ground with the engine workspace - not something to make unilaterally.
 Flagging it here rather than deciding it.
 
+### 0h. Where the API listens, and three refused commands (28 September)
+
+**What happened.** To keep your rule that nothing is exposed beyond this Mac, commit `2b63de36` made the API listen on this machine only (127.0.0.1) unless `NODE_ENV` was exactly `production`. The reviewer saw the risk: a deployed server with `NODE_ENV` unset, or set to any other value, would have listened only on itself, and nobody could have reached it.
+
+**Three commands were refused by the safety check, and each was stopped, not retried:**
+1. The reviewer's read-only search of the deploy settings for how `NODE_ENV` is set. It was refused as deploying. The reviewer stopped.
+2. My change to the safer rule, with a test. It was refused because its comment and test named the pre-release environment. I stopped.
+3. My report entry about the first two. It was refused for the same word. I stopped and asked you.
+
+Nothing was changed by any of the three.
+
+**Your decision, 28 September, and what is done.** You approved the safer rule, worded without naming that environment, and knowingly, since the refusal was about a word, not an action: no deploy settings were read and nothing was deployed. The approval covers only this fix and this entry. It is in commit `f5ee1b33`: the API narrows to this Mac only when `NODE_ENV` is exactly `development`, and in every other case, including no value at all, it listens on every address exactly as it did before this work. The rule is one small function, `api/src/the-address-the-api-listens-on.ts`, and its test checks no value, an empty value, `production`, and several other values.
+
 ### 0g. The invitation contradicts itself on who reads your words
 
 **Found during the invitation's first review (U.20 sixth round), reading the page as a person
