@@ -131,6 +131,15 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **What is next, in your order:** measure weeks 4 and 5 live, twice, then carry on with the weekly plan.
 
+## 28 SEPTEMBER, EVENING: NEVER AN EMAIL ADDRESS AS A NAME (`fdc1439b`)
+
+- **Before:** a lead was shown the address of someone who had not given a name, in place of their name. The model then wrote it into sentences such as "Start with zawadi.u8@example.test."
+- **Now:** nobody is ever shown an address as a name. A person with no name is "a colleague", or "another colleague", as everywhere else. I also fixed four places that fell back to the address in words people read.
+- **Text already stored with an address in it** is read once more when it is served, and the address becomes the name or the plain words.
+- **Checked live** on run-16's seniorhire check-in: a stored "Start with <Tobi's address>." reads "Start with Tobi Adewale." to the lead and to Tobi. The stored report was put back exactly afterwards.
+- **One thing to know:** a lead still sees an address where the screens list it beside a person, so they can tell who is who. It is never used in place of a name.
+- **Next:** a live check of the private file and hidden-target fixes, with a scenario that has both.
+
 ## 28 SEPTEMBER, EVENING: RUN-16 PASSED, AND THE RELEASE CANDIDATE IS `6fe8d1fb`
 
 - **Run-16 passes the checker: nothing is worse than the baseline.** It was the full run on the streamed route, with every fix in.
