@@ -3529,6 +3529,26 @@ unanswered participant the team's findings and a rating of the lead's own answer
 privacy gap as 0c and 0d, in a different endpoint). One of the eight is a question rather than a bug:
 whether any admin may release a report, or only its lead (item 20.9 above).
 
+**U.9's re-review, 28 September, sent back two things: fixed.** The first review's fix to item 12
+had only changed the capitals in one file; the re-review read the whole participant's own report,
+the lead's own report, the team's report and the party's shared picture, and found the same
+two-tier "01 LABEL" heading, the same "·" and " - " joins, in eleven files. Every block heading
+across all four reports is now one plain sentence, with no number, no capitals and no lower-case
+line stacked under it; every "name · fact" and "date - count" join is a sentence; the specificity
+bar, which was drawn twice on one page, is drawn once; a date that was not provably about the thing
+next to it ("By when, in your words: by 20 December", attached to the wrong item) is left out
+rather than guessed; and a claim this component cannot stand behind ("nobody else has answered
+yet", said unconditionally) is gone. `HowThisHasMoved` now writes its date through the shared
+formatter, in one sentence with the session number and the count of differences, instead of
+printing the server's raw value; the check-in header's "Waiting on 2 of 6" is now a sentence. A new
+spec, `a-label-is-a-sentence-not-a-shout.spec.ts`, scans every one of the eleven files for the same
+three patterns, so they cannot come back in one file while being fixed in another. One dash-joined
+label (`TheReportYouSawAtTheEnd.tsx`'s `renderAdd` slot) is left for a later round, named in that
+spec as a known exception: fixing it fully means touching `EntryChatPage.tsx`, a different module.
+Two more lines went to the engine as requests, added to request 58: "nobody else has answered yet"
+said when others had, and the "4 of 5" in the session report's own generated text (alongside
+request 56, the same count disagreeing with the check-in header).
+
 ### U.10 The board: built and tested, not yet reviewed
 
 **What was missing, against the prototype's board (the gap list):** the line saying when the board
