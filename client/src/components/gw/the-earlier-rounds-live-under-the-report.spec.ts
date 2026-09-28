@@ -50,7 +50,12 @@ describe('what it shows', () => {
 
   it('what each round led with, and when', () => {
     expect(code).toContain('{m.says}')
-    expect(code).toContain('{m.takenAt}')
+    /*
+     * U.9 RE-REVIEW, ITEM B: THE DATE IS READABLE, NOT THE RAW VALUE THE SERVER SENDS. It used to
+     * print `{m.takenAt}` bare ("2026-09-27"); the date is now read through the shared formatter,
+     * inside one sentence with the session number and the count of differences.
+     */
+    expect(code).toContain('whenItWas(m.takenAt')
   })
 
   it('says nothing has been rewritten since', () => {

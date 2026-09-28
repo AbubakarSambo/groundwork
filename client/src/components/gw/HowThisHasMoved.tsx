@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { reportsApi } from '@/api/reports'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * HOW THINGS HAVE MOVED, UNDER THE REPORT ITSELF.
@@ -38,7 +39,21 @@ export function HowThisHasMoved({ groundId }: { groundId: string }) {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {moved.map(m => (
+        {moved.map(m => {
+          /*
+           * U.9 RE-REVIEW, ITEM B: ONE SENTENCE, WITH A READABLE DATE.
+           * "Round 2026-09-27. 1 read differed." printed the raw date the server sends and split
+           * the round, the date and the count of differences across two pieces of one row. This is
+           * now one sentence, with the date through the shared formatter, and the session word the
+           * rest of the product uses (see GroundAdminPage: "session" everywhere, "round" almost
+           * nowhere). Nothing is invented: `m.round` is always sent for a closed round, so it is
+           * always there to say.
+           */
+          const dateText = whenItWas(m.takenAt, 'dayAndMonthLong')
+          const differsClause = m.differences > 0
+            ? `, and ${m.differences === 1 ? 'one read differed' : `${m.differences} reads differed`} from the one before`
+            : ''
+          return (
           <div
             key={m.round}
             style={{
@@ -46,17 +61,8 @@ export function HowThisHasMoved({ groundId }: { groundId: string }) {
               padding: '11px 14px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 3 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)' }}>Round {m.round}</span>
-              <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>
-                {/*
-                  ONE SENTENCE, NOT TWO FACTS JOINED BY A DOT. "2026-09-27 · 1 read differed" read
-                  as a table row; a count is never a characterisation, so it stays plain, but it is
-                  now said as its own clause rather than stitched to the date.
-                */}
-                {m.takenAt}
-                {m.differences > 0 ? `. ${m.differences} ${m.differences === 1 ? 'read differed' : 'reads differed'}.` : ''}
-              </span>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+              {`At the end of session ${m.round}${dateText ? `, on ${dateText}` : ''}${differsClause}.`}
             </div>
             <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{m.says}</div>
             {m.amended && (
@@ -65,7 +71,8 @@ export function HowThisHasMoved({ groundId }: { groundId: string }) {
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

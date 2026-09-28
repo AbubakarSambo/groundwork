@@ -1432,7 +1432,8 @@ export function GroundAdminPage() {
           const say =
             a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn - 1 day late' : `Your turn - ${a.daysLate} days late`, c: 'var(--gw-amber-t)' }
             : a.kind === 'yours' ? { t: 'Your turn', c: 'var(--gw-navy)' }
-            : a.kind === 'waiting' ? { t: `Waiting on ${a.total - a.done} of ${a.total}`, c: 'var(--gw-sub)' }
+            /* U.9 re-review, item B: a sentence, not a label and a fraction. */
+            : a.kind === 'waiting' ? { t: `${a.total - a.done} of the ${a.total} have not answered yet.`, c: 'var(--gw-sub)' }
             : null
           return say
             ? <div style={{ padding: '0 16px 4px', fontSize: 14, fontWeight: 700, color: say.c, letterSpacing: '-.01em' }}>{say.t}</div>
