@@ -11,9 +11,10 @@ import './gw-ui.css'
  * next), then leaves the ordinary 30px between the groups themselves. `Stack` is that tighter
  * grouping - a handful of fixed gaps read off the prototype, not a free number, so nobody sets an
  * inline `gap` on one of these pages again (the-rebuilt-pages-use-only-the-new-parts.spec.ts bans
- * it there).
+ * it there). `gap={0}` groups two things with no space at all - the invitation's heading sits
+ * flush against the tinted line under it, the prototype's own zero.
  */
-export type StackGap = 10 | 12 | 18 | 19
+export type StackGap = 0 | 10 | 12 | 18 | 19
 
 export function Stack({ gap, children }: { gap: StackGap; children: ReactNode }) {
   return <div className={`gwui-stack-${gap}`}>{children}</div>

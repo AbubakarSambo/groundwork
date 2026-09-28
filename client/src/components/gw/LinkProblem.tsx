@@ -47,7 +47,7 @@ export function LinkProblem({ kind, detail }: { kind: 'invite' | 'join' | 'sign-
               whoever invited you to send a new one"), found in the running app in U.3. */}
           {detail ?? `${what[0].toUpperCase()}${what.slice(1)}s are single use and they expire.${kind === 'sign-in'
             ? ' Ask for a new one below.'
-            : ' Ask whoever invited you to send a new one - they can do that from the check-in.'}`}
+            : ' Ask the person who invited you to send a new one. They can do that from the check-in.'}`}
         </Note>
         <Button size="big" wide onClick={() => navigate('/auth')}>
           {kind === 'sign-in' ? 'Get a new link' : 'Sign in instead'}

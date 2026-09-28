@@ -48,6 +48,15 @@ describe('after a real invitation', () => {
     expect(document.body.textContent).not.toMatch(/text you|Usually within a day/)
   })
 
+  /* Hafsah's re-review (U.20 eighth round): dropped, then put back deliberately - a way out for
+     whoever this waiting request is not for, since this route has no sidebar while waiting. */
+  it('has a quiet way to sign out, for whoever this is not for', async () => {
+    ;(authApi.myWaiting as any).mockResolvedValue(AFTER_AN_INVITATION)
+    open()
+    await screen.findByText('You can remind Grace once a day. Wairimu can see you’re waiting too.')
+    expect(screen.getByRole('link', { name: 'Not you? Sign out.' })).toHaveAttribute('href', '/signout')
+  })
+
   it('"Remind Grace" sends once, and says so', async () => {
     ;(authApi.myWaiting as any).mockResolvedValue(AFTER_AN_INVITATION)
     ;(authApi.remindAboutMyWaiting as any).mockResolvedValue({ reminded: true, canRemindFrom: new Date(Date.now() + 24 * HOUR).toISOString() })

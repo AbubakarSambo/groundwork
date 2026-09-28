@@ -276,11 +276,13 @@ export function InvitePage() {
           title="You’ve already joined"
           subtitle={`Pick up your check-in, “${preview.groundLabel}”. If this is a new device, we will email you a sign-in link.`}
         />
-        <Button size="big" wide disabled={accept.isPending} onClick={() => accept.mutate()}>
-          <span role="status">{accept.isPending ? 'One moment…' : 'Pick up where I left off'}</span>
-        </Button>
-        {/* Sign in instead: the secondary weight, because two identical primaries around an "or" is no choice. */}
-        <Button kind="secondary" size="big" wide onClick={() => navigate('/auth')}>Sign in to continue</Button>
+        <Stack gap={10}>
+          <Button size="big" wide disabled={accept.isPending} onClick={() => accept.mutate()}>
+            <span role="status">{accept.isPending ? 'One moment…' : 'Pick up where I left off'}</span>
+          </Button>
+          {/* Sign in instead: the secondary weight, because two identical primaries around an "or" is no choice. */}
+          <Button kind="secondary" size="big" wide onClick={() => navigate('/auth')}>Sign in to continue</Button>
+        </Stack>
       </Page>
     )
   }
@@ -300,13 +302,14 @@ export function InvitePage() {
       */}
       <Mark />
       {/*
-        THE PROTOTYPE'S GAPS (Hafsah, pictured at 1440px, U.20 sixth round): Page's flat 30px stack
-        is wrong for this screen. Nested Stacks carry the prototype's own numbers instead - line to
-        panel 18, the tinted box to the facts panel 19, panel to the button 18, the button to the
+        THE PROTOTYPE'S GAPS (Hafsah, pictured at 1440px, U.20 sixth round, corrected in the eighth
+        round). Page's flat 30px stack is wrong for this screen. Nested Stacks carry the
+        prototype's own numbers instead - the title's line sits flush against the tinted box under
+        it, 0px; the tinted box to the facts panel 19; panel to the button 18; the button to the
         note under it 10 - so PageTitle down to "About two minutes…" is one chain, each link its
         own gap, and nothing here sets an inline margin, padding or gap again.
       */}
-      <Stack gap={18}>
+      <Stack gap={0}>
         <PageTitle title={theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
 
         <Stack gap={19}>

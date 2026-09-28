@@ -36,8 +36,13 @@
 .gwui-page-main { padding: 32px 48px 72px; min-width: 0; }
 .gwui-page-wrap { max-width: 1150px; }
 .gwui-page-narrow { max-width: 360px; margin: 0 auto; }
-/* Sections stacked 30px apart (prototype: .stack), for a Page's direct children. */
-.gwui-page-wrap > * + *, .gwui-page-narrow > * + * { margin-top: 30px; }
+/* Sections stacked 30px apart (prototype: .stack), for a Page's direct children. Doubled class
+   (Hafsah's re-review, U.20 eighth round - same cause as the Stack fix): a direct child's own
+   single-class margin reset (e.g. .gwui-panel-text-muted's `margin: 0`, written later in this
+   file) has the same specificity as a plain ".gwui-page-narrow > * + *" and would otherwise win
+   the cascade and cancel the gap - live on the expired-link page, whose foot line touched the
+   button above it. */
+.gwui-page-wrap.gwui-page-wrap > * + *, .gwui-page-narrow.gwui-page-narrow > * + * { margin-top: 30px; }
 @media (max-width: 860px) {
   .gwui-page-main { padding: 20px 18px 100px; }
 }
@@ -48,6 +53,7 @@
    single-class rule here, and - later in this file - would otherwise win the cascade and cancel
    the gap. Found live, U.20 seventh round: "Almost in" read with Steps touching the line above
    it.). A Stack's own gap must always win over whatever a child resets itself to. */
+.gwui-stack-0.gwui-stack-0 > * + * { margin-top: 0; }
 .gwui-stack-10.gwui-stack-10 > * + * { margin-top: 10px; }
 .gwui-stack-12.gwui-stack-12 > * + * { margin-top: 12px; }
 .gwui-stack-18.gwui-stack-18 > * + * { margin-top: 18px; }

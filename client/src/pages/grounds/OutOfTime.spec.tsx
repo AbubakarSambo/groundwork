@@ -59,3 +59,34 @@ describe('out of time', () => {
     expect(onOpen).toHaveBeenCalled()
   })
 })
+
+/*
+ * NOTHING BEHIND THE COVER CAN TAKE FOCUS (Hafsah's re-review). The cover hid the app frame but did
+ * not stop Tab reaching it - eight invisible sidebar links were still in the tab order. This proves
+ * the mechanism directly: everything already a child of <body> other than this component's own
+ * portal container is marked inert while it is mounted, and freed the moment it is not.
+ */
+describe('the app frame behind the cover', () => {
+  it('is made inert while the cover is up, and restored once it is gone', async () => {
+    const sidebarLink = document.createElement('a')
+    sidebarLink.href = '/today'
+    sidebarLink.textContent = 'Today'
+    document.body.appendChild(sidebarLink)
+
+    ;(groundsApi.moreTime as any).mockResolvedValue(STANDING)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const view = render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter><OutOfTime groundId="g1" onOpenMyWork={vi.fn()} /></MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await screen.findByRole('heading', { name: 'This check-in reached its end date' })
+
+    expect(sidebarLink.hasAttribute('inert')).toBe(true)
+
+    view.unmount()
+    expect(sidebarLink.hasAttribute('inert')).toBe(false)
+
+    document.body.removeChild(sidebarLink)
+  })
+})
