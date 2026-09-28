@@ -1,11 +1,11 @@
 import {
-  whereEachPersonIs, whyThisRow, behindThePace, whatToAskFor,
+  whereEachPersonIs, whyThisRow, behindThePace, whatToAskFor, whatHappened,
   hasANumberADateOrADocument, type PersonRow,
 } from './where-each-person-is-against-their-number';
 
 const rep = (over: Partial<PersonRow> = {}): PersonRow => ({
   participantId: 'p1', who: 'Musa', target: 35, count: 10,
-  answeredThisRound: true, roundsSoFar: 4, inTheWay: [], thisRoundHasANumberADateOrADocument: true, ...over,
+  answeredThisRound: true, roundsSoFar: 4, inTheWay: [], saidAnythingCheckable: true, ...over,
 });
 
 describe('where each person is against their number', () => {
@@ -73,9 +73,16 @@ describe('where each person is against their number', () => {
     expect(behindThePace(rep({ target: null, count: 0 }), 12)).toBe(false);
   });
 
-  it('says when the record of this round has nothing in it to count', () => {
-    /* A fact about what was written down, read from the record and never from a rating. */
-    expect(whyThisRow(rep({ thisRoundHasANumberADateOrADocument: false }), 12)).toBe('nothing to count yet');
+  it('says "nothing checkable" when nothing they said this round can be checked', () => {
+    /* 28 Sep 2026, Hafsah: the prototype's own words, back from "nothing to count yet" (a1747927). */
+    expect(whyThisRow(rep({ saidAnythingCheckable: false }), 12)).toBe('nothing checkable');
+  });
+
+  it('says how many in a row, and asks for proof where proof was what was missing', () => {
+    const row = rep({ saidAnythingCheckable: false, nothingCheckableInARow: 2, roundIsA: 'week', noProof: true });
+    expect(whatHappened(row, 'nothing checkable', 12)).toBe('Nothing Musa said this round can be checked yet. This is the second week in a row. A number, a date or a document for what moved would change that.');
+    expect(whatToAskFor(row)).toBe('Ask Musa for a photo, a message or a document that shows what moved.');
+    expect(whatToAskFor(rep({ saidAnythingCheckable: false }))).toBe('Ask Musa for a number or a date for what moved this round.');
   });
 
   it('reads a number, a date or a document off a line of the record', () => {
@@ -126,8 +133,8 @@ describe('where each person is against their number', () => {
       .toBe('Femi has had something in the way for 16 days, and nobody has said yet what was tried to clear it. Finding out who could clear it, and asking them, would move it.');
     expect(says({ target: 14, count: 2, roundsSoFar: 6 }))
       .toBe('Femi is at 2 of 14, and 6 of the 12 rounds have gone. At this pace, 14 would not be reached by the end.');
-    expect(says({ thisRoundHasANumberADateOrADocument: false }))
-      .toBe('What Femi said this round has no number, no date and no document with it yet, so there is nothing new to count. A number or a date for what moved would change that.');
+    expect(says({ saidAnythingCheckable: false }))
+      .toBe('Nothing Femi said this round can be checked yet. A number, a date or a document for what moved would change that.');
     expect(says({})).toBe('Femi has checked in, and nothing here needs you this week.');
   });
 
@@ -135,8 +142,8 @@ describe('where each person is against their number', () => {
     const one = (over: Partial<PersonRow>) => whereEachPersonIs([rep(over)], 12)[0].says;
     expect(one({ who: 'Head of Sales', nameIsTheirRole: true, answeredThisRound: false }))
       .toBe('The person listed as Head of Sales has not checked in for this round yet.');
-    expect(one({ who: 'Head of Sales', nameIsTheirRole: true, thisRoundHasANumberADateOrADocument: false }))
-      .toMatch(/^What the person listed as Head of Sales said this round/);
+    expect(one({ who: 'Head of Sales', nameIsTheirRole: true, saidAnythingCheckable: false }))
+      .toMatch(/^Nothing the person listed as Head of Sales said this round/);
     expect(one({ who: 'A colleague', nameIsTheirRole: true, answeredThisRound: false }))
       .toBe('A colleague has not checked in for this round yet.');
     expect(one({ who: 'Another colleague', nameIsTheirRole: true, answeredThisRound: false }))

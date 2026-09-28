@@ -1,3 +1,5 @@
+import { managementWordsIn, sayItInPlainWords } from './management-words';
+import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { theLeadByName, mentionsTheLeadByALabel } from './the-lead-has-a-name';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital';
@@ -100,7 +102,7 @@ import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
@@ -131,7 +133,7 @@ import { isShut } from '../grounds/a-ground-that-has-ended';
 import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
-import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
+import { theGoodNewsIn, whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
 import { whatThisSessionHasCovered, sayWhatHasBeenCovered, whereTheSpineIs, theyDeclined, THEY_DECLINED_IT, askedAbout, theyAlreadyAnsweredThat, type AThingToCover } from './what-this-session-has-covered';
 import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
@@ -2027,6 +2029,37 @@ export class ConversationService {
         }
       }
 
+      /*
+       * AND NO MANAGEMENT WORD THEY DID NOT USE FIRST. Task 2.3, week 3: "pipeline", "escalate",
+       * "deliverable" and the rest, when Groundwork reached for them itself. Asked again once, with
+       * the sentence quoted and a plain way offered; if the second try is no better, the first
+       * stands. See management-words. It runs before the word guard below, which stays last so it
+       * reads whatever ships, this one's rewrite included.
+       */
+      const jargonHere = managementWordsIn(screened.text, theirWords);
+      if (jargonHere.length) {
+        this.logger.warn(`Check-in ${checkIn.id}: ${jargonHere.length} management word(s) they did not use; asking again.`);
+        const plain = await this.anthropic
+          .respond(`${fullSystem}\n\n${sayItInPlainWords(jargonHere, screened.text)}`, history)
+          .catch(() => '');
+        const second = plain.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(plain), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (
+          second?.text && !second.hits.length &&
+          !managementWordsIn(second.text, theirWords).length &&
+          !wordsWeDoNotUse(second.text, theirWords).length &&
+          !asksMoreThanOneThing(second.text) &&
+          !isAnEssay(second.text, thisIsTheClosingTurn) && !isADeadEnd(second.text, closingNow) &&
+          !opensByRepeatingThem(message, second.text)
+        ) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try said it plainly.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try was no plainer; the first stands.`);
+        }
+      }
+
       const notOurWords = wordsWeDoNotUse(screened.text, theirWords);
       if (notOurWords.length) {
         this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
@@ -2049,6 +2082,7 @@ export class ConversationService {
           this.logger.warn(`Check-in ${checkIn.id}: the second try used them too; the first stands.`);
         }
       }
+
 
       /*
        * AND SAY SO WHENEVER A LONG ONE SHIPS, NOT ONLY WHEN THE GUARD TRIPS.
@@ -2251,6 +2285,18 @@ export class ConversationService {
       aiTurn = await this.prisma.conversationTurn.update({
         where: { id: aiTurn.id },
         data: { content: withTheOneMoreLine(stillOpen, close.ask) },
+      });
+    } else if (!close.ready && hasAGoodbye(aiTurn.content ?? '')) {
+      /*
+       * NO GOODBYE IN A TURN THAT IS NOT THE LAST. Request 47, 28 September 2026: Rukia read "Your
+       * report is ready now. Speak soon." while the check-in stayed open, three times, because the
+       * product refused the close (the turn floor) with no question of its own to add, and the
+       * model's goodbye went out as it was written. The goodbye comes off; if nothing is left
+       * asking, the product's own question goes on.
+       */
+      aiTurn = await this.prisma.conversationTurn.update({
+        where: { id: aiTurn.id },
+        data: { content: withAQuestion(withoutTheGoodbye(aiTurn.content ?? ''), { closing: false }) },
       });
     } else if (close.ready && close.sayFirst) {
       /* A close that records something before the goodbye: the goodbye stays, the fact goes in front of it. */
@@ -2773,6 +2819,11 @@ export class ConversationService {
            reply - ChatPage replaces the streamed text with it. So the delta only has to add the
            question; no second event type is invented for something the page already does. */
         yield { type: 'delta', text: `\n\n${close.ask}` };
+      } else if (!close.ready && hasAGoodbye(reply)) {
+        /* Same as the turn path: no goodbye in a turn that is not the last (request 47). The stream
+           has already shown it; `done` carries the corrected reply and ChatPage replaces the text. */
+        reply = withAQuestion(withoutTheGoodbye(reply), { closing: false });
+        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
       } else if (close.ready && close.sayFirst) {
         reply = `${reply}\n\n${close.sayFirst}`;
         await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
@@ -3325,10 +3376,12 @@ export class ConversationService {
         },
         orderBy: { createdAt: 'desc' },
         take: 6,
-        select: { text: true },
+        select: { text: true, type: true },
       })?.catch(() => [] as any[]) ?? [],
     ]);
     const recordAlreadyHolds = whatTheRecordAlreadyHolds({
+      /* Good news first, when there is some: task 2.4. Only in the opener, only from the same lines as saidLastTime. */
+      wentWellLastTime: how?.forTheOpener ? theGoodNewsIn(lastTimeRows as any[]) : [],
       /* Theirs, and the check-in's own. Somebody else's owned number is on the board, not in this person's interview. */
       targets: (objectivesOnRecord as any[])
         .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === checkIn.participantId)
@@ -4093,9 +4146,14 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
       orderBy: { createdAt: 'asc' },
       take: 80,
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    /* A file only its owner can open is not named in anybody else's check-in, including on notes
+       already stored with the name in them (request 46; see a-private-file-is-not-named). */
+    const privateFileNamesHere = isTheLead ? [] : namesNotEverybodyMayOpen(
+      await (this.prisma.groundDocument?.findMany?.({ where: { groundId: checkIn.groundId }, select: { fileName: true, visibility: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+    );
     const ofKind = (kind: string, aboutMe?: boolean) => (contextLines as any[])
       .filter((l) => l.kind === kind && (aboutMe === undefined || (aboutMe ? l.aboutParticipantId === checkIn.participantId : !l.aboutParticipantId)))
-      .map((l) => (l.text ?? '').trim())
+      .map((l) => withoutPrivateFileNames((l.text ?? '').trim(), privateFileNamesHere))
       .filter(Boolean);
     const notSettledLines = ofKind('UNSETTLED');
     /*

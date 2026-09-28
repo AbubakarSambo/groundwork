@@ -6,6 +6,95 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 28 SEPTEMBER, DAY: HAFSAH'S DECISIONS ON RATINGS AND PATTERNS
+
+**Ratings are never sent to anyone but the person they are about** (`828b4837`, decision 38 in `docs/decisions-merged.md`).
+- **Before:** a lead or an org admin opening a report was sent every person's rating: how specific each person's answers were, how sure the picture of them was, and a closing tier for each person.
+- **Now:** every reader, the lead and an admin included, is sent only the rating of their own answers. An admin who gave no answers of their own gets none.
+- **I kept a person's own rating.** Your decision says ratings are never served to any reader. I read that together with the earlier decision of 1 September, that a person sees their own rating as a nudge, and with the prototype's Done page, which shows a person "How checkable today's check-in was, 4 of 5" and says "Only you see it". If you meant that nobody at all, not even the person, is sent a rating, it is one line to change, and the Done page would lose that panel.
+- **A second leak, found while checking every route:** pressing Release on a report sent the admin the whole stored report. That included every person's rating, every person's private preparation for the talk afterwards, and the concerns about people. It now sends back only when the report was released. The screen never used what came back.
+- **Checked on what a person actually receives,** on two real check-ins from last night, as the lead and as each participant. Reports carry only the reader's own rating. Check-ins carry only the reader's own. Boards carry none, and they still load.
+- **A test** checks that the lead, an org admin and a participant each leave with nobody else's rating, and that Release returns no stored report.
+- **One old test changed.** It checked the old rule, "a lead still sees everyone's reads". It now checks the new rule.
+- **Tests:** all 10,413 API tests pass. The client passes 3,216 of 3,217. The one that fails is the screens workspace's "Jump to" sidebar test, as before.
+
+**Pattern windows approved, with your addition** (`68ea3eab`, decision 39). When the lead sees a pattern the person has not answered, it now says so plainly. For example: "Femi saw this first and has not answered yet." Or, if Femi never opened it: "Femi has not seen this yet, and has not answered yet. It is shown to you because a week has passed since it came up for the third time." Patterns stay switched off until you approve the names, so for now only the tests prove this.
+
+**The closing problem, and request 47 with it** (`75a28ddd`, `1a9ffa59`). Done, and re-run twice.
+- **"This check-in will continue in two weeks."** is now read as a goodbye. When the product adds its last question, the goodbye comes off first. The person's own "You will continue to follow up" is never taken for one. Across every past run this matches 1 of 15,543 turns, the one Tobi read.
+- **Request 47, the screens workspace's check-ins.** Those ids are in a database on the other computer, so I worked from the code and the description. I found two causes:
+  - When the product decided the check-in was not over, and had no last question of its own to add, the model's "Your report is ready now. Speak soon." went out as written, and the check-in stayed open. This happened in 10 of 3,550 turns in last night's runs, for example "…Your report is ready now. Speak soon. What else should I know?". Now the goodbye comes off, and if nothing is left asking, Groundwork's usual question goes on. The streamed reply does the same.
+  - "Please finish my check-in" was not heard as asking to finish, though "finish this check-in" was. Now it is, and so are a bare "Finish" and "Please finish.". A sentence such as "I want to finish the proposal by Friday" still is not.
+- **Re-runs:** sales, seniorhire and snapshot, twice each. Snapshot is where the goodbye showed most.
+
+  | Sales, seniorhire and snapshot together | Run-12 | Run-13 | First re-run | Second re-run |
+  | --- | --- | --- | --- | --- |
+  | A goodbye in a turn that was not the last | 4 | 3 | **0** | **0** |
+  | A goodbye before "One more before this closes" | 0 | 0 | **0** | **0** |
+  | Check-ins that closed naturally | about half | about half | **15 of 23** | **13 of 23** |
+  | Proof asked for | 13 | 7 | 10 | 16 |
+  | Specific detail asked for | 26 | 30 | 33 | 34 |
+  | Blocker checked | 9 | 18 | 15 | 16 |
+  | Past words brought back | 34 | 32 | 33 | 28 |
+  | Commitments recorded | 32 | 43 | 29 | 27 |
+  | Differences, agreements, per-person findings | 11, 18, 23 | 11, 16, 22 | 13, 19, 23 | 9, 19, 23 |
+  | Turns that ask more than one question | 5 | 6 | 0 | 0 |
+
+  - **Kept.** In both re-runs no goodbye came before a question or in a turn that was not the last, and more check-ins closed naturally.
+  - Commitments recorded was a little lower in both. Per scenario it is inside the usual spread: sales has ranged from 11 to 38 across eleven runs, and seniorhire from 2 to 24. The re-runs gave sales 22 and 14, and seniorhire 7 and 12.
+  - Nothing in the "problems in what people read" list came up.
+
+**Request 46: a private file's name on the board** (`fc82c0a5`, `9758c050`).
+- **How it got there.** When the lead attaches a file in her own check-in, Groundwork's reply names it: "Here is the context we have from team-plan.txt". Her answer echoed it, the line went on the record, and the report and board are written from every record line, whoever may open the document behind it.
+- **Fixed in four places.**
+  - The report is now written from the record with private file names taken out. The stored line is not changed.
+  - A note that goes to everyone, "The numbers on this check-in come from team-plan.txt", now names the file only if everyone may open it.
+  - Lines that anyone but the lead reads, on the check-in's page and in their own check-in, lose private file names, so notes stored before the fix are covered.
+  - The session report lists by name only the documents the reader may open.
+- **Seen for real in the local test database.** A note shared with everyone names `harvestline-q4-targets.xlsx`, a file only its owner can open, and participants were sent it. I will check it again as a participant once the API is rebuilt.
+- **What stays:** what a document showed can still be said. Only which file it was is the owner's to share.
+
+**Run-14, the full run, started at 10:28 on `9e808ab9`,** with every fix above in it. It checks "proof asked for" after week 2, and task 1.5's bar again.
+
+**Hafsah's correction: "Nothing checkable" is back on the lead's board** (`01379c6e`, decision 40 in `docs/decisions-merged.md`).
+
+*What `a1747927` (27 September) changed, exactly:*
+1. The board stopped reading the check-in's rating of how checkable the answers were. It looked instead for a number, a date or a document in the record of that round.
+2. The reason "nothing checkable" was renamed "nothing to count yet".
+3. Each person's row gained a sentence, `says`, in full sentences with the person's name, for every reason.
+4. A stop-gap from before it, which turned "nothing checkable" into "nothing to do" so the lead never saw it, was removed.
+5. A privacy test was added that proved the lead's board was the same however the check-ins were rated.
+
+*What is put back, as the prototype words it:*
+- The rating decides it again, as it did before `a1747927`. A check-in not yet rated is judged by its record instead, so nobody is marked "nothing checkable" just because the rating has not run.
+- The reason is "nothing checkable" again. The screen shows the reason beside the name, so the lead sees "Nothing checkable", as in the prototype's "Omondi: nothing checkable".
+- The sentence under it now reads, for example: "Nothing Miriam Wanjiku said this round can be checked yet. This is the second week in a row. A number, a date or a document for what moved would change that." The count of weeks in a row is new, from the prototype's "for 2 weeks in a row".
+- What to ask next is new, from the prototype. Where nothing else is in the way: "Ask Miriam for a photo, a message or a document that shows what moved" when proof was missing, and otherwise "Ask Miriam for a number or a date for what moved this round".
+
+*What is kept from `a1747927`, because it protects privacy:*
+- Only whoever runs the check-in, and an admin, is sent these rows. A new test proves a participant gets none.
+- No raw rating value is ever sent, and no sentence uses a rating word about the person.
+- The rating changes only this one reason. Nothing else on a row moves with it.
+- The full sentences for every reason stay.
+
+*For Hafsah:*
+- Decision 40 is written as the one exception to decision 38 from this morning. A report's other per-person ratings are still not sent to the lead or an admin. Say if you want those back as well.
+- The prototype's "He says “worked on it”, but gives no error, code link or what he tried" comes from a pattern. Patterns stay switched off until you approve the names.
+- Not yet checked live. The API keeps run-14's build until that run finishes, and then I will read the lead's board as the lead, a participant and an admin.
+- The four tests that pinned `a1747927`'s rule now pin the corrected rule and every protection above.
+
+**Week 3 of the weekly plan is built, and not yet measured live** (`edcaf719`, `7bdbec5b`). Run-14 is on the build before it.
+- **Task 2.3, plain words.** The check-in's own word guard never looked for management words, although the rulebook bans them and the checker counts them. Now, when Groundwork itself brings in "pipeline", "escalate", "deliverable", "bottleneck" and the like, the reply is asked for again once, with the sentence quoted and a plain way offered, for example "sales not yet closed" instead of "pipeline". A word the person used first is left alone.
+- **Task 2.4, good news first.** Openings of later check-ins already start from what the person said last time: 12 of 14 on both run-12 and run-13. Now the opener is also given last time's good news, in the person's own words, and says it back first, plainly, with no praise.
+- **For Hafsah: the bar for 2.3 may not be reachable without changing how we treat people's own words.** The bar is 10.5 jargon words in Groundwork's turns across a full run. Runs 12 and 13 had 26 and 35, and 13 and 22 of those were the person's own word handed back, mostly "pipeline" in sales. This change can only remove the other part. The conversation standard says "Use the words the team itself uses". If echoes should not count, the bar is already close. If they should, Groundwork would have to stop saying a word the person just used.
+
+**Found while doing week 3, for Hafsah: the scenario runs do not test the path people actually use.** The runner sends each message through the plain route. The screen uses the streamed route. The streamed route runs the one-question rule and the closing fixes when a turn is saved. It does not run the second tries: asking again when a reply used a word we never use, a management word, or two questions the save cannot split. So what the checker measures is a little better than what a person gets. There are two ways to close this, and it is your call:
+  1. Run those second tries after the stream finishes, and replace the text on screen, which the screen already does for the closing line. The person would sometimes see the reply change.
+  2. Make the runner use the streamed route, so that the runs measure what people get.
+  The second can be done now, without changing what anyone sees. I would do both, in that order.
+
+**What is next, in your order:** read run-14, on a build with every fix, to check "proof asked for", then the weekly plan.
+
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
 *This section is kept up to date through the night. It was started at 00:36. The work stops at 05:36.*
@@ -127,7 +216,7 @@ What is left before release is not the engine: it is the steps below, which need
 - Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
 
 **What needs Hafsah:**
-- **A privacy decision: should a lead be sent how each person's answers were rated?** The rule in CLAUDE.md says "Leads never see how a person's answers were rated." But the code in `api/src/modules/reports/own-reads-only.ts` sends the lead and an org admin everyone's ratings on purpose. Its comment says the lead sees everyone's reads "because leading is what the board is for". The screens workspace found this (request 43). I have not changed it, because it is a privacy rule and the two disagree. If you say the written rule stands, the fix is small: take the ratings out on the lead's path too. The lead's board would then need checking, in case it uses them.
+- ~~A privacy decision on ratings.~~ **Decided by Hafsah and done on 28 September.** See the day section at the top.
 - **Approve the 49 plain pattern names** in `docs/pattern-names.md`, and settle B5's name. Patterns stay switched off until then. Also approve the three-day and one-week windows before a lead sees a person's pattern.
 - **Replace `docs/decisions.md` with `docs/decisions-merged.md`.** The file is protected; the step is below.
 - **The thresholds for verdicts, and who counts as a person's lead for approvals.** Decision 33 says these are decided when that work starts: weeks 10, 11 and 21 of the weekly plan.

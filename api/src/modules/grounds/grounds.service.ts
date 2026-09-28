@@ -1,3 +1,4 @@
+import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
@@ -2091,7 +2092,14 @@ export class GroundsService {
       select: { id: true, kind: true, text: true, saidAs: true, audience: true, aboutParticipantId: true, closedAt: true, createdAt: true, exactQuestion: true, questionConfirmedAt: true },
       orderBy: { createdAt: 'asc' },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
-    const contextItems = theLinesFor(contextLines as any, { isTheLead: isInitiatorViewer || viewerAdminsThisOrg });
+    const theLeadReadsThese = isInitiatorViewer || viewerAdminsThisOrg;
+    /* A file only its owner can open is not named on a line everybody reads, including a note already
+       stored with the name in it (request 46; see documents/a-private-file-is-not-named). */
+    const privateFileNamesHere = theLeadReadsThese ? [] : namesNotEverybodyMayOpen(
+      await (this.prisma.groundDocument?.findMany?.({ where: { groundId: id }, select: { fileName: true, visibility: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+    );
+    const contextItems = theLinesFor(contextLines as any, { isTheLead: theLeadReadsThese })
+      .map((l: any) => (privateFileNamesHere.length ? { ...l, text: withoutPrivateFileNames(l.text ?? '', privateFileNamesHere) } : l));
     /* The lead's questions for people, one card each: never built for anybody else. See questionsForPeople. */
     const questionsForPeople = (isInitiatorViewer || viewerAdminsThisOrg) ? await this.theQuestionsForPeople(id).catch(() => []) : undefined;
     /*
@@ -2823,7 +2831,7 @@ export class GroundsService {
       where: { groundId, participantId: me.id, NOT: { holds: { equals: null as any } } },
       orderBy: { createdAt: 'desc' },
       take: 3,
-      select: { id: true, fileName: true, holds: true },
+      select: { id: true, fileName: true, holds: true, visibility: true },
     });
     for (const d of docs) {
       const holds = (d.holds ?? {}) as any;
@@ -2848,7 +2856,10 @@ export class GroundsService {
         data: {
           groundId,
           kind: ContextItemKind.NOTE,
-          text: `The numbers on this check-in come from ${d.fileName}.`,
+          /* This note reaches everybody's check-in, so a file only the lead can open is not named (request 46). */
+          text: (d as any).visibility === 'OPEN'
+            ? `The numbers on this check-in come from ${d.fileName}.`
+            : 'The numbers on this check-in come from a document that was attached when it was set up.',
           audience: ContextNoteAudience.EVERYONE,
           source: 'PASTE',
           authorUserId: requestingUserId,

@@ -188,22 +188,31 @@ describe('what a target assumes', () => {
   });
 });
 
-describe('the lead never reads how a person’s answers were rated', () => {
-  it('no row on the lead’s board says "nothing checkable"', async () => {
+/*
+ * CHANGED 28 September 2026, on Hafsah's correction: the rating of how checkable a person's answers
+ * are is needed, and the prototype shows "Nothing checkable" on the lead's board. These pinned the
+ * opposite (a1747927). What still holds: no raw rating value reaches the board, and a participant is
+ * never served the rows at all.
+ */
+describe('the lead reads "nothing checkable" as the prototype shows it, and nothing more of the rating', () => {
+  it('the lead’s board says "nothing checkable" where the answers could not be checked, and never the rating itself', async () => {
     const b = await boardFor('u-wairimu').board;
     const rows = b.eachPerson ?? [];
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.map((r: any) => r.reason)).not.toContain('nothing checkable');
+    expect(rows.map((r: any) => r.reason)).toContain('nothing checkable');
     const served = JSON.stringify(b);
-    expect(served).not.toMatch(/nothing checkable|specificity|vague/i);
+    expect(served).not.toMatch(/specificity|vague/i);
   });
 
-  it('and the order cannot give it away: Miriam, rated vague, and Aisha, rated specific, are served alike', async () => {
-    /* Neither has anything on the record of this round, so both rows say so, in name order. The
-       rating, which differs, changes nothing. See the-board-never-reads-the-rating.spec.ts. */
+  it('and a participant is never served the rows', async () => {
+    const b = await boardFor('u-miriam').board;
+    expect(b.eachPerson ?? []).toEqual([]);
+  });
+
+  it('Miriam, whose answers could not be checked, and Aisha, whose could, are told apart as the prototype does', async () => {
     const rows = (await boardFor('u-wairimu').board).eachPerson ?? [];
     expect(rows.map((r: any) => `${r.who} ${r.reason}`)).toEqual([
-      'Aisha Otieno nothing to count yet', 'Miriam Wanjiku nothing to count yet',
+      'Miriam Wanjiku nothing checkable', 'Aisha Otieno nothing to do',
     ]);
   });
 });

@@ -48,17 +48,23 @@ export interface PersonRow {
   /** What they have said is in their way, oldest first. */
   inTheWay: { what: string; owner: string | null; days: number; tried: Effort }[];
   /**
-   * WHETHER ANYTHING ON THE RECORD FROM THIS ROUND CARRIES A NUMBER, A DATE OR A DOCUMENT.
+   * WHETHER ANYTHING THEY SAID THIS ROUND CAN BE CHECKED: the check-in's own read of how checkable
+   * their answers were, and, for a check-in not read yet, whether the record of it holds a number, a
+   * date or a document.
    *
-   * This was `saidAnythingCheckable`, and it was worked out from the check-in's `specificityLevel`
-   * and `specificityDimensions`: the engine's rating of how checkable a person's answers were. The
-   * lead read that rating as "nothing checkable" beside the person's name (request 8 from the
-   * screens workspace, 27 Sep 2026), and CLAUDE.md says a lead never sees how anybody's answers were
-   * rated. So the board no longer asks the rating anything. It asks the record of the round, which
-   * the lead may already read: is there a number or a date in what was written down, or a document
-   * behind it. See `hasANumberADateOrADocument` below.
+   * Hafsah, 28 September 2026: the rating of how specific and checkable a person's answers are is
+   * needed. It rates the answers, not the person or their work, so decision 11 does not cover it,
+   * and the prototype shows it on the lead's board as "Nothing checkable", with what to ask next.
+   * Between 27 and 28 September (a1747927) the board asked only the record and called it "nothing to
+   * count yet"; this puts back what the prototype shows. Only whoever runs the check-in reads it.
    */
-  thisRoundHasANumberADateOrADocument: boolean;
+  saidAnythingCheckable: boolean;
+  /** How many of their check-ins in a row, up to this one, had nothing checkable. */
+  nothingCheckableInARow?: number;
+  /** Whether what was missing was proof: a photo, a message or a document. */
+  noProof?: boolean;
+  /** "week" on a weekly check-in, so the row can say "the second week in a row". */
+  roundIsA?: 'week' | 'fortnight' | 'month' | 'check-in';
 }
 
 /**
@@ -71,11 +77,11 @@ export type Reason =
   | 'has not answered'
   | 'stuck and not chasing'
   | 'behind the pace'
-  | 'nothing to count yet'
+  | 'nothing checkable'
   | 'nothing to do';
 
 /** Ordered worst first. The order IS the product; a manager reads down until it stops mattering. */
-const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind the pace', 'nothing to count yet', 'nothing to do'];
+const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind the pace', 'nothing checkable', 'nothing to do'];
 
 /**
  * A NUMBER, A DATE OR A DOCUMENT, READ OFF ONE LINE OF THE RECORD.
@@ -124,7 +130,7 @@ export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason
   if (!row.answeredThisRound) return 'has not answered';
   if (sittingUnchased(row).length) return 'stuck and not chasing';
   if (behindThePace(row, roundsPlanned)) return 'behind the pace';
-  if (!row.thisRoundHasANumberADateOrADocument) return 'nothing to count yet';
+  if (!row.saidAnythingCheckable) return 'nothing checkable';
   return 'nothing to do';
 }
 
@@ -156,6 +162,8 @@ function subjectFor(row: Pick<PersonRow, 'who' | 'nameIsTheirRole'>, atTheStart:
   return who;
 }
 
+const ORDINAL: Record<number, string> = { 2: 'second', 3: 'third', 4: 'fourth', 5: 'fifth', 6: 'sixth' };
+
 export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: number | null): string {
   const start = subjectFor(row, true);
   const mid = subjectFor(row, false);
@@ -175,8 +183,11 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       const rounds = `${gone} of the ${roundsPlanned} rounds ${gone === 1 ? 'has' : 'have'} gone`;
       return `${start} is at ${row.count} of ${row.target}, and ${rounds}. At this pace, ${row.target} would not be reached by the end.`;
     }
-    case 'nothing to count yet':
-      return `What ${mid} said this round has no number, no date and no document with it yet, so there is nothing new to count. A number or a date for what moved would change that.`;
+    case 'nothing checkable': {
+      const n = row.nothingCheckableInARow ?? 1;
+      const again = n >= 2 ? ` This is the ${ORDINAL[n] ?? `${n}th`} ${row.roundIsA ?? 'check-in'} in a row.` : '';
+      return `Nothing ${mid} said this round can be checked yet.${again} A number, a date or a document for what moved would change that.`;
+    }
     case 'nothing to do':
     default:
       return `${start} has checked in, and nothing here needs you this week.`;
@@ -235,6 +246,13 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
   const worst = [...row.inTheWay]
     .filter((b) => b.tried !== 'escalated' && b.tried !== 'went-around')
     .sort((a, b) => b.days - a.days)[0];
+  /* Nothing checkable, and nothing in the way: what to ask next is the thing that would make it
+     checkable. The prototype's rows carry one, such as "Name each customer" or "Ask for a buying date". */
+  if (!worst && !row.saidAnythingCheckable) {
+    return row.noProof
+      ? `Ask ${them} for a photo, a message or a document that shows what moved.`
+      : `Ask ${them} for a number or a date for what moved this round.`;
+  }
   if (!worst) return null;
   if (worst.days < A_FORTNIGHT && worst.tried !== 'nothing') return null;
   const first = waysThrough({ what: worst.what, owner: worst.owner, days: worst.days, tried: worst.tried, chaseBy: null })[0];

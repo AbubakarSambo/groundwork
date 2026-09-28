@@ -31,11 +31,13 @@ describe('the session level and the board', () => {
     expect(service).toContain("checkable:  anyCheckable ? 'specific' : NOTHING_SAID,");
     expect(service).toMatch(/level: anyCheckable && mapSpecificityLevel\(avgSpecificity\) === NOTHING_SAID \? 'vague'/);
   });
-  it('and the board asks the record of the round, never the level, which is a rating a lead may not read', () => {
-    /* Changed 27 Sep 2026: the board read this fact off specificityDimensions and told the lead
-       "nothing checkable". It now reads the round's record entries for a number, a date or a
-       document; the rice miller's "Forty tonnes a week." still counts there. */
-    expect(board).toContain('thisRoundHasANumberADateOrADocument: !!thisRound && somethingToCount.has(thisRound.id)');
-    expect(board).not.toMatch(/specificityLevel: true|specificityDimensions: true/);
+  it('and the board asks whether any turn was checkable before it asks the level', () => {
+    /* 27 Sep 2026 (a1747927) the board stopped reading this and asked the record instead. 28 Sep 2026,
+       Hafsah: the rating of how checkable the answers are is needed, and the prototype shows
+       "Nothing checkable" on the lead's board. So the board reads it again, `checkable` first, as it
+       did before, and the record answers only for a check-in not read yet. */
+    expect(board).toContain("if ((c?.specificityDimensions as any)?.checkable === 'specific') return true;");
+    expect(board).toContain("if (c?.specificityLevel) return !['vague', 'managed'].includes(String(c.specificityLevel).toLowerCase());");
+    expect(board).toContain('return recordHasSomething;');
   });
 });

@@ -113,13 +113,14 @@ describe('the person sees it first, and can answer, before the lead reads it', (
 
   it('three days after the person saw it without answering, the lead reads it and is told so', () => {
     const [read] = servedPatterns([row({ readyAt: daysAgo(3), shownToPersonAt: daysAgo(3) })], LEAD, on);
-    expect(read.whoSeesIt).toBe('Femi saw this first and has not said anything about it yet.');
+    /* Hafsah, 28 September 2026: it says plainly that the person has not answered yet. */
+    expect(read.whoSeesIt).toBe('Femi saw this first and has not answered yet.');
     expect(read.theirWords).toBeNull();
   });
 
   it('a week after it was ready, the lead reads it even if the person never opened it', () => {
     const [read] = servedPatterns([row({ readyAt: daysAgo(7) })], LEAD, on);
-    expect(read.whoSeesIt).toBe('Femi has not opened this yet. It is shown to you because a week has passed since it came up for the third time.');
+    expect(read.whoSeesIt).toBe('Femi has not seen this yet, and has not answered yet. It is shown to you because a week has passed since it came up for the third time.');
     expect(thePersonHasHadTheirTurn(row({ readyAt: daysAgo(7) }), NOW)).toBe(true);
   });
 

@@ -43,4 +43,66 @@ describe('every report read strips other people\'s ratings', () => {
     expect(out.engagement.parties[1].specificityLabel).toBeUndefined();
     expect(out.engagement.parties[0].specificityLabel).toBe('HIGH');
   });
+
+  /*
+   * Hafsah's decision, 28 September 2026: "leads and admins are never sent how anyone's answers were
+   * rated. Ratings may be used inside the engine to build reports, but are never served to any
+   * reader." Every reader - the lead, an org admin with no account of their own, a participant -
+   * leaves with no rating but, at most, the one on their own answers.
+   */
+  const RATED = () => ({
+    engagement: {
+      specificityNotes: [{ label: 'the initiator', note: 'x' }, { label: 'Participant A', note: 'a' }, { label: 'Participant B', note: 'b' }],
+      recallNotes: [{ label: 'Participant A', note: 'a' }, { label: 'Participant B', note: 'b' }],
+      specificityCauses: [{ label: 'Participant B', cause: 'c', note: 'n' }],
+      specificitySignal: { 'the initiator': 'moderate', 'Participant A': 'HIGH', 'Participant B': 'LOW' },
+      pictureConfidence: { 'Participant A': 'firm', 'Participant B': 'thin' },
+      parties: [
+        { label: 'the initiator', specificityLabel: 'moderate', contributed: true },
+        { label: 'Participant A', specificityLabel: 'HIGH', contributed: true },
+        { label: 'Participant B', specificityLabel: 'LOW', contributed: true },
+      ],
+      concernFlags: [{ about: 'Participant B' }],
+    },
+    finalSynthesis: { tiers: { 'p-lead': 'MIXED', 'p-a': 'STRONG', 'p-b': 'WEAK' } },
+  });
+  const READERS = [
+    { who: 'the lead', viewerLabel: 'the initiator', viewerParticipantId: 'p-lead', viewerIsLead: true },
+    { who: 'an org admin', viewerLabel: null, viewerParticipantId: null, viewerIsLead: true },
+    { who: 'a participant', viewerLabel: 'Participant A', viewerParticipantId: 'p-a', viewerIsLead: false },
+  ];
+  const others = (label: string | null) => ['the initiator', 'Participant A', 'Participant B'].filter((l) => l !== label);
+  const idOf: Record<string, string> = { 'the initiator': 'p-lead', 'Participant A': 'p-a', 'Participant B': 'p-b' };
+
+  it.each(READERS)('no reader is sent anybody else\'s rating: $who', ({ viewerLabel, viewerParticipantId, viewerIsLead }) => {
+    const out: any = withoutOtherPeoplesReads(RATED(), { viewerLabel, viewerParticipantId, viewerIsLead });
+    const e = out.engagement;
+    for (const label of others(viewerLabel)) {
+      for (const k of ['specificityNotes', 'recallNotes', 'specificityCauses']) {
+        expect((e[k] ?? []).some((r: any) => r.label === label)).toBe(false);
+      }
+      expect(e.specificitySignal?.[label]).toBeUndefined();
+      expect(e.pictureConfidence?.[label]).toBeUndefined();
+      expect(e.parties.find((p: any) => p.label === label).specificityLabel).toBeUndefined();
+      expect(out.finalSynthesis.tiers[idOf[label]]).toBeUndefined();
+    }
+    /* Participation is not a rating and stays for everybody. */
+    expect(e.parties.every((p: any) => p.contributed === true)).toBe(true);
+  });
+
+  it('an org admin with no account of their own is sent no rating at all', () => {
+    const out: any = withoutOtherPeoplesReads(RATED(), { viewerLabel: null, viewerParticipantId: null, viewerIsLead: true });
+    expect(out.engagement.specificitySignal).toEqual({});
+    expect(out.engagement.pictureConfidence).toEqual({});
+    expect(out.engagement.specificityNotes).toEqual([]);
+    expect(out.finalSynthesis.tiers).toEqual({});
+  });
+
+  it('releasing a report sends back when it was released, never the stored row', () => {
+    const CONTROLLER = readFileSync(join(__dirname, 'reports.controller.ts'), 'utf8');
+    const at = CONTROLLER.indexOf("@Post('release')");
+    const block = CONTROLLER.slice(at, CONTROLLER.indexOf('\n  }\n', at));
+    expect(block).toContain('return { groundId, releasedAt:');
+    expect(block).not.toMatch(/return this\.reports\.release\(/);
+  });
 });

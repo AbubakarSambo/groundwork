@@ -369,9 +369,9 @@ export class BoardService {
       where: { groundId },
       select: {
         id: true, participantId: true, sessionNumber: true, status: true,
-        /* Not `specificityLevel` or `specificityDimensions`: nothing on this board is built from how
-           somebody's answers were rated. See thisRoundHasANumberADateOrADocument below. */
-        completedAt: true,
+        /* The check-in's read of how checkable the answers were, for "Nothing checkable" on the rows
+           only whoever runs the check-in reads. See saidAnythingCheckable. */
+        completedAt: true, specificityLevel: true, specificityDimensions: true,
       },
       orderBy: { sessionNumber: 'asc' },
     });
@@ -890,6 +890,17 @@ export class BoardService {
             select: { checkInId: true, text: true, anchoredDocumentId: true, documentSays: true },
           })?.catch(() => [])) ?? []) as any[]
         : [];
+      /*
+       * WHETHER A CHECK-IN'S ANSWERS CAN BE CHECKED. The question as asked: did ANY turn carry a date,
+       * a number or a document. The level is a mean, and a reluctant person's one fact drowned in
+       * their "fine"s (adversarial run, 20 Sep 2026), so `checkable` answers first. A check-in not
+       * read yet is never marked for want of a read: the record of it answers instead.
+       */
+      const checkableRead = (c: any, recordHasSomething: boolean): boolean => {
+        if ((c?.specificityDimensions as any)?.checkable === 'specific') return true;
+        if (c?.specificityLevel) return !['vague', 'managed'].includes(String(c.specificityLevel).toLowerCase());
+        return recordHasSomething;
+      };
       const somethingToCount = new Set(
         thisRoundsLines
           .filter((e) => hasANumberADateOrADocument({ text: cleanText(e.text ?? ''), anchoredDocumentId: e.anchoredDocumentId, documentSays: e.documentSays }))
@@ -943,8 +954,19 @@ export class BoardService {
                 /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
                 tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
               })),
-            /* Whether the record of their check-in this round holds a number, a date or a document. */
-            thisRoundHasANumberADateOrADocument: !!thisRound && somethingToCount.has(thisRound.id),
+            /* The check-in's own read where there is one; the record of it where it has not been read yet. */
+            saidAnythingCheckable: !!thisRound && checkableRead(thisRound, somethingToCount.has(thisRound.id)),
+            nothingCheckableInARow: (() => {
+              let n = 0;
+              for (const c of [...mine].filter((c) => c.status === CheckInStatus.COMPLETED && c.sessionNumber <= (thisRound?.sessionNumber ?? 0)).sort((a, b) => b.sessionNumber - a.sessionNumber)) {
+                if (checkableRead(c, c.id === thisRound?.id ? somethingToCount.has(c.id) : true)) break;
+                n += 1;
+              }
+              return n;
+            })(),
+            noProof: !!thisRound && ((thisRound as any).specificityDimensions as any)?.evidence != null
+              && (thisRound as any).specificityDimensions.evidence !== 'specific',
+            roundIsA: (ground as any).cadence === 'WEEKLY' ? 'week' : (ground as any).cadence === 'FORTNIGHTLY' ? 'fortnight' : (ground as any).cadence === 'MONTHLY' ? 'month' : 'check-in',
           };
         }),
         /* The planned length, for the only honest read of pace. Without one it says nothing

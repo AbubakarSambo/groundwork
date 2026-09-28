@@ -81,7 +81,12 @@ export class ReportsController {
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Release the report to both parties simultaneously' })
   async release(@Param('groundId') groundId: string, @CurrentUser('organizationId') organizationId: string) {
-    return this.reports.release(groundId, organizationId);
+    /* THE STORED ROW NEVER GOES BACK OVER THE WIRE. This returned the raw report: every person's
+       ratings, every private guide and the concern flags, to any admin who pressed Release. Hafsah,
+       28 September 2026: leads and admins are never sent how anyone's answers were rated. The
+       screen only refreshes after this; it reads the report through GET, which filters it. */
+    const released = await this.reports.release(groundId, organizationId);
+    return { groundId, releasedAt: (released as any)?.releasedAt ?? null };
   }
 
   /**
