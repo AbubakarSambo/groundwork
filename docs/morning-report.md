@@ -98,7 +98,21 @@ What is left before release is not the engine: it is the steps below, which need
     - When the product's closing line goes under a model question, the model's question is dropped so that the closing line is never lost. The other choice, holding the closing line for a later turn, would have lost it in more than a third of the cases seen.
     - "Your manager" is not changed, because it is often a person's own manager, who is not always the lead.
     - A few scenario packs in the database script two questions in one line, such as "How are you carrying this? What is the worry underneath it?". The code now repairs them when a turn is saved, but the real fix is in the packs, and those are yours to switch on (decision 20).
-  - **Measuring it live:** sales and seniorhire, twice each, on the newest build, started at 04:28. The results go here when they finish.
+  - **Measuring it live:** sales and seniorhire, twice each, on the newest build. The first pair finished at 04:50. The second pair started at 04:51.
+
+    | Sales and seniorhire together | Runs before week 2 (run-12, run-13, and two re-runs) | Week 2, first pair |
+    | --- | --- | --- |
+    | Turns that ask more than one question | 5, 6, 5, 10 | **0** |
+    | Proof asked for | 9, 5, 10, 9 | 5 |
+    | Specific detail asked for | 26, 28, 42, 30 | 29 |
+    | Blocker checked | 9, 16, 19, 11 | 11 |
+    | Past words brought back | 34, 32, 37, 26 | 27 |
+    | Commitments recorded | 31, 42, 46, 20 | 29 |
+
+    - No turn asks two questions now. The other numbers are inside the range of the four runs before week 2, though on the low side, so the second pair decides.
+    - Nothing in the "problems in what people read" list came up.
+    - The lead's name reads naturally, for example "Who arranged for you to be in these meetings with Amina?".
+    - **One new problem, once in 186 turns:** the model's closing sentence stayed in front of the product's last question. Tobi read "This check-in will continue in two weeks." and then "One more before this closes." in the same turn. It never happened in the four runs before. The fix is to drop the model's closing sentence when the product's last question is added. I have not built it, because there was not enough time left tonight to re-run it twice.
 - **Every test, at 04:45 on `f75afe50`.** All 10,399 API tests pass. The client passes 3,195 of 3,198. The three that fail are the screens workspace's sidebar tests, which depend on the date or the time, not on engine code. The client's plain-wording check had caught one engine line joined with a colon. I rewrote it as two full sentences, and it passes now (`f75afe50`). One older test pinned the old form of the record-line code, and I updated it to pin the same rule (`cc0fb346`).
   - **Measuring it live:** sales and seniorhire twice each, after run-13.
 - Item 4, where the existing 16 decisions disagree with the new ones, was done last night. It is in the section "Where the existing 16 decisions disagree with the new 14" below, and the list still stands for the new decisions 31 to 37.
