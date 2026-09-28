@@ -60,7 +60,8 @@ export function startWith(who: string): string {
 export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }) {
   if (!it?.theGap && !it?.whatToDo?.length) return null
   return (
-    <div style={{ maxWidth: 760 }}>
+    // U.10: full width, like the rest of the prototype's board - not capped at 760px.
+    <div>
       {/* The gap, in the largest type on the board, because it is the one thing they will remember. */}
       {it.theGap && (
         <div style={{

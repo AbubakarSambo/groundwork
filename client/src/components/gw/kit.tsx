@@ -71,8 +71,26 @@ export function Zone({ label }: { label: string }) {
  * `n` is optional and nothing else passes it - a numbered section only makes sense where the
  * sections are a sequence somebody works through, which is Context and not, say, Settings.
  */
-export function Sec({ title, src, n, on = 'light' }: { title: string; src?: string; n?: number; on?: 'light' | 'dark' }) {
+export function Sec({ title, src, n, on = 'light', size = 'default' }: { title: string; src?: string; n?: number; on?: 'light' | 'dark'; size?: 'default' | 'board' }) {
   const dark = on === 'dark'
+  const board = size === 'board'
+  /*
+   * U.10: THE BOARD'S OWN SECTION HEADINGS, THE PROTOTYPE'S SIZE.
+   *
+   * The prototype (board-as-lead.jpg) heads every board section bold, near-black, about 22px, with
+   * a small grey sentence right-aligned beside it - not the 14px muted label every other page in the
+   * product uses for the same slot. `size="board"` is additive: every other caller of `Sec` is
+   * unchanged, so Context, Settings and the rest keep the heading they already had. Only the board
+   * passes it.
+   */
+  if (board) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', margin: '28px 2px 10px', justifyContent: 'space-between' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', margin: 0 }}>{title}</h2>
+        {src && <span style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'right', maxWidth: '100%' }}>{src}</span>}
+      </div>
+    )
+  }
   return (
     /*
       AND IT WRAPS, BECAUSE THE SOURCE LINE WAS BEING CUT OFF THE SCREEN.

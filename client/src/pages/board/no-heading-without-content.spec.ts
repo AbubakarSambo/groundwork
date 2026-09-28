@@ -21,11 +21,18 @@ const CODE = readFileSync(join(__dirname, 'BoardPage.tsx'), 'utf8')
 describe('a zone renders only when its content will', () => {
   it('no Zone is gated on the section list directly', () => {
     /**
-     * The tripwire: any `has(` in the same expression as a `<Zone`. That is the shape of the bug -
-     * a heading asking "is this section on" while its content asks "is there anything in it".
+     * U.10: THE ZONE DIVIDERS THEMSELVES ARE GONE FROM THE BOARD.
+     *
+     * The prototype (board-as-lead.jpg/.txt) has no "AT A GLANCE" / "THE WORK" / etc. rule-and-label
+     * banding between groups of sections - each section carries its own bold heading and nothing
+     * else. So this test used to assert there were several `<Zone label=` lines and none of them
+     * were gated on `has(...)` alone; now the right count is zero. The rule the Zone tripwire
+     * protected - a heading must never appear over nothing - still holds: it is enforced by `shown`
+     * (read by both the section's own `Sec` and its content, checked by the tests below), which
+     * Zone was never part of enforcing in the first place.
      */
     const zoneLines = CODE.split('\n').filter(l => l.includes('<Zone label='))
-    expect(zoneLines.length).toBeGreaterThan(4)
+    expect(zoneLines.length).toBe(0)
     expect(zoneLines.filter(l => /\bhas\(/.test(l))).toEqual([])
   })
 

@@ -49,7 +49,8 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
   if (!anything) return null
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    // U.10: the prototype runs this block full width, not capped at 760px.
+    <div>
       {/* The only part somebody can act on, so it goes first and it is not styled as a warning. */}
       {!!it.toSettleFirst?.length && (
         <>
