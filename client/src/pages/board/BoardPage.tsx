@@ -31,6 +31,7 @@ import { NineColumnsIsNotAPhoneScreen } from '@/components/gw/nine-columns-is-no
 import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
 import { theLeadsNote } from '@/lib/the-leads-note'
 import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
+import { tileSentence } from '@/components/gw/TheSessionsReport'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -83,12 +84,19 @@ const dshort = (iso?: string | null) =>
  * "Session 1, 27 Sept, now" - three comma-joined fragments with no verb - was still a list of
  * pieces rather than something read the way a person reads a sentence.
  */
+/*
+ * U.10 RE-REVIEW ITEM 4: SAY WHAT'S TRUE, NOT "TODAY" FOR A ROUND THAT ISN'T.
+ *
+ * "Session 1 is today, 27 Sept." read live on 28 September - `state === 'current'` means the
+ * currently OPEN round, which is not the same fact as "opened today": a round stays "current"
+ * until everybody in it has checked in, however many days that takes. `date` is when the first
+ * account in it actually completed, so that is the fact to say, whichever day it is now.
+ */
 function sessionPillSentence(s: { n: number; state: string; date: string | null; opensOn?: string | null }, groundEnded: boolean): string {
-  const current = s.state === 'current' && !groundEnded
-  if (current) return s.date ? `Session ${s.n} is today, ${dshort(s.date)}.` : `Session ${s.n} is today.`
-  if (s.date) return `Session ${s.n} was on ${dshort(s.date)}.`
+  if (s.date) return `Session ${s.n} opened on ${dshort(s.date)}.`
+  if (s.state === 'current' && !groundEnded) return `Session ${s.n} is open now.`
   if (s.opensOn && s.state !== 'done') return `Session ${s.n} opens on ${dshort(s.opensOn)}.`
-  return `Session ${s.n}.`
+  return `Session ${s.n} has not opened yet.`
 }
 
 /**
@@ -849,13 +857,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           </div>
                           {/* Three numbers a person can check, rather than a share of a target that
                               means the opposite thing on a ceiling. */}
+                          {/*
+                            U.10 RE-REVIEW ITEM 3: TWO SENTENCES, NOT COMMA-JOINED PIECES.
+                            "12, up from 0, aiming for 12" and "up 12 this session" read as
+                            fragments strung together rather than something said to a reader.
+                          */}
                           <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 96, textAlign: 'right' }}>
                             {o.journey?.start != null
-                              ? (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{`, up from ${o.journey.start}, aiming for ${o.target}`}</>)
-                              : (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}`}</>)}
+                              ? (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` now, up from ${o.journey.start}. The aim is ${o.target}.`}</>)
+                              : (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}.`}</>)}
                           </div>
                           <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
-                            {o.delta > 0 ? `up ${o.delta} this session` : 'no change'}
+                            {o.delta > 0 ? `Up ${o.delta} this session.` : 'No change.'}
                           </div>
                         </>
                       ) : (
@@ -1189,21 +1202,26 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <div className={onAPhone ? 'gw-qr-list' : undefined} style={onAPhone
               ? { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 14px' }
               : { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 10 }}>
+              {/*
+                U.10 RE-REVIEW ITEM 6: A SENTENCE, THE WAY U.9's tileSentence ALREADY DOES IT.
+                "Differences / None / no disagreement, as the written report reads it" was a label,
+                a bare value and a fragment, stacked - the same bug U.9's report review found and
+                fixed with `tileSentence`, reused here rather than reworded: this is the same tile
+                shape (label/value/sub), from the same server function (atAGlanceTiles). The label
+                stays for a screen reader, without being shown as its own heading.
+              */}
               {b.quickRead.map((q, i) => {
-                const tone = q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-dark)'
+                const tone = q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-text)'
+                const said = tileSentence(q)
                 return onAPhone ? (
                   <div key={q.label} style={{ padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-                      <span style={{ fontSize: 12, letterSpacing: '.1px', color: 'var(--gw-sub-d)', fontWeight: 700 }}>{q.label}</span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: tone, textAlign: 'right' }}>{q.value}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{q.sub}</div>
+                    <span className="gw-sr-only">{q.label}</span>
+                    <div style={{ fontSize: 14, lineHeight: 1.5, color: tone }}>{said}</div>
                   </div>
                 ) : (
                   <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 11.5, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700 }}>{q.label}</div>
-                    <div style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, marginTop: 5, lineHeight: 1, color: tone }}>{q.value}</div>
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{q.sub}</div>
+                    <span className="gw-sr-only">{q.label}</span>
+                    <div style={{ fontSize: 13, lineHeight: 1.5, color: tone }}>{said}</div>
                   </div>
                 )
               })}
@@ -1394,23 +1412,30 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Card>
               {b.dependencies.length === 0 ? (
                 <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Row>
-              ) : b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d, i) => (
+              ) : b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d, i) => {
+                /*
+                  U.10 RE-REVIEW ITEM 5: ONE SENTENCE PER ROW, NOT PIECES.
+                  "Baraka Mwangi / needs / the discount decision / from / Rukia Otieno / Blocking"
+                  read as a row of labelled fragments. The prototype's own "Waiting on other teams"
+                  rows are sentences ("Asked 16 Sept. The Mombasa depot's count is due Friday.") - this
+                  follows that style.
+                */
+                const onWhom = d.on ?? 'someone outside this check-in'
+                const statusSaid = d.status === 'BLOCKING' ? 'This is blocking work.' : d.status === 'CLEARED' ? 'This is cleared.' : 'This is waiting.'
+                return (
                 <Row key={d.id} first={i === 0}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13 }}>{d.from}</span>
-                    <span style={{ color: 'var(--gw-sub)', fontSize: 12 }}>needs</span>
-                    <Pill tone={d.status === 'CLEARED' ? 'good' : 'warn'}>{d.what}</Pill>
-                    <span style={{ color: 'var(--gw-sub)', fontSize: 12 }}>from</span>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13 }}>{d.on ?? 'someone outside this check-in'}</span>
-                    <span style={{ marginLeft: 'auto' }}>
-                      <Pill tone={d.status === 'BLOCKING' ? 'bad' : d.status === 'CLEARED' ? 'good' : 'warn'}>
-                        {d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'}
-                      </Pill>
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 13, color: 'var(--gw-dark)', lineHeight: 1.5 }}>
+                      <b>{d.from}</b> needs {d.what} from <b>{onWhom}</b>. {statusSaid}
+                    </div>
+                    <Pill tone={d.status === 'BLOCKING' ? 'bad' : d.status === 'CLEARED' ? 'good' : 'warn'}>
+                      {d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'}
+                    </Pill>
                   </div>
                   {d.then && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4 }}>{d.then}</div>}
                 </Row>
-              ))}
+                )
+              })}
             </Card>
           </>
         )}
