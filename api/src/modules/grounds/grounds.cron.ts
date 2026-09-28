@@ -757,6 +757,15 @@ export class GroundsCron {
         ground: { status: { notIn: TERMINAL }, report: { releasedAt: { not: null } } },
         OR: [{ lastNudgedAt: null }, { lastNudgedAt: { lt: throttleBefore } }],
         reportActivations: { none: { status: ReportActivationStatus.ACTIVATED } },
+        /*
+         * U.10 REVIEW: "Your report for 'Sales team, Q3' is ready to view" told Faraji this before
+         * he had checked in at all. This query only asked whether the GROUND's report had been
+         * released, never whether THIS participant had answered anything - so anybody added to a
+         * ground where somebody else's report went out got the same email, about a report that, for
+         * them, does not yet exist to view. A reveal reminder is about a party's own report being
+         * ready; a party who has never checked in has no report of their own to be ready.
+         */
+        checkIns: { some: { status: CheckInStatus.COMPLETED } },
       },
       select: {
         id: true,
