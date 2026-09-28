@@ -131,6 +131,23 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **What is next, in your order:** measure weeks 4 and 5 live, twice, then carry on with the weekly plan.
 
+## 28 SEPTEMBER, AFTERNOON: A PRIVATE FILE'S NAME AND A HIDDEN TARGET, ON THE BOARD (`7afee54e`)
+
+- **Who could see each, before this:**
+  - A lead's own file name reached anyone who read a board or report line that mentioned it: participants, and an admin who only reads. The fix this morning cleaned what reports are written from, but not every sentence served.
+  - A person's target number reached anyone reading a sentence that stated it: an admin who only reads, in the row about that person, and other participants, in their report and in the aim on their board.
+  - **A correction to this morning:** I wrote that Ngozi seeing "Kwame Mensah is working towards a target of 14 approved facilities" was allowed, because it was a target the check-in was set to show. It was not. Sales is set so that each person sees only their own target, so it was a leak.
+- **Now:** everything the board and the report send is read once more for each reader. A file's name comes out where that reader may not open the file; a lead's own file is not named even to an admin. A sentence giving someone's target comes out where that reader may not see it. The lead still reads both.
+- **Proven by a test** that serves the real board and report to the lead, the person whose target it is, another participant, and an admin who only reads.
+- **It errs on the side of hiding.** A sentence that names a person together with their target's number goes, even if the number counts something else. A fact lost from a line is better than a target shown.
+- **The wording requests are fixed too:** "Unblock: the discount decision" is now "Somebody is waiting on the discount decision, so it needs deciding." The head count counts the same people as the screens' header, and is all in words or all in figures: "Four of the six people have answered so far."
+- **Not live yet:** the local API keeps its build until run-15 ends, so this is proven by tests for now. It fixes a problem the release has, so it joins the release.
+
+**Four more privacy requests from the screens workspace, for Hafsah:**
+- **Request 49: may someone held for a seat read a check-in's report?** Faraji joined through an open link while no seat was free. He is waiting for an admin to let him into the organisation. The check-in itself refuses him, but the report did not. Should he be refused until he is let in, or until he has answered himself?
+- **Request 57: may any admin release a report, or only the lead?** Today any admin of the organisation can. The screens tell other admins that "sharing the report and ending the check-in are Rukia's to decide".
+- Requests 51 and 52 break rules already written, so I am fixing them next: the session report was sent to a participant who had not answered, and one more rating field (`parties[].confidence`) reached other participants.
+
 ## 28 SEPTEMBER, AFTERNOON: THE PER-PERSON RATINGS, FOR HAFSAH TO DECIDE
 
 **None of the engine's per-person ratings is shown to a lead or an admin in the prototype, except "Nothing checkable".** Four have something close on a lead's screen, but it is a different kind of thing. Until you decide, decision 38 stays: these are not sent to a lead or an admin, except as decision 40 says.
