@@ -65,6 +65,8 @@ The order follows Hafsah's: the check-in conversation first; then judging, and m
 **Week 12b. The weekly report's sentence about each person (decision 43).** The prototype's weekly report says, in one plain sentence, how people's accounts read, for example "Aisha and Miriam consistently get to specific customer needs and next steps." The engine has no weekly report yet (screens request 9). This writes that sentence from the record, never from the rating itself, and never as a label.
 - **Screens later:** the weekly report page.
 
+**Week 12c. An email address is never used as a name** (screens requests 56, 58 and 65). A lead is shown the address of someone who has not given a name, as a stand-in for the name, and the model then writes it into sentences such as "Start with zawadi.u8@example.test." Say "a colleague" in sentences, as everywhere else, and show the address only where the lead needs it to tell who is who, beside the name rather than in its place. The same person is counted in one place, so "4 of 5" and "4 of 6" cannot both appear (request 56).
+
 ---
 
 ## Seeding and surfacing
