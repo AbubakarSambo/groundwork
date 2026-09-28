@@ -145,6 +145,7 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   - **For Hafsah: does task 1.5's bar count as met?** Run-14 (18 of 20, 90%) and run-16 (20 of 22, 91%) both meet it. Run-15 came between them and could not be judged, because 8 check-ins broke on the stream fault. If a broken run does not count, these are two runs in a row and the bar is met. I have not ticked it.
 - **The internal-label fix, checked live after the run, found one more route:** labels used as keys in three maps of the report. Fixed (`6fe8d1fb`). Then 85 live reads, none with a label.
 - **The release candidate is `6fe8d1fb`,** written into `docs/ready-to-deploy.md` with what it rests on. From here, nothing more joins the release unless it fixes a problem the release has.
+- **For Hafsah: I have not merged the screens branch since this morning.** It has 108 new commits, some of them backend changes that run-16 did not include. Merging them now would change the candidate after the run that justifies it. The steps before release already list "combine with the screens branch, then run every test". I suggest doing that once, on purpose, as the release step, with one more full run on the combined code. Say if you would rather I merge now.
 
 ## 28 SEPTEMBER, LATE AFTERNOON: NO INTERNAL LABEL REACHES ANYONE (`0bad62f2`)
 
