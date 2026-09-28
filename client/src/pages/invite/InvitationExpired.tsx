@@ -13,7 +13,7 @@ import { Page, Mark, PageTitle, Button, Note, FieldLabel, TextField } from '@/co
  * address the invitation went to. The reply is the same either way: "We don't show who invited an
  * address we don't recognise."
  *
- * The label is "Email", as on the other account cards (U.2), rather than the prototype's "Your email".
+ * The label is "Your email", the prototype's own (join-expired.txt) - Hafsah's first review.
  * The prototype says "ask her"; the product does not know anybody's pronouns, so it says "ask them".
  */
 export function InvitationExpired({ token, leadFirstName }: { token: string; leadFirstName: string | null }) {
@@ -46,24 +46,24 @@ export function InvitationExpired({ token, leadFirstName }: { token: string; lea
   return (
     <Page narrow>
       <Mark />
-      <PageTitle title="This link has expired" subtitle="Invitation links last 14 days. You don’t need a new invitation, just a fresh link." />
+      <PageTitle title="This link has expired" subtitle="Invitation links last 14 days. You don’t need a new invitation, just a fresh link." subtitleTone="ink" />
       {says ? (
         <Note>{says}</Note>
       ) : (
         <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
           <FieldLabel htmlFor="fresh-link-email">
-            Email
+            Your email
             <TextField id="fresh-link-email" type="email" value={email} onChange={e => { setEmail(e.target.value); setProblem('') }} autoComplete="email" autoFocus />
           </FieldLabel>
           {problem && <Note tone="error">{problem}</Note>}
-          <div style={{ marginTop: 14 }}>
+          <div className="gwui-form-actions">
             <Button type="submit" size="big" wide disabled={send.isPending}>
               {send.isPending ? 'Sending…' : 'Send me a fresh link'}
             </Button>
           </div>
         </form>
       )}
-      <Note>{foot}</Note>
+      <p className="gwui-panel-text-muted">{foot}</p>
     </Page>
   )
 }

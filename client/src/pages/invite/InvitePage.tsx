@@ -7,7 +7,7 @@ import { participantsApi } from '@/api'
 import type { InvitePreview } from '@/api/participants'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
-import { Page, Mark, PageTitle, Panel, SubHeading, Callout, Note, Button, FieldLabel, TextField, Modal } from '@/components/gw/ui'
+import { Page, Mark, PageTitle, Panel, SubHeading, Callout, Note, Button, FieldLabel, TextField, Modal, Stack } from '@/components/gw/ui'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-on-the-question'
@@ -234,8 +234,8 @@ export function InvitePage() {
            */}
           You have already joined this check-in, and this device or browser is not signed in, so the
           check-in link on its own cannot open it here. We have sent a sign-in link to{' '}
-          <strong>{emailedTo}</strong>. Open that one: it takes you straight to your check-in and works
-          for 24 hours. After that, the check-in link works on this device too.
+          <strong>{emailedTo}</strong>. Open that one. It takes you straight to your check-in, and it
+          works for 24 hours. After that, the check-in link works on this device too.
         </p>
         <Button kind="secondary" size="big" wide disabled={accept.isPending} onClick={() => accept.mutate()}>
           {accept.isPending ? 'Sending…' : 'Send it again'}
@@ -262,7 +262,7 @@ export function InvitePage() {
   if (isError || !preview) return (
     <Page narrow>
       <Mark />
-      <LinkProblem kind="invite" detail="We do not recognise this link. If you have already joined, sign in with your email - and if you have not, ask whoever added you to send a new invite." />
+      <LinkProblem kind="invite" detail="We do not recognise this link. If you have already joined, sign in with your email. If you have not, ask the person who added you for a new invitation." />
     </Page>
   )
 
@@ -273,8 +273,8 @@ export function InvitePage() {
       <Page narrow>
         <Mark />
         <PageTitle
-          title="You've already joined"
-          subtitle={`Pick up your check-in for ${preview.groundLabel}. If this is a new device we will email you a sign-in link.`}
+          title="You’ve already joined"
+          subtitle={`Pick up your check-in, “${preview.groundLabel}”. If this is a new device, we will email you a sign-in link.`}
         />
         <Button size="big" wide disabled={accept.isPending} onClick={() => accept.mutate()}>
           <span role="status">{accept.isPending ? 'One moment…' : 'Pick up where I left off'}</span>
@@ -299,74 +299,89 @@ export function InvitePage() {
         not carry yet.
       */}
       <Mark />
-      <PageTitle title={theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
-
-      <Callout>
-        The people in this check-in, including your manager, can see what you say in it. Your questions to Ask
-        Groundwork stay private.
-      </Callout>
-
-      {/* U.6 review: no "Your part in this". The server no longer sends it, because what it held
-          was the lead's sentence about this person. See the-leads-words-about-someone.ts. */}
-
-      <Panel>
-        <div className="gwui-subheading-list">
-          {preview.schedule && (
-            <div>
-              <SubHeading>What it asks</SubHeading>
-              <p className="gwui-field-row-value">{preview.schedule}</p>
-            </div>
-          )}
-          <div>
-            <SubHeading>Who sees your answers</SubHeading>
-            <p className="gwui-field-row-value">
-              You see your own report straight away. {preview.leadFirstName ?? 'The person who runs it'} shares a team report
-              with everyone in it.
-            </p>
-          </div>
-        </div>
-      </Panel>
-
       {/*
-        U.6 review: a check-in that opens later is not answered today. Its first check-in's day is
-        said, here, before the button rather than under "What happens to what you write", and
-        nothing offers to answer now.
+        THE PROTOTYPE'S GAPS (Hafsah, pictured at 1440px, U.20 sixth round): Page's flat 30px stack
+        is wrong for this screen. Nested Stacks carry the prototype's own numbers instead - line to
+        panel 18, the tinted box to the facts panel 19, panel to the button 18, the button to the
+        note under it 10 - so PageTitle down to "About two minutes…" is one chain, each link its
+        own gap, and nothing here sets an inline margin, padding or gap again.
       */}
-      {opensLater && (
-        <p role="status" className="gwui-callout">
-          {`Your first check-in opens on ${theDayOf(opensLater)}.`}
-        </p>
-      )}
+      <Stack gap={18}>
+        <PageTitle title={theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
 
-      {!opensLater && (
-      <>
-      <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
-        {failed && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{failed}</div>}
-        <div className="gwui-field-pair">
-          <FieldLabel htmlFor="invite-first">
-            First name
-            <TextField id="invite-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
-          </FieldLabel>
-          <FieldLabel htmlFor="invite-last">
-            Last name
-            <TextField id="invite-last" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
-          </FieldLabel>
-        </div>
-        <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
-        <div className="gwui-form-actions">
-          <Button type="submit" size="big" wide disabled={accept.isPending} >
-            <span role="status">{accept.isPending ? 'Setting up your session…' : 'Answer today’s check-in now'}</span>
-          </Button>
-        </div>
-      </form>
+        <Stack gap={19}>
+          <Callout>
+            The people in this check-in, including your manager, can see what you say in it. Your questions to Ask
+            Groundwork stay private.
+          </Callout>
 
-      <p className="gwui-pt-sub" style={{ textAlign: 'center' }}>
-        {/* "You make your account afterwards" only to someone not signed in (U.6 review). Whether an
-            address has an account is never revealed, so being signed in is what this can know. */}
-        {signedIn ? 'About two minutes.' : 'About two minutes. You make your account afterwards.'}
-      </p>
-      </>
-      )}
+          {/* U.6 review: no "Your part in this". The server no longer sends it, because what it held
+              was the lead's sentence about this person. See the-leads-words-about-someone.ts. */}
+
+          <Stack gap={18}>
+            <Panel>
+              <div className="gwui-subheading-list">
+                {preview.schedule && (
+                  <div>
+                    <SubHeading>What it asks</SubHeading>
+                    <p className="gwui-panel-text">{preview.schedule}</p>
+                  </div>
+                )}
+                <div>
+                  <SubHeading>Who sees your answers</SubHeading>
+                  <p className="gwui-panel-text">
+                    You see your own report straight away. {preview.leadFirstName ?? 'The person who runs it'} shares a team report
+                    with everyone in it.
+                  </p>
+                </div>
+              </div>
+            </Panel>
+
+            {/*
+              U.6 review: a check-in that opens later is not answered today. Its first check-in's day
+              is said, here, before the button rather than under "What happens to what you write", and
+              nothing offers to answer now.
+            */}
+            {opensLater && (
+              <p role="status" className="gwui-callout">
+                {`Your first check-in opens on ${theDayOf(opensLater)}.`}
+              </p>
+            )}
+
+            {!opensLater && (
+              <Stack gap={10}>
+                <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
+                  <Stack gap={10}>
+                    {failed && <Note tone="error">{failed}</Note>}
+                    <div className="gwui-field-pair">
+                      <FieldLabel htmlFor="invite-first">
+                        First name
+                        <TextField id="invite-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
+                      </FieldLabel>
+                      <FieldLabel htmlFor="invite-last">
+                        Last name
+                        <TextField id="invite-last" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
+                      </FieldLabel>
+                    </div>
+                  </Stack>
+                  <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
+                  <div className="gwui-form-actions">
+                    <Button type="submit" size="big" wide disabled={accept.isPending} >
+                      <span role="status">{accept.isPending ? 'Setting up your session…' : 'Answer today’s check-in now'}</span>
+                    </Button>
+                  </div>
+                </form>
+
+                <p className="gwui-fine" style={{ textAlign: 'center' }}>
+                  {/* "You make your account afterwards" only to someone not signed in (U.6 review). Whether an
+                      address has an account is never revealed, so being signed in is what this can know. */}
+                  {signedIn ? 'About two minutes.' : 'About two minutes. You make your account afterwards.'}
+                </p>
+              </Stack>
+            )}
+          </Stack>
+        </Stack>
+      </Stack>
 
       {/*
           THE PRIVACY BRIEFING - REACHABLE, NOT IN THE PAGE'S FLOW (Hafsah, pictured at 1440px
@@ -383,22 +398,24 @@ export function InvitePage() {
       </p>
       {showWhatHappens && (
         <Modal title="What happens to what you write" onClose={() => setShowWhatHappens(false)}>
-          <h2 className="gwui-pt-title" style={{ fontSize: 21 }}>What happens to what you write</h2>
-          <div style={{ display: 'grid', gap: 14 }}>
+          <h2 className="gwui-empty-panel-title">What happens to what you write</h2>
+          {/* The fourth heading used to be styled differently from the other three (plain, muted
+              text rather than a heading) - Hafsah's first review. All four are SubHeading now. */}
+          <div className="gwui-subheading-list">
             <div>
-              <p className="gwui-field-row-label" style={{ marginBottom: 3 }}>Nobody you work with reads it</p>
+              <SubHeading>Nobody you work with reads it</SubHeading>
               <p className="gwui-note">Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing what everyone said. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
             </div>
             <div>
-              <p className="gwui-field-row-label" style={{ marginBottom: 3 }}>We cannot show it to ourselves either</p>
+              <SubHeading>We cannot show it to ourselves either</SubHeading>
               <p className="gwui-note">When we look at a check-in to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
             </div>
             <div>
-              <p className="gwui-field-row-label" style={{ marginBottom: 3 }}>Nothing here trains a model</p>
+              <SubHeading>Nothing here trains a model</SubHeading>
               <p className="gwui-note">What you say is used to build the shared picture and nothing else.</p>
             </div>
             <div>
-              <p className="gwui-note" style={{ fontWeight: 700, marginBottom: 3 }}>And the part we are not going to dress up</p>
+              <SubHeading>And the part we are not going to dress up</SubHeading>
               <p className="gwui-note">Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
             </div>
           </div>
@@ -409,7 +426,7 @@ export function InvitePage() {
       {/* "By joining, you agree that your contribution record belongs to you." is gone (U.3 review): it
           is not on the prototype, it is jargon, and nothing records it as a consent. */}
 
-      <div style={{ paddingTop: 14, borderTop: '1px solid var(--gw-border)', textAlign: 'center' }}>
+      <div className="gwui-foot-divider">
         <Note>
           You never have to take part. If you would rather not, you can close this page. Nothing is
           shared, and saying no is never held against you.
