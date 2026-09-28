@@ -9267,9 +9267,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   private async buildGroundState(groundId: string, otherPartyCheckedIn: boolean): Promise<string> {
-    const submittedCount = await this.prisma.checkIn.count({
-      where: { groundId, status: CheckInStatus.COMPLETED },
-    });
+    /* PEOPLE, NOT CHECK-INS. This counted every completed check-in, so from the second round on it
+       said more had answered than there are people, and the model read it out: "Since then, 5 of
+       the 4 people involved in this check-in have submitted" (week 3 re-runs, 28 Sep 2026). */
+    const submittedCount = new Set(
+      ((await this.prisma.checkIn.findMany({
+        where: { groundId, status: CheckInStatus.COMPLETED },
+        select: { participantId: true },
+      })) ?? []).map((c: any) => c.participantId),
+    ).size;
     const totalCount = await this.prisma.groundParticipant.count({ where: { groundId } });
     const parts: string[] = [];
     if (otherPartyCheckedIn) {
