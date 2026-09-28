@@ -51,6 +51,9 @@ import { SplitOneTotalAcrossPeople } from '@/components/gw/split-one-total-acros
 import { WhatTheTargetAssumes } from '@/components/gw/TargetsBand'
 import { whenTheBoardLastChanged } from './when-the-board-last-changed'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
+import { buildSessionRows } from '@/lib/session-rows'
+import { peopleLabels, personLabel } from '@/lib/utils'
+import { EVERY_SESSION, sessionDay, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 
 /**
  * The delivery board.
@@ -247,6 +250,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const onAPhone = useIsAPhone()
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
 
+  /*
+   * U.10 ITEM 7: THE SAME ROWS THE REPORT TAB BUILDS "EVERY SESSION" FROM.
+   * `buildSessionRows` is the extraction of what used to be GroundAdminPage's own inline counting
+   * (see lib/session-rows.ts) - reused here rather than a second, possibly-diverging copy, per the
+   * task's own instruction to reuse the Report tab's query.
+   */
+  const labelsHere = peopleLabels((groundForSignals as any)?.participants ?? [], { forTheLead: viewerRunsThisCheckIn })
+  const labelInASentence = (p: any): string => labelsHere.get(p?.id) ?? personLabel(p)
+  const sessionRows = buildSessionRows(groundForSignals as any, user?.id, labelInASentence)
+
   /* What needs the lead here: Today's items for this check-in. See where it is drawn. */
   const { data: today } = useQuery({ queryKey: ['today'], queryFn: todayApi.get, staleTime: 30_000, enabled: viewerRunsThisCheckIn, retry: false })
   const needsHere = (today?.needs ?? []).filter((n: Need) => n.groundId === id)
@@ -268,6 +281,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const [pollQ, setPollQ] = useState('')
   const [pollOpts, setPollOpts] = useState('')
   const [showPollForm, setShowPollForm] = useState(false)
+  /* U.10 item 7: "Over time" opens on ask, the same shape "How to read this board" already uses. */
+  const [showOverTime, setShowOverTime] = useState(false)
   const [pollCancelArmed, setPollCancelArmed] = useState(false)
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['board', id] })
@@ -2000,6 +2015,56 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 })()}
 
         {/*
+          U.10 ITEM 7: "REPORTS", THE PROTOTYPE'S WHITE TABLE (board-as-lead.jpg/.txt).
+          One row per session: a date, a one-line summary of who has checked in, a pill (amber "Not
+          shared" or green "Shared"), and a button. `sessionRows` is the exact data the Report tab's
+          "Every session" list is built from (see lib/session-rows.ts and
+          TheReportIsAListOfSessions.tsx); this shows the most recent few and points at that same
+          list for the rest, rather than re-querying or re-computing anything.
+
+          The prototype's weekly-digest row ("This week", "Week 38" - a beige "Friday" pill for one
+          not yet due) is not built here: there is no weekly rollup in this data, only per-session
+          rows, so nothing is invented in its place. Requested in docs/requests-to-engine.md.
+        */}
+        {sessionRows.length > 0 && (
+          <>
+            <Sec size="board" title="Reports" src="Every session has two: each person's own, and the team's once you share it." />
+            <Card>
+              {sessionRows.slice(0, 5).map((r, i) => (
+                <Row key={r.sessionNumber} first={i === 0}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>
+                        Session {r.sessionNumber}{r.opened ? `, ${sessionDay(r.opened)}` : ''}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{checkedIn(r.answered, r.total)}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Pill tone={r.closed ? 'good' : 'warn'}>{r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared}</Pill>
+                      <button
+                        onClick={() => navigate(r.myCheckInId ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)}
+                        style={r.closed ? btnGhost : btn}
+                      >
+                        {r.closed ? 'Open' : 'Share it'}
+                      </button>
+                    </div>
+                  </div>
+                </Row>
+              ))}
+            </Card>
+            <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gw-sub)' }}>
+              All {sessionRows.length} session{sessionRows.length === 1 ? '' : 's'}
+            </div>
+            <Link
+              to={`/grounds/${id}?tab=report`}
+              style={{ ...btnGhost, display: 'block', textAlign: 'center', marginTop: 8, textDecoration: 'none' }}
+            >
+              {EVERY_SESSION.heading}
+            </Link>
+          </>
+        )}
+
+        {/*
           THE WHOLE RUN, IN ONE PLACE. "I need the board to carry the entire history in one place."
 
           The board read only the CURRENT working copy of the report plus the record entries, so a
@@ -2010,9 +2075,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           Both come here: what the report said at the end of each round, and where the run finished
           if it has. This is now the only screen that carries the arc, which is why the report tab
           could become a list of sessions.
+
+          U.10 ITEM 7: UNDER "OVER TIME", OPENING ON ASK. The prototype has this as its own small
+          heading with a "Show" link, not open by default - the same shape "How to read this board"
+          already uses above.
         */}
         <div style={{ marginTop: 26 }}>
-          <HowThisHasMoved groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} />
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)' }}>Over time</span>
+            <button
+              onClick={() => setShowOverTime((v) => !v)}
+              style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+            >
+              {showOverTime ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {showOverTime && <HowThisHasMoved groundId={id!} viewerRunsThisCheckIn={viewerRunsThisCheckIn} />}
         </div>
         {/*
           AND HOW IT ENDS, BUT ONLY NEAR THE END.
