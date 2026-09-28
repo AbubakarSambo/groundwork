@@ -131,6 +131,21 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **What is next, in your order:** measure weeks 4 and 5 live, twice, then carry on with the weekly plan.
 
+## 28 SEPTEMBER, EVENING: RUN-16 PASSED, AND THE RELEASE CANDIDATE IS `6fe8d1fb`
+
+- **Run-16 passes the checker: nothing is worse than the baseline.** It was the full run on the streamed route, with every fix in.
+  - All 24 scenarios ran and no check-in broke; the stream's fallback caught 7 slow or busy moments.
+  - "Proof asked for" is 38 against 42, inside the allowance. It was 52 on the broken run-15, so it moves a lot between runs.
+  - No turn asks two questions. Every problem count is 0. All 576 quotes are word for word.
+  - None of the lead's private words reached anyone, for the sixth full run in a row.
+- **Task 1.5, the judgements: 20 right of the 22 that could be tested, 91%.**
+  - Not right: contractreview, which assumes the contract promises a four-hour fix when the point is that the two of them read it differently, and handover, which names the payment arrangement but misses the spreadsheet on her own drive.
+  - Close calls I counted as right: crisis (it lands on the on-call process, but does not name the stale rota), recognition (it names Victor, but only as its last thing to do) and pulse (it names the lead as the one holding the approvals).
+  - Could not be tested: shock, where nobody mentions the missed QBRs. Sales was flagged incomplete.
+  - **For Hafsah: does task 1.5's bar count as met?** Run-14 (18 of 20, 90%) and run-16 (20 of 22, 91%) both meet it. Run-15 came between them and could not be judged, because 8 check-ins broke on the stream fault. If a broken run does not count, these are two runs in a row and the bar is met. I have not ticked it.
+- **The internal-label fix, checked live after the run, found one more route:** labels used as keys in three maps of the report. Fixed (`6fe8d1fb`). Then 85 live reads, none with a label.
+- **The release candidate is `6fe8d1fb`,** written into `docs/ready-to-deploy.md` with what it rests on. From here, nothing more joins the release unless it fixes a problem the release has.
+
 ## 28 SEPTEMBER, LATE AFTERNOON: NO INTERNAL LABEL REACHES ANYONE (`0bad62f2`)
 
 - **The routes it took:** several fields of the session report, and the shared picture in the rounds, were written after the step that swaps labels for names, so they kept "Participant A" and "the initiator". A lead and participants read them on the session report and on "How this has moved".

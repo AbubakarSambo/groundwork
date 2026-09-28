@@ -6,6 +6,26 @@ Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds a
 
 ---
 
+## THE RELEASE CANDIDATE: `6fe8d1fb` (28 September 2026)
+
+**The engine's release candidate is commit `6fe8d1fb` on `wip/plain-reports`.** From here, nothing more joins the release unless it fixes a problem the release has. The weekly improvements go out after release.
+
+**What it rests on:**
+- **Run-16**, the full run of all 24 scenarios on the streamed route, the route people use. It ran on `4d91d5ec` from 15:49 to 17:45.
+  - **The checker says nothing is worse than the baseline.** "Proof asked for" is 38 against 42, inside its allowance. Every other number is at or above the baseline.
+  - All 24 scenarios ran and no check-in broke. The stream fell back to the plain way 7 times, and each time the check-in carried on.
+  - No turn asks two questions (37 at the baseline). Every problem count is 0.
+  - All 576 quotes are word for word in the record, and every report matches the database.
+  - None of the lead's private words reached an invited person, for the sixth full run in a row.
+  - Jargon Groundwork brought in itself was 6 (decision 41).
+  - The judgements: 22 could be tested, and I read 20 as right, which is 91%. Three of the 20 are close calls: crisis, recognition and pulse.
+- **One code change since run-16, and it fixes a problem the release has:** no internal label reaches anyone (`0bad62f2`, `6fe8d1fb`). It changes only what is served, not the conversation. It was checked live on run-16's own check-ins: 85 reads of the board and the four report reads, as the lead and participants on six check-ins, with no label and no error.
+- **Every test:** all 10,532 API tests pass. The client passes 3,242 of 3,244. The two that fail are the screens workspace's timing-dependent sidebar tests, as all day.
+
+**Proven by tests only, not yet by a live check-in, because run-16 has no case of it:** a private file named on the board, and a hidden target set by the lead for one person (`7afee54e`). Both are in the build that ran run-16. The test serves the real board and report to every kind of reader.
+
+**Blockers 8 and 9 (the streamed route) are closed by run-16.**
+
 ## What is finished
 
 **Privacy.** Every one of these is enforced in the backend, with tests that fail when the old code is put back.
@@ -84,8 +104,8 @@ The coaching note still uses the pattern library's own description rather than t
 | 5 | A lead's private notes about a person reach the model in that person's own check-in, kept back only by an instruction. | **Fixed (`6feccb79`).** The notes are left out when the session is built. The instructions that told the model not to say them are deleted. A test runs a real turn for Ngozi, with "Ngozi may leave after Q4" in every place a lead's note can be, and no prompt contains it or any four words of it in a row. **For Hafsah to decide:** a question the lead wants asked of the person still reaches that person's session, because being asked is what it is for. Those lines are also marked as the lead's. |
 | 6 | Ask Groundwork refuses almost everyone. Only people on an organisation's connected list of people can use it: 64 of 3,162 users in the test database. | **Fixed (`75174e28`), and tried live.** Femi, a user from the sales scenario with no entry on the list, opened Ask Groundwork and it said he could ask, with nothing written. He asked "What did we agree?" and got a real answer from his check-in. Exactly one entry was created for him, filed under "groundwork" and linked to his account. See below. |
 | 7 | The board crashes for a participant when colleagues are hidden from each other. | **Fixed (`c6721519`).** On a delivery check-in with colleagues hidden, the privacy filter was handed a section that is not a list, so every participant got an error. The live code (`be8b48d9`) has the same crash. A new test opens the board in every situation, as every kind of reader, and nothing errors. |
-| 8 | **The streamed route, which is the one the screen uses, did not have the plain route's safety net.** When a reply used a banned word or a management word, or asked two questions the save could not split, the plain route asked the model again and the streamed route sent it as it was. The scenario runs used the plain route, so they measured a route nobody used. | **Built (`e9301d42`), and a blocker until the next full run on the streamed route passes.** The streamed route now runs the plain route's own code; only the first draft is shown as it is written, and the reply the screen is left with is exactly the one the plain route returns and stores. Tests prove both routes end the same way. The scenario runner now uses the streamed route. |
-| 9 | **The streamed route stopped a check-in when the model was slow or busy.** Found on run-15: 8 of 24 check-ins ended on "The reply could not be finished", because the stream's model call did not try again when the plain route's would have. | **Fixed (`4d91d5ec`), and a blocker until run-16 passes.** A failed stream is asked for again the plain way, with its retries. |
+| 8 | **(Closed by run-16.)** **The streamed route, which is the one the screen uses, did not have the plain route's safety net.** When a reply used a banned word or a management word, or asked two questions the save could not split, the plain route asked the model again and the streamed route sent it as it was. The scenario runs used the plain route, so they measured a route nobody used. | **Built (`e9301d42`), and a blocker until the next full run on the streamed route passes.** The streamed route now runs the plain route's own code; only the first draft is shown as it is written, and the reply the screen is left with is exactly the one the plain route returns and stores. Tests prove both routes end the same way. The scenario runner now uses the streamed route. |
+| 9 | **(Closed by run-16.)** **The streamed route stopped a check-in when the model was slow or busy.** Found on run-15: 8 of 24 check-ins ended on "The reply could not be finished", because the stream's model call did not try again when the plain route's would have. | **Fixed (`4d91d5ec`), and a blocker until run-16 passes.** A failed stream is asked for again the plain way, with its retries. |
 
 **One more privacy gap, found while fixing blocker 7, and fixed (`8e940c9c`).** On a board where colleagues are hidden from each other, a participant could still read colleagues' names in three places: the list of people, both ends of a handoff, and who picked a time in a poll. They now read "one colleague", "another colleague" and so on. The lead and admins still see every name. A test searches the whole board served to a participant, in every situation where colleagues are hidden. It finds no colleague's name, email, role or organisation. This also answers the screens workspace's request 19.
 
