@@ -52,7 +52,13 @@ const chip: React.CSSProperties = {
   borderRadius: 999, padding: '8px 14px', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit',
 }
 
-export function AskGroundwork({ onClose }: { onClose?: () => void }) {
+/**
+ * `initialMessage`: a question typed somewhere else - the board's own Ask bar (U.10 item 8) - asked
+ * the moment this panel opens, once, rather than left sitting in a draft the person has to press
+ * Ask on again. Consumed once (`sentRef`) so re-opening the panel later, or a re-render, never
+ * re-sends it.
+ */
+export function AskGroundwork({ onClose, initialMessage, onSentInitialMessage }: { onClose?: () => void; initialMessage?: string | null; onSentInitialMessage?: () => void }) {
   const location = useLocation()
   const page = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
   const about = useMemo(() => page.data?.about ?? [], [page.data])
@@ -63,6 +69,7 @@ export function AskGroundwork({ onClose }: { onClose?: () => void }) {
   const [sending, setSending] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const end = useRef<HTMLDivElement>(null)
+  const sentInitial = useRef(false)
 
   /* What the person chose; otherwise the check-in the page is about, when they are in it; otherwise the first. */
   const here = checkInOnThisPage(location.pathname)
@@ -93,6 +100,14 @@ export function AskGroundwork({ onClose }: { onClose?: () => void }) {
     if (!m || sending) return
     void send(m, () => askApi.ask(m, aboutId || undefined), clearDraft)
   }
+
+  useEffect(() => {
+    if (!initialMessage || sentInitial.current || sending || !page.data?.canAsk) return
+    sentInitial.current = true
+    ask(initialMessage, false)
+    onSentInitialMessage?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMessage, page.data?.canAsk])
 
   const answer = (proposalId: string, yes: boolean) => {
     if (sending) return

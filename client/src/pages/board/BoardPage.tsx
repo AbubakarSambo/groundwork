@@ -54,6 +54,7 @@ import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, sessionDay, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
+import { useAskStore } from '@/stores/ask'
 
 /**
  * The delivery board.
@@ -2161,8 +2162,53 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           people check in each session." Neither is true: each reader is served what they may read, and
           opening the board rebuilds nothing. The line at the top says what is true.
         */}
+
+        {/*
+          U.10 ITEM 8: THE ASK BAR AT THE FOOT (board-as-lead.txt: "Ask about this board, for
+          example "Why is Green Mart not quarter?"" then "Ask"). Wired to Ask Groundwork (U.14):
+          typing a question here and pressing Ask opens that panel already asking it, scoped to
+          this check-in - `showWith` sets both the panel open and the question in one step, and
+          `checkInOnThisPage` (AskGroundwork.tsx) already reads the check-in id straight off this
+          page's own address, so "about" is this board without anything extra to wire.
+        */}
+        <AskTheBoard />
       </div>
     </div>
+  )
+}
+
+/**
+ * U.10 ITEM 8: A FULL-WIDTH BAR, THE PROTOTYPE'S OWN WORDS.
+ * Kept as its own small component so BoardPage's already-long body does not grow another inline
+ * form; it owns nothing but the draft text, which it hands to the shared Ask Groundwork panel.
+ */
+function AskTheBoard() {
+  const [draft, setDraft] = useState('')
+  const showWith = useAskStore((s) => s.showWith)
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        const m = draft.trim()
+        if (!m) return
+        showWith(m)
+        setDraft('')
+      }}
+      style={{ display: 'flex', gap: 8, marginTop: 22 }}
+    >
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="Ask about this board, for example “Why is Green Mart not quarter?”"
+        aria-label="Ask about this board"
+        style={{
+          flex: 1, padding: '11px 14px', borderRadius: 8, border: '1px solid var(--gw-border)',
+          background: 'white', fontSize: 13.5, fontFamily: 'inherit', color: 'var(--gw-text)',
+        }}
+      />
+      <button type="submit" style={btn}>Ask</button>
+    </form>
   )
 }
 
