@@ -54,7 +54,9 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 - **Seen for real in the local test database.** A note shared with everyone names `harvestline-q4-targets.xlsx`, a file only its owner can open, and participants were sent it. I will check it again as a participant once the API is rebuilt.
 - **What stays:** what a document showed can still be said. Only which file it was is the owner's to share.
 
-**What is next, in your order:** the next full run, on a build with every fix, to check "proof asked for", then the weekly plan.
+**Run-14, the full run, started at 10:28 on `9e808ab9`,** with every fix above in it. It checks "proof asked for" after week 2, and task 1.5's bar again.
+
+**What is next, in your order:** read run-14, on a build with every fix, to check "proof asked for", then the weekly plan.
 
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
