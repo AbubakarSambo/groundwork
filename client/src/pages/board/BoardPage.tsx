@@ -1962,8 +1962,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           The prototype's weekly-digest row ("This week", "Week 38" - a beige "Friday" pill for one
           not yet due) is not built here: there is no weekly rollup in this data, only per-session
           rows, so nothing is invented in its place. Requested in docs/requests-to-engine.md.
+
+          PRIVACY: GATED ON `shown.checkInGrid`, NOT ON HAVING ANY ROWS. `sessionRows` comes from
+          `groundForSignals` (`groundsApi.get`), fetched for every reader, and unlike every other
+          section on this board it has no server-side `has(...)` gate of its own - so without a
+          guard here, a participant would see the whole team's completion and share state, which
+          board-as-participant.txt never shows them (their board has no Reports table at all, only
+          the plain "Every session" link at the foot). `checkInGrid` is the server's own, already
+          correct signal for "this reader may see everyone's session state" - the same fact this
+          table needs - so it is reused here rather than inventing a second, client-only privacy
+          rule that could drift from the server's.
         */}
-        {sessionRows.length > 0 && (
+        {shown.checkInGrid && sessionRows.length > 0 && (
           <>
             <Sec size="board" title="Reports" src="Every session has two: each person's own, and the team's once you share it." />
             <Card>
@@ -1999,6 +2009,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {EVERY_SESSION.heading}
             </Link>
           </>
+        )}
+
+        {/*
+          A PARTY STILL GETS "EVERY SESSION" (board-as-participant.txt ends with "Every session" and
+          "Ask", with no Reports table above it - just the link). Their own session-by-session record
+          lives on the "What I shared" tab (ground-tabs.ts key `record`); there is no page yet that is
+          specifically "every session, as a party reads it" the way TheReportIsAListOfSessions is for
+          whoever runs the check-in, so this points at the closest existing one rather than inventing
+          a destination. Noted for whoever picks up a dedicated one.
+        */}
+        {!shown.checkInGrid && b.myParticipantId && (
+          <Link
+            to={`/grounds/${id}?tab=record`}
+            style={{ ...btnGhost, display: 'block', textAlign: 'center', marginTop: 20, textDecoration: 'none' }}
+          >
+            {EVERY_SESSION.heading}
+          </Link>
         )}
 
         {/*

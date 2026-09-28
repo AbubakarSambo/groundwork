@@ -70,13 +70,18 @@ export function TheCheckInHeader({
   )
   const cadenceLine = endedSaying ?? [cadenceWords ? `${cadenceWords}.` : null, spineWords].filter(Boolean).join(' ')
 
+  /*
+   * ground-tabs.ts ALWAYS PUSHES 'settings' ("Setup"), FOR LEAD AND PARTY ALIKE - not gated on
+   * `canRunThisCheckIn`. board-as-participant.txt shows "People and setup" on a party's own board
+   * too, which agrees: kept unconditional here, matching that file rather than my first guess.
+   */
   const myWorkTab = canRunThisCheckIn ? 'sessions' : 'record'
   const tabs: { key: string; label: string; to: string }[] = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     { key: 'chat', label: 'Check-in', to: `/grounds/${id}` },
     { key: 'context', label: 'Context', to: `/grounds/${id}?tab=context` },
     ...(canRunThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
-    ...(canRunThisCheckIn ? [{ key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` }] : []),
+    { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]
 
   return (
@@ -97,8 +102,14 @@ export function TheCheckInHeader({
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-          {/* Your own turn on this check-in - the same place the "Check-in" tab opens. */}
-          <Link to={`/grounds/${id}`} style={{ ...linkAsBtn }}>Your check-in</Link>
+          {/*
+            THE PROTOTYPE USES TWO DIFFERENT WORDS HERE. The lead's own board says "Your check-in"
+            (board-as-lead.txt); a party's says "Start my check-in" (board-as-participant.txt). Both
+            go to the same place - the same the "Check-in" tab opens.
+          */}
+          <Link to={`/grounds/${id}`} style={{ ...linkAsBtn }}>
+            {isAParty && !canRunThisCheckIn ? 'Start my check-in' : 'Your check-in'}
+          </Link>
           <button
             type="button"
             onClick={showAsk}
