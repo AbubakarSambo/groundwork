@@ -1,3 +1,4 @@
+import { suggestAnswers } from './suggested-answers';
 import { aClaimNothingShowsYet, askForProofKindly } from './asking-for-proof-kindly';
 import { managementWordsIn, sayItInPlainWords } from './management-words';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
@@ -445,6 +446,19 @@ export class ConversationService {
   }
 
   /** Returns the transcript for a check-in - owner-scoped only. */
+  /**
+   * Two to four suggested answers for the question this turn asks, stored on the turn so they
+   * survive a reload. Empty when it asks nothing, and on any failure: a missing suggestion is never
+   * an error the person sees. See suggested-answers.
+   */
+  private async suggestedAnswersFor(turnId: string, turnText: string, theirLastAnswer: string | null): Promise<string[]> {
+    const answers = await suggestAnswers(this.anthropic as any, turnText, theirLastAnswer).catch(() => [] as string[]);
+    if (answers.length) {
+      await this.prisma.conversationTurn.update({ where: { id: turnId }, data: { suggestedAnswers: answers } as any }).catch(() => undefined);
+    }
+    return answers;
+  }
+
   async getTranscript(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
     const turns = await this.prisma.conversationTurn.findMany({
@@ -1043,7 +1057,9 @@ export class ConversationService {
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
     /* A session that opens after a document was attached opens with what we have from it. Once. */
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
-    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
+    /* Suggested answers under the opening question too. */
+    const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null);
+    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}) };
   }
 
 
@@ -2418,9 +2434,12 @@ export class ConversationService {
      */
     this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
       this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
+    /* Suggested answers under the question: task 2.6, screens request 7a. See suggested-answers. */
+    const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message);
     return {
       reply: [contextNotSaid, tookTheNumbers, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
+      ...(suggestedAnswers.length ? { suggestedAnswers } : {}),
     };
   }
 
@@ -2591,7 +2610,7 @@ export class ConversationService {
    * written once, sanitized, after the stream completes.
    */
   async *sendMessageStream(checkInId: string, requestingUserId: string, message: string):
-    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean }, void, unknown> {
+    AsyncGenerator<{ type: 'delta'; text: string } | { type: 'done'; reply: string; sessionComplete: boolean; suggestedAnswers?: string[] }, void, unknown> {
     /* The door people actually use. It had no lock for as long as the guard lived only on sendMessage(). See openTheDoor. */
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     /* Decision 35, as in sendMessage. */
@@ -2859,7 +2878,9 @@ export class ConversationService {
          and forget, never in front of the person waiting. See noteWhatTheySaid. */
       this.noteWhatTheySaid(checkIn.id, message).catch((err: any) =>
         this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
-      yield { type: 'done', reply, sessionComplete: close.ready };
+      /* Suggested answers under the question, as on the other path. */
+      const suggestedAnswers = close.ready ? [] : await this.suggestedAnswersFor(streamAiTurn.id, reply, message);
+      yield { type: 'done', reply, sessionComplete: close.ready, ...(suggestedAnswers.length ? { suggestedAnswers } : {}) };
     } catch (err) {
       await this.prisma.conversationTurn.delete({ where: { id: personTurn.id } }).catch(() => undefined);
       throw err;

@@ -1629,6 +1629,10 @@ model ConversationTurn {
   /// session, and the guard on check-in-scoped turn loads is right to refuse it. A count is not
   /// content; this makes the count available without the content.
   askedFor  String?  @map("asked_for")
+  /// TWO TO FOUR SHORT ANSWERS THE PERSON MIGHT GIVE TO THIS TURN'S QUESTION (task 2.6, screens
+  /// request 7a). Built from the question and their own last answer only. Stored so they survive a
+  /// reload. Null for a turn that asks nothing. See conversation/suggested-answers.ts.
+  suggestedAnswers Json? @map("suggested_answers")
   createdAt DateTime @default(now()) @map("created_at")
 
   checkIn CheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
