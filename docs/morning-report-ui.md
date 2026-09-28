@@ -3955,6 +3955,57 @@ cause.** All three of the second round's NOT DONE items, as Hafsah asked.
 broad blast radius) and `pages/grounds` in full (for item 3's `GroundAdminPage.tsx` change), plus
 `npx tsc -b` and `npx tsc --noEmit`. All pass.
 
+### U.10 The board, fourth round: walked live as Juma, six more found and fixed
+
+**28 September, after Hafsah checked the rendered board herself as Juma (admin) on the real ground.**
+All six items DONE.
+
+1. **Every remaining capital (DONE).** The third round's sweep only touched `Zone`/`Sec` and three
+   named captions; it missed every other ad hoc `textTransform: 'uppercase'` on the board's own
+   render path - "Nothing above this", "What success looks like", the four quick-read tile labels,
+   the checkInGrid table's column headers, the coverage "Showing" toggle, the admin "no shared
+   board"/"your answer first" captions, and the bottom legend ("What is open, first", "Each gap
+   names both sides", "Honest closes"). Removed from all of them: `BoardPage.tsx`'s own remaining
+   instances, `WhatSuccessLooksLike.tsx`, `TheJudgement.tsx`, `WhatTheRecordShows.tsx`,
+   `WhatTheNetworkSaid.tsx`, and `kit.tsx`'s `Stat` (a Zone/Sec sibling, shared with
+   `GroundAdminPage` and the admin pages). Left untouched: `textTransform: uppercase` outside the
+   board's own render path - `HomePage.tsx`, `AdminPage.tsx`'s own tables, `ChatPage.tsx`,
+   `ReportPage.tsx`, `BillingPage.tsx`, `GroundChat.tsx` and others the grep also found - these
+   belong to other modules' own review, not U.10's, and touching them here would be scope well
+   beyond the board. The guard spec no longer asks named elements by hand; it now walks every
+   element actually rendered on the board and reads `getComputedStyle().textTransform`, failing on
+   any non-empty text drawn in capitals anywhere - there is no longer a Zone/Sec exception to carve
+   out, since neither uses the transform any more.
+2. **Subtitle fragments (DONE).** Every `Sec` subtitle on the board that was a bare lower-case
+   fragment is now a capitalised, complete phrase, following the prototype's own subtitle style
+   (board-as-lead.txt: "Each person's time, their last 10 check-ins, and what keeps coming up") -
+   "Built from what each person said in their check-in.", "Raised by what people see differently,
+   or what is stuck.", and so on for all nine named plus the others in the same style.
+3. **The objective row (DONE).** "12, up from 0, aiming for 12" / "up 12 this session" -> "12 now,
+   up from 0. The aim is 12." / "Up 12 this session."
+4. **The session strip (DONE).** "Session 1 is today, 27 Sept." was wrong the day after it opened -
+   `state === 'current'` means the currently open round, not "opened today", and a round can stay
+   open for days while people finish checking in. `sessionPillSentence` no longer says "today" at
+   all: "Session 1 opened on 27 Sept." (once somebody has completed it), "Session 2 is open now."
+   (open, nobody has completed it yet - a case the bare "Session 2." example did not cover but the
+   old code would have wrongly called "not opened"), or "Session 2 has not opened yet." (the bare
+   case Hafsah named).
+5. **"Waiting on" rows (DONE).** "Baraka Mwangi / needs / the discount decision / from / Rukia
+   Otieno / Blocking" -> one sentence per row, "Baraka Mwangi needs the discount decision from
+   Rukia Otieno. This is blocking work.", following the prototype's own "Waiting on other teams"
+   row style. The status pill stays for quick visual scanning; the sentence says the status too.
+6. **Quick-read tiles (DONE).** Reused `tileSentence` from `TheSessionsReport.tsx` (U.9) rather
+   than reimplementing the same label/value/sub join - it is the same tile shape, from the same
+   server function (`atAGlanceTiles`), so the same composition applies without rewording the
+   server's own clause, exactly as asked.
+
+**Tests:** a new file, `u10-re-review-round-4.spec.tsx`, renders the board with real shapes for
+items 3 to 6 together and checks each reads as the sentence asked for - including that "today"
+never appears for a round that opened on an earlier date. Ran the files each change touched, by
+path, plus the full board suite, `npx tsc -b` and `npx tsc --noEmit`, and the full client suite
+once more for the capitals sweep's blast radius (in progress at the time of writing; will be noted
+if anything unexpected turns up).
+
 ### U.11 Ending a check-in, the probation review, handover: built and tested, not yet reviewed
 
 **What was missing, against the prototype (the gap list):** a decision with its reason (the lead
