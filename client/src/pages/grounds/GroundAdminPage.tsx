@@ -1700,7 +1700,17 @@ export function GroundAdminPage() {
                   return acc
                 }, [])
                 .sort((a: any, b: any) => a.sessionNumber - b.sessionNumber)}
-              brief={(ground as any).brief}
+              /*
+                U.10 PICTURE-CHECK ROUND 7, ITEM 4: WHAT EVERYONE READS, NOT THE LEAD'S OWN
+                COMPOSED WORDS. This passed the raw setup brief ("When asked who is part of this,
+                the answer was taken to mean this. Me, Baraka, and Neema. …") - the lead's own
+                working text - which ContextPage.tsx already stopped showing for exactly this
+                reason (U.7 review): it is not what the check-in actually tells people. `briefAsEveryoneReadsIt`
+                is the short read Groundwork writes from it, the same text ContextPage's
+                `whatEveryoneReads` prefers; falling back to the raw brief only when there is no
+                such read yet, same as there.
+              */
+              brief={(ground as any).briefAsEveryoneReadsIt ?? (ground as any).brief}
               signals={((ground as any).signals ?? [])
                 .filter((sig: any) => sig.observationText)
                 .map((sig: any) => ({
