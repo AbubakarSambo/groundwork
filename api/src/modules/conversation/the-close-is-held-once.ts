@@ -197,7 +197,9 @@ export function withoutTheGoodbye(reply: string): string {
  * plan's questions were done, and the judge scored her session 1 for it: a strategy conversation that
  * ended on a personal to-do. The pack says not to ask it; the sentence is cut in code.
  */
-const HOMEWORK = /\b(what will you do about (?:this|that|it),? and by when|what is the (?:first|next|one) thing you will do(?: about (?:this|that|it))?,? and (?:by )?when|before we close:? what will you do)\b[^.!?]*[.!?]?/gi;
+/* "One thing before we close:" goes with the question it introduces. Left behind, the lead read "One
+   thing From everything you have said, what have you decided?" (pip, run 8). */
+const HOMEWORK = /\b(what will you do about (?:this|that|it),? and by when|what is the (?:first|next|one) thing you will do(?: about (?:this|that|it))?,? and (?:by )?when|(?:one (?:more |last )?thing,? )?before we close:? what will you do)\b[^.!?]*[.!?]?/gi;
 
 /** Does this turn ask the homework question at all? */
 export const asksForHomework = (text: string): boolean => {

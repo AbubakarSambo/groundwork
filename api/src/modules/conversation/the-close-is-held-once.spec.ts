@@ -229,6 +229,11 @@ describe('the homework question, budgeted', () => {
     expect(cutAgain).not.toMatch(/record/i);
     expect(cutOnce).not.toBe(cutAgain);
   });
+  /* Pip, run 8: the lead read "One thing From everything you have said, what have you decided?" */
+  it('"One thing before we close:" goes with the question it introduced, so no half of it is left', () => {
+    const out = withinTheHomeworkBudget('You will be sending Nathan an invite for this meeting. One thing before we close: what will you do about this, and by when?', [], true);
+    expect(out.text).toBe(`You will be sending Nathan an invite for this meeting. ${THE_LEADS_DECISION}`);
+  });
   it('the lead gets the decision question once, then nothing', () => {
     const first = withinTheHomeworkBudget(ask, [], true);
     expect(first.changed).toBe('decision');
