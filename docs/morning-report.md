@@ -131,6 +131,15 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **What is next, in your order:** measure weeks 4 and 5 live, twice, then carry on with the weekly plan.
 
+## 28 SEPTEMBER, LATE AFTERNOON: NO INTERNAL LABEL REACHES ANYONE (`0bad62f2`)
+
+- **The routes it took:** several fields of the session report, and the shared picture in the rounds, were written after the step that swaps labels for names, so they kept "Participant A" and "the initiator". A lead and participants read them on the session report and on "How this has moved".
+- **Now every board and report read ends in one last step:** the board, the report, a session's report, the rounds, and where things stand against success. Any label left anywhere becomes the name this reader may see, or "a colleague" where they may not. A field added later is covered too, because it is served through the same step.
+- **"You is aiming" and "until you sends it" are mended there as well,** only outside quotation marks, so people's own words stay as they wrote them.
+- **Proven by a test** that serves the board and every report read to the lead, each participant and an admin who only reads, with people named to each other and not, and finds no label anywhere.
+- Also fixed: dates that arrived on the screen as an empty object (request 53).
+- **Not live yet:** run-16 is running on the build before this. It fixes a problem the release has, so it joins the release.
+
 ## 28 SEPTEMBER, AFTERNOON: RUN-15 DID NOT PASS, AND WHY
 
 **Run-15 was the first full run on the streamed route (13:32 to 15:25, on `75b4d687`). It cannot be the release candidate.**
