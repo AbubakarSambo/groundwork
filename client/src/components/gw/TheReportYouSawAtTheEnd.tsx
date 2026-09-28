@@ -172,7 +172,8 @@ export function TheReportYouSawAtTheEnd({
         {/* What we heard from you */}
         <div className="gw-head"><div style={{ background: 'var(--gw-dark)', borderRadius: 10, padding: 'var(--er-box-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 'var(--er-gap-sm)' }}>
-            <div style={{ fontSize: 'var(--er-label)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gw-green-b)', fontWeight: 700 }}>What we heard from you</div>
+            {/* U.9 RE-REVIEW, ITEM A: a plain heading, not a shout. */}
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-b)' }}>What we heard from you</div>
             {correctedNote && (
               <div style={{ fontSize: 'var(--er-label)', color: 'rgba(255,255,255,.55)', fontStyle: 'normal' }}>Updated after your correction</div>
             )}
@@ -186,17 +187,19 @@ export function TheReportYouSawAtTheEnd({
           "Not much yet, most of this is general" on My record were three verdicts on one session.
           The specificity meter on the page is the one read; nothing else rates the record.
         */}
-        {/* What's still open */}
+        {/* What's still open, and what to do about it. U.9 re-review, item A: the label and its
+            note were "01 WHAT'S STILL OPEN" over a lower-case sub-line; they are now one plain
+            sentence, and each field caption inside the card is no longer shouted in capitals. */}
         {report.areasRequiringAlignment.length > 0 && (
-          <Block n={next()} label="What's still open" note="what we noticed, and what to do">
+          <Block n={next()} label="What's still open, and what to do about it">
             {report.areasRequiringAlignment.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-amber-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
                 {/* A title the server judged unusable as a heading is absent; the card stands without it. */}
                 {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 7 }}>{a.title}</div>}
-                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
-                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
+                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>What we noticed</span>{a.observation}</div>
+                <div style={{ fontSize: 'var(--er-body)', lineHeight: 1.5, marginBottom: 5 }}><span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-muted)', display: 'block', marginBottom: 1 }}>Why it matters</span>{a.whyItMatters}</div>
                 {renderCorrect?.(a.title)}
-                <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: 'var(--er-box-sm)', fontSize: 'var(--er-body)', color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 'var(--er-label)', letterSpacing: '.07em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
+                <div style={{ background: 'var(--gw-green-bg)', borderRadius: 7, padding: 'var(--er-box-sm)', fontSize: 'var(--er-body)', color: 'var(--gw-green-t)', lineHeight: 1.5 }}><span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gw-green-t)', opacity: .75, display: 'block', marginBottom: 2 }}>What to do next</span>{a.recommendedMove}</div>
               </div>
             ))}
           </Block>
@@ -205,8 +208,14 @@ export function TheReportYouSawAtTheEnd({
         {/* Clear from what this person said - not mutual agreement, nobody else has checked in yet. Not
             "your side": this is a team getting a read on something far more often than it is two
             people arguing, and side language turns an update into a case. */}
+        {/*
+          U.9 RE-REVIEW, ITEM A: NO CLAIM THIS COMPONENT CANNOT STAND BEHIND. "Nobody else has
+          answered yet" was said unconditionally, whether or not that was true by the time somebody
+          read it back later - this component has no read on who else has answered. The label now
+          says only what it can: this is clear from THIS person's own words.
+        */}
         {report.alignmentReached.length > 0 && (
-          <Block n={next()} label="Clear from what you said" note="nobody else has answered yet">
+          <Block n={next()} label="Clear from what you said">
             {report.alignmentReached.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-green-b)', borderRadius: 10, padding: 'var(--er-box)', marginBottom: 'var(--er-gap-sm)' }}>
                 {a.title && <div style={{ fontSize: 'var(--er-lead)', fontWeight: 700, marginBottom: 4 }}>{a.title}</div>}
@@ -218,7 +227,7 @@ export function TheReportYouSawAtTheEnd({
 
         {/* Suggested parties */}
         {report.suggestedParties && report.suggestedParties.length > 0 && (
-          <Block n={next()} label="Recommended additions" note="who else this check-in needs">
+          <Block n={next()} label="Recommended additions, who else this check-in needs">
             <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-blue-bg)' }}>
               <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 Based on this check-in, these roles would strengthen the check-in. What they say would change or confirm what is currently on record from one side only.
@@ -241,7 +250,7 @@ export function TheReportYouSawAtTheEnd({
 
         {/* Mentioned people */}
         {report.mentionedPeople && report.mentionedPeople.length > 0 && (
-          <Block n={next()} label="People mentioned" note="you named them while you were talking">
+          <Block n={next()} label="People mentioned, who you named while you were talking">
             <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-paper)' }}>
               <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
                 {/*
@@ -296,7 +305,7 @@ export function TheReportYouSawAtTheEnd({
           is dropped: both are still named and still described here.
         */}
         {report.alsoCameUp && report.alsoCameUp.length > 0 && (
-          <Block n={next()} label="Also came up" note="named, but not people to invite">
+          <Block n={next()} label="Also came up, but not people to invite">
             <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: 'var(--er-box)', background: 'var(--gw-paper)' }}>
               {report.alsoCameUpNote && (
                 <div style={{ fontSize: 'var(--er-body)', color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
@@ -319,7 +328,7 @@ export function TheReportYouSawAtTheEnd({
           boxes while the shared report on the same page listed two open items. Settled and still open
           come from the session report now; with nothing in either, one line says so.
         */}
-        <Block n={next()} label="Where this leaves you" note="settled, and still open">
+        <Block n={next()} label="Where this leaves you, settled and still open">
           {(stands?.settled.length || stands?.open.length)
             ? <div style={{ display: 'grid', gap: 6 }}>
                 {stands!.settled.map((t, i) => <div key={`s${i}`} style={{ fontSize: 'var(--er-lead)', lineHeight: 1.5 }}><b>Settled.</b> {t}</div>)}
