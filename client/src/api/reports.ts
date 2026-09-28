@@ -28,9 +28,17 @@ export const reportsApi = {
     apiClient.get(`/grounds/${groundId}/report/against-success`, { skipNotFoundToast: true } as any)
       .then(r => r.data),
 
+  /*
+   * U.9 RE-REVIEW: THE FIELD IS `sessionNumber`, NOT `round`. Walked live against the real
+   * response - `GET /grounds/:id/report/rounds` sends `"sessionNumber": 1` on every row of
+   * `moved[]`, never `round` (`RoundsService.rounds()`, `reports.service.ts`, selects
+   * `sessionNumber` off `ReportRound` and passes it straight through `howThisHasMoved`, which
+   * itself outputs a field named `round` - so the wire shape and the function's own return type
+   * disagree, and the wire shape is what a real request sends). This type now matches the wire.
+   */
   rounds: (groundId: string) =>
     apiClient
-      .get<{ rounds: any[]; moved: { round: number; takenAt: string; says: string; differences: number; amended: string | null }[] }>(
+      .get<{ rounds: any[]; moved: { sessionNumber: number; takenAt: string; says: string; differences: number; amended: string | null }[] }>(
         `/grounds/${groundId}/report/rounds`,
         { skipNotFoundToast: true },
       )

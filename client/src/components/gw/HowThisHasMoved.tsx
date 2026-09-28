@@ -41,30 +41,28 @@ export function HowThisHasMoved({ groundId }: { groundId: string }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {moved.map(m => {
           /*
-           * U.9 THIRD REVIEW: THE SESSION NUMBER, LEFT OUT WHEN THE SERVER DOES NOT SEND IT, AND
-           * THE DIFFERENCES SAID FOR WHAT THEY ARE.
-           *
+           * U.9 RE-REVIEW: THE FIELD THE SERVER ACTUALLY SENDS IS `sessionNumber`, NOT `round`.
            * "At the end of session undefined, on 27 September, and one read differed." was wrong
-           * three ways. `m.round` came back undefined on every real read: the route that builds
-           * this list selects `sessionNumber` off the round, not `round` (reports.service.ts,
-           * `rounds()`), so `howThisHasMoved`'s own `round: r.round` was always undefined and JSON
-           * drops it on the way over - engine request 59 asks for the field to actually be sent.
-           * Until it is, the sentence leaves the session number out rather than print "undefined".
-           * The stray "and" joined the date and the difference count as if the sentence had a list
-           * in it with nothing before "and". And `m.differences` is how many accounts differed
-           * WITHIN that session's own reading, not a change from the session before - so it now
-           * says "people saw N things differently", never "differed from the one before".
+           * three ways, and the first was read against the wrong field. Walked live, `GET
+           * /grounds/:id/report/rounds` sends `"sessionNumber": 1` on every row of `moved[]` -
+           * `m.round` was never going to be there. Engine request 59 (still open) asks the server
+           * to make `howThisHasMoved`'s own return type agree with what it actually sends; this
+           * reads the field that is really on the wire, so the sentence is right now rather than
+           * only once that request lands. The stray "and" that used to join the date and the
+           * difference count is gone, and `m.differences` (how many accounts differed WITHIN that
+           * session's own reading, not a change from the session before) is said as "people saw N
+           * things differently", never "differed from the one before".
            */
           const dateText = whenItWas(m.takenAt, 'dayAndMonthLong')
-          const opening = m.round != null
-            ? `At the end of session ${m.round}${dateText ? `, on ${dateText}` : ''}`
+          const opening = m.sessionNumber != null
+            ? `At the end of session ${m.sessionNumber}${dateText ? `, on ${dateText}` : ''}`
             : dateText ? `On ${dateText}` : 'At the end of this session'
           const sawDifferently = m.differences > 0
             ? `${opening}, people saw ${m.differences === 1 ? 'one thing' : `${m.differences} things`} differently.`
             : `${opening}, everybody saw it the same way.`
           return (
           <div
-            key={m.round ?? m.takenAt}
+            key={m.sessionNumber ?? m.takenAt}
             style={{
               border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-card)',
               padding: '11px 14px',
