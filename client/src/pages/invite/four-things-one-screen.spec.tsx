@@ -46,6 +46,11 @@ function open(preview: any = PREVIEW) {
 }
 
 describe('the invitation a participant reads', () => {
+  /*
+   * U.20 fifth review (Hafsah, pictured at 1440px): "What happens to what you write" moved from an
+   * always-open section before the form to a plain link under the button's own line, so the person
+   * reads the button before that link now, where it used to be the other way round.
+   */
   it('in the prototype\'s words, in its order', async () => {
     open()
     expect(await screen.findByRole('heading', { name: 'Wairimu invited you to “Sales team, Q3”' })).toBeTruthy()
@@ -57,9 +62,9 @@ describe('the invitation a participant reads', () => {
       'A short check-in each weekday.',
       'Who sees your answers',
       'You see your own report straight away. Wairimu shares a team report',
-      'What happens to what you write',
       'Answer today’s check-in now',
       'About two minutes. You make your account afterwards.',
+      'What happens to what you write',
     ].map(t => text.replace(/\s+/g, ' ').indexOf(t))
     expect(order.every(i => i > -1)).toBe(true)
     expect([...order].sort((a, b) => a - b)).toEqual(order)

@@ -26,10 +26,7 @@ describe('out of time', () => {
     open()
     expect(await screen.findByText('It ran until 30 September. Nothing new can be added until Wairimu gives it more time.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'This check-in reached its end date' })).toBeTruthy()
-    /* U.20: the page now has two "Out of time" lines, both from the prototype's own picture -
-       the small caption above the mark (join-outoftime.jpg puts it there, same as every other
-       narrow arrival screen) and the amber tag - so this looks for both rather than one. */
-    expect(screen.getAllByText('Out of time')).toHaveLength(2)
+    expect(screen.getByText('Out of time')).toBeTruthy()
     expect(screen.getByText('Your answers are kept')).toBeTruthy()
     expect(screen.getByText('Your answers and your history stay as they are.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Ask Wairimu for more time' })).toBeEnabled()

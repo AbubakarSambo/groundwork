@@ -5,31 +5,33 @@ import { render, screen } from '@testing-library/react'
 import { Mark } from './Mark'
 import { Note, Callout } from './NoteEmpty'
 import { Steps, Step } from './Steps'
+import { SubHeading } from './SubHeading'
 
 /**
  * THE PARTS ADDED FOR THE INVITATION'S REBUILD (design-audit.md section 4; the invitation task).
  *
  * `Mark` is `auth-kit.tsx`'s `AuthBrand`, already checked against the prototype (U.1/U.2), moved
- * into the shared kit with an optional caption above it - the short line every one of the
- * prototype's join screens puts above the mark (join-waiting.txt: "Waiting for an admin",
- * join-outoftime.txt: "Out of time", join-expired.txt: "An expired link"). `Callout` is the
- * tinted line the prototype injects above the invitation's heading (s44.js). `Steps` is the
- * ticked list on "Almost in" (join-waiting.jpg), for which the prototype's own CSS has no class.
+ * into the shared kit. It has no caption above it (Hafsah, pictured at 1440px against
+ * join-invite.jpg): the short line each exported picture shows above the mark is the prototype
+ * PICTURE's own frame header, not something the screen itself draws. `Callout` is the tinted line
+ * the prototype injects above the invitation's heading (s44.js). `Steps` is the ticked list on
+ * "Almost in" (join-waiting.jpg), for which the prototype's own CSS has no class. `SubHeading` is
+ * the smaller, ~15px heading inside the invitation's white panel ("What it asks", "Who sees your
+ * answers"), which is not `Section`'s 21px page-heading size.
  */
 const CSS = readFileSync(join(__dirname, 'gw-ui.css'), 'utf8')
 
 describe('Mark', () => {
-  it('renders the wordmark, linking home, with no caption by default', () => {
+  it('renders only the wordmark, linking home - no caption', () => {
     render(<Mark />)
     const link = screen.getByRole('link', { name: 'Groundwork' })
     expect(link).toBeTruthy()
     expect(link.getAttribute('href')).toMatch(/^https?:\/\//)
-    expect(screen.queryByText(/./, { selector: '.gwui-mark-caption' })).toBeNull()
+    expect(document.querySelector('.gwui-mark-caption')).toBeNull()
   })
 
-  it('renders the caption above the mark when given, word for word', () => {
-    render(<Mark caption="Waiting for an admin" />)
-    expect(screen.getByText('Waiting for an admin')).toHaveClass('gwui-mark-caption')
+  it('takes no props - there is nothing left to pass it', () => {
+    expect(Mark.length).toBe(0)
   })
 
   it('matches auth-kit\'s already-checked mark values: 18px bold navy, 9px gap', () => {
@@ -73,6 +75,25 @@ describe('Callout', () => {
     expect(CSS).toMatch(/\.gwui-callout \{[^}]*background: var\(--gw-bg\)/)
     expect(CSS).toMatch(/\.gwui-callout \{[^}]*border-radius: 10px/)
     expect(CSS).toMatch(/\.gwui-callout \{[^}]*padding: 10px 14px/)
+  })
+})
+
+describe('SubHeading', () => {
+  it('renders a heading, smaller than Section\'s', () => {
+    render(<SubHeading>What it asks</SubHeading>)
+    const h = screen.getByRole('heading', { name: 'What it asks' })
+    expect(h.tagName).toBe('H2')
+    expect(h).toHaveClass('gwui-subheading')
+  })
+
+  it('is about 15px bold ink, not Section\'s 21px', () => {
+    expect(CSS).toMatch(/\.gwui-subheading \{[^}]*font-size: 15px/)
+    expect(CSS).toMatch(/\.gwui-subheading \{[^}]*font-weight: 700/)
+    expect(CSS).toMatch(/\.gwui-subheading \{[^}]*color: var\(--gw-text\)/)
+  })
+
+  it('a list of them keeps a gap between blocks', () => {
+    expect(CSS).toMatch(/\.gwui-subheading-list \{[^}]*gap: 20px/)
   })
 })
 

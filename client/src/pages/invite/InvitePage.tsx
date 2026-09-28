@@ -7,7 +7,7 @@ import { participantsApi } from '@/api'
 import type { InvitePreview } from '@/api/participants'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
-import { Page, Mark, PageTitle, Panel, Section, Callout, Note, Button, FieldLabel, TextField } from '@/components/gw/ui'
+import { Page, Mark, PageTitle, Panel, SubHeading, Callout, Note, Button, FieldLabel, TextField, Modal } from '@/components/gw/ui'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-on-the-question'
@@ -60,6 +60,10 @@ export function InvitePage() {
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  /* "What happens to what you write" (design-audit.md section 3, U.20 fifth review): kept out of
+     the page's flow, reachable from a plain link rather than an always-open section or the old
+     folding panel. Its content is the Modal's children, below. */
+  const [showWhatHappens, setShowWhatHappens] = useState(false)
 
   const { data: answer, isLoading, isError } = useQuery({
     queryKey: ['invite', token],
@@ -254,7 +258,7 @@ export function InvitePage() {
   if (!token) return <Page narrow><Mark /><LinkProblem kind="invite" detail="This invite link is missing its token." /></Page>
   if (isLoading) return <Page narrow><Mark /><p role="status" className="gwui-pt-sub">Loading your invitation…</p></Page>
   if (expired) return <InvitationExpired token={token} leadFirstName={expired.leadFirstName} />
-  if (held) return <Page narrow><Mark /><PageTitle title={held.saying} /></Page>
+  if (held) { const card = heldForASeatCard(held.saying); return <Page narrow><Mark /><PageTitle title={card.heading} subtitle={card.sub} /></Page> }
   if (isError || !preview) return (
     <Page narrow>
       <Mark />
@@ -294,7 +298,7 @@ export function InvitePage() {
         shown only when the record holds this person's share of a target, which the invitation does
         not carry yet.
       */}
-      <Mark caption="The invitation" />
+      <Mark />
       <PageTitle title={theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
 
       <Callout>
@@ -306,42 +310,27 @@ export function InvitePage() {
           was the lead's sentence about this person. See the-leads-words-about-someone.ts. */}
 
       <Panel>
-        {preview.schedule && (
-          <Section heading="What it asks">
-            <p className="gwui-pt-sub">{preview.schedule}</p>
-          </Section>
-        )}
-        <Section heading="Who sees your answers">
-          <p className="gwui-pt-sub">
-            You see your own report straight away. {preview.leadFirstName ?? 'The person who runs it'} shares a team report
-            with everyone in it.
-          </p>
-        </Section>
+        <div className="gwui-subheading-list">
+          {preview.schedule && (
+            <div>
+              <SubHeading>What it asks</SubHeading>
+              <p className="gwui-field-row-value">{preview.schedule}</p>
+            </div>
+          )}
+          <div>
+            <SubHeading>Who sees your answers</SubHeading>
+            <p className="gwui-field-row-value">
+              You see your own report straight away. {preview.leadFirstName ?? 'The person who runs it'} shares a team report
+              with everyone in it.
+            </p>
+          </div>
+        </div>
       </Panel>
 
       {/*
-          THE PRIVACY BRIEFING, MOVED HERE RATHER THAN SHOWN AFTER.
-
-          An invited person used to meet FOUR screens between the email and their first
-          answer: this page, then a full-page privacy explainer, then a "Start my check-in"
-          button, then in some cases the ground page and a "Check in for session 1 of 2".
-          Two consecutive full-page explainers, the second one arriving AFTER they had
-          already committed by clicking "Add my version" - which is the wrong order for a
-          disclosure, because the decision it informs has been made by then.
-
-          So the disclosure sits with the decision. It is the same four claims, in the same
-          words, including the one we do not dress up. Accepting from this page now stamps
-          the acknowledgement (see accept.onSuccess), so the chat opens straight onto the
-          first question instead of repeating this back at them.
-
-          NO LONGER A FOLDING PANEL (the invitation's rebuild, U.20): the prototype has no
-          `<details>` anywhere on join-invite.jpg, so this is now a plain section, always
-          there to read rather than hidden behind a click. The four claims are unchanged.
-      */}
-      {/*
         U.6 review: a check-in that opens later is not answered today. Its first check-in's day is
-        said, here, above "What happens to what you write" rather than under it, and nothing offers
-        to answer now.
+        said, here, before the button rather than under "What happens to what you write", and
+        nothing offers to answer now.
       */}
       {opensLater && (
         <p role="status" className="gwui-callout">
@@ -349,33 +338,11 @@ export function InvitePage() {
         </p>
       )}
 
-      <Section heading="What happens to what you write">
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div>
-            <p className="gwui-field-row-label" style={{ marginBottom: 3 }}>Nobody you work with reads it</p>
-            <p className="gwui-note">Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing what everyone said. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
-          </div>
-          <div>
-            <p className="gwui-field-row-label" style={{ marginBottom: 3 }}>We cannot show it to ourselves either</p>
-            <p className="gwui-note">When we look at a check-in to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
-          </div>
-          <div>
-            <p className="gwui-field-row-label" style={{ marginBottom: 3 }}>Nothing here trains a model</p>
-            <p className="gwui-note">What you say is used to build the shared picture and nothing else.</p>
-          </div>
-          <div>
-            <p className="gwui-note" style={{ fontWeight: 700, marginBottom: 3 }}>And the part we are not going to dress up</p>
-            <p className="gwui-note">Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
-          </div>
-        </div>
-      </Section>
-
       {!opensLater && (
       <>
       <form onSubmit={(e) => { e.preventDefault(); setFailed(''); if (!accept.isPending) accept.mutate() }}>
         {failed && <div className="gw-er" role="alert" style={{ marginBottom: 10 }}>{failed}</div>}
-        <Note>Your name is optional. If you add it, the others will see it on the shared report.</Note>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginTop: 8, marginBottom: 4 }}>
+        <div className="gwui-field-pair">
           <FieldLabel htmlFor="invite-first">
             First name
             <TextField id="invite-first" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Optional" />
@@ -385,9 +352,12 @@ export function InvitePage() {
             <TextField id="invite-last" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Optional" />
           </FieldLabel>
         </div>
-        <Button type="submit" size="big" wide disabled={accept.isPending} >
-          <span role="status">{accept.isPending ? 'Setting up your session…' : 'Answer today’s check-in now'}</span>
-        </Button>
+        <p className="gwui-field-help">Your name is optional. If you add it, the others will see it on the shared report.</p>
+        <div className="gwui-form-actions">
+          <Button type="submit" size="big" wide disabled={accept.isPending} >
+            <span role="status">{accept.isPending ? 'Setting up your session…' : 'Answer today’s check-in now'}</span>
+          </Button>
+        </div>
       </form>
 
       <p className="gwui-pt-sub" style={{ textAlign: 'center' }}>
@@ -396,6 +366,44 @@ export function InvitePage() {
         {signedIn ? 'About two minutes.' : 'About two minutes. You make your account afterwards.'}
       </p>
       </>
+      )}
+
+      {/*
+          THE PRIVACY BRIEFING - REACHABLE, NOT IN THE PAGE'S FLOW (Hafsah, pictured at 1440px
+          against join-invite.jpg: the always-open section made the page twice the prototype's
+          length, and the prototype has no such section at all). It used to arrive on the NEXT
+          screen, after "Add my version" - a disclosure shown after the decision it is meant to
+          inform - so it still has to be reachable from here, just not printed in full every time.
+          One plain link under the button's line opens the same four claims, unchanged, in the
+          shared Modal. Accepting from this page still stamps the acknowledgement (accept.onSuccess),
+          so the chat opens straight onto the first question instead of repeating this back at them.
+      */}
+      <p style={{ textAlign: 'center' }}>
+        <Button kind="quiet" onClick={() => setShowWhatHappens(true)}>What happens to what you write</Button>
+      </p>
+      {showWhatHappens && (
+        <Modal title="What happens to what you write" onClose={() => setShowWhatHappens(false)}>
+          <h2 className="gwui-pt-title" style={{ fontSize: 21 }}>What happens to what you write</h2>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div>
+              <p className="gwui-field-row-label" style={{ marginBottom: 3 }}>Nobody you work with reads it</p>
+              <p className="gwui-note">Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing what everyone said. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
+            </div>
+            <div>
+              <p className="gwui-field-row-label" style={{ marginBottom: 3 }}>We cannot show it to ourselves either</p>
+              <p className="gwui-note">When we look at a check-in to help with something, we can see whether people checked in and never what they said. That is enforced in the code and tested, not a policy we are asking you to trust.</p>
+            </div>
+            <div>
+              <p className="gwui-field-row-label" style={{ marginBottom: 3 }}>Nothing here trains a model</p>
+              <p className="gwui-note">What you say is used to build the shared picture and nothing else.</p>
+            </div>
+            <div>
+              <p className="gwui-note" style={{ fontWeight: 700, marginBottom: 3 }}>And the part we are not going to dress up</p>
+              <p className="gwui-note">Your answers are stored on our servers, and they are processed by Google's models to build the record. We are not going to tell you they are unreadable to any human being anywhere, because that would not be true yet.</p>
+            </div>
+          </div>
+          <Button kind="secondary" onClick={() => setShowWhatHappens(false)}>Close</Button>
+        </Modal>
       )}
 
       {/* "By joining, you agree that your contribution record belongs to you." is gone (U.3 review): it
@@ -419,6 +427,26 @@ export function InvitePage() {
       </div>
     </Page>
   )
+}
+
+/**
+ * HELD FOR A SEAT, AS A SHORT HEADING AND ONE SENTENCE UNDER IT (Hafsah, pictured at 1440px).
+ *
+ * The server sends one fixed sentence for this (`HELD_FOR_A_SEAT`,
+ * api/src/modules/participants/participants.service.ts) - it used to be the page's whole heading,
+ * two sentences long. Split here into the prototype's own two-line pattern (a short heading, a
+ * sentence under it), never on the server: if it ever sends anything else, this falls back to the
+ * old shape - the whole sentence as the heading - rather than mangling text it does not recognise.
+ */
+export function heldForASeatCard(saying: string): { heading: string; sub?: string } {
+  const KNOWN = 'This check-in cannot start for you yet, because there is no seat for you on the plan. You will get your invitation as soon as there is one.'
+  if (saying === KNOWN) {
+    return {
+      heading: 'This check-in cannot start for you yet',
+      sub: 'There is no seat for you on the plan yet. You will get your invitation as soon as there is one.',
+    }
+  }
+  return { heading: saying }
 }
 
 /** "Wairimu invited you to the sales team's check-in", with the check-in's own name. */

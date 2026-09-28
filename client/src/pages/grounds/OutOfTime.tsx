@@ -37,7 +37,7 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
 
   return (
     <Page narrow>
-      <Mark caption="Out of time" />
+      <Mark />
       <p><Tag tone="attention">Out of time</Tag></p>
       <PageTitle title="This check-in reached its end date" subtitle={sub} />
       <Panel>

@@ -80,14 +80,19 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
     await waitFor(() => expect(mockedNavigate).toHaveBeenCalledWith('/grounds/g-1/p', { replace: true }))
   })
 
-  /* U.3: the invitation now reads as the prototype's (join-invite.txt). Today's panel "What happens to
-     what you write" stays exactly as it was while Hafsah decides the two held sentences; the old
+  /* U.3: the invitation now reads as the prototype's (join-invite.txt). The old
      top box ("builds the shared report") and footer ("come back any time to add to") are replaced by
-     the prototype's box and "About two minutes. You make your account afterwards." */
-  it('keeps the privacy panel once, and says what the prototype says', async () => {
+     the prototype's box and "About two minutes. You make your account afterwards."
+     U.20 fifth review (Hafsah, pictured at 1440px): "What happens to what you write" no longer
+     prints in full on the page (it made the page twice the prototype's length, which has none of
+     it) - it is a plain link that opens the same four claims in the shared Modal, so this test now
+     opens it before checking the words are still there. */
+  it('keeps the privacy panel once, reachable from a link, and says what the prototype says', async () => {
     renderInvite()
     await screen.findByText('Sarah invited you to “Groundwork project”')
     expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Your questions to Ask\s+Groundwork stay private\./)).toBeTruthy()
+    expect(screen.queryByText('Nobody you work with reads it')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'What happens to what you write' }))
     expect(screen.getAllByText(/Anything you say about somebody else never does/i).length).toBe(1)
     expect(screen.getByText('Nobody you work with reads it')).toBeTruthy()
     expect(screen.queryByText(/Nobody else reads your answers/i)).toBeNull()

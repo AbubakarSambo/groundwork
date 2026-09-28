@@ -53,7 +53,6 @@
 .gwui-pt-sub { font-size: 16px; line-height: 1.5; color: var(--gw-sub); margin-top: 6px; }
 
 /* ── MARK (prototype: the three bars and "Groundwork", .brand) ──────────── */
-.gwui-mark-caption { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }
 .gwui-mark {
   display: inline-flex; align-items: center; gap: 9px; color: var(--gw-navy); text-decoration: none;
   font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 32px;
@@ -63,6 +62,15 @@
 /* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
    `background:var(--chat);border-radius:10px;padding:10px 14px`, class `t-small`) ─────────── */
 .gwui-callout { background: var(--gw-bg); color: var(--gw-text); border-radius: 10px; padding: 10px 14px; font-size: 14.5px; line-height: 1.45; margin: 0; }
+
+/* ── SUB-HEADING (join-invite.jpg: "What it asks", "Who sees your answers") ─────────── */
+.gwui-subheading { font-family: var(--gw-font-ui); font-size: 15px; font-weight: 700; color: var(--gw-text); margin: 0 0 6px; }
+.gwui-subheading-list { display: grid; gap: 20px; }
+
+/* ── FIELD PAIR / HELP / FORM ACTIONS (a labelled pair of fields, its help line, its button) ── */
+.gwui-field-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.gwui-field-help { font-size: 13.5px; color: var(--gw-sub); margin: 8px 0 0; }
+.gwui-form-actions { margin-top: 20px; }
 
 /* ── STEPS (a numbered list of what has and has not happened yet, join-waiting.jpg) ─────────── */
 .gwui-steps { list-style: none; margin: 0; padding: 14px 18px; border: 1px solid var(--gw-border); border-radius: 10px; background: var(--gw-card); display: grid; gap: 10px; }

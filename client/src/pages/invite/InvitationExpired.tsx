@@ -45,7 +45,7 @@ export function InvitationExpired({ token, leadFirstName }: { token: string; lea
 
   return (
     <Page narrow>
-      <Mark caption="An expired link" />
+      <Mark />
       <PageTitle title="This link has expired" subtitle="Invitation links last 14 days. You don’t need a new invitation, just a fresh link." />
       {says ? (
         <Note>{says}</Note>

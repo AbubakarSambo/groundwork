@@ -33,9 +33,9 @@ export function WaitingForAnAdminPage() {
     onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That reminder did not send. Try again.'),
   })
 
-  if (isLoading) return <Page narrow><Mark caption="Waiting for an admin" /><PageTitle title="Almost in" subtitle="One moment." /></Page>
+  if (isLoading) return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="One moment." /></Page>
   if (isError || !data) {
-    return <Page narrow><Mark caption="Waiting for an admin" /><PageTitle title="Almost in" subtitle="We could not read where your request has got to. Reload the page to try again." /></Page>
+    return <Page narrow><Mark /><PageTitle title="Almost in" subtitle="We could not read where your request has got to. Reload the page to try again." /></Page>
   }
   /*
    * NOT WAITING (U.3 review). "You're in. Nobody needs to let you in any more." read oddly to somebody
@@ -46,7 +46,7 @@ export function WaitingForAnAdminPage() {
     if (!sawWaiting.current) return <Navigate to="/today" replace />
     return (
       <Page narrow>
-        <Mark caption="Waiting for an admin" />
+        <Mark />
         <PageTitle title="You’re in" subtitle="An admin has let you in. You can open your check-ins now." />
         <Button to="/grounds" size="big" wide>Open my check-ins</Button>
       </Page>
@@ -61,7 +61,7 @@ export function WaitingForAnAdminPage() {
 
   return (
     <Page narrow>
-      <Mark caption="Waiting for an admin" />
+      <Mark />
       <PageTitle title="Almost in" subtitle={youAreFromOutside(w)} />
 
       <Steps>
