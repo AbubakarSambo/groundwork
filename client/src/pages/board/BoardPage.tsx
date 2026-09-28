@@ -1548,7 +1548,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           </>
         )}
 
-        {b.managerAlignment && b.managerAlignment.length > 0 && (
+        {/*
+         * MANAGER ALIGNMENT IS A PATTERN CLAIM. Its pattern code is SETUP_NEVER_SAID and it says
+         * "seen across 2 sessions" from one, which is exactly what PATTERNS_ARE_SERVED being off is
+         * meant to stop the board from doing (see api/src/modules/patterns/patterns-are-served.ts).
+         * The server still sends this field on its own, outside `sections`, so the screen checks
+         * `has('patterns')` - the same flag the server itself uses to decide whether the `patterns`
+         * section belongs in `sections` - as its own guard, and draws nothing here while it is off.
+         * The data is kept (nothing is deleted); only the drawing stops.
+         */}
+        {has('patterns') && b.managerAlignment && b.managerAlignment.length > 0 && (
           <>
             <Sec title="How the leading is landing" src="two sides of the same leadership" />
             <Card>

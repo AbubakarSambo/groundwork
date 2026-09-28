@@ -129,6 +129,29 @@ describe('the board, as each reader reads it', () => {
     renderBoard({ ...AS_THE_LEAD, lastChangedAt: null })
     expect(await screen.findByText('The board only changes when something new comes in, such as a check-in, a report, a decision or a number from another system.')).toBeTruthy()
   })
+
+  /*
+   * U.10 REVIEW ITEM 10: MANAGER ALIGNMENT IS A PATTERN CLAIM. Its own text says "seen across 2
+   * sessions" after one, which is exactly what PATTERNS_ARE_SERVED being off exists to stop. The
+   * server can still send `managerAlignment` outside `sections` (that gate is the engine's, not
+   * this screen's), so the board checks `sections.includes('patterns')` itself and draws nothing
+   * here while patterns are off - even though the data arrived.
+   */
+  it('never draws How the leading is landing while patterns are off, even if the server sent it', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({
+      ...AS_THE_LEAD,
+      sections: ['objectives'],
+      managerAlignment: [{
+        managerParticipantId: 'p-lead', managerName: 'Wairimu Kamau', pattern: 'SETUP_NEVER_SAID',
+        pole: 'NEITHER', label: 'Setup, never said', gap: 'Two sessions read this differently.',
+        note: 'Neither read is called wrong.', periods: 2,
+      }],
+    })
+    await screen.findByText(LAST_UPDATED)
+    expect(screen.queryByText('How the leading is landing')).toBeNull()
+    expect(screen.queryByText(/seen across/)).toBeNull()
+  })
 })
 
 describe('where people see it differently', () => {
