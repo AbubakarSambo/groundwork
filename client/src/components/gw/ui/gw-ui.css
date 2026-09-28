@@ -113,11 +113,14 @@
 .gwui-people-table { overflow-x: auto; }
 .gwui-people-head {
   display: grid; padding: 10px 18px; font-size: 13px; color: var(--gw-sub);
-  border-bottom: 1px solid var(--gw-border); min-width: max-content;
+  border-bottom: 1px solid var(--gw-border); min-width: max-content; justify-items: start;
 }
 .gwui-person-row {
   display: grid; padding: 12px 18px; border-top: 1px solid var(--gw-border); align-items: center;
   min-width: max-content; text-decoration: none; color: inherit;
+  /* A Tag or a short line keeps its own natural width - the grid must not stretch it across the
+     whole column, which is what made a role tag fill its column edge to edge. */
+  justify-items: start;
 }
 a.gwui-person-row:hover { background: var(--gw-paper-2); }
 .gwui-person-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -135,8 +138,9 @@ a.gwui-person-row:hover { background: var(--gw-paper-2); }
   .gwui-people-head { display: none; }
 }
 @media (max-width: 640px) {
-  .gwui-person-row { grid-template-columns: 44px 1fr !important; align-items: start; gap: 4px 12px; }
-  .gwui-person-row > *:nth-child(n+2) { grid-column: 2; }
+  /* Each row becomes a small stack: PersonCell (its own 34px avatar and text) first, then
+     whatever else the row carries, each on its own line. */
+  .gwui-person-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
 }
 
 /* ── AVATAR (prototype: .av) ─────────────────────────────────────────────── */
@@ -145,11 +149,14 @@ a.gwui-person-row:hover { background: var(--gw-paper-2); }
   display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex: none;
 }
 
-/* ── FIELD ROW (prototype: a label/value row, e.g. one person's page) ────── */
+/* ── FIELD ROW (prototype: a label/value row, e.g. one person's page) ──────
+   Meant to sit inside a Panel with pad={false}, the same way PeopleTable does: the row carries
+   the panel's own inside space itself (22px at the sides, matching `.pad`), so it never sits flush
+   against the panel's border the way an un-padded row would. */
 .gwui-field-rows { border-top: 1px solid var(--gw-border); }
 .gwui-field-row {
   display: grid; grid-template-columns: var(--gwui-field-label-w, 200px) minmax(0, 1fr) auto;
-  gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--gw-border); align-items: center;
+  gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--gw-border); align-items: center;
 }
 .gwui-field-row-label { font-size: 16px; font-weight: 700; color: var(--gw-text); }
 .gwui-field-row-value { font-size: 16px; color: var(--gw-text); min-width: 0; }
