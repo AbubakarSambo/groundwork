@@ -28,11 +28,23 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { MARK_WORDS, readMark, type MarkKind } from './the-mark'
 
-/** A titled band with a rule, grouping sections. */
+/**
+ * A titled band with a rule, grouping sections.
+ *
+ * U.10 RE-REVIEW ITEM 1: SENTENCE CASE, NOT CAPITALS. The prototype's own board and report screens
+ * (docs/prototype/screens/B5-the-board/board-as-lead.jpg and .txt - "Every deal, day by day", "The
+ * team today", "Blockers", "What keeps coming up", "Who checked in", "Open issues", "Where this is
+ * heading"; confirmed against B4's team-report.jpg too - "What moved", "What each person did",
+ * "Where people see it differently") draws every heading in sentence case, bold, never in capitals.
+ * This component drew every heading in the product uppercase via `textTransform`, which is not what
+ * the prototype does anywhere - so the fix is here, once, rather than on each of the pages that use
+ * it. Labels passed in are already written in sentence case as content; removing the transform is
+ * enough.
+ */
 export function Zone({ label }: { label: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '30px 2px 2px' }}>
-      <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.7px', fontWeight: 800, color: 'var(--gw-navy)' }}>{label}</span>
+      <span style={{ fontSize: 13, letterSpacing: '.1px', fontWeight: 800, color: 'var(--gw-navy)' }}>{label}</span>
       <span style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
     </div>
   )
@@ -84,7 +96,7 @@ export function Sec({ title, src, n, on = 'light' }: { title: string; src?: stri
           {n}
         </span>
       )}
-      <h2 style={{ fontSize: 12.5, letterSpacing: '.4px', textTransform: 'uppercase', color: dark ? 'rgba(255,255,255,.45)' : 'var(--gw-sub)', fontWeight: 700 }}>{title}</h2>
+      <h2 style={{ fontSize: 14, letterSpacing: '.1px', color: dark ? 'rgba(255,255,255,.45)' : 'var(--gw-sub)', fontWeight: 700 }}>{title}</h2>
       {/* Beside the title where it fits, on its own line where it does not, and still right-aligned. */}
       {src && (
         <span style={{

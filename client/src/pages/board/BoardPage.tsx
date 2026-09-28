@@ -673,7 +673,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           within one click.
         */}
         <div style={{ background: '#20233E', color: 'white', borderRadius: 14, padding: '14px 18px', marginTop: 14 }}>
-          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: BOARD_MUTED_INK, fontWeight: 700, display: 'block', marginBottom: 6 }}>
+          <span style={{ fontSize: 13, letterSpacing: '.1px', color: BOARD_MUTED_INK, fontWeight: 700, display: 'block', marginBottom: 6 }}>
             How to read and use this board
           </span>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: BOARD_BODY_INK }}>
