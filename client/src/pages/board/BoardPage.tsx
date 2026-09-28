@@ -132,6 +132,33 @@ function whereTheRunIs(data: any, ground: any): { nearTheEnd: boolean; lastSessi
   return { nearTheEnd: done >= planned - 1, lastSessionDone: done >= planned }
 }
 
+/**
+ * "Daily on weekdays, from 4pm. Session 38 of 65. Runs until 30 September." is the prototype's
+ * header sentence. There is no field yet for the cadence's words ("Daily on weekdays, from 4pm."),
+ * so that part is left out rather than guessed; the rest is built from what the board does send.
+ *
+ * `endsAt` is the check-in's own scheduled end, not a target's deadline - a team's number can carry
+ * its own "by 20 December" while the check-in itself runs to a different date, and this sentence is
+ * about the check-in.
+ *
+ * WAS: `${dshort(startsAt)} to ${dshort(endsAt)}`, which printed " - to 13 Dec ·" the moment
+ * `startsAt` was null, because `dshort` stands a bare " - " in for a missing date rather than
+ * dropping it. A full sentence cannot leave a blank where a word should be, so this builds only the
+ * parts that have data.
+ */
+function phaseSpineSentence(
+  phaseSpine: { startsAt: string | null; endsAt: string | null; currentSession: number } | null | undefined,
+  planned: number | null,
+): string | null {
+  if (!phaseSpine) return null
+  const parts: string[] = []
+  if (phaseSpine.currentSession) {
+    parts.push(planned ? `Session ${phaseSpine.currentSession} of ${planned}.` : `Session ${phaseSpine.currentSession}.`)
+  }
+  if (phaseSpine.endsAt) parts.push(`Runs until ${whenItWas(phaseSpine.endsAt, 'dayAndMonthLong')}.`)
+  return parts.length ? parts.join(' ') : null
+}
+
 export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const { id: idFromRoute } = useParams<{ id: string }>()
   const id = groundId ?? idFromRoute
@@ -173,6 +200,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* Where the run is, read once, so the top and the foot of the board gate the ending panel on the
      same answer (the-exit-belongs-at-the-exit). */
   const { nearTheEnd, lastSessionDone } = whereTheRunIs(data, groundForSignals)
+  const plannedSessions = plannedSessionsFor((groundForSignals as any)?.timelineDays, (groundForSignals as any)?.cadence, (groundForSignals as any)?.plannedSessions)
 
   const [newObjName, setNewObjName] = useState('')
   const [newObjTarget, setNewObjTarget] = useState('')
@@ -429,21 +457,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 {endedSaying ? (
                   <span style={{ color: BOARD_ACCENT_INK, fontWeight: 700 }}>{endedSaying}</span>
                 ) : b.phaseSpine ? (
-                  <span>
-                    {b.phaseSpine.startsAt || b.phaseSpine.endsAt
-                      ? `${dshort(b.phaseSpine.startsAt)} to ${dshort(b.phaseSpine.endsAt)} · `
-                      : ''}
-                    {/* Counted the way the exit gate below counts it: sessions everybody has finished.
-                        `currentSession` is the highest number any row carries, and the next row is
-                        created the moment one completes, so it ran ahead of the run. */}
-                    {/* ONCE, NOT TWICE. "0 sessions done" sat three inches above "Progress 0 of 6
-                        rounds" on the same header - the same fact, in two vocabularies, and the
-                        progress line is the one that says how many there are to do. */}
-                    {(() => {
-                      const done = ((b.phaseSpine.sessions ?? []) as { state: string }[]).filter((x) => x.state === 'done').length
-                      return done > 0 ? `${done} ${done === 1 ? 'session' : 'sessions'} done` : null
-                    })()}
-                  </span>
+                  <span>{phaseSpineSentence(b.phaseSpine, plannedSessions)}</span>
                 ) : null}
               </div>
             </div>
@@ -485,8 +499,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
                   const face = (
                     <>
-                      {/* "now" on a check-in that has ended is a clock nobody is watching. */}
-                      Session {s.n}{s.date ? ` · ${dshort(s.date)}` : s.opensOn && s.state !== 'done' ? ` · opens ${dshort(s.opensOn)}` : ''}{s.state === 'current' && !groundEnded ? ' · now' : ''}
+                      {/* "now" on a check-in that has ended is a clock nobody is watching. Commas,
+                          not middle dots, join the parts of this chip's own short phrase. */}
+                      Session {s.n}{s.date ? `, ${dshort(s.date)}` : s.opensOn && s.state !== 'done' ? `, opens ${dshort(s.opensOn)}` : ''}{s.state === 'current' && !groundEnded ? ', now' : ''}
                     </>
                   )
                   const skin = {
