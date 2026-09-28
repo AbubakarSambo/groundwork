@@ -18,9 +18,9 @@ export interface AManagementWord {
 }
 
 export const MANAGEMENT_WORDS: AManagementWord[] = [
-  { word: 'pipeline', test: /\bpipelines?\b/i, plainly: 'the deals or applications they are working on' },
+  { word: 'pipeline', test: /\bpipelines?\b/i, plainly: 'sales not yet closed' },
   { word: 'escalate', test: /\bescalat(?:e|es|ed|ing|ion|ions)\b/i, plainly: 'take it to someone more senior' },
-  { word: 'bottleneck', test: /\bbottlenecks?\b/i, plainly: 'what is holding it up' },
+  { word: 'bottleneck', test: /\bbottlenecks?\b/i, plainly: 'what they are waiting for' },
   { word: 'deliverable', test: /\bdeliverables?\b/i, plainly: 'the piece of work' },
   { word: 'stakeholder', test: /\bstakeholders?\b/i, plainly: 'the people involved, by name where you know them' },
   { word: 'alignment', test: /\balign(?:ment|ed)\b/i, plainly: 'agree' },

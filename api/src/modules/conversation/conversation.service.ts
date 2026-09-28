@@ -133,7 +133,7 @@ import { isShut } from '../grounds/a-ground-that-has-ended';
 import { theNextDayTheyWork } from '../grounds/which-days-this-team-works';
 import { readsAsBroken, ASK_FOR_IT_AGAIN_PLAINLY } from './a-sentence-with-a-word-missing';
 import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
-import { whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
+import { theGoodNewsIn, whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
 import { whatThisSessionHasCovered, sayWhatHasBeenCovered, whereTheSpineIs, theyDeclined, THEY_DECLINED_IT, askedAbout, theyAlreadyAnsweredThat, type AThingToCover } from './what-this-session-has-covered';
 import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
@@ -3376,10 +3376,12 @@ export class ConversationService {
         },
         orderBy: { createdAt: 'desc' },
         take: 6,
-        select: { text: true },
+        select: { text: true, type: true },
       })?.catch(() => [] as any[]) ?? [],
     ]);
     const recordAlreadyHolds = whatTheRecordAlreadyHolds({
+      /* Good news first, when there is some: task 2.4. Only in the opener, only from the same lines as saidLastTime. */
+      wentWellLastTime: how?.forTheOpener ? theGoodNewsIn(lastTimeRows as any[]) : [],
       /* Theirs, and the check-in's own. Somebody else's owned number is on the board, not in this person's interview. */
       targets: (objectivesOnRecord as any[])
         .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === checkIn.participantId)
