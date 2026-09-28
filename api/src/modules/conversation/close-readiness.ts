@@ -44,7 +44,7 @@ const SAYS_NOTHING_TO_ADD =
  * Hafsah: "it also doesnt end naturally." She asked three times.
  */
 export const WANTS_OUT =
-  /\b(that'?s (it|me|all)|that is (it|all|everything)|(that'?s|that is) (everything|all)( from (me|my side))?|i'?m done|i am done|we'?(re| are) done|i have nothing (else|more)( to add)?|i'?ve nothing (else|more)|done for now|need to go|got to go|have to go|can we (stop|finish)|later|another time|skip this|end (the|this) (session|check-?in|conversation)|(session|check-?in|conversation) end|finish (the|this) (session|check-?in)|wrap (this |it )?up|stop (the|this) (session|check-?in)|no more questions)/i;
+  /\b(that'?s (it|me|all)|that is (it|all|everything)|(that'?s|that is) (everything|all)( from (me|my side))?|i'?m done|i am done|we'?(re| are) done|i have nothing (else|more)( to add)?|i'?ve nothing (else|more)|done for now|need to go|got to go|have to go|can we (stop|finish)|later|another time|skip this|end (the|this) (session|check-?in|conversation)|(session|check-?in|conversation) end|(?:please )?(?:finish|end|stop|close) (?:the|this|my) (?:session|check-?in|conversation)|^\s*(?:please\s+)?(?:finish|end it|stop|close it)(?:\s+(?:it|this|now|please))*\s*[.!]*\s*$|wrap (this |it )?up|stop (the|this) (session|check-?in)|no more questions)/i;
 
 export interface CloseReadiness {
   ready: boolean;

@@ -100,7 +100,7 @@ import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
+import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
@@ -2252,6 +2252,18 @@ export class ConversationService {
         where: { id: aiTurn.id },
         data: { content: withTheOneMoreLine(stillOpen, close.ask) },
       });
+    } else if (!close.ready && hasAGoodbye(aiTurn.content ?? '')) {
+      /*
+       * NO GOODBYE IN A TURN THAT IS NOT THE LAST. Request 47, 28 September 2026: Rukia read "Your
+       * report is ready now. Speak soon." while the check-in stayed open, three times, because the
+       * product refused the close (the turn floor) with no question of its own to add, and the
+       * model's goodbye went out as it was written. The goodbye comes off; if nothing is left
+       * asking, the product's own question goes on.
+       */
+      aiTurn = await this.prisma.conversationTurn.update({
+        where: { id: aiTurn.id },
+        data: { content: withAQuestion(withoutTheGoodbye(aiTurn.content ?? ''), { closing: false }) },
+      });
     } else if (close.ready && close.sayFirst) {
       /* A close that records something before the goodbye: the goodbye stays, the fact goes in front of it. */
       const goodbye = aiTurn.content ?? '';
@@ -2773,6 +2785,11 @@ export class ConversationService {
            reply - ChatPage replaces the streamed text with it. So the delta only has to add the
            question; no second event type is invented for something the page already does. */
         yield { type: 'delta', text: `\n\n${close.ask}` };
+      } else if (!close.ready && hasAGoodbye(reply)) {
+        /* Same as the turn path: no goodbye in a turn that is not the last (request 47). The stream
+           has already shown it; `done` carries the corrected reply and ChatPage replaces the text. */
+        reply = withAQuestion(withoutTheGoodbye(reply), { closing: false });
+        await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });
       } else if (close.ready && close.sayFirst) {
         reply = `${reply}\n\n${close.sayFirst}`;
         await this.prisma.conversationTurn.update({ where: { id: streamAiTurn.id }, data: { content: reply } });

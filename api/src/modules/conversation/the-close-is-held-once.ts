@@ -172,6 +172,9 @@ const A_FAREWELL =
  * left the marker off, so the product never ruled on the close, the person said "Ok, thank you", and
  * got "That did not come out right" with a hold underneath. The farewell IS the signal.
  */
+/** Any goodbye in it at all, question or not. For a turn the product has decided is not the last. */
+export const hasAGoodbye = (reply: string): boolean => A_FAREWELL.test(reply ?? '');
+
 export const saysGoodbye = (reply: string): boolean => A_FAREWELL.test(reply ?? '') && !/\?\s*$/.test((reply ?? '').trim());
 
 /**
