@@ -156,8 +156,15 @@ export function lastSubstantiveTurn(personSaid: string[]): string {
  * comes out here, at the moment the close is refused, and only then. What the goodbye was wrapped
  * around - anything they actually said - is left where it is.
  */
+/*
+ * "THIS CHECK-IN WILL CONTINUE IN TWO WEEKS" IS A GOODBYE TOO. Week 2 live run, 28 Sep 2026: the close
+ * was held and the product's "One more before this closes" went under it, so Tobi read that the
+ * check-in would continue in two weeks and, in the same turn, that it had one more question. Only
+ * the check-in, the session or the conversation continuing counts - never "you will continue",
+ * which is the person's own commitment and stays.
+ */
 const A_FAREWELL =
-  /(\bspeak soon\b|\bsee you (in|next|soon|then)\b|\btalk soon\b|\buntil next time\b|\byour report is (ready|yours|now yours)\b|\bthe report is yours\b|\bnothing in it needs acting on\b|\bnothing to act on\b|\bthat is everything for (today|now)\b|\bwe are done here\b|\bthanks for your time\b)/i;
+  /(\b(?:this|the|our) (?:check-in|session|conversation) (?:will |is going to )?(?:continue|resume|pick up|carry on)s? (?:in|next|on|after)\b|\bwe(?:'ll| will) (?:speak|talk) again\b|\bspeak soon\b|\bsee you (in|next|soon|then)\b|\btalk soon\b|\buntil next time\b|\byour report is (ready|yours|now yours)\b|\bthe report is yours\b|\bnothing in it needs acting on\b|\bnothing to act on\b|\bthat is everything for (today|now)\b|\bwe are done here\b|\bthanks for your time\b)/i;
 
 /**
  * A GOODBYE WITHOUT THE MARKER IS STILL A CLOSE. Smoke run, 20 Sep 2026: "Your report is ready now,
