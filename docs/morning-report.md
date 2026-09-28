@@ -20,7 +20,14 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **Pattern windows approved, with your addition** (`68ea3eab`, decision 39). When the lead sees a pattern the person has not answered, it now says so plainly. For example: "Femi saw this first and has not answered yet." Or, if Femi never opened it: "Femi has not seen this yet, and has not answered yet. It is shown to you because a week has passed since it came up for the third time." Patterns stay switched off until you approve the names, so for now only the tests prove this.
 
-**What is next, in your order:** the closing problem with two re-runs, then requests 46 and 47 when the screens workspace sends the check-in ids, then the next full run to check "proof asked for", then the weekly plan.
+**The closing problem, and request 47 with it** (`75a28ddd`, `1a9ffa59`). Being re-run twice now.
+- **"This check-in will continue in two weeks."** is now read as a goodbye. When the product adds its last question, the goodbye comes off first. The person's own "You will continue to follow up" is never taken for one. Across every past run this matches 1 of 15,543 turns, the one Tobi read.
+- **Request 47, the screens workspace's check-ins.** Those ids are in a database on the other computer, so I worked from the code and the description. I found two causes:
+  - When the product decided the check-in was not over, and had no last question of its own to add, the model's "Your report is ready now. Speak soon." went out as written, and the check-in stayed open. This happened in 10 of 3,550 turns in last night's runs, for example "…Your report is ready now. Speak soon. What else should I know?". Now the goodbye comes off, and if nothing is left asking, Groundwork's usual question goes on. The streamed reply does the same.
+  - "Please finish my check-in" was not heard as asking to finish, though "finish this check-in" was. Now it is, and so are a bare "Finish" and "Please finish.". A sentence such as "I want to finish the proposal by Friday" still is not.
+- **Re-runs:** sales, seniorhire and snapshot, twice each. Snapshot is where the goodbye showed most.
+
+**What is next, in your order:** request 46 (a helper is tracing how a private file's name reaches the board), then the next full run to check "proof asked for", then the weekly plan.
 
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 
