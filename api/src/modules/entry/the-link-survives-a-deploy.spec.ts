@@ -22,8 +22,8 @@ const API = join(__dirname, '../..');
 describe('the join link is written once', () => {
   const SRC = readdirSync(join(API, 'modules/grounds')).concat()
     .filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'))
-    .map((f) => readFileSync(join(API, 'modules/grounds', f), 'utf8')).join('\n')
-    + readFileSync(join(API, 'modules/entry/the-open-link.service.ts'), 'utf8');
+    .map((f) => readFileSync(join(API, 'modules/grounds', f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')).join('\n')
+    + readFileSync(join(API, 'modules/entry/the-open-link.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('and only ever at creation', () => {
     /* Every write of the field, anywhere in the two modules that own it. */
@@ -47,7 +47,7 @@ describe('the join link is written once', () => {
   });
 
   it('and carries no expiry, unlike an invite token', () => {
-    const schema = readFileSync(join(API, '../prisma/schema.prisma'), 'utf8');
+    const schema = readFileSync(join(API, '../prisma/schema.prisma'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     /* The invite token has one and it is enforced. If the join token ever gains one, this fails. */
     expect(schema).toMatch(/inviteTokenExpiresAt\s+DateTime\?/);
     expect(schema).not.toMatch(/joinTokenExpiresAt/);
@@ -55,7 +55,7 @@ describe('the join link is written once', () => {
 
   /* A token is refused for what the CHECK-IN is, never for how old the link is. */
   it('and is refused only where the check-in itself has finished', () => {
-    const open = readFileSync(join(API, 'modules/entry/the-open-link.service.ts'), 'utf8');
+    const open = readFileSync(join(API, 'modules/entry/the-open-link.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     const whatThisIs = open.slice(open.indexOf('async whatThisIs('), open.indexOf('async start('));
     expect(whatThisIs).toMatch(/That link does not open anything/);
     expect(whatThisIs).toMatch(/\['CLOSED', 'RESOLVED', 'STALLED', 'PAUSED'\]/);
@@ -64,7 +64,7 @@ describe('the join link is written once', () => {
 
   /* The path in every link ever handed out. Renaming the route breaks all of them at once. */
   it('and the route it points at keeps its path', () => {
-    const app = readFileSync(join(API, '../../client/src/App.tsx'), 'utf8');
+    const app = readFileSync(join(API, '../../client/src/App.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(app).toContain('<Route path="/answer" element={<AnswerFirstPage />} />');
   });
 
@@ -76,7 +76,7 @@ describe('the join link is written once', () => {
     for (const d of readdirSync(dir)) {
       const f = join(dir, d, 'migration.sql');
       let sql = '';
-      try { sql = readFileSync(f, 'utf8'); } catch { continue; }
+      try { sql = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''); } catch { continue; }
       if (/UPDATE\s+"?ground/i.test(sql) && /join_token/i.test(sql)) offenders.push(d);
     }
     expect(offenders).toEqual([]);

@@ -1,6 +1,6 @@
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES, isPositiveCode, isCarryingCode, WHAT_A_CARRYING_CODE_IS_CALLED } from '../patterns/pattern-library';
-import { hasEnded, isHeld, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD } from './a-ground-that-has-ended';
+import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from './the-lead-who-only-asks';
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
+import { targetsFor } from '../board/whose-number-is-whose-business';
 import { contextGaps, contextChatPrompt } from './the-context-chat';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -29,6 +30,7 @@ import { canSignIn } from './can-sign-in';
 import { defaultModeFor, boardRendersFor } from '../board/board-families';
 import { howACheckInIsGoing } from './how-a-check-in-is-going';
 import { totalSessionsFor } from './session-count';
+import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { runIntake } from '../conversation/intake';
@@ -37,8 +39,9 @@ import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AUTHORED_AT_SETUP, WHAT_RECORDING_IT_MEANS } from './what-setup-agreed';
 import { proposalFrom, extractionToolFor, Heard, Proposal, WHO_AND_WHAT_THEY_EXPECT, asContextThenTheSentence } from './what-the-context-chat-heard';
 import { freeSeatLimitMessage } from '../billing/billing.service';
-import { isSubscribed } from '../../common/subscription';
+import { isCovered } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
+import { howManyTheFreePlanCovers } from './a-cohort-is-not-a-payroll';
 import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-was-said';
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
@@ -498,7 +501,10 @@ export class GroundsService {
         resolutionState: dto.resolutionState ?? null,
         brief: dto.brief ?? null,
         joinToken: crypto.randomBytes(24).toString('hex'),
-        freeParticipantCap: dto.freeParticipantCap ?? DEFAULT_FREE_MEMBER_LIMIT,
+        /* A cohort's people are the subject of the check-in, not seats in the organisation, and
+           counting them as staff refused the whole scenario at six people. See
+           a-cohort-is-not-a-payroll. */
+        freeParticipantCap: dto.freeParticipantCap ?? howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
         isFreeGround,
         sessionsBalance: 1,
         ...(canCreate.freeReason === 'ACCESS_CODE' && canCreate.codeId
@@ -691,7 +697,7 @@ export class GroundsService {
           status: (dto.participants ?? []).length ? GroundStatus.AWAITING_PARTIES : GroundStatus.OPEN,
           brief: dto.brief ?? null,
           joinToken: crypto.randomBytes(24).toString('hex'),
-          freeParticipantCap: DEFAULT_FREE_MEMBER_LIMIT,
+          freeParticipantCap: howManyTheFreePlanCovers(dto.scenario, DEFAULT_FREE_MEMBER_LIMIT),
           isFreeGround,
           sessionsBalance: 1,
           ...(canCreate.freeReason === 'FREE_TIER' ? { freeReason: 'FREE_TIER' } : {}),
@@ -1921,8 +1927,30 @@ export class GroundsService {
       /* What each person is still to show, keyed by participant. Everybody may see these: a promise
          to hand something over was made out loud, and the page is where it is kept. */
       asks,
-      /* Each target with the lead's own sentence about what is unsettled in it, where there is one. */
-      objectives: ((ground as any).objectives ?? []).map((o: any) => ({
+      /*
+       * AND WHOSE NUMBERS THIS READER MAY SEE, WHICH THIS FIELD WAS NOT ASKING.
+       *
+       * `peersKeepTheirNumbers` above narrows `participants[].objective` - somebody else's
+       * EXPECTATIONS - and it was written for exactly this symptom: "In the check-in itself Rita was
+       * shown the team's 500 and her own 150... On the Context tab of the same check-in, one tap
+       * away, she was shown Kunle's 150, Amir's 150 and the lead's 50."
+       *
+       * It fixed one of the two fields. The targets table added on 22-23 September reads THIS one,
+       * selected with `ownerParticipantId` for every row and filtered by nobody, so the same leak
+       * came back through a different field on the same page. Asked of the read on 23 September
+       * 2026: a participant on a THEIR_OWN ground was handed two numbers that were not hers.
+       *
+       * THROUGH `targetsFor`, which is where this rule is written and has been since owners existed.
+       * It had one caller - the conversation - so the rule was right, used once, and ignored by the
+       * two other surfaces that show targets. Passing the same `viewerIsInitiator` the expectations
+       * path uses, so the two fields on one response cannot disagree about one reader.
+       */
+      objectives: targetsFor(
+        ((ground as any).objectives ?? []) as any[],
+        (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId)?.id ?? null,
+        ((ground as any).whoSeesTargets ?? 'THEIR_OWN') === 'EVERYBODY' ? 'everybody' : 'their own',
+        { isLead: viewerIsInitiator },
+      ).shown.map((o: any) => ({
         ...o,
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledSaid),
       })),
@@ -3409,6 +3437,70 @@ export class GroundsService {
    * to be editable, shareable and retirable by id. Retired rather than deleted: a decision that was
    * made is not a decision that never existed.
    */
+  /**
+   * ONE LINE OF WHAT THIS CHECK-IN KNOWS, WRITTEN DIRECTLY.
+   *
+   * The Context page could change a line, share it, make it private and retire it, and could not
+   * create one. Every line arrived through the context chat, which meant a lead on a check-in where
+   * the chat is off could read five empty buckets, each telling them to "say it in the conversation
+   * above", with no conversation above. A page whose every empty state points at a control that is
+   * not there - saved as item B on the Context fix list, 23 September 2026.
+   *
+   * THE CHAT IS STILL THE WAY IN, and that decision stands: it asks the follow-up a form cannot, and
+   * a line that arrives with nothing around it is worth less. This is the door for when there is no
+   * chat, not a second front door beside it.
+   *
+   * A LINE ABOUT A PERSON CANNOT BE CREATED HERE AT ALL. `ABOUT_A_PERSON` is the lead's read of
+   * somebody, never shared and never quoted, and it belongs to the conversation that can ask what it
+   * rests on. Refused rather than accepted-and-hidden, which is how a form becomes a way to file
+   * opinions about people.
+   */
+  async addContextLine(
+    groundId: string,
+    requestingUserId: string,
+    line: { kind: string; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' },
+  ) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true, status: true, endState: true },
+    });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+      throw new ForbiddenException('Only the lead of this check-in, or an admin in your organisation, can add what it knows.');
+    }
+    /* The same door every other writer goes through: ended, held or out of time refuses alike. */
+    const refused = whyItRefuses(ground.status, ground.endState, ground.initiatorId === requestingUserId ? 'the lead' : 'anybody else');
+    if (refused) throw new BadRequestException(refused);
+
+    const text = (line.text ?? '').trim();
+    if (!text) throw new BadRequestException('Type the line first.');
+    if (text.length > 2000) throw new BadRequestException('That is too long for one line. Say the one thing and add another line for the next.');
+    const kind = String(line.kind ?? '').toUpperCase();
+    if (ABOUT_SOMEBODY.has(kind as any)) throw new BadRequestException(WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS);
+    if (!['STRATEGY', 'WAY_OF_WORKING', 'DECISION', 'UNSETTLED', 'NOTE'].includes(kind)) {
+      throw new BadRequestException('That is not one of the things this check-in keeps.');
+    }
+    const audience = line.audience === 'LEAD_ONLY' ? 'LEAD_ONLY' : 'EVERYONE';
+    if (audience === 'EVERYONE' && !mayBeShared(kind as any)) {
+      throw new BadRequestException(WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS);
+    }
+    const made = await this.prisma.groundContextItem.create({
+      data: {
+        groundId, kind: kind as any, text, audience: audience as any,
+        /* Typed in, not heard in a conversation and not pasted, and the record says which. */
+        source: 'TYPED',
+        authorUserId: requestingUserId,
+      },
+      select: { id: true, kind: true, text: true, audience: true },
+    });
+    this.logger.log(`Ground ${groundId}: a ${kind} line was typed in directly.`);
+    return made;
+  }
+
   async changeContextLine(
     groundId: string,
     requestingUserId: string,
@@ -3844,7 +3936,9 @@ export class GroundsService {
      */
     if (!mayChangeOnItsOwn(ground.status)) {
       throw new BadRequestException(
-        hasEnded(ground.status) ? 'This check-in has ended. Nobody can be added to it.' : WHILE_IT_IS_HELD,
+        hasEnded(ground.status) ? 'This check-in has ended. Nobody can be added to it.'
+          : hasStalled(ground.status) ? IT_RAN_OUT_OF_TIME
+          : WHILE_IT_IS_HELD,
       );
     }
 
@@ -3957,13 +4051,26 @@ export class GroundsService {
      * consume a paid slot - it is correct and must not be rewritten. It was doing two jobs and only one
      * of them was right.
      */
+    /*
+     * A FREE RUN IS COVER, AND EVERY GATE ASKED THE WRONG QUESTION.
+     *
+     * Hafsah, 23 September 2026: "We gave them an updated free trial where they can use this for 1
+     * month for free for all their team but they still only have the 5 people, the tool is refusing
+     * to click send the invite to the rest of the team."
+     *
+     * `isCovered` knows about a free run - it reads `freeUntil` and `freePlan` alongside the paid
+     * pair, and its own comment in common/subscription calls it "the read most gates want". It was
+     * used in exactly one file in the codebase, billing, and every gate that actually stops a person
+     * asked `isSubscribed`, which only sees a paid plan. So a month given away lifted nothing, and
+     * the customer was told to subscribe to something they had already been given.
+     */
     const org = await this.prisma.organization.findUnique({
       where: { id: organizationId },
-      select: { subscriptionPlan: true, subscriptionStatus: true },
+      select: { subscriptionPlan: true, subscriptionStatus: true, freeUntil: true, freePlan: true },
     });
-    const paying = !!org && isSubscribed(org);
+    const covered = !!org && isCovered(org);
 
-    if (ground.isFreeGround && !paying) {
+    if (ground.isFreeGround && !covered) {
       const participantCount = await this.prisma.groundParticipant.count({ where: { groundId } });
       if (participantCount >= ground.freeParticipantCap) {
         /**
@@ -4037,6 +4144,8 @@ export class GroundsService {
           email: dto.email.toLowerCase(),
           partyType: PartyType.PARTICIPANT,
           roleAsDescribed: dto.roleAsDescribed,
+          /* What they are accountable for, in the lead's words. It used to be emailed and then lost. */
+          remitAsGiven: dto.note?.trim() || null,
           department: dto.department?.trim() || null,
           /* Over the cap: on the check-in, not written to, until an admin makes room. */
           awaitingSeat: !waitingForASeat.room,
@@ -4428,7 +4537,9 @@ export class GroundsService {
     /* Activating is not resuming, and it is not reopening. An ended ground stays ended; a held one is lifted by resumeGround, which knows what to go back to. */
     if (!mayChangeOnItsOwn(ground.status)) {
       throw new BadRequestException(
-        hasEnded(ground.status) ? 'This check-in has ended and cannot be activated.' : WHILE_IT_IS_HELD,
+        hasEnded(ground.status) ? 'This check-in has ended and cannot be activated.'
+          : hasStalled(ground.status) ? IT_RAN_OUT_OF_TIME
+          : WHILE_IT_IS_HELD,
       );
     }
 
@@ -4707,7 +4818,7 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string; startsAt?: string; brief?: string },
+    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[] },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -4745,7 +4856,18 @@ export class GroundsService {
      * session-planning maths both read - was left untouched. The change was audited and had no effect.
      */
     const requestedDays = dto.timelineDays ?? (dto.timelineWeeks !== undefined ? dto.timelineWeeks * 7 : undefined);
-    const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined;
+    /*
+     * AND WHICH DAYS THE TEAM WORKS, WHICH COULD ONLY EVER BE SAID AT CREATION.
+     *
+     * "He cannot choose to set check-ins to happen outside of weekends." It was already built - the
+     * days are stored, every cadence honours them, and the entry flow offers them under the rhythm
+     * with a "weekdays only" shortcut. But a lead who set the check-in up in the app, or who
+     * realised afterwards that it was landing on Sundays, had nowhere to say so: this is the only
+     * place the rhythm can be changed after the fact and it did not carry the days.
+     *
+     * It changes the schedule, so it is the lead's call like the rhythm itself.
+     */
+    const changesTheSchedule = requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined;
     if (changesTheSchedule && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
         'Only the lead of this check-in, or an admin in your organisation, can change how long it runs or how often people check in. Ask them if it needs to change.',
@@ -4875,13 +4997,16 @@ export class GroundsService {
         ? { timeline: (rawLog as any).timeline ?? [], contextNotes: (rawLog as any).contextNotes ?? [] }
         : { timeline: Array.isArray(rawLog) ? (rawLog as object[]) : [], contextNotes: [] };
 
-    if (requestedDays !== undefined || dto.cadence !== undefined) {
+    if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined) {
       auditData.timeline.push({
         changedAt: new Date().toISOString(),
         changedBy: requestingUserId,
         changes: {
           ...(requestedDays !== undefined && { timelineDays: { from: ground.timelineDays, to: requestedDays } }),
           ...(dto.cadence !== undefined && { cadence: { from: ground.cadence, to: dto.cadence } }),
+          ...(dto.workingDays !== undefined && {
+            workingDays: { from: (ground as any).workingDays ?? [], to: workingDaysOf(dto.workingDays) },
+          }),
         },
       });
     }
@@ -4910,13 +5035,76 @@ export class GroundsService {
     if (dto.startsAt !== undefined) {
       await this.prisma.checkIn.updateMany({
         where: { groundId, sessionNumber: 1, status: CheckInStatus.NOT_STARTED },
-        data: { availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, (ground as any)?.workingDays) },
+        data: { availableFrom: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays ?? (ground as any)?.workingDays) },
       });
+    }
+
+    /*
+     * AND A GATE ALREADY ON A SUNDAY MOVES OFF IT.
+     *
+     * Saying "weekdays only" has to do something to the check-in in front of them, or it is a
+     * setting that agrees with you and changes nothing - which is the whole family of bugs this
+     * week. The first session's gate is the one thing already on a date, so it moves forward to the
+     * next day they work. Forward only, and only where nobody has started: later is a delay,
+     * earlier is a different promise.
+     */
+    if (dto.workingDays !== undefined && dto.startsAt === undefined) {
+      const open = await this.prisma.checkIn.findMany({
+        where: { groundId, sessionNumber: 1, status: CheckInStatus.NOT_STARTED, availableFrom: { not: null } },
+        select: { id: true, availableFrom: true },
+      });
+      for (const row of open) {
+        const moved = theNextDayTheyWork(new Date(row.availableFrom as Date), dto.workingDays);
+        if (moved.getTime() !== new Date(row.availableFrom as Date).getTime()) {
+          await this.prisma.checkIn.update({ where: { id: row.id }, data: { availableFrom: moved } });
+        }
+      }
+      if (open.length) {
+        this.logger.log(`Ground ${groundId}: working days changed, ${open.length} first-session gate(s) checked against them.`);
+      }
+    }
+
+    /*
+     * AND GIVING IT MORE TIME OPENS IT AGAIN, WHICH IS WHAT THEY WERE REACHING FOR.
+     *
+     * Nate Peterson, 23 September 2026: "i let a few check-ins wait and they are now stalled, with
+     * no clear way to open them back up. i can't easily see where to reopen them or to extend the
+     * timeline." There was no reopen anywhere, and extending the time was worse than missing: it
+     * wrote, the dates moved, the status stayed STALLED, and the check-in was still dead. A control
+     * that agrees with you and changes nothing.
+     *
+     * So the extension IS the reopen - one act, because they are one intention. Back to what it was
+     * before the time ran out, which the sweep now records rather than this having to guess.
+     *
+     * ONLY WHERE THE NEW DEADLINE IS ACTUALLY IN THE FUTURE. Reopening a check-in to a date that
+     * has already passed would hand it straight back to tonight's sweep, and the person would watch
+     * it stall again by morning having done exactly what the product told them to.
+     */
+    const reopening = hasStalled(ground.status) && requestedDays !== undefined
+      ? deadlineOf({ createdAt: ground.createdAt, startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt, timelineDays: requestedDays })
+      : null;
+    const opensAgain = !!reopening && reopening.getTime() > Date.now();
+    if (hasStalled(ground.status) && requestedDays !== undefined && !opensAgain) {
+      throw new BadRequestException(
+        'That is not enough time to reopen this check-in - the new end date has already passed. Give it a date in the future and it opens again.',
+      );
     }
 
     const updated = await this.prisma.ground.update({
       where: { id: groundId },
       data: {
+        /*
+         * Back to what it was, or ACTIVE where the sweep that stalled it predates this column and
+         * recorded nothing. ACTIVE rather than OPEN on that fallback: a check-in that ran long
+         * enough to stall has been under way, and telling everybody it is newly open would be the
+         * product forgetting what happened in it.
+         */
+        ...(opensAgain && {
+          status: ground.stalledFromStatus ?? GroundStatus.ACTIVE,
+          stalledFromStatus: null,
+          stalledAt: null,
+          stallWarningSentAt: null,
+        }),
         /**
          * Both columns, so nothing reading the legacy one goes stale - but DAYS is the value that
          * counts, and weeks is derived from it rather than the other way round.
@@ -4927,6 +5115,9 @@ export class GroundsService {
           timelineStated: true,
         }),
         ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
+        /* Normalised on the way in: seven days listed is the same instruction as saying nothing,
+           and junk from an old client must not make a check-in unschedulable. */
+        ...(dto.workingDays !== undefined && { workingDays: workingDaysOf(dto.workingDays) }),
         ...(requestedLabel !== undefined && { label: requestedLabel }),
         ...(dto.brief !== undefined && { brief: dto.brief.trim() || null }),
         /*
@@ -4946,7 +5137,40 @@ export class GroundsService {
       },
     });
     if (dto.brief !== undefined) await this.tellParticipantsAboutThis(groundId, dto.brief);
+    if (opensAgain) {
+      auditData.timeline.push({
+        changedAt: new Date().toISOString(),
+        changedBy: requestingUserId,
+        changes: { reopened: { from: GroundStatus.STALLED, to: ground.stalledFromStatus ?? GroundStatus.ACTIVE } },
+      });
+      await this.prisma.ground.update({ where: { id: groundId }, data: { groundAuditLog: auditData } }).catch(() => undefined);
+      this.logger.log(`Ground ${groundId} reopened after stalling: now ${ground.stalledFromStatus ?? GroundStatus.ACTIVE}, ${requestedDays} days.`);
+      /*
+       * AND THE PEOPLE WHO WERE TOLD IT STALLED ARE TOLD IT IS BACK.
+       *
+       * They each got an email saying this check-in had stalled. Leaving them with that as the last
+       * word, while the lead sees a live check-in, is how somebody decides it is not worth
+       * answering - which is the outcome he was actually worried about.
+       */
+      this.tellThemItIsOpenAgain(groundId).catch((err: any) =>
+        this.logger.warn(`Could not tell everybody ${groundId} is open again: ${err?.message}`));
+    }
     return updated;
+  }
+
+  /** One email each to everybody on a check-in that has just been given more time. */
+  private async tellThemItIsOpenAgain(groundId: string): Promise<void> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { label: true, endsAt: true, participants: { select: { email: true } } },
+    });
+    if (!ground) return;
+    const where = `${this.config.get<string>('resend.frontendUrl') || ''}/grounds/${groundId}`;
+    for (const p of ground.participants) {
+      await this.email
+        .sendReopenedNotification(p.email, ground.label, where, ground.endsAt ?? null)
+        .catch((err: any) => this.logger.warn(`Reopened notice failed for ${groundId}: ${err?.message}`));
+    }
   }
 
   /**
@@ -5790,6 +6014,25 @@ export class GroundsService {
       select: { id: true },
     });
     if (active.length < 2) return false;
+
+    /*
+     * A GROUND ANSWERED ON A LINK IS READY ON ANSWERS, NOT ON ATTENDANCE.
+     *
+     * The loop below waits for EVERY active party, which cannot be satisfied where parties keep
+     * arriving and the lead never answers: ten agribusinesses answered one link and `releasedAt`
+     * stayed null, so nobody who asked for the report was ever told it existed. See
+     * an-open-link-has-no-roster.
+     */
+    const howTheyArrived = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      select: {
+        cameThroughTheLink: true, managingOnly: true,
+        checkIns: { where: { sessionNumber, status: CheckInStatus.COMPLETED }, select: { id: true } },
+      },
+    }).then((rows) => rows.map((r) => ({
+      cameThroughTheLink: r.cameThroughTheLink, managingOnly: r.managingOnly, finished: r.checkIns.length > 0,
+    }))).catch(() => [] as any[]);
+    if (answeredOnALink(howTheyArrived)) return aLinkRoundIsReady(howTheyArrived);
 
     /* Everybody has ANSWERED - and a decline is an answer (an-answer-includes-a-refusal.ts). Counting
        only COMPLETED here froze every round with one refusal in it, for that session and every one after. */

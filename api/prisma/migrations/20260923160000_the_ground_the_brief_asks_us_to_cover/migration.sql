@@ -1,0 +1,12 @@
+-- THE GROUND THE BRIEF ASKS US TO COVER.
+--
+-- The conversation followed the brief's WORDING rather than its subjects: across a hundred real
+-- conversations, 626 questions, of which 91 were about expansion plans, 62 about volumes and 15
+-- about how anybody vets anybody - on a check-in whose strongest finding was that nineteen
+-- organisations cannot vet anybody.
+--
+-- The subjects are read once from the brief and stored on the ground, because every respondent must
+-- be asked about the same ground: it is the only way a hundred separate answers add up to one
+-- picture. Coverage itself is computed in code from what people said - see
+-- the-ground-the-brief-asks-us-to-cover.ts.
+ALTER TABLE "grounds" ADD COLUMN "subjects_to_cover" JSONB;

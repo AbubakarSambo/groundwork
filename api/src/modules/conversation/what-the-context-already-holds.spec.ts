@@ -87,7 +87,7 @@ describe('a hedge stays a hedge', () => {
       expect(join).toContain(name);
     }
     /* The three things stay last; the hedge sits with the other right-now blocks in front of them. */
-    expect(join).toMatch(/theirHedge, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
+    expect(join).toMatch(/theirHedge, theHole, cannotBeMissed, askedLastTurn, patternProbeBlock\]/);
     /* Never the lead's read of themselves, and the unowned list is the lead's alone. */
     expect(src).toContain("const placeToLook = isTheLead ? '' : aPlaceToLook(myReadLines)");
     expect(src).toContain("const nobodyOwns = isTheLead ? thingsNobodyOwns(ownerless) : ''");

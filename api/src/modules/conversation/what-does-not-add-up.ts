@@ -51,7 +51,7 @@ export interface WhatToCheck {
 }
 
 export interface ADifference {
-  kind: 'counted differently' | 'two numbers for one target' | 'behind with the run nearly over' | 'what it was for has gone quiet';
+  kind: 'counted differently' | 'two numbers for one target' | 'behind with the run nearly over' | 'what it was for has gone quiet' | 'counting a different thing';
   lines: string[];
   /** The numbers or words that identify it, so a turn that already mentioned them counts as having put it. */
   marks: string[];
@@ -109,6 +109,16 @@ const quote = (t: string): string => `"${(t ?? '').replace(/\[VERIFIABILITY:\w+\
 const fmt = (n: number): string => (Math.abs(n) >= 1e6 ? `${+(n / 1e6).toFixed(n % 1e6 ? 1 : 0)}m` : Math.abs(n) >= 1e3 ? n.toLocaleString('en-GB') : String(n));
 
 /* ------------------------------------------------------------------------------------------------ */
+
+/** The words of a target's name worth matching a sentence against: the nouns, not the filler. */
+function wordsOfTarget(name: string): string[] {
+  const stop = new Set(['the', 'and', 'for', 'this', 'that', 'with', 'from', 'total', 'our', 'their', 'quarter', 'month', 'year', 'week', 'target', 'goal', 'number', 'across', 'team']);
+  return (name ?? '')
+    .toLowerCase()
+    .match(/[a-z]{4,}/g)
+    ?.filter((w) => !stop.has(w))
+    .slice(0, 4) ?? [];
+}
 
 export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
   const out: ADifference[] = [];
@@ -210,6 +220,52 @@ export function whatDoesNotAddUp(input: WhatToCheck): ADifference[] {
         });
       }
     }
+  }
+
+  /*
+   * 5. COUNTING A DIFFERENT THING, which is the one the run of 24 September 2026 walked straight past.
+   *
+   * Four salespeople against a shared target of 40 approved credit facilities. Kwame said 22 in
+   * every session and believed he was ahead; he was counting applications taken, not approvals. The
+   * whole team had 11 approved. Nobody corrected him for three sessions, and the report read his 22
+   * as pipeline like everybody else's.
+   *
+   * It is arithmetic, not a judgement: one person's own number for the shared thing is larger than
+   * everything the check-in has recorded against it for EVERYBODY together. That cannot both be
+   * true, and there is exactly one sensible question - which of the two is counting what.
+   *
+   * IT IS NOT AN ACCUSATION AND USUALLY NOT EVEN AN ERROR. The commonest cause is two honest
+   * definitions of one word, which is the thing this product exists to find. The second commonest is
+   * that the board's count is behind. Both are worth a question and neither is worth a conclusion.
+   */
+  const shared = input.targets.filter((t) => !t.yours && (t.target ?? 0) > 0);
+  for (const target of shared) {
+    const recorded = target.count ?? 0;
+    if (recorded <= 0) continue;
+    const words = wordsOfTarget(target.name);
+    if (!words.length) continue;
+    let found: { value: number; raw: string; line: string } | null = null;
+    for (const line of [...input.said].reverse()) {
+      if (line.session !== input.thisSession) continue;
+      const text = line.text ?? '';
+      /* Their sentence has to be about this target, not about some other number in their week. */
+      if (!words.some((w) => text.toLowerCase().includes(w))) continue;
+      for (const n of numbersWithUnits(text)) {
+        if (n.value > recorded && n.value > 1) { found = { value: n.value, raw: n.raw, line: text }; break; }
+      }
+      if (found) break;
+    }
+    if (!found) continue;
+    out.push({
+      kind: 'counting a different thing',
+      lines: [
+        `They said: ${quote(found.line)}.`,
+        `The check-in's own count against ${quote(target.name)} is ${fmt(recorded)} for everybody together.`,
+        `${fmt(found.value)} from one person is more than that, so the two are not counting the same thing.`,
+      ],
+      marks: [String(found.value), String(recorded)],
+    });
+    break;
   }
 
   return out;

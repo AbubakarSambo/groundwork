@@ -1,4 +1,6 @@
-import { howItEnded } from '@/lib/a-ground-that-has-ended'
+import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
+import { scrollToId } from '@/lib/scroll-to'
+import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
 import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { hasDoneThisSession, whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { useState, useEffect } from 'react'
@@ -14,6 +16,8 @@ import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { authApi } from '@/api/auth'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
+import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
+import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
 import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
 import { personLabel } from '@/lib/utils'
 import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
@@ -129,27 +133,31 @@ const TO_TAB_KEY: Partial<Record<Tab, string>> = {
  * stay, because they are the order the questions were asked in when the check-in was set up.
  */
 function Fold({
-  n, title, src, summary, open, onToggle, children, checked, onCheck,
+  n, title, src, summary, open, openOverride, onToggle, children, checked, onCheck,
 }: {
   n: number
   title: string
   src: string
   summary: string
   open: boolean
+  /** Forced open from somewhere else on the page - the out-of-time banner, which exists to get
+      somebody to this control. Kept separate from the accordion so neither closes the other. */
+  openOverride?: boolean
   onToggle: () => void
   children: React.ReactNode
   /** Whether the person has signed this question off. See the-setup-steps-you-have-checked.ts. */
   checked?: boolean
   onCheck?: () => void
 }) {
+  const isOpen = open || !!openOverride
   return (
     <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', marginBottom: 8, overflow: 'hidden' }}>
       <button
         onClick={onToggle}
-        aria-expanded={open}
+        aria-expanded={isOpen}
         style={{
           display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '13px 14px',
-          background: open ? 'var(--gw-paper-2)' : 'white', border: 'none', cursor: 'pointer',
+          background: isOpen ? 'var(--gw-paper-2)' : 'white', border: 'none', cursor: 'pointer',
           fontFamily: 'inherit', textAlign: 'left',
         }}
       >
@@ -160,17 +168,17 @@ function Fold({
         */}
         <span style={{
           flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
-          background: checked ? 'var(--gw-green-b)' : open ? 'var(--gw-navy)' : 'var(--gw-bg)',
-          color: checked ? 'white' : open ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
+          background: checked ? 'var(--gw-green-b)' : isOpen ? 'var(--gw-navy)' : 'var(--gw-bg)',
+          color: checked ? 'white' : isOpen ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}>{checked ? '\u2713' : n}</span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{title}</span>
-          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{open ? src : summary}</span>
+          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{isOpen ? src : summary}</span>
         </span>
-        <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{open ? '\u2212' : '+'}</span>
+        <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{isOpen ? '\u2212' : '+'}</span>
       </button>
-      {open && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
+      {isOpen && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
       {/*
         SIGNING IT OFF, AT THE BOTTOM OF THE QUESTION YOU HAVE JUST READ.
 
@@ -187,7 +195,7 @@ function Fold({
         having actually read the answer. The closed row still turns its number into a tick, so the
         state is visible with everything shut; this is the act.
       */}
-      {open && onCheck && (
+      {isOpen && onCheck && (
         <div style={{ borderTop: '1px solid var(--gw-border)', background: checked ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)' }}>
           <button
             onClick={onCheck}
@@ -285,6 +293,13 @@ export function GroundAdminPage() {
   const [groundLabel, setGroundLabel] = useState('')
   const [timelineDaysDraft, setTimelineDaysDraft] = useState(90)
   const [cadenceDraft, setCadenceDraft] = useState<GroundCadence>('WEEKLY')
+  /* Which days a check-in may open on. Empty means nobody said, which is not the same as every
+     day - see WhichDaysTheyWork. This is the only place the rhythm can be changed after creation,
+     and it carried no way to say "not at the weekend". */
+  const [workingDaysDraft, setWorkingDaysDraft] = useState<number[]>([])
+  /* Opened by the out-of-time banner, which is the one notice whose whole point is to get somebody
+     to the control that lifts it. Independent of the accordion so it cannot fight with it. */
+  const [openTimeframe, setOpenTimeframe] = useState(false)
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
@@ -964,11 +979,29 @@ export function GroundAdminPage() {
     // opens showing the truth rather than a default that would silently change it.
     if (ground?.timelineDays) setTimelineDaysDraft(ground.timelineDays)
     if (ground?.cadence) setCadenceDraft(ground.cadence as GroundCadence)
+    /* Seeded like the rest: an empty picker on a check-in that already skips weekends would offer
+       to put it back on Sundays by pressing save. */
+    if (Array.isArray(ground?.workingDays)) setWorkingDaysDraft(ground.workingDays as number[])
     if (ground?.scenario) setGroundScenario(prev => prev || ground.scenario)
     /* Seeded from the record for the same reason as the two above: an empty date control on a
        check-in that HAS a start date would offer to clear it by pressing save. */
     setStartsAtDraft(startsAtOnRecord)
   }, [ground?.label, ground?.scenario, startsAtOnRecord])
+
+  /*
+   * WHETHER SAVE HAS ANYTHING TO SAVE.
+   *
+   * It compared the length and the rhythm only, so changing the days a team works left the button
+   * disabled - the control agreeing with you and doing nothing, which is the family of bug this
+   * week. Compared as sets, because the picker sorts and the record may not.
+   */
+  const sameDays = (a: number[] | null | undefined, b: number[] | null | undefined) =>
+    workingDaysOf(a).join(',') === workingDaysOf(b).join(',')
+  const theTimeframeChanged = !!ground && (
+    timelineDaysDraft !== ground.timelineDays
+    || cadenceDraft !== ground.cadence
+    || !sameDays(workingDaysDraft, (ground as { workingDays?: number[] }).workingDays)
+  )
 
   // Was the bare words "Ground not found." with nothing to press. W8-65.
   if (definitelyGone) return <Shell><GroundGone /></Shell>
@@ -1377,6 +1410,71 @@ export function GroundAdminPage() {
             ? <div style={{ padding: '0 16px 4px', fontSize: 14, fontWeight: 700, color: say.c, letterSpacing: '-.01em' }}>{say.t}</div>
             : null
         })()}
+        {/*
+          IT RAN OUT OF TIME, AND HERE IS WHAT LIFTS IT.
+
+          Nate Peterson, 23 September 2026: "i let a few check-ins wait and they are now stalled,
+          with no clear way to open them back up. i can't easily see where to reopen them or to
+          extend the timeline." There was no reopen anywhere in the product, and the only thing any
+          screen said about it was "Ended without an agreed outcome" - a verdict, in green, on the
+          one state somebody could still have done something about.
+
+          So it says what happened, in a sentence, and the button goes to the control that lifts it.
+          For anybody who cannot change the time, it says whose call it is instead of showing a
+          button they cannot press.
+        */}
+        {/*
+          AND THE RISK OF IT, BEFORE IT HAPPENS.
+
+          "have a risk of stalling show, don't just stall." Same banner, same button, one week
+          earlier - which is the only version of this that helps anybody. It names what running out
+          costs and how many people have still not answered, because the decision it is asking for
+          is whether those people still will.
+        */}
+        {(() => {
+          const left = whenItRunsOut(ground as any)
+          if (left.state === 'fine') return null
+          const said = sayHowLongIsLeft(left, ground.overdue ?? 0)
+          return (
+            <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--gw-amber-bd)', background: 'var(--gw-amber-bg)' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
+                {left.state === 'out' ? 'Time is up' : left.daysLeft === 1 ? 'Runs out tomorrow' : `Runs out in ${left.daysLeft} days`}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{said}</div>
+              {ground.viewerRunsThisGround && (
+                <button
+                  type="button"
+                  onClick={() => { setOpenTimeframe(true); scrollToId('how-long-this-runs') }}
+                  style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Give it more time
+                </button>
+              )}
+            </div>
+          )
+        })()}
+        {hasStalled(ground.status) && (
+          <div style={{ margin: '0 16px 12px', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--gw-amber-b)', background: 'var(--gw-amber-bg)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>Out of time</div>
+            <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+              {itRanOutOfTime(!!ground.viewerRunsThisGround)}
+            </div>
+            {ground.viewerRunsThisGround && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenTimeframe(true)
+                  /* Through the one helper - see lib/scroll-to, which exists because a raw smooth
+                     scroll ignores reduced-motion and fights the page's own scroll container. */
+                  scrollToId('how-long-this-runs')
+                }}
+                style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Give it more time
+              </button>
+            )}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 10, padding: '0 16px 10px', fontSize: 11, color: 'var(--gw-sub)', flexWrap: 'wrap', alignItems: 'center' }}>
           {ground.scenario && (
             <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: 'var(--gw-bg)', color: 'var(--gw-sub-d)' }}>
@@ -1394,7 +1492,9 @@ export function GroundAdminPage() {
               still has something to say. */}
           {/* WHAT ENDED IT COMES FIRST, and the session clock stops. See lib/a-ground-that-has-ended. */}
           {ended ? (
-            <span style={{ fontWeight: 700, color: 'var(--gw-green-t)' }}>{ended}</span>
+            /* Green says "this went well", which is the wrong thing to say about a check-in that
+               ran out of time with people still to answer. */
+            <span style={{ fontWeight: 700, color: hasStalled(ground.status) ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>{ended}</span>
           ) : allSessionsDone ? (
             <span>every session done</span>
           ) : (
@@ -2843,7 +2943,8 @@ export function GroundAdminPage() {
                 thirty-day one stops asking people to check in two thirds of the
                 way through. */}
 
-            <Fold {...foldProps(setupBand())} title="How long this runs" src="when it starts, how long it runs, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
+            <div id="how-long-this-runs" />
+            <Fold {...foldProps(setupBand())} openOverride={openTimeframe} title="How long this runs" src="when it starts, how long it runs, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
 
             {/*
               WHEN IT STARTS, WHICH HAD NO CONTROL ANYWHERE.
@@ -2911,6 +3012,17 @@ export function GroundAdminPage() {
                     {SELECTABLE_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
                   </select>
                 </div>
+                {/*
+                  AND WHICH DAYS IT MAY LAND ON, under the rhythm because it is part of the rhythm.
+
+                  Offered for every cadence rather than only daily: a fortnightly anchor lands on a
+                  weekend too, just more quietly. A one-time check-in has no rhythm to shape.
+                */}
+                {cadenceDraft !== 'ONE_TIME' && (
+                  <div style={{ marginTop: 10 }}>
+                    <WhichDaysTheyWork value={workingDaysDraft} onChange={setWorkingDaysDraft} />
+                  </div>
+                )}
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6 }}>
                   {timelineDaysDraft} days, {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} session{(sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1) === 1 ? '' : 's'}.
                   {' '}Sessions already completed are never removed.
@@ -2933,9 +3045,9 @@ export function GroundAdminPage() {
                   answer you agree.
                 </div>
                 <button
-                  disabled={(timelineDaysDraft === ground.timelineDays && cadenceDraft === ground.cadence) || saveSetup.isPending}
-                  onClick={() => saveSetup.mutate({ timelineDays: timelineDaysDraft, cadence: cadenceDraft })}
-                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (timelineDaysDraft !== ground.timelineDays || cadenceDraft !== ground.cadence) ? 1 : 0.4 }}
+                  disabled={!theTimeframeChanged || saveSetup.isPending}
+                  onClick={() => saveSetup.mutate({ timelineDays: timelineDaysDraft, cadence: cadenceDraft, workingDays: workingDaysDraft })}
+                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: theTimeframeChanged ? 1 : 0.4 }}
                 >
                   Save timeframe
                 </button>

@@ -1,4 +1,4 @@
-import { nothingYet, withThisTurn, whatIsMissing, theGapWorthRaising, type Claim, type WhatWeHave } from './what-we-have-so-far';
+import { nothingYet, withThisTurn, whatIsMissing, theGapWorthRaising, whatToAskAbout, type Claim, type WhatWeHave } from './what-we-have-so-far';
 
 const claim = (c: Partial<Claim> & { id: string; kind: Claim['kind']; said: string }): Claim =>
   ({ session: 1, ...c } as Claim);
@@ -156,5 +156,51 @@ describe('merging a turn', () => {
     s = withThisTurn(s, [claim({ id: 'c', kind: 'TARGET', said: 'getting data from the women', verification: 'sales records' })], false);
     expect(s.claims[0].said).toBe('increase their incomes by 30%');
     expect(s.claims[0].verification).toBe('sales records');
+  });
+});
+
+/**
+ * AND WHAT THE CONVERSATION IS TOLD TO ASK.
+ *
+ * This is the half that replaces "ask the next item on the brief". On her own transcript the hole
+ * is the baseline, and what the check-in actually asked her next was "what capacity and networks do
+ * you already have".
+ */
+describe('what to ask about', () => {
+  const claim = (c: any) => ({ session: 1, ...c });
+
+  it('says the hole, why it bites, and quotes them', () => {
+    const s = withThisTurn(nothingYet(), [claim({
+      id: 'c', kind: 'TARGET', said: 'increase their incomes by 30%', measure: 'income', number: '30%', verification: 'sales records',
+    })], false);
+    const told = whatToAskAbout(s);
+    expect(told).toContain('THE MOST USEFUL THING MISSING');
+    expect(told).toContain('what it is now');
+    expect(told).toContain('"increase their incomes by 30%"');
+    /* And it will not be claimable at the end, which is the reason it matters. */
+    expect(told).toContain('not be claimable');
+  });
+
+  /* A measure nobody collects is the hole that makes every other answer unusable, so it outranks
+     the rest - and the turn is told to say so plainly rather than move on. */
+  it('and puts an unverifiable measure first', () => {
+    const s = withThisTurn(nothingYet(), [claim({ id: 'c', kind: 'TARGET', said: 'fifteen meetings a month', measure: 'meetings' })], false);
+    expect(whatToAskAbout(s)).toContain('whose records, which system, who reads it');
+  });
+
+  /* It decides what to ASK, never what to ignore: the person in front of you comes first. */
+  it('and never overrides what they just said', () => {
+    const s = withThisTurn(nothingYet(), [claim({ id: 'c', kind: 'PLAN', said: 'open in Kano' })], false);
+    expect(whatToAskAbout(s)).toContain('Answer whatever they just said first');
+    expect(whatToAskAbout(s)).toContain('Ask it as one question');
+  });
+
+  /* Where nothing is missing the block is empty and the brief carries the turn, as before. */
+  it('and says nothing where nothing is missing', () => {
+    expect(whatToAskAbout(nothingYet())).toBe('');
+    const whole = withThisTurn(nothingYet(), [claim({
+      id: 'c', kind: 'TARGET', said: 'fifteen meetings a month', measure: 'meetings', verification: 'the CRM', number: '15', baseline: 'nine now',
+    })], false);
+    expect(whatToAskAbout(whole)).toBe('');
   });
 });

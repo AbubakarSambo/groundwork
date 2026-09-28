@@ -42,6 +42,56 @@ const NOT_COPY = [
   /* Both hold that same sentence of hers: the email that sends it, and the form that sets it. */
   'one-line-one-link-one-report.ts',
   'AskYourTeamOneThing.tsx',
+  /*
+   * A MODEL INSTRUCTION, LIKE prompt-library.ts ABOVE IT.
+   *
+   * `reading-what-they-just-said.ts` is the extraction prompt for the conversation's working notes.
+   * Three of its lines score here - "NEVER INVENT A FIELD. If they did not say the baseline, leave
+   * it out" and two about which array a claim belongs in - and every one of them is addressed to a
+   * model, not to a person. Rewriting them to read well to somebody would make them worse at the
+   * only job they have. Same reason this list already excludes the prompt library.
+   */
+  'reading-what-they-just-said.ts',
+  /*
+   * AND THE CONTEXT CHAT'S OWN PROMPT, for the same reason and by the same test.
+   *
+   * `the-context-chat.ts` is one long model instruction - "ANSWER THEM BEFORE YOU ASK", "RECOMMEND
+   * THE MATERIAL, DO NOT WAIT FOR IT", the rules about what a commitment means. Ten of its lines
+   * score here and not one of them is addressed to a person. It was being counted only because
+   * nobody had looked at which file the offenders were in.
+   *
+   * AND THE CEILING DOES NOT MOVE. Measured after every exclusion here: sixty, which is exactly
+   * where the copy pass left it. The prompt files account for precisely the lines today's work
+   * added and nothing else, so no real copy anywhere has been excused and no slack has been bought.
+   * That is the thing to check before excluding anything, and it was checked each time.
+   */
+  'the-context-chat.ts',
+  /*
+   * AND THE THREE PROMPTS TODAY'S WORK ADDED, by the same test as every file above.
+   *
+   * `what-a-complete-answer-holds.ts` holds the instruction that reads a brief into comparable
+   * fields ("If two answers to your field could not be put in the same column of a table, it is not
+   * a field yet"). `the-judgement-over-the-answers.ts` holds the one that writes the judgement over
+   * the counts ("every sentence you write contains a number that is in the table"). And
+   * `fitting-an-answer-into-the-frame.ts` holds the one that puts a person's answers into those
+   * fields. Every scoring line in the three is addressed to a model.
+   *
+   * AND THE CEILING DOES NOT MOVE: measured at sixty after excluding them, which is where the copy
+   * pass left it. They account for exactly the lines today's work added and nothing else, so no
+   * real copy has been excused. The out-of-time sentences those same changes put in front of people
+   * were rewritten instead of excluded - they are copy, and they scored, so they were fixed.
+   */
+  'what-a-complete-answer-holds.ts',
+  'the-judgement-over-the-answers.ts',
+  'fitting-an-answer-into-the-frame.ts',
+  /*
+   * AND THE TELLING'S OWN PROMPT. `what-a-participant-is-told-about-this.ts` exists to hold
+   * THE_TELLING_PROMPT - the instructions for rewriting a lead's brief into the box a participant
+   * reads. Its strings are addressed to a model, like the three files above it. The sentence the
+   * participant actually sees is written BY the model and checked by `theTellingHolds`, which is a
+   * separate guard with its own tests.
+   */
+  'what-a-participant-is-told-about-this.ts',
 ]
 
 const blankComments = (src: string) =>

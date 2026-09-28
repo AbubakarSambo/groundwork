@@ -141,15 +141,35 @@ export function findingFor(p: APersonToWriteUp, thisSession: number): AFinding |
  * THE OVERVIEW, ONE OR TWO SENTENCES, FROM THE FINDINGS. Counts the product can stand behind: how many
  * people have a gap the record shows, and who. Never "all".
  */
-export function theOverview(findings: AFinding[], peopleAnswered: number): string {
+export function theOverview(findings: AFinding[], peopleAnswered: number, differencesBetweenAccounts = 0): string {
   const withGap = findings.filter((f) => f.hasGap);
   if (!findings.length) return '';
-  if (!withGap.length) return `${findings.length} of ${peopleAnswered} people have given an account, and the record shows no gap between what each said this was for and what they report.`;
-  return `The record shows a gap for ${withGap.length} of the ${peopleAnswered} people who answered: ${withGap.map((f) => f.headline ?? f.label).join('; ')}.`;
+  if (withGap.length) {
+    return `The record shows a gap for ${withGap.length} of the ${peopleAnswered} people who answered: ${withGap.map((f) => f.headline ?? f.label).join('; ')}.`;
+  }
+  /*
+   * WHAT THIS CHECK ACTUALLY COMPARED, AND NOTHING WIDER.
+   *
+   * Live run, 24 September 2026: a consultant who had done almost none of the job he was hired for,
+   * and the first line of his client's report was "the record shows no gap between what each said
+   * this was for and what they report". It was not a lie about him - every finding here reads one
+   * person against their OWN stated purpose and their own numbers, and his account is perfectly
+   * consistent with itself. It was a lie about the check, which the reader has no way to see. A man
+   * can be entirely consistent about sending letters for three months.
+   *
+   * So the sentence says which comparison it made, and where the two accounts differ it says that
+   * instead of "no gap" - because a difference between the accounts IS the gap, and it is the next
+   * thing on the page.
+   */
+  const consistent = `${findings.length} of ${peopleAnswered} people have given an account, and nothing in any single account contradicts what that person said it was for.`;
+  if (differencesBetweenAccounts > 0) {
+    return `${consistent} The accounts differ on ${differencesBetweenAccounts} ${differencesBetweenAccounts === 1 ? 'thing' : 'things'}, below.`;
+  }
+  return `${consistent} Nobody has been read against anybody else's account of what they did.`;
 }
 
 /** The whole product-written half of the picture: the overview, then each person. */
-export function thePictureTheProductWrites(findings: AFinding[], peopleAnswered: number): string {
+export function thePictureTheProductWrites(findings: AFinding[], peopleAnswered: number, differencesBetweenAccounts = 0): string {
   if (!findings.length) return '';
-  return [theOverview(findings, peopleAnswered), ...findings.map((f) => f.text)].filter(Boolean).join('\n\n');
+  return [theOverview(findings, peopleAnswered, differencesBetweenAccounts), ...findings.map((f) => f.text)].filter(Boolean).join('\n\n');
 }

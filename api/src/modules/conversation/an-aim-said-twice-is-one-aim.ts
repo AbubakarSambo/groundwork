@@ -30,6 +30,19 @@ const WHAT_IS_LEFT = (name: string): string =>
     .replace(/\b\d[\d,.]*\s*(k|m|bn|million|thousand)?\b/g, ' ')
     .replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred|thousand|million)\b/g, ' ')
     .replace(/\b(units?|items?|things?|pieces?|bags?|boxes?|cases?|sales?|total|in total|overall|target|goal|objective|of|the|a|an|for|this|our|team|company|year|month|week|quarter|q[1-4]|period)\b/g, ' ')
+    /*
+     * AND THE VERB AN AIM IS PHRASED WITH IS NOT WHAT IT IS ABOUT.
+     *
+     * Live board, 24 September 2026, two objectives, both with no owner and no number:
+     *   - Get the federal ministry MOU for the market information programme
+     *   - Secure the federal ministry MOU for the market information programme
+     * One aim, read twice, out of two turns of the same conversation. The subset rule could not
+     * merge them because each name held one word the other did not, and that word was the verb.
+     * Every one of these is a way of saying "make this happen", carries nothing about WHICH thing,
+     * and taking them out leaves exactly the thing: "federal ministry mou market information
+     * programme", identical on both.
+     */
+    .replace(/\b(get|getting|secure|securing|obtain|obtaining|achieve|achieving|deliver|delivering|reach|reaching|complete|completing|finish|finishing|close|closing|win|winning|sign|signing|land|landing|bring|bringing|drive|driving|generate|generating|build|building|set up|setting up|make|making|move|moving|ensure|ensuring|establish|establishing)\b/g, ' ')
     .replace(/[^a-z]+/g, ' ')
     .trim();
 

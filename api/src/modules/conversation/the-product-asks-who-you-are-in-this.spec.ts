@@ -19,13 +19,13 @@ const SERVICE = strip(readFileSync(join(__dirname, 'conversation.service.ts'), '
 
 describe('the product asks who you are in this', () => {
   it('the first line to a non-lead in a starting scenario is written by the product, not the model', () => {
-    const at = SERVICE.indexOf('const reply = startsSomething && notTheLead');
+    const at = SERVICE.indexOf(': startsSomething && notTheLead');
     expect(at).toBeGreaterThan(-1);
     expect(SERVICE.slice(at, at + 400)).toContain('? WHO_ARE_YOU_IN_THIS');
   });
 
   it('and not on a correction or a closing session, which have their own openers', () => {
-    const at = SERVICE.indexOf('const reply = startsSomething && notTheLead');
+    const at = SERVICE.indexOf(': startsSomething && notTheLead');
     expect(SERVICE.slice(at, at + 200)).toContain('correctingSession == null');
     expect(SERVICE.slice(at, at + 200)).toContain('!(checkIn as any).isFinal');
   });

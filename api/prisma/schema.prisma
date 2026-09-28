@@ -676,6 +676,7 @@ model PendingJoin {
   id        String @id @default(uuid())
   /// The link they arrived on.
   joinToken String @map("join_token")
+
   /// The address they typed. Lower-cased. Unproven until this row is used.
   email     String
 
@@ -919,6 +920,23 @@ model Ground {
   endState        String?   @map("end_state") // the decision the process worked toward
   resolutionState String?   @map("resolution_state") // pre-agreed intended outcome set at creation
   brief           String?   @map("brief") // initiator's opening brief, written at ground creation
+  /// THE SUBJECTS THIS BRIEF ASKS ABOUT, read once and kept: each with the lead's own words for it,
+  /// one plain question, and the words that show somebody has covered it. Every respondent is asked
+  /// about the same ground, which is the only way many separate answers add up to one picture.
+  /// Coverage is computed from what people said and never stored. See
+  /// the-ground-the-brief-asks-us-to-cover.ts.
+  subjectsToCover Json? @map("subjects_to_cover")
+  /// WHAT A COMPLETE ANSWER TO THIS BRIEF HOLDS: the comparable fields every respondent must end
+  /// with - a named place, a quantity with its period, which of a few named situations they are in.
+  ///
+  /// A subject is a topic to raise; two people can both talk about volumes and leave nothing that
+  /// can be put side by side. Two customers read the same report on 23 September 2026 and both said
+  /// it only listed what people said: a hundred differently shaped answers cannot be counted,
+  /// ranked or cut by kind of organisation, so the only thing left to write was atmosphere. Read
+  /// once from the brief, confirmed by the lead, and identical for every respondent - a column that
+  /// means something different for person 40 than person 4 is not a column.
+  /// See what-a-complete-answer-holds.ts.
+  whatACompleteAnswerHolds Json? @map("what_a_complete_answer_holds")
   /// What a participant reads under "About this check-in": the situation and what it is for, in the
   /// product's words, addressed to them. Written once from the brief at creation and again when the
   /// brief changes; guarded in code so no instruction to the product and none of the lead's first
@@ -938,6 +956,24 @@ model Ground {
   /// than guessing ACTIVE. Written by pauseGround, cleared by resumeGround. Null on any ground
   /// paused before this column existed; resume falls back to ACTIVE for those and says so.
   pausedFromStatus   GroundStatus? @map("paused_from_status")
+
+  /// WHEN THE TIME RAN OUT, AND WHAT THIS CHECK-IN WAS BEFORE IT DID.
+  ///
+  /// STALLED is written by the 3am sweep when a check-in passes the time it was given. It used to
+  /// sit with RESOLVED and CLOSED - two decisions somebody took - so it inherited their one
+  /// property: no way back. A customer let a few check-ins wait, found them stalled, and had
+  /// nothing anywhere to reopen them or extend the time; the check-ins were dead and so was
+  /// everything already answered in them.
+  ///
+  /// So it remembers where it came from, exactly as `pausedFromStatus` does, and giving the
+  /// check-in more time puts it back. A state a machine can put you in has to have a way out a
+  /// person can use. See a-ground-that-has-ended.ts and reopenAfterStalling.
+  stalledFromStatus  GroundStatus? @map("stalled_from_status")
+  stalledAt          DateTime?     @map("stalled_at")
+  /// One-shot: the lead was warned the time was about to run out, with a way to extend it. Null
+  /// means never warned - which is how every stalled check-in before today arrived there, with no
+  /// notice at all until it was already too late.
+  stallWarningSentAt DateTime?     @map("stall_warning_sent_at")
 
   /// WHO CHASES, AND HOW OFTEN, BELONGS TO WHOEVER SET THE WORK UP.
   ///
@@ -1000,6 +1036,15 @@ model Ground {
   /// running.
   freeParticipantCap         Int      @default(5) @map("free_participant_cap")
   joinToken                  String?  @unique @map("join_token")
+
+  /// THE FIRST THING THE PRODUCT SAYS TO SOMEBODY WHO ARRIVED THROUGH THE LINK, WRITTEN ONCE.
+  ///
+  /// An opener is composed from the brief and the scenario and nothing else - a link respondent has
+  /// said nothing and the product knows nothing about them - so a hundred people through one link
+  /// were each waiting fourteen to eighteen seconds for the same sentence to be written again.
+  /// Kept here so the first person pays for it and nobody else does. Null on every ground until
+  /// somebody opens the link, and never used for a named participant, whose opener can name them.
+  openerForALink             String?  @map("opener_for_a_link")
 
   /// WHICH PIECE OF THE CUSTOMER'S OWN WORK THIS CHECK-IN IS ABOUT.
   ///
@@ -1199,6 +1244,15 @@ model GroundParticipant {
   // account that will never come. See grounds.service.ts confirmLead/isSessionReadyForReport.
   managingOnly               Boolean           @default(false) @map("managing_only")
   roleAsDescribed            String?           @map("role_as_described") // role as the initiator described it
+  /// What the lead wrote when they added this person: what they are accountable for, in the lead's
+  /// own words. It used to go into the invite email and nowhere else, so the one statement of what
+  /// somebody was taken on to do was not on the record the reports read.
+  remitAsGiven               String?           @map("remit_as_given") @db.Text
+  /// Whether they came in through the open link rather than being put on a roster. Recorded rather
+  /// than inferred: `invitedAt` is set on a link respondent immediately, the `@unclaimed.invalid`
+  /// address is replaced when they finish, and a null `userId` is also true of somebody invited who
+  /// has not signed in. See an-open-link-has-no-roster.
+  cameThroughTheLink         Boolean           @default(false) @map("came_through_the_link")
   /// THE NAME THEY GAVE. Somebody who answers through an open link has no sign-in and so no User
   /// row to carry a name; this is the name they typed at the end, beside where to send the report.
   /// Read wherever a first name would be. Hafsah, 22 Sep 2026: "we need to have the names of the
@@ -1383,6 +1437,18 @@ model CheckIn {
   /// decided in exactly one place. See what-we-have-so-far.ts.
   whatWeHave    Json?  @map("what_we_have")
 
+  /// THIS PERSON'S ANSWERS, PUT INTO THE FIELDS A COMPLETE ANSWER HOLDS.
+  ///
+  /// The frame says what every answer must contain; this is what THIS answer contained, in the same
+  /// shape as everybody else's, so a hundred conversations become a hundred rows that can be
+  /// counted. Written when they finish, because that is when there is a whole answer to read and it
+  /// costs one call rather than a hundred at once when the report runs.
+  ///
+  /// `couldNotSay` is kept apart from a blank on purpose: somebody who says they have no way to
+  /// check a new supplier has answered the question, and twenty-nine of those is the product
+  /// specification. See fitting-an-answer-into-the-frame.ts.
+  theirAnswerFitted Json? @map("their_answer_fitted")
+
   /// GW-EXP-6. A SETUP CONVERSATION, NOT A SESSION.
   ///
   /// The lead's expectation-setting interview. It exists because a managing-only lead - somebody who
@@ -1406,7 +1472,6 @@ model CheckIn {
   sessionReadyNotifiedAt      DateTime?     @map("session_ready_notified_at") // one-shot: "your check-in is now open" email sent
   openedAnnouncedAt           DateTime?     @map("opened_announced_at") // one-shot: checkin.opened went to the organisation's webhooks
   patternsAnalyzedAt          DateTime?     @map("patterns_analyzed_at") // pattern sweep has processed this period
-  nextCommitment              String?       @map("next_commitment")
   closedReason                String?       @map("closed_reason") // "declined" or "auto_closed"; null when the person completed it
   /// One of managed | vague | directional | specific, worst first - enforced by a CHECK constraint in
   /// the database and ordered in one place (conversation/how-checkable-a-session-was.ts). The map that
@@ -1995,6 +2060,27 @@ model Report {
   /// a-hundred-accounts-are-not-two.ts for its shape and for what it is forbidden to invent.
   networkPicture  Json?     @map("network_picture")
 
+  /// THE JUDGEMENT OVER EVERY ANSWER: the gap, what the counts say, what to do about it, what this
+  /// data cannot tell anybody, and what we failed to ask.
+  ///
+  /// Two customers read a report that listed what people said and called it worthless: "it did not
+  /// classify things or assess or recommend well", "too abstract, talked in parables". Classifying
+  /// and assessing are arithmetic over the fitted answers and no model touches them. Only the last
+  /// part is written, and it is handed nothing but the table of counts, with every sentence required
+  /// to carry a number that is in it - checked in code. See the-judgement-over-the-answers.ts.
+  theJudgement    Json?     @map("the_judgement")
+  /// Commitments, dependencies, patterns, gaps and what is still open, across every session.
+  /// Arithmetic over rows: no model writes it and no model can leave it out.
+  overTime        Json?     @map("over_time")
+  /// How many people had answered when this report was last written. A report that is behind the
+  /// answers says so, and a cron goes back for the ones who came after. Null on reports written
+  /// before the column existed.
+  builtFromAnswers Int?     @map("built_from_answers")
+  /// The table the judgement was written from, kept so a reader can see the counts behind a
+  /// sentence, and so the whole thing can be laid out as rows and columns. If it cannot be, we
+  /// built a newsletter.
+  theTable        String?   @map("the_table") @db.Text
+
   /// HOW THE ORGANISER CHOSE TO SHARE IT: 'NAMED' or 'ANONYMOUS'. Null until it is sent to anybody.
   /// The product never decides this - see whatTheRespondentsGet.
   sharedAs        String?   @map("shared_as") @db.VarChar(16)
@@ -2062,6 +2148,9 @@ model PatternDetection {
   participantId    String        @map("participant_id")
   code             String // D1..D8, B1..B12, K/E/R/F codes — see Part 4
   periodsObserved  Int           @default(1) @map("periods_observed")
+  /// Every period this was actually observed in, gaps included. `periodsObserved` is the CONSECUTIVE
+  /// run; this is the honest history, and three of these surfaces a pattern whether they touch or not.
+  seenInSessions   Int[]         @default([]) @map("seen_in_sessions")
   lastPeriodNumber Int?          @map("last_period_number") // session number of the most recent period; enforces consecutiveness
   status           PatternStatus @default(CANDIDATE)
   observationText  String?       @map("observation_text") @db.Text // plain language, never a score
@@ -4578,6 +4667,11 @@ model GroundCommitment {
   authorUserId  String? @map("author_user_id")
   /// The check-in this was last put to somebody in, so it is not raised again every session.
   carriedIntoCheckInId String? @map("carried_into_check_in_id")
+  /// The session they first said it in. Null on a PASTE, which has no session.
+  statedInSession Int? @map("stated_in_session")
+  /// The sessions they said it again in, unresolved. Saying it again is not a second commitment -
+  /// it is the same one, still open, and this is what makes that countable.
+  saidAgainIn Int[] @default([]) @map("said_again_in")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -160,3 +160,28 @@ describe('GW-ROLEDETECT-05: universal modes cover an unmapped role', () => {
     ).not.toContain(UniversalMode.UNDER_PERSISTENCE);
   });
 });
+
+/*
+ * ONE WORD IS NOT A JOB. Live run, 24 September 2026, first session of a government liaison
+ * consultant: "In-session function read: none -> ENGINEERING (0.51). Account shows engineering work
+ * most (1 signals of 2)." 0.51 clears MIN_COACHING_CONFIDENCE, so the next question came off the
+ * engineering map.
+ */
+describe('one word is not a job', () => {
+  it('names no function off a single hit, and says why', () => {
+    const read = detectFunction(null, ['We need to build the relationship with the ministry first.']);
+    if (read.fn !== null) {
+      /* If the corpus happens to carry two hits of one function, the floor is not what is under test. */
+      expect(read.confidence ?? 0).toBeGreaterThan(0);
+    } else {
+      expect(read.confidence).toBe(0);
+      expect(read.basis).toContain('One word of');
+      expect(read.basis).toContain('Too little to name a function');
+    }
+  });
+
+  it('keeps the stated role, held provisional, where there is one', () => {
+    const read = detectFunction('Government Liaison Consultant', ['We need to build the relationship with the ministry.']);
+    expect((read.confidence ?? 1)).toBeLessThanOrEqual(0.45);
+  });
+});

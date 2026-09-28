@@ -22,6 +22,21 @@
  * Same rule: it says where to look, and if THIS period's evidence does not show it, the answer is
  * still none. The independent confirmation call that already runs on every candidate never sees
  * this block, so a code that survives anchoring still has to survive a reader that was not told.
+ *
+ * WHY THE WINDOW IS THREE PERIODS AND NO LONGER ONE. Measured on a live three-month engagement,
+ * 24 September 2026. A consultant made a future-tense promise and did not complete it in every
+ * single fortnight of six. E2, Intro Evasion, is that behaviour by name. It was detected in
+ * fortnight two, and then in fortnight six, and the lead was told nothing in three months.
+ *
+ * One period of memory is what did it. Miss a period - and thirty codes with overlapping signals
+ * means missing one is ordinary - and the row's lastPeriodNumber falls behind, the exact-match
+ * lookup stops finding it, the detector loses the words it used last time, and the next period is
+ * likelier to miss it too. The hole feeds itself. The original reasoning was sound on its own
+ * terms: a gap reset the streak, so an older detection could not extend anything, and showing it
+ * would invite re-reporting something the rule had discarded. What changed is the rule. A gap no
+ * longer discards anything (see `seenInSessions` in patterns.service) - three periods count whether
+ * they are consecutive or not - so recognising a thing seen two periods ago is no longer a way
+ * round anything. It is the same behaviour, named the same way, which is all this file ever did.
  */
 
 export interface SeenLastPeriod {
@@ -30,25 +45,40 @@ export interface SeenLastPeriod {
   lastPeriodNumber: number | null;
 }
 
+/** How far back a detection is still worth recognising by name. Three periods, and no further. */
+export const HOW_FAR_BACK = 3;
+
 /**
- * Only the period immediately before this one.
+ * The recent periods, most recent first, never the whole history.
  *
- * A gap already resets the streak, so a detection last seen three periods ago cannot extend
- * anything - showing it would be inviting the model to re-report something the rule has already
- * discarded, which is how a steer turns into a way round the rule.
+ * Bounded for the same reason it was once bounded to one: a list of everything ever seen about
+ * somebody, put in front of a labeller, stops being a way to recognise a thing and becomes a
+ * suggestion of what to find. Three periods is the same number as the rule it serves.
  */
-export function whatWasSeenLastPeriod(rows: SeenLastPeriod[], thisPeriod: number): SeenLastPeriod[] {
+export function whatWasSeenLastPeriod(rows: SeenLastPeriod[], thisPeriod: number, howFarBack = HOW_FAR_BACK): SeenLastPeriod[] {
   return rows
-    .filter((r) => r.lastPeriodNumber === thisPeriod - 1 && (r.observationText ?? '').trim())
-    .sort((a, b) => a.code.localeCompare(b.code))
+    .filter((r) => {
+      const seen = r.lastPeriodNumber;
+      if (seen === null || seen === undefined) return false;
+      return seen <= thisPeriod - 1 && seen >= thisPeriod - howFarBack && !!(r.observationText ?? '').trim();
+    })
+    .sort((a, b) => (b.lastPeriodNumber ?? 0) - (a.lastPeriodNumber ?? 0) || a.code.localeCompare(b.code))
     .slice(0, 5);
 }
 
-export function lastPeriodBlockFor(rows: SeenLastPeriod[]): string {
+/** "last period", or "two periods ago" - so the model knows how old each line is. */
+function howLongAgo(seen: number | null, thisPeriod: number): string {
+  const back = thisPeriod - (seen ?? thisPeriod);
+  if (back <= 1) return 'last period';
+  return `${back} periods ago`;
+}
+
+export function lastPeriodBlockFor(rows: SeenLastPeriod[], thisPeriod?: number): string {
   if (!rows.length) return '';
+  const when = (r: SeenLastPeriod) => (thisPeriod ? ` (${howLongAgo(r.lastPeriodNumber, thisPeriod)})` : '');
   return `
 
-WHAT WAS OBSERVED IN THE PERIOD IMMEDIATELY BEFORE THIS ONE
+WHAT WAS OBSERVED IN THIS PERSON'S RECENT PERIODS
 
 Use this ONLY to recognise the same thing if it is here again, so that a behaviour which genuinely
 continued is not relabelled as something else.
@@ -57,5 +87,5 @@ It is not evidence about this period and it is never the reason. If this period'
 show it then the answer is still none - saying nothing is the correct and common answer.
 
 Do not assume any of it continued. Most will not have.
-${rows.map((r) => `- ${r.code}: ${r.observationText!.trim()}`).join('\n')}`;
+${rows.map((r) => `- ${r.code}${when(r)}: ${r.observationText!.trim()}`).join('\n')}`;
 }

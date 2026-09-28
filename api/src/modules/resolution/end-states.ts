@@ -3,9 +3,10 @@ import { GroundScenario } from '@prisma/client';
 /**
  * The end states each scenario builds toward (Part 8 / moment selector).
  *
- * How a ground CLOSES depends on who the parties are to each other - see
- * LEAD_DECIDES below. Two peers must agree; where one person's position is what
- * the ground is about, the decision belongs to whoever holds it in real life.
+ * WHO CLOSES ONE: the lead, on every scenario. It used to depend on who the parties were to each
+ * other - two peers had to agree, and the decision belonged to the lead only where one person's
+ * position was what the check-in was about. Her call, 24 September 2026: "the lead is meant to
+ * close it, nothing like agreement." See closingNeedsEveryone below.
  */
 export const END_STATES: Record<GroundScenario, { value: string; label: string; description?: string }[]> = {
   ROLE_HANDOVER: [
@@ -255,40 +256,37 @@ export function endStatesForGround(
 
 
 /**
- * WHERE ONE PERSON IS THE SUBJECT, THE DECISION IS NOT SHARED.
+ * THE LEAD CLOSES IT. THERE IS NO AGREEMENT STEP.
  *
- * Every ground used to close the same way: both parties pick, and it closes only
- * when they pick the SAME thing. For two cofounders that is exactly right, and
- * the original comment said so - neither of them has authority over the other,
- * and a partnership dispute one person can close alone is a worse product.
+ * Hafsah, 24 September 2026: "the lead is meant to close it, nothing like agreement."
  *
- * On a new hire ground it was indefensible. The hire was shown "Let them go" and
- * asked to choose it, and the ground could not close until he picked the same
- * option as his manager. Two things wrong at once: he is handed a choice about
- * his own dismissal, which is a cruel thing to put in front of someone, and he
- * is given a veto over an employment decision that was never his to make.
+ * Every check-in used to close only when every active party picked the SAME end state, and nobody
+ * could close one alone. That was in the first commit this repo has, and in August six scenarios
+ * were carved out of it - new hire, PIP, new manager, new advisor, contract renewal, recognition -
+ * because on a new-hire ground the hire was shown "Let them go" and asked to choose it, which is a
+ * cruel thing to put in front of somebody and a veto over a decision that was never theirs.
  *
- * So: the lead proposes and confirms on the scenarios listed here. The other
- * party still SEES the options and what is coming - being closed out without
- * warning would be its own harm - and they keep every other voice they had:
- * their own account, their own corrections, and the record standing beside the
- * lead's. What they no longer get is a button asking them to agree to their own
- * exit.
+ * The carve-out was the right instinct about the wrong rule. Whoever called the check-in is the
+ * person who has to act on how it ends, and making that wait on unanimity does not give anybody a
+ * voice - it gives everybody a veto, and a check-in nobody will close is a record that quietly
+ * stops being used. Eighteen grounds, two hundred and sixty-five finished check-ins, and not one
+ * of them ever closed.
  *
- * The list is deliberately conservative. Anything not on it keeps both-must-agree,
- * because getting this wrong toward "everyone agrees" only stalls a ground,
- * while getting it wrong toward "the lead decides" takes away someone's say.
+ * WHAT A PARTICIPANT KEEPS, WHICH IS EVERYTHING EXCEPT THE VETO. They see the options and what is
+ * coming, so nobody is closed out without warning. Their own account stands on the record beside
+ * the lead's, they can still correct it, and the report is still read by everybody at the same
+ * moment - what they never had, and this does not give them, is a ruling of their own.
  */
-export const LEAD_DECIDES: ReadonlySet<GroundScenario> = new Set([
-  GroundScenario.NEW_HIRE,          // probation: the employer decides
-  GroundScenario.PIP,               // a performance plan the employer runs
-  GroundScenario.NEW_MANAGER,       // an engagement the org extends or ends
-  GroundScenario.NEW_ADVISOR,       // likewise
-  GroundScenario.CONTRACT_RENEWAL,  // renewing is the counterparty's call
-  GroundScenario.RECOGNITION,       // granting or declining an ask
-]);
+export const LEAD_DECIDES_EVERYWHERE = true;
 
-/** Does closing this ground need every party to agree, or just the lead? */
-export function closingNeedsEveryone(scenario: GroundScenario): boolean {
-  return !LEAD_DECIDES.has(scenario);
+/**
+ * Does closing this check-in need every party to agree? No - the lead closes it.
+ *
+ * Kept as a function rather than deleted, because four call sites read it and a constant `false`
+ * inlined at each of them is four places to disagree later. It takes the scenario it no longer uses
+ * for the same reason: every caller already has one, and the day a scenario genuinely needs
+ * unanimity this is the one line that changes.
+ */
+export function closingNeedsEveryone(_scenario: GroundScenario): boolean {
+  return false;
 }

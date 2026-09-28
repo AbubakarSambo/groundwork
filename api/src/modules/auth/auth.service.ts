@@ -1,3 +1,4 @@
+import { whatTheirWorkspaceIsCalled, whyNotAnotherWorkspace } from './a-roster-row-is-not-a-life-sentence';
 import { hashed } from './a-token-is-stored-as-its-hash';
 import { sessionClaims, ASessionHolder, SignedInVia } from './a-session-token';
 import {
@@ -1279,6 +1280,71 @@ export class AuthService {
    */
   private generateToken(user: ASessionHolder, via: SignedInVia = 'password') {
     return this.jwtService.sign(sessionClaims(user, via));
+  }
+
+  /**
+   * START MY OWN WORKSPACE.
+   *
+   * The door out of somebody else's organisation, for anybody who was joined to one because their
+   * address was on its roster. See a-roster-row-is-not-a-life-sentence for why the joining rule
+   * itself is not the thing being changed.
+   *
+   * Nobody is removed from anything and no stranger is put anywhere: this creates an organisation,
+   * makes them its admin, gives them a membership of it, and switches them into it. The membership
+   * they already had stays exactly as it was, so a real employee who presses this by accident is
+   * one switch away from where they were.
+   */
+  async startMyOwnWorkspace(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, firstName: true, lastName: true, organizationId: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    /* Theirs is one they are the ADMIN of. A membership somebody else gave them is not theirs. */
+    const owned = await this.prisma.organizationMembership.findFirst({
+      where: { userId, role: 'ADMIN' as any },
+      select: { organizationId: true },
+    });
+    const refusal = whyNotAnotherWorkspace({ alreadyOwnsOne: !!owned });
+    if (refusal) throw new BadRequestException(refusal);
+
+    const name = whatTheirWorkspaceIsCalled(user.firstName, user.lastName);
+    /* From the NAME, never the email domain - the same rule as `register`. */
+    const slug = await this.generateUniqueSlug(name);
+
+    const org = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.organization.create({ data: { name: name, slug: slug, email: user.email } });
+      /*
+       * AND SOMEBODY HOLDS IT.
+       *
+       * Missed on the first pass and caught by every-new-organisation-has-a-holder, which counts
+       * the doors into `organization.create` and refuses a new one without this line. An
+       * organisation with no `ownerUserId` is one nobody can be asked about - exactly the state
+       * that guard exists to prevent, and the person who founded it is obviously the holder.
+       */
+      await theFirstAdminHoldsIt(tx, created.id, userId);
+      await tx.organizationMembership.create({
+        data: { userId, organizationId: created.id, role: 'ADMIN' as any },
+      });
+      /*
+       * AND THE MEMBERSHIP OF WHERE THEY ARE NOW, which may never have been written.
+       *
+       * A user joined to a roster organisation has `user.organizationId` set and often no
+       * membership row at all - `myOrganizations` papers over exactly that with its self-healing
+       * branch. Without this, switching into the new workspace would leave them unable to switch
+       * back, which is the same trap facing the other way.
+       */
+      await tx.organizationMembership.upsert({
+        where: { userId_organizationId: { userId, organizationId: user.organizationId } },
+        create: { userId, organizationId: user.organizationId, role: 'MEMBER' as any },
+        update: {},
+      });
+      return created;
+    });
+
+    this.logger?.log?.(`${user.email} started their own workspace, and keeps the one they were listed in.`);
+    return this.switchOrganization(userId, org.id);
   }
 
   private async generateUniqueSlug(name: string): Promise<string> {

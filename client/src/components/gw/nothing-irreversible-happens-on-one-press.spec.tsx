@@ -52,7 +52,9 @@ describe('the six sites', () => {
     expect(board).toMatch(/aria-label=\{`Remove target: \$\{o\.name\}`\}/)
     const panel = read('components/gw/ResolutionPanel.tsx')
     expect(panel).toMatch(/onClick=\{\(\) => picked && setConfirming\(true\)\}/)
-    expect(panel).toContain('nobody closes it alone')
+    /* The dialog still names what the press does. The marker was "nobody closes it alone", which
+       went with the agreement rule - closing is the lead's now, on every scenario. */
+    expect(panel).toContain('As the lead, your answer closes this check-in.')
     const save = read('pages/home/SaveCard.tsx')
     expect(save.match(/<StartOver onClear=\{onClear\} \/>/g)?.length).toBe(2)
     expect(save).toContain('This throws away this session and everything in it.')

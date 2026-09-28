@@ -93,3 +93,37 @@ describe('a reply that asks nothing is a dead end', () => {
     expect(block.slice(0, block.indexOf('withAQuestion'))).not.toContain('this.anthropic');
   });
 });
+
+/**
+ * AND THE CHECK IS MADE AGAIN WHERE THE ANSWER IS KNOWN.
+ *
+ * Read live, 23 September 2026, five answers in: "That is a clear picture of the impact you want to
+ * have. The goal of 30,000 smallholders with a 30% income increase is ambitious and specific."
+ * Nothing to answer, and the conversation was not over. The guard above had let it through because
+ * it asks whether the MODEL was closing - it had emitted the close marker - and the product then
+ * declined to close, which is the product's call and not the model's.
+ */
+describe('the model closed and the product did not', () => {
+  const SRC = require('node:fs')
+    .readFileSync(require('node:path').join(__dirname, 'conversation.service.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  it('is caught after the close machinery has ruled', () => {
+    const at = SRC.indexOf('if (!sessionComplete && isADeadEnd(aiTurn.content ?? \'\', false))');
+    expect(at).toBeGreaterThan(-1);
+    /* After the product's own decision, not before it. */
+    expect(at).toBeGreaterThan(SRC.indexOf('const sessionComplete = close.ready'));
+    expect(SRC.slice(at, at + 400)).toContain("withAQuestion(aiTurn.content ?? '', { closing: false })");
+  });
+
+  /* And `false` is passed deliberately: the question is whether the PRODUCT closed, and it did not. */
+  it('and asks the product, not the marker', () => {
+    const at = SRC.indexOf('if (!sessionComplete && isADeadEnd(aiTurn.content ?? \'\', false))');
+    expect(SRC.slice(at, at + 400)).not.toContain('closingNow');
+  });
+
+  /* The early guard stays: it runs on every turn the close machinery never reaches. */
+  it('and the earlier guard is still there', () => {
+    expect(SRC).toContain('if (isADeadEnd(screened.text, closingNow))');
+  });
+});

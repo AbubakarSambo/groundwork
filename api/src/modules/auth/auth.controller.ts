@@ -256,6 +256,20 @@ export class AuthController {
     return this.authService.switchOrganization(user.id, dto.organizationId, (user.signedInVia as any) ?? 'password');
   }
 
+  /**
+   * THE DOOR OUT OF SOMEBODY ELSE'S ORGANISATION.
+   *
+   * Somebody whose address was on a roster is joined to that organisation when they verify - which
+   * is right for an employee and wrong for everybody else whose address happens to be listed. They
+   * had one membership and so nothing to switch to. See a-roster-row-is-not-a-life-sentence.
+   */
+  @Post('start-my-own-workspace')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create your own organisation and switch into it, keeping the one you were listed in' })
+  async startMyOwnWorkspace(@CurrentUser() user: CurrentUserData) {
+    return this.authService.startMyOwnWorkspace(user.id);
+  }
+
   @Get('me')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user profile' })

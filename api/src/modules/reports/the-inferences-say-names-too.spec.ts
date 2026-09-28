@@ -30,7 +30,13 @@ const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 describe('what applyNames returns', () => {
   it('names the prose in engagement and inferences', () => {
-    expect(CODE).toMatch(/engagement: walkTextOnly\(report\.engagement\)/);
+    /*
+     * STILL WALKED, now with the resolved name carried alongside each label rather than into it.
+     * Ten people who gave their name and organisation on an open link were listed to their own
+     * lead as "Participant A" to "Participant D" - see theNamesBesideTheLabels, which adds `who`
+     * and does not touch `label`, because own-reads-only filters on the raw label.
+     */
+    expect(CODE).toMatch(/engagement: theNamesBesideTheLabels\(walkTextOnly\(report\.engagement\), visible\)/);
     expect(CODE).toMatch(/inferences: walkTextOnly\(report\.inferences\)/);
   });
 

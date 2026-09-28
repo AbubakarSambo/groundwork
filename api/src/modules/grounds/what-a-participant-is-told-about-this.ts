@@ -85,6 +85,16 @@ export const THE_TELLING_PROMPT = [
   '  3. Optionally one sentence on what taking part involves and what comes back: answering in your own words, and a consolidated report at the end that everybody who took part receives.',
   'The first sentence must name what this check-in is about, in the words of the situation itself: the work, the place, the product, the decision.',
   'A sentence like "This check-in is for understanding your current business situation" names nothing. It fits any check-in ever set up. Somebody reading it before their first answer still does not know why they were asked.',
+  /*
+   * AND NOT A WORD ON WHAT HAPPENS TO THE ANSWERS.
+   *
+   * Half of one sixty-word telling went on "Your answers will be used to create a consolidated
+   * report that everyone who took part will receive" - which the page says, in its own words, two
+   * inches below. Words spent there are words not spent naming what this is about, which is the
+   * only thing this box is for.
+   */
+  'Name the lead\'s own subjects, in their words: the places, the products, the people, the risks they actually listed. A long brief needs at least three of them; a telling that names none of them is refused.',
+  'Say nothing about what happens to the answers - not the report, not who receives it, not that it is consolidated. The page already says that.',
   'Rules: no instructions to anybody. No "I" or "we". No numbers or targets (they are shown separately). No names of other participants. Nothing about how the interview will be run. Everyday words, at most 60 words in total. Answer with the sentences only.',
 ].join('\n');
 
@@ -144,11 +154,39 @@ const A_PROMISE_OF_MORE =
   /\b(regular|regularly|each week|each month|weekly|monthly|fortnightly|ongoing|over time|every week|every month|future sessions?|next session|from time to time|as the weeks)\b/i;
 
 /** Whether the rewrite says anything the lead's own words say. True when there is nothing to check against. */
+/**
+ * ONE WORD IS ENOUGH FOR A SHORT BRIEF AND NOWHERE NEAR ENOUGH FOR A LONG ONE.
+ *
+ * Read live on 23 September 2026. Hafsah's brief was four hundred words naming states, markets,
+ * products, volumes, quality, farmers, traders, agents, distributors, fraud, theft, weather and
+ * inertia. The box above the first question said: "It is for understanding how to help you grow
+ * faster with less risk. Your answers will be used to create a consolidated report that everyone
+ * who took part will receive." Her words: "The summary is also a bit off, this was a new question."
+ *
+ * It passed this check, because it shared the word "risk" - and one shared word out of a brief that
+ * distinctive is a coincidence, not a subject. So what counts as naming something scales with how
+ * much the lead actually named: a sentence of a brief needs one word, a page of it needs three.
+ *
+ * NOT MORE THAN THREE, and not a proportion. The telling is sixty words and its job is to say what
+ * this is about, not to summarise a page. Three of the lead's own subjects is the difference between
+ * "how to help you grow faster" and "where you want to expand, and the traders and distributors you
+ * need to get there" - and past three the requirement would start refusing good tellings.
+ */
+export function howManyOfTheirWordsItNeeds(about: string | null | undefined): number {
+  const theirs = theWordsThatNameSomething(about ?? '');
+  /* Thirty is the boundary, measured: her brief carries thirty-nine distinctive words, and a brief
+     that names thirty separate things is one where a single shared word proves nothing. */
+  if (theirs.size >= 30) return 3;
+  if (theirs.size >= 12) return 2;
+  return 1;
+}
+
 export function itNamesWhatThisIsAbout(told: string | null | undefined, about: string | null | undefined): boolean {
   const theirs = theWordsThatNameSomething(about ?? '');
   if (!theirs.size) return true;
-  for (const w of theWordsThatNameSomething(told ?? '')) if (theirs.has(w)) return true;
-  return false;
+  let shared = 0;
+  for (const w of theWordsThatNameSomething(told ?? '')) if (theirs.has(w)) shared += 1;
+  return shared >= howManyOfTheirWordsItNeeds(about);
 }
 
 /** The model's rewrite, checked sentence by sentence; null when nothing survives. */

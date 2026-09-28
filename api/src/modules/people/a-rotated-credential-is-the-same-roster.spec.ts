@@ -121,6 +121,20 @@ describe('what the wiring has to keep doing', () => {
     expect(guard).toContain('claims.src ?? claims.sub');
   });
 
+  /*
+   * A LONGER TIMEOUT, BECAUSE THIS TEST DOES FOUR REAL BCRYPT HASHES.
+   *
+   * `issue` hashes the client secret at cost 12, which is the right number for a credential and
+   * about a third of a second each on an idle machine. Four of them sequentially is comfortably
+   * inside jest's five-second default on its own, and NOT inside it when the full suite is running
+   * eight workers on the same cores - so this failed in two full runs out of three and passed every
+   * single time it was run alone, which is the most expensive shape a flake can have.
+   *
+   * The fix is the timeout rather than a smaller cost factor or fewer issues: the cost is correct,
+   * and each of the four issues is load-bearing for an assertion below.
+   */
+  const FOUR_BCRYPT_HASHES_UNDER_LOAD = 30_000;
+
   it('issuing derives one when nobody says, and refuses one nobody could repeat', async () => {
     /* BEHAVIOUR, NOT A MENTION. The first version of this asserted that the file named the
        helper — which stayed true while the value was quietly the client id again. */
@@ -149,7 +163,7 @@ describe('what the wiring has to keep doing', () => {
 
     await expect(service.issue('org-a', 'x', ['graph:write'], 'u1', [], 'Not A System'))
       .rejects.toThrow(/lower-case/);
-  });
+  }, FOUR_BCRYPT_HASHES_UNDER_LOAD);
 
   it('and the duplicate read reports rather than repairs', () => {
     const from = scim.indexOf('async whoExistsTwice');

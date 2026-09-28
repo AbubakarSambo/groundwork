@@ -172,6 +172,12 @@ export interface Ground {
   timelineDays: number
   cadence: string
   /**
+   * The days a check-in may open on. 0 is Sunday. Empty means nobody said, which is not the same as
+   * every day: the date stays where the cadence put it and the form says so, rather than assuming a
+   * Monday-to-Friday office week that field teams and much of the region do not keep.
+   */
+  workingDays?: number[]
+  /**
    * What the report actually holds: areas agreed, areas still open. Null when
    * there is no read yet. Replaced `confidence?: number`, which was a count of
    * completed check-ins rendered as "5/5 Aligned".

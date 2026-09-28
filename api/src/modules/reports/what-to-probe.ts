@@ -91,10 +91,19 @@ export const whatKindOfThing = (xs: { kind?: Kind | null }[]): string | null => 
 const andList = (xs: string[]): string =>
   xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 
-/** Early enough that not escalating is ordinary. Coach it, do not treat it as a finding. */
+/**
+ * Early enough that not escalating is ordinary. Coach it, do not treat it as a finding.
+ *
+ * AND NEVER WHERE THE ROUND IS NOT KNOWN. This read "This early" on the last session of a
+ * three-month engagement, because the caller could not see the check-ins and fell back to session
+ * one. A missing session number is not evidence of being early, so a zero or a missing value is
+ * treated as "cannot say", and the ordinary sentence is used.
+ */
 function earlyDays(i: ProbeInput): boolean {
-  if (i.sessionNumber <= 2) return true;
-  return i.scenario === 'NEW_HIRE' && i.sessionNumber <= 3;
+  const n = Number(i.sessionNumber);
+  if (!Number.isFinite(n) || n < 1) return false;
+  if (n <= 2) return true;
+  return i.scenario === 'NEW_HIRE' && n <= 3;
 }
 
 export function whatToProbe(i: ProbeInput): WhatToProbe {

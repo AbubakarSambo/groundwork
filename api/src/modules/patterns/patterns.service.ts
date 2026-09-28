@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { whatWasSeenLastPeriod, lastPeriodBlockFor } from './the-detector-has-no-memory-of-last-period';
+import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
+import { whatWasSeenLastPeriod, lastPeriodBlockFor, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
@@ -117,11 +118,25 @@ export class PatternsService {
      */
     const lastPeriod = await this.prisma.patternDetection
       .findMany({
-        where: { participantId: checkIn.participantId, lastPeriodNumber: checkIn.sessionNumber - 1 },
+        where: {
+          participantId: checkIn.participantId,
+          lastPeriodNumber: { gte: checkIn.sessionNumber - HOW_FAR_BACK, lte: checkIn.sessionNumber - 1 },
+        },
         select: { code: true, observationText: true, lastPeriodNumber: true },
       })
       .catch(() => [] as { code: string; observationText: string | null; lastPeriodNumber: number | null }[]);
-    const recogniseBlock = lastPeriodBlockFor(whatWasSeenLastPeriod(lastPeriod, checkIn.sessionNumber));
+    const recogniseBlock = lastPeriodBlockFor(whatWasSeenLastPeriod(lastPeriod, checkIn.sessionNumber), checkIn.sessionNumber);
+
+    /*
+     * WHO THIS PERSON IS WAITING ON, BY NAME, INSIDE THIS CHECK-IN.
+     *
+     * Read before anything is written, because three of the codes are reads about carrying your own
+     * work and must not land on the person doing the chasing. See a-chaser-is-not-the-blocker.
+     */
+    const theirDependencies = await (this.prisma.groundDependency?.findMany?.({
+      where: { groundId: checkIn.groundId, fromParticipantId: checkIn.participantId },
+      select: { onParticipantId: true, status: true, what: true },
+    }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
 
     try {
       const result = await this.anthropic.extract<{ detections: { code: string; observation: string }[] }>(
@@ -179,6 +194,17 @@ export class PatternsService {
           continue;
         }
         if (!isBadFaithCode(d.code)) continue;
+        /*
+         * AND NOT ABOUT THE PERSON WAITING. B5, B11 and K3 read one transcript for "a lot of talking
+         * and it has not moved", which is exactly the shape a lead produces when the person they
+         * hired is not delivering - it surfaced on the client, not the consultant, and her coaching
+         * then told her to communicate better. See a-chaser-is-not-the-blocker.
+         */
+        const mine = shouldThisCodeBeAboutThem(d.code, theirDependencies as any[]);
+        if (!mine.keep) {
+          this.logger.log(`Check-in ${checkInId}: ${d.code} not written about this person; ${mine.because}.`);
+          continue;
+        }
         // AI confirmation gate: each candidate pattern is confirmed by a
         // second AI call before being written to the record. This prevents
         // false positives from the batch extraction step.
@@ -226,13 +252,18 @@ export class PatternsService {
   }
 
   /**
-   * Record an observed signal for a participant in a given period. Enforces the
-   * three-period rule with consecutive periods: a gap resets the streak; the
-   * status flips to SURFACED only at three consecutive periods.
+   * Record an observed signal for a participant in a given period.
    *
-   * Gap #21 - consecutivePeriods counter: if the incoming period is not exactly
-   * lastPeriodNumber + 1 (a gap), the streak resets to 1 and the detection
-   * stays CANDIDATE regardless of total periodsObserved.
+   * THREE PERIODS IS STILL THE FLOOR. What changed on 24 September 2026 is how they are counted.
+   * `periodsObserved` remains the CONSECUTIVE run and a gap still resets it, because a streak is a
+   * useful thing to know. `seenInSessions` is every period it was actually seen in, and three of
+   * those surfaces the pattern whether they touch or not.
+   *
+   * WHY. A consultant on a three-month engagement made an uncompleted future-tense promise in all
+   * six of his fortnights. E2 fired in fortnight two and fortnight six, the streak reset both
+   * times, and his client was told nothing for three months. A behaviour seen in three separate
+   * periods is not one data point that might be nothing, which is the only thing the rule was ever
+   * protecting against. Two periods still surfaces nothing, consecutive or not.
    */
   async observe(groundId: string, participantId: string, code: string, rawObservation: string, periodNumber: number) {
     /**
@@ -255,6 +286,7 @@ export class PatternsService {
         observationText,
         periodsObserved: 1,
         lastPeriodNumber: periodNumber,
+        seenInSessions: [periodNumber],
         status: PatternStatus.CANDIDATE,
       });
     }
@@ -264,32 +296,25 @@ export class PatternsService {
     // Stale / already counted for this or an earlier period - ignore.
     if (periodNumber <= last) return existing;
 
-    // Consecutive period - extend the streak.
-    if (periodNumber === last + 1) {
-      const periodsObserved = existing.periodsObserved + 1;
-      return this.prisma.patternDetection.update({
-        where: { id: existing.id },
-        data: {
-          periodsObserved,
-          lastPeriodNumber: periodNumber,
-          lastSeenAt: new Date(),
-          observationText,
-          // Three-period rule: SURFACED only after THREE consecutive periods.
-          status: periodsObserved >= THREE_PERIOD_RULE ? PatternStatus.SURFACED : PatternStatus.CANDIDATE,
-        },
-      });
-    }
-
-    // Gap in periods - the consecutive streak broke. Reset to 1 (never accelerate
-    // detection; periodsObserved is the consecutive count, not a lifetime count).
+    /* Every period it was really seen in, in order, with no duplicates. */
+    const seenInSessions = [...new Set([...(existing.seenInSessions ?? []), periodNumber])].sort((a, b) => a - b);
+    /* The consecutive run: extended where this period follows the last one, restarted where it does not. */
+    const periodsObserved = periodNumber === last + 1 ? existing.periodsObserved + 1 : 1;
+    /*
+     * SURFACED on three consecutive OR three separate periods. The second is not a softer bar - it
+     * is the same bar, counted without throwing periods away. Once surfaced, it stays surfaced: a
+     * behaviour seen three times does not become unseen because the fourth period was quiet.
+     */
+    const enough = periodsObserved >= THREE_PERIOD_RULE || seenInSessions.length >= THREE_PERIOD_RULE;
     return this.prisma.patternDetection.update({
       where: { id: existing.id },
       data: {
-        periodsObserved: 1,
+        periodsObserved,
+        seenInSessions,
         lastPeriodNumber: periodNumber,
         lastSeenAt: new Date(),
         observationText,
-        status: PatternStatus.CANDIDATE,
+        status: enough || existing.status === PatternStatus.SURFACED ? PatternStatus.SURFACED : PatternStatus.CANDIDATE,
       },
     });
   }

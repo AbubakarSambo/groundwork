@@ -1,3 +1,5 @@
+import { theyAreSteeringUs } from './they-can-tell-us-what-to-ask';
+
 /**
  * A REMARK ABOUT THE TOOL IS NOT THE WORK.
  *
@@ -83,6 +85,18 @@ const ADDRESSED_TO_US = /\b(you|your)\b/i;
 
 /** A person's turn that is about the product rather than about their work. */
 export function aboutTheToolNotTheWork(text: string | null | undefined): boolean {
+  /*
+   * A STEER IS NOT A REMARK, EVEN WHEN IT ARRIVES AS A COMPLAINT.
+   *
+   * "you keep asking about volumes, ask me about distribution" was classified here as a remark
+   * about the product - so it was answered politely and the instruction inside it was thrown away.
+   * And a steer arriving with a complaint attached is the commonest shape of steer there is,
+   * because people only steer once the questions have already gone somewhere they do not want.
+   *
+   * The brief for this scenario promises them they can direct the conversation. Asked first, so
+   * nothing below can drop one. See they-can-tell-us-what-to-ask.
+   */
+  if (theyAreSteeringUs(text)) return false;
   /*
    * OUR OWN ANNOTATIONS COME OFF FIRST.
    *
