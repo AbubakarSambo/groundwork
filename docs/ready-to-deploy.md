@@ -29,7 +29,7 @@ Branch `wip/plain-reports`, at `ff318f1e` when this was last updated. It holds a
 - **One code change since run-16, and it fixes a problem the release has:** no internal label reaches anyone (`0bad62f2`, `6fe8d1fb`). It changes only what is served, not the conversation. It was checked live on run-16's own check-ins: 85 reads of the board and the four report reads, as the lead and participants on six check-ins, with no label and no error.
 - **Every test:** all 10,532 API tests pass. The client passes 3,242 of 3,244. The two that fail are the screens workspace's timing-dependent sidebar tests, as all day.
 
-**Proven by tests only, not yet by a live check-in, because run-16 has no case of it:** a private file named on the board, and a hidden target set by the lead for one person (`7afee54e`). Both are in the build that ran run-16. The test serves the real board and report to every kind of reader.
+**A private file's name and a hidden target, checked live on 28 September (`d5f0e840`).** The live check found that hidden targets still reached other participants on the session report and the rounds; that is fixed, and after it only the lead read the file's name, and each person read only their own target. This fix is newer than the known-good point, and joins the release.
 
 **Blockers 8 and 9 (the streamed route) are closed by run-16.**
 

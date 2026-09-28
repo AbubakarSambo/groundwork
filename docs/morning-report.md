@@ -131,6 +131,23 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **What is next, in your order:** measure weeks 4 and 5 live, twice, then carry on with the weekly plan.
 
+## 28 SEPTEMBER, EVENING: THE PRIVATE FILE AND THE HIDDEN TARGETS, CHECKED LIVE (`d5f0e840`)
+
+**The live check found a fault the tests had missed, and it is fixed.**
+- **How it was checked.** No scenario has either case, so I added both to run-16's sales check-in, through the product's own API, as the lead would:
+  - Bisi, the lead, set targets for Kwame (17) and Femi (11), each private to that person.
+  - She attached a private file, `bisi-q4-plan.txt`.
+  - One line of her record named the file and both targets.
+  - The report was then rebuilt with the real model, and I read the board and every report read as Bisi, Kwame, Femi and Ngozi.
+- **The file held:** only Bisi, whose file it is, ever saw its name.
+- **The targets did not:** Kwame, Femi and Ngozi could each read the others' numbers on the session report and the rounds. Two causes:
+  - The check for hidden targets ran before labels were turned into names. So a line that still said "Participant B" hid nothing. Labels now become names first.
+  - "Kwame has three so far. … A target of 17 approved facilities appears in the record…": the sentence with the number did not name him; the one before it did. A sentence now goes when it, or the one just before it, names the person. A sentence further away stays, so "the team has 11 approved facilities" is kept.
+- **Live again after the fix:** Bisi reads every target she set. Kwame and Femi each read only their own, and Ngozi reads neither. Only Bisi reads the file's name.
+- **Cleaned up afterwards:** the added targets, file and record line were removed, and the report was rebuilt without them.
+- **All 10,537 API tests pass.** This joins the release: it fixes a problem the release has.
+- **Next:** the weekly plan from week 1, in small tested steps.
+
 ## 28 SEPTEMBER, EVENING: NEVER AN EMAIL ADDRESS AS A NAME (`fdc1439b`)
 
 - **Before:** a lead was shown the address of someone who had not given a name, in place of their name. The model then wrote it into sentences such as "Start with zawadi.u8@example.test."
