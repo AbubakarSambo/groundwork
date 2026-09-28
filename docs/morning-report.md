@@ -16,6 +16,23 @@ The bug-fix branch is `fix/privacy-conversation-crash`, in the folder `groundwor
 
 Next, I am back on `wip/plain-reports`: first the hidden-target tests, then week 6 of `docs/weekly-plan.md`.
 
+## 28 SEPTEMBER, NIGHT: BACK ON THE WEEKLY PLAN
+
+**The hidden-target tests are already done.** They are the twelve cases in `d8fa3648`: a pronoun, the number two and three sentences after the name, the number before the name, a list, the target in words, and a row whose name and number are in different fields. All of them are now taken out.
+
+**The screens branch is merged in** (16 commits, no conflicts). It includes a new `Mark` part on the screens, which is what week 6's marks will feed.
+
+**Week 6: the prototype does have "confirmed by the person who received it".** You asked me to check before adding the field. Here is where it is:
+- The mark itself is in the legend of the one-session report (`docs/prototype/screens/B4-reports-and-sharing/one-session.txt`, line 126) and of the team report (`team-report.txt`, line 130). The four marks are "Proven", "Confirmed by the person who received it", "Only someone's word" and "From memory only".
+- The kind of line it marks appears in the check-in ("The buyer has now confirmed the meeting. That is in your record.", `B3-the-check-in/check-in-phone.txt`, line 10), in the person's own report ("Lakeside's buyer confirmed your meeting on the 29th, as you said.", `own-report.txt`, line 28), and on the You board ("Operations confirmed they now match.", `you-board-daniel.txt`, line 61).
+- The check-in's own end card (`B3-the-check-in/check-in-end-card.txt`) does not use it. Its lines say "From the photo you added" and "You said this." That makes sense: a line said a minute ago cannot have been confirmed yet by the person who received the work. So the field matters most for the reports (week 6b).
+
+**Week 6 in two steps.** First, the end card, with three of the four marks: proven, their word, and memory. That is being built now. Second, the new field for "confirmed". The screens send the four marks as `proven`, `confirmed`, `said` and `memory` (screens request 7b).
+
+One thing the prototype does not say is **who confirms a line, and how**. My proposal: a line is confirmed when the person who was waiting for that work says, in their own check-in, that it arrived. The engine already records who waits on whom for what. I will build the field and this rule unless you want it done another way.
+
+How the end card gets its lines: record lines are written today only when the person presses "That's right, finish". But the card has to show them before that ("Is anything wrong?"), and 49 places read record lines without waiting for a check-in to finish. So the engine now reads the record at the closing reply **without storing it**, builds the card from those lines, and keeps them with the closing turn. When the person finishes, exactly those lines are written, so the card and the record match. If they change something first, the record is read again, as it is today.
+
 ## 28 SEPTEMBER, DAY: HAFSAH'S DECISIONS ON RATINGS AND PATTERNS
 
 **Ratings are never sent to anyone but the person they are about** (`828b4837`, decision 38 in `docs/decisions-merged.md`).
