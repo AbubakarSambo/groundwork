@@ -31,4 +31,12 @@ describe('a private file is not named in the report, the board or anybody else\'
     const near = REPORTS.slice(at - 400, at);
     expect(near).toMatch(/OR: \[\{ visibility: 'OPEN' as any \}, \.\.\.\(me \? \[\{ participantId: me\.id \}\] : \[\]\)\]/);
   });
+
+  it("and the lines everybody reads on the check-in's page, and in anybody else's check-in, lose the name too", () => {
+    expect(GROUNDS).toMatch(/const privateFileNamesHere = theLeadReadsThese \? \[\] : namesNotEverybodyMayOpen\(/);
+    expect(GROUNDS).toMatch(/text: withoutPrivateFileNames\(l\.text \?\? '', privateFileNamesHere\)/);
+    const CONVERSATION = read('conversation/conversation.service.ts');
+    expect(CONVERSATION).toMatch(/const privateFileNamesHere = isTheLead \? \[\] : namesNotEverybodyMayOpen\(/);
+    expect(CONVERSATION).toMatch(/withoutPrivateFileNames\(\(l\.text \?\? ''\)\.trim\(\), privateFileNamesHere\)/);
+  });
 });

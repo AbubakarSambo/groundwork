@@ -1,3 +1,4 @@
+import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { theLeadByName, mentionsTheLeadByALabel } from './the-lead-has-a-name';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital';
@@ -4110,9 +4111,14 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
       orderBy: { createdAt: 'asc' },
       take: 80,
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
+    /* A file only its owner can open is not named in anybody else's check-in, including on notes
+       already stored with the name in them (request 46; see a-private-file-is-not-named). */
+    const privateFileNamesHere = isTheLead ? [] : namesNotEverybodyMayOpen(
+      await (this.prisma.groundDocument?.findMany?.({ where: { groundId: checkIn.groundId }, select: { fileName: true, visibility: true } }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
+    );
     const ofKind = (kind: string, aboutMe?: boolean) => (contextLines as any[])
       .filter((l) => l.kind === kind && (aboutMe === undefined || (aboutMe ? l.aboutParticipantId === checkIn.participantId : !l.aboutParticipantId)))
-      .map((l) => (l.text ?? '').trim())
+      .map((l) => withoutPrivateFileNames((l.text ?? '').trim(), privateFileNamesHere))
       .filter(Boolean);
     const notSettledLines = ofKind('UNSETTLED');
     /*
