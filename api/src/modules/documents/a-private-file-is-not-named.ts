@@ -29,7 +29,8 @@ export function namesNotEverybodyMayOpen(docs: readonly ADocumentName[] | null |
 
 /**
  * The text with each of those names taken out, together with the words that were only there to
- * introduce it: "The attached team-plan.txt document confirms" becomes "The document confirms".
+ * introduce it: "The attached team-plan.txt document confirms" becomes "The document confirms", and
+ * "come from team-plan.txt" becomes "come from a document".
  */
 export function withoutPrivateFileNames(text: string, names: readonly string[]): string {
   let out = text ?? '';
@@ -38,7 +39,11 @@ export function withoutPrivateFileNames(text: string, names: readonly string[]):
       `(\\bthe\\s+)?(?:(?:attached|uploaded|shared)\\s+)?(?:(?:file|document|sheet)\\s+)?["“'‘]?${escape(name)}["”'’]?(?:\\s+(?:file|document|sheet))?`,
       'gi',
     );
-    out = out.replace(re, (m) => (/^[A-Z]/.test(m) ? 'The document' : 'the document'));
+    /* "The attached X document" keeps its "the"; a bare "from X" becomes "from a document". */
+    out = out.replace(re, (m, the) => {
+      const word = the ? 'the document' : 'a document';
+      return /^[A-Z]/.test(m) ? word[0].toUpperCase() + word.slice(1) : word;
+    });
   }
   return out;
 }

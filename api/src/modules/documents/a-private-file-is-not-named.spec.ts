@@ -16,9 +16,14 @@ describe('a private file is not named to anybody else', () => {
     expect(withoutPrivateFileNames('The attached team-plan.txt document confirms the split between Aisha and Tunde.', names))
       .toBe('The document confirms the split between Aisha and Tunde.');
     expect(withoutPrivateFileNames('Here is the context we have from team-plan.txt - the quarter plan.', names))
-      .toBe('Here is the context we have from the document - the quarter plan.');
+      .toBe('Here is the context we have from a document - the quarter plan.');
     expect(withoutPrivateFileNames('She said the numbers are in "budget.xlsx".', names))
-      .toBe('She said the numbers are in the document.');
+      .toBe('She said the numbers are in a document.');
+  });
+
+  it('reads as a sentence where the file was the only thing named', () => {
+    expect(withoutPrivateFileNames('The numbers on this check-in come from team-plan.txt.', names))
+      .toBe('The numbers on this check-in come from a document.');
   });
 
   it('leaves an open file, and ordinary words, alone', () => {
