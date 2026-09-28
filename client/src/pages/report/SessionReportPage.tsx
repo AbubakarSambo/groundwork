@@ -122,20 +122,31 @@ export default function SessionReportPage() {
         &larr; Back
       </button>
 
-      <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>
-        {data?.sessionNumber ? `Session ${data.sessionNumber}` : 'Your session'}
-      </div>
       {/*
-        THE PAGE HAS TWO REPORTS ON IT AND THIS LINE DESCRIBED ONE OF THEM.
-        "Nobody else can see it" is true of your own half and false of the shared half directly
-        below it, so read as the page's subtitle it was a privacy claim over a shared document. It
-        says what the page holds; each half now carries its own line about who reads it.
+        U.9 RE-REVIEW, ITEM A: NEITHER LINE APPEARS ON A PAGE THAT HAS REFUSED YOU.
+        "Your session" and "Everything about this session... Your report first, then the team's
+        report." were said unconditionally, above the error message, so somebody told "This
+        session is not yours to open" read a heading and a promise about a report they were just
+        refused. Both are now only drawn once the page actually has something to show.
       */}
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
-        {data?.finishedAt
-          ? `Everything about this session, on ${whenItWas(data.finishedAt, 'dayAndMonthLong')}. Your report first, then the team’s report.`
-          : 'Everything about this session. Your report first, then the team’s report.'}
-      </div>
+      {!isError && (
+        <>
+          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>
+            {data?.sessionNumber ? `Session ${data.sessionNumber}` : 'Your session'}
+          </div>
+          {/*
+            THE PAGE HAS TWO REPORTS ON IT AND THIS LINE DESCRIBED ONE OF THEM.
+            "Nobody else can see it" is true of your own half and false of the shared half directly
+            below it, so read as the page's subtitle it was a privacy claim over a shared document. It
+            says what the page holds; each half now carries its own line about who reads it.
+          */}
+          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 18 }}>
+            {data?.finishedAt
+              ? `Everything about this session, on ${whenItWas(data.finishedAt, 'dayAndMonthLong')}. Your report first, then the team’s report.`
+              : 'Everything about this session. Your report first, then the team’s report.'}
+          </div>
+        </>
+      )}
 
       {isLoading && (
         <div role="status" aria-live="polite" style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Getting your report...</div>
@@ -382,7 +393,7 @@ export default function SessionReportPage() {
             ) : (
               <>
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                  Correcting it is a short check-in of its own - it asks you what it got wrong. Nothing
+                  Correcting it is a short check-in of its own. It asks you what it got wrong. Nothing
                   is overwritten; the change is shown alongside the original, and it closes a short
                   while after the shared report goes out.
                 </div>
