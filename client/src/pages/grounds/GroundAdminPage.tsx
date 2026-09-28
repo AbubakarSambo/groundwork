@@ -1359,7 +1359,7 @@ export function GroundAdminPage() {
                   own account - and differ only on the half that is about the reader.
                 */}
                 {/* 'Everyone in it - you are running this' went too: the rail, the card and 'Led by' already say it. The admin variant stays, because that one is news. */}
-                {!isInitiator && <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>Everyone in it - you are an admin here</span>}
+                {!isInitiator && <span style={{ fontSize: 10, color: 'var(--gw-muted)' }}>Everyone in it can see this, and you are an admin here, not its lead.</span>}
               </div>
             </div>
           </div>
@@ -1568,8 +1568,8 @@ export function GroundAdminPage() {
               )}
               {roundWentBack && (
                 <span style={{ color: 'var(--gw-muted)' }}>
-                  back to session {openRound} because somebody new was added - a session stays open
-                  until everybody has done it, and nothing anybody wrote is lost
+                  Back to session {openRound}, because somebody new was added. A session stays open
+                  until everybody has done it, and nothing anybody wrote is lost.
                 </span>
               )}
             </>
@@ -2304,17 +2304,28 @@ export function GroundAdminPage() {
                 return !ci || ci.status !== 'COMPLETED'
               })
               if (pending.length === 0) return null
+              /*
+               * U.9 REVIEW FIX 9: SAY WHAT IS TRUE FROM THE DATA, NOT WHAT IS USUALLY TRUE.
+               * "It is only released to everybody once all N are in" is false the moment a report
+               * has been released early - the reader is looking at a released report while this
+               * notice still tells them nobody has read it yet. `ground.report.releasedAt` already
+               * carries that fact, so this reads it rather than assuming. The dash joining two
+               * clauses is also gone, in favour of a full sentence.
+               */
+              const releasedAt = (ground as any).report?.releasedAt as string | null | undefined
               return (
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '9px 12px', marginBottom: 16, lineHeight: 1.55, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                   <span>
-                    The picture builds as each person answers - you can read what it has so far.
-                    It is only released to everybody once all {ground.participants.length} are in.
+                    {releasedAt
+                      ? `This report was already shared, on ${whenItWas(releasedAt, 'day')}, before everybody had checked in.`
+                      : <>The picture builds as each person answers, and you can read what it has so far.
+                          It is only released to everybody once all {ground.participants.length} are in.</>}
                   </span>
                   <button
                     onClick={() => setTab('report')}
                     style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
                   >
-                    Read it so far
+                    {releasedAt ? 'Read it' : 'Read it so far'}
                   </button>
                 </div>
               )
