@@ -255,17 +255,35 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
   }
   if (!worst) return null;
   if (worst.days < A_FORTNIGHT && worst.tried !== 'nothing') return null;
-  const first = waysThrough({ what: worst.what, owner: worst.owner, days: worst.days, tried: worst.tried, chaseBy: null })[0];
+  /* What they said they are waiting on is often a thing, not somebody: "the handover from the current
+     finance manager", "credit review". Read live on run-14, 28 Sep 2026: "Ask Jide Sanusi to speak to
+     the handover from the current finance manager rather than write to them". A thing is nobody to
+     speak to, so the ask is to find out who owns it. */
+  const owner = aPersonCalled(worst.owner) ? worst.owner : null;
+  const first = waysThrough({ what: worst.what, owner, days: worst.days, tried: worst.tried, chaseBy: null })[0];
   const theAsk = `Ask ${them} to ${first.charAt(0).toLowerCase()}${first.slice(1)}`;
   if (alreadySaid) return theAsk;
-  const days = `${worst.days} ${worst.days === 1 ? 'day' : 'days'}`;
-  return `${start} has been waiting ${days} on ${worst.what}, and ${WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried]}. ${theAsk}`;
+  /* "has been waiting 0 days" was read live on run-14. Something that came up today says so. */
+  const since = worst.days === 0 ? 'is waiting' : `has been waiting ${worst.days} ${worst.days === 1 ? 'day' : 'days'}`;
+  return `${start} ${since} on ${worst.what}, and ${WHAT_THEY_TRIED_SAID_IN_FULL[worst.tried]}. ${theAsk}`;
+}
+
+/** Whether what they said they are waiting on names somebody: a name, or a role that is a person. */
+const A_ROLE = /^(?:the |our |their |my |a |an )?(?:head|manager|director|officer|lead|chair|chief|ceo|cfo|coo|cto|md|boss|supervisor|client|customer|buyer|supplier|partner|contractor|accountant|lawyer|auditor|committee|board|team)\b/i;
+function aPersonCalled(owner: string | null | undefined): boolean {
+  const o = (owner ?? '').trim();
+  if (!o) return false;
+  if (A_ROLE.test(o)) return true;
+  /* One to three capitalised words and nothing else: a name, such as "Mr Eze" or "Grace Oyelaran". */
+  return /^(?:(?:Mr|Mrs|Ms|Dr|Prof)\.?\s+)?[A-Z][a-z'-]+(?:\s+[A-Z][a-z'-]+){0,2}$/.test(o);
 }
 
 export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | null): Ranked[] {
   return rows
     .map((r) => {
       const reason = whyThisRow(r, roundsPlanned);
+      /* The stuck row's `says` already names the days and what was tried; the ask does not repeat it. */
+      const ask = whatToAskFor(r, reason === 'stuck and not chasing');
       return {
         participantId: r.participantId,
         who: r.who,
@@ -273,9 +291,11 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
         target: r.target,
         count: r.count,
         reason,
-        says: whatHappened(r, reason, roundsPlanned),
-        /* The stuck row's `says` already names the days and what was tried; the ask does not repeat it. */
-        ask: whatToAskFor(r, reason === 'stuck and not chasing'),
+        says: reason === 'nothing to do' && ask
+          /* Not "nothing here needs you" over a row that then asks for something (read live, run-14). */
+          ? `${subjectFor(r, true)} has checked in.`
+          : whatHappened(r, reason, roundsPlanned),
+        ask,
       };
     })
     .sort((a, b) => {

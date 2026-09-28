@@ -33,7 +33,8 @@ describe('good news first, when there is some', () => {
   });
 
   it('is given to the opener only, never to every turn', () => {
-    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toContain('wentWellLastTime: how?.forTheOpener ? theGoodNewsIn(lastTimeRows as any[]) : []');
   });
 });
