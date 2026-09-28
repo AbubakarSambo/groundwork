@@ -54,6 +54,18 @@ const SALES = {
     { id: 'p-w', partyType: 'INITIATOR', userId: 'u-wairimu', managingOnly: false, user: { firstName: 'Wairimu', lastName: 'Kamau' }, checkIns: [] },
     { id: 'p-m', partyType: 'PARTICIPANT', userId: 'u-miriam', user: { firstName: 'Miriam', lastName: 'Wanjiku' }, checkIns: [] },
   ],
+  /*
+   * THE REAL SHAPE (U.8 end-of-module suites): `leadFirstName`, `leadAnswersToo` and
+   * `aTeamReportComes` are top-level fields the server sends, read off the raw participants
+   * before the peer filter runs (U.8 fourth/fifth review) - not derived by the client from
+   * `participants`. A fixture that predates them and still expects "Wairimu also answers a
+   * check-in" or "Two reports come from this" is testing wiring the page no longer has; every
+   * test below that changes who the lead is or whether a team exists overrides these three
+   * alongside `participants`, the same way the server would compute them together.
+   */
+  leadFirstName: 'Wairimu',
+  leadAnswersToo: true,
+  aTeamReportComes: true,
   checkIns: [],
   report: null,
 }
@@ -272,7 +284,13 @@ describe('the end card, once Groundwork has closed the conversation', () => {
   })
 
   it('a lead who only manages does not answer, so the sentence is not said', async () => {
-    ;(groundsApi.get as any).mockResolvedValue({ ...SALES, participants: SALES.participants.map(p => p.partyType === 'INITIATOR' ? { ...p, managingOnly: true } : p) })
+    /* `leadAnswersToo` is what the server actually computes from a managing-only lead's row
+       (grounds.service.ts) - overridden here alongside `participants`, the same fact stated twice. */
+    ;(groundsApi.get as any).mockResolvedValue({
+      ...SALES,
+      participants: SALES.participants.map(p => p.partyType === 'INITIATOR' ? { ...p, managingOnly: true } : p),
+      leadAnswersToo: false,
+    })
     closesOnTheNextAnswer()
     await answerTheLastQuestion()
     expect(screen.queryByText(/also answers a check-in/)).toBeNull()
@@ -359,14 +377,23 @@ describe('the Done page, after “That’s right, finish”', () => {
   })
 
   it('once everyone has answered, the team’s report is there to read', async () => {
-    await finish({ ground: { ...SALES, checkIns: [], roundCompletions: [{ sessionNumber: 38, completedAt: new Date().toISOString() }] } })
+    /*
+     * `roundCompletions` ALONE IS NOT "READ IT" (U.8, edge case caught before ticking): it records
+     * that everyone on the round had answered AT THE TIME IT CLOSED, which a lead who later grows
+     * the team can leave behind for good. "Read it" reads whether the report has actually
+     * released, `report.releasedAt` - the real shape here has both, together, the way a check-in
+     * whose report genuinely is out would send them.
+     */
+    await finish({ ground: { ...SALES, checkIns: [], roundCompletions: [{ sessionNumber: 38, completedAt: new Date().toISOString() }], report: { id: 'r1', releasedAt: new Date().toISOString(), createdAt: new Date().toISOString() } } })
     const read = await findByRole('link', { name: 'Read it' }, { timeout: 5000 })
     expect(read.getAttribute('href')).toBe('/grounds/g1/session/38')
     expect(screen.queryByText('Not shared yet')).toBeNull()
   })
 
   it('with nobody else answering, there is one report and no team report', async () => {
-    await finish({ ground: { ...SALES, participants: [SALES.participants[1]], checkIns: [], roundCompletions: [] } })
+    /* `aTeamReportComes` and `leadAnswersToo` are the top-level facts the server computes for
+       exactly this case - overridden alongside `participants`, which drops the lead's row too. */
+    await finish({ ground: { ...SALES, participants: [SALES.participants[1]], aTeamReportComes: false, leadAnswersToo: false, checkIns: [], roundCompletions: [] } })
     expect(await findByRole('heading', { name: 'Your own report' }, { timeout: 5000 })).toBeTruthy()
     expect(screen.queryByText('Two reports come from this')).toBeNull()
     expect(screen.queryByText('The team’s report')).toBeNull()
