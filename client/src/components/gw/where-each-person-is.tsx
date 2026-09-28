@@ -36,13 +36,13 @@ export interface Row {
   hasGap?: boolean
 }
 
-/** The pill's label for each reason, said as the prototype writes it. */
+/** The pill's label for each reason, sentence case throughout - not just "Nothing checkable". */
 const LABEL: Record<Reason, string> = {
-  'has not answered': 'has not answered',
-  'stuck and not chasing': 'stuck and not chasing',
-  'behind the pace': 'behind the pace',
+  'has not answered': 'Has not answered',
+  'stuck and not chasing': 'Stuck and not chasing',
+  'behind the pace': 'Behind the pace',
   'nothing checkable': 'Nothing checkable',
-  'nothing to do': 'nothing to do',
+  'nothing to do': 'Nothing to do',
 }
 
 const TONE: Record<Reason, 'bad' | 'warn' | 'info' | 'flat'> = {
@@ -69,10 +69,13 @@ export function WhereEachPersonIs({ rows }: { rows: Row[] }) {
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>
               {r.who}
-              {/* Nobody has given a name, so this is their role. Said plainly, because on a list
-                  of people a role reads as a name. */}
+              {/*
+                Nobody has given a name, so this is their role. Said plainly, because on a list of
+                people a role reads as a name. "A colleague · no name given" joined a role and a
+                fact with a middle dot; now it is one clause read straight through.
+              */}
               {r.nameIsTheirRole && (
-                <span style={{ fontWeight: 400, fontSize: 12.5, color: 'var(--gw-sub)' }}> &middot; no name given</span>
+                <span style={{ fontWeight: 400, fontSize: 12.5, color: 'var(--gw-sub)' }}>, who has not given a name</span>
               )}
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>

@@ -36,4 +36,24 @@ describe('the sessions-this-phase row, as a sentence', () => {
     const shape = theShapeOfIt({}, [1, 2])
     expect(theSentenceFor('A colleague', shape)).toBe('A colleague is not on any of these sessions.')
   })
+
+  /*
+   * U.10 RE-REVIEW ITEM E: SAY NOTHING ABOUT A SESSION THAT HAS NOT OPENED.
+   *
+   * "Faraji Odhiambo has not started session 1, and was not part of the other 1." named a second
+   * session on the grid that had not opened yet - he could not possibly have been "not part of" it.
+   * `openSessions` lets the caller say which sessions actually count; a session left out of it is
+   * left out of the sentence entirely.
+   */
+  it('drops a session that has not opened from the sentence, when openSessions says so', () => {
+    render(
+      <NineColumnsIsNotAPhoneScreen
+        rows={[{ participantId: 'p1', name: 'Faraji Odhiambo', cells: { '1': 'not-started' } }]}
+        sessions={[1, 2]}
+        openSessions={[1]}
+      />,
+    )
+    expect(screen.getByText('Faraji Odhiambo has not started session 1.')).toBeTruthy()
+    expect(screen.queryByText(/the other/)).toBeNull()
+  })
 })

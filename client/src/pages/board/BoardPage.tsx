@@ -77,6 +77,20 @@ import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 const dshort = (iso?: string | null) =>
   iso ? whenItWas(iso, 'dayAndMonth') : ' - '
 
+/**
+ * U.10 RE-REVIEW ITEM B: A SESSION PILL, AS A SENTENCE ITS OWN READER CAN FOLLOW.
+ *
+ * "Session 1, 27 Sept, now" - three comma-joined fragments with no verb - was still a list of
+ * pieces rather than something read the way a person reads a sentence.
+ */
+function sessionPillSentence(s: { n: number; state: string; date: string | null; opensOn?: string | null }, groundEnded: boolean): string {
+  const current = s.state === 'current' && !groundEnded
+  if (current) return s.date ? `Session ${s.n} is today, ${dshort(s.date)}.` : `Session ${s.n} is today.`
+  if (s.date) return `Session ${s.n} was on ${dshort(s.date)}.`
+  if (s.opensOn && s.state !== 'done') return `Session ${s.n} opens on ${dshort(s.opensOn)}.`
+  return `Session ${s.n}.`
+}
+
 /** What each record type under "Who owns what" is, in a sentence rather than a bare tag. */
 const WHAT_THIS_ITEM_IS: Record<string, string> = {
   COMMITMENT: 'This is a commitment.',
@@ -521,13 +535,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 */}
                 {b.phaseSpine.sessions.map((s) => {
                   const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
-                  const face = (
-                    <>
-                      {/* "now" on a check-in that has ended is a clock nobody is watching. Commas,
-                          not middle dots, join the parts of this chip's own short phrase. */}
-                      Session {s.n}{s.date ? `, ${dshort(s.date)}` : s.opensOn && s.state !== 'done' ? `, opens ${dshort(s.opensOn)}` : ''}{s.state === 'current' && !groundEnded ? ', now' : ''}
-                    </>
-                  )
+                  const face = sessionPillSentence(s, groundEnded)
                   const skin = {
                     fontSize: 11, padding: '4px 10px', borderRadius: 20,
                     background: s.state === 'current' ? 'rgba(139,224,174,.18)' : '#2C2E52',
@@ -739,9 +747,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           ))}
                         </div>
                       )}
+                      {/*
+                        "WHY IT MATTERS If the delays..." read live as one run-on line: the caption
+                        and the sentence shared a line with only a trailing space between them. The
+                        caption is now its own line, like every other caption on this page.
+                      */}
                       {d.atStake && (
                         <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
-                          <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)' }}>Why it matters </span>
+                          <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>Why it matters</span>
                           {d.atStake}
                         </div>
                       )}
@@ -947,7 +960,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.decisions && b.decisions && (
           <>
-            <Sec title="Decisions needed" src="from divergences and blockers" />
+            <Sec title="Decisions needed" src="raised by what differs or is stuck" />
             <Card>
               {b.decisions.map((d, i) => (
                 <Row key={i} first={i === 0}>
@@ -1052,10 +1065,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, fontSize: 13, fontWeight: 600, minWidth: 160 }}>
                         {o.name}
-                        {/* WHOSE NUMBER IT IS, on the row. Nine rows read from one sheet are nine
-                            people's, and the board listed them exactly as it listed the team's. */}
-                        {o.owner && <span style={{ marginLeft: 7, fontWeight: 400, color: 'var(--gw-sub)', fontSize: 12 }}>· {o.owner}</span>}
                         {o.isNew && <span style={{ marginLeft: 7 }}><Pill tone="info">new</Pill></span>}
+                        {/*
+                          WHOSE NUMBER IT IS, on its own line. "12 shops· Rukia Otieno" read live: the
+                          name sat right after the target with only a CSS margin between them, no
+                          space in the text itself. Said as a plain sentence below the name instead.
+                        */}
+                        {o.owner && (
+                          <div style={{ fontWeight: 400, color: 'var(--gw-sub)', fontSize: 12, marginTop: 2 }}>{o.owner}’s own target</div>
+                        )}
                         {/*
                           A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, AND THE ROW SAYS SO.
                           "signed 12m" read as settled while the lead's own note, one page away, said
@@ -1079,11 +1097,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                               means the opposite thing on a ceiling. */}
                           <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 96, textAlign: 'right' }}>
                             {o.journey?.start != null
-                              ? (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` · from ${o.journey.start}, said ${o.target}`}</>)
+                              ? (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{`, up from ${o.journey.start}, aiming for ${o.target}`}</>)
                               : (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}`}</>)}
                           </div>
                           <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
-                            {o.delta > 0 ? `+${o.delta} this session` : 'no change'}
+                            {o.delta > 0 ? `up ${o.delta} this session` : 'no change'}
                           </div>
                         </>
                       ) : (
@@ -1099,29 +1117,35 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       name={o.name}
                       assumes={o.assumes ?? []}
                     />
+                      {/*
+                        WORDS, NOT SYMBOLS. "-", "+" and "x" read as three unlabelled glyphs to
+                        anybody looking at the screen, even though each already carried an
+                        aria-label for a screen reader - an accessible name is not the same thing
+                        as a word a sighted person can read.
+                      */}
                       {b.canEditFrame && (
-                        <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <button
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
                             disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
                             title="Move this count down"
                             aria-label={`One fewer: ${o.name}`}
-                            style={miniBtn}
-                          >-</button>
+                            style={{ ...miniBtn, width: 'auto', padding: '0 8px' }}
+                          >Lower</button>
                           <button
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
                             disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
                             title="Move this count up"
                             aria-label={`One more: ${o.name}`}
-                            style={miniBtn}
-                          >+</button>
+                            style={{ ...miniBtn, width: 'auto', padding: '0 8px' }}
+                          >Raise</button>
                           <button
                             onClick={() => sureAboutTarget.arm(o.id)}
                             disabled={removeObjective.isPending}
                             title="Remove this target"
                             aria-label={`Remove target: ${o.name}`}
-                            style={{ ...miniBtn, color: 'var(--gw-clay)' }}
-                          >x</button>
+                            style={{ ...miniBtn, width: 'auto', padding: '0 8px', color: 'var(--gw-clay)' }}
+                          >Remove</button>
                         </span>
                       )}
                       {sureAboutTarget.isArmed(o.id) && (
@@ -1158,11 +1182,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {/* A new target means nothing until people have checked in against it. */}
                     {o.isNew && o.askedOf && (
                       <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
-                        Asked about this so far:{' '}
-                        {o.askedOf.filter((a) => a.asked).map((a) => a.name).join(', ') || 'nobody yet'}
-                        {o.askedOf.some((a) => !a.asked) && (
-                          <> · still to be asked: {o.askedOf.filter((a) => !a.asked).map((a) => a.name).join(', ')}</>
-                        )}
+                        {(() => {
+                          const asked = o.askedOf.filter((a) => a.asked).map((a) => a.name)
+                          const notYet = o.askedOf.filter((a) => !a.asked).map((a) => a.name)
+                          const askedSaid = asked.length ? `So far this has been asked of ${asked.join(', ')}.` : 'Nobody has been asked about this yet.'
+                          return notYet.length ? `${askedSaid} It still needs to be asked of ${notYet.join(', ')}.` : askedSaid
+                        })()}
                       </div>
                     )}
                   </Row>
@@ -1264,7 +1289,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             {/* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */}
             {b.family === 'UPDATE'
               ? <Sec title="What each person said" src="their answers to the question, in their words" />
-              : <Sec title="Who owns what" src="extracted from check-ins" />}
+              : <Sec title="Who owns what" src="read from what people said in their check-ins" />}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 14 }}>
               {b.whoOwnsWhat.map((p) => (
                 <Card key={p.participantId} pad={false}>
@@ -1343,9 +1368,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.checkInGrid && b.checkInGrid && (() => {
           /** Does any row have a role worth a column of its own? */
           const anyRoleToShow = b.checkInGrid.rows.some((r) => (r.role && r.role !== r.name) || r.managingOnly)
+          /*
+           * ITEM E: A SESSION THAT HAS NOT OPENED IS NOT THE SAME "-" AS ONE SOMEBODY WAS SIMPLY
+           * NOT ON. A bare dash read the same for both, and for a session with nothing to say about
+           * it yet at all. Cross-referenced against the phase spine's own state, so an unopened
+           * session's cell is blank with an accessible "Not open yet" rather than a dash.
+           */
+          const sessionState = new Map((b.phaseSpine?.sessions ?? []).map((ps) => [ps.n, ps.state]))
           return (
           <>
-            <Sec title="Sessions this phase" src="from sessions" />
+            <Sec title="Sessions this phase" src="from each session so far" />
             <Card>
               {/*
                 A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
@@ -1354,7 +1386,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 The phone gets the same facts down the page instead - see the component.
               */}
               {onAPhone ? (
-                <NineColumnsIsNotAPhoneScreen rows={b.checkInGrid.rows.map((r) => ({ ...r, name: nameOnTheBoard(b, r.participantId, r.name) })) as any} sessions={b.checkInGrid.sessions} />
+                <NineColumnsIsNotAPhoneScreen
+                  rows={b.checkInGrid.rows.map((r) => ({ ...r, name: nameOnTheBoard(b, r.participantId, r.name) })) as any}
+                  sessions={b.checkInGrid.sessions}
+                  openSessions={b.checkInGrid.sessions.filter((s) => sessionState.get(s) !== 'upcoming')}
+                />
               ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 460 }}>
@@ -1393,10 +1429,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           const v = r.cells[String(s)] ?? 'na'
                           return (
                             <td key={s} style={td}>
-                              {v === 'na' ? <span style={{ color: 'var(--gw-muted)' }}> - </span>
-                                : <Pill tone={v === 'done' ? 'good' : v === 'in-progress' ? 'info' : v === 'declined' ? 'bad' : 'flat'}>
-                                    {v === 'done' ? 'Checked in' : v === 'in-progress' ? 'In progress' : v === 'declined' ? 'Declined' : 'Not started'}
-                                  </Pill>}
+                              {v === 'na' ? (
+                                sessionState.get(s) === 'upcoming'
+                                  ? <span aria-label="Not open yet" />
+                                  : <span aria-label="Not on this session" style={{ color: 'var(--gw-muted)' }}> - </span>
+                              ) : (
+                                <Pill tone={v === 'done' ? 'good' : v === 'in-progress' ? 'info' : v === 'declined' ? 'bad' : 'flat'}>
+                                  {v === 'done' ? 'Checked in' : v === 'in-progress' ? 'In progress' : v === 'declined' ? 'Declined' : 'Not started'}
+                                </Pill>
+                              )}
                             </td>
                           )
                         })}
@@ -1434,7 +1475,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.contribution && b.contribution && (
           <>
-            <Sec title="Contribution against role" src="each role, own terms" />
+            <Sec title="Contribution against role" src="measured against each person’s own role" />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Is the role clear, and what does the record actually hold for each person, read in their own function's terms.
@@ -1538,7 +1579,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 <div key={r.participantId} style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{nameOnTheBoard(b, r.participantId, r.name)}</span>
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', textTransform: 'uppercase', letterSpacing: '.3px' }}>{r.scope} level</span>
+                    {/* "ROLE LEVEL" read as a heading over a single word; it is a small note beside
+                        the name, not a section of its own, so it no longer renders in capitals. */}
+                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>at {r.scope} level</span>
                     <span style={{ marginLeft: 'auto' }}>
                       <Pill tone={r.kind === 'LEAKING' ? 'warn' : r.kind === 'ABSORBING' ? 'info' : 'flat'}>
                         {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : 'Staying with them'}
@@ -1552,14 +1595,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     </div>
                   )}
 
+                  {/* "WHAT PEOPLE SAID The role..." read live as one run-on line, the same bug as
+                      "Why it matters" above. Its own line now. */}
                   <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
-                    <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)' }}>What people said </span>
+                    <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>What people said</span>
                     {r.what}
                   </div>
 
                   {/* The signal is ALWAYS coupled to the reason it cannot self-determine. */}
                   <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.4, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 9, padding: '7px 10px' }}>
-                    <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.3px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>
+                    <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>
                       Which of the four this is
                     </span>
                     {r.reasonText}
@@ -1712,7 +1757,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {has('poll') && (
           <>
             <Zone label="Logistics" />
-            <Sec title="Find a time" src="the one thing you add" />
+            <Sec title="Find a time" src="the only thing you set up here" />
             <Card>
               {b.canEditFrame && (
                 <div style={{ padding: '8px 0', borderBottom: b.poll ? '1px solid var(--gw-border)' : 'none' }}>

@@ -106,14 +106,23 @@ export function theSentenceFor(name: string, shape: ReturnType<typeof theShapeOf
   return `${name} ${who}${rest}.`
 }
 
-export function NineColumnsIsNotAPhoneScreen({ rows, sessions }: {
+export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions }: {
   rows: PersonRow[]
   sessions: (number | string)[]
+  /**
+   * ITEM E: SAY NOTHING ABOUT A SESSION THAT HAS NOT OPENED. "Faraji Odhiambo has not started
+   * session 1, and was not part of the other 1." named a second session he could not possibly have
+   * been part of yet - it had not opened. When given, only these session numbers count towards
+   * "the other N"; a session left out of this list is left out of the sentence entirely, not
+   * counted as one more he was not on. Defaults to `sessions` (every one counts) when omitted.
+   */
+  openSessions?: (number | string)[]
 }) {
+  const counted = openSessions ?? sessions
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       {rows.map((r) => {
-        const shape = theShapeOfIt(r.cells, sessions)
+        const shape = theShapeOfIt(r.cells, counted)
         const name = r.name ?? 'A colleague'
         const sentence = theSentenceFor(name, shape)
         return (
