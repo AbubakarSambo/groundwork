@@ -141,6 +141,12 @@ Tests: 728 files and 6,704 tests pass in the parts touched. Two tests were chang
 
 Tests: 646 files and 6,068 tests pass in reports, board, check-ins and conversation. The new test reads the real board and team report as the lead, two participants and an admin.
 
+**Two faults found while building week 6b are fixed.**
+- **Only the lead, and the person it is about, read what the lead weighs at the close** (`0cd2b0fc`). Any colleague in the check-in, and an admin reading along, could read another person's weighed lines. The code meant it for the lead and the subject, but nothing enforced it. Now anyone else is not sent that part at all. This is the more private option.
+- **Opening a report never asks the model now** (`dfcbbe17`). Opening the team report made 3 model calls, to word the list of things worth getting on record and the coaching note. The wording is now done when the report is built, for the lead, each person and an admin. Opening serves what is stored. A report built before this change opens with the engine's own words, and still asks no model. A new test opens the report, the session report, the rounds and the board as each reader, and fails if any model is asked.
+
+Tests: 647 files and 6,079 tests pass in reports, board, check-ins and conversation.
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
@@ -180,6 +186,7 @@ I looked at where the drop is. It is spread thinly over many scenarios, one or t
 19. **Request 23: only a manager starts a performance review,** as today. The product does not start one by itself.
 20. **Request 71: the weekly report is written on Friday,** as in the prototype.
 21. **Request 5: the situations are renamed to the prototype's names.** The client's list has to change on the same day, so it is written up but not done.
+22. **What the lead weighs at the close is read only by the lead and the person it is about.** On a team check-in, that is the lead alone.
 
 ---
 
