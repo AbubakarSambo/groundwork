@@ -147,6 +147,15 @@ export function whoSeesThisDifferently(positions: { who?: string }[] | undefined
 }
 
 /** What each record type under "Who owns what" is, in a sentence rather than a bare tag. */
+/**
+ * THE WORDS OF ONE LINE UNDER "WHO OWNS WHAT", OR NOTHING. The server leaves a line's words out when
+ * they named a file this reader may not open (request 46). A line with no words is not drawn at all:
+ * its label alone ("This is progress they reported.") would say that something is there to read.
+ */
+export function theWordsOfALine(text: string | null | undefined): string {
+  return (text ?? '').replace(/^\[VERIFIABILITY:[A-Z]+\]\s*/, '').trim()
+}
+
 const WHAT_THIS_ITEM_IS: Record<string, string> = {
   COMMITMENT: 'This is a commitment.',
   SUCCESS_DEFINITION: 'This says what success looks like.',
@@ -1379,11 +1388,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {p.role && p.role !== p.name && <div data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 1 }}>{theLeadsNote(p.role)}</div>}
                   </div>
                   <div style={{ padding: '2px 15px 10px' }}>
-                    {p.items.length === 0 ? (
+                    {(() => { const said = p.items.filter((it) => theWordsOfALine(it.text)); return said.length === 0 ? (
                       <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>{b.family === 'UPDATE' ? 'Has not answered yet.' : 'Nobody has said anything about this yet.'}</div>
-                    ) : p.items.map((it, i) => (
+                    ) : said.map((it, i) => (
                       <div key={it.id} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                        <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{it.text.replace(/^\[VERIFIABILITY:[A-Z]+\]\s*/, '')}</div>
+                        <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{theWordsOfALine(it.text)}</div>
                         <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
                           {/*
                             RECORD TYPES ARE THE GOAL VOCABULARY, SAID AS A SENTENCE. "success
@@ -1397,7 +1406,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>Said in session {it.sessionNumber}.</span>}
                         </div>
                       </div>
-                    ))}
+                    )) })()}
                   </div>
                 </Card>
               ))}
