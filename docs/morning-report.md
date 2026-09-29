@@ -31,6 +31,14 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Part 2A: sharing when the lead has left, the admin's line, and the decision field
+
+- **If the lead has left the organisation, an admin can share the report** (`d8a4ebb1`). Everybody reads, for example, "Grace Otieno shared this report, because Rukia Mwangi has left the organisation.", on the report and in the email. While the lead is still there, only the lead can share it, as before.
+- **An admin who cannot see a target reads only "has checked in"** (`badb332e`, `4390d671`). The line used to read "Aisha Otieno has checked in, and nothing here needs you this week."; it now reads "Aisha Otieno has checked in." No page yet sums up a whole check-in for an admin, so decision 47's "Nothing you have access to needs you this week." has nowhere to go yet. It will be used when such a page exists.
+- **A decision about a person is now a field the lead sets** (`979b5e41`, migration `20260929150000_a_decision_about_a_person`, applied to the local test database only). The guess from the target's wording is removed entirely. Existing targets stay unmarked, because they are not guessed. A target marked as a decision about a person reaches only the lead, whatever the check-in's setting.
+
+Tests: 697 files and 6,508 tests pass in the parts touched.
+
 ### Part 1: pattern names approved, and patterns switched on
 
 - **The names** (`5595c033`) live in one place, `api/src/modules/patterns/plain-pattern-names.ts`, and every served pattern reads its name from there. Hafsah's eight rewordings are in, and B5 is as written. `docs/pattern-names.md` is marked approved, and a test keeps the two word for word the same. E4 and F5 are in a list nothing that serves a pattern reads.
