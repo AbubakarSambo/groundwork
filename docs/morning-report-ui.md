@@ -6348,3 +6348,98 @@ moved it to `useOpenSession.ts` - caught and fixed by this round's own full-suit
 regression.
 
 **Commit:** `8edca611` - "Rebuild My work as the prototype's "Your work" page, no sub-tabs"
+
+## Re-review of the rebuilt check-in page: eight items (30 September 2026)
+
+All eight items from the re-review are done. Commits: `00b9a4e0` (items 1-2), `2e0071ea` (item 3),
+`3f515f64` (item 4), `8a9f20a1` (request 75, part of item 4), `f5ef2d8d` (item 5), `7337d478`
+(item 6), `4083ceb1` (item 7, privacy), `e729a789` (item 8).
+
+**1. DONE, a real bug.** `GroundAdminPage.tsx`'s read-only redirect (an admin who neither runs a
+check-in nor takes part in it, sent from Check-in/My work to Context) read `isInitiator`/
+`viewerIsAParty` - both correctly false for that reader, but ALSO both false for everybody while
+`ground` is still loading, since they default to false until it arrives. So the effect could not
+tell "this reader genuinely has none of this" from "nobody knows who this reader is yet" - every
+reader, including the lead and a party arriving on `?tab=chat`, was bounced to Context for the
+instant before the ground loaded, and nothing ever bounces a reader back once `goTab('docs')` has
+run. Fixed by waiting for `isLoading`/`ground` before asking who the reader is. New test:
+`GroundAdminPage.tabRedirectRace.spec.tsx`, a loading-then-loaded sequence as the lead, an org
+admin who is also a party, and a genuinely read-only admin - each confirmed to actually catch the
+old bug by reverting the fix locally and re-running.
+
+**2. DONE.** "Your check-in" in the header linked to the bare `/grounds/:id` - this very page,
+so clicking it did nothing visible. It now opens the reader's own open session directly
+(`/checkin/:id`) when there is one, or the Check-in tab otherwise; still shown only to somebody who
+answers this check-in themselves. `GroundAdminPage.yourCheckInLink.spec.tsx`.
+
+**3. DONE.** The Done page's `whenTheNextOneOpens` read only `availableFrom`, so a session already
+IN_PROGRESS with a future `availableFrom` (started early, or clock skew) still said "opens on
+Sunday 4 October" instead of that it is open now - same rule `myOpenOpensLater` already applies to
+a viewer's own session on the ground pages. Added `theNextOpenCheckInId`, the id to link to
+whenever the sentence says "open now"; the Done page now shows "Go to it" under the subtitle.
+`what-the-end-of-a-check-in-can-say.spec.ts`, `TheDonePage.nextSessionAlreadyOpen.spec.tsx`.
+
+**4. DONE**, one item flagged rather than fixed. My work's clipped fragments and colon-joined
+lines are now plain sentences: the dropped "the line the next session opens from" caption; "1 of
+12" over "check-ins so far" (not "check-ins of 12", which repeated the number above it); a
+commitment no longer repeats a date its own text already states, and gets its timing as its own
+capitalised sentence when it does not; the five bars' own captions are capitalised, not left
+lower-case; "Rukia Otieno: Twelve signed..." is now "Rukia Otieno said twelve signed..."; "Something
+nobody asked for" -> "Something you did that nobody asked for"; the evidence field's dash-joined
+placeholder -> a plain "for example" sentence; the footer's "This is not yours..." -> "This goes to
+your next check-in, which will ask you about it." "They can set it on the Setup tab." is the
+engine's own text (`where-you-are-against-what-you-named.ts`, report synthesis) - flagged as
+**request 75** rather than edited here, since it names a tab this branch renamed to "People and
+setup".
+
+**5. DONE.** Between check-ins' "Add a note for next time" opened a second box (GroundChat's own
+note composer) above the card's own footer composer, so two input boxes showed at once. There is
+one composer now: the chip switches it into note mode (placeholder "Note something for your next
+check-in...", button reads "Save"), saving through the same private-note endpoint rather than Ask
+Groundwork. `BetweenCheckIns.spec.tsx`.
+
+**6. DONE.** The about pop-up's own title ("What this check-in is about, and what you said last
+time") was repeated word for word as a heading inside it. That block is now a plain section with
+no heading of its own. `ChatPage.aboutPanelWording.spec.tsx`.
+
+**7. DONE, a privacy bug, fixed in the backend.** `whereAgainstSuccessAsBuilt`
+(`api/src/modules/reports/reports.service.ts`) never selected `scenario`/`peersVisibleToEachOther`
+on its own `ground.findUnique` - the two fields `peersAreNamedOn` needs to tell a hidden check-in
+(an evaluation or a cohort, by default) from an open one. Both came back `undefined`, which
+`peersAreNamedOn` reads as "not evaluative" and "nobody has said", defaulting to **true** - so a
+participant on a hidden check-in was served every colleague's real name on "What success looks
+like", word for word. Fixed by selecting the two fields; the rule itself (shared with the board,
+the grounds page and the interview) needed no change. New spec:
+`what-success-looks-like-never-names-a-hidden-peer.spec.ts`, whose mock actually enforces Prisma's
+`select` (so it would have caught this) - verified by reverting the fix locally and watching two of
+its four tests fail with the leaked name.
+
+**8. DONE - a decision Hafsah should confirm.** Context offered "Rewrite" on "What this check-in is
+for" to any org admin who runs a check-in with the lead's eyes, not only the lead - `ContextPage.tsx`'s
+own comment even recorded it as a decision ("An admin may rewrite it - 'she should rewrite'").
+Taking the more private option per the review task and Hafsah's item 31.2: only the check-in's own
+lead may now rewrite the brief; an admin still reads it, and keeps every other authoring power
+(renaming, the schedule, releasing the report, ending the check-in). Enforced on both ends -
+`ContextPage.tsx`'s `isLead`/`isTheLead` split (write gated on `isTheLead`, the read-only fold
+still on `isLead`) and `grounds.service.ts`'s `updateTimeline`, whose `dto.brief` branch now
+refuses anybody but the initiator.
+
+### Decided for Hafsah to confirm
+
+**Item 8, only the lead may rewrite the brief.** This reverses a decision `ContextPage.tsx` had
+recorded in its own comment (an org admin running a check-in with the lead's eyes could rewrite
+"What this check-in is for", same as the lead). The review task instructed taking the more private
+of the two options, which is what shipped: only the check-in's initiator may change it now, on the
+screen and on `grounds.service.ts`'s `updateTimeline` route. Everything else an admin could do to a
+check-in they administer but do not lead - rename it, change its schedule, release its report, end
+it, read the brief - is unchanged. Flagging for a look because it is a genuine narrowing of an
+admin's authoring power over a check-in they were given administrative rights to, not a wording fix.
+
+**Verification.** `npx tsc -b` clean (client). `npx tsc --noEmit` clean (api). Targeted client
+suite (23 spec files touched by this round, including three newly-written regression specs and all
+their pre-existing neighbours in the same files): 131/131. Targeted API suite (the new privacy
+spec, `whose-words-the-brief-is.spec.ts`, and every other spec in `grounds.service.ts`'s
+`updateTimeline`/brief neighbourhood, plus `reports.service.ts`'s privacy/label specs): all green.
+Full scorer/scenario run not re-run this pass (no engine-owned code changed by these fixes; the one
+backend change with scoring relevance, item 7, is a privacy fix with its own dedicated spec, not a
+change to what any report says).
