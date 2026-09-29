@@ -92,6 +92,8 @@ import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-spli
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
+import { viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
@@ -1686,6 +1688,28 @@ export class BoardService {
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
       /* And a line with no words is left out here, never served for the page to draw as an empty line. */
       walled = withoutLinesWithNoWords(walled, ['whoOwnsWhat', '*', 'items'], 'text');
+      /*
+       * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being
+       * reviewed reads the facts on this board, never a colleague's exact words - those stay with
+       * the manager (an admin reads as the manager does). See
+       * colleagues-exact-words-stay-with-the-manager.ts. A colleague giving a view, and every
+       * reader on every other kind of check-in, reads `whoOwnsWhat` and `divergence` exactly as
+       * before - this is a no-op for them.
+       */
+      if (viewerIsTheSubjectOfAnEvaluationCheckIn({
+        scenario: ground.scenario,
+        isLead: runsThisGround,
+        viewerParticipantId: me?.id ?? null,
+        participants: ground.participants as any,
+      })) {
+        if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = whoOwnsWhatForTheSubject(walled.whoOwnsWhat, me?.id ?? null);
+        if (Array.isArray(walled.divergence?.items)) {
+          walled.divergence = {
+            ...walled.divergence,
+            items: divergenceForTheSubject(walled.divergence.items, [me?.id ? nameOf(me.id) : null]),
+          };
+        }
+      }
       /* A record whose name was only a hidden number is not left as a row with no name. */
       if (Array.isArray(walled.workRecords)) {
         walled.workRecords = walled.workRecords.map((sec: any) => (Array.isArray(sec.rows)
