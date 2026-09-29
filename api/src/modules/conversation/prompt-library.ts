@@ -3878,6 +3878,16 @@ export interface PromptContext {
     /** The name of whoever is waiting on it, for a commitment. */
     owedToName?: string | null;
     status?: string | null;
+    /**
+     * DECISION 56, ITEM 2. Set when the lead wrote this goal and has not told the person yet: `text`
+     * here is already `theAreaOfAGoal` (the number, amount, date-as-target and quantity taken out),
+     * never the full sentence, and every other number-carrying field (`dueSaid`, `dueDate`,
+     * `whyThisNumber`) is left null upstream for the same reason. This flag is what tells the model to
+     * ask about the area of work and never state a number, a target, or that a goal exists - the
+     * reply guard `refusesTheUntoldGoalsNumber` in conversation.service.ts is the second layer, for
+     * when the instruction alone does not hold.
+     */
+    notToldYetAreaOnly?: boolean;
   } | null;
   /**
    * ALL of this person's objectives. `personObjective` stays for the single case and for callers
@@ -4155,6 +4165,22 @@ function cadenceLabel(cadence: PromptContext['cadence']): string {
  * that block and is unchanged; what changed is that it can now be called more than once.
  */
 function describeObjective(o: NonNullable<PromptContext['personObjective']>): string {
+  /*
+   * DECISION 56, ITEM 2. The lead has set this and not yet told them. `text` is already the area of
+   * work with every number taken out (`theAreaOfAGoal`), and nothing below this branch runs, because
+   * `dueSaid`/`dueDate`/`whyThisNumber` would each reintroduce a number or a date this person has not
+   * been given. Ask about the work; never say a goal exists or state anything it would be measured
+   * against.
+   */
+  if (o.notToldYetAreaOnly) {
+    return `${o.text} (their lead has set a goal about this area of work but has not told them yet - `
+      + 'ASK ABOUT THIS WORK NATURALLY, as you would ask about anything else they do. '
+      + 'NEVER say or imply that a goal, target or number has been set for this. '
+      + 'NEVER state a number, an amount, a percentage or a deadline in connection with it. '
+      + 'NEVER say their lead has set a goal, an expectation or anything else about it. '
+      + 'If they raise a number themselves, that is their own account and may be recorded as such';
+  }
+
   const whoSetIt = o.authoredByThem
     ? 'they wrote this themselves'
     /*

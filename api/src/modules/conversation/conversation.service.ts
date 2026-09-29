@@ -205,6 +205,8 @@ import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { whatWasRecordedFromADocument } from '../documents/what-was-recorded-from-a-document';
+import { notToldYet, theAreaOfAGoal } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { saysWhatAnUntoldGoalWithholds, IT_NAMED_THE_UNTOLD_NUMBER, type AnUntoldGoal } from './an-untold-goals-number-is-not-said';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -1924,6 +1926,36 @@ export class ConversationService {
       }
 
       /*
+       * DECISION 56, ITEM 2, SECOND LAYER. `composeSystemPrompt` already gives the model only the
+       * area of a goal the lead has not told this person about - no number, no date - and tells it
+       * never to say a goal has been set. This is the check: a reply is read for the number that
+       * goal is measured by, or for saying outright that a goal, target or expectation exists, and
+       * if either slipped through, the model is asked again once. See
+       * an-untold-goals-number-is-not-said.ts.
+       */
+      const untoldGoalsHere: AnUntoldGoal[] = await (this.prisma.personObjective?.findMany?.({
+        where: { groundId: checkIn.groundId, participantId: checkIn.participantId, awareness: 'NOT_TOLD' },
+        select: { text: true, target: true, authoredBy: true, awareness: true },
+      }) ?? Promise.resolve([] as any[]))
+        .catch(() => [] as any[])
+        .then((rows: any[]) => rows.filter(notToldYet).map((o) => ({ text: o.text as string, target: o.target ?? null })));
+      if (untoldGoalsHere.length && saysWhatAnUntoldGoalWithholds(screened.text, untoldGoalsHere)) {
+        this.logger.warn(`Check-in ${checkIn.id}: a reply named a number or a goal the lead has not told them about; asking again.`);
+        const withheld = await this.anthropic
+          .respond(`${fullSystem}\n\n${IT_NAMED_THE_UNTOLD_NUMBER}`, history)
+          .catch(() => '');
+        const second = withheld.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(withheld), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !saysWhatAnUntoldGoalWithholds(second.text, untoldGoalsHere)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try withheld it.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try named it too; the first stands.`);
+        }
+      }
+
+      /*
        * AND A DECLINE IS AN ANSWER. "I don't focus on a weekly number" was followed by a question about
        * the weekly number; "we don't share that" by the same ask reworded (adversarial run 2, 20 Sep
        * 2026, the judge's "badgering", ten times). Same guard as the pushback, same retry, different
@@ -3332,7 +3364,9 @@ export class ConversationService {
      * up asking about the wrong half of somebody's quarter.
      */
     const evidenceItems = personObjectives
-      .filter((o: any) => o.lastSeenState && o.lastSeenAt)
+      /* An untold goal's tracked-system state is a number too (decision 56, item 2) - left out here
+         for the same reason dueSaid/dueDate/whyThisNumber are left out above. */
+      .filter((o: any) => o.lastSeenState && o.lastSeenAt && !notToldYet(o))
       .map((o: any) => {
         let state: Record<string, string | number> = {};
         try {
@@ -3575,26 +3609,38 @@ export class ConversationService {
        * `personObjectives` is what the block renders - a person holding a target and a commitment
        * and a standing expectation had everything after the first invisible to the interview.
        */
-      personObjectives: personObjectives.map((o: any) => ({
-        text: o.text,
-        authoredBy: o.authoredBy,
-        seenBySubject: o.seenBySubject,
-        authoredByThem: o.authoredBy === 'self',
-        fromTheirSystem: !!o.sourceSystem,
-        /* Loaded from the row all along and dropped here. See `describeObjective`. */
-        kind: o.kind ?? null,
-        dueSaid: o.dueSaid ?? null,
-        dueDate: o.dueDate ?? null,
-        /* Why the number is that number, where the customer's system recorded one.
-           The session facing a shortfall can then ask whether the reason still
-           holds rather than asking somebody why they are behind. */
-        whyThisNumber: o.whyThisNumber ?? null,
-        owedToName: o.owedToParticipantId ? (nameByParticipantId.get(o.owedToParticipantId) ?? 'somebody on this check-in') : null,
-        status: o.status ?? null,
-      })),
+      /*
+       * DECISION 56, ITEM 2. A goal the lead wrote and has not yet told this person about still
+       * reaches the model - so it can ask about the work - but with `text` cut back to the area
+       * (`theAreaOfAGoal`) and every number-carrying field left null, so nothing here can say the
+       * number or the date the lead has not shared. `notToldYetAreaOnly` is what tells
+       * `describeObjective` to render it that way instead of the ordinary sentence.
+       */
+      personObjectives: personObjectives.map((o: any) => {
+        const untold = notToldYet(o);
+        return {
+          text: untold ? theAreaOfAGoal(o.text) : o.text,
+          authoredBy: o.authoredBy,
+          seenBySubject: o.seenBySubject,
+          authoredByThem: o.authoredBy === 'self',
+          fromTheirSystem: !!o.sourceSystem,
+          /* Loaded from the row all along and dropped here. See `describeObjective`. */
+          kind: o.kind ?? null,
+          dueSaid: untold ? null : (o.dueSaid ?? null),
+          dueDate: untold ? null : (o.dueDate ?? null),
+          /* Why the number is that number, where the customer's system recorded one.
+             The session facing a shortfall can then ask whether the reason still
+             holds rather than asking somebody why they are behind. Withheld for an untold goal,
+             same reason as dueSaid/dueDate: it is stated in terms of the number. */
+          whyThisNumber: untold ? null : (o.whyThisNumber ?? null),
+          owedToName: untold ? null : (o.owedToParticipantId ? (nameByParticipantId.get(o.owedToParticipantId) ?? 'somebody on this check-in') : null),
+          status: o.status ?? null,
+          notToldYetAreaOnly: untold,
+        };
+      }),
       personObjective: personObjective
         ? {
-            text: personObjective.text,
+            text: notToldYet(personObjective) ? theAreaOfAGoal(personObjective.text) : personObjective.text,
             authoredBy: personObjective.authoredBy,
             seenBySubject: personObjective.seenBySubject,
             /*
@@ -3605,6 +3651,7 @@ export class ConversationService {
             authoredByThem: personObjective.authoredBy === 'self',
             /* Seeded by an integration rather than written by anybody here. */
             fromTheirSystem: !!(personObjective as any).sourceSystem,
+            notToldYetAreaOnly: notToldYet(personObjective),
           }
         : null,
       partyType: checkIn.participant.partyType,
