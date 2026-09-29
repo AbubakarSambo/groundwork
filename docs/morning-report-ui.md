@@ -6032,3 +6032,80 @@ itself shows, so I did not start either rather than build on ground that is abou
 
 **Commit this round:** `c1cde225` - "A suggested answer with "..." fills the box instead of
 sending" (item C). Nothing pushed or merged.
+
+## Round 4: A finished (all three steps); B started (Bubble, QuickReplies); E not started
+
+**A — DONE, all three steps.**
+
+1. **The session history moves under My work.** New `client/src/components/gw/MyCheckInSessions.tsx`:
+   a list, newest first, each row opening (and closing again) its own transcript in place, reusing
+   `GroundChat.tsx`'s own `Message`/`SessionDivider`/`SessionSummary` rendering (now exported rather
+   than duplicated) and the same `groundsApi.myTranscript` call and query key GroundChat used - so
+   it is still only ever the reader's own words. Wired into both pages' My work tab, under
+   `MyRecord` (whose own session rows are about how specific/checkable each session was - a
+   different question from the words themselves). New test: `MyCheckInSessions.spec.tsx`, against
+   the real `myTranscript` shape.
+2. **"Who is in this" moves to People and setup.** New `client/src/components/gw/WhoIsInThis.tsx`
+   carries `GroundTopic`'s roster half verbatim (every sentence, condition and comment); `GroundTopic`
+   keeps only the brief. Both pages compute the roster's inputs once and pass them to `<WhoIsInThis>`
+   on Setup instead of to `<GroundChat>`. Three existing test files
+   (`who-is-in-this.spec.tsx`, `who-is-in-this-when-peers-are-hidden.spec.tsx`,
+   `nobody-is-late-before-it-opens.spec.tsx`) moved from mounting `GroundChat` (with a QueryClient
+   and Router) to mounting `WhoIsInThis` directly - simpler, since it fetches nothing - with every
+   assertion unchanged.
+3. **The Check-in tab is the focused conversation.** A party is redirected (a `useEffect`, placed
+   before every early return) to `/checkin/:id` when today's session is already open, or the
+   unchanged `?open=1` hand-off when it needs `probeSession`'s paywall check first. A lead or org
+   admin who is not a party is told plainly ("You do not answer this check-in yourself. The board
+   shows what has come from it so far.") and linked to the board. On
+   `GroundParticipantPage.tsx`, landing on the tab now fires the same `probeSession` the `?open=1`
+   hand-off always used; between sessions, the tab reuses `GroundChat`'s own `Composer` directly
+   (now exported) rather than reinventing it - a first pass at this step nearly dropped the private
+   note-for-next-time box and "Change how often this runs", both of which only existed inside
+   `Composer`. `GroundChat.tsx` is no longer mounted anywhere in the app, but the file stays:
+   `MyCheckInSessions.tsx` and `GroundParticipantPage.tsx` still import parts of it.
+
+   Six test files updated for step 3, each documenting its own reasoning in the diff
+   (`a-ground-opens-to-its-history.spec.ts`, `nothing-about-next-while-the-current-one-opens.spec.tsx`,
+   `one-door-per-place.spec.ts`, `the-lead-sees-the-ground-not-a-blank.spec.tsx`,
+   `the-way-to-check-in-is-on-the-page.spec.tsx`, and one API spec that reads these client files by
+   source, `a-run-you-can-steer.spec.ts`).
+
+Full client suite after A: 3439-3447/3440-3448 across the three steps (the one recurring failure is
+the pre-existing, unrelated engine-prompt count from the merge). All API specs that read the touched
+client files by source pass.
+
+**B — STARTED, not finished.** `components/gw/ui/Bubble.tsx` and `components/gw/ui/QuickReplies.tsx`
+built from `docs/prototype/source/app.css`'s own values and genuinely wired into use (not left as
+unused files): `ChatPage.tsx`'s message bubble now uses `Bubble` (fixing a real bug along the way -
+the bubble was drawing Groundwork's "cream" turn on `var(--gw-paper-2)`, which round 2's H turned
+into the page colour itself, making it invisible; now `var(--gw-bg)`, the prototype's real `--chat`),
+and `SuggestedAnswers.tsx` now draws through `QuickReplies` instead of its own stacked column of
+buttons (a real fix too: a fourth or fifth suggestion used to run one per line down the whole
+screen; it wraps in a row now, as the prototype's own pills do). New tests: `Bubble.spec.tsx`,
+`QuickReplies.spec.tsx`.
+
+Composer and the card frame (`ConversationCard`) were built to the same standard - exact values in
+the commit message and below - but not kept in this round's commit: `ChatPage.tsx`'s real composer
+has an attach menu (photo/document, paste text) neither simple part covered, and its real card frame
+is interleaved with banners (clarification session, session-open-failure) between the header and
+the scrolling body that would need their own slot. Rather than force an incomplete fit, or leave two
+components nothing imports (which `nothing-is-left-behind.spec.ts` would have caught), they were
+removed from this commit. **For the next pass:** `.ci-c{padding:12px 16px;border-top:1px solid
+var(--rule);background:var(--paper)}`, `.ci-sq{width:48px;height:48px;font-size:20px}`,
+`.ci-focus{max-width:560px;margin:0 auto}`, `.ci-card{border-radius:16px;display:flex;
+flex-direction:column}` - `Composer` needs an attach-menu slot (or to take the whole "+" button as a
+prop) before it can replace `ChatPage.tsx`'s real footer; `ConversationCard` needs a banner slot
+between `header` and the scrolling body, or the three banners folded into the `header` prop as a
+Fragment (mechanically safe, just not attempted this round given remaining time).
+
+**E — NOT STARTED**, given B is not finished. `TheDonePage.tsx` still covers much of Done's content;
+Between-check-ins has nothing built.
+
+**Commits this round (local only, `wip/prototype-ui`, not pushed):**
+1. `c1cde225` - A suggested answer with "..." fills the box instead of sending (item C, carried
+   over from round 3's report)
+2. `4740e99a` - A, step 1: the session history moves under My work
+3. `c5721ad0` - A, step 2: "Who is in this" moves to People and setup
+4. `b9244b1f` - A, step 3: the Check-in tab is the focused conversation, GroundChat retired from it
+5. `709bfbc4` - B (partial): Bubble and QuickReplies extracted to ui parts, used by ChatPage
