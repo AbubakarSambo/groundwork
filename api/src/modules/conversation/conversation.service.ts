@@ -2491,7 +2491,7 @@ export class ConversationService {
      * local corpus, and nobody should wait that long for "That's all for today". It is kept on this
      * turn and served on the transcript, where the screen picks it up.
      */
-    if (sessionComplete) void this.theEndCardFor(checkIn as any, aiTurn.id);
+    if (sessionComplete) this.startTheEndCard(checkIn as any, aiTurn.id);
     return {
       reply: [contextNotSaid, tookTheNumbers, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
@@ -7089,6 +7089,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   /**
+   * THE END CARD, STARTED AND NOT WAITED FOR. Nothing awaits this work, so nothing else would catch
+   * what goes wrong in it: a database blip or a model error would become an unhandled rejection, and
+   * that can take the whole API down. Whatever fails here is logged and means no card; the closing
+   * reply has already gone, and finishing reads the record as before.
+   */
+  private startTheEndCard(checkIn: { id: string; participantId: string; groundId: string }, closingTurnId: string): void {
+    this.theEndCardFor(checkIn, closingTurnId).catch((err: any) =>
+      this.logger.warn(`Check-in ${checkIn.id}: no end card (${err?.message ?? err}); the record is read when they finish.`));
+  }
+
+  /**
    * THE END CARD, BUILT AT THE CLOSING REPLY (task 2.7, screens request 7b).
    *
    * Reads the record from the conversation without writing it, marks each line from the documents
@@ -7486,17 +7497,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   async anchorRecordToDocuments(participantId: string, groundId: string): Promise<{ backed: number; of: number; readsDifferently?: number }> {
+    /* Both reads are started inside Promise.all's reach: a read that throws before it returns a
+       promise would otherwise leave the documents read already started with nothing waiting on it,
+       and its failure would become an unhandled rejection that can take the API down. */
     const [readable, entries] = await Promise.all([
       this.documentsThatMayBack(participantId, groundId),
       /* Every line of theirs, backed or not: a line one document backs can still be read differently
          by a newer one (the revised offer letter that moves the start date), and that is the case that
          matters most. Only an unbacked line can become backed here. */
-      this.prisma.recordEntry.findMany({
+      Promise.resolve().then(() => this.prisma.recordEntry.findMany({
         where: { participantId, disputedAt: null },
         select: { id: true, text: true, recallBased: true },
         orderBy: { createdAt: 'asc' },
         take: 120,
-      }),
+      })),
     ]);
     if (!readable.length || !entries.length) return { backed: 0, of: entries.length, readsDifferently: 0 };
     const result = await this.whatTheDocumentsBack(readable, entries.map((e) => e.text));

@@ -146,8 +146,70 @@ describe('at the closing reply', () => {
 
   it('is built after the goodbye, only when the conversation closed, and never holds the reply up', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    expect(src).toContain('if (sessionComplete) void this.theEndCardFor(checkIn as any, aiTurn.id);');
-    expect(src).not.toMatch(/await this\.theEndCardFor\(/);
+    expect(src).toContain('if (sessionComplete) this.startTheEndCard(checkIn as any, aiTurn.id);');
+    expect(src).not.toMatch(/await this\.(theEndCardFor|startTheEndCard)\(/);
+    /* Nothing waits on it, so it must never be started bare, with nothing to catch what fails. */
+    expect(src).not.toMatch(/void this\.theEndCardFor\(/);
+  });
+});
+
+describe('when the end card fails', () => {
+  /* Nothing waits on the end card, so a failure in it has nobody to catch it unless it is caught where
+     it starts. Uncaught, a database blip or a model error becomes an unhandled rejection, which can take
+     the whole API down. */
+  async function unhandledWhile(work: () => unknown): Promise<unknown[]> {
+    const seen: unknown[] = [];
+    const listener = (reason: unknown) => { seen.push(reason); };
+    process.on('unhandledRejection', listener);
+    try {
+      work();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally {
+      process.off('unhandledRejection', listener);
+    }
+    return seen;
+  }
+
+  it('is caught and logged, leaves no card, and holds nothing up', async () => {
+    const prisma: any = { conversationTurn: { update: jest.fn() } };
+    const service = aService(prisma);
+    service.theEndCardFor = jest.fn(() => Promise.reject(new Error('the database blinked')));
+    const warn = jest.spyOn(service.logger, 'warn').mockImplementation(() => undefined);
+    let returned: unknown = 'not yet';
+    const unhandled = await unhandledWhile(() => { returned = service.startTheEndCard({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9'); });
+    expect(returned).toBeUndefined();
+    expect(unhandled).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Check-in ci1: no end card (the database blinked)'));
+    expect(prisma.conversationTurn.update).not.toHaveBeenCalled();
+  });
+
+  it('a database with no documents table still leaves no unhandled failure', async () => {
+    const prisma: any = { conversationTurn: { update: jest.fn() } };
+    const service = aService(prisma);
+    service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
+    jest.spyOn(service.logger, 'warn').mockImplementation(() => undefined);
+    const unhandled = await unhandledWhile(() => service.startTheEndCard({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9'));
+    expect(unhandled).toEqual([]);
+    expect(prisma.conversationTurn.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('when anchoring the record to documents fails at the close', () => {
+  /* Found by the coaching spec: the record read threw before it returned a promise, which left the
+     documents read, already started, with nothing waiting on it. Its failure crashed Node. */
+  it('both failures reach the caller, and neither is left unhandled', async () => {
+    const prisma: any = { groundDocument: { findMany: jest.fn(() => Promise.reject(new Error('documents unreachable'))) } };
+    const service = aService(prisma);
+    const seen: unknown[] = [];
+    const listener = (reason: unknown) => { seen.push(reason); };
+    process.on('unhandledRejection', listener);
+    try {
+      await expect(service.anchorRecordToDocuments('p1', 'g1')).rejects.toBeTruthy();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally {
+      process.off('unhandledRejection', listener);
+    }
+    expect(seen).toEqual([]);
   });
 });
 
