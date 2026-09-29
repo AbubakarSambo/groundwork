@@ -3,7 +3,7 @@ import { OutOfTime } from './OutOfTime'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { whichSessionIsThisCheckInOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
@@ -11,8 +11,10 @@ import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { GroundChat } from '@/components/gw/GroundChat'
-import { groundTabs } from './ground-tabs'
-import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
+import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
+import { Tabs } from '@/components/gw/ui/Tabs'
+import { cadenceLabel } from '@/lib/cadence'
+import { useAskStore } from '@/stores/ask'
 import { apiClient } from '@/api/client'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -83,6 +85,9 @@ export function GroundParticipantPage() {
   const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const user = useAuthStore(s => s.user)
+  /* Called here, before any early return below, so the hook count cannot change between renders
+     (rules of hooks) once the header starts using it for "Ask". */
+  const showAsk = useAskStore((s) => s.show)
 
   const { data: ground, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['ground', id],
@@ -257,7 +262,7 @@ export function GroundParticipantPage() {
     probeSession.mutate(myOpenForAutoOpen)
   }, [myOpenForAutoOpen, probeSession])
 
-  if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
+  if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-page)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
   /*
    * A FAILED REQUEST WAS TELLING PEOPLE THEY HAD BEEN REMOVED.
    *
@@ -270,7 +275,7 @@ export function GroundParticipantPage() {
    * a check-in that is genuinely gone answers 404, and anything else is a failure to load.
    */
   if (isError && !definitelyGone) return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>
           We could not load this check-in
@@ -358,7 +363,7 @@ export function GroundParticipantPage() {
 
   if (!myParticipant) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ maxWidth: 400, textAlign: 'center' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>You are not in this check-in</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
@@ -421,65 +426,93 @@ export function GroundParticipantPage() {
    */
 
   /**
-   * ONE TAB ORDER, SHARED WITH THE LEAD'S VIEW. See `ground-tabs.ts`.
+   * THE PROTOTYPE'S FIVE TABS, FOLDED FROM TODAY'S SIX (docs/tasks-ui.md, the check-in rebuild).
    *
-   * This list used to be defined here in its own order - Check-in, My record, Report - while the
-   * lead's page had Check-in, Sessions, Overview, Context, Report. Report third here, fifth there.
-   * Both read the same function now.
+   * This page used to hand `groundTabs()`'s own list (Check-in, Report, What I shared, Context,
+   * Setup) straight to the tab row, with "Board" prepended - six entries. The prototype's five are
+   * Board, Check-in, Context, My work, People and setup. `groundTabs()` itself is untouched (and
+   * still tested on its own); what changed is only what draws the row. Report and What I shared
+   * (this page's `record`) fold under one "My work" tab, as sub-tabs inside it; Setup is
+   * relabelled "People and setup".
    *
-   * "My record" became "Record", the same word the lead sees, because it is one tab whose CONTENT
-   * differs by role rather than two tabs about the same thing.
+   * ONE MOVE LIST:
+   *   Report          -> My work (sub-tab "Report")
+   *   What I shared    -> My work (sub-tab "What I shared")
+   *   Setup            -> People and setup (unchanged content, new label)
    */
-  const tabs = groundTabs({
-    contextEnabled,
-    /* This page is somebody's own account of the check-in. Running it is the other view's job. */
-    canRunThisCheckIn: false,
-    isAParty: true,
-  })
-
+  const inMyWork = tab === 'report' || tab === 'record'
+  const outerTabOf = (t: Tab): string => {
+    if (t === 'checkin') return 'checkin'
+    if (t === 'docs') return 'context'
+    if (t === 'settings') return 'people'
+    return 'mywork'
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', flexDirection: 'column' }}>
 
       {/*
-        U.10 PICTURE-CHECK ROUND 6, ITEM I: THE SAME SHARED HEADER THE BOARD USES.
-        "← Check-ins" is now the breadcrumb's own "Check-ins" link, inside TheCheckInHeader. The
-        tab row is `groundTabs()`'s own list (unchanged - keeping the labels ("Sessions", "What I
-        shared", "Setup") that other tests and this page's own comments protect against collision
-        and plurals, rather than forcing them to the prototype's board-page wording), with "Board"
-        (its own route) prepended, drawn by the header instead of GroundTabRow. Nothing here reads
-        as the plural of anything else, so `one-word-for-one-screen.spec.ts` is unaffected -
-        `groundTabs()` itself is unchanged; only what draws its output is.
+        U.10 PICTURE-CHECK ROUND 7, ITEM 2 (CHECK-IN REBUILD): THE SAME HEADER PLACEMENT AS THE
+        BOARD, NOT A STICKY BEIGE BAND. The admin page's header sits in a plain, non-sticky column
+        (`maxWidth: 1060, margin: '0 auto'`) on the page's own cream; this used to keep its own
+        `position: sticky` wrapper on `var(--gw-paper-2)` (the beige the design audit flagged) -
+        the one place round 7 never reached. Matched here now, so both views place their header the
+        same way.
 
-        THE RICH CONTEXT LINE (which view this is, a guest note, ended state, session count, days
-        left) is kept below the header rather than dropped - none of it is in the prototype, but
-        it says real things ("Your own check-in. The report shows where you and the others agree,
-        differ, and what to do next." is asserted verbatim by the-two-views-are-a-pair.spec.ts).
-        "The whole check-in →" (the way back for an admin who is a party elsewhere) moved into the
-        header's own `trailing` slot, the same slot the board uses for its own switcher.
+        ROUND 2, ITEM F: AND THE WHOLE PAGE BEHIND IT WAS THE SAME DARKER BEIGE
+        (`var(--gw-paper-2)`, #FAF5EA - "the prototype's lighter cream, for a band above the page",
+        never the page itself). The prototype's My work, the board and Context all sit on
+        `#FDFBF6` for a participant exactly as they do for a lead - `var(--gw-page)`, the token the
+        lead's page already used. Switched here too, on every state (loading, not-found, out of
+        time, and the page itself), so the two pages share one background, not two.
       */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--gw-paper-2)', borderBottom: '1px solid var(--gw-border)', padding: '12px 16px 0' }}>
-        <TheCheckInHeader
-          id={id!}
+      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 0', width: '100%' }}>
+        <CheckInHeader
+          crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: ground.label }]}
           title={ground.label}
-          cadence={(ground as any).cadence ?? null}
-          plannedSessions={totalSessions}
-          canRunThisCheckIn={canRunThisCheckIn}
-          isAParty
-          active={TO_TAB_KEY[tab] ?? 'chat'}
+          subtitle={(ground as any).cadence ? `${cadenceLabel((ground as any).cadence)}.` : undefined}
+          action={(
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+              {/* "Start my check-in" (board-as-participant.txt): the same place the Check-in tab opens. */}
+              <Link
+                to={`/grounds/${id}/p`}
+                style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
+              >
+                Start my check-in
+              </Link>
+              <button
+                type="button"
+                onClick={showAsk}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+              >
+                Ask
+              </button>
+              {/* The way back for an admin who is a party elsewhere - not in the prototype, but a
+                  real door this product needs (the-two-views-are-a-pair.spec.ts). */}
+              {canRunThisCheckIn && (
+                <button
+                  onClick={() => navigate(`/grounds/${id}`)}
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  The whole check-in →
+                </button>
+              )}
+            </div>
+          )}
+          active={outerTabOf(tab)}
           tabs={[
             { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
-            ...tabs.map((t) => ({ key: t.key, label: t.label })),
+            { key: 'checkin', label: 'Check-in' },
+            { key: 'context', label: contextEnabled ? 'Context' : 'Documents' },
+            { key: 'mywork', label: 'My work' },
+            { key: 'people', label: 'People and setup' },
           ]}
-          onSelectTab={(k) => goTab(FROM_TAB_KEY[k] ?? 'checkin')}
-          trailing={canRunThisCheckIn && (
-            <button
-              onClick={() => navigate(`/grounds/${id}`)}
-              style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              The whole check-in →
-            </button>
-          )}
+          onSelectTab={(k) => {
+            if (k === 'checkin') goTab('checkin')
+            else if (k === 'context') goTab('docs')
+            else if (k === 'mywork') goTab(inMyWork ? tab : 'record')
+            else if (k === 'people') goTab('settings')
+          }}
         />
 
         <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 0 12px' }}>
@@ -638,6 +671,26 @@ export function GroundParticipantPage() {
       )}
 
       <div style={{ maxWidth: 600, margin: '0 auto', width: '100%', padding: '16px 16px 48px' }}>
+
+        {/**
+          * "MY WORK", FOLDED FROM TWO OLD TABS (Report, What I shared).
+          *
+          * The prototype's my-record.txt holds these as one tab, not two - so this sub-tab row is
+          * what a click on the outer "My work" tab actually lands inside.
+          */}
+        {inMyWork && (
+          <div style={{ marginBottom: 14 }}>
+            <Tabs
+              label="My work"
+              active={tab}
+              onChange={(k) => goTab(k as Tab)}
+              items={[
+                { key: 'report', label: 'Report' },
+                { key: 'record', label: 'What I shared' },
+              ]}
+            />
+          </div>
+        )}
 
         {/* CHECK-IN TAB */}
         {/* MY RECORD TAB */}

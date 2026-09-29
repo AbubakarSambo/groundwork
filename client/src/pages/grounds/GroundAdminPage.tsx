@@ -7,7 +7,7 @@ import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { hasDoneThisSession, whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
 import { useState, useEffect } from 'react'
 import { railAttention } from '@/lib/rail-attention'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
@@ -20,7 +20,7 @@ import { authApi } from '@/api/auth'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
-import { SELECTABLE_CADENCES, sessionsFor } from '@/lib/cadence'
+import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
 import { personLabel as onePersonsLabel, peopleLabels, atTheStart } from '@/lib/utils'
 import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
 import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
@@ -34,7 +34,6 @@ import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec, TextAction } from '@/components/gw/kit'
-import { groundTabs } from './ground-tabs'
 import { ShareSection } from './ShareSection'
 import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
@@ -44,7 +43,9 @@ import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingFor
 import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
-import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
+import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
+import { Tabs } from '@/components/gw/ui/Tabs'
+import { useAskStore } from '@/stores/ask'
 import { billingApi } from '@/api/billing'
 import { SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
 import { whoIsInRound, countsInRound } from '@/lib/who-is-in-this-round'
@@ -254,6 +255,9 @@ export function GroundAdminPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
+  /* Called here, before any early return below, so the hook count cannot change between renders
+     (rules of hooks) once the header starts using it for "Ask". */
+  const showAsk = useAskStore((s) => s.show)
   /* U.6: WhatsApp is only mentioned while it is switched on (GET /auth/whatsapp), as well as connected. */
   const whatsAppIsOn = useWhatsAppIsOn()
   /**
@@ -1261,15 +1265,30 @@ export function GroundAdminPage() {
   const expectsUnblocking = (ground as any)?.expectThemToUnblock !== false
 
   /**
-   * ONE TAB ORDER, SHARED WITH THE PARTY VIEW. See `ground-tabs.ts`.
+   * THE PROTOTYPE'S FIVE TABS, FOLDED FROM TODAY'S SEVEN (docs/tasks-ui.md, the check-in rebuild).
    *
-   * This list used to live inline where `<GroundTabRow>` drew it, in its own order, with its own
-   * labels - and the party view kept a second one. Report was fifth here and third there;
-   * "Sessions" here was "My record" there. Both read the same function now, so a tab cannot move
-   * on one page without moving on the other. TheCheckInHeader (U.10 picture-check round 6, item I)
-   * draws it now, with "Board" (its own route) prepended.
+   * `ground-tabs.ts`'s own `groundTabs()` used to be drawn straight into the tab row - "Check-in",
+   * "Report", "Sessions", "My record" (if a party), "Context", "Setup" - which is six or seven
+   * entries once "Board" is prepended. The prototype's check-in page has five: Board, Check-in,
+   * Context, My work, People and setup. `groundTabs()` itself, and its own test suite, are
+   * untouched - what changed is only what draws the tab row: Report, Sessions (this page's
+   * `checkins`) and What I shared (`myrecord`) are folded under one "My work" tab, as sub-tabs
+   * inside it, and Setup is relabelled "People and setup" (unfolded; it was already its own tab).
+   *
+   * ONE MOVE LIST:
+   *   Report            -> My work (sub-tab "Report")
+   *   Sessions           -> My work (sub-tab "Sessions", lead only)
+   *   What I shared       -> My work (sub-tab "What I shared", a party only)
+   *   Setup              -> People and setup (unchanged content, new label)
    */
-  const tabs = groundTabs({ contextEnabled, canRunThisCheckIn: true, isAParty: viewerIsAParty })
+  const inMyWork = (['report', 'checkins', 'myrecord'] as Tab[]).includes(tab)
+  const myWorkDefault: Tab = viewerIsAParty ? 'myrecord' : 'report'
+  const outerTabOf = (t: Tab): string => {
+    if (t === 'chat') return 'checkin'
+    if (t === 'docs') return 'context'
+    if (t === 'settings') return 'people'
+    return 'mywork'
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
@@ -1285,19 +1304,42 @@ export function GroundAdminPage() {
         beige, same left margin as the board's content column.
       */}
       <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 0', width: '100%' }}>
-        <TheCheckInHeader
-          id={id!}
+        <CheckInHeader
+          crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: ground.label }]}
           title={ground.label}
-          cadence={(ground as any).cadence ?? null}
-          plannedSessions={plannedSessions}
-          canRunThisCheckIn
-          isAParty={viewerIsAParty}
-          active={({ chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', overview: 'overview', settings: 'settings' } as Record<string, string>)[tab] ?? 'chat'}
+          subtitle={(ground as any).cadence ? `${cadenceLabel((ground as any).cadence)}.` : undefined}
+          action={(
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+              {/* "Your check-in" (board-as-lead.txt): the same place the Check-in tab opens. */}
+              <Link
+                to={`/grounds/${id}`}
+                style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
+              >
+                Your check-in
+              </Link>
+              <button
+                type="button"
+                onClick={showAsk}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+              >
+                Ask
+              </button>
+            </div>
+          )}
+          active={outerTabOf(tab)}
           tabs={[
             { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
-            ...tabs.map((t) => ({ key: t.key, label: t.label })),
+            { key: 'checkin', label: 'Check-in' },
+            { key: 'context', label: contextEnabled ? 'Context' : 'Documents' },
+            { key: 'mywork', label: 'My work' },
+            { key: 'people', label: 'People and setup' },
           ]}
-          onSelectTab={(k) => goTab(FROM_TAB_KEY[k] ?? 'chat')}
+          onSelectTab={(k) => {
+            if (k === 'checkin') goTab('chat')
+            else if (k === 'context') goTab('docs')
+            else if (k === 'mywork') goTab(inMyWork ? tab : myWorkDefault)
+            else if (k === 'people') goTab('settings')
+          }}
         />
         {/*
           U.10 PICTURE-CHECK ROUND 7, ITEM 3: ONE PLAIN LINE, NOT PIECES SIDE BY SIDE.
@@ -1466,9 +1508,9 @@ export function GroundAdminPage() {
         {/*
           U.10 PICTURE-CHECK ROUND 6, ITEM I: THE TAB ROW MOVED TO THE TOP OF THE HEADER.
           `<GroundTabRow>` used to draw here, at the foot of all the status content above. It is
-          now `TheCheckInHeader`'s own tab bar, at the top of this sticky header (see the comment
-          there) - the prototype's own shape, header then tabs then everything else, rather than
-          everything else then tabs.
+          now `CheckInHeader`'s own tab bar (components/gw/ui/CheckInHeader.tsx), at the top of
+          this sticky header - the prototype's own shape, header then tabs then everything else,
+          rather than everything else then tabs.
         */}
       </div>
 
@@ -1723,16 +1765,39 @@ export function GroundAdminPage() {
         )}
 
         {/**
+          * "MY WORK", FOLDED FROM THREE OLD TABS (Report, Sessions, What I shared).
+          *
+          * The prototype's my-record.txt and sessions screens hold these as one tab, not three -
+          * so this sub-tab row is what a click on the outer "My work" tab actually lands inside.
+          * Report is the whole check-in; Sessions is everyone's state, for whoever runs it; What I
+          * shared is a party's own account. Same content as before the fold, just reached one
+          * level down.
+          */}
+        {inMyWork && (
+          <div style={{ marginBottom: 14 }}>
+            <Tabs
+              label="My work"
+              active={tab}
+              onChange={(k) => goTab(k as Tab)}
+              items={[
+                { key: 'report', label: 'Report' },
+                { key: 'checkins', label: 'Sessions' },
+                ...(viewerIsAParty ? [{ key: 'myrecord', label: 'What I shared' }] : []),
+              ]}
+            />
+          </div>
+        )}
+
+        {/**
           * GATED ON BEING IN IT, NOT ONLY ON THE TAB BEING OFFERED.
           *
-          * `groundTabs` leaves My record out for somebody who is not a party, so it is not in the
-          * row. That hides the door; it does not lock it - `?tab=record` in the address bar reaches
-          * this branch directly. An admin who is not in the check-in would have got two empty
-          * panels about a record they do not have.
+          * A party check, not only the sub-tab above being offered: `?tab=record` in the address
+          * bar reaches this branch directly. An admin who is not in the check-in would have got two
+          * empty panels about a record they do not have.
           *
-          * No data was ever at risk: both reads are gated the same way, so they return nothing, and
-          * the server refuses them independently. This is so the screen does not offer somebody a
-          * page about themselves that cannot be about them.
+          * No data was ever at risk: both reads are gated the same way, and the server refuses them
+          * independently. This is so the screen does not offer somebody a page about themselves
+          * that cannot be about them.
           */}
         {tab === 'myrecord' && viewerIsAParty && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

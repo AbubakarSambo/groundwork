@@ -171,6 +171,45 @@ describe('suggested answers under the question', () => {
     expect(screen.queryByRole('button', { name: 'Not yet' })).toBeNull()
   })
 
+  /**
+   * A SUGGESTION CONTAINING "..." IS A SHAPE TO FINISH, NOT A THING TO SEND (round 3, item C).
+   *
+   * docs/conversation-standard.md, point 6: the engine's suggestions are "a help, never a limit".
+   * Some of them are a shape with a gap the engine cannot fill in for the person - a name, a
+   * number, a date - marked "...". Pressing one of those must not send an ellipsis into the
+   * record; it puts the words in the box instead, with the "..." itself selected so typing
+   * immediately replaces it.
+   */
+  it('a suggestion with "..." fills the box instead of sending, with the gap selected', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING, suggestedAnswers: ['I met them on ... and they said ...'] }],
+    })
+    renderChat()
+    fireEvent.click(await findByRole('button', { name: 'I met them on ... and they said ...' }, { timeout: 6000 }))
+    await settle()
+    expect(conversationApi.send).not.toHaveBeenCalled()
+    const box = screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement
+    expect(box.value).toBe('I met them on ... and they said ...')
+    expect(document.activeElement).toBe(box)
+    expect(box.selectionStart).toBe('I met them on '.length)
+    expect(box.selectionEnd).toBe('I met them on '.length + 3)
+    // The suggestion stays offered - the person may still press it again, or another one, or type.
+    expect(screen.getByRole('button', { name: 'I met them on ... and they said ...' })).toBeTruthy()
+  })
+
+  it('and an ordinary suggestion with no gap still sends immediately, as before', async () => {
+    ;(conversationApi.transcript as any).mockResolvedValue({
+      checkIn: { status: 'IN_PROGRESS', sessionNumber: 38, groundId: 'g1' },
+      turns: [{ id: 't1', role: 'AI', content: OPENING, suggestedAnswers: ['Not yet'] }],
+    })
+    renderChat()
+    fireEvent.click(await findByRole('button', { name: 'Not yet' }, { timeout: 6000 }))
+    await waitFor(() => expect(conversationApi.send).toHaveBeenCalledWith('ci1', 'Not yet'))
+    const box = screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement
+    expect(box.value).toBe('')
+  })
+
   it('draws nothing when the engine sends none, and the three fixed chips are gone', async () => {
     renderChat()
     await findByText(OPENING, {}, { timeout: 5000 })

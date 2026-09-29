@@ -86,7 +86,15 @@ describe('the page is cream, not grey', () => {
 })
 
 describe('the fills inside cards and the secondary text are cream and brown, not grey', () => {
-  it.each(['--gw-bg', '--gw-paper-2', '--gw-slate'])('%s, a fill, is warm and still darker than the page', (t) => {
+  /*
+   * ROUND 2, ITEM H: `--gw-paper-2` TAKEN OUT OF THIS LIST.
+   *
+   * `--gw-paper-2` used to be a distinct fill, darker than the page - the very thing that made it
+   * the wrong colour for a page or band background everywhere else it was used (see "the darker
+   * cream is the enterprise panel's alone" below). It is the page colour itself now, by design, so
+   * it no longer belongs in this list.
+   */
+  it.each(['--gw-bg', '--gw-slate'])('%s, a fill, is warm and still darker than the page', (t) => {
     expect(isWarm(hex(t))).toBe(true)
     expect(lightness(hex(t))).toBeLessThan(lightness(hex('--gw-page')))
   })
@@ -131,5 +139,40 @@ describe('every page is painted with the page colour, not the card fill', () => 
   it('and the search above is finding real pages, so it cannot pass on nothing', () => {
     const onThePage = files.filter(f => /background: 'var\(--gw-page\)'/.test(readFileSync(f, 'utf8')))
     expect(onThePage.length).toBeGreaterThan(15)
+  })
+})
+
+/**
+ * ROUND 2, ITEM H: THE DARKER BEIGE IN PLACE OF THE PROTOTYPE'S CREAM.
+ *
+ * `--gw-paper-2` (#FAF5EA) was used as a full-page or sticky-band background in about 28 files -
+ * a loading screen, a paywall, the participant's check-in page, and others - each rendering a
+ * visibly darker cream than the prototype's #FDFBF6. Fixed at the one source (`--gw-paper-2` is
+ * now #FDFBF6, the same as `--gw-page`) rather than in each file, so this guards the fix at both
+ * ends: the token itself, and that nothing new picks the prototype's real #FAF5EA (now `--gw-band`)
+ * for a page or band, since that would silently reintroduce the same bug with a different name.
+ */
+describe('the darker cream #FAF5EA is nowhere in the product', () => {
+  /** The prototype uses #FAF5EA (--band) only on its marketing pages; in the product its
+      Enterprise panel is --chat (#F7F1E5, our --gw-bg), docs/prototype/source/s16.js. */
+  it('no file in the product uses #FAF5EA or a band token for it', () => {
+    const offenders = files.filter(f => /#FAF5EA|--gw-band/i.test(strip(readFileSync(f, 'utf8')))).map(f => f.replace(SRC, ''))
+    expect(offenders).toEqual([])
+  })
+
+  it('the Enterprise panel on /pricing is the prototype\'s chat cream, --gw-bg', () => {
+    const pricing = strip(readFileSync(join(SRC, 'pages/billing/PricingPage.tsx'), 'utf8'))
+    expect(pricing).toMatch(/Enterprise/)
+    expect(pricing).toMatch(/background: 'var\(--gw-bg\)', border: '1\.5px solid var\(--gw-border\)'/)
+  })
+
+  it('no colour setting in index.css is #FAF5EA (a second name for it slipped past once, --gw-slate)', () => {
+    const css = strip(readFileSync(join(SRC, 'index.css'), 'utf8'))
+    expect(css).not.toMatch(/#FAF5EA/i)
+  })
+
+  it('index.css defines --gw-page and --gw-paper-2 as the same colour', () => {
+    expect(hex('--gw-page')).toBe('#FDFBF6')
+    expect(hex('--gw-paper-2')).toBe('#FDFBF6')
   })
 })

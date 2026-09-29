@@ -106,6 +106,9 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/).length).toBeGreaterThan(0))
     noNoteAsAName('lead, chat')
 
+    /* Report and Sessions fold under "My work" now (the check-in rebuild's tab consolidation);
+       open it first to reach either sub-tab. */
+    expect(openTab(/^My work$/)).toBe(true)
     expect(openTab(/^Sessions$/)).toBe(true)
     await waitFor(() => expect(screen.getAllByText('One colleague').length).toBeGreaterThan(0))
     expect(screen.getAllByText('Another colleague').length).toBeGreaterThan(0)
@@ -119,6 +122,7 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     noNoteAsAName('lead, context')
 
     /* The Report tab's list of sessions says who it is still waiting on, in a sentence. */
+    expect(openTab(/^My work$/)).toBe(true)
     expect(openTab(/^Report$/)).toBe(true)
     await waitFor(() => expect(document.body.textContent).toMatch(/not checked in yet\./))
     expect(document.body.textContent).toContain('You, one colleague and a third colleague have not checked in yet.')
@@ -130,7 +134,7 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     ;(groundsApi.get as any).mockResolvedValue(groundFor('participant'))
     renderAt('/grounds/g1/p', '/grounds/:id/p', <GroundParticipantPage />)
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/).length).toBeGreaterThan(0))
-    for (const tab of [null, /^My record$|^What I shared$|^Record$/, /^Context$/]) {
+    for (const tab of [null, /^My work$/, /^Context$/]) {
       if (tab) openTab(tab)
       await waitFor(() => expect(document.body.textContent).toBeTruthy())
       expect(whereTheNoteIs()).toEqual({ asTheirNote: [], elsewhere: [] })

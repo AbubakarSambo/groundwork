@@ -19,6 +19,14 @@ export const reportsApi = {
    * returns the check-in's live working copy - this is one session, and once its round has closed
    * it never changes again.
    */
+  /**
+   * TYPED AS THE FULL SHAPE, THOUGH THE SERVER MAY SEND `WithheldSessionReport` INSTEAD (answers
+   * from the engine, 51) - every existing caller already reads dozens of fields off this
+   * unconditionally (SessionReportPage.tsx, EveryReportSideBySide.tsx), so widening the return type
+   * here would make all of them fail to type-check for a case none of them handle yet. The one
+   * caller that does handle it (`TheSessionsReport.tsx`) checks `(data as any).withheldUntilYouAnswer`
+   * before reading anything else, the same way it already treats this response as loosely typed.
+   */
   sessionReport: (groundId: string, sessionNumber: number) =>
     apiClient.get(`/grounds/${groundId}/report/session/${sessionNumber}`, { skipNotFoundToast: true } as any)
       .then(r => r.data as SessionShapedReport),
@@ -71,6 +79,20 @@ export const reportsApi = {
 
   startSelfCorrection: (groundId: string, sessionNumber: number) =>
     apiClient.post<{ checkInId: string }>(`/grounds/${groundId}/correct-session`, { sessionNumber }).then(r => r.data),
+}
+
+/**
+ * ANSWERS FROM THE ENGINE, 51: THE SESSION REPORT BEFORE SOMEONE HAS ANSWERED.
+ *
+ * Before the report is released, a participant who has not answered THAT session gets only this -
+ * not the full `SessionShapedReport` - so reading somebody else's account first cannot happen
+ * before writing your own. `saying` is the same sentence the main (round) report gives; shown the
+ * same way SharedReportForAParty.tsx already shows it there.
+ */
+export interface WithheldSessionReport {
+  sessionNumber: number
+  withheldUntilYouAnswer: true
+  saying: string
 }
 
 /** The promised per-session shape. See api/src/modules/reports/the-session-report.ts. */

@@ -107,6 +107,18 @@ and that is when the first entry goes in.
 setup", the invitation and the check-in header used by every check-in page are all still built
 from the old parts, waiting for their own sessions as the audit's order sets out.
 
+## Where the darker beige came from, and the fix (29 September)
+
+You saw a darker beige in place of the prototype's cream (#FDFBF6) on many pages. It came from one colour setting left over from the old parts, `--gw-paper-2` (#FAF5EA), which about 28 files used as a whole-page or band background: the participant's check-in page, the billing checkout, loading screens, and others. The prototype uses #FAF5EA only on its public marketing pages.
+
+**Fixed at that one source:** `--gw-paper-2` is now the page cream, #FDFBF6, so every page that used it is right without being touched. The Enterprise panel on the plans page takes the prototype's own in-product colour, its chat cream #F7F1E5, as the prototype paints it. The darker #F7F1E5 stays only where the prototype has it: behind Groundwork's messages in a conversation, and in soft fills. Two hover colours that would have disappeared now use the prototype's hover.
+
+**Checked live, at 1440 pixels, as a participant, the lead and an admin:** Today, the check-in, the board, You, Company, Settings, People, Team boards, billing, the billing checkout and billing settings all measure #FDFBF6. Before, the participant's check-in page and the billing checkout measured #FAF5EA.
+
+**The live check (29 September):** `e2e/the-page-is-cream.spec.ts`, a Playwright test, signs in as a participant, the lead and an admin at 1440 pixels and fails if any page's background is not #FDFBF6 or #FAF5EA is painted anywhere. It runs at the end of every module (`cd e2e && npx playwright test the-page-is-cream.spec.ts`, with the local servers running). Its first run found one more: a button on a participant's Settings page, because a second colour setting, `--gw-slate`, was also #FAF5EA. It is now the prototype's chat cream, #F7F1E5, which the prototype uses for soft fills and chat bubbles. All three readers now pass.
+
+**The guard:** a test fails if #FAF5EA appears anywhere in the product, if a whole-page or band wrapper uses anything but the page cream, or if the page and `--gw-paper-2` colours stop being #FDFBF6.
+
 ## The invitation, rebuilt from the prototype's parts (29 September)
 
 The invitation and every state it hands over to (the fresh invitation, already joined, held for a seat, "Almost in", out of time, an expired link, and a link that did not work) are rebuilt from the shared parts and passed their review. Each was pictured at 1440 pixels against the prototype. The privacy rules held throughout: the invitation carries none of the lead's words, the two held sentences stay held, and "Your number" now sends only who can see the person's share, never the number. Two small differences from the prototype are on purpose: "Not you? Sign out." on "Almost in", so nobody is stuck on a shared computer, and the name fields, which the flow needs.
@@ -258,6 +270,7 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **29 September: all eleven kinds of board stay fully in the product.** Whenever a real check-in fits one of them, its board shows the sections the switchboard gives its situation, filled the way that kind of work needs, and it must match the prototype's example for that kind. Nothing about the boards is removed or hidden. What is not added is made-up sample check-ins: a new organisation starts empty, with the welcome card and checklist, as in the prototype. (`docs/modules.md` G1 now says the same.) For comparing boards, one local test check-in of each kind is made, each with a note of how it was made, so an empty section can be told apart from a missing one.
 - **29 September: to go faster.** While a helper works, I prepare the next piece myself (read the prototype's source, take its 1440-pixel pictures, write down what the rebuilt screen needs), only reading and taking pictures, never editing a file the helper might edit. The local servers stay running for the whole of a module and stop at its end. Every picture a check needs is taken in one script run, every state, as every reader. While working, only the tests for changed files run; the full suites run once at the end of each module. The builder and tester run on Sonnet 5, the reviewer on Opus 5.5. One helper at a time, and a helper never starts helpers of its own.
 - **28 September: yes to rebuilding from the prototype's own parts.** The shared parts are built first, from the prototype's exact values, then each screen is rebuilt from those parts, never by restyling an old page. A test stops rebuilt pages from using the old parts. Every privacy rule the design audit lists is kept, and board and report text that comes from the engine is never changed. The order after the shared parts: the invitation, then the check-in page and chat, then the board and reports, then the people and one-person screens, then the check-in's People and setup, then everything else. Each screen gets my own 1440-pixel picture check against the prototype, for every situation the switchboard covers where it applies, before the reviewer sees it.
 - **28 September: the setup's "I have read this, sign it off" step is removed.** The prototype's own confirmation ("Yes, set it") is enough.
@@ -5761,3 +5774,261 @@ tests across 23 files. A full client suite run has one remaining failure, the ou
 - **For U.19 (billing): the head count on the People page.** **Done in U.19** (item 30.5). "27 people, on the Growth plan…" comes
   from billing's seat count, which still counts accounts by the organisation they last looked at. The
   People list now counts real memberships, including guests, so the two numbers can differ.
+
+## Rebuilt from the parts: the check-in page and chat
+
+**Item 1, the tabs — DONE.** The lead's page had seven tabs (Check-in, Report, Sessions, My record,
+Context, Setup, plus Board) and a participant's had six; folded to the prototype's exact five —
+Board, Check-in, Context, My work, People and setup — on both `/grounds/:id` (`GroundAdminPage.tsx`)
+and `/grounds/:id/p` (`GroundParticipantPage.tsx`), drawn by `components/gw/ui/CheckInHeader.tsx`
+and `components/gw/ui/Tabs.tsx` (not the old `components/gw/TheCheckInHeader.tsx`, which stays in
+place only because `BoardPage.tsx`, `SessionReportPage.tsx` and `RoundReportPage.tsx` — out of this
+task's scope — still use it). `CheckInHeader` gained an optional `tabs`/`onSelectTab` override so a
+page can keep its own `?tab=` query-based state instead of the fixed href list, without a second
+component.
+
+Moves, exactly as asked:
+- **Report** → inside **My work**, as a sub-tab ("Report"), for both readers.
+- **Sessions** → inside **My work**, as a sub-tab ("Sessions"), lead only.
+- **What I shared** (the participant's own record; the lead's page calls the same content "My
+  record") → inside **My work**, as a sub-tab ("What I shared"), for whoever is a party.
+- **Setup** → relabelled **People and setup** (unfolded; it was already its own tab). Content
+  unchanged.
+
+The sub-tab row (a second `Tabs`) appears only while one of these three is open, built from the
+same content blocks that existed before (`tab === 'report' | 'checkins' | 'myrecord'` on the lead's
+page, `tab === 'report' | 'record'` on a participant's) — nothing inside them was rewritten, only
+re-parented under "My work". `ground-tabs.ts`'s own `groundTabs()` function is untouched, and so is
+its whole test suite (`one-name-means-one-thing.spec.ts`, `nobody-loses-and-nobody-gains.spec.ts`,
+`one-door-per-place.spec.ts`, `the-lead-sees-the-ground-not-a-blank.spec.tsx`,
+`a-tab-can-be-linked-to.spec.ts`): it still backs the `FROM_TAB_KEY`/`TO_TAB_KEY` translation each
+page uses to keep `?tab=` links working (`?tab=sessions`, `?tab=record`, `?tab=report` all still
+land inside My work on the right sub-tab), so old links do not break.
+
+The participant's beige band under the header is gone: its header used to sit in its own
+`position: sticky` wrapper on `var(--gw-paper-2)`; it now sits in the same non-sticky
+`maxWidth: 1060, margin: '0 auto'` column as the lead's page, on the page's own background.
+
+**Tests changed, and why:**
+- `a-tab-click-lands-on-that-tab.spec.tsx` — rewritten (as asked) to click `components/gw/ui/Tabs`
+  directly, the same way it used to click the now-deleted `GroundTabRow`, plus a source check that
+  both pages render `<CheckInHeader>` (never `<TheCheckInHeader>`) with the same five keys in the
+  prototype's order.
+- `GroundAdminPage.boardTab.spec.tsx`, `GroundAdminPage.checkinsLabel.spec.tsx`,
+  `GroundAdminPage.notJoinedSentence.spec.tsx`, `the-sessions-notice-says-what-is-true.spec.tsx`,
+  `no-label-is-the-leads-note.spec.tsx` — each opens "My work" before clicking "Sessions", "Report"
+  or the record sub-tab, since those are no longer top-level tabs. The behaviour each test protects
+  (BUG7's per-person rows, the not-joined sentence, the report's release notice, the lead's note
+  never appearing as a name) is unchanged; only the click path to reach the content moved.
+- `one-word-for-one-screen.spec.ts` — one assertion updated. It used to check that neither page
+  typed its own copy of `groundTabs()`'s labels; now the outer five are the prototype's own fixed
+  set, drawn by `CheckInHeader.tsx` rather than read from `groundTabs()` at all, so the check moved
+  to: both pages render `<CheckInHeader>`, the "My work" sub-tab labels (Report, Sessions, What I
+  shared) still match `groundTabs()`'s own words, and — since `{ key: 'checkin', label: 'Check-in' }`
+  is now the prototype's fixed pair rather than a private redefinition either page could drift from
+  — both pages are asserted to agree on it, not to omit it.
+
+**Removed:** `components/gw/GroundTabRow.tsx` (`git rm`; orphaned once the spec above stopped
+importing it — `nothing-is-left-behind.spec.ts` passes).
+
+`npx tsc -b` (client) is clean. 578/578 client tests pass under `src/pages/grounds/`,
+`src/components/gw/ui/` and `src/components/nothing-is-left-behind.spec.ts`; the two unrelated,
+pre-existing sidebar failures (`jump-to.spec.tsx`,
+`the-sidebar-waits-for-the-list.spec.tsx` — jsdom "Not implemented: navigation to another Document")
+reproduce identically on a clean checkout. The eight API specs that read `GroundAdminPage.tsx` /
+`GroundParticipantPage.tsx` by name (64 tests) pass unchanged.
+
+**Items 2 and 3 — NOT DONE**, and here is exactly what is already there to build from, so the next
+pass does not start from zero:
+
+- The prototype's focused conversation page (item 2) **already exists** at `/checkin/:checkInId`
+  (`pages/chat/ChatPage.tsx`), built in U.8: no tabs, `components/gw/checkin/TheCheckInHeader.tsx`
+  (the name, "About two minutes"-shaped line, Pause), `SuggestedAnswers.tsx`, `TheEndCard.tsx` and
+  `TheDonePage.tsx` are all already built and wired, with Pause's two choices, the +, the finish
+  flow, the slow-open line and the thin-record refusal already implemented per U.8's own review.
+  What is missing is (a) extracting the bubbles/composer/quick-replies out of `ChatPage.tsx`'s
+  inline styles into `components/gw/ui` parts with their own tests, matching this task's
+  instruction, and (b) making the tabbed pages' "Check-in" tab a real link to `/checkin/:id`
+  instead of rendering `GroundChat.tsx` (today's long every-transcript page) inline — which is the
+  one piece item 1 deliberately left alone, since item 1's brief was the tab bar, not what each tab
+  shows. `GroundChat.tsx`'s history-of-past-sessions view still needs to move under My work
+  (a session list, not the live conversation), and "Who is in this" still needs to move from
+  `GroundChat.tsx` to People and setup, as item 2 specifies.
+- Item 3 (Done and Between-check-ins as their own pages) has no start yet; `TheDonePage.tsx` above
+  covers much of Done's content already, but "between check-ins" has nothing built.
+- Neither `ChatPage.tsx` nor a Done/Between page is in `REBUILT_PAGES` yet — correctly: none is
+  guard-compliant (no inline size/colour/spacing) today. `GroundAdminPage.tsx`/
+  `GroundParticipantPage.tsx` are deliberately NOT added either: item 1 only changed their tab bar,
+  the rest of both files is still full of inline styles, so they fail the guard and do not belong
+  in the list until (if ever) they are rebuilt properly.
+
+Given the size of items 2 and 3 (a ~1600-line page to extract into shared parts without losing any
+of U.8's fixed behaviour, plus two new pages), and this session's scope, they were not attempted
+beyond the reconnaissance above, to avoid shipping a half-verified rewrite of a page with this many
+privacy- and behaviour-sensitive edge cases. Recommend the next pass start with (b) above (wiring
+the Check-in tab to the existing `/checkin/:id` route) before extracting parts, since that alone
+finishes the navigational half of item 2 with very low risk.
+
+## Round 2: the sidebar test fix, the page colour, and the withheld session report
+
+**D — DONE.** The session report now shows the engine's withheld-until-you-answer sentence.
+`TheSessionsReport.tsx` (embedded in `SessionReportPage.tsx`, `RoundReportPage.tsx` and
+`BoardPage.tsx`) checks `data.withheldUntilYouAnswer` before reading anything else, and shows
+`data.saying` styled the same way `SharedReportForAParty.tsx` already shows the round-level version
+of this withholding ("There is a picture forming, and you have not answered yet"). Added
+`WithheldSessionReport` to `client/src/api/reports.ts` for documentation; `sessionReport()`'s
+declared return type stays the full shape, since every other existing caller
+(`SessionReportPage.tsx`, `EveryReportSideBySide.tsx`) reads dozens of its fields unconditionally
+and widening the type would fail them for a case they don't handle. New test:
+`TheSessionsReport.withheld.spec.tsx` (2 tests: the withheld sentence, and an ordinary report still
+renders as before).
+
+**F — DONE.** The participant's check-in page used `var(--gw-paper-2)` for its whole background
+(loading, not-found, out-of-time and the page itself) - a darker beige than the lead's
+`var(--gw-page)`. Checked the prototype at 1440 myself before this: My work, the board and Context
+all sit on #FDFBF6 for a participant exactly as they do for a lead. All four switched to
+`var(--gw-page)`. The paywall modal's small notice box and its input field keep `--gw-paper-2` (a
+real fill inside a panel, not the page) - now moot anyway, see H.
+
+**G — DONE.** Both sidebar tests fixed for good, not just made to pass once:
+- `jump-to.spec.tsx`, "Ctrl K opens it...": `JumpTo.tsx`'s focus-the-input effect used
+  `setTimeout(fn, 0)`, which in this environment deferred past `waitFor`'s check and failed
+  deterministically (not actually flaky - it failed every single run, alone or in the suite).
+  Focusing synchronously in the effect fixes it; nothing there is a portal needing a later tick.
+- `the-sidebar-waits-for-the-list.spec.tsx`: genuinely order-dependent (passed alone in isolation
+  sometimes, always failed the last one or two tests when run as the full file). Root cause:
+  `AppShell` also fires a `['today']` query (`todayApi.get`) that this file never mocked. With the
+  local API actually running, that was a REAL network call for a fake token - it hit the real 401
+  handler in `api/client.ts`, which calls `logout()` and does `window.location.href = ...` (the
+  "Not implemented: navigation to another Document" warning), asynchronously, whenever that real
+  response happened to land. That flipped `isAuthenticated` back to false out from under whichever
+  test was running, so `AppShell` fell back to its signed-out render. Mocked `todayApi.get` in both
+  files now (the same way `groundsApi.list` already was). Verified 5 clean runs of each file alone,
+  and the full client suite (124 files, 980 tests, then all 486 files, 3436 tests) twice - no
+  failures from either file.
+
+**H (added mid-round) — DONE.** The darker beige Hafsah saw on many pages traced to
+`--gw-paper-2` (#FAF5EA) being used as a full-page or sticky-band background in ~28 files, though
+the prototype (`docs/prototype/source/app.css`) uses that colour as `--band`, only on its marketing
+sections and the Enterprise panel, never as a page or band colour in the product. Fixed at the one
+source: `--gw-paper-2` is now #FDFBF6 (same as `--gw-page`), and a new `--gw-band: #FAF5EA` carries
+the prototype's real darker cream, used only by the Enterprise panel on `PricingPage.tsx`
+(`var(--gw-card)` -> `var(--gw-band)`) - a discrepancy worth flagging: the prototype's OWN source
+for that panel (`docs/prototype/source/s16.js`, the in-product pricing screen) actually uses
+`var(--chat)` (our `--gw-bg`, #F7F1E5) for the Enterprise panel, not `--band`; I followed the
+explicit instruction over my own reading of the source, since it was specific, but flagging it here
+in case a live picture check disagrees. The two hover rules that read `--gw-paper-2` for a visible
+darker fill (`.gwui-person-row:hover`, `.gw-b-secondary:hover`) would have gone invisible once it
+became the page colour; switched to `var(--gw-page)`, matching the prototype's own hover pattern for
+a white surface (`app.css`: `.orgmenu/.usermenu a:hover{background:var(--paper)}`).
+
+Guard tests added to `the-page-is-cream-and-opens-light.spec.ts`: index.css defines `--gw-page` and
+`--gw-paper-2` as the same #FDFBF6; `--gw-band` is used only by `PricingPage.tsx`; no full-page or
+sticky-band wrapper paints itself with `--gw-band`. One existing test updated and why: "the fills
+inside cards ... are warm and darker than the page" `it.each`'d `--gw-paper-2` as a fill - true when
+it was a distinct darker colour, false now that it IS the page colour by design; replaced with
+`--gw-band`, which is the real distinct fill now.
+
+Full client suite (486 files, 3436 tests) run twice after H: one unrelated pre-existing failure both
+times, `src/lib/copy-does-not-sound-like-yoda.spec.ts` (an `api/src` prompt-wording count, now 61
+against a baseline of 60) - this is the engine workspace's prompt text, arrived with the merge
+(`8641f3cf`), and out of this workspace's scope to touch (CLAUDE.md: "The screens workspace never
+changes the engine's code"). Left for the engine workspace to notice.
+
+**A, B, C, E — NOT DONE this round**, for the same reason as last time: real size versus the risk of
+shipping a half-verified change to privacy- and paywall-sensitive flows. What I found, so the next
+pass does not re-investigate:
+
+- **A** (wire the Check-in tab to `/checkin/:checkInId`, move session history and "Who is in this"):
+  `GroundChat.tsx`, currently rendered inline on the lead's Check-in tab, does three jobs at once -
+  the live conversation for a party, a read-only history for a lead who is not a party, AND "Who is
+  in this"/paywall-opening plumbing (`openCheckInId`, `onOpenSession` handing off to the participant
+  page's own probe, `viewerIsParty` branching between a real transcript and someone else's). Wiring
+  the tab to a real link needs a `checkInId` to link to (today's open one) BEFORE the click, and a
+  sensible page for a lead who is not a party (no transcript of their own to show) - neither is a
+  one-line change once GroundChat's three jobs are considered together.
+- **B** (rebuild `ChatPage.tsx`'s bubbles/quick-replies/composer into `ui` parts): unchanged from
+  last time - `ChatPage.tsx` and `components/gw/checkin/*` already implement the prototype's shape
+  (U.8); what's missing is the extraction into shared, tested parts.
+- **C** (draw the engine's `suggestedAnswers`, with a `"..."` suggestion filling the box rather than
+  sending): not started. `SuggestedAnswers.tsx` already exists and is wired to `last.suggestedAnswers`
+  in `ChatPage.tsx` (see the round 1 report); the `"..."` branch is the new piece.
+- **E** (Done and Between-check-ins as their own pages): `TheDonePage.tsx` still covers much of
+  Done's content; Between-check-ins has nothing built.
+
+Recommend the next pass do C first (small, concrete, the engine now genuinely sends the field) and
+A second (now that the tab-fold and page-colour work is settled, A is the next real unblocking step
+for B), before attempting B or E.
+
+**Commits this round:** tab-fold work aside (previous section), this round added: the two sidebar
+test fixes, the participant page-colour fix, the session-report withheld state, and the
+`--gw-paper-2`/`--gw-band` source fix with its guard tests - four commits, each on its own, none
+pushed or merged.
+
+## Round 3: suggested answers finish a shape; the Check-in tab untangling scoped
+
+**C — DONE.** A suggested answer containing "..." now fills the composer instead of sending: the
+engine's suggestions are "a help, never a limit" (docs/conversation-standard.md, point 6), and some
+of them are a shape with a gap the engine cannot fill in (a name, a date). `pickSuggestion()` in
+`ChatPage.tsx` checks for "..." first; if present it sets the box to the suggestion's text and
+selects the "..." itself (so typing immediately replaces it) instead of calling send. Two new tests
+in `the-check-in-as-a-person-reads-it.spec.tsx`: a suggestion with a gap fills the box (gap selected,
+nothing sent); an ordinary suggestion still sends immediately, as before. 25/25 tests in that file
+pass; tsc clean; the API specs that read `ChatPage.tsx` by source (5 files, 33 tests) pass unchanged.
+
+**A — NOT DONE, and here is exactly why, and what is needed.**
+
+I read `GroundChat.tsx` in full (766 lines) before touching anything. It is not what its three-job
+description suggested at first: there is no live composer in it at all - "the session itself still
+happens on its own page" is the component's own stated design. What it actually does, for BOTH a
+party and a non-party lead, is render the check-in's whole history (session by session, every turn,
+via `myTranscript` for a party or a `history` summary for a lead) plus `GroundTopic` (which holds
+BOTH "About this check-in" and "Who is in this" in one component) plus a card at the bottom that
+hands off to the paywall-aware "open today's session" flow (`onOpenSession` → `probeSession` on
+`GroundParticipantPage.tsx`, which calls `POST /check-ins/:id/open` and either shows the paywall or
+navigates to `/checkin/:id`).
+
+So "untangle the three jobs" means: (1) redirect a party straight past this whole reading
+experience to `/checkin/:id` (using the already-open check-in when there is one, or the exact same
+`?open=1` hand-off otherwise) - (2) show a non-party lead a plain message and a link to the board
+instead - and (3) relocate what GroundChat currently shows (the session-by-session history, and the
+roster) to My work and People and setup respectively, so redirecting a party away from this tab does
+not remove the only place they could read their own past sessions.
+
+**(3) is the blocker, and it is real, not a formality.** `GroundTopic`'s roster block and
+`GroundChat`'s per-session transcript rendering are not separable without moving code, and until
+they are, doing (1) - the redirect - would delete a party's only way to read their own check-in
+history, which CLAUDE.md rules out ("Nothing valuable is lost") regardless of how clean the redirect
+itself would be. I looked for a shortcut (an existing page that already shows "a list of past
+sessions, each opening its transcript") and did not find one: `RoundReportPage.tsx` shows that
+session's extracted REPORT, not its raw turn-by-turn transcript, and the "Sessions" sub-tab I built
+under My work in round 1 shows per-person-per-session status rows, not a transcript either. Building
+the actual replacement (a session list under My work, each row opening that session's real
+transcript) is new work, not a relocation of five lines.
+
+Given the size of that replacement, and this round's remaining time, I did not start moving any code
+for A - starting the redirect without also landing its replacement would have been the wrong order
+to commit in, and a half-done extraction (roster moved, transcript-list not built) is worse than
+none, because it leaves the tab showing neither the old nor the new correctly for some readers.
+
+**What is needed, concretely, for the next pass:**
+1. A new, small component for "the session list under My work, each opening its transcript" -
+   `GroundChat`'s existing `Message`/`SessionDivider` rendering can very likely be reused for what
+   opens when a row is clicked, but the LIST itself (session number, date, who) does not exist yet
+   as its own view; `GroundChat`'s own `history` prop (already computed in both pages) is the right
+   shape to start from.
+2. Move the roster half of `GroundTopic` into that My work / People-and-setup relocation (the brief
+   half, "About this check-in", is already gone from here in the sense that it duplicates Context -
+   item A's note that it should not show twice is about not re-adding it, not about removing
+   something still there twice today).
+3. Only once 1 and 2 exist: add the redirect (party → `/checkin/:id`, existing-open-session id when
+   there is one, else the unchanged `?open=1` hand-off) and the non-party plain message + board link,
+   and retire `GroundChat`'s use from both pages' Check-in tab.
+
+**B, E — NOT DONE**, unchanged from before: B needs the parts extraction from `ChatPage.tsx`
+(bubbles/quick-replies/composer/card frame into `components/gw/ui`); E needs Done and
+Between-check-ins as their own pages. Both are still blocked behind A settling what the Check-in tab
+itself shows, so I did not start either rather than build on ground that is about to move.
+
+**Commit this round:** `c1cde225` - "A suggested answer with "..." fills the box instead of
+sending" (item C). Nothing pushed or merged.

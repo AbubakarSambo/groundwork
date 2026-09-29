@@ -213,8 +213,10 @@ export function PricingPage() {
           ))}
         </div>
 
-        {/* Enterprise */}
-        <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 28px', marginBottom: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+        {/* Enterprise: the prototype's in-product plans page paints this panel with its --chat
+            cream (docs/prototype/source/s16.js), which is our --gw-bg (#F7F1E5). #FAF5EA (--band) is
+            the marketing site's alone. */}
+        <div style={{ background: 'var(--gw-bg)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 28px', marginBottom: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Enterprise</div>
             <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 0 }}>

@@ -62,7 +62,8 @@ describe('the participants roster says who has not joined yet', () => {
   it('names her with her real account name, and says she has not joined yet', async () => {
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team/i).length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: 'Sessions' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Sessions' }))
     await waitFor(() => expect(screen.getAllByText(/Amani Wekesa/i).length).toBeGreaterThan(0))
     expect(screen.getByText('Amani Wekesa has not joined yet.')).toBeTruthy()
   })
@@ -70,7 +71,8 @@ describe('the participants roster says who has not joined yet', () => {
   it('says nothing extra for somebody who has already joined', async () => {
     renderPage()
     await waitFor(() => expect(screen.getAllByText(/Sales team/i).length).toBeGreaterThan(0))
-    fireEvent.click(screen.getByRole('button', { name: 'Sessions' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Sessions' }))
     await waitFor(() => expect(screen.getAllByText(/Zawadi Njoroge/i).length).toBeGreaterThan(0))
     expect(screen.queryByText(/Zawadi Njoroge has not joined yet\./)).toBeNull()
   })

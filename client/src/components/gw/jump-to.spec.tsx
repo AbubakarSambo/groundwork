@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -6,6 +6,7 @@ import { AppShell } from './AppShell'
 import { useAuthStore } from '@/stores/auth'
 import { useJumpStore } from '@/stores/jump'
 import { whatYouCanJumpTo, matching } from './what-you-can-jump-to'
+import { todayApi } from '@/api/today'
 
 /**
  * A1: "JUMP TO…  CTRL K", as a person uses it, and only ever offering what they can already see.
@@ -43,7 +44,18 @@ function mount(user: any) {
 const ctrlK = () => act(() => { fireEvent.keyDown(document, { key: 'k', ctrlKey: true }) })
 const options = () => screen.queryAllByRole('option').map(o => o.textContent)
 
-beforeEach(() => { useJumpStore.setState({ open: false }); window.localStorage.clear() })
+/**
+ * `AppShell` also fires a `['today']` query (`todayApi.get`) while mounted, unrelated to "Jump to"
+ * but never mocked here - with the local API running, that was a real network call for a fake
+ * token, landing on the real 401 handler and calling `logout()` asynchronously mid-test (see the
+ * long comment in the-sidebar-waits-for-the-list.spec.tsx, which is where this was first found).
+ * Mocked here too, so nothing in this file reaches the real network either.
+ */
+beforeEach(() => {
+  useJumpStore.setState({ open: false })
+  window.localStorage.clear()
+  vi.spyOn(todayApi, 'get').mockResolvedValue({ needs: [], count: 0, line: null, comingUp: [] } as any)
+})
 
 describe('what "Jump to" may offer', () => {
   it('check-ins from the reader\'s own list, the named people in them but not the reader, and their own doors', () => {

@@ -191,7 +191,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
      whole column, which is what made a role tag fill its column edge to edge. */
   justify-items: start;
 }
-a.gwui-person-row:hover { background: var(--gw-paper-2); }
+/* ROUND 2, ITEM H: was --gw-paper-2, which is now the page colour and would no longer show a
+   hover at all. The prototype hovers a white-surfaced list row to the page cream (app.css:
+   .orgmenu/.usermenu a:hover{background:var(--paper)}), which is var(--gw-page) here. */
+a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-person-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .gwui-person-name { font-size: 16px; font-weight: 700; color: var(--gw-text); }
 .gwui-person-level { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
