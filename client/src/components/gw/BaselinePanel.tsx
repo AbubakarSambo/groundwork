@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
-import { Sec, Card } from '@/components/gw/kit'
+import { Section, Panel } from '@/components/gw/ui'
 import { toast } from 'sonner'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -67,9 +67,8 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
   })
 
   return (
-    <div>
-      <Sec title="What doing well looks like" />
-      <Card pad="block">
+    <Section heading="What doing well looks like">
+      <Panel>
         {current ? (
           <>
             <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.65 }}>
@@ -117,13 +116,13 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
             whether things went well, because nothing has said what well would look like.
           </div>
         )}
-      </Card>
+      </Panel>
 
       {/* Earlier versions. The arc is the point: what was believed then, against what is held now. */}
       {earlier.length > 0 && (
         <div style={{ marginTop: 10 }}>
-          <Sec title="What it said before" />
-          <Card pad="block">
+          <Section heading="What it said before">
+          <Panel>
             {earlier.map(v => (
               <div key={v.version} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid var(--gw-border)' }}>
                 <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{v.successLooksLike}</div>
@@ -133,7 +132,8 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
                 </div>
               </div>
             ))}
-          </Card>
+          </Panel>
+          </Section>
         </div>
       )}
 
@@ -148,7 +148,7 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
 
       {canState && open && (
         <div style={{ marginTop: 10 }}>
-          <Card pad="block">
+          <Panel>
             {/**
               * NOT PRE-FILLED WITH THE CURRENT TEXT. An editable copy of what is there invites a
               * correction, and a corrected baseline stops being a record of what was believed at the
@@ -200,9 +200,9 @@ export function BaselinePanel({ groundId, canState }: { groundId: string; canSta
                 Cancel
               </button>
             </div>
-          </Card>
+          </Panel>
         </div>
       )}
-    </div>
+    </Section>
   )
 }
