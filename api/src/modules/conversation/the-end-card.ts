@@ -47,8 +47,9 @@ export interface ALineForTheCard {
   documentIsTheirOwn?: boolean;
 }
 
-export const HOW: Record<'photo' | 'document' | 'confirmed' | 'commitment' | 'memory' | 'said', string> = {
+export const HOW: Record<'photo' | 'screenshot' | 'document' | 'confirmed' | 'commitment' | 'memory' | 'said', string> = {
   photo: 'From the photo you added.',
+  screenshot: 'From the screenshot you added.',
   document: 'From the document you added.',
   confirmed: 'The person who received it confirmed it.',
   commitment: 'You said you will do this. I will ask you how it went.',
@@ -62,10 +63,22 @@ export const WHAT_WOULD_MAKE_IT_PROVEN =
 /** At most this many lines: the card is read in the moment before finishing, on a phone. Commitments come first, and a card that leaves lines out says how many. */
 export const AT_MOST = 6;
 
+/*
+ * WHAT KIND OF THING PROVED IT, IN THE CARD'S WORDS (week 15). A photo counts exactly as a document
+ * does; the person is told it was the photo. The kind is read from the line's own anchoredOrigin, so
+ * a card built from the stored record (not only the first card, which also knew the file type) says
+ * "From the photo you added." too.
+ */
+export function whatProvedIt(line: Pick<ALineForTheCard, 'backedByAPhoto' | 'anchoredOrigin'>): string {
+  if (line.anchoredOrigin === 'screenshot') return HOW.screenshot;
+  if (line.anchoredOrigin === 'photo' || line.backedByAPhoto) return HOW.photo;
+  return HOW.document;
+}
+
 /* The mark is the reports' rule (reports/how-a-line-is-known.ts), so a line reads the same on both. */
 function markFor(line: ALineForTheCard): { mark: EndCardMark; how: string } {
   const mark = howALineIsKnown(line);
-  if (mark === 'proven') return { mark, how: line.backedByAPhoto ? HOW.photo : HOW.document };
+  if (mark === 'proven') return { mark, how: whatProvedIt(line) };
   if (mark === 'confirmed') return { mark, how: HOW.confirmed };
   if (mark === 'memory') return { mark, how: HOW.memory };
   return { mark, how: line.type === 'COMMITMENT' ? HOW.commitment : HOW.said };

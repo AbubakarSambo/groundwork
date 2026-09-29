@@ -358,3 +358,35 @@ describe('the card the transcript serves', () => {
     expect(theCardStillStanding([{ role: 'AI' }])).toBeNull();
   });
 });
+
+/*
+ * WEEK 15: A PHOTO COUNTS AS PROOF, AND THE PERSON IS TOLD IT WAS THE PHOTO. Read as the words on
+ * the card, from the stored origin alone: the card rebuilt from the written record knows only
+ * anchoredOrigin, not the file type, and it said "From the document you added." for a photo.
+ */
+describe('a photo that backs a line, as the person reads it', () => {
+  it('reads "From the photo you added." from the stored origin alone', () => {
+    const card = theEndCard([{ type: 'OUTCOME', text: 'Green Mart has a quote', recallBased: false, anchoredDocumentId: 'd1', anchoredOrigin: 'photo' }])!;
+    expect(card.inYourRecord).toEqual([{ says: 'Green Mart has a quote.', how: 'From the photo you added.', mark: 'proven' }]);
+  });
+
+  it('a screenshot reads as a screenshot, and a typed document as a document', () => {
+    const card = theEndCard([
+      { type: 'OUTCOME', text: 'The client approved it', recallBased: false, anchoredDocumentId: 'd1', anchoredOrigin: 'screenshot' },
+      { type: 'OUTCOME', text: 'The budget sheet is signed', recallBased: false, anchoredDocumentId: 'd2', anchoredOrigin: 'typed' },
+    ])!;
+    expect(card.inYourRecord!.map((l) => l.how)).toEqual(['From the screenshot you added.', 'From the document you added.']);
+  });
+
+  it('somebody else\'s photo proves nothing of theirs', () => {
+    const card = theEndCard([{ type: 'OUTCOME', text: 'Green Mart has a quote', recallBased: false, anchoredDocumentId: 'd1', anchoredOrigin: 'photo', documentIsTheirOwn: false }])!;
+    expect(card.inYourRecord![0]).toEqual({ says: 'Green Mart has a quote.', how: 'You said this.', mark: 'said' });
+  });
+
+  it('the card rebuilt from the written record asks who added each backing document', () => {
+    const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const rewrite = SRC.slice(SRC.indexOf('private async writeTheRecordAtTheEnd('), SRC.indexOf('private async readTheRecord('));
+    expect(rewrite).toContain('whoAddedEachBackingDocument(this.prisma, rows');
+    expect(rewrite).toContain('documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId');
+  });
+});

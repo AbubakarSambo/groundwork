@@ -7495,7 +7495,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * shown (the reviewer saw it), so the card on the closing turn is replaced with the lines just
      * written. "What is now in your record" is then always true.
      */
-    const card = theEndCard(rows.map((r) => ({ type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true, anchoredDocumentId: (r as any).anchoredDocumentId ?? null, anchoredOrigin: (r as any).anchoredOrigin ?? null })));
+    /* Who added each backing document, as the first card knew: somebody else's plan proves nothing of theirs. */
+    const whoAdded = await whoAddedEachBackingDocument(this.prisma, rows as any[]);
+    const card = theEndCard(rows.map((r) => {
+      const doc = (r as any).anchoredDocumentId ?? null;
+      return {
+        type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true, anchoredDocumentId: doc, anchoredOrigin: (r as any).anchoredOrigin ?? null,
+        ...(doc && whoAdded.has(doc) ? { documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId } : {}),
+      };
+    }));
     if (closing?.id) {
       await this.prisma.conversationTurn.update({ where: { id: closing.id }, data: { endCard: (card ?? Prisma.DbNull) as any, recordDraft: rows as any } })
         .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: could not replace the end card with what was written (${err?.message})`));
