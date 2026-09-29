@@ -32,7 +32,7 @@ The order follows Hafsah's: the check-in conversation first; then judging, and m
 **Week 5. Suggested answers under each question.** *Built 28 September (`e313b579`), being measured.* Task 2.6. The engine returns two to four suggested answers with each question (screens request 7a).
 - **Screens later:** showing them. The screens already draw them when they arrive.
 
-**Week 6. The three-part ending, with a mark on each line.** Task 2.7: proven, confirmed, their word, or memory. This needs one new field, for "confirmed by the person who received the work" (screens request 7b).
+**Week 6. The three-part ending, with a mark on each line.** *Built on the engine's side 29 September (`47b4d04c`, `eebc48a8`); the screens need to fetch the card from the transcript after the close, and run-17 is measuring it.* Task 2.7: proven, confirmed, their word, or memory. This needs one new field, for "confirmed by the person who received the work" (screens request 7b).
 - **Screens later:** the end card, and the Done page's "what changed".
 
 **Week 6b. The same four marks on every line of the reports (decision 43).** The prototype marks each line a lead reads: "Proven", "Confirmed by the person who received it", "Only someone's word", "From memory only". Today the reports mark only lines with a figure ("counted", "estimated", "from memory"). This uses the field week 6 adds.

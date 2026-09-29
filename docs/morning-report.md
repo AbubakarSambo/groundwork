@@ -16,6 +16,34 @@ The bug-fix branch is `fix/privacy-conversation-crash`, in the folder `groundwor
 
 Next, I am back on `wip/plain-reports`: first the hidden-target tests, then week 6 of `docs/weekly-plan.md`.
 
+## 29 SEPTEMBER, MORNING: WEEK 6 BUILT ON THE ENGINE'S SIDE, AND RUN-17 STARTED
+
+**The end card** (`47b4d04c`). When a check-in closes, the person now gets the prototype's "What is now in your record": each line, and how it is known. For example, from a real sales check-in in the test database:
+- "I have 31 applications that I've taken from businesses." with "You gave this from memory. Nothing written backs it yet."
+- "My part is to contribute 12 approved facilities to the team target." with "You said this."
+- On a new hire's check-in with documents: "I was told to go direct to the members without waiting for an introduction." with "From the document you added."
+- Under "What happens next", at most one line: "If you have something written for any of these, such as a message or a photo, add it. Then that line counts as proven."
+
+Three things I found by reading real cards, and fixed:
+- A target with a number in it was called "from memory". Now only a line about what happened can be.
+- The "next" line said "shows this" under six lines. It now says "any of these".
+- Reading the record takes 10 to 47 seconds. So the card is built after the goodbye, never before it.
+
+That last point means the screens have to fetch the card from the transcript after the close. I wrote this in the answer to request 7b.
+
+Nothing reaches the record before the person presses finish. When they do, exactly the lines the card showed are written. If they said more after the card, the record is read again.
+
+**Confirmed by the person who received it** (`eebc48a8`). This is the new field, with the rule I proposed and you said yes to. The colleague who was waiting on the work says, in their own check-in, that it is no longer in their way. The model then picks the one line of the other person's that says they delivered it, and code checks that the line is about the same thing.
+- Read on 20 real waits in the test database: no line was wrongly marked.
+- One was wrongly marked before I added the "same thing" check. A wait for "clarity on Wanjiru's project" was matched to a line about a letter.
+- A line saying the deck was sent is confirmed. A promise to finish the pricing sheet is not.
+
+**Tests:** 2,816 in the conversation, people and documents parts pass. Four tests that read the source now point at where the record read lives; they check the same things.
+
+**Run-17** is running on this build, to check that no engine-value number drops now that the record is written from the card.
+
+**Next:** week 6b, the same four marks on the lines of the reports.
+
 ## 28 SEPTEMBER, NIGHT: BACK ON THE WEEKLY PLAN
 
 **The hidden-target tests are already done.** They are the twelve cases in `d8fa3648`: a pronoun, the number two and three sentences after the name, the number before the name, a list, the target in words, and a row whose name and number are in different fields. All of them are now taken out.
