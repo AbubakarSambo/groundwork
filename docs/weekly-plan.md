@@ -45,7 +45,33 @@ The order follows Hafsah's: the check-in conversation first; then judging, and m
 
 ## Judging, and making patterns stronger
 
-**Week 8. Patterns that follow Hafsah's rules, switched on.** This is only if the work is not finished before release.
+**Week 8. Patterns that follow Hafsah's rules, switched on.** *Switched on 29 September (`19cdf9b0`) with the approved names (decision 52); the wording around each pattern is being fixed in place (decision 55).* Decision 57 changes how they count and adds what follows:
+- A period is at least a week. For a daily check-in, each week is a period. The three-period rule counts periods everywhere, including when a later check-in is steered by a pattern.
+- The lead marks a pattern "right", "wrong" or "not sure" after talking it through, and the person's answer counts as evidence too. Both are stored with the pattern.
+- The lead is nudged once to have the conversation, and can mark "we talked about it". Later check-ins record whether things changed.
+- The number-based rules are a second source of evidence beside the model. The runs report how steady each scenario's patterns are.
+- The "setup never said" reading shows again, under the period rule.
+- **Screens later:** the lead's "right", "wrong", "not sure" and "we talked about it".
+
+**Week 8b. Self-learning (decisions 55 and 57), early, because everything after it gets better with it.** Every pattern, coaching step and probe keeps three signals:
+- was it right (the lead's mark, and the person's answer);
+- did the conversation happen (the lead's "we talked about it", or the step asked about);
+- did things change (what later check-ins show).
+
+These give more weight to what works, and flag what is often wrong. For example:
+- a pattern often marked "wrong" is shown less readily;
+- a coaching step that rarely helps is offered less;
+- a probe that gets the most specific answers is asked sooner.
+
+What never changes:
+- People's own words are never changed.
+- No privacy rule bends: signals are counted, and nobody reads another person's answers through them.
+- Any change to how patterns are judged is proven on the scenario runs before it is adopted.
+- Big changes go to Hafsah first.
+
+It needs week 8's marks, and week 9's kept and missed commitments, to have signals to learn from.
+
+**Week 8 (as first planned).** This is only if the work is not finished before release.
 - The plain names are approved.
 - A pattern never appears as a label beside a name, and a participant never sees a colleague's.
 - It shows only after three periods.
