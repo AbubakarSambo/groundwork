@@ -50,7 +50,21 @@ Tests: 2,222 in reports and board, and 4,677 across reports, board and conversat
 
 **Needs Hafsah: the stages of a deal.** The prototype's team report shows, under "What moved", each deal with its stages marked: Contacted, Need, Pitched, Qualified, Quoted ("Ringed is someone's word; filled is proven"). The engine has no idea of stages or deals anywhere. Nothing says where an organisation's stage names come from: the lead's rules in Context, a template, or something the lead sets. Until you decide, I have left `stages` out (screens requests 2 and 7c). The screens draw nothing when it is missing.
 
-**Next:** week 9, commitments kept and missed. There are three places commitments live, and some of this is already built. I am mapping what exists before building anything.
+**Week 9, first step: a commitment is settled from what the person says next time** (`aa91a8d7`). The next check-in already asked "what happened" about each open commitment, but nothing wrote the answer back. Now, after each check-in, the person's own words are read against their commitments that were open when it started.
+- A commitment is marked done when they plainly say they did it.
+- It is marked not done when they say they didn't and give no new time for it.
+- A new date, work in progress, "partly" and silence all stay open, because a promise that moved is not a missed one.
+
+Checked live twice with the real model. Five commitments came back as done, not done, open (new date), open (half done) and open (not mentioned), both times.
+
+**What already existed, so I did not rebuild it:** commitments are kept in four places (`Commitment`, `PersonObjective`, `GroundCommitment`, `OpsCommitment`). Kept could already be set by hand, and "finished" was already read into `PersonObjective`. Nothing ever recorded "missed", and no "kept 11 of 20" count exists anywhere.
+
+**Needs Hafsah, three questions about week 9:**
+1. **Who may see "kept 11 of 20 in the last 4 weeks"?** Your rules say each person's load across check-ins is private, always. The count is about one person, so today it could be shown only to that person. If the lead should see it too, for one check-in, that is a change to a privacy rule, so it is yours to decide. I have not built the count yet, because nothing reads it until week 10's suggestions.
+2. **Can proof settle a commitment?** For example, a document the person adds, or a colleague confirming the work arrived. Today the two are not linked: a commitment and a record line are separate rows. Linking them means the model matches a line to a commitment, as it does for "confirmed".
+3. **The lead can mark someone else's to-do as done.** They can do this by confirming a sentence in the Context chat (`grounds.service.ts`, `makeTheChange`), while the to-do button says "This one is somebody else's to move." These disagree. Which way should it go?
+
+**Run-17** is running in one line rather than three, at about 12 minutes per scenario, so it will take about five hours. One card has already been built in it: 6 lines, on a real close.
 
 ## 28 SEPTEMBER, NIGHT: BACK ON THE WEEKLY PLAN
 
