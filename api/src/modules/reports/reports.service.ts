@@ -161,6 +161,7 @@ import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-w
 import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { ONLY_THE_LEAD_RELEASES } from './only-the-lead-releases';
+import { whoSharedItBecauseTheLeadLeft, fullNameOf, sharedByAnAdminFrom, type SharedBecauseLeadLeft } from './who-shared-it-because-the-lead-left';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
@@ -4527,22 +4528,53 @@ happened, and what is in the way.`;
   }
 
   /**
-   * ONLY THE PERSON WHO RUNS THE CHECK-IN RELEASES ITS REPORT (request 57).
+   * ONLY THE PERSON WHO RUNS THE CHECK-IN RELEASES ITS REPORT (request 57) - UNLESS THEY HAVE LEFT
+   * (decision 53, 29 September 2026).
    *
    * The route was guarded by the admin role alone, so any admin of the organisation could share a
    * check-in's report while the lead's own Sessions tab told them "Sharing the report and ending
    * the check-in are Rukia's to decide". Hafsah's decision: the lead (`initiatorId`) decides, and
    * nobody else. There is no override for another admin; the automatic release the listener does
    * when a round closes goes through `release()` itself and is not a person pressing anything.
+   *
+   * DECISION 53 ADDS ONE EXCEPTION: if the lead's membership has ended - `User.isActive === false`,
+   * the same flag `leaveOrg` and the admin's `remove` set (users.service.ts) - there is nobody left
+   * who could ever press the button, and the report would sit released-never. Another admin may
+   * share it in their place, and the report and its notification say who shared it and why. See
+   * who-shared-it-because-the-lead-left.ts.
    */
   async releaseAsTheLead(groundId: string, userId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    if (!userId || ground.initiatorId !== userId) throw new ForbiddenException(ONLY_THE_LEAD_RELEASES);
-    return this.release(groundId, organizationId);
+    if (ground.initiatorId === userId) return this.release(groundId, organizationId);
+
+    const lead = await this.prisma.user.findUnique({
+      where: { id: ground.initiatorId },
+      select: { isActive: true, firstName: true, lastName: true },
+    }).catch(() => null);
+    /* Present, just not the one who pressed Release: still refused, exactly as request 57 decided. */
+    if (!userId || !lead || lead.isActive) throw new ForbiddenException(ONLY_THE_LEAD_RELEASES);
+
+    /* AND STILL ONLY AN ADMIN OF THIS ORGANISATION. The route is already gated on the admin role
+       (`@Roles(Role.ADMIN)`), but that gate lives on the HTTP layer; checked again here so this
+       method refuses on its own, the same defence-in-depth `isAnAdminOf` gives every other read. */
+    const sharingAdmin = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true, role: true, organizationId: true },
+    }).catch(() => null);
+    if (!adminsThisOrg(sharingAdmin, { organizationId })) throw new ForbiddenException(ONLY_THE_LEAD_RELEASES);
+
+    const byName = fullNameOf(sharingAdmin, 'An admin');
+    const leadName = fullNameOf(lead, 'The person who ran this check-in');
+    return this.release(groundId, organizationId, {
+      byUserId: userId,
+      byName,
+      leadName,
+      sentence: whoSharedItBecauseTheLeadLeft(byName, leadName),
+    });
   }
 
-  async release(groundId: string, organizationId: string) {
+  async release(groundId: string, organizationId: string, sharedBecauseLeadLeft?: Omit<SharedBecauseLeadLeft, 'at'>) {
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
       include: { participants: { include: { user: { select: { passwordHash: true } } } }, report: true },
@@ -4561,9 +4593,22 @@ happened, and what is in the way.`;
      * here, so session two's report told nobody and an open link's late answerers got nothing.
      */
     const roundNow = await this.prisma.checkIn.aggregate({ where: { groundId, status: CheckInStatus.COMPLETED }, _max: { sessionNumber: true } }).then((r) => r._max.sessionNumber ?? 1).catch(() => 1);
-    const told = await this.tellThemTheReportIsReady(groundId, roundNow);
+    const told = await this.tellThemTheReportIsReady(groundId, roundNow, undefined, sharedBecauseLeadLeft?.sentence);
     if (told.attempted > 0 && told.failed === told.attempted) {
       throw new Error('All report notification emails failed - report not released. Retry to send notifications.');
+    }
+
+    /* DECISION 53: KEPT ON THE GROUND'S OWN AUDIT LOG, an existing free-form JSON column, so this
+       needs no schema change. `getAsBuilt` reads this one key back out and serves it to every reader
+       of the report as `sharedByAnAdmin`, so the sentence outlives the one release email. */
+    if (sharedBecauseLeadLeft) {
+      const existingLog = ground.groundAuditLog && typeof ground.groundAuditLog === 'object' && !Array.isArray(ground.groundAuditLog)
+        ? (ground.groundAuditLog as Record<string, unknown>)
+        : {};
+      await this.prisma.ground.update({
+        where: { id: groundId },
+        data: { groundAuditLog: { ...existingLog, sharedBecauseLeadLeft: { ...sharedBecauseLeadLeft, at: new Date().toISOString() } } },
+      }).catch((err: any) => this.logger.warn(`Could not record who shared the report for ${groundId}: ${err?.message}`));
     }
 
     /* A discovery session's direction is what its report IS; read it at release, once, and keep it. */
@@ -4603,7 +4648,7 @@ happened, and what is in the way.`;
    * nowhere to send it. Called on release, when a later round closes, and when somebody completes after
    * the report has released - the last of these is what the open link needed.
    */
-  async tellThemTheReportIsReady(groundId: string, sessionNumber: number, onlyParticipantId?: string): Promise<{ attempted: number; failed: number }> {
+  async tellThemTheReportIsReady(groundId: string, sessionNumber: number, onlyParticipantId?: string, sharedByAnAdminSentence?: string): Promise<{ attempted: number; failed: number }> {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: { include: { user: { select: { passwordHash: true } } } } },
@@ -4635,8 +4680,8 @@ happened, and what is in the way.`;
         await this.prisma.reportNotice.create({ data: { groundId, participantId: p.id, sessionNumber } });
       } catch { continue; }
       try {
-        if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p));
-        else await this.email.sendReportReady(p.email, ground.label, linkFor(p));
+        if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p), sharedByAnAdminSentence);
+        else await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence);
       } catch (err: any) {
         failed += 1;
         this.logger.error(`Report-ready mail failed for ${p.email} on ${groundId} round ${sessionNumber}: ${err?.message}`);
@@ -6397,6 +6442,15 @@ happened, and what is in the way.`;
         isPostSignOff: c.isPostSignOff,
       }));
     }
+
+    /*
+     * DECISION 53: WHO SHARED THIS, IF IT WAS NOT THE LEAD. Kept on the ground's own audit log by
+     * release() (see who-shared-it-because-the-lead-left.ts) rather than a new column. Served to
+     * every reader of a released report - the fact of who shared it, and why, is not one of this
+     * product's private things.
+     */
+    const sharedByAnAdmin = sharedByAnAdminFrom((ground as any).groundAuditLog);
+    if (sharedByAnAdmin) base.sharedByAnAdmin = sharedByAnAdmin;
 
     return base;
   }

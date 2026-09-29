@@ -970,7 +970,7 @@ export class EmailService implements OnModuleInit {
   }
 
   /** The moment of value: everybody answered, and here is the one report. */
-  async sendTeamUpdateAllIn(email: string, theOneLine: string, howMany: number, reportUrl: string): Promise<void> {
+  async sendTeamUpdateAllIn(email: string, theOneLine: string, howMany: number, reportUrl: string, sharedByAnAdminSentence?: string): Promise<void> {
     const { subject, lines } = whatTheLeadGets({ theOneLine, howMany });
     const [allIn, question, ...rest] = lines;
     await this.sendEmail({
@@ -980,12 +980,19 @@ export class EmailService implements OnModuleInit {
         `<p>${escapeHtml(allIn)}</p>` +
         `<p style="border-left:3px solid #5DCAA5;padding:10px 16px;margin:20px 0;font-size:17px;">${escapeHtml(question)}</p>` +
         rest.map((l) => `<p>${escapeHtml(l)}</p>`).join('') +
+        (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
         `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">${THE_LEAD_BUTTON} &rarr;</a></p>`,
       ),
     }, undefined, 'sendTeamUpdateAllIn');
   }
 
-  async sendReportReady(email: string, groundLabel: string, reportUrl: string): Promise<void> {
+  /**
+   * `sharedByAnAdminSentence`: decision 53, 29 September 2026. Set only when another admin
+   * released this in the lead's place because the lead has left the organisation - see
+   * reports/who-shared-it-because-the-lead-left.ts, which builds the sentence. Null in the
+   * ordinary case, where the lead released it themselves and nothing extra is said.
+   */
+  async sendReportReady(email: string, groundLabel: string, reportUrl: string, sharedByAnAdminSentence?: string): Promise<void> {
     await this.sendEmail({
       to: email,
       subject: `The shared picture for ${groundLabel} is ready`,
@@ -1000,6 +1007,7 @@ export class EmailService implements OnModuleInit {
       html: this.layout(
         `<p>Everybody on <strong>${escapeHtml(groundLabel)}</strong> has now checked in, so the shared picture is open to all of you at the same moment.</p>` +
         `<p>It shows where what you each said lines up, where it does not, and the one question worth answering together. It does not quote anybody: the words you wrote stay yours, and the record draws on them without showing them.</p>` +
+        (sharedByAnAdminSentence ? `<p>${escapeHtml(sharedByAnAdminSentence)}</p>` : '') +
         `<p><a href="${reportUrl}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Read the shared picture →</a></p>` +
         `<p style="font-size:12px;color:#9B9590;">Groundwork is where the people involved in a piece of work each say how it is going, privately, and get one shared picture back.</p>`,
       ),
