@@ -79,7 +79,8 @@ import {
   nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
   type CoachingStateShape, type StepOutcome,
 } from '../coaching/one-step-at-a-time';
-import { detectFunction, detectUniversalModes } from '../board/function-detection';
+import { detectFunction, detectUniversalModes, needsRoleConfirmation, roleConfirmationQuestion } from '../board/function-detection';
+import { RoleFunction } from '../board/role-maps';
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
@@ -4387,6 +4388,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // uncertain profile never produces coaching from a guess.
     const roleRead = await this.roleReadForThisTurn(checkIn as any, latestMessage);
     const roleProbeBlock = buildRoleProbeBlock(roleRead.fn, roleRead.confidence, roleRead.modes);
+    /* A role guessed with low confidence is confirmed before it is used (decision 57, item 5). */
+    const roleConfirmationBlock = await this.roleConfirmationBlockFor(checkIn.participantId, roleRead.fn, roleRead.confidence);
 
     /**
      * G42. THE COACHING STEP, AND THE FIRST TIME ANYTHING HAS READ THESE ROWS.
@@ -4750,7 +4753,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const named: [string, string][] = [
       ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
-      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
+      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
@@ -4929,7 +4932,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -7813,6 +7816,26 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       this.logger.log(`In-session function read on ${checkIn.id}: ${stored.fn ?? 'none'} -> ${read.fn} (${read.confidence}). ${read.basis}`);
     }
     return read.fn ? { fn: read.fn, confidence: read.confidence, modes } : { ...stored, modes };
+  }
+
+  /**
+   * A ROLE GUESSED WITH LOW CONFIDENCE IS CONFIRMED BEFORE IT IS USED (decision 57, item 5).
+   *
+   * Below LOW_CONFIDENCE_CONFIRM_THRESHOLD (the same MIN_COACHING_CONFIDENCE that already withholds
+   * a role-tuned probe - see buildRoleProbeBlock) and not yet confirmed, the model is told to ask
+   * the plain-words question once, this turn. Their answer is read as their own account of their
+   * role, never scored - it is turned into a confirmation or a correction by the participants route
+   * (PATCH /participants/:id or POST /participants/:id/confirm-role), not by this prompt. Nothing
+   * here is a role-tuned probe: buildRoleProbeBlock already stays silent below the same threshold,
+   * so the universal floor is all that is asked from otherwise.
+   */
+  private async roleConfirmationBlockFor(participantId: string, fn: string | null, confidence: number | null): Promise<string> {
+    if (!fn) return '';
+    const participant = await this.prisma.groundParticipant
+      .findUnique({ where: { id: participantId }, select: { detectedFunctionConfirmedAt: true } })
+      .catch(() => null);
+    if (!needsRoleConfirmation({ fn: fn as RoleFunction, confidence: confidence ?? 0 }, participant?.detectedFunctionConfirmedAt ?? null)) return '';
+    return `CONFIRM THE ROLE, ONCE (decision 57, item 5): somewhere natural in this turn, ask plainly - "${roleConfirmationQuestion(fn as RoleFunction)}" Their answer is their own statement of their role, not a score. If they have already answered a version of this earlier in this check-in, do not ask again.`;
   }
 
   /**

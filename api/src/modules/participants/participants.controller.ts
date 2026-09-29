@@ -112,6 +112,13 @@ export class ParticipantsController {
     return this.participants.updateRole(id, userId, dto.roleAsDescribed);
   }
 
+  @ApiBearerAuth()
+  @Post(':id/confirm-role')
+  @ApiOperation({ summary: 'Confirm a guessed role as-is, with no correction (owner or initiator scoped) - decision 57, item 5' })
+  async confirmRole(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.participants.confirmDetectedFunction(id, userId);
+  }
+
   /**
    * WHERE THE REPORT GOES, SET BY THE PERSON IT GOES TO.
    *

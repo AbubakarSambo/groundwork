@@ -156,7 +156,7 @@ describe('week 16 / decision 57 item 3: the pattern nudge in Today', () => {
     expect(item).toEqual({
       id: 'pattern-talk-pd-brian-b3',
       decide: 'Talk with Brian about “Others describe doing work they described as theirs”.',
-      why: 'Brian has seen it and said: “I ran the call, Miriam built the numbers.”.',
+      why: 'Brian has seen it. Brian said, “I ran the call, Miriam built the numbers.”',
     });
   });
 

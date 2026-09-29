@@ -488,7 +488,16 @@ export class ParticipantsService {
   }
 
 
-  /** Update a participant's roleAsDescribed. Only the participant themselves or the ground initiator may call this. */
+  /**
+   * Update a participant's roleAsDescribed. Only the participant themselves or the ground initiator
+   * (the lead) may call this.
+   *
+   * DECISION 57, ITEM 5: giving a role, in either of their own words, is itself how a person or their
+   * lead confirms or corrects the guessed function - so this also stamps
+   * detectedFunctionConfirmedAt/By, the same as the plain confirm-as-is route below. Once stamped, a
+   * guess below the confirmation threshold may be used (see function-detection.ts,
+   * needsRoleConfirmation); until then only the role-agnostic universal floor applies.
+   */
   async updateRole(participantId: string, userId: string, roleAsDescribed: string) {
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
@@ -502,9 +511,37 @@ export class ParticipantsService {
 
     const updated = await this.prisma.groundParticipant.update({
       where: { id: participantId },
-      data: { roleAsDescribed },
+      data: { roleAsDescribed, detectedFunctionConfirmedAt: new Date(), detectedFunctionConfirmedBy: userId },
     });
     return { id: updated.id, roleAsDescribed: updated.roleAsDescribed };
+  }
+
+  /**
+   * "IS THAT RIGHT?" ANSWERED "YES" (decision 57, item 5): confirms the guessed function as it
+   * stands, with no change to roleAsDescribed - the plain-words companion to updateRole above, for
+   * when nothing needs correcting. Same permission: the participant themselves, or the ground
+   * initiator (the lead), confirming for them from the Context page.
+   */
+  async confirmDetectedFunction(participantId: string, userId: string) {
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      include: { ground: { include: { participants: { where: { partyType: 'INITIATOR' } } } } },
+    });
+    if (!participant) throw new NotFoundException('Participant not found');
+
+    const isOwner = participant.userId === userId;
+    const isInitiator = participant.ground.participants.some((p) => p.userId === userId);
+    if (!isOwner && !isInitiator) throw new NotFoundException('Participant not found');
+
+    const updated = await this.prisma.groundParticipant.update({
+      where: { id: participantId },
+      data: { detectedFunctionConfirmedAt: new Date(), detectedFunctionConfirmedBy: userId },
+    });
+    return {
+      id: updated.id,
+      detectedFunction: updated.detectedFunction,
+      detectedFunctionConfirmedAt: updated.detectedFunctionConfirmedAt,
+    };
   }
 
   /** Fix a bounced/wrong address and resend the invite - initiator only, and
