@@ -31,6 +31,22 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Part 4: migrations
+
+**Existing check-ins are no longer reopened by a migration** (decision 54, `b74c5fa7`).
+- `20260923200000_reopen_every_check_in_that_ran_out_of_time` now holds only `SELECT 1`. It used to set every stalled check-in with work outstanding back to active, and give it thirty more days.
+- The file stays, so the order of migrations does not change. Prisma accepts it on the local test database.
+- A lead can reopen a stalled check-in themselves: extending its dates brings it back, and the people who were told it stalled are told it is back. The same test file already covers that.
+- Four tests that required the old update were replaced by one that requires the migration to change no data.
+
+**Needs Hafsah: the safety check refused both my edit to the release questions in `docs/ready-to-deploy.md` and a report note that quoted them.** It said nothing may touch the branches of the person those questions are for. The edit only changed that document on this branch. I did not retry. What the section should now say:
+- There are 326 migrations, and 54 are new since `80beab98`.
+- Four of the 54 change or remove data: the three already listed, and a new one, `20260928090000_the_person_sees_their_pattern_first`.
+- The reopening migration no longer changes anything.
+- The questions about the empty column, the 5-second limit and the one-off script stay, numbered 1 to 7 in order.
+
+**This matters before patterns go live.** The new data-changing migration marks every pattern already seen in three periods as ready from the day it was last seen. So a lead could see an old one within about a week of release, without the person ever having seen it. Please check live for such patterns first.
+
 ### The merged decisions checked again against 31 to 54: new disagreements
 
 I changed nothing else. These are for Hafsah:
