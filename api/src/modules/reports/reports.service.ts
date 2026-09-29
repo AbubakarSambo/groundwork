@@ -150,6 +150,7 @@ import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
 import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { ONLY_THE_LEAD_RELEASES } from './only-the-lead-releases';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, whoIsExpected } from './how-many-have-answered';
@@ -4444,6 +4445,22 @@ happened, and what is in the way.`;
 
     await this.synthesize(groundId);
     return { groundId, generated: true };
+  }
+
+  /**
+   * ONLY THE PERSON WHO RUNS THE CHECK-IN RELEASES ITS REPORT (request 57).
+   *
+   * The route was guarded by the admin role alone, so any admin of the organisation could share a
+   * check-in's report while the lead's own Sessions tab told them "Sharing the report and ending
+   * the check-in are Rukia's to decide". Hafsah's decision: the lead (`initiatorId`) decides, and
+   * nobody else. There is no override for another admin; the automatic release the listener does
+   * when a round closes goes through `release()` itself and is not a person pressing anything.
+   */
+  async releaseAsTheLead(groundId: string, userId: string, organizationId: string) {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (!userId || ground.initiatorId !== userId) throw new ForbiddenException(ONLY_THE_LEAD_RELEASES);
+    return this.release(groundId, organizationId);
   }
 
   async release(groundId: string, organizationId: string) {
