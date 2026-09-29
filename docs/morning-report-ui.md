@@ -6416,8 +6416,6 @@ its four tests fail with the leaked name.
 
 **8. Reverted, to your own decision.** The review asked whether an admin should be offered "Rewrite" on "What this check-in is for". I told the builder to take the more private option (only the lead), and it did. But you had already decided this on 8 September, in commit `072e6250`: an admin who runs the place may rewrite the brief ("she should rewrite"). So I reverted it in `76b472eb`: the lead and such an admin may rewrite it, as before. My earlier note that this was an open question (item 31.2) was wrong; your answer was already in the code.
 
-### Decided for Hafsah to confirm
-
 **Verification.** `npx tsc -b` clean (client). `npx tsc --noEmit` clean (api). Targeted client
 suite (23 spec files touched by this round, including three newly-written regression specs and all
 their pre-existing neighbours in the same files): 131/131. Targeted API suite (the new privacy
