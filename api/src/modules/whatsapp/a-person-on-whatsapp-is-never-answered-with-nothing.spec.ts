@@ -101,7 +101,7 @@ describe('the organisation handler', () => {
   const SRC = readFileSync(join(__dirname, '../public-api/whatsapp-for-an-organisation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('wraps the open-and-answer path in a try whose catch says the sentence, as the finish branch already did', () => {
-    const at = SRC.indexOf('const r = await this.conversation.sendMessage(current.id, userId!, text);');
+    const at = SRC.indexOf("const r = await this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' });");
     expect(at).toBeGreaterThan(0);
     const before = SRC.slice(at - 600, at);
     const after = SRC.slice(at, at + 700);
