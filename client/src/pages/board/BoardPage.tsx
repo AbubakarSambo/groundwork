@@ -31,6 +31,7 @@ import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
 import { theLeadsNote } from '@/lib/the-leads-note'
 import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 import { tileSentence } from '@/components/gw/TheSessionsReport'
+import { PatternPanel } from '@/components/gw/ui'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -520,6 +521,29 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       return { key: s, state: upcoming ? 'upcoming' : checkedIn ? 'done' : 'empty' }
     })
   }
+
+  /* "The team today", with what keeps coming up under each person's own line, where the record has
+     found something (board-as-lead.txt). `eachPersonToday` carries the same rows as `eachPerson`
+     with that one sentence added; merged here rather than in two places the row could drift apart. */
+  const keepsComingUpByParticipant = new Map((b.eachPersonToday ?? []).map((r) => [r.participantId, r.keepsComingUp ?? null]))
+  const eachPersonRows = (b.eachPerson ?? []).map((r) => ({ ...r, keepsComingUp: keepsComingUpByParticipant.get(r.participantId) ?? null }))
+
+  /*
+   * WHAT KEEPS COMING UP, THE SECTION (board-as-lead.txt). The server already serves only what this
+   * reader may read (api/src/modules/patterns/who-reads-a-pattern.ts): a colleague's own pattern
+   * only, everybody's for whoever runs the check-in - its lead, whoever set it up, or an admin of
+   * its organisation (`runsIt`, the same test `board.service.ts` calls `runsThisGround`). `eachPerson`
+   * is served under that exact same test (`has('checkInGrid') && runsThisGround`), so its presence
+   * is this page's own signal for "this reader runs it" - `viewerRunsThisCheckIn` alone is narrower
+   * (the initiator only) and would wrongly hide another person's pattern from an admin who may read
+   * it. `.yours` is kept here too, so a colleague's board never draws another person's pattern even
+   * if this page is ever handed one by mistake - the rule this file must never be the one to weaken.
+   */
+  const runsThisCheckIn = viewerRunsThisCheckIn || Array.isArray(b.eachPerson)
+  const visiblePatterns = (b.patterns ?? []).filter((p) => runsThisCheckIn || p.yours)
+  const nameByParticipantId = new Map((b.participants ?? []).map((p) => [p.id, p.name]))
+  const patternPersonName = (participantId: string, yours: boolean) =>
+    (participantId === b.myParticipantId ? 'You' : nameByParticipantId.get(participantId)) || (yours ? 'You' : 'A colleague')
 
   return (
     <div style={{ background: 'var(--gw-page)', minHeight: '100vh' }}>
@@ -1312,7 +1336,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ordering is unchanged, only the heading now reads as the prototype's screen does.
             */}
             <Sec size="board" title="The team today" src="Each person’s line, their last 10 check-ins, and what keeps coming up." />
-            <WhereEachPersonIs rows={b.eachPerson!} squaresFor={squaresFor} />
+            <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
           </>
         )}
 
@@ -1825,37 +1849,33 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.patterns && b.patterns && (
           <>
-            <Sec size="board" title="Patterns this phase" src="Patterns about the work only." />
+            {/*
+              WHAT KEEPS COMING UP (board-as-lead.txt). Named after three check-ins in a row, never
+              after one, and each one describes the work - never a label joined to a name (see
+              api/src/modules/patterns/who-reads-a-pattern.ts, the one place that decides who reads
+              a pattern and in what words). `visiblePatterns` is filtered again here for a colleague,
+              on top of what the server already withheld: see the comment on `visiblePatterns` above.
+            */}
+            <Sec size="board" title="What keeps coming up" src="Named after three check-ins in a row, never after one. Each describes the work." />
             <Card>
-              {b.patterns.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No patterns have repeated often enough to show yet. A pattern needs three periods before it appears here.</div></Row>
-              ) : b.patterns.map((p, i) => (
-                <Row key={i} first={i === 0}>
-                  <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
-                    {p.label && <Pill tone="info">{p.label}</Pill>}
-                    <span style={{ flex: 1, fontSize: 12.5 }}>{p.text}</span>
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', flexShrink: 0 }}>{p.periods} periods</span>
-                  </div>
-                  {/*
-                    AND WHAT TO DO ABOUT IT.
-
-                    "i would expect a coaching line or an assessment after, what do i do with this" -
-                    about "Direct questions about deliverables were met with unrelated statements
-                    about needs and blockers." An observation with no next move is a dead end on the
-                    one board somebody opens to decide something.
-
-                    The library has carried the question for every pattern since it was written; the
-                    server now sends it. A QUESTION and not a verdict, because a pattern is a thing
-                    the record has noticed more than once, and the next move is asking the person.
-                  */}
-                  {(p as any).askThem && (
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 6, paddingLeft: 11, borderLeft: '2px solid var(--gw-border)' }}>
-                      <span style={{ color: 'var(--gw-muted)' }}>Ask them: </span>
-                      {(p as any).askThem}
-                    </div>
-                  )}
-                </Row>
-              ))}
+              {visiblePatterns.length === 0 ? (
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No patterns have repeated often enough to show yet. A pattern needs three check-ins before it appears here.</div></Row>
+              ) : (
+                <>
+                  <Row first>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>About each person’s work</div>
+                  </Row>
+                  {visiblePatterns.map((p) => (
+                    <Row key={p.id}>
+                      <PatternPanel
+                        pattern={p}
+                        invalidateKey={['board', id]}
+                        name={patternPersonName(p.participantId, p.yours)}
+                      />
+                    </Row>
+                  ))}
+                </>
+              )}
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
                 Patterns about the work only. Anything that would read as a judgement about a person stays in the lead's private report and never appears here.
               </div>

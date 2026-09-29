@@ -54,7 +54,7 @@ const TITLE_FOR_BOARD_SECTION: Record<string, string> = {
   whatTheRoomIsAbout: 'What people are after, and where',
   quickRead: 'The quick read',
   dependencies: 'Waiting on',
-  patterns: 'Patterns this phase',
+  patterns: 'What keeps coming up',
 }
 
 /** A served shape carrying real data for every one of the 7 mapped sections, whatever the scenario. */
@@ -80,7 +80,14 @@ function boardFor(scenario: string) {
       places: [], things: [], readAtSession: 1,
     },
     dependencies: [{ id: 'd1', from: 'Amani Wekesa', what: 'a decision', on: 'Wairimu Kamau', status: 'BLOCKING' as const, then: null }],
-    patterns: [{ code: 'p1', label: 'A pattern', text: 'Something keeps happening.', periods: 3 }],
+    // The served shape (api/src/modules/patterns/who-reads-a-pattern.ts): no more `code`, `label`,
+    // `text` or `periods` - see docs/answers-from-engine.md, "Patterns have a new shape".
+    patterns: [{
+      id: 'pat1', participantId: 'p-a', yours: false,
+      heading: 'Something keeps happening.', whatHappened: null,
+      howOften: 'This came up in 3 check-ins.', askThem: 'What is behind it?',
+      theirWords: null, canAnswer: false, whoSeesIt: 'Amani Wekesa has not seen this yet, and has not answered yet.',
+    }],
     quickRead: [{ label: 'Differences', value: 'None', sub: 'no disagreement', tone: 'good' }],
   }
 }

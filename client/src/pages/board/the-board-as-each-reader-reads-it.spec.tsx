@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BoardPage, seenAcross } from './BoardPage'
 import { boardApi } from '@/api/board'
+vi.mock('@/api/patterns', () => ({ patternsApi: { answer: vi.fn() } }))
+import { patternsApi } from '@/api/patterns'
 
 /**
  * U.10: THE BOARD, AS THE LEAD, A PARTICIPANT AND AN ADMIN READ IT.
@@ -190,5 +192,104 @@ describe('where people see it differently', () => {
     expect(screen.getAllByText('Miriam Wanjiku').length).toBeGreaterThan(0)
     expect(screen.getByText('A colleague')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/Participant [AB]/)
+  })
+})
+
+/**
+ * WHAT KEEPS COMING UP (board-as-lead.txt), IN THE SERVED SHAPE (docs/answers-from-engine.md,
+ * "Patterns have a new shape"): `heading`, `whatHappened`, `howOften`, `whoSeesIt`, `theirWords`,
+ * `canAnswer`, `askThem`, `participantId` - no `label`, `code`, `text` or `periods`.
+ */
+/** `Sec`/`Card` are siblings, not nested in a `<section>`: the card is the heading's next sibling. */
+function cardAfter(headingText: string): HTMLElement {
+  const heading = screen.getByText(headingText)
+  return heading.parentElement!.nextElementSibling as HTMLElement
+}
+
+describe('what keeps coming up', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const miriamsPattern = {
+    id: 'pat-miriam', participantId: 'p-miriam', yours: false,
+    heading: 'Her qualified deals often don’t have a buying date', whatHappened: null,
+    howOften: '3 of 5, for three weeks running.', askThem: 'What would get a date on the deal?',
+    theirWords: null, canAnswer: false,
+    whoSeesIt: 'Miriam Wanjiku has not seen this yet, and has not answered yet.',
+  }
+  const aishasPattern = {
+    id: 'pat-aisha', participantId: 'p-aisha', yours: false,
+    heading: 'Leads the team on buying dates', whatHappened: null,
+    howOften: '3 of 5, for three weeks running.', askThem: null,
+    theirWords: null, canAnswer: false,
+    whoSeesIt: 'Aisha Otieno saw this first and has not answered yet.',
+  }
+
+  it('Wairimu, who runs it, reads what keeps coming up about each person’s work, under their name', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [miriamsPattern, aishasPattern] })
+    await screen.findByText('What keeps coming up')
+    const card = cardAfter('What keeps coming up')
+    expect(within(card).getByText('About each person’s work')).toBeTruthy()
+    expect(within(card).getByText('Miriam Wanjiku')).toBeTruthy()
+    expect(within(card).getByText('Aisha Otieno')).toBeTruthy()
+    expect(within(card).getByText('Her qualified deals often don’t have a buying date')).toBeTruthy()
+    expect(within(card).getByText('Leads the team on buying dates')).toBeTruthy()
+    expect(within(card).getByText(/What would get a date on the deal\?/)).toBeTruthy()
+    /* Never a label joined to a name: the sentence names the work, not "Miriam: qualified deals". */
+    expect(document.body.textContent).not.toMatch(/Miriam Wanjiku:/)
+  })
+
+  it('Miriam reads her own, can answer it, and never a colleague’s - even one the payload carried', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard({
+      ...AS_MIRIAM, sections: ['objectives', 'patterns'],
+      patterns: [{ ...miriamsPattern, yours: true, canAnswer: true, whoSeesIt: 'Wairimu can see this too, once you answer or three days pass.' }, aishasPattern],
+    })
+    expect(await screen.findByText('What keeps coming up')).toBeTruthy()
+    expect(screen.getByText('Her qualified deals often don’t have a buying date')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Say what’s behind it' })).toBeTruthy()
+    /* Aisha's pattern was in the payload and must never draw on Miriam's own board. */
+    expect(screen.queryByText('Leads the team on buying dates')).toBeNull()
+    expect(screen.queryByText('Aisha Otieno')).toBeNull()
+  })
+
+  it('Miriam can say what’s behind it, and her own words show back next to the pattern', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    ;(patternsApi.answer as any).mockResolvedValue({ ...miriamsPattern, yours: true, canAnswer: true, theirWords: 'The buyer keeps delaying.' })
+    renderBoard({
+      ...AS_MIRIAM, sections: ['objectives', 'patterns'],
+      patterns: [{ ...miriamsPattern, yours: true, canAnswer: true }],
+    })
+    await screen.findByText('What keeps coming up')
+    const card = cardAfter('What keeps coming up')
+    fireEvent.click(within(card).getByRole('button', { name: 'Say what’s behind it' }))
+    fireEvent.change(within(card).getByRole('textbox'), { target: { value: 'The buyer keeps delaying.' } })
+    fireEvent.click(within(card).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(within(card).getByText(/The buyer keeps delaying\./)).toBeTruthy())
+  })
+
+  it('an admin who only reads sees everybody’s, the same as the lead', async () => {
+    me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
+    // The server serves `eachPerson` under the exact same test as `patterns` - whoever runs the
+    // check-in, an admin included (see the comment on `runsThisCheckIn` in BoardPage.tsx).
+    renderBoard({ ...AS_AN_ADMIN, sections: ['objectives', 'patterns'], patterns: [miriamsPattern, aishasPattern], eachPerson: AS_THE_LEAD.eachPerson })
+    await screen.findByText('What keeps coming up')
+    const card = cardAfter('What keeps coming up')
+    expect(within(card).getByText('Miriam Wanjiku')).toBeTruthy()
+    expect(within(card).getByText('Aisha Otieno')).toBeTruthy()
+  })
+
+  it('“The team today” carries what keeps coming up under each person’s own line, lead only', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({
+      ...AS_THE_LEAD, sections: ['objectives'],
+      eachPersonToday: [
+        { participantId: 'p-aisha', who: 'Aisha Otieno', line: 'Deals moving', keepsComingUp: 'Leads the team on buying dates' },
+        { participantId: 'p-miriam', who: 'Miriam Wanjiku', line: 'Deals moving', keepsComingUp: 'Qualified deals often lack a date' },
+      ],
+    })
+    await screen.findByText('The team today')
+    expect(screen.getByText('Qualified deals often lack a date')).toBeTruthy()
+    expect(screen.getByText('Leads the team on buying dates')).toBeTruthy()
   })
 })

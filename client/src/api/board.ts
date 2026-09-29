@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import type { ServedPattern } from './patterns'
 
 export type BoardSection =
   | 'phaseSpine' | 'quickRead' | 'objectives' | 'startingState' | 'divergence'
@@ -175,6 +176,18 @@ export type BoardPresent = {
     says: string
     ask: string | null
   }[]
+  /**
+   * EACH PERSON'S OWN LINE, AND WHAT KEEPS COMING UP ABOUT THEIR WORK (board-as-lead.txt, "The team
+   * today"). The same rows as `eachPerson`, for whoever runs the check-in only, with the one-line
+   * summary the record already gives that row and, where a pattern has come up about that person,
+   * one plain sentence naming it. Left off a row with nothing to add.
+   */
+  eachPersonToday?: {
+    participantId: string
+    who: string
+    line: string
+    keepsComingUp?: string
+  }[]
   contribution?: {
     participantId: string; name: string | null; remit: string | null; remitDefined: boolean
     /** Always null. There is deliberately no on-track/below-track label - see board.service.ts. */
@@ -208,8 +221,16 @@ export type BoardPresent = {
     /** How many periods it was visible across. One is never a pattern. */
     periods: number
   }[]
-  /** label is null for a code this build does not recognise - show nothing rather than a raw key. */
-  patterns?: { code: string; label: string | null; text: string; periods: number }[]
+  /**
+   * PATTERNS ABOUT THE WORK (board-as-lead.txt, "What keeps coming up"). Each pattern's own
+   * participantId is here so the page can place it under that person's line; there is no `label`
+   * joining a pattern to a name. The server already serves only what this reader may read (see
+   * api/src/modules/patterns/who-reads-a-pattern.ts) - whoever runs the check-in reads everybody's,
+   * after each person's own turn, and a colleague reads only their own. `BoardPage.tsx` filters on
+   * `.yours` for a reader who does not run the check-in as well, so a colleague's page never draws
+   * another person's pattern even if a future change to this file made the server send one.
+   */
+  patterns?: ServedPattern[]
   decisions?: { question: string; why: string; owner: string; source: 'blocker' | 'divergence' }[]
   poll?: { id: string; question: string; options: { id: string; label: string; who: (string | null)[]; whoIds: string[]; count: number }[] } | null
 }
