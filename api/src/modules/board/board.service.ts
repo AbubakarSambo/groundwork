@@ -76,6 +76,7 @@ import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
+import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -1053,9 +1054,11 @@ export class BoardService {
     if (has('whoOwnsWhat')) {
       const entries = await this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT', 'PROGRESS'] } },
-        select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true },
+        select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true, ...WHAT_A_MARK_READS },
         orderBy: { createdAt: 'asc' },
       });
+      /* How each line is known, by the same rule as the reports (week 6b). Stored columns only. */
+      const whoAdded = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
       out.whoOwnsWhat = ground.participants
         .filter((p) => !p.managingOnly)
         .map((p) => ({
@@ -1072,6 +1075,7 @@ export class BoardService {
            */
           items: entries.filter((e) => e.participantId === p.id).map((e) => ({
             id: e.id, type: e.type, text: cleanText(e.text),
+            mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
           })),
         }));
@@ -2128,12 +2132,7 @@ export class BoardService {
     const answered = ground.participants.filter((p: any) => !waiting.has(p.id) && completed.some((c) => c.participantId === p.id && c.sessionNumber === openRound));
     const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
     /* Whose document backs each line: somebody else's proves nothing of theirs (how-a-line-is-known). */
-    const backingIds = [...new Set(entries.map((e: any) => e.anchoredDocumentId).filter(Boolean))] as string[];
-    const whoseDocument = new Map(
-      backingIds.length
-        ? ((await this.prisma.groundDocument.findMany({ where: { id: { in: backingIds } }, select: { id: true, participantId: true } }).catch(() => [])) as any[]).map((d) => [d.id, d.participantId])
-        : [],
-    );
+    const whoseDocument = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
     const shape = theSessionReport({
       sessionNumber: openRound,
       closed: !!report.releasedAt,

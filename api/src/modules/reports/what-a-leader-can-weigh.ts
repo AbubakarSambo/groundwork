@@ -55,6 +55,8 @@ export interface WeighableEntry {
     | 'DIVERGENCE';
   text: string;
   session: number;
+  /** How the line is known: proven, confirmed, said or memory (week 6b). See how-a-line-is-known. */
+  mark?: 'proven' | 'confirmed' | 'said' | 'memory';
 }
 
 /**

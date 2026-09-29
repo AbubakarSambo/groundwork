@@ -53,6 +53,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
   [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
+import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS, type HowALineIsKnown } from './how-a-line-is-known';
 import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
 import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
 import { factsAbout, type PersonFacts } from './the-facts-about-a-person';
@@ -553,19 +554,23 @@ export class ReportsService {
       const [rows, docs, closing] = await Promise.all([
         this.prisma.recordEntry.findMany({
           where: { disputedAt: null, participant: { groundId } },
-          select: { participantId: true, type: true, text: true, checkIn: { select: { sessionNumber: true } } },
+          select: { participantId: true, type: true, text: true, ...WHAT_A_MARK_READS, checkIn: { select: { sessionNumber: true } } },
         }),
-        this.prisma.groundDocument.findMany({ where: { groundId }, select: { participantId: true, fileName: true } }),
+        this.prisma.groundDocument.findMany({ where: { groundId }, select: { id: true, participantId: true, fileName: true } }),
         this.prisma.ground.findUnique({ where: { id: groundId }, select: { status: true, resolutionState: true } }),
       ]);
 
-      const entries: EntryRow[] = rows
+      /* How each line is known, by the one rule (week 6b). Who added each backing document is read
+         off the documents fetched above; no file is named. */
+      const whoAdded = new Map<string, string | null>((docs as any[]).map((d) => [d.id, d.participantId ?? null]));
+      const entries: (EntryRow & { mark: HowALineIsKnown })[] = rows
         .filter((r) => !!r.participantId)
         .map((r) => ({
           participantId: r.participantId as string,
           type: String(r.type),
           text: r.text,
           sessionNumber: r.checkIn?.sessionNumber ?? 1,
+          mark: theMarkOf({ ...r, text: cleanText(r.text) }, whoAdded),
         }));
       if (!entries.length) return {};
 
@@ -605,7 +610,7 @@ export class ReportsService {
       const section = whatALeaderCanWeigh({
         statedStandards: stated,
         standardsTouched,
-        entries: entries.map((r) => ({ kind: r.type as any, text: r.text, session: r.sessionNumber })),
+        entries: entries.map((r) => ({ kind: r.type as any, text: cleanText(r.text), session: r.sessionNumber, mark: r.mark })),
         isClosing,
       });
       if (section) {
@@ -2958,12 +2963,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     );
 
     /* Whose document backs each line: somebody else's proves nothing of theirs (how-a-line-is-known). */
-    const backingIds = [...new Set(entries.map((e: any) => e.anchoredDocumentId).filter(Boolean))] as string[];
-    const whoseDocument = new Map(
-      backingIds.length
-        ? ((await this.prisma.groundDocument.findMany({ where: { id: { in: backingIds } }, select: { id: true, participantId: true } }).catch(() => [])) as any[]).map((d) => [d.id, d.participantId])
-        : [],
-    );
+    const whoseDocument = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
     const shape = theSessionReport({
       sessionNumber,
       /* The same arithmetic the chat composer does when it says "session 3 of 6": the length over
@@ -5564,13 +5564,18 @@ happened, and what is in the way.`;
     return (this.prisma.recordEntry?.findMany?.({
         where: { participantId },
         orderBy: [{ createdAt: 'asc' }],
-        select: { id: true, type: true, text: true, disputedAt: true, recallBased: true, documentSays: true, checkIn: { select: { id: true, sessionNumber: true } } },
+        select: { id: true, participantId: true, type: true, text: true, disputedAt: true, documentSays: true, ...WHAT_A_MARK_READS, checkIn: { select: { id: true, sessionNumber: true } } },
       }) ?? Promise.resolve([] as any[]))
-      .then((rows: any[]) => rows.map((r) => ({
-        id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
-        documented: !r.recallBased, documentSays: r.documentSays ?? null,
-        checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
-      })))
+      .then(async (rows: any[]) => {
+        /* How each of their own lines is known, by the one rule (week 6b). Read from stored columns. */
+        const whoAdded = await whoAddedEachBackingDocument(this.prisma, rows);
+        return rows.map((r) => ({
+          id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
+          documented: !r.recallBased, documentSays: r.documentSays ?? null,
+          mark: theMarkOf({ ...r, text: cleanText(r.text) }, whoAdded),
+          checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
+        }));
+      })
       .catch(() => [] as any[]);
   }
 
