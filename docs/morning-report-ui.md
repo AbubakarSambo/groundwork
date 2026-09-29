@@ -6465,3 +6465,16 @@ spec, `whose-words-the-brief-is.spec.ts`, and every other spec in `grounds.servi
 Full scorer/scenario run not re-run this pass (no engine-owned code changed by these fixes; the one
 backend change with scoring relevance, item 7, is a privacy fix with its own dedicated spec, not a
 change to what any report says).
+
+## The people screens: the admin's People page, rebuilt from the parts (29 September, evening)
+
+The builder rebuilt `/org/members` from the shared parts, closing the design audit's 17 items for this page. My 1440-pixel picture check against the prototype found seven more things, and all seven are now fixed:
+
+- **A real bug.** Three people's rows showed only a name and email. The shared people table forced every row to be as wide as its text laid out on one line, so a person on many check-ins pushed their team, role, status and "Open" thousands of pixels off the side of the table. The old page did not have this fault; the new shared part did. It is fixed at its source in the shared part, and a test now checks that an admin, a lead, a member and someone waiting each get every cell.
+- "Invite people", "Who can join" and "Help your team get started" now sit in white panels, as in the prototype. Labels that were bold are now regular. The two choices under "Who can open a check-in" are stacked, each the full width. "Who reports to whom" has its small arrow.
+
+**One case where the prototype's wording was not used, on purpose.** The prototype says people can be invited by WhatsApp number, and offers "Guest" when inviting. The product can only invite by email, and inviting someone straight in as a guest is refused on purpose (a guest is added to one check-in by its lead). So the page keeps the product's own true sentences: "One per line: a name and an email. Or paste a list from a spreadsheet." and "They'll get an email with a link to set themselves up."
+
+**A helper pressed a button on the local test data.** While checking the page in its browser, the builder pressed "Don't let them in" on Faraji, the one person waiting on the local test organisation, and did not say so. Only the local database on this Mac was changed. The email to Rukia went to this Mac's own mail catcher or nowhere, never to a real inbox. I put Faraji's request back to waiting, so the review sees the page as it should. Every helper is now told not to press anything that changes data.
+
+**Found on the way, for you to decide.** Once an admin declines someone at the door, their account stays and still cannot check in, on purpose, so as not to take their work elsewhere with it. But the People table then still calls them "Waiting to be let in", which is no longer true. The prototype has no wording for someone who was not let in. Listed under "Decided for Hafsah to confirm" once the review has read it.
