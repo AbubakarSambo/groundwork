@@ -6,6 +6,21 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 29 SEPTEMBER, AFTERNOON: A NEW SESSION PICKS UP FROM THE HANDOVER
+
+**Why run-17 was slow.** I read its own logs: the driver's log and the API's log, both kept in the old session's scratch folder, and the run's folder.
+- It ran for 38 minutes, not 90. It started at 11:55 and was stopped at about 12:33.
+- The pace was normal. Sales, the longest scenario, took 30 minutes. On run-16 it took 36 minutes. Each check-in turn took as long as before.
+- **It was not the model's limits.** There was not one "too many requests" error in the whole log. The model timed out 5 times while reading a check-in, and each worked on its first retry.
+- **It was not the computer.** It has 10 cores and 16 GB, and the load was about 2.
+- **The cause was that the run went in one line.** Run-16 ran in three parts at once, and took just under two hours. In one line the same 24 scenarios take about five hours. In 38 minutes, one line finishes sales and part of loans, which is what happened.
+- One real cost is new. Closing a check-in now takes 10 to 37 seconds, because the end card reads the record. The person does not wait for it, because it is built after the goodbye. But a scenario with nine people, like loans, is a few minutes longer.
+- So run-18 goes in three parts, as run-16 did.
+
+**The old process on port 3101 is stopped.** Hafsah approved it. It was the API built on 20 September, started from `api/dist/main` with no parent left, writing to `/tmp/api-dev.log`. It made no calls to the model. It was still running the scheduled jobs against the local test database: reminder nudges, "your check-in is waiting" emails (written to the log only, never sent), and webhook retries. I checked afterwards: the process is gone, and nothing listens on port 3101.
+
+---
+
 ## HANDOVER, 29 SEPTEMBER 2026: WHERE THIS WORK STOPPED
 
 The work is moving to a new session on another account. Everything below was committed and pushed to `mine/wip/plain-reports`. The last commit before this note was `09fe5c0e`.
