@@ -15,7 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { confidenceInThePicture, CURRENT_BEST_READING } from './confidence-in-the-picture';
 import { softSpots, whatWouldRaiseIt } from './harder-to-fool';
 import { markWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-not-evidence';
-import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
+import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT, whoIsReadingTheWeighing } from './what-a-leader-can-weigh';
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
@@ -546,6 +546,8 @@ export class ReportsService {
     groundId: string,
     participants: { id: string; partyType: PartyType }[],
     viewerIsLead: boolean,
+    /** Who is reading, for the weighing: the lead and the subject only. See whoIsReadingTheWeighing. */
+    reader: { isTheLead: boolean; participantId: string | null } = { isTheLead: false, participantId: null },
   ): Promise<Record<string, any>> {
     try {
       const lead = participants.find((p) => p.partyType === PartyType.INITIATOR);
@@ -607,7 +609,9 @@ export class ReportsService {
        * the reading this product exists to prevent.
        */
       const restsOn = Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [];
-      const section = whatALeaderCanWeigh({
+      /* Built only for the lead and the subject; anybody else gets no section (whoIsReadingTheWeighing). */
+      const mayWeigh = whoIsReadingTheWeighing(reader, participants as any) !== 'somebody else';
+      const section = mayWeigh && whatALeaderCanWeigh({
         statedStandards: stated,
         standardsTouched,
         entries: entries.map((r) => ({ kind: r.type as any, text: cleanText(r.text), session: r.sessionNumber, mark: r.mark })),
@@ -6147,7 +6151,7 @@ happened, and what is in the way.`;
          account of what happened. See what-this-record-rests-on.ts. */
       restsOn: await this.whatItRestsOn(groundId, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
       ...(this.confidenceEnabled()
-        ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin)
+        ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin, { isTheLead: isInitiator, participantId: participant?.id ?? null })
         : {}),
     };
     if (!isInitiator && !isOrgAdmin) {
