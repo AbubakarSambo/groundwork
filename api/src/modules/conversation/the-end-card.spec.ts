@@ -96,7 +96,7 @@ describe('what is left out', () => {
     expect(theEndCard([])).toBeNull();
   });
   it(`no more than ${AT_MOST} lines, and it says how many more there are`, () => {
-    const many = Array.from({ length: 9 }, (_, i) => ({ type: 'OUTCOME', text: `Line number ${i} about the work` }));
+    const many = Array.from({ length: 9 }, (_, i) => ({ type: 'OUTCOME', text: `Line number ${i} is about the work` }));
     const card = theEndCard(many)!;
     expect(card.inYourRecord).toHaveLength(AT_MOST);
     expect(card.next![0]).toBe('There are 3 more lines in your record. You can read them all in your record after you finish.');
@@ -104,7 +104,7 @@ describe('what is left out', () => {
 
   it('never drops the commitment: commitments come first', () => {
     const many = [
-      ...Array.from({ length: 7 }, (_, i) => ({ type: 'PROGRESS', text: `Line number ${i} about the work` })),
+      ...Array.from({ length: 7 }, (_, i) => ({ type: 'PROGRESS', text: `Line number ${i} is about the work` })),
       { type: 'COMMITMENT', text: 'I will call Tobi on Monday about the scheduling' },
     ];
     const card = theEndCard(many)!;

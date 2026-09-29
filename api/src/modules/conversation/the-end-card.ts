@@ -1,5 +1,6 @@
 import { howALineIsKnown } from '../reports/how-a-line-is-known';
 import { cleanText } from '../reports/what-the-record-actually-holds';
+import { namesTheSameThing } from './confirmed-by-who-received-it';
 
 /**
  * THE END OF A CHECK-IN: WHAT IS NOW IN YOUR RECORD, AND WHAT WOULD CHANGE IT (task 2.7, screens
@@ -113,20 +114,65 @@ export function theLinesLeftOut(count: number): string | null {
     : `There are ${count} more lines in your record. You can read them all in your record after you finish.`;
 }
 
+/*
+ * A LINE THE CARD CAN SHOW IS A SENTENCE (task 2.7, run-19). The reviewer read "The last day of
+ * March.", "A target of 40.", "Improved retention." and "Hit my target of 14 approved facilities." as
+ * lines on the card: pieces, not sentences. Such a line stays in the record exactly as it is (their
+ * words are never rewritten); the card leaves it out and counts it in "There are N more lines".
+ *
+ * A simple rule that errs on keeping: a line is left off only when it starts with "to", a word ending
+ * in "-ing", or a bare verb from a short list, or when nothing in it reads as a verb at all.
+ */
+const BARE_VERBS = new Set(['hit', 'get', 'make', 'finish', 'send', 'call', 'follow', 'improve', 'increase', 'reduce', 'close', 'complete', 'meet', 'reach', 'deliver', 'keep', 'visit', 'sign', 'submit', 'review', 'prepare', 'update', 'grow', 'achieve', 'ensure', 'secure', 'book', 'onboard', 'collect', 'check', 'confirm']);
+const NOT_A_GERUND = new Set(['nothing', 'something', 'everything', 'anything', 'morning', 'evening', 'during', 'king', 'spring', 'thing', 'things', 'ring', 'ceiling', 'building', 'meeting', 'wedding', 'training', 'funding', 'pricing', 'marketing', 'banking', 'lending', 'hiring']);
+const A_VERB = new Set(['is', 'are', 'was', 'were', 'am', 'be', 'been', 'being', 'has', 'have', 'had', 'do', 'does', 'did', 'will', 'would', 'can', 'could', 'should', 'shall', 'may', 'might', 'must', 'i', 'we', 'he', 'she', 'they', 'it', 'you',
+  'rose', 'fell', 'went', 'came', 'got', 'made', 'took', 'gave', 'sent', 'paid', 'sold', 'bought', 'met', 'left', 'won', 'lost', 'grew', 'began', 'spoke', 'told', 'said', 'saw', 'found', 'kept', 'brought', 'built', 'ran', 'put', 'set', 'hit', 'let', 'cut', 'owes', 'needs', 'wants', 'says', 'said']);
+
+export function isASentence(text: string): boolean {
+  const words = asTheyReadIt(text).toLowerCase().replace(/[’]/g, "'").split(/\s+/).map((w) => w.replace(/^[^a-z0-9']+|[^a-z0-9']+$/g, '')).filter(Boolean);
+  if (!words.length) return false;
+  const first = words[0];
+  if (first === 'to') return false;
+  if (/^[a-z]{3,}ing$/.test(first) && !NOT_A_GERUND.has(first)) return false;
+  if (BARE_VERBS.has(first)) return false;
+  const rest = words.slice(1);
+  return words.some((w) => A_VERB.has(w) || /'(s|re|ve|ll|d|m)$|n't$/.test(w))
+    || rest.some((w) => /^[a-z]{3,}ed$/.test(w) || (/^[a-z]{3,}s$/.test(w) && !/ss$/.test(w)));
+}
+
+/*
+ * THE COMMITMENT THE GOODBYE STATES (task 2.7, run-19). In 13 of 20 closes the reply said "You will
+ * keep following up with customers for their statements." and the card had no commitment, because
+ * the record reader wrote none. The goodbye is read here: the text before "That’s all for today", a
+ * sentence starting "You will", "You'll" or "You said you will". Its wording is kept as the reply said
+ * it. Null when there is none, or when a commitment on the card already names the same thing.
+ */
+export function theCommitmentTheCloseStates(reply: string, lines: readonly Pick<ALineForTheCard, 'type' | 'text'>[] = []): string | null {
+  const before = String(reply ?? '').split(/That[’']s all for today/i)[0];
+  const sentences = before.replace(/\s+/g, ' ').match(/[^.!?]+[.!?]*/g) ?? [];
+  const said = sentences.map((s) => s.trim()).find((s) => /^(you said you will|you will|you['’]ll)\s+\S/i.test(s));
+  if (!said) return null;
+  const commitment = asTheyReadIt(said);
+  if ((lines ?? []).some((l) => l.type === 'COMMITMENT' && namesTheSameThing(commitment, String(l.text ?? '')))) return null;
+  return commitment;
+}
+
 export function theEndCard(lines: readonly ALineForTheCard[]): EndCard | null {
   const all = (lines ?? []).filter((l) => !l.disputedAt && asTheyReadIt(l.text));
   /* Commitments first, then the rest in the order they were said. */
   const ordered = [...all.filter((l) => l.type === 'COMMITMENT'), ...all.filter((l) => l.type !== 'COMMITMENT')];
+  /* A piece that is not a sentence stays in the record and is counted below, not shown. */
   const shown = ordered
+    .filter((l) => isASentence(l.text))
     .slice(0, AT_MOST)
     .map((l) => ({ says: asTheyReadIt(l.text), ...markFor(l), type: l.type }));
-  if (!shown.length) return null;
+  if (!ordered.length) return null;
   const leftOut = theLinesLeftOut(ordered.length - shown.length);
   /* What would change a line: something written, for a line that is only their word or memory. A
      commitment is not proven by a document now; it is asked about next time. */
   const couldBeProven = shown.some((l) => l.mark === 'memory' || (l.mark === 'said' && l.type !== 'COMMITMENT'));
   return {
-    inYourRecord: shown.map(({ says, how, mark }) => ({ says, how, mark })),
+    ...(shown.length ? { inYourRecord: shown.map(({ says, how, mark }) => ({ says, how, mark })) } : {}),
     ...(couldBeProven || leftOut ? { next: [...(leftOut ? [leftOut] : []), ...(couldBeProven ? [WHAT_WOULD_MAKE_IT_PROVEN] : [])] } : {}),
   };
 }
