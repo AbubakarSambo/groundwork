@@ -147,6 +147,14 @@ Tests: 646 files and 6,068 tests pass in reports, board, check-ins and conversat
 
 Tests: 647 files and 6,079 tests pass in reports, board, check-ins and conversation.
 
+**Week 9: a commitment is kept or missed, and each person sees their own count** (`a1a30790`, `e706737c`, migration `20260929120000_how_a_commitment_was_settled`, applied to the local test database only).
+- **Proof can now settle a commitment as done.** It counts in two cases. The first is a line of their own that says they delivered it, backed by a document they added themselves. The second is the colleague who was waiting confirming it arrived. Code checks that the line is about the same thing and was written after the promise. When in doubt, it stays open. Proof never marks a commitment as missed.
+- **Each commitment records how it was settled:** by their word, proven or confirmed.
+- **The count goes only to the person,** on their own You board, in the prototype's wording: "In the last four weeks, you kept nine of your ten commitments." or "In the last 4 weeks, you kept 11 of your 20 commitments." Open commitments do not count. The lead, colleagues and admins get no count anywhere. Tests check every route.
+- This has only been tested in the code so far. The next live check will show it with the real model.
+
+Tests: 649 files and 6,119 tests pass in reports, board, check-ins and conversation.
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
@@ -161,7 +169,17 @@ Tests: 647 files and 6,079 tests pass in reports, board, check-ins and conversat
   - "specific detail asked for" is 74, against 88 at the baseline and 87 on run-16;
   - "blocker checked" is 34, against 37.
 
-I looked at where the drop is. It is spread thinly over many scenarios, one or two turns each, and most of it is in the lead's own check-ins: 18 there, against 27 on run-16 and 23 on run-14. Nothing that changed since run-16 touches the lead's questions. The hidden-target filter only changes what a participant's check-in is given. So it looks like the model varying from run to run. To be sure, I am running the eight scenarios that dropped most again, twice, on the same build. Task 2.7 is not ticked until this is settled.
+I looked at where the drop is. It is spread thinly over many scenarios, one or two turns each, and most of it is in the lead's own check-ins: 18 there, against 27 on run-16 and 23 on run-14. Nothing that changed since run-16 touches the lead's questions. The hidden-target filter only changes what a participant's check-in is given. So it looks like the model varying from run to run. To be sure, I ran the eight scenarios that dropped most again, twice, on the same build. **It was the model varying, not a real drop.**
+
+| The eight scenarios | Specific detail asked for | Blocker checked |
+| --- | --- | --- |
+| Run-18 | 10 | 4 |
+| First re-check | 20 | 6 |
+| Second re-check | 21 | 9 |
+| Run-16 | 29 | 13 |
+| Run-14 | 20 | 11 |
+
+The same build asked twice as often in both re-checks as it did in run-18. With the re-checks' average in place of run-18's draw, the full run comes to about 84 and 37, against 88 and 37 at the baseline. So nothing in the code lowered them. "Specific detail asked for" still moves a lot from run to run, by 10 or more, and I have written that below for Hafsah.
 
 ### Decided for Hafsah to confirm
 
@@ -187,6 +205,8 @@ I looked at where the drop is. It is spread thinly over many scenarios, one or t
 20. **Request 71: the weekly report is written on Friday,** as in the prototype.
 21. **Request 5: the situations are renamed to the prototype's names.** The client's list has to change on the same day, so it is written up but not done.
 22. **What the lead weighs at the close is read only by the lead and the person it is about.** On a team check-in, that is the lead alone.
+23. **Week 9: proof can settle a commitment as done** (a document the person added, or the colleague confirming it arrived), but never as missed.
+24. **Week 9: "you kept 11 of your 20 commitments" is the person's alone.** Each person's load across check-ins is private, so the lead does not see this count.
 
 ---
 
