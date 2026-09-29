@@ -4,6 +4,35 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## At the end of the seven-hour run, 29 September (13:36 to 20:36)
+
+**What I finished.** The check-in page is rebuilt from the prototype's shared parts, and it has passed its review and re-review. It has the prototype's five tabs: Board, Check-in, Context, My work, and People and setup. The Check-in tab opens your conversation straight away, and the lead's own check-in is on the same page, so one check-in has one page. Your past sessions are under My work, which now follows the prototype's "Your work" page. "Who is in this" moved to People and setup. The conversation, the Done page and the page between check-ins are rebuilt from the same parts. An admin who doesn't run a check-in sees the prototype's read-only view with three tabs. The re-review found eight things, and all eight are fixed. One of them was a privacy fix: "What success looks like" no longer names someone on a check-in where people can't see each other. I merged the engine workspace's work twice, and the second merge brought 64 of its commits.
+
+**One correction.** In the re-review I wrongly made "What this check-in is for" something only the lead may rewrite. That reversed your own decision of 8 September, that an admin may rewrite it. I have undone it.
+
+**What is in progress.** The board and reports rebuild for every kind of work has not started as code. The pictures of all eleven prototype examples, as the lead and as a participant, are taken, and so are their section headings. Ten local test check-ins are made. The engine does not yet store the kind of work (sales, engineering, a law firm matter and so on), and there are no records of deals, releases or tickets. So I asked the engine workspace for these in request 76. Until then, each kind shows its family's board, with the missing sections left out. After that, the people screens, settings and the other old screens are still to be rebuilt, in that order.
+
+**The test results.** At the end of the check-in module, the page-colour test passed for the participant, the lead and the admin, on every page it opens. The full suites before the merge had 10,897 of 10,898 API tests and 3,514 of 3,515 screen tests passing, and both type checks were clean. The two failures were in our own tests and I fixed both. One read a source file without first removing its comments. The other still named the old counting rule, which the engine replaced with the one you chose on 28 September; the test still checks that a lead who only manages is never counted. After the second merge, every test passes: 11,097 API tests and 3,515 screen tests, and both type checks are clean. The engine's merge added a new field to the database's shape (`settledBy`, on a commitment), so the tester regenerated the database client locally before the API tests would run. The local database has not been migrated for that field yet, so the local API needs its migration run and a restart before the next picture check.
+
+**Decided for you to confirm.** I took each of these as the option closest to the prototype and to your own decisions:
+
+- The check-in's "Board" tab is back on every check-in page, as in the prototype's five tabs. An earlier decision had said the board is never a tab (`one-door-per-place.spec.ts`); the prototype and the instruction to put the header on every page point the other way.
+- Report, Sessions and What I shared are sub-tabs under My work, and Setup is "People and setup", following the prototype's five tabs.
+- The Check-in tab opens the focused conversation. A person's past sessions are listed under My work, each opening its transcript; "Who is in this" is under People and setup.
+- An admin who doesn't run the check-in reads the prototype's own sentence, "You can read this check-in's board and reports. <lead> runs it.", once, and is not offered "Your check-in".
+- The conversation's two opening cards ("What this check-in is about", "What you said last time") are folded behind one quiet link, since the prototype opens straight with Groundwork's first turn; nothing they held is lost.
+- The eleven local test check-ins: ten made (two organisations, each capped at 10 check-ins by the free plan); "MarketView, Q4" is stood in for by "Sales team, Q3", the same situation. Not a product decision, but noted.
+- "Not you? Sign out." on "Almost in" (agreed with you already; listed for completeness).
+- An admin who doesn't run a check-in sees the prototype's read-only view: three tabs (Board, Context, People and setup), not Check-in or My work.
+- The lead's Check-in tab opens her own conversation directly, so one check-in has one page; the separate participant page is never shown to the lead.
+- "Add a note for tomorrow" reads "Add a note for next time", because the next session can be days away.
+- My work follows the prototype's "Your work" page (no sub-tabs); the lead's list of every session stays reachable from it.
+- Two sessions were opened early during the review (Rukia's and Amani's session 2 on "Sales team, Q3"); they are local test data and were left as they are.
+- Not decided by me after all: whether an admin may rewrite "What this check-in is for". You decided it on 8 September (an admin who runs the place may: "she should rewrite"). I first took the more private option by mistake and have reverted it; item 31.2 in the report was already answered by you.
+- My work's "What success looks like" shows each person's own words about success to the people in the check-in, as check-in words may be shown; on a check-in that hides its people, nobody is named.
+- The setup sign-off's code and its two tests were removed with the step itself, following your decision to remove it; no test was weakened.
+- The builder started a research helper of its own twice more in the check-in rebuild (reported by it each time; it checked the findings itself). The rule is repeated to every helper.
+
 ## At a glance, 28 September
 
 **Reviewed and passed:** 8 of the 20 modules are reviewed, passed and ticked (U.1 to U.8). U.8, the
