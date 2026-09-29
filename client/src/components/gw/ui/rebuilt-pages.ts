@@ -35,4 +35,5 @@ export const REBUILT_PAGES: string[] = [
   'pages/org/TheInviteLink.tsx',
   'pages/org/WhoCanOpenACheckIn.tsx',
   'pages/org/OnePersonPage.tsx',
+  'pages/grounds/CheckInPeopleAndSetup.tsx',
 ]

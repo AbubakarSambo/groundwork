@@ -10,17 +10,13 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
-import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
 import { Note } from '@/components/gw/ui/Note'
-import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi, type GroundCadence } from '@/api/grounds'
 import { authApi } from '@/api/auth'
-import { PeoplePicker } from '@/components/gw/PeoplePicker'
-import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
-import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
+import { cadenceLabel } from '@/lib/cadence'
 import { personLabel as onePersonsLabel, peopleLabels, atTheStart } from '@/lib/utils'
 import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { buildSessionRows } from '@/lib/session-rows'
@@ -33,7 +29,6 @@ import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec, TextAction } from '@/components/gw/kit'
-import { ShareSection } from './ShareSection'
 import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
@@ -41,12 +36,10 @@ import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
 import { whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
-import { BaselinePanel } from '@/components/gw/BaselinePanel'
-import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { useAskStore } from '@/stores/ask'
 import { billingApi } from '@/api/billing'
-import { SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
+import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
@@ -125,67 +118,6 @@ const TO_TAB_KEY: Partial<Record<Tab, string>> = {
   chat: 'chat', report: 'report', checkins: 'sessions', myrecord: 'record', docs: 'context', settings: 'settings',
 }
 
-
-/**
- * ONE SETUP QUESTION AT A TIME.
- *
- * "The setup page is still messy and hard to go through" - said after the tab had already been cut
- * into five named, numbered bands. Naming them was not the fix, because all five were still open
- * at once: about five hundred lines of controls, so finding the timeframe meant scrolling past
- * everybody's invitation and reading two privacy toggles on the way.
- *
- * Five rows now, each saying what it is currently set to. Open one and the rest close. The numbers
- * stay, because they are the order the questions were asked in when the check-in was set up.
- */
-function Fold({
-  n, title, src, summary, open, openOverride, onToggle, children,
-}: {
-  n: number
-  title: string
-  src: string
-  summary: string
-  open: boolean
-  /** Forced open from somewhere else on the page - the out-of-time banner, which exists to get
-      somebody to this control. Kept separate from the accordion so neither closes the other. */
-  openOverride?: boolean
-  onToggle: () => void
-  children: React.ReactNode
-}) {
-  const isOpen = open || !!openOverride
-  return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white', marginBottom: 8, overflow: 'hidden' }}>
-      <button
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '13px 14px',
-          background: isOpen ? 'var(--gw-paper-2)' : 'white', border: 'none', cursor: 'pointer',
-          fontFamily: 'inherit', textAlign: 'left',
-        }}
-      >
-        <span style={{
-          flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
-          background: isOpen ? 'var(--gw-navy)' : 'var(--gw-bg)',
-          color: isOpen ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>{n}</span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{title}</span>
-          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{isOpen ? src : summary}</span>
-        </span>
-        <span style={{ flexShrink: 0, fontSize: 15, color: 'var(--gw-muted)' }}>{isOpen ? '\u2212' : '+'}</span>
-      </button>
-      {isOpen && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
-      {/*
-        REVIEW ROUND 3, ITEM 3: THE SIGN-OFF BAR IS REMOVED - "I have read this - sign it off" was
-        a second confirmation on top of the setup questions themselves, and Hafsah's own call was
-        that the prototype's "Yes, set it" (the confirmation that actually changes a setting,
-        ContextChat.tsx) is enough. Removed for everyone, not only for an admin who does not run
-        the check-in.
-      */}
-    </div>
-  )
-}
 
 /**
  * "NOT INVITED YET" IS THREE DIFFERENT FACTS. The server names which (notInvitedBecause); this turns
@@ -273,15 +205,16 @@ export function GroundAdminPage() {
      the only record. Read once on mount: it is unfinished business, not live data. */
   const [notInvited, setNotInvited] = useState<NotInvited[]>(() => (id ? whoWasNotInvited(id) : []))
   const [groundLabel, setGroundLabel] = useState('')
+  /* Opened from the "give it more time"/"out of time" banners above the tabs, which live outside
+     People and setup entirely - so switching there is not enough, the timeframe editor there has
+     to open too. Passed down as `forceOpenTimeframe`; CheckInPeopleAndSetup opens on it once. */
+  const [openTimeframe, setOpenTimeframe] = useState(false)
   const [timelineDaysDraft, setTimelineDaysDraft] = useState(90)
   const [cadenceDraft, setCadenceDraft] = useState<GroundCadence>('WEEKLY')
   /* Which days a check-in may open on. Empty means nobody said, which is not the same as every
      day - see WhichDaysTheyWork. This is the only place the rhythm can be changed after creation,
      and it carried no way to say "not at the weekend". */
   const [workingDaysDraft, setWorkingDaysDraft] = useState<number[]>([])
-  /* Opened by the out-of-time banner, which is the one notice whose whole point is to get somebody
-     to the control that lifts it. Independent of the accordion so it cannot fight with it. */
-  const [openTimeframe, setOpenTimeframe] = useState(false)
   const [groundScenario, setGroundScenario] = useState('')
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [newParticipantEmail, setNewParticipantEmail] = useState('')
@@ -297,10 +230,6 @@ export function GroundAdminPage() {
   /** Deleting a test check-in: the confirm step, and whatever the server refused with. */
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  /* Which setup question is open. One at a time; the first is open when the tab is reached.
-     Declared up here with the rest: this component returns early for several ground states, and a
-     hook below one of those returns is a hook that sometimes does not run. */
-  const [openSetupBand, setOpenSetupBand] = useState<number>(1)
   /* The start date as typed, against the one on record, so the save button knows if anything moved. */
   const [startsAtDraft, setStartsAtDraft] = useState('')
   /*
@@ -818,6 +747,17 @@ export function GroundAdminPage() {
     onError: () => toast.error('That setting did not change - try again.'),
   })
 
+  /**
+   * REMINDERS ("How it runs", People and setup). `PATCH /grounds/:id/chasing` has existed since the
+   * chasing cron read these three fields, and nothing on any screen ever wrote to them - built now
+   * for CheckInPeopleAndSetup.tsx. Whoever set the check-in up only (the server enforces this).
+   */
+  const setChasing = useMutation({
+    mutationFn: (body: { days?: number[]; stopped?: boolean; tellTheLead?: boolean }) => groundsApi.setChasing(id!, body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ground', id] }); toast.success('Saved.') },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Not saved. The setting is unchanged - try again.'),
+  })
+
 
   /**
    * THE SHARED NOTE. Separate mutation from the private one on purpose: they differ in the single
@@ -1161,22 +1101,8 @@ export function GroundAdminPage() {
    * moment two people were invited: a session I had completed the night before, reported as not
    * done, on the panel that is explicitly about me.
    */
-  /**
-   * THE NUMBER EACH SETUP BAND GETS, COUNTED AS THE TAB IS DRAWN.
-   *
-   * Same reasoning as the Context page: several of these sections only render for an initiator, so
-   * a hand-written number would leave gaps for everybody else - and a reader who sees 2 then 4
-   * concludes something failed to load rather than that it was never theirs to see.
-   */
-  let setupBands = 0
-  const setupBand = () => ++setupBands
   /* Counted once, and out here, so the row's own label does not have to reach into the record. */
   const settingsChangeCount = ((ground as any)?.settingsChanges?.length ?? 0) as number
-  const foldProps = (n: number) => ({
-    n,
-    open: openSetupBand === n,
-    onToggle: () => setOpenSetupBand((cur) => (cur === n ? -1 : n)),
-  })
 
   const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
     (c) => c.status === 'COMPLETED' && (ground?.participants ?? []).some((p: any) => p.id === c.participantId && p.userId === user?.id),
@@ -1339,7 +1265,8 @@ export function GroundAdminPage() {
   const whoIsInThisPeersHidden = (ground as any).peersVisibleEffective === false && !canRunThisGround
   /* NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12. `myOpenCheckInId`/`myNextOpensAt`
      computed once, above, near myOpenCheckIn/myOpenOpensLater - see
-     nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check. */
+     nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check.
+     Passed to CheckInPeopleAndSetup.tsx, which mounts WhoIsInThis unchanged. */
   const whoIsInThisNotOpenYet = !myOpenCheckInId && !!myNextOpensAt
   const whoIsInThisLeadName = (() => {
     const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
@@ -1529,7 +1456,7 @@ export function GroundAdminPage() {
               {ground.viewerRunsThisGround && (
                 <button
                   type="button"
-                  onClick={() => { setOpenTimeframe(true); scrollToId('how-long-this-runs') }}
+                  onClick={() => { goTab('settings'); setOpenTimeframe(true); scrollToId('how-long-this-runs') }}
                   style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: 'white', background: 'var(--gw-navy)', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Give it more time
@@ -1548,6 +1475,7 @@ export function GroundAdminPage() {
               <button
                 type="button"
                 onClick={() => {
+                  goTab('settings')
                   setOpenTimeframe(true)
                   /* Through the one helper - see lib/scroll-to, which exists because a raw smooth
                      scroll ignores reduced-motion and fights the page's own scroll container. */
@@ -2492,844 +2420,63 @@ export function GroundAdminPage() {
           </div>
         )}
 
-        {/* SETTINGS */}
+        {/* SETTINGS: "People and setup", rebuilt from components/gw/ui - see CheckInPeopleAndSetup.tsx. */}
         {tab === 'settings' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/*
-            ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", MOVED HERE FROM THE CHECK-IN TAB.
-            GroundChat.tsx's GroundTopic used to hold this beside "About this check-in" - which
-            duplicates Context and so is not re-added here, per the prototype's own placement
-            (People and setup).
-          */}
-          <WhoIsInThis
-            parties={whoIsInThisParties}
-            peersHidden={whoIsInThisPeersHidden}
-            notOpenYet={whoIsInThisNotOpenYet}
-            viewerIsParty={viewerIsAParty}
-            leadName={whoIsInThisLeadName}
-            viewerIsTheLead={isInitiator}
+          <CheckInPeopleAndSetup
+            ground={ground}
+            user={user}
+            id={id!}
+            navigate={navigate}
+            isInitiator={isInitiator}
+            isOrgAdmin={isOrgAdmin}
+            viewerIsAParty={viewerIsAParty}
+            mySessionsDone={mySessionsDone}
+            plannedSessions={plannedSessions}
+            colleagues={colleagues}
+            addingMany={addingMany}
+            addManyParticipants={addManyParticipants}
+            newParticipantEmail={newParticipantEmail} setNewParticipantEmail={setNewParticipantEmail}
+            newParticipantNote={newParticipantNote} setNewParticipantNote={setNewParticipantNote}
+            newParticipantDepartment={newParticipantDepartment} setNewParticipantDepartment={setNewParticipantDepartment}
+            addParticipantMut={addParticipantMut}
+            queuedToAdd={queuedToAdd} setQueuedToAdd={setQueuedToAdd}
+            inviteTheQueue={inviteTheQueue}
+            lastInvitedEmail={lastInvitedEmail} whyItWaits={whyItWaits} lastInviteWaits={lastInviteWaits}
+            billingStatus={billingStatus}
+            onShareCode={() => { setShareCodeId(id ?? null); setShareCodeModalOpen(true) }}
+            whoIsInThisParties={whoIsInThisParties}
+            whoIsInThisPeersHidden={whoIsInThisPeersHidden}
+            whoIsInThisNotOpenYet={whoIsInThisNotOpenYet}
+            whoIsInThisLeadName={whoIsInThisLeadName}
+            forceOpenTimeframe={openTimeframe}
+            fixingEmailId={fixingEmailId} setFixingEmailId={setFixingEmailId}
+            fixingEmailValue={fixingEmailValue} setFixingEmailValue={setFixingEmailValue}
+            fixEmail={fixEmail}
+            resendInvite={resendInvite}
+            updateRole={updateRole}
+            settingsChangeCount={settingsChangeCount}
+            startsAtDraft={startsAtDraft} setStartsAtDraft={setStartsAtDraft}
+            startsAtOnRecord={startsAtOnRecord}
+            canOfferStartDate={isInitiator && mySessionsDone === 0 && sessionRows.length === 0}
+            timelineDaysDraft={timelineDaysDraft} setTimelineDaysDraft={setTimelineDaysDraft}
+            cadenceDraft={cadenceDraft} setCadenceDraft={setCadenceDraft}
+            workingDaysDraft={workingDaysDraft} setWorkingDaysDraft={setWorkingDaysDraft}
+            theTimeframeChanged={theTimeframeChanged}
+            saveSetup={saveSetup}
+            groundLabel={groundLabel} setGroundLabel={setGroundLabel}
+            groundScenario={groundScenario} setGroundScenario={setGroundScenario}
+            peersVisible={peersVisible} peersDefaultHidden={peersDefaultHidden} setPeerVisibility={setPeerVisibility}
+            contactHidden={contactHidden} setContactVisibility={setContactVisibility}
+            numbersShared={numbersShared} setWhoSeesTargets={setWhoSeesTargets}
+            whatsAppIsOn={whatsAppIsOn}
+            setOverWhatsApp={setOverWhatsApp}
+            expectsUnblocking={expectsUnblocking} setExpectThemToUnblock={setExpectThemToUnblock}
+            setWorkTogether={setWorkTogether}
+            setChasing={setChasing}
+            confirmDelete={confirmDelete} setConfirmDelete={setConfirmDelete}
+            deleteError={deleteError} setDeleteError={setDeleteError}
+            removeGround={removeGround}
           />
-          {/*
-            * ADDING SOMEBODY TO THE CHECK-IN, ON THE SCREEN CALLED SETUP.
-            *
-            * Reported plainly: "the setup page has no way for me to add another party to the
-            * check-in." It did not. The control existed on the Sessions tab, beside the roster,
-            * which is where somebody goes to see how a run is going rather than to change who is in
-            * it - and Setup held the timeline, the cadence, the name, the visibility and how to
-            * close the whole thing, but not the one setting people look for first.
-            *
-            * MY OWN LINK POINTED HERE, which is how it got worse. Two turns ago the check-in
-            * conversation gained an "Add people" link straight to this tab, on the grounds that a
-            * tab nobody is told about is a tab nobody uses. It sent people to a screen without the
-            * control. A link to the wrong place teaches somebody the product cannot do the thing.
-            *
-            * Same control, same mutation as the Sessions tab: this is one queue with two entrances,
-            * not a second way of adding anybody.
-            */}
-          {/*
-            * THE SETUP TAB WAS EIGHT LOOSE FIELDS WITH NOTHING GROUPING THEM.
-            *
-            * "The setup page should get the same treatment you just gave the context page." It was
-            * add-a-person, then a card about you, then who-works-together, then a timeframe, then a
-            * name, then a scenario, then two privacy toggles, then closing and an access code - each
-            * one a bare label, all the same weight, in the order they happened to be built.
-            *
-            * The questions themselves fall into four: who is in it, how it runs, what it is, and how
-            * it ends. Nothing moved; they are named and numbered, which is the difference between a
-            * form and a settings page.
-            */}
-          {isInitiator && (
-            <>
-            <Fold {...foldProps(setupBand())} title="Who is in it" src="adding somebody sends them an invitation" summary={`${(ground.participants ?? []).length} on this check-in`}>
-            <div className="gw-card" style={{ padding: '14px 16px' }}>
-              {/*
-                THE SEAT LIMIT, SAID BEFORE AN ADDRESS IS TYPED RATHER THAN AFTER.
-
-                It came across with the add-a-person control from the Sessions tab, and this is the
-                better place for it in a way that matters: on that tab it sat above a button, and
-                the refusal itself still arrives from the server after somebody has typed a
-                colleague's address and pressed add. Said here, it is read before the typing.
-
-                The count includes the person reading it, which is why that is said out loud -
-                "5 people" reads as "5 I can invite" and it is not.
-              */}
-              {(() => {
-                const seats = billingStatus?.people
-                const cap = seats?.cap
-                if (cap == null || seats?.count == null || seats.count < cap) return null
-                return (
-                  <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '10px 13px', marginBottom: 10, fontSize: 12, color: 'var(--gw-amber-t)', lineHeight: 1.55 }}>
-                    Your plan covers {cap} people, including you, and all {cap} are taken. Move to a larger plan to add more.
-                    <button onClick={() => navigate('/billing')} style={{ display: 'inline', marginLeft: 8, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-amber-t)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-                      View plans
-                    </button>
-                  </div>
-                )
-              })()}
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Add a person to this check-in</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 10, lineHeight: 1.5 }}>
-                They give their own version of the same work. You cannot see what they write until the report releases.
-              </div>
-              {/*
-                THE APPROVAL RULE, SAID BEFORE SOMEBODY IS ADDED RATHER THAN DISCOVERED AFTERWARDS.
-
-                "When you add a participant that is one on the org, the org has to approve. Do
-                people know this when they add someone?" They did not: the rule fires on somebody
-                from OUTSIDE the organisation invited by a lead who is not an admin, and the first
-                anybody heard of it was a roster row that looked like the person ignoring an email.
-
-                SAID AS THE RULE, NOT AS A PREDICTION ABOUT THIS ADDRESS. Working out in advance
-                whether a particular person will need approval means looking up whether that email
-                already has an account and where it lives - which would let anybody test whether an
-                address is a Groundwork user by typing it into this box. The rule is true for
-                everybody and discloses nothing.
-              */}
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'var(--gw-paper-2)', border: '1px solid var(--gw-border)', borderRadius: 7, padding: '8px 10px', marginBottom: 10, lineHeight: 1.55 }}>
-                {/*
-                  THE RULE WAS TRUE AND THIS WAS THE ONE SCREEN WHERE IT DOES NOT APPLY.
-
-                  Walked with a real outside address, from a different domain, added here: no
-                  approval was asked for, the person went straight into a check-in, their invite
-                  page said nothing about being from outside, and there was no row to see it on.
-
-                  Nothing is broken. `whyTheyDoNotNeedApproval` returns "an admin of this
-                  organisation added them, which is the approval" - see
-                  nobody-joins-your-company-by-being-invited-to-a-check-in.ts, which is deliberate
-                  and right, because asking an admin to approve their own action is a queue with
-                  one item in it that they put there.
-
-                  So the panel was describing the rule from the one place it is exempt. An admin
-                  reading it expects a queue that will never appear, and misses the thing that
-                  actually happens: the person gets a login here and shows up on People.
-                */}
-                {isOrgAdmin
-                  ? 'You are an admin here, so adding somebody is the approval - there is no queue. Anybody from outside your organisation gets a login here and appears on your People page, where you can take them off again.'
-                  : 'Somebody from outside your organisation is invited straight away, and an admin here has to let them in before they can check in. They are told the same thing, and you can see it beside their name on the Sessions tab.'}
-              </div>
-              {/*
-                AND WHERE THE ROWS ARE. "You will see that on their row" was said on a panel with
-                no rows on it: this fold is an add form and a toast, and after adding two people it
-                still showed neither of them. The roster itself is real, complete and better than
-                anything a second copy here would be - delivery state, waiting for a seat, waiting
-                on your organisation, remind, fix a bounced address - and it lives on Sessions. So
-                this points at it rather than growing a rival list that would drift.
-              */}
-              <button
-                onClick={() => setTab('checkins')}
-                style={{ background: 'none', border: 'none', padding: 0, marginBottom: 10, fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                See who is in it, and where each of them has got to &rarr;
-              </button>
-              {/*
-                * THE PEOPLE ALREADY HERE, FIRST, PICKED LIKE A GROUP CHAT. "Should be able to click team
-                * and see a list and select like how you add people to WhatsApp groups." Search, tick,
-                * one button; each is added the way the box below adds one. The box stays for an outsider.
-                */}
-              <PeoplePicker
-                people={colleagues ?? []}
-                alreadyIn={(((ground as any)?.participants ?? []) as any[]).map((m) => m.userId ?? '').filter(Boolean)}
-                adding={addingMany}
-                onAdd={(picked) => addManyParticipants(picked)}
-              />
-              <input
-                type="email" placeholder="name@company.com" aria-label="Their email address"
-                value={newParticipantEmail} onChange={(e) => setNewParticipantEmail(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
-              />
-              <input
-                type="text" placeholder="What do you want them to cover? (optional)" aria-label="What they are accountable for"
-                value={newParticipantNote} onChange={(e) => setNewParticipantNote(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8, outline: 'none' }}
-              />
-              <input
-                type="text" placeholder="Their department (optional)" aria-label="Their department"
-                value={newParticipantDepartment} onChange={(e) => setNewParticipantDepartment(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 10, outline: 'none' }}
-              />
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => addParticipantMut.mutate()}
-                  disabled={!looksLikeAnAddress(newParticipantEmail) || addParticipantMut.isPending}
-                  style={{ padding: '9px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: looksLikeAnAddress(newParticipantEmail) ? 1 : 0.4 }}
-                >
-                  {addParticipantMut.isPending ? 'Inviting…' : 'Send invite'}
-                </button>
-                {/*
-                  * ADDING FOUR PEOPLE SHOULD NOT BE FOUR VISITS TO THE SAME FORM.
-                  *
-                  * "You should be able to add many parties to the check-in at setup and add context
-                  * about them." The form took one address, sent it, and cleared itself - so a team
-                  * of six was six rounds of typing, pressing, waiting for the invite to go, and
-                  * finding the box again.
-                  *
-                  * The queue below is the fix and it keeps the part that matters: each person keeps
-                  * their OWN line about what they are accountable for, because "what do you want
-                  * them to account for" is the difference between a check-in that asks each person
-                  * the right question and one that asks everybody the same one. A bulk paste of
-                  * addresses would have been easier to build and would have thrown that away.
-                  */}
-                <button
-                  onClick={() => {
-                    const email = newParticipantEmail.trim().toLowerCase()
-                    if (!looksLikeAnAddress(email)) return
-                    if (queuedToAdd.some((q) => q.email === email)) return
-                    setQueuedToAdd([...queuedToAdd, { email, note: newParticipantNote.trim() }])
-                    setNewParticipantEmail('')
-                    setNewParticipantNote('')
-                  }}
-                  disabled={!looksLikeAnAddress(newParticipantEmail)}
-                  style={{ padding: '9px 14px', borderRadius: 7, background: 'white', color: 'var(--gw-navy)', fontSize: 13, fontWeight: 700, border: '1px solid var(--gw-blue-b)', cursor: 'pointer', fontFamily: 'inherit', opacity: looksLikeAnAddress(newParticipantEmail) ? 1 : 0.4 }}
-                >
-                  + Add another
-                </button>
-              </div>
-
-              {queuedToAdd.length > 0 && (
-                <div style={{ marginTop: 12, border: '1px solid var(--gw-border)', borderRadius: 8, overflow: 'hidden' }}>
-                  {queuedToAdd.map((q, i) => (
-                    <div
-                      key={q.email}
-                      style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 11px', borderTop: i > 0 ? '1px solid var(--gw-border)' : undefined, background: 'white' }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{q.email}</div>
-                        <div style={{ fontSize: 11.5, color: q.note ? 'var(--gw-sub)' : 'var(--gw-muted)', lineHeight: 1.45 }}>
-                          {q.note || 'No note - they will be asked the general questions for this situation.'}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setQueuedToAdd(queuedToAdd.filter((x) => x.email !== q.email))}
-                        aria-label={`Remove ${q.email}`}
-                        style={{ background: 'none', border: 'none', color: 'var(--gw-muted)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1, fontFamily: 'inherit' }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <div style={{ padding: '9px 11px', borderTop: '1px solid var(--gw-border)', background: 'var(--gw-bg)' }}>
-                    <button
-                      onClick={() => inviteTheQueue.mutate()}
-                      disabled={inviteTheQueue.isPending}
-                      style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: inviteTheQueue.isPending ? 0.6 : 1 }}
-                    >
-                      {inviteTheQueue.isPending
-                        ? 'Inviting…'
-                        : `Invite ${queuedToAdd.length} ${queuedToAdd.length === 1 ? 'person' : 'people'}`}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {lastInvitedEmail && (
-                <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8, color: lastInviteWaits ? 'var(--gw-amber-t)' : 'var(--gw-green-t)' }}>
-                  {whyItWaits
-                    ? `${lastInvitedEmail} is on the check-in. ${whyItWaits}`
-                    : lastInviteWaits
-                      ? `${lastInvitedEmail} is on the check-in. Their invitation goes out on the start date.`
-                      : `Invite sent to ${lastInvitedEmail}`}
-                </div>
-              )}
-            </div>
-            {/*
-              THE ACCESS CODE, BESIDE THE CONTROL THAT ADDS PEOPLE.
-              It used to sit near the closing controls with a billing link, two bands below the
-              only question it answers: how does somebody get into this check-in.
-            */}
-            <button
-              onClick={() => { setShareCodeId(id ?? null); setShareCodeModalOpen(true) }}
-              style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-            >
-              Or share an access code instead
-            </button>
-            {isInitiator && ground.joinToken && (
-              <div style={{ marginTop: 12 }}>
-                <ShareSection joinToken={ground.joinToken} />
-              </div>
-            )}
-            </Fold>
-            </>
-          )}
-          {/**
-            * WHAT IS TRUE ABOUT YOU, FOR A LEAD WHO IS ALSO IN IT.
-            *
-            * Your role, your status, how many sessions you have finished. It lived only on the
-            * party view, so a lead had to leave this page to see their own standing in their own
-            * check-in. The last thing that sent them away.
-            *
-            * The party view puts it above the panels somebody else fills in, deliberately - see
-            * `MyParticipation`. Here the panels ARE yours to fill in, so it goes first for a
-            * simpler reason: it is about you and they are about the check-in.
-            */}
-          {viewerIsAParty && (
-            <Fold
-              {...foldProps(setupBand())}
-              title="You in this check-in"
-              src="your role, your standing, and what you have finished"
-              summary={`${mySessionsDone} of ${plannedSessions ?? '?'} of your sessions done`}
-            >
-              <MyParticipation
-                viewer={user}
-                ground={ground}
-                myParticipant={(ground.participants ?? []).find((p: any) => p.userId === user?.id)}
-                completedCount={mySessionsDone}
-                totalSessions={plannedSessions ?? null}
-              />
-            </Fold>
-          )}
-            {/*
-              THE DEFINING CHOICE GOES FIRST, AND SAYS WHAT IT DECIDES.
-              
-              It was filed halfway down the tab behind a paragraph, under a heading that asked a
-              question about the people rather than naming its consequence. It is not a preference:
-              it changes the shape of the board and the wording of every question, because where
-              nobody can see anybody else's work, nobody is in a position to confirm anybody else's
-              account.
-              
-              So it leads the tab, and the line under it says the thing it decides.
-            */}
-            {/* WHETHER THESE PEOPLE ACTUALLY SEE EACH OTHER'S WORK.
-                The scenario can only guess, and the guess decides whether the
-                board's fairness reads have anything to stand on. Where nobody can
-                corroborate anybody, a quiet account is just a quiet account - and
-                treating it as work going missing is how a competent person gets
-                reported as absent on a ground that decides their job. */}
-            {isInitiator && (
-              <>
-            <Fold {...foldProps(setupBand())} title="Who can corroborate whom" src="whether these people can see each other's work" summary={ground.peopleWorkTogether == null ? 'Not answered - assumed from the kind of check-in' : ground.peopleWorkTogether ? 'They work together' : 'They work separately'}>
-            {/* The line that says what the first question here decides. It used to sit above the
-                band, outside it, so it read as a caption for the whole tab. */}
-            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginBottom: 4 }}>
-              The first one decides whether people here can corroborate each other.
-            </div>
-              <div className="gw-fld">
-                <label className="gw-label">Do these people work together?</label>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginBottom: 8, lineHeight: 1.5 }}>
-                  Can they see each other's work day to day? If they cannot, nobody here is in a position
-                  to confirm what anyone else said, and the board says so rather than reading somebody
-                  being quiet as work going missing.
-                </div>
-                <div role="radiogroup" aria-label="Do these people work together?" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {[
-                    { v: true, label: 'Yes, they work together', sub: 'They see each other\'s work, so they can corroborate each other.' },
-                    { v: false, label: 'No, they work separately', sub: 'Same role or same programme, different places. Nobody sees anybody else\'s work.' },
-                  ].map((o) => {
-                    const current = ground.peopleWorkTogether
-                    const selected = current === o.v
-                    return (
-                      <div key={String(o.v)} role="radio" aria-checked={selected}
-                        tabIndex={selected || (current == null && o.v) ? 0 : -1}
-                        aria-label={`${o.label}. ${o.sub}`}
-                        onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
-                        onClick={() => { if (!setWorkTogether.isPending) setWorkTogether.mutate(o.v) }}
-                        className={`cg-sit-card${selected ? ' selected' : ''}`}
-                        style={{ cursor: 'pointer' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div style={{ fontSize: 13, fontWeight: 700 }}>{o.label}</div>
-                          <div style={{ width: 15, height: 15, borderRadius: '50%', flexShrink: 0, border: `2px solid ${selected ? 'var(--gw-navy)' : 'var(--gw-border)'}`, background: selected ? 'var(--gw-navy)' : 'transparent' }} />
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.45, marginTop: 2 }}>{o.sub}</div>
-                      </div>
-                    )
-                  })}
-                </div>
-                {ground.peopleWorkTogether == null && (
-                  <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 6, lineHeight: 1.5 }}>
-                    Not set. Until you answer, this is assumed from the kind of check-in you chose.
-                  </div>
-                )}
-              </div>
-            </Fold>
-              </>
-            )}
-            {/**
-              * WHAT WAS CHANGED, AND WHEN. W14-3.
-              *
-              * The server has been keeping this log since timeline editing shipped and nothing has
-              * ever read it back out. It belongs here, next to the controls that write it: how long
-              * this runs and how often people check in can both be changed after people have already
-              * started answering, and a change nobody can see is the shape of thing this product
-              * exists to stop.
-              *
-              * Shown to every party, not only the lead. The person whose sessions moved is the one
-              * with the most reason to know.
-              */}
-            {/**
-              * THE TEAM'S STARTING POINT, on the settings tab because that is where the ground's own
-              * facts live. Stating it is the lead's; reading it is everybody's, so the party view
-              * mounts the same component with `canState` false.
-              */}
-            <Fold {...foldProps(setupBand())} title="What good looks like" src="the yardstick, and where this stood at the start" summary={'stated by the lead, read by everybody'}>
-            {/*
-              THE YARDSTICK IS THE LEAD'S, EVEN FOR AN ADMIN.
-
-              "as an admin i still see setup changes i can make on a page that is not mine." Walked
-              as a second admin, these were the only two controls on the whole Setup tab that
-              changed the check-in - and they change the standard somebody else is being read
-              against, on a check-in an admin is not running and has not been part of a single
-              session of. The product's own rule is that the person being read does not set the
-              measure; a third party restating it without the lead is the same problem wearing a
-              different hat.
-
-              An admin still sees all of it, and the banner at the top of the page says exactly what
-              is theirs to decide: releasing the report and closing the check-in are the lead's,
-              and now so is this.
-            */}
-            <BaselinePanel groundId={id!} canState={isInitiator} />
-            {/**
-              * WHERE THIS STOOD, under what doing well looks like, because the pair is the point: the
-              * yardstick and the starting point together are what let a report say something moved.
-              */}
-            <StartingPointPanel groundId={id!} canRecord={isInitiator} />
-            </Fold>
-
-            {settingsChangeCount > 0 && (
-            <Fold {...foldProps(setupBand())} title="What has changed here" src="every change to the length or the cadence, and who made it" summary={settingsChangeCount === 1 ? '1 change since setup' : `${settingsChangeCount} changes since setup`}>
-            <div style={{ display: 'contents' }}>
-              <div style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-line)', borderRadius: 10, padding: '13px 16px' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>What has been changed here</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                  {[...(ground as any).settingsChanges].reverse().map((c: any, i: number) => (
-                    <div key={i} style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-                      <span style={{ color: 'var(--gw-ink)' }}>
-                        {c.weeks && `How long this runs: ${c.weeks.from ?? 'not set'} to ${c.weeks.to} weeks. `}
-                        {c.cadence && `How often people check in: ${c.cadence.from ?? 'not set'} to ${c.cadence.to}. `}
-                      </span>
-                      Changed by the {c.by} on {whenItWas(c.changedAt, 'day')}.
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            </Fold>
-            )}
-            {/* HOW LONG THIS RUNS, AND HOW OFTEN.
-                There was no way to change either after creation, anywhere in the
-                product. A ground created at the wrong length - which the old
-                admin creation form did silently, because it never asked - was
-                stuck that way, and a three-month onboarding that thinks it is a
-                thirty-day one stops asking people to check in two thirds of the
-                way through. */}
-
-            <div id="how-long-this-runs" />
-            <Fold {...foldProps(setupBand())} openOverride={openTimeframe} title="How long this runs" src="when it starts, how long it runs, and how often people check in" summary={`${ground.timelineDays ?? '?'} days, ${String(ground.cadence ?? '').toLowerCase().replace('_',' ') || 'no cadence set'}`}>
-
-            {/*
-              WHEN IT STARTS, WHICH HAD NO CONTROL ANYWHERE.
-
-              "There is no start date on setup. Where does it exist." On the check-in, and it
-              decides two real things: an invitation for somebody added before the start is held
-              and sent on that day, and session 1 stays shut until then. It could be set when the
-              check-in was created and never again - so a new hire whose start moved by a week left
-              a check-in opening on the wrong day with no way to say so.
-
-              It disappears once somebody has answered rather than refusing on press: from that
-              point the start is the thing everything else is measured from, and the server says so
-              too, because a control being hidden is not a rule.
-            */}
-            {isInitiator && mySessionsDone === 0 && sessionRows.length === 0 && (
-              <div className="gw-fld">
-                <label className="gw-label" htmlFor="starts-at">When it starts</label>
-                <input
-                  id="starts-at"
-                  className="gw-input"
-                  type="date"
-                  value={startsAtDraft}
-                  onChange={(e) => setStartsAtDraft(e.target.value)}
-                />
-                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
-                  Session 1 opens on this day, and anybody you add before it is invited on it. Leave
-                  it empty to open the check-in as soon as people are added.
-                </div>
-                <button
-                  disabled={startsAtDraft === startsAtOnRecord || saveSetup.isPending}
-                  onClick={() => saveSetup.mutate({ startsAt: startsAtDraft || undefined })}
-                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: startsAtDraft === startsAtOnRecord ? 0.4 : 1 }}
-                >
-                  Save start date
-                </button>
-              </div>
-            )}            {isInitiator && (
-              <div className="gw-fld">
-                <label className="gw-label">How long this runs</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {/* THE END DATE, ONCE. "There's no place to set end date" (Hafsah, 21 Sep 2026) put a date beside
-                      the length-in-days select; "seems like duplicates on end date" (22 Sep) is what two controls
-                      for one fact look like. The date is the control; the days and the sessions it makes are
-                      read out underneath. It sets the days, counted from the start on record (today where none
-                      is set); the Save below saves them. */}
-                  <input
-                    type="date"
-                    className="gw-input"
-                    aria-label="Ends on"
-                    title="Ends on"
-                    value={(() => {
-                      const from = startsAtOnRecord ? new Date(startsAtOnRecord) : new Date();
-                      const end = new Date(from.getTime() + timelineDaysDraft * 86_400_000);
-                      return Number.isFinite(end.getTime()) ? end.toISOString().slice(0, 10) : '';
-                    })()}
-                    onChange={(e) => {
-                      const from = startsAtOnRecord ? new Date(startsAtOnRecord) : new Date();
-                      const days = Math.round((new Date(e.target.value).getTime() - from.getTime()) / 86_400_000);
-                      if (Number.isFinite(days) && days >= 1) setTimelineDaysDraft(days);
-                    }}
-                    style={{ background: 'white', maxWidth: 170 }}
-                  />
-                  <select className="gw-input" aria-label="Session cadence" value={cadenceDraft}
-                    onChange={(e) => setCadenceDraft(e.target.value as GroundCadence)} style={{ background: 'white' }}>
-                    {SELECTABLE_CADENCES.map((c) => <option key={c.cadence} value={c.cadence}>{c.label}</option>)}
-                  </select>
-                </div>
-                {/*
-                  AND WHICH DAYS IT MAY LAND ON, under the rhythm because it is part of the rhythm.
-
-                  Offered for every cadence rather than only daily: a fortnightly anchor lands on a
-                  weekend too, just more quietly. A one-time check-in has no rhythm to shape.
-                */}
-                {cadenceDraft !== 'ONE_TIME' && (
-                  <div style={{ marginTop: 10 }}>
-                    <WhichDaysTheyWork value={workingDaysDraft} onChange={setWorkingDaysDraft} />
-                  </div>
-                )}
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6 }}>
-                  {timelineDaysDraft} days, {sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1} session{(sessionsFor(timelineDaysDraft, cadenceDraft) ?? 1) === 1 ? '' : 's'}.
-                  {' '}Sessions already completed are never removed.
-                </div>
-                {/*
-                  AND WHAT HAPPENS AT THE END OF THEM, WHICH NOTHING SAID.
-
-                  A check-in does not just run out. On the last session everybody is asked how it
-                  closes, and it ends on an agreed answer. That screen is the point of the whole
-                  thing for some scenarios, and the only way to learn it exists was to reach it -
-                  which on a three-month run means three months. So the number of sessions was a
-                  countdown to something nobody had been told about.
-
-                  Here, next to the control that sets the number, because this is the moment a
-                  person is deciding how long it should be and the ending is what they are deciding
-                  the length of.
-                */}
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.55 }}>
-                  On the last one, everybody is asked how this should close, and it ends on the
-                  answer you agree.
-                </div>
-                <button
-                  disabled={!theTimeframeChanged || saveSetup.isPending}
-                  onClick={() => saveSetup.mutate({ timelineDays: timelineDaysDraft, cadence: cadenceDraft, workingDays: workingDaysDraft })}
-                  style={{ marginTop: 8, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: theTimeframeChanged ? 1 : 0.4 }}
-                >
-                  Save timeframe
-                </button>
-              </div>
-            )}
-            </Fold>
-            <Fold {...foldProps(setupBand())} title="What it is" src="what it is called, and which situation it runs as" summary={ground.label}>
-            <div className="gw-fld">
-              <label className="gw-label">Name</label>
-              <input className="gw-input" value={groundLabel} onChange={e => setGroundLabel(e.target.value)} />
-              <button
-                disabled={!groundLabel.trim() || groundLabel === ground.label}
-                onClick={() => { if (groundLabel.trim() && groundLabel !== ground.label && !saveSetup.isPending) saveSetup.mutate({ label: groundLabel.trim() }) }}
-                style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundLabel.trim() && groundLabel !== ground.label) ? 1 : 0.4 }}
-              >
-                Save name
-              </button>
-            </div>
-            <div className="gw-fld">
-              <label className="gw-label">Scenario</label>
-              <select
-                className="gw-input"
-                value={groundScenario}
-                onChange={e => setGroundScenario(e.target.value)}
-                style={{ background: 'white' }}
-              >
-                {/* EVERY SITUATION, BY ITS CATALOGUE NAME. This listed nine of the twenty-four, so a discovery
-                    check-in's Setup card read "New hire" (21 Sep 2026): a select shows its first option for a
-                    value it does not have. The catalogue is the one list. */}
-                {SCENARIO_KEYS.map((val) => (
-                  <option key={val} value={val}>{SCENARIO_LABELS[val]}</option>
-                ))}
-              </select>
-              <button
-                disabled={!groundScenario || groundScenario === ground.scenario}
-                onClick={() => { if (groundScenario && groundScenario !== ground.scenario && !saveSetup.isPending) saveSetup.mutate({ scenario: groundScenario }) }}
-                style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: '1px solid var(--gw-blue-b)', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', opacity: (groundScenario && groundScenario !== ground.scenario) ? 1 : 0.4 }}
-              >
-                Save scenario
-              </button>
-            </div>
-            </Fold>
-            {/*
-              THE THREE RULES THAT DECIDE WHAT PEOPLE SEE, IN ONE PLACE. W14-4.
-
-              Two of them had controls and the third - the one that decides whether a participant
-              can see who else is in the ground at all - had none, though its endpoint has been
-              live and tested the whole time. So the strongest of the three was set by a default
-              nobody could read.
-
-              They are together because they are one question with three parts, and because the
-              contact toggle's own copy used to promise "participants can see who's here", which
-              is not true when this one is off.
-            */}
-            {/*
-              * ONE HEADING FOR THE TWO SETTINGS THAT ARE ONE QUESTION.
-              *
-              * "The setup tab can have fewer cards, some things can be dropdowns, some texts or
-              * spacing could make more sense." These were the clearest case: two `gw-fld` blocks,
-              * two headings, two bordered cards and two paragraphs - "Can the people here see each
-              * other?" and "Participant contact details" - for what a person thinks of as one
-              * decision, who can see whom. The second even explains itself in terms of the first
-              * ("this matters again if you turn the setting above on"), which is a card admitting
-              * it should not be a separate card.
-              */}
-            <Fold {...foldProps(setupBand())} title="Who can see whom" src="two settings, one question" summary={peersVisible ? 'Everyone here sees who else is in it' : 'Each person sees only themselves'}>
-            <div className="gw-fld">
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: '8px 8px 0 0' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
-                    Show who else is in this check-in
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                    {peersVisible
-                      ? 'Each person sees the others by name and whether they have checked in. Nobody ever sees what anybody wrote. On a team delivering together, that is how people coordinate.'
-                      : 'Each person sees only themselves. On a period that decides something about a person, a roster tells everyone exactly who they are being measured against, which turns a record meant to help them into a leaderboard.'}
-                  </div>
-                  {(ground as any)?.peersVisibleToEachOther == null && (
-                    <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5 }}>
-                      Not set, so this check-in uses the default for its kind: {peersDefaultHidden ? 'hidden' : 'shown'}.
-                    </div>
-                  )}
-                </div>
-                <button
-                  role="switch"
-                  aria-checked={peersVisible}
-                  aria-label="Show who else is in this check-in"
-                  disabled={setPeerVisibility.isPending}
-                  onClick={() => setPeerVisibility.mutate(!peersVisible)}
-                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setPeerVisibility.isPending ? 'wait' : 'pointer', background: peersVisible ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setPeerVisibility.isPending ? 0.5 : 1, padding: 0 }}
-                >
-                  <span style={{ position: 'absolute', top: 2, left: peersVisible ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
-                </button>
-              </div>
-            </div>
-
-            {/* The second half of the same question, so it carries no heading of its own and sits
-                directly under the first - one card, two rows, read top to bottom. */}
-            <div className="gw-fld" style={{ marginTop: -8 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Hide email addresses between participants</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                    {contactHidden
-                      ? (peersVisible
-                          ? "Participants can see who's here (names, roles, and presence) but can't see each other's email addresses. Good for cohorts of individuals who don't need to contact each other."
-                          : "Nobody sees anybody else here, so there are no addresses to hide. This matters again if you turn the setting above on.")
-                      : "Participants can see each other's email addresses. Only turn this off when everyone is meant to be in contact. Turning it off lets participants collect each other's contacts."}
-                  </div>
-                </div>
-                <button
-                  role="switch"
-                  aria-checked={contactHidden}
-                  aria-label="Hide email addresses between participants"
-                  disabled={setContactVisibility.isPending}
-                  onClick={() => setContactVisibility.mutate(!contactHidden)}
-                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setContactVisibility.isPending ? 'wait' : 'pointer', background: contactHidden ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setContactVisibility.isPending ? 0.5 : 1, padding: 0 }}
-                >
-                  <span style={{ position: 'absolute', top: 2, left: contactHidden ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
-                </button>
-              </div>
-            </div>
-            {/*
-              AND THE THIRD ROW OF THE SAME QUESTION. Whether somebody's number is their own
-              business is who-sees-whom, not a separate subject, so it sits in this card rather
-              than starting another one.
-            */}
-            <div className="gw-fld" style={{ marginTop: -8 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderTop: 'none', borderRadius: '0 0 8px 8px' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Show everyone each other{'\u2019'}s numbers</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                    {numbersShared
-                      ? 'Everyone sees every target on the board. On a team carrying one number between them, that is how people see where the gap is.'
-                      : 'Each person sees their own number. You see all of them. Ten colleagues\u2019 targets on somebody\u2019s first screen is a decision worth making on purpose.'}
-                  </div>
-                </div>
-                <button
-                  role="switch"
-                  aria-checked={numbersShared}
-                  aria-label="Show everyone each other's numbers"
-                  disabled={setWhoSeesTargets.isPending}
-                  onClick={() => setWhoSeesTargets.mutate(!numbersShared)}
-                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setWhoSeesTargets.isPending ? 'wait' : 'pointer', background: numbersShared ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setWhoSeesTargets.isPending ? 0.5 : 1, padding: 0 }}
-                >
-                  <span style={{ position: 'absolute', top: 2, left: numbersShared ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
-                </button>
-              </div>
-            </div>
-            </Fold>
-
-            {/*
-              WHERE PEOPLE ANSWER THIS ONE.
-
-              It was the organisation's connection and nothing else: connect a number and every
-              check-in in the organisation went to WhatsApp. A lead setting up a sensitive
-              conversation had no way to keep it off people's phones, and nowhere to look for one.
-
-              THREE STATES, NOT A TOGGLE. "Whatever this organisation does" is what every check-in
-              did before the question existed, so it stays the answer until somebody gives another -
-              a two-state switch would have decided for every ground in the database.
-
-              AND ONLY WHERE THERE IS A NUMBER. `orgHasWhatsApp` comes with the ground because the
-              connection is an admin read and a lead is often not an admin. A control over nothing
-              is a door into a wall.
-            */}
-            {whatsAppIsOn && (ground as any)?.orgHasWhatsApp && (
-              <Fold {...foldProps(setupBand())} title="Where people answer this" src="in Groundwork, or on your organisation's WhatsApp number" summary={
-                (ground as any).overWhatsApp === true ? 'On WhatsApp'
-                  : (ground as any).overWhatsApp === false ? 'In Groundwork'
-                    : 'Whatever this organisation does'
-              }>
-                <div style={{ display: 'grid', gap: 8, padding: '4px 0' }}>
-                  {([
-                    [null, 'Whatever this organisation does', 'The default. People who have a number on their profile get it on WhatsApp; everybody else answers here.'],
-                    [true, 'On WhatsApp', 'The check-in, the reminders and the report go to their phone. They reply to the message and that reply is their answer.'],
-                    [false, 'In Groundwork', 'This one stays here even though your organisation has a number. For a conversation you would rather was not on somebody\u2019s phone.'],
-                  ] as [boolean | null, string, string][]).map(([value, title, why]) => {
-                    const on = ((ground as any).overWhatsApp ?? null) === value
-                    return (
-                      <label
-                        key={String(value)}
-                        style={{
-                          display: 'flex', gap: 10, alignItems: 'flex-start', cursor: setOverWhatsApp.isPending ? 'wait' : 'pointer',
-                          padding: '11px 13px', borderRadius: 8,
-                          border: `1px solid ${on ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                          background: on ? 'var(--gw-blue-bg)' : 'var(--gw-card)',
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="where-people-answer"
-                          checked={on}
-                          disabled={setOverWhatsApp.isPending}
-                          onChange={() => setOverWhatsApp.mutate(value)}
-                          style={{ marginTop: 2 }}
-                        />
-                        <span>
-                          <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{title}</span>
-                          <span style={{ display: 'block', fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 2 }}>{why}</span>
-                        </span>
-                      </label>
-                    )
-                  })}
-                </div>
-              </Fold>
-            )}
-
-            {/*
-              HOW THE CHECK-IN TREATS A BLOCKER. Its own card, because it is not about who sees
-              what - it changes what the conversation asks a person.
-            */}
-            <Fold {...foldProps(setupBand())} title="When somebody is blocked" src="what the check-in asks for" summary={expectsUnblocking ? 'It asks what they tried' : 'It records it and moves on'}>
-            <div className="gw-fld">
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '12px 14px', border: '1px solid var(--gw-blue-b)', borderRadius: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>Ask what they tried, and offer ways through</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                    {expectsUnblocking
-                      ? 'A blocker is recorded with what has already been done about it, and the person is offered ways through on their own report. Their lead sees the same thing as one thing to ask for.'
-                      : 'What is in their way is recorded, and nothing is asked about what they tried. For people with no standing to chase anybody \u2014 a new cohort, somebody outside the company \u2014 or a check-in that is there to hear what happened.'}
-                  </div>
-                </div>
-                <button
-                  role="switch"
-                  aria-checked={expectsUnblocking}
-                  aria-label="Ask what they tried, and offer ways through"
-                  disabled={setExpectThemToUnblock.isPending}
-                  onClick={() => setExpectThemToUnblock.mutate(!expectsUnblocking)}
-                  style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 999, border: 'none', cursor: setExpectThemToUnblock.isPending ? 'wait' : 'pointer', background: expectsUnblocking ? 'var(--gw-navy)' : '#CFD8E3', position: 'relative', transition: 'background 0.15s', opacity: setExpectThemToUnblock.isPending ? 0.5 : 1, padding: 0 }}
-                >
-                  <span style={{ position: 'absolute', top: 2, left: expectsUnblocking ? 20 : 2, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
-                </button>
-              </div>
-            </div>
-            </Fold>
-            {/*
-              CODES AND BILLING WERE NOT SETUP QUESTIONS.
-
-              "What is not needed on the setup page, and why do we have codes and billing in the
-              setup?" Right on both. Billing is an ORGANISATION's business and already has its own
-              door in the sidebar - it has nothing to do with how this check-in runs. And an access
-              code is how somebody GETS IN, so it belongs beside the control that adds people,
-              which is band 1. Both moved rather than deleted.
-            */}
-            <Fold {...foldProps(setupBand())} title="Ending it" src="closing is not reversible" summary={'archiving is done by hand for now'}>
-            <div style={{ padding: 14, background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-red-t)', marginBottom: 6 }}>Close check-in</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                Closing a check-in permanently archives it. All parties keep their records. This action cannot be undone.
-                {isOrgAdmin && !isInitiator && ' You are not the lead here, so closing it ends something somebody else is running.'}
-              </div>
-              {/* The disabled "Close this check-in" button that sat here was scaffolding, not a state; the working
-                  route - mail us - was a footnote under it. The route is the action now. */}
-              <a
-                href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
-                style={{ display: 'inline-block', fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, textDecoration: 'none', fontFamily: 'inherit' }}
-              >
-                Ask us to archive this check-in
-              </a>
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 8 }}>Self-serve close is coming. Until then we archive it by hand, usually the same day.</div>
-            </div>
-
-            {/*
-              AND THE OTHER THING PEOPLE ACTUALLY WANT, WHICH IS NOT CLOSING.
-
-              "they can clear any test chats/checkins they run. I suspect this is likely to happen
-              with new users." It is what happens: the first thing anybody does is try this on
-              something invented, and the only way to be rid of it was to email us - so a new
-              account fills up with "test" and "asdf" sitting in the rail beside a real check-in.
-
-              Deleting and closing are not degrees of the same act and are not offered as though
-              they were. Closing keeps everybody's record and ends the work; deleting is for a thing
-              that was never work. The server draws the line rather than this page: it refuses the
-              moment anybody else has given an account, and says who, so a check-in cannot be
-              cleared out from under somebody who wrote in confidence and is not being asked.
-            */}
-            {isInitiator && (
-              <div style={{ marginTop: 10, padding: 14, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>Delete it, if it was only a test</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 10 }}>
-                  For the ones you started to see how this works. It goes completely - the
-                  conversation, the sessions and anything uploaded. If somebody else has already
-                  answered, this refuses and tells you: that is a record, not a test, and
-                  closing is the thing to do with it.
-                </div>
-                {deleteError && (
-                  <div style={{ fontSize: 12, color: 'var(--gw-red-t)', lineHeight: 1.6, marginBottom: 10, background: 'var(--gw-red-bg)', border: '1px solid var(--gw-red-b)', borderRadius: 6, padding: '9px 11px' }}>
-                    {deleteError}
-                  </div>
-                )}
-                {confirmDelete ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12.5, color: 'var(--gw-text)' }}>Delete “{ground.label}” for good?</span>
-                    <button
-                      onClick={() => removeGround.mutate()}
-                      disabled={removeGround.isPending}
-                      style={{ fontSize: 13, fontWeight: 700, color: 'white', background: 'var(--gw-red-t)', border: 'none', padding: '8px 14px', borderRadius: 6, cursor: removeGround.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
-                    >{removeGround.isPending ? 'Deleting…' : 'Yes, delete it'}</button>
-                    <button
-                      onClick={() => { setConfirmDelete(false); setDeleteError(null) }}
-                      style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-sub)', background: 'none', border: '1px solid var(--gw-border)', padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}
-                    >Keep it</button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => { setDeleteError(null); setConfirmDelete(true) }}
-                    style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-red-t)', background: 'none', border: '1px solid var(--gw-red-b)', padding: '8px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >Delete this check-in</button>
-                )}
-              </div>
-            )}
-            </Fold>
-            {/* REVIEW ROUND 3, ITEM 3: THE "HOW FAR THROUGH SETUP" TALLY WENT WITH THE SIGN-OFF
-                STEP IT COUNTED. See the note above Fold. */}
-          </div>
         )}
       </div>
       {shareCodeModalOpen && (
