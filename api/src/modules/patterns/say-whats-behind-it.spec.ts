@@ -38,7 +38,7 @@ describe('the person a pattern is about says what is behind it', () => {
     expect(data.personAnswer).toBe('I built the deck and Ngozi did the pricing. I said "we" on the call.');
     expect(data.personAnsweredAt).toBeInstanceOf(Date);
     expect(data.shownToPersonAt).toBeInstanceOf(Date);
-    expect(served.heading).toBe('Claimed work somebody else did');
+    expect(served.heading).toBe('Others describe doing work they described as theirs');
     expect(served.theirWords).toBe('I built the deck and Ngozi did the pricing. I said "we" on the call.');
     expect(served.whoSeesIt).toBe('Tunde can see this too, with anything you say about it. Nothing is decided from it.');
     expect(JSON.stringify(served)).not.toMatch(/Claimed Work Inflation|"B3"/);
