@@ -133,9 +133,13 @@ export interface WhatLanded {
   fileName: string;
   whatItIs?: string | null;
   /** Per-person rows that reached the record, with the person named as this reader may see them. */
-  forOnePerson: { who: string; what: string; target: number; by?: string | null }[];
-  forEverybody: { what: string; target: number; kind?: string | null; by?: string | null }[];
-  dates: { what: string; when: string }[];
+  forOnePerson: { who: string; what: string; target: number; by?: string | null; page?: number }[];
+  forEverybody: { what: string; target: number; kind?: string | null; by?: string | null; page?: number }[];
+  dates: { what: string; when: string; page?: number }[];
+  /** How many pages the file has, when its text carries them (a PDF with a text layer). */
+  pages?: number;
+  /** A PDF read from a picture of its pages: it has pages, and we cannot say which item is on which. */
+  pagesNotKnown?: boolean;
   /** Names the document has that this check-in does not. */
   unmatched: string[];
   /**
@@ -147,8 +151,8 @@ export interface WhatLanded {
    */
   waiting?: { name: string; target: number; ownerParticipantId: string | null }[];
   takenAt?: string | null;
-  /** What the read found and did not keep, and why. Only bank details, today. */
-  leftOut?: { what: string; why: string }[];
+  /** What the read found and did not keep, and why: bank details, and numbers this person may not set. */
+  leftOut?: { what: string; why: string; page?: number }[];
 }
 
 /** The prototype's words, on its upload screen, under "What it left out". */
@@ -194,7 +198,7 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean } = 
         : `${held.unmatched.length} names in it are not on this check-in. They are ${andList(held.unmatched)}. Add them, and their numbers will go on too.`,
     );
   }
-  if (held.leftOut?.length) {
+  if (held.leftOut?.some((l) => l.what === BANK_DETAILS_LEFT_OUT.what)) {
     lines.push('', 'It also held bank account details. Those are never kept, in any document.');
   }
   if (opts.asking) lines.push('', 'Is that right?');

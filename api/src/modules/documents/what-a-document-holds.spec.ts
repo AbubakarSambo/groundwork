@@ -76,7 +76,9 @@ describe('what a document holds', () => {
     /* Only the lead may set somebody else's number; a participant's file is read for their own rows and the group's. */
     expect(DOCS).toContain('(isLead || p.id === participantId)');
     /* A name that matches nobody is carried back, never guessed onto the nearest person. */
-    expect(DOCS).toContain('if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }');
+    /* A colleague's name in a participant's own file is left out as the lead's to set (week 14); any other name is carried back. */
+    expect(DOCS).toContain('if (!isLead && whoThisNameIs(name, onTheCheckIn as any)) { if (!notTheirsToSet.includes(name)) notTheirsToSet.push(name); continue; }');
+    expect(DOCS).toContain('if (!unmatched.includes(name)) unmatched.push(name);');
     /* A number already on the board is never overwritten from here. */
     expect(DOCS).toContain("held.has(`${who.id}::${name.toLowerCase()}`)");
     expect(DOCS).toContain('await this.prisma.groundDocument.update({ where: { id: docId }, data: { holds: landed as any } })');
