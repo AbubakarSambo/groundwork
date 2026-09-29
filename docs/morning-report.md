@@ -6,6 +6,23 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## HOW THE ENGINE WORK RUNS NOW (Hafsah, 29 September, evening)
+
+Hafsah wants the engine work done much faster. Every session keeps to this:
+1. **Tests:** while working, run only the tests for the files changed. Run all the API tests once at the end of each finished piece of the weekly plan.
+2. **Scenario runs:** only when a change affects what the model is given or what it writes (the conversation, reports, boards, judgements). For storing data, new fields and plumbing, such as request 76, use tests and one live try instead.
+3. **Re-runs:** re-run an affected scenario once. Run it a second time only for a prompt or judgement change, or when the first result is borderline.
+4. **Full runs:** group several small pieces into one scenario run. At most one full 24-scenario run a day, to prove the day's work together.
+5. **Quick checks after every run:** quotes are word for word, none of the lead's private words reach anyone, and reports match the database.
+6. **While a run or a helper works,** prepare the next piece.
+7. **Models:** Sonnet 5 for the builder, and Opus 5.5 for the main session and anything that reads judgements, such as the reviewer.
+
+One helper at a time, and a helper never starts helpers of its own.
+
+The safety check refused saving these rules to Claude's own memory folder, which is protected. So they are kept here instead.
+
+---
+
 ## 29 SEPTEMBER, EVENING: HAFSAH'S ANSWERS, AND WHAT FOLLOWS
 
 Hafsah answered five of the questions. They are recorded as decisions 44 to 49 in `docs/decisions-merged.md`:
