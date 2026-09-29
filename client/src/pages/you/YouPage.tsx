@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Button, NeedsYouList, NeedsYouRow, Tag } from '@/components/gw/kit'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
+import { PatternPanel } from '@/components/gw/ui'
 
 /**
  * THE YOU BOARD (C2, #/you). The wording is copied from docs/prototype/screens/C2-the-you-board/
@@ -26,7 +27,11 @@ import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
  * "Where you stand" from Groundwork's suggestions about you, with "Add my side" and "Appeal this
  * decision", is drawn when the server serves one (C3, U.13).
  * The engine's own parts (where you stand, worth knowing now, what Groundwork noticed, coaching
- * followed over time, what you contributed, what keeps coming up) are drawn only when served.
+ * followed over time, what you contributed) are drawn only when served.
+ * "Something that keeps coming up" (you-board-miriam.txt) is `b.patterns`: your own patterns,
+ * across every check-in you are in, and nobody else's - see
+ * api/src/modules/patterns/who-reads-a-pattern.ts. `.filter(p => p.yours)` below is this page's
+ * own check, on top of what the server already withheld, never instead of it.
  */
 export function YouPage() {
   const user = useAuthStore(s => s.user)
@@ -56,6 +61,7 @@ export function YouPage() {
 
 function TheBoard({ b }: { b: YourBoard }) {
   const nothingYet = b.checkIns.length === 0 && b.todos.length === 0
+  const myPatterns = (b.patterns ?? []).filter((p) => p.yours !== false)
   return (
     <>
       <h2 className="gw-t-h2 gw-you-h2">Your board</h2>
@@ -172,16 +178,15 @@ function TheBoard({ b }: { b: YourBoard }) {
         </section>
       )}
 
-      {!!b.keepsComingUp?.length && (
+      {!!myPatterns.length && (
         <section className="gw-you-section" aria-labelledby="you-coming-h">
           <div className="gw-you-section-head">
             <h2 id="you-coming-h" className="gw-t-h2">Something that keeps coming up</h2>
             <span className="gw-t-small">About your part in the work</span>
           </div>
-          {b.keepsComingUp.map(k => (
-            <div key={k.title} className="gw-you-card gw-you-card-warm">
-              <h3 className="gw-t-h3">{k.title}</h3>
-              <p>{k.says}</p>
+          {myPatterns.map(p => (
+            <div key={p.id} className="gw-you-card gw-you-card-warm">
+              <PatternPanel pattern={p} invalidateKey={['you']} />
             </div>
           ))}
         </section>

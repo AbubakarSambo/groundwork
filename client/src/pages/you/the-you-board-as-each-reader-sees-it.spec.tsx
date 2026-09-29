@@ -14,8 +14,10 @@ import type { YourBoard } from '@/api/you'
  */
 vi.mock('@/api/you', () => ({ youApi: { get: vi.fn() } }))
 vi.mock('@/api/my-data', () => ({ myDataApi: { get: vi.fn(), erase: vi.fn() } }))
+vi.mock('@/api/patterns', () => ({ patternsApi: { answer: vi.fn() } }))
 import { youApi } from '@/api/you'
 import { myDataApi } from '@/api/my-data'
+import { patternsApi } from '@/api/patterns'
 
 const EMPTY: YourBoard = { checkIns: [], turns: [], goals: [], saidYoudDo: [], todos: [], coaching: null, ownReports: [] }
 
@@ -159,7 +161,16 @@ describe('when the engine serves its own parts (request 14)', () => {
       noticed: { says: 'For three weeks, calls that need a difficult ask have been moved to next week.', whoSees: 'You are seeing this first. Wairimu can see it too. Nothing is decided from it.' },
       coachingOverTime: 'Last week we talked about asking for a buying date on the first visit. You did it at Lakeside.',
       contributed: ['Warned the team early that Green Mart would wait until January.'],
-      keepsComingUp: [{ title: 'Your qualified deals often don’t have a buying date', says: '3 of 5, for three weeks running. Wairimu sees this pattern too.' }],
+      patterns: [{
+        id: 'pat-1', participantId: 'p-m', yours: true,
+        heading: 'Your qualified deals often don’t have a buying date',
+        whatHappened: 'Without a date they can’t count toward the quarter.',
+        howOften: '3 of 5, for three weeks running.',
+        askThem: null,
+        theirWords: null,
+        canAnswer: true,
+        whoSeesIt: 'Wairimu sees this pattern too. You can say what’s behind it; it goes next to the pattern, in your words.',
+      }],
     })
     await screen.findByRole('heading', { name: 'Where you stand' })
     expect(within(section('Where you stand')).getByText('What would change this: Keeping 8 in 10 for the next 4 weeks.')).toBeInTheDocument()
@@ -167,7 +178,54 @@ describe('when the engine serves its own parts (request 14)', () => {
     expect(within(section('Something Groundwork noticed about your work')).getByText('You are seeing this first. Wairimu can see it too. Nothing is decided from it.')).toBeInTheDocument()
     expect(within(section('Coaching, followed over time')).getByText(/You did it at Lakeside/)).toBeInTheDocument()
     expect(within(section('What you contributed')).getByText('Warned the team early that Green Mart would wait until January.')).toBeInTheDocument()
-    expect(within(section('Something that keeps coming up')).getByText('About your part in the work')).toBeInTheDocument()
+    const patternSection = section('Something that keeps coming up')
+    expect(within(patternSection).getByText('About your part in the work')).toBeInTheDocument()
+    expect(within(patternSection).getByText('Your qualified deals often don’t have a buying date')).toBeInTheDocument()
+    expect(within(patternSection).getByText(/3 of 5, for three weeks running\./)).toBeInTheDocument()
+    expect(within(patternSection).getByText(/Wairimu sees this pattern too\./)).toBeInTheDocument()
+    expect(within(patternSection).getByRole('button', { name: 'Say what’s behind it' })).toBeInTheDocument()
+  })
+
+  it('never draws a colleague’s pattern, even where one somehow reached this reader’s own board', async () => {
+    open(MIRIAM, {
+      ...MIRIAMS,
+      patterns: [{
+        id: 'pat-2', participantId: 'p-somebody-else', yours: false,
+        heading: 'Something about a colleague’s work', whatHappened: null,
+        howOften: '3 of 5, for three weeks running.', askThem: 'Ask them about it.',
+        theirWords: null, canAnswer: false,
+        whoSeesIt: 'A colleague has not seen this yet, and has not answered yet.',
+      }],
+    })
+    await screen.findByText('Your board')
+    expect(screen.queryByText('Something about a colleague’s work')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Something that keeps coming up' })).toBeNull()
+  })
+
+  it('lets Miriam say what’s behind it, and shows her own words back', async () => {
+    ;(patternsApi.answer as any).mockResolvedValue({
+      id: 'pat-1', participantId: 'p-m', yours: true,
+      heading: 'Your qualified deals often don’t have a buying date', whatHappened: null,
+      howOften: '3 of 5, for three weeks running.', askThem: null,
+      theirWords: 'The buyer keeps pushing the meeting back.', canAnswer: true,
+      whoSeesIt: 'Wairimu sees this pattern too.',
+    })
+    open(MIRIAM, {
+      ...MIRIAMS,
+      patterns: [{
+        id: 'pat-1', participantId: 'p-m', yours: true,
+        heading: 'Your qualified deals often don’t have a buying date', whatHappened: null,
+        howOften: '3 of 5, for three weeks running.', askThem: null,
+        theirWords: null, canAnswer: true,
+        whoSeesIt: 'Wairimu sees this pattern too.',
+      }],
+    })
+    await screen.findByRole('heading', { name: 'Something that keeps coming up' })
+    const patternSection = section('Something that keeps coming up')
+    fireEvent.click(await within(patternSection).findByRole('button', { name: 'Say what’s behind it' }))
+    fireEvent.change(within(patternSection).getByRole('textbox'), { target: { value: 'The buyer keeps pushing the meeting back.' } })
+    fireEvent.click(within(patternSection).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(within(patternSection).getByText(/The buyer keeps pushing the meeting back\./)).toBeInTheDocument())
   })
 })
 

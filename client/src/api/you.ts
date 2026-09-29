@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { SuggestionForThePerson } from './suggestions'
+import type { ServedPattern } from './patterns'
 
 /**
  * THE YOU BOARD (C2, U.12): what is yours, across your check-ins. The server builds it from what you
@@ -44,8 +45,14 @@ export interface YourBoard {
   coachingOverTime?: string
   /** "What you contributed". */
   contributed?: string[]
-  /** "Something that keeps coming up", about your part in the work. */
-  keepsComingUp?: { title: string; says: string }[]
+
+  /**
+   * "SOMETHING THAT KEEPS COMING UP", ABOUT YOUR PART IN THE WORK (C2, you-board-miriam.txt).
+   * Your own patterns, across every check-in you are in, and nobody else's - see
+   * api/src/modules/patterns/who-reads-a-pattern.ts. Served only once a pattern has been seen in
+   * three check-ins; nothing while patterns are switched off.
+   */
+  patterns?: ServedPattern[]
 
   /**
    * GROUNDWORK'S SUGGESTIONS ABOUT YOU (C3, U.13), served when there are any: the facts about your

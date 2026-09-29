@@ -75,6 +75,9 @@ const rows = {
   ],
   /* Everything asked of you (U.16) has its own spec: everything-asked-of-you-as-each-reader-reads-it. */
   groundDependency: [] as any[],
+  /* "Something that keeps coming up" has its own tests below, own-patterns-and-nobody-elses. Empty
+     here so every other test in this file, which does not care about patterns, sees none. */
+  patternDetection: [] as any[],
 };
 
 /** Just enough of Prisma's `where` to filter by `in` lists and plain values. */
@@ -90,7 +93,9 @@ const table = (name: keyof typeof rows) => ({
   findFirst: jest.fn(async ({ where }: any) => (rows[name] as any[]).find((r) => matches(r, where)) ?? null),
 });
 
-function setup() {
+/** `patternRows` overrides the shared empty table, for the "something that keeps coming up" tests below. */
+function setup(patternRows: any[] = []) {
+  rows.patternDetection = patternRows;
   const prisma: any = {
     personObjective: table('personObjective'),
     groundObjective: table('groundObjective'),
@@ -99,6 +104,7 @@ function setup() {
     person: table('person'),
     todo: table('todo'),
     groundDependency: table('groundDependency'),
+    patternDetection: { ...table('patternDetection'), updateMany: jest.fn(async () => ({ count: 0 })) },
   };
   const grounds: any = {
     list: jest.fn(async (_org: string, userId: string, _email: string, role: string) =>
@@ -193,6 +199,64 @@ describe('nobody else may read Miriam’s You board', () => {
     expect(b.todos.map((t) => t.text)).toEqual(['BRIAN-TODO']);
     const said = JSON.stringify(b);
     for (const hers of ['Westgate', 'Green Mart', 'Sales closed', 'c-m2']) expect(said).not.toContain(hers);
+  });
+});
+
+/**
+ * "SOMETHING THAT KEEPS COMING UP", ON THE YOU BOARD (C2, request 79c/answers-from-engine.md,
+ * "Patterns have a new shape"). Built here through the same rule as the board and the check-in's
+ * own record (patterns/who-reads-a-pattern.ts), so a pattern needs three check-ins and a plain
+ * name to appear, the person it is about reads it first, and nobody else's ever reaches this page -
+ * not even Wairimu, who runs the check-in: the You board is always "your own", never anyone else's.
+ */
+describe('something that keeps coming up, on the You board', () => {
+  const miriamsPattern = {
+    id: 'pat-miriam', participantId: 'p-miriam', code: 'M2',
+    observationText: 'Her quotes have let two colleagues move faster this month.',
+    seenInSessions: [1, 2, 3], periodsObserved: 3,
+    readyAt: ago(2), shownToPersonAt: null, personAnswer: null, personAnsweredAt: null,
+    participant: {
+      groundId: 'g-sales',
+      ground: { label: 'Sales team, Q3', initiatorId: 'u-wairimu', participants: sales.participants },
+    },
+  };
+
+  it('Miriam reads her own, can answer it, and it names the check-in it came from', async () => {
+    const { read } = setup([miriamsPattern]);
+    const b = await read('miriam');
+    expect(b.patterns?.length).toBe(1);
+    const p = b.patterns![0];
+    expect(p.yours).toBe(true);
+    expect(p.canAnswer).toBe(true);
+    expect(p.checkIn).toBe('Sales team, Q3');
+    expect(p.heading).toBeTruthy();
+    expect(p.theirWords).toBeNull();
+  });
+
+  it('marks it as shown to her, the first time she reads it', async () => {
+    const { read, prisma } = setup([miriamsPattern]);
+    await read('miriam');
+    expect(prisma.patternDetection.updateMany).toHaveBeenCalled();
+  });
+
+  it('is never on Wairimu’s own board, though she runs the check-in it is about', async () => {
+    const { read } = setup([miriamsPattern]);
+    const b = await read('wairimu');
+    expect(b.patterns ?? []).toEqual([]);
+    expect(JSON.stringify(b)).not.toContain('colleagues move faster');
+  });
+
+  it('is never on Brian’s own board, even though the row is right there for the same check-in', async () => {
+    const { read } = setup([miriamsPattern]);
+    const b = await read('brian');
+    expect(b.patterns ?? []).toEqual([]);
+    expect(JSON.stringify(b)).not.toContain('colleagues move faster');
+  });
+
+  it('says nothing at all before three check-ins', async () => {
+    const { read } = setup([{ ...miriamsPattern, seenInSessions: [1, 2], periodsObserved: 2 }]);
+    const b = await read('miriam');
+    expect(b.patterns ?? []).toEqual([]);
   });
 });
 
