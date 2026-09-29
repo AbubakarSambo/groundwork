@@ -465,6 +465,23 @@ export class ConversationService {
     return answers;
   }
 
+  /**
+   * THE TARGETS THIS PERSON'S OWN CHECK-IN MAY BE GIVEN (week 0 of docs/weekly-plan.md). Where people
+   * see only their own targets, a colleague's is not given to the model that talks to them: the rule
+   * the brief on their screen already follows (whose-number-is-whose-business). The lead gets all.
+   */
+  private theTargetsThisPersonMaySee(
+    ground: { objectives?: { name: string; target: number | null; ownerParticipantId?: string | null }[]; whoSeesTargets?: string | null },
+    checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
+  ) {
+    return targetsFor(
+      (ground.objectives ?? []) as any[],
+      checkIn.participantId ?? null,
+      ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : UNLESS_SOMEBODY_SAYS,
+      { isLead: checkIn.participant?.partyType === PartyType.INITIATOR },
+    ).shown;
+  }
+
   async getTranscript(checkInId: string, requestingUserId: string) {
     const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
     const turns = await this.prisma.conversationTurn.findMany({
@@ -3551,7 +3568,10 @@ export class ConversationService {
       // Never reached the model before - see the comment on PromptContext.cadence.
       cadence: (ground as any).cadence ?? null,
       adminBrief: (ground as any).brief ?? null,
-      objectives: (ground as any).objectives ?? [],
+      /* ONLY THE TARGETS THIS PERSON MAY SEE (week 0). Every target went in, so on a check-in where
+         people see only their own, each person's model was given everybody's numbers and could say
+         them back. The same rule the brief on their screen uses. */
+      objectives: this.theTargetsThisPersonMaySee(ground as any, checkIn as any),
       /* The same: never the lead's words about this person, in this person's own session (request 36). */
       priorContext: aRoleInTheirOwnWords(checkIn.participant as any),
       priorSession,
@@ -4521,7 +4541,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ...(ground.participants ?? []).flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '', p.roleAsDescribed ?? '']),
       ...(ground.leadContextNotes ?? []).map((n) => n.text ?? ''),
       ...uploadedDocs.map((d: any) => `${d.fileName ?? ''} ${d.content ?? ''} ${d.uploaderNote ?? ''}`),
-      ...((ground as any).objectives ?? []).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
+      /* Only the targets this person may see: a colleague's hidden number is not "already said" to them (week 0). */
+      ...this.theTargetsThisPersonMaySee(ground as any, checkIn as any).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
       priorSession ?? '',
       /* Their own earlier sessions' entries: a difference the product quotes from session one is theirs to hear back. */
       ...pastEntries.map((e) => e.text),
