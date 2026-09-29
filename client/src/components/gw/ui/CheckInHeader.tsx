@@ -21,23 +21,30 @@ export const CHECK_IN_TABS = [
 
 export type CheckInTabKey = typeof CHECK_IN_TABS[number]['key']
 
-export function CheckInHeader({ crumbs, title, subtitle, action, active, tabHref }: {
+export function CheckInHeader({ crumbs, title, subtitle, action, active, tabHref, tabs, onSelectTab }: {
   crumbs?: Crumb[]
   title: string
   subtitle?: string
   action?: React.ReactNode
-  active: CheckInTabKey
-  /** Builds the href for a tab, e.g. (key) => `/grounds/${id}/${key}`. */
-  tabHref: (key: CheckInTabKey) => string
+  active: string
+  /** Builds the href for a tab, e.g. (key) => `/grounds/${id}/${key}`. Ignored when `tabs` is given. */
+  tabHref?: (key: CheckInTabKey) => string
+  /**
+   * An override for the fixed five tabs, still in the SAME five, same order - used by a page that
+   * groups its own tab-switching state (e.g. `?tab=` query keys) behind these five names, or that
+   * folds other labels (Report, Sessions, What I shared) as sub-tabs inside "My work". Each entry's
+   * own `to` makes it a real link (the only one that needs it is "Board", a different route);
+   * without one it calls `onSelectTab(key)` instead.
+   */
+  tabs?: { key: string; label: string; to?: string }[]
+  onSelectTab?: (key: string) => void
 }) {
+  const items = tabs ?? CHECK_IN_TABS.map(t => ({ key: t.key, label: t.label, to: tabHref ? tabHref(t.key) : undefined }))
   return (
     <div>
       <PageTitle crumbs={crumbs} title={title} subtitle={subtitle} action={action} />
       <div className="gwui-cih-tabs">
-        <Tabs
-          active={active}
-          items={CHECK_IN_TABS.map(t => ({ key: t.key, label: t.label, to: tabHref(t.key) }))}
-        />
+        <Tabs active={active} items={items} onChange={onSelectTab} />
       </div>
     </div>
   )
