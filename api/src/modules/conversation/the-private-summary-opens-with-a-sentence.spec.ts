@@ -44,7 +44,8 @@ describe('the private summary opens with a sentence', () => {
   });
 
   it('the prompt no longer asks for the colon opening', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).not.toContain('Open with the exact phrase "What you shared:"');
     expect(src).toContain('Open with the sentence "Here is what you shared." on its own');
   });
