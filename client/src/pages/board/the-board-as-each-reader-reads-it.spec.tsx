@@ -268,15 +268,26 @@ describe('what keeps coming up', () => {
     await waitFor(() => expect(within(card).getByText(/The buyer keeps delaying\./)).toBeTruthy())
   })
 
-  it('an admin who only reads sees everybody’s, the same as the lead', async () => {
+  /*
+   * UPDATED, U.4 REVIEW ROUND (30 Sept), ITEM 1: THE MORE PRIVATE OPTION, UNTIL HAFSAH DECIDES
+   * (Needs Hafsah 0-pat2, request 84).
+   *
+   * This used to assert an admin who only reads sees everybody's pattern, "the same as the lead" -
+   * because the server serves `eachPerson` under the same test as `patterns`, whoever runs the
+   * check-in, admin included. But a colleague's own report and screens tell them their pattern
+   * reaches only the person who RUNS the check-in - not every admin who can merely read it - so
+   * drawing it here for a reading admin made that promise false. Until Hafsah answers, the board
+   * itself is the more private of the two readings: `viewerRunsThisCheckIn` gates a colleague's
+   * pattern, not the wider `eachPerson` signal. An admin who runs nothing here now reads nobody
+   * else's pattern, the same as any other reader who is not running it.
+   */
+  it('an admin who only reads sees nobody else’s pattern, even though the payload carries one', async () => {
     me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
-    // The server serves `eachPerson` under the exact same test as `patterns` - whoever runs the
-    // check-in, an admin included (see the comment on `runsThisCheckIn` in BoardPage.tsx).
     renderBoard({ ...AS_AN_ADMIN, sections: ['objectives', 'patterns'], patterns: [miriamsPattern, aishasPattern], eachPerson: AS_THE_LEAD.eachPerson })
     await screen.findByText('What keeps coming up')
     const card = cardAfter('What keeps coming up')
-    expect(within(card).getByText('Miriam Wanjiku')).toBeTruthy()
-    expect(within(card).getByText('Aisha Otieno')).toBeTruthy()
+    expect(within(card).queryByText('Miriam Wanjiku')).toBeNull()
+    expect(within(card).queryByText('Aisha Otieno')).toBeNull()
   })
 
   it('“The team today” carries what keeps coming up under each person’s own line, lead only', async () => {

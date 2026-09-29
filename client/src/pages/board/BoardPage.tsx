@@ -534,13 +534,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * only, everybody's for whoever runs the check-in - its lead, whoever set it up, or an admin of
    * its organisation (`runsIt`, the same test `board.service.ts` calls `runsThisGround`). `eachPerson`
    * is served under that exact same test (`has('checkInGrid') && runsThisGround`), so its presence
-   * is this page's own signal for "this reader runs it" - `viewerRunsThisCheckIn` alone is narrower
-   * (the initiator only) and would wrongly hide another person's pattern from an admin who may read
-   * it. `.yours` is kept here too, so a colleague's board never draws another person's pattern even
-   * if this page is ever handed one by mistake - the rule this file must never be the one to weaken.
+   * used to stand in for "this reader runs it" here too - which wrongly drew another person's
+   * pattern for an admin who only reads the board and does not run it.
+   *
+   * U.4 REVIEW, ITEM 1: THE MORE PRIVATE OPTION, UNTIL HAFSAH DECIDES (Needs Hafsah 0-pat2, request
+   * 84). An admin who only reads is told, on their own report and elsewhere, that a colleague's
+   * pattern reaches only the person who runs the check-in - so drawing it for that same admin here
+   * made the promise untrue. Until she answers, a colleague's pattern is drawn only for
+   * `viewerRunsThisCheckIn` (the lead, or whoever set this check-in up), never for an admin who
+   * merely has read access to it. `.yours` is kept here too, so a colleague's board never draws
+   * another person's pattern even if this page is ever handed one by mistake - the rule this file
+   * must never be the one to weaken.
    */
-  const runsThisCheckIn = viewerRunsThisCheckIn || Array.isArray(b.eachPerson)
-  const visiblePatterns = (b.patterns ?? []).filter((p) => runsThisCheckIn || p.yours)
+  const visiblePatterns = (b.patterns ?? []).filter((p) => viewerRunsThisCheckIn || p.yours)
   const nameByParticipantId = new Map((b.participants ?? []).map((p) => [p.id, p.name]))
   const patternPersonName = (participantId: string, yours: boolean) =>
     (participantId === b.myParticipantId ? 'You' : nameByParticipantId.get(participantId)) || (yours ? 'You' : 'A colleague')
