@@ -211,6 +211,17 @@ Tests: 752 files and 6,907 tests pass in the parts touched.
 
 **The whole API test suite passes at `c645570c`: 1,184 files and 10,986 tests.**
 
+**Week 12: the lead's board says what has stayed the same for three check-ins** (`70ff1ce3`). A new part of the board, `toLookAt`, reaches only the person who runs the check-in. It comes from the record, never from a rating. It covers a promise still open after being made in three or more check-ins, and a blocker said again three check-ins later. Things settled, cleared or worked round are left out. It shows at most five. What the lead reads:
+- "Samuel Kariuki has had the same thing in the way for 3 check-ins. … So far it has only been asked about. Chasing it, or asking someone else, would move it."
+- "Samuel Kariuki has made the same promise for 3 check-ins. … Nobody has said yet whether it happened. Asking Samuel what is stopping it, or agreeing to drop it, would settle it."
+- Someone who gave no name is "A colleague", never their email address.
+
+The name is being shortened to "Samuel" after its first use, as the prototype does. Not done yet:
+- the alert on the latest report and on Today;
+- the prototype's "the same 5 leads", because the record has no rows per lead to count.
+
+**Week 12c:** an unnamed person in the lead's list of what to ask was headed "Somebody", and is now "A colleague" (`0b6736d1`). The rest was already done.
+
 **Run-19, the day's second full run, started at 17:37** on `c645570c`, in three parts. The two privacy items from the live check are being built alongside it. They filter what is served, so their tests prove them, not the run. Both are now done:
 - **A goal the lead has not told the person about reaches only the lead** (`7a81746c`). Tobi's You board listed "Take over the scheduling." before Wanjiru had spoken to him about it. As Tobi, the report read "Tobi Adewale has started well. Wanjiru Mwangi expects Tobi Adewale to take over the scheduling. Both have answered." It now reads "Tobi Adewale has started well. Both have answered." The lead reads all of it. This goes by what the lead chose ("not told"). It does not go by whether the person has opened the Context page, because that would hide every goal forever.
 - **A colleague's target in the lead's own words stays with its owner** (`1ea89d29`). Femi read "Ngozi Eze is trying to get 14 new facilities approved and have N42 million disbursed." Now that sentence reaches only Ngozi and the lead. Femi still reads his own ("Femi Okonkwo is trying to get 12 new facilities approved."). A number counts as a target only in a sentence about a target, so "the first 90 days" and years stay.
