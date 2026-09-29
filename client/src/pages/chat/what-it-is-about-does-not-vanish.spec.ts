@@ -80,13 +80,16 @@ describe('what this check-in is about', () => {
   })
 
   it('and renders when the lead wrote a description but set no objectives', () => {
-    /* The condition tested `subject` and `objectives` while the body also rendered `says`, so a
-       brief that held only the lead's own description drew nothing. */
-    expect(PAGE).toMatch(/*
-     * `says` is a declared field on CheckInBrief now rather than something read through a cast, so
-     * the condition no longer needs `(brief as any)`. Same rule, same three parts: the band shows
-     * when any one of them exists. See the-band-says-why-the-list-is-short.
+    /**
+     * The condition tested `subject` and `objectives` while the body also rendered `says`, so a
+     * brief that held only the lead's own description drew nothing. `says` is a declared field on
+     * `CheckInBrief` now rather than something read through a cast, so the condition no longer
+     * needs `(brief as any)`. Same rule, same three parts: the panel shows when any one of them
+     * exists. See the-band-says-why-the-list-is-short.
+     *
+     * ROUND 6, ITEM 2: THE CONDITION MOVED INTO ITS OWN CONST, `hasAboutContent` - read both by
+     * the quiet link (is there anything to open) and the panel it opens.
      */
-    /brief && \(brief\.subject \|\| brief\.says \|\| brief\.objectives\.length > 0\)/)
+    expect(PAGE).toMatch(/const hasAboutContent = !!brief && !!\(brief\.subject \|\| brief\.says \|\| brief\.objectives\.length > 0\)/)
   })
 })

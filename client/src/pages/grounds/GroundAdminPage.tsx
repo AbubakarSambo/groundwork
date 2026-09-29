@@ -1,17 +1,17 @@
-import { whatAnAdminHereCanSee } from '@/lib/what-an-admin-here-can-see'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
 import { whenItRunsOut, sayHowLongIsLeft } from '@/lib/when-it-runs-out'
 import { plannedSessionsFor, everySessionDone } from '@/lib/sessionCount'
 import { hasDoneThisSession, whichSessionIsThisCheckInOn } from '@/lib/which-session-are-we-on'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { railAttention } from '@/lib/rail-attention'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
-import { GroundChat } from '@/components/gw/GroundChat'
-import { MyRecord } from '@/components/gw/MyRecord'
+import { YourWork } from '@/components/gw/checkin/YourWork'
+import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
+import { Note } from '@/components/gw/ui/Note'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -22,7 +22,6 @@ import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
 import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
 import { personLabel as onePersonsLabel, peopleLabels, atTheStart } from '@/lib/utils'
-import { stepsYouHaveChecked, rememberYouCheckedIt, forgetYouCheckedIt, howFarThroughSetup } from './the-setup-steps-you-have-checked'
 import { TheReportIsAListOfSessions, type SessionRow } from '@/components/gw/TheReportIsAListOfSessions'
 import { buildSessionRows } from '@/lib/session-rows'
 import { reportsApi } from '@/api/reports'
@@ -36,19 +35,19 @@ import { PostSessionPanel } from '@/components/PostSessionPanel'
 import { Sec, TextAction } from '@/components/gw/kit'
 import { ShareSection } from './ShareSection'
 import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
+import { useOpenSession } from '@/hooks/useOpenSession'
+import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
+import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
+import { whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
-import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
-import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
-import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
-import { Tabs } from '@/components/gw/ui/Tabs'
 import { useAskStore } from '@/stores/ask'
 import { billingApi } from '@/api/billing'
 import { SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
-import { whoIsInRound, countsInRound } from '@/lib/who-is-in-this-round'
+import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
@@ -139,7 +138,7 @@ const TO_TAB_KEY: Partial<Record<Tab, string>> = {
  * stay, because they are the order the questions were asked in when the check-in was set up.
  */
 function Fold({
-  n, title, src, summary, open, openOverride, onToggle, children, checked, onCheck,
+  n, title, src, summary, open, openOverride, onToggle, children,
 }: {
   n: number
   title: string
@@ -151,9 +150,6 @@ function Fold({
   openOverride?: boolean
   onToggle: () => void
   children: React.ReactNode
-  /** Whether the person has signed this question off. See the-setup-steps-you-have-checked.ts. */
-  checked?: boolean
-  onCheck?: () => void
 }) {
   const isOpen = open || !!openOverride
   return (
@@ -167,17 +163,12 @@ function Fold({
           fontFamily: 'inherit', textAlign: 'left',
         }}
       >
-        {/*
-          THE NUMBER, OR A TICK ONCE IT HAS BEEN SIGNED OFF.
-          The tick takes the number's place rather than sitting beside it: a row carrying both a
-          number and a tick is two marks for one thing, and the order is what the numbers are for.
-        */}
         <span style={{
           flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
-          background: checked ? 'var(--gw-green-b)' : isOpen ? 'var(--gw-navy)' : 'var(--gw-bg)',
-          color: checked ? 'white' : isOpen ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
+          background: isOpen ? 'var(--gw-navy)' : 'var(--gw-bg)',
+          color: isOpen ? 'white' : 'var(--gw-muted)', fontSize: 10.5, fontWeight: 700,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>{checked ? '\u2713' : n}</span>
+        }}>{n}</span>
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>{title}</span>
           <span style={{ display: 'block', fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 1 }}>{isOpen ? src : summary}</span>
@@ -186,42 +177,12 @@ function Fold({
       </button>
       {isOpen && <div style={{ padding: '2px 14px 14px', borderTop: '1px solid var(--gw-border)' }}>{children}</div>}
       {/*
-        SIGNING IT OFF, AT THE BOTTOM OF THE QUESTION YOU HAVE JUST READ.
-
-        STILL NOT ON THE CLOSED ROW, and that half of the original reasoning holds: a tick beside a
-        heading nobody has opened is a tick somebody can press without reading, which is the
-        opposite of the point. Opening the question is what puts the answer on screen.
-
-        WHAT WAS WRONG WITH WHERE IT WAS. "the setup check but that says i have checked this is
-        hidden and not very visible." It sat directly under the fold's own header, above the content
-        - so it was passed on the way IN, before there was anything to sign off, as a bare line of
-        text with a 15px box. Read as a caption on the heading, and missed.
-
-        It is the last thing in the question now, on its own bar, which is where somebody arrives
-        having actually read the answer. The closed row still turns its number into a tick, so the
-        state is visible with everything shut; this is the act.
+        REVIEW ROUND 3, ITEM 3: THE SIGN-OFF BAR IS REMOVED - "I have read this - sign it off" was
+        a second confirmation on top of the setup questions themselves, and Hafsah's own call was
+        that the prototype's "Yes, set it" (the confirmation that actually changes a setting,
+        ContextChat.tsx) is enough. Removed for everyone, not only for an admin who does not run
+        the check-in.
       */}
-      {isOpen && onCheck && (
-        <div style={{ borderTop: '1px solid var(--gw-border)', background: checked ? 'var(--gw-green-bg)' : 'var(--gw-paper-2)' }}>
-          <button
-            onClick={onCheck}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px',
-              background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: 12.5, fontWeight: 600, textAlign: 'left',
-              color: checked ? 'var(--gw-green-t)' : 'var(--gw-sub)',
-            }}
-          >
-            <span style={{
-              width: 17, height: 17, borderRadius: 4, flexShrink: 0,
-              border: `1.5px solid ${checked ? 'var(--gw-green-b)' : 'var(--gw-muted)'}`,
-              background: checked ? 'var(--gw-green-b)' : 'white', color: 'white',
-              fontSize: 11, lineHeight: '15px', textAlign: 'center', fontWeight: 700,
-            }}>{checked ? '\u2713' : ''}</span>
-            {checked ? 'You have signed this off' : 'I have read this - sign it off'}
-          </button>
-        </div>
-      )}
     </div>
   )
 }
@@ -260,6 +221,16 @@ export function GroundAdminPage() {
   const showAsk = useAskStore((s) => s.show)
   /* U.6: WhatsApp is only mentioned while it is switched on (GET /auth/whatsapp), as well as connected. */
   const whatsAppIsOn = useWhatsAppIsOn()
+  /**
+   * REVIEW ROUND 3, ITEM 2: THE LEAD'S CHECK-IN TAB OPENS HER OWN CONVERSATION DIRECTLY.
+   *
+   * It used to send her to `/grounds/:id/p?open=1` to borrow GroundParticipantPage's own
+   * paywall-aware opening flow - a second page, with its own header and its own "Start my
+   * check-in", for what should read as one check-in. Same shared hook that page now uses (see
+   * useOpenSession.ts), called from here instead, so the lead never leaves this page for her own
+   * session.
+   */
+  const { open: openMySession, paywall } = useOpenSession(id)
   /**
    * CHECK-INS FIRST, because that is what a ground is for.
    *
@@ -332,19 +303,16 @@ export function GroundAdminPage() {
   const [openSetupBand, setOpenSetupBand] = useState<number>(1)
   /* The start date as typed, against the one on record, so the save button knows if anything moved. */
   const [startsAtDraft, setStartsAtDraft] = useState('')
-  /* Which setup questions this person has signed off. Kept in this browser - see the module. */
-  /**
-   * A SIGN-OFF IS A RECORD NOW, so it is read from the server rather than from this browser. See
-   * the-setup-steps-you-have-checked.ts for why it moved.
+  /*
+   * REVIEW ROUND 3, ITEM 3: THE SIGN-OFF STEP IS REMOVED - HER OWN INSTRUCTION, FOR EVERYONE, NOT
+   * ONLY FOR AN ADMIN WHO DOES NOT RUN THE CHECK-IN.
+   *
+   * "I have read this - sign it off" was a second confirmation nobody asked for, on top of the
+   * setup questions themselves; the prototype's own "Yes, set it" (ContextChat.tsx) is the
+   * confirmation that matters - it is what actually changes a setting. `stepsYouHaveChecked` /
+   * `rememberYouCheckedIt` / `forgetYouCheckedIt` / `howFarThroughSetup`, the whole sign-off
+   * record and its tally, went with the button that called them.
    */
-  const { data: signedOff } = useQuery({
-    queryKey: ['setup-sign-offs', id],
-    queryFn: () => stepsYouHaveChecked(id!),
-    enabled: !!id,
-  })
-  /* Held locally as well so a press shows instantly and does not wait on a round trip for a tick. */
-  const [setupCheckedLocal, setSetupCheckedLocal] = useState<number[] | null>(null)
-  const setupChecked = setupCheckedLocal ?? signedOff ?? []
   const [shareCodeId, setShareCodeId] = useState<string | null>(null)
   const [lastInvitedEmail, setLastInvitedEmail] = useState<string | null>(null)
   // Fix-and-resend for bounced invites (participant must not have accepted)
@@ -473,14 +441,25 @@ export function GroundAdminPage() {
    * A check-in is per participant per session, so "the open one" only means anything once
    * it is narrowed to the person asking.
    */
-  const myParticipantId = (ground?.participants ?? []).find((p: any) => p.userId === user?.id)?.id ?? null
+  const myParticipant = (ground?.participants ?? []).find((p: any) => p.userId === user?.id) ?? null
+  const myParticipantId = myParticipant?.id ?? null
   const myOpenCheckIn = myParticipantId
     ? ((ground?.checkIns ?? []) as any[])
         .filter((c) => c.participantId === myParticipantId && c.status !== 'COMPLETED')
         .sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))[0] ?? null
     : null
   const myOpenAvailableFrom = (myOpenCheckIn as any)?.availableFrom ?? null
-  const myOpenOpensLater = !!myOpenAvailableFrom && new Date(myOpenAvailableFrom).getTime() > Date.now()
+  /* REVIEW ROUND 3, ITEM 1's RULE, HERE TOO: an IN_PROGRESS session is open, whatever its
+     availableFrom says - that date gates a session that has not started, not one already
+     running. Same fix as GroundParticipantPage.tsx's myOpenForAutoOpen/opensLater. */
+  const myOpenOpensLater = !!myOpenAvailableFrom && new Date(myOpenAvailableFrom).getTime() > Date.now() && (myOpenCheckIn as any)?.status !== 'IN_PROGRESS'
+  /**
+   * THE SAME TWO VALUES THE COMPOSER (AND, BEFORE ROUND 4, GroundChat) READ FOR "OPENS ON" - see
+   * nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check,
+   * and the Check-in tab's own redirect below, which uses `myOpenCheckInId` the same way.
+   */
+  const myOpenCheckInId = myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.id : null
+  const myNextOpensAt = myOpenOpensLater ? myOpenAvailableFrom : null
 
   /**
    * "HAFSAH · WAITING", LOWERCASE, IN THE ROSTER. W-UX-4.
@@ -510,6 +489,9 @@ export function GroundAdminPage() {
 
   /* The server's answer, which is what its routes test. The local formula stays only for the moment before the read lands. */
   const isInitiator = (ground as any)?.viewerIsInitiator ?? (!!ground && user?.id === ground.initiatorId)
+  /* Same rule as GroundParticipantPage.tsx's canPayHere: both routes behind the paywall buttons
+     are admin-only on the server. */
+  const canPayForMySession = isInitiator && user?.role === 'ADMIN'
 
   /**
    * WHO GETS THE ADMIN VIEW. Her decision: the lead of that ground, and org admins
@@ -536,6 +518,50 @@ export function GroundAdminPage() {
    * further down for the roster; named here because the tab row asks it too.
    */
   const viewerIsAParty = (ground?.participants ?? []).some((p: any) => p.userId === user?.id)
+
+  /**
+   * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION, FOR A PARTY.
+   *
+   * `GroundChat`'s reading-and-hand-off experience is retired from this tab now that its two other
+   * jobs (the session history, "who is in this") have somewhere to live (My work, People and
+   * setup). A lead who is also a party is a real participant with her own check-in to answer - the
+   * commonest case - so her Check-in tab goes straight to it.
+   *
+   * REVIEW ROUND 3, ITEM 2: NO MORE HAND-OFF TO THE PARTICIPANT PAGE. The `?open=1` trip to
+   * `/grounds/:id/p` was there only to borrow that page's paywall-aware opening flow - now
+   * `useOpenSession` (above), the same call the participant page itself makes. The lead's own
+   * conversation opens from here, and she never lands on the other page for her own check-in.
+   *
+   * A `useEffect`, not a render-time `<Navigate>`, so this follows the same pattern the other
+   * effect in this file (below) uses, and placed here - before every early return - so the hook
+   * count cannot change between renders (rules of hooks), the same reason `showAsk` moved up top.
+   */
+  const myOpenSessionAutoOpenFired = useRef(false)
+  useEffect(() => {
+    if (tab !== 'chat' || !viewerIsAParty) return
+    if (myOpenSessionAutoOpenFired.current) return
+    if (!myOpenCheckIn || myOpenOpensLater) return
+    myOpenSessionAutoOpenFired.current = true
+    openMySession(myOpenCheckIn, {
+      isFreeGround: (ground as any)?.isFreeGround,
+      groundLabel: (ground as any)?.label,
+      isInitiator,
+    })
+  }, [tab, viewerIsAParty, myOpenCheckIn, myOpenOpensLater, openMySession, ground, isInitiator])
+
+  /**
+   * REVIEW ROUND 3, ITEM 3: AN ADMIN WHO NEITHER RUNS THIS CHECK-IN NOR TAKES PART IN IT LANDS ON
+   * A TAB THE READ-ONLY ROW STILL SHOWS. The tab bar itself already drops Check-in and My work for
+   * this reader (see the header below); this catches the default landing tab (`chat`) and a link
+   * carrying `?tab=checkins`/`report`/`record`, and sends them to Context instead - one of the
+   * three tabs they do have.
+   */
+  useEffect(() => {
+    if (isInitiator || viewerIsAParty) return
+    const inMyWorkGroup = (['report', 'checkins', 'myrecord'] as Tab[]).includes(tab)
+    if (tab !== 'chat' && !inMyWorkGroup) return
+    goTab('docs')
+  }, [isInitiator, viewerIsAParty, tab])
 
   /**
    * A LEAD'S OWN RECORD, FETCHED ONLY WHEN THEY ARE IN THE CHECK-IN.
@@ -1142,15 +1168,6 @@ export function GroundAdminPage() {
     n,
     open: openSetupBand === n,
     onToggle: () => setOpenSetupBand((cur) => (cur === n ? -1 : n)),
-    checked: setupChecked.includes(n),
-    onCheck: () =>
-      {
-        const taking = setupChecked.includes(n)
-        /* Shown at once, then reconciled with what the server says it holds. */
-        setSetupCheckedLocal(taking ? setupChecked.filter(x => x !== n) : [...setupChecked, n].sort((a, b) => a - b))
-        const call = taking ? forgetYouCheckedIt(id!, n) : rememberYouCheckedIt(id!, n)
-        call.then(steps => setSetupCheckedLocal(steps)).catch(() => setSetupCheckedLocal(null))
-      },
   })
 
   const mySessionsDone = ((ground?.checkIns ?? []) as any[]).filter(
@@ -1290,6 +1307,48 @@ export function GroundAdminPage() {
     return 'mywork'
   }
 
+  /**
+   * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", COMPUTED ONCE, FOR People and setup.
+   *
+   * Exactly the values GroundChat used to compute inline for GroundTopic - moved up here,
+   * unchanged, so WhoIsInThis (in the Setup tab, below) reads the same roster GroundChat's Check-in
+   * tab used to show. See the comments at each of these call sites, kept there rather than
+   * repeated here.
+   */
+  /*
+    PEERS ARE NOT HIDDEN FROM WHOEVER RUNS THE CHECK-IN.
+
+    `peersVisibleEffective` is the rule between the PARTIES - on an evaluation-family ground they
+    check in without seeing each other. Passed straight through, this view showed a lead or an org
+    admin the party sentence: "Your lead knows who is here; you will not see the others or what
+    they wrote, and they will not see you." Said to an admin, on a page that lists both parties by
+    name and email on the very next tab, and whose own banner reads "You can see everything here,
+    which is the point of being an admin". Found walking a second admin of a real organisation.
+
+    The rule has not changed for anybody it applies to. This view is the one that runs the
+    check-in, so it is not one of them.
+  */
+  const whoIsInThisPeersHidden = (ground as any).peersVisibleEffective === false && !canRunThisGround
+  /* NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12. `myOpenCheckInId`/`myNextOpensAt`
+     computed once, above, near myOpenCheckIn/myOpenOpensLater - see
+     nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check. */
+  const whoIsInThisNotOpenYet = !myOpenCheckInId && !!myNextOpensAt
+  const whoIsInThisLeadName = (() => {
+    const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+    return lead ? personLabel(lead) : null
+  })()
+  const whoIsInThisParties = (ground.participants ?? [])
+    .filter((p: any) => !p.managingOnly)
+    .map((p: any) => {
+      const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
+      const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
+      return {
+        name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
+        done: hasDoneThisSession(theirs, current),
+        isSelf: p.userId === user?.id,
+      }
+    })
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       {/*
@@ -1310,13 +1369,21 @@ export function GroundAdminPage() {
           subtitle={(ground as any).cadence ? `${cadenceLabel((ground as any).cadence)}.` : undefined}
           action={(
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-              {/* "Your check-in" (board-as-lead.txt): the same place the Check-in tab opens. */}
-              <Link
-                to={`/grounds/${id}`}
-                style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
-              >
-                Your check-in
-              </Link>
+              {/*
+                ROUND 5, ITEM H1: ONLY OFFERED TO SOMEBODY WHO ANSWERS IT.
+                "Your check-in" (board-as-lead.txt) is the same place the Check-in tab opens - which,
+                for an admin who is not a party, is now the plain line telling her she does not
+                answer this check-in (GroundAdminPage's own tab === 'chat' branch). Offering the
+                button anyway would promise a check-in that tab does not have for her.
+              */}
+              {viewerIsAParty && (
+                <Link
+                  to={`/grounds/${id}`}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
+                >
+                  Your check-in
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={showAsk}
@@ -1327,13 +1394,26 @@ export function GroundAdminPage() {
             </div>
           )}
           active={outerTabOf(tab)}
-          tabs={[
-            { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
-            { key: 'checkin', label: 'Check-in' },
-            { key: 'context', label: contextEnabled ? 'Context' : 'Documents' },
-            { key: 'mywork', label: 'My work' },
-            { key: 'people', label: 'People and setup' },
-          ]}
+          tabs={
+            /**
+             * REVIEW ROUND 3, ITEM 3: THREE TABS FOR AN ADMIN WHO DOES NOT RUN THIS CHECK-IN AND
+             * IS NOT A PARTY TO IT EITHER - the prototype's read-only view (A4,
+             * read-only-view.jpg/.txt): Board, Context, People and setup. No Check-in (there is
+             * none of theirs to answer) and no My work (nothing of theirs to carry). An admin who
+             * IS also a party keeps the full row - they have their own check-in like anybody else.
+             *
+             * Filtered from ONE list (not two literal arrays) so "/board`" - which
+             * one-door-per-place.spec.ts pins at an exact count - still appears once here, not
+             * once per branch.
+             */
+            [
+              { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
+              { key: 'checkin', label: 'Check-in' },
+              { key: 'context', label: contextEnabled ? 'Context' : 'Documents' },
+              { key: 'mywork', label: 'My work' },
+              { key: 'people', label: 'People and setup' },
+            ].filter(t => (isInitiator || viewerIsAParty) || (t.key === 'board' || t.key === 'context' || t.key === 'people'))
+          }
           onSelectTab={(k) => {
             if (k === 'checkin') goTab('chat')
             else if (k === 'context') goTab('docs')
@@ -1342,24 +1422,24 @@ export function GroundAdminPage() {
           }}
         />
         {/*
-          U.10 PICTURE-CHECK ROUND 7, ITEM 3: ONE PLAIN LINE, NOT PIECES SIDE BY SIDE.
-
-          "Everyone in it can see this, and you are an admin here, not its lead." is real signal
-          (which of the two views this is), kept as its own small sentence. The green "live" dot,
-          the old moment pill and its comments are gone with it - the moment pill was already
-          replaced by the scenario line below, and the dot duplicated what "ACTIVE" already says
-          nowhere a reader needed it twice.
-
-          THE "2 agreed, nothing still open" CORNER IS GONE. It was a clipped fragment (no subject,
-          no verb) sitting opposite the title, and duplicated the report's own headline the moment
-          the report tab existed - the same reasoning that already dropped it while `report` was
-          the active tab. Dropped everywhere now, per the instruction, rather than turned into a
-          sentence this pass cannot verify is true.
+          ROUND 5, ITEM H1: ONE NOTE, NOT TWO. This page used to say "you are not the lead" twice -
+          this small plain line, and a separate blue box further down repeating the same fact in
+          more words. The prototype's own admin sentence (read-only-view.txt, A4): "You can read
+          this check-in's board and reports. Wairimu Kamau runs it." - plain text under the tabs,
+          not a callout - so that is what says it now, once, here. The old blue box (and its own
+          history: it used to read `lead.email`, which is always null for the only people who see
+          it, and fell back to the broken fragment "its lead runs this check-in.") is gone with it.
         */}
         {!isInitiator && (
-          <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '10px 16px 0' }}>
-            Everyone in it can see this, and you are an admin here, not its lead.
-          </p>
+          <Note>
+            You can read this check-in’s board and reports. {(() => {
+              const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+              const first = (lead?.user?.firstName ?? '').trim()
+              const last = (lead?.user?.lastName ?? '').trim()
+              const name = [first, last].filter(Boolean).join(' ')
+              return name || 'Its lead'
+            })()} runs it.
+          </Note>
         )}
 
         {/* Sessions are per-participant-per-session, so count DISTINCT session
@@ -1376,7 +1456,15 @@ export function GroundAdminPage() {
           * three answers. Nothing is removed: the facts keep their line, and this sits above it only
           * when there is something to say.
           */}
-        {(() => {
+        {/*
+          REVIEW ROUND 3, ITEM 3: NOT FOR A NON-RUNNING ADMIN.
+          The prototype's read-only view carries one sentence ("You can read this check-in's
+          board and reports. <lead> runs it.") and nothing else the lead reads about running it -
+          not "2 of the 6 have not answered yet.", not the session line, not "How to run one".
+          Both this attention line and the session-line paragraph further down are wrapped on
+          `isInitiator` now; an org admin who is not the lead still sees the one sentence above.
+        */}
+        {isInitiator && (() => {
           const a = attention
           const say =
             a.kind === 'overdue' ? { t: a.daysLate === 1 ? 'Your turn - 1 day late' : `Your turn - ${a.daysLate} days late`, c: 'var(--gw-amber-t)' }
@@ -1463,7 +1551,9 @@ export function GroundAdminPage() {
           of 12. It ends on 13 December 2026. 4 of 6 people have checked in for session 1." - with
           "How to run one" kept as its own link rather than a piece of the sentence.
         */}
-        {(() => {
+        {/* REVIEW ROUND 3, ITEM 3: THE SESSION LINE (AND "How to run one") IS NOT FOR A
+            NON-RUNNING ADMIN EITHER - same rule as the attention line above. */}
+        {isInitiator && (() => {
           const parts: string[] = []
           if (ended) {
             parts.push(ended)
@@ -1548,61 +1638,6 @@ export function GroundAdminPage() {
         )}
 
         {/*
-          AN ORG ADMIN LOOKING AT SOMEBODY ELSE'S GROUND. W8-32.
-          
-          Her note: "the org admin view should differ, today it is subtraction." The
-          gate now decides WHO gets in - the lead of the ground, or an org admin - and
-          for an admin who is not the lead the view was still identical to the lead's,
-          including the two actions that cannot be undone.
-          
-          This ADDS the frame rather than removing controls. Hiding them is the
-          subtraction she was describing, and it also removes the only oversight an
-          admin has: an admin who cannot see that a report is sitting unreleased for
-          three weeks cannot do anything about it. So they see everything, and they are
-          told plainly whose ground it is and which decisions belong to that person.
-        */}
-        {isOrgAdmin && !isInitiator && (
-          <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 15px', marginBottom: 16 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-              You are looking at this as an admin, not as its lead
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-              {(() => {
-                /**
-                 * IT SAID "its lead runs this check-in." W8-66.
-                 *
-                 * Two bugs in one line, both visible the moment an org admin opened
-                 * somebody else's ground:
-                 *
-                 * 1. It read `lead.email`, and `grounds.service.ts:872` NULLS the email
-                 *    for a viewer who is neither the person nor the ground's lead - on
-                 *    purpose. So for the only people who ever see this banner, the field
-                 *    it depends on is always empty, and the fallback always fired.
-                 * 2. The fallback was the lowercase fragment "its lead", which starts a
-                 *    sentence, so the banner read "its lead runs this check-in." - a broken
-                 *    template, on an admin's first look at a colleague's ground.
-                 *
-                 * The name is in the payload the whole time: `SAFE_PARTICIPANT_SELECT`
-                 * pulls `user.firstName` precisely so somebody can be named when their
-                 * email is hidden. Using the address to make a name was the W10-2 mistake
-                 * anyway - "hafsah@meridian.test" is not what that person is called.
-                 */
-                const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-                const first = (lead?.user?.firstName ?? '').trim()
-                /* U.7 review: it said "You can see everything here", over a page that cannot open
-                   the documents or each person's share. See what-an-admin-here-can-see. */
-                return whatAnAdminHereCanSee({
-                  leadName: [first, (lead?.user?.lastName ?? '').trim()].filter(Boolean).join(' ') || null,
-                  leadFirstName: first || null,
-                  inIt: !!myParticipantId,
-                })
-              })()}
-            </div>
-          </div>
-        )}
-
-
-        {/*
           WHO WAS NOT INVITED, said on the page the admin actually lands on.
           
           Adding people happens one call at a time, so a refusal for one of them — a seat limit, an
@@ -1630,137 +1665,46 @@ export function GroundAdminPage() {
         )}
 
         {/* CHECK-INS */}
+        {/**
+          * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION, FOR A PARTY.
+          *
+          * For a party the `useEffect` above (right after `viewerIsAParty`) has already sent her
+          * to `/checkin/:id` or the `?open=1` hand-off by the time anybody would see this render -
+          * this is only ever seen for the instant before that navigation lands. For a lead or org
+          * admin who is NOT a party, there is no check-in of theirs to answer: `GroundChat`'s
+          * read-only history used to stand in for that; it is retired now that the history it drew
+          * lives on My work and the roster it drew lives on People and setup, so this says plainly
+          * that this reader does not answer the check-in, and links to the board instead.
+          */}
         {tab === 'chat' && (
-          // The same component the participant view mounts, so there is one chat in the
-          // product rather than a lead's version of one. A lead is not checking in here -
-          // this is the ground's history, which is what they came to read.
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <GroundChat
-              groundId={id!}
-              /**
-               * THE WAY TO CHECK IN CAME OFF THE PAGE, AND THE GATE CAUGHT IT. W8-76.
-               *
-               * I made Chat the landing tab and passed `openCheckInId={null}`, so a lead who
-               * is also a party - the commonest kind - opened their ground and had no way to
-               * start their own check-in from the tab they land on. suite_m failed on exactly
-               * that: "the next-check-in affordance EXISTS on the ground page (hard - absence
-               * is a failure, not a shrug)". It was right.
-               *
-               * WHY THE BUTTON HANDS OFF INSTEAD OF OPENING. Starting a check-in goes through
-               * `probeSession`, which carries the paywall: a 403 becomes the free-extension /
-               * access-code / subscribe modal. That lives on the participant page, and
-               * copying it here would be a second copy of the payment path - the thing this
-               * plan already records nearly losing once. So the button hands off with
-               * `?open=1` and that page fires its own probe immediately: one click, one
-               * implementation of the paywall.
-               */
-              openCheckInId={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.id : null}
-              openSessionNumber={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.sessionNumber : null}
-              totalSessions={plannedSessions ?? null}
-              nextOpensAt={myOpenOpensLater ? myOpenAvailableFrom : null}
-              /* Only the person who runs it can change the rhythm, so only they are told they can. */
-              canChangeTheRhythm={true}
-              onGoToSetup={() => goTab('settings' as Tab)}
-              onOpenSession={() => navigate(`/grounds/${id}/p?open=1`)}
-              openPending={false}
-              /**
-                * HER POINT, AND IT IS THE COMMON CASE: "what if sets themselves as
-                * checkin in too, they need a chat".
-                *
-                * Step 6 of setup offers "I am a party. Let's begin." A lead who takes it
-                * is a participant with their own check-ins, and they must get the real
-                * conversation - not a read-only history of a ground they are in. So this
-                * keys on whether they are actually a party, not on whether they are the
-                * lead. Lead who is a party: the chat. Lead or org admin who is not: the
-                * ground's history, because there is no transcript of theirs to show and
-                * somebody else's is not theirs to read.
-                */
-              viewerIsParty={(ground.participants ?? []).some((p: any) => p.userId === user?.id)}
-              /* The same roster the participant view now shows. W13-5. */
-              /*
-                PEERS ARE NOT HIDDEN FROM WHOEVER RUNS THE CHECK-IN.
-
-                `peersVisibleEffective` is the rule between the PARTIES - on an evaluation-family
-                ground they check in without seeing each other. Passed straight through, this view
-                showed a lead or an org admin the party sentence: "Your lead knows who is here; you
-                will not see the others or what they wrote, and they will not see you." Said to an
-                admin, on a page that lists both parties by name and email on the very next tab, and
-                whose own banner reads "You can see everything here, which is the point of being an
-                admin". Found walking a second admin of a real organisation.
-
-                The rule has not changed for anybody it applies to. This view is the one that runs
-                the check-in, so it is not one of them.
-              */
-              peersHidden={(ground as any).peersVisibleEffective === false && !canRunThisGround}
-              /* Names, not roles (U.8 third review): whoever runs the check-in, by their own name. */
-              leadName={(() => {
-                const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-                return lead ? personLabel(lead) : null
-              })()}
-              viewerIsTheLead={isInitiator}
-              parties={(ground.participants ?? [])
-                .filter((p: any) => !p.managingOnly)
-                .map((p: any) => {
-                  /**
-                   * `plannedSessions` used to be the fallback here, which is the total rather than
-                   * the position - on a six-session ground that made every roster read "waiting"
-                   * forever. One answer for both pages now.
-                   */
-                  /**
-                   * THE SESSION THE CHECK-IN IS ON, NOT THE ONE THIS READER IS ON.
-                   *
-                   * This passed `myOpenCheckIn` - the VIEWER's own open check-in - and then judged
-                   * everybody's chip against it. A lead who had finished session 2 while nobody
-                   * else had made the whole roster answer for session 1, so every chip read
-                   * "checked in" directly above "0 of 2 checked in for session 2". Both were right
-                   * and together they read as the product losing the record.
-                   *
-                   * `openRound` is the counter's own number. One session, named once.
-                   */
-                  /* And there is no session after the last: when everybody has finished a one-session check-in,
-                     the roster is judged against that session, not against a second that does not exist. */
-                  const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
-                  const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
-                  return {
-                    name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
-                    done: hasDoneThisSession(theirs, current),
-                    isSelf: p.userId === user?.id,
-                  }
-                })}
-              history={[...(ground.checkIns ?? [])]
-                .reduce((acc: any[], ci: any) => {
-                  const n = ci.sessionNumber ?? 1
-                  const row = acc.find(r => r.sessionNumber === n)
-                  const who = nameOfParticipant(ci.participantId)
-                  const done = ci.status === 'COMPLETED'
-                  if (row) {
-                    if (done && who && !row.people.includes(who)) row.people.push(who)
-                    if (ci.completedAt && ci.completedAt > row.date) row.date = ci.completedAt
-                  } else {
-                    acc.push({ sessionNumber: n, date: ci.completedAt ?? ci.createdAt ?? '', people: done && who ? [who] : [] })
-                  }
-                  return acc
-                }, [])
-                .sort((a: any, b: any) => a.sessionNumber - b.sessionNumber)}
-              /*
-                U.10 PICTURE-CHECK ROUND 7, ITEM 4: WHAT EVERYONE READS, NOT THE LEAD'S OWN
-                COMPOSED WORDS. This passed the raw setup brief ("When asked who is part of this,
-                the answer was taken to mean this. Me, Baraka, and Neema. …") - the lead's own
-                working text - which ContextPage.tsx already stopped showing for exactly this
-                reason (U.7 review): it is not what the check-in actually tells people. `briefAsEveryoneReadsIt`
-                is the short read Groundwork writes from it, the same text ContextPage's
-                `whatEveryoneReads` prefers; falling back to the raw brief only when there is no
-                such read yet, same as there.
-              */
-              brief={(ground as any).briefAsEveryoneReadsIt ?? (ground as any).brief}
-              signals={((ground as any).signals ?? [])
-                .filter((sig: any) => sig.observationText)
-                .map((sig: any) => ({
-                  label: sig.code?.startsWith('D') ? 'Divergence' : 'Convergence',
-                  text: sig.observationText,
-                  session: sig.lastPeriodNumber ?? 1,
-                }))}
-            />
+          <div style={{ padding: '4px 2px' }}>
+            {viewerIsAParty ? (
+              myOpenCheckIn && !myOpenOpensLater ? (
+                <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening your check-in…</div>
+              ) : (
+                /* REVIEW ROUND 3, ITEM 2: NOTHING OPEN RIGHT NOW - the prototype's own between-check-ins
+                   card, shown here directly rather than by sending her to the participant page for it. */
+                <BetweenCheckIns
+                  groundLabel={(ground as any)?.label}
+                  nextOpensSaying={whenTheNextOneOpens(((myParticipant as any)?.checkIns ?? []) as any[], null)}
+                  groundId={id!}
+                  canChangeTheRhythm={isInitiator}
+                  onGoToSetup={() => goTab('settings')}
+                />
+              )
+            ) : (
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px' }}>
+                <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 10px' }}>
+                  You do not answer this check-in yourself. The board shows what has come from it so far.
+                </p>
+                <Link
+                  to={`/grounds/${id}/board`}
+                  style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}
+                >
+                  Go to the board
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
@@ -1773,20 +1717,12 @@ export function GroundAdminPage() {
           * shared is a party's own account. Same content as before the fold, just reached one
           * level down.
           */}
-        {inMyWork && (
-          <div style={{ marginBottom: 14 }}>
-            <Tabs
-              label="My work"
-              active={tab}
-              onChange={(k) => goTab(k as Tab)}
-              items={[
-                { key: 'report', label: 'Report' },
-                { key: 'checkins', label: 'Sessions' },
-                ...(viewerIsAParty ? [{ key: 'myrecord', label: 'What I shared' }] : []),
-              ]}
-            />
-          </div>
-        )}
+        {/*
+          REVIEW ROUND 3, "YOUR WORK" REBUILD: NO SUB-TAB ROW ANY MORE. The prototype's
+          my-record.txt has no sub-tabs at all; "Report", "Sessions" and "What I shared" are
+          reached from quiet links inside `YourWork` now (see its `onSeeEverySession`/
+          `onSeeRoster`), or by landing on "My work" itself, which always shows the flat page.
+        */}
 
         {/**
           * GATED ON BEING IN IT, NOT ONLY ON THE TAB BEING OFFERED.
@@ -1799,76 +1735,47 @@ export function GroundAdminPage() {
           * independently. This is so the screen does not offer somebody a page about themselves
           * that cannot be about them.
           */}
-        {tab === 'myrecord' && viewerIsAParty && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/*
-              THE SAME SPLIT AS THE PARTY VIEW, AND THE SAME ORDER.
-              
-              Report is the whole check-in; My record is your part of it. Your private report is
-              yours, so it sits here rather than above the shared report - which otherwise made that
-              tab mean two things at once.
-            */}
-            {/* The summary first, then the reads of it. The two views move together. */}
-            <WhatYouAreCarryingForward
-              groundId={id!}
-              mySoloReport={mySoloReport}
-              refetchSoloReport={refetchSoloReport}
-              otherParties={(ground.participants ?? [])
-                .filter((p: any) => p.userId !== user?.id)
-                .map((p: any) => ({ id: p.id, name: personLabel(p), email: p.email }))}
-            />
+        {/*
+          AN ADMIN WHO IS NOT A PARTY HAS NO "Your work" TO SHOW.
+          `YourWork` never mounts for her (it is gated on `viewerIsAParty` below, unchanged from
+          before this round), so the two quiet links inside it - "Every session", "Who has
+          answered" - never render either. She still runs this check-in (My work's own default
+          for her is already `report`, above), so both stay reachable directly rather than
+          disappearing with the sub-tab row that used to offer them unconditionally.
+        */}
+        {inMyWork && !viewerIsAParty && (
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
+            {tab !== 'report' && <TextAction onClick={() => goTab('report')} size={13}>Every session</TextAction>}
+            {tab !== 'checkins' && <TextAction onClick={() => goTab('checkins')} size={13}>Who has answered</TextAction>}
+          </div>
+        )}
 
-            {/* The same cards the party's view opens My record with. */}
-            <WhatYourRecordCanSupport
-              strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
-              trend={mySpecificity?.trend}
-              sessions={mySessionDots}
-              totalSessions={plannedSessions ?? null}
-              coverage={{
-                iHaveCheckedIn: mySessionsDone > 0,
-                answered: (ground as any)?.sessionProgress?.completed ?? mySessionsDone,
-                parties: (ground as any)?.sessionProgress?.total
-                  ?? whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length,
-                /*
-                 * ITEM D/3, U.10 RE-REVIEW: ONE SOURCE FOR "WHO IS IN THIS ROUND", ON THE SCREENS.
-                 * This filtered `!p.managingOnly` on its own, a different rule from `countsInRound`
-                 * (a managing-only lead still counts for session 1 - who-is-in-this-round.ts) - the
-                 * same population `whoIsInRound` above already uses for `parties`. Two counts on one
-                 * card that could disagree about the very thing the card is about.
-                 * The lead sees who is on their own check-in, so no fallback is needed here.
-                 */
-                waitingOn: (ground.participants ?? [])
-                  .filter((p: any) => countsInRound(p, openRound, (ground as any).scenario) && p.userId !== user?.id)
-                  .filter((p: any) => !(((p as any).checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
-                  .map((p: any) => labelInASentence(p)),
-                /* The lead's page does not fetch the shared report, and these two rows are about
-                   what it can say. Left null, so they read as not-yet rather than as absent. */
-                corroborated: null,
-                documentBackedPct: null,
-                roundsFinished: mySessionsDone,
-              }}
-              alsoNoticed={(myRecord as any)?.insightsLocked
-                ? []
-                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
-            />
-            <TheFiveThingsThatMakeItCheckable
-              dimensions={(mySessions[0] as any)?.specificityDimensions ?? null}
-              sessionNumber={(mySessions[0] as any)?.sessionNumber ?? null}
-              mostUseful={(myRecord as any)?.insightsLocked ? null : mySpecificity?.mostUseful}
-              strongest={(myRecord as any)?.insightsLocked ? null : mySpecificity?.strongest}
-            />
-            {/* MyPrivateReport is gone: the carry-forward moved to the top of the page, the session
-                list to Report, and sign-off and the two signposts were removed - what was left was an
-                empty grey box and a modal whose button had moved out from under it. */}
-            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
-            <MyRecord
-            groundId={id}
+        {tab === 'myrecord' && viewerIsAParty && (
+          <YourWork
+            groundId={id!}
             ground={ground}
             myRecord={myRecord}
+            mySoloReport={mySoloReport}
+            refetchSoloReport={refetchSoloReport}
+            specificity={mySpecificity}
+            /* The lead's page does not fetch the shared report - see the note this replaced
+               ("corroborated"/"documentBackedPct" read null for the same reason). */
+            report={null}
             totalSessions={plannedSessions ?? null}
             completedCount={mySessionsDone}
-            />
-          </div>
+            myFinishedSessions={mySessions}
+            sessionDots={mySessionDots}
+            myParticipant={myParticipant}
+            leadFirstName={(ground as any)?.leadFirstName}
+            otherParties={(ground.participants ?? [])
+              .filter((p: any) => p.userId !== user?.id)
+              .map((p: any) => ({ id: p.id, name: personLabel(p), email: p.email }))}
+            aTeamReportComes={!!(ground as any)?.aTeamReportComes}
+            /* Both quiet links at the foot: this page's own "report" and "checkins" tabs, unchanged,
+               reached without a visible sub-tab. See the notes on these props in YourWork.tsx. */
+            onSeeEverySession={() => goTab('report')}
+            onSeeRoster={() => goTab('checkins')}
+          />
         )}
 
         {tab === 'checkins' && (
@@ -1987,12 +1894,14 @@ export function GroundAdminPage() {
                                   set, or their own. Every party could edit every
                                   other party's remit, on a ground that may be
                                   deciding whether they keep their job. */}
+                              {/* REVIEW ROUND 3, ITEM 5: THE BARE "✎" HAD NO WORDS - a title
+                                  attribute is not read until a mouse hovers it, so on a phone,
+                                  or for anyone not hovering, this was an unlabelled glyph. */}
                               {(isInitiator || p.userId === user?.id) && (
                                 <button
                                   onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}
-                                  title="Edit role"
-                                  style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
-                                >✎</button>
+                                  style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                ><span aria-hidden>✎</span> Edit</button>
                               )}
                             </div>
                           )}
@@ -2000,8 +1909,11 @@ export function GroundAdminPage() {
                           <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{statusLabel}</div>
                         </div>
                         {/* Chasing people is the lead's job. A peer nudging a peer
-                            on an evaluation ground is a different act entirely. */}
-                        {isInitiator && myCheckIn?.id && status !== 'COMPLETED' && p.userId && (
+                            on an evaluation ground is a different act entirely.
+                            REVIEW ROUND 3, ITEM 5: NOT FOR HERSELF. `p.userId !== user?.id` was
+                            missing, so a lead whose own session was still open saw "Remind" on
+                            her own row - there is nobody to remind there but her. */}
+                        {isInitiator && myCheckIn?.id && status !== 'COMPLETED' && p.userId && p.userId !== user?.id && (
                           <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
                         )}
                         {!p.userId && p.inviteDeliveryStatus === 'BOUNCED' ? (
@@ -2116,8 +2028,10 @@ export function GroundAdminPage() {
                       {theirSessions.length > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, marginLeft: 40, flexWrap: 'wrap' }}>
                           {/* Two bare numerals sat under a person's name with the meaning in a tooltip nobody hovers.
-   The row says what it is. */}
-                          <span style={{ fontSize: 10, color: 'var(--gw-muted)', marginRight: 6, letterSpacing: '.04em', textTransform: 'uppercase' }}>sessions</span>
+   The row says what it is.
+   REVIEW ROUND 3, ITEM 5: NOT SHOUTED IN CAPITALS - CLAUDE.md's wording rule keeps labels
+   in plain sentence case everywhere a person reads them. */}
+                          <span style={{ fontSize: 10, color: 'var(--gw-muted)', marginRight: 6 }}>Sessions</span>
                           {theirSessions.map((ci: any) => {
                             const done = ci.status === 'COMPLETED'
                             const going = ci.status === 'IN_PROGRESS'
@@ -2183,12 +2097,14 @@ export function GroundAdminPage() {
                             {/* Read on the Sessions tab, directly under "Some sessions done, some still
                                 open": "nothing expected of them yet". Two facts about two different
                                 things, and the second did not say which thing. It is about the
-                                EXPECTATION, so it says so. */}
+                                EXPECTATION, so it says so.
+                                REVIEW ROUND 3, ITEM 5: A SENTENCE, CAPITALISED, WITH A FULL STOP -
+                                it read as a lowercase fragment trailing off the row above it. */}
                             {!p.objective?.text?.trim()
-                              ? 'no expectation set for them yet'
+                              ? 'No expectation set for them yet.'
                               : p.objective.seenBySubject
-                                ? 'expectation set, they have seen it'
-                                : 'expectation set, not seen yet'}
+                                ? 'Expectation set. They have seen it.'
+                                : 'Expectation set. Not seen yet.'}
                           </button>
                         </div>
                       )}
@@ -2559,6 +2475,20 @@ export function GroundAdminPage() {
         {/* SETTINGS */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/*
+            ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", MOVED HERE FROM THE CHECK-IN TAB.
+            GroundChat.tsx's GroundTopic used to hold this beside "About this check-in" - which
+            duplicates Context and so is not re-added here, per the prototype's own placement
+            (People and setup).
+          */}
+          <WhoIsInThis
+            parties={whoIsInThisParties}
+            peersHidden={whoIsInThisPeersHidden}
+            notOpenYet={whoIsInThisNotOpenYet}
+            viewerIsParty={viewerIsAParty}
+            leadName={whoIsInThisLeadName}
+            viewerIsTheLead={isInitiator}
+          />
           {/*
             * ADDING SOMEBODY TO THE CHECK-IN, ON THE SCREEN CALLED SETUP.
             *
@@ -3377,21 +3307,8 @@ export function GroundAdminPage() {
               </div>
             )}
             </Fold>
-            {/*
-              HOW FAR THROUGH SETUP SOMEBODY IS.
-
-              AFTER the questions rather than above them, and that is a fact about the count rather
-              than a design preference: `setupBand()` increments as each fold renders, so the total
-              does not exist until they have. Read before the first fold it would say zero of zero
-              on the first paint and correct itself on the second, which is worse than sitting at
-              the foot where it is right the first time - and a tally of what you have reviewed is
-              a footer anyway.
-            */}
-            {isInitiator && setupBands > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 14, lineHeight: 1.55 }}>
-                {howFarThroughSetup(setupChecked, setupBands)}
-              </div>
-            )}
+            {/* REVIEW ROUND 3, ITEM 3: THE "HOW FAR THROUGH SETUP" TALLY WENT WITH THE SIGN-OFF
+                STEP IT COUNTED. See the note above Fold. */}
           </div>
         )}
       </div>
@@ -3424,6 +3341,8 @@ export function GroundAdminPage() {
           </div>
         </div>
       )}
+      {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL FOR THE LEAD'S OWN SESSION, OPENED FROM THIS PAGE NOW. */}
+      <SessionPaywallModal paywall={paywall} canPayHere={canPayForMySession} />
     </div>
   )
 }

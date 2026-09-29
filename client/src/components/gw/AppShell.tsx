@@ -312,10 +312,20 @@ const BUILD_OPTIONS    = ['Reminder / email nudge', 'Mobile app', 'Slack integra
 function FeedbackWidget() {
   const location = useLocation()
   const isChatPage = location.pathname.startsWith('/chat/') || location.pathname.startsWith('/checkin/') || location.pathname === '/start'
-  /* HIDDEN ON "MORE" ONLY. That page has "Send feedback" in its own list, and on a phone the floating
-     button sat over the ticked organisation row there. Everywhere else it stays; the panel it opens
-     still opens from "Send feedback" on More. */
-  const hideTrigger = location.pathname === '/more'
+  /**
+   * HIDDEN ON "MORE" - that page has "Send feedback" in its own list, and on a phone the floating
+   * button sat over the ticked organisation row there - AND ON THE CONVERSATION.
+   *
+   * REVIEW ROUND 3, ITEM 7: at 375px the trigger (`gw-fb-trigger-chat-mobile-safe`, `bottom:
+   * 148px`) sat on the composer - measured then at 691-752 with the trigger at 704-736, on top of
+   * Send. That offset assumed the app's own bottom bar (60px) sat below the composer; the
+   * conversation no longer shows that bar at all (see AppSidebar's `onConversationPage`), so
+   * fixing the number would only be right until the next thing above it changed again. Hidden
+   * here instead - a floating trigger is not worth reserving room for on the one screen that is
+   * entirely its own composer and nothing else. The panel still opens from "Send feedback" on
+   * More, same as it does for every other page this hides it on.
+   */
+  const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
   const open = useFeedbackStore(s => s.open)
   const showPanel = useFeedbackStore(s => s.show)
   const hidePanel = useFeedbackStore(s => s.hide)
@@ -755,6 +765,15 @@ export function AppSidebar() {
   const [orgOpen, setOrgOpen] = useState(false)
   const [meOpen, setMeOpen] = useState(false)
   const [closedOpen, setClosedOpen] = useState(false)
+  /**
+   * REVIEW ROUND 3, ITEM 7: NO APP BOTTOM BAR ON THE CONVERSATION, AT 375 WIDE.
+   * The prototype's own rule (`body.focus .tabbar{display:none}`, app.css): the check-in's own
+   * card is the whole screen once you are inside it, and the app's bottom bar (Today, Check-ins,
+   * Start, Chat, More) sat under the composer, on top of it, and behind it - a second navigation
+   * fighting the one thing on screen that already has its own way out (Pause). `/checkin/:id` is
+   * the one route this whole shell renders as a focused conversation.
+   */
+  const onConversationPage = /^\/checkin\//.test(useLocation().pathname)
   /* The check-ins this person pinned to the top, in the order they pinned them. See pinned-check-ins. */
   const [pinState, setPinState] = useState(() => ({ of: user?.id, ids: pinnedFor(user?.id) }))
   /* Read again when a different person signs in on this browser, never someone else's. */
@@ -1246,7 +1265,14 @@ export function AppSidebar() {
         THE BOTTOM BAR ON A PHONE (A1, layout-phone): Today, Check-ins, Start, Chat, More in the
         prototype. Chat is Ask Groundwork's own page (D1, #/chat).
         Everything else a phone used to show in this bar is on "More", through the same gate.
+
+        REVIEW ROUND 3, ITEM 7: NOT ON THE CONVERSATION. The prototype's own rule
+        (`body.focus .tabbar{display:none}`, app.css): a check-in's own card is the whole screen
+        once you are inside it, and this bar sat under the composer, on top of it, and behind it -
+        a second navigation fighting the one thing on screen that already has its own way out
+        (Pause).
       */}
+      {!onConversationPage && (
       <nav
         aria-label="Main"
         style={{
@@ -1286,6 +1312,7 @@ export function AppSidebar() {
           <NavLink to="/auth" className="gw-phone-bar-item">Sign in</NavLink>
         )}
       </nav>
+      )}
     </>
   )
 }
@@ -1349,6 +1376,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hideAsk = useAskStore(s => s.hide)
   /* U.10 item 8: a question typed in the board's own Ask bar, handed to the panel once it opens. */
   const pendingAskMessage = useAskStore(s => s.pendingMessage)
+  /* REVIEW ROUND 3, ITEM 7: SEE AppSidebar's OWN COPY OF THIS - the app's bottom bar does not
+     render at all on the conversation, and the room it used to reserve (`--gw-bottom-nav`) is
+     given back to the card so nothing leaves a blank strip where the bar used to sit. */
+  const onConversationPage = /^\/checkin\//.test(location.pathname)
   const consumePendingAskMessage = useAskStore(s => s.consumePendingMessage)
   /**
    * Signed-out visitors do not get the signed-in navigation.
@@ -1450,7 +1481,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         * The link is visually hidden until it takes focus, which is the one case it exists for.
         */}
       <AppSidebar />
-      <main id="main" className="gw-main-content">
+      <main id="main" className={onConversationPage ? 'gw-main-content gw-focus' : 'gw-main-content'}>
         {children}
       </main>
       {isAuthenticated && askOpen && (
@@ -1500,6 +1531,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           .gw-fb-panel        { border-radius: 12px 12px 0 0 !important; max-height: 90vh !important; }
           /* On a phone Ask Groundwork is its own page, "Chat" in the bottom bar. */
           .gw-ask-drawer      { display: none !important; }
+          /*
+            REVIEW ROUND 3, ITEM 7: NO APP BOTTOM BAR ON THE CONVERSATION.
+            AppSidebar does not render the bottom bar at all on the conversation route (its own
+            onConversationPage check); this gives the room it used to reserve back to the card,
+            so the conversation fills the screen down to its own composer rather than stopping 60px
+            short of it and leaving a strip of plain page behind.
+          */
+          .gw-main-content.gw-focus { padding-bottom: 0 !important; --gw-bottom-nav: 0px; }
         }
         @media (min-width: 641px) {
           .gw-sidebar-desktop { display: flex !important; }

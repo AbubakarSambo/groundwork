@@ -175,7 +175,8 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
         labels say, which is the only difference there should be.
       */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
-        <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)' }}>
+        {/* REVIEW ROUND 3, ITEM 5: NOT SHOUTED IN CAPITALS. */}
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)' }}>
           How much the report has to go on
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>

@@ -105,18 +105,37 @@ afterEach(() => {
 })
 
 describe('the header', () => {
-  it('names the check-in on the way back, and says it is your check-in, with Pause', async () => {
+  /**
+   * ROUND 6, ITEM 1: THE CHECK-IN'S OWN NAME, THE PROTOTYPE'S SHAPE (check-in-start.txt:
+   * "Sales team check-in", bold, "About two minutes" under it, Pause on the right). "Your
+   * check-in" named no check-in at all.
+   *
+   * REVIEW ROUND 3, ITEM 7: NO " check-in" APPENDED. "Sales team, Q3 check-in" reads worse than
+   * the fragment it replaced - a name ending in a comma-joined part with a second noun stuck on
+   * after the comma. The prototype's own title ("Sales team check-in") IS a check-in's name; this
+   * one's name happens to be "Sales team, Q3", so that is the whole title, nothing appended.
+   */
+  it('names the check-in in the heading, and on the way back, with Pause', async () => {
     renderChat()
     expect(await findByRole('button', { name: '← Sales team, Q3' }, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Your check-in' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Sales team, Q3' })).toBeTruthy()
     expect(await findByRole('button', { name: 'Pause' })).toBeTruthy()
     expect(await findByText(OPENING, {}, { timeout: 5000 })).toBeTruthy()
   })
 
-  it('does not promise how long it takes', async () => {
+  /**
+   * ROUND 6, ITEM 1: REVERSED FROM "DOES NOT PROMISE HOW LONG IT TAKES".
+   *
+   * That rule held while the header said "Your check-in": a fixed two-minute promise read as a
+   * claim about the RECORD behind a check-in, which is not true for every one of them (a
+   * probation review, for one). Hafsah's own read of the prototype at 1440 asked for it back -
+   * the estimate is about this ONE CONVERSATION, not the record, which is true the same way for
+   * every check-in, so it is honest to say plainly, as the prototype does.
+   */
+  it('says about how long the conversation takes', async () => {
     renderChat()
     await findByText(OPENING, {}, { timeout: 5000 })
-    expect(screen.queryByText(/About two minutes/)).toBeNull()
+    expect(screen.getByText('About two minutes')).toBeTruthy()
   })
 
   it('Pause offers to stop for now, which leaves with everything saved', async () => {
@@ -189,7 +208,7 @@ describe('suggested answers under the question', () => {
     fireEvent.click(await findByRole('button', { name: 'I met them on ... and they said ...' }, { timeout: 6000 }))
     await settle()
     expect(conversationApi.send).not.toHaveBeenCalled()
-    const box = screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement
+    const box = screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement
     expect(box.value).toBe('I met them on ... and they said ...')
     expect(document.activeElement).toBe(box)
     expect(box.selectionStart).toBe('I met them on '.length)
@@ -206,7 +225,7 @@ describe('suggested answers under the question', () => {
     renderChat()
     fireEvent.click(await findByRole('button', { name: 'Not yet' }, { timeout: 6000 }))
     await waitFor(() => expect(conversationApi.send).toHaveBeenCalledWith('ci1', 'Not yet'))
-    const box = screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement
+    const box = screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement
     expect(box.value).toBe('')
   })
 
@@ -216,7 +235,7 @@ describe('suggested answers under the question', () => {
     expect(screen.queryByRole('group', { name: 'Suggested answers' })).toBeNull()
     expect(screen.queryByText('What am I missing?')).toBeNull()
     expect(screen.queryByText('What do I carry forward?')).toBeNull()
-    expect(screen.getByPlaceholderText('Type your answer')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Type, or hold to speak')).toBeTruthy()
   })
 })
 
@@ -341,7 +360,7 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change something' }))
     expect(screen.queryByRole('button', { name: 'That’s right, finish' })).toBeNull()
     expect(screen.queryByText('That’s everything for today')).toBeNull()
-    expect((screen.getByPlaceholderText('Type your answer') as HTMLTextAreaElement).disabled).toBe(false)
+    expect((screen.getByPlaceholderText('Type, or hold to speak') as HTMLTextAreaElement).disabled).toBe(false)
     expect(conversationApi.complete).not.toHaveBeenCalled()
   })
 })
@@ -385,28 +404,41 @@ describe('the Done page, after “That’s right, finish”', () => {
     expect(screen.getByText('Not shared yet')).toBeTruthy()
     expect(screen.getByText('Everyone’s check-ins together. You’ll get it once everyone has answered.')).toBeTruthy()
     // The conversation is gone from the screen; the Done page stands on its own.
-    expect(screen.queryByPlaceholderText('Type your answer')).toBeNull()
+    expect(screen.queryByPlaceholderText('Type, or hold to speak')).toBeNull()
   })
 
   it('she reads why answering matters and how checkable her own check-in was, which only she sees', async () => {
     await finish()
     expect(await findByRole('heading', { name: 'That’s saved' }, { timeout: 5000 })).toBeTruthy()
-    const saved = screen.getByRole('heading', { name: 'That’s saved' }).parentElement!
+    /**
+     * ROUND 5, ITEM E2: THIS BLOCK NOW DRAWS THROUGH components/gw/ui/Section, which puts the
+     * heading and the note on the right (when there is one) in their own row, above a separate
+     * body - not as DOM siblings of the paragraph below, the way the page's own ad-hoc markup
+     * used to. `Section` names its `<section>` after the heading (`aria-labelledby`), so the whole
+     * block - heading and body together - is found as one named region instead.
+     */
+    const saved = screen.getByRole('region', { name: 'That’s saved' })
     expect(saved.textContent).toBe('That’s savedWhy answering matters: Wairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
     const checkable = screen.getByRole('region', { name: 'How checkable today’s check-in was' })
     /**
      * "4 of 5" no longer shows (U.8 re-review, request 45 to the engine workspace): it is a score
      * built from a read of the session that is known to miss real content, so it stays off until
-     * that is answered. What a sighted reader gets instead is the same plain sentence a screen
-     * reader always got - "Groundwork found this." or "Groundwork did not pick this up this time." -
-     * for every one of the five, not only the icon.
+     * that is answered.
+     *
+     * REVIEW ROUND 3, ITEM 8: THE PROTOTYPE'S SHORT ONE-LINE ITEMS, WITH THE TICK OR RING. The
+     * "Groundwork found this."/"Groundwork did not pick this up this time." trailing sentence -
+     * added so a sighted reader was not left to tell found from missing by the ring's colour
+     * alone - is a visually-hidden (sr-only) span now, not a second visible sentence on every
+     * line: a screen reader still gets it, a sighted reader gets the prototype's own short line.
      */
     expect(within(checkable).queryByText('4 of 5')).toBeNull()
     expect(within(checkable).getByText(
       'Groundwork looked for these five things. It may have missed some of what you said.',
     )).toBeTruthy()
-    expect(within(checkable).getByText(/One date, number or document\. Groundwork did not pick this up this time\./)).toBeTruthy()
-    expect(within(checkable).getByText(/What you did, not just what was happening\. Groundwork found this\./)).toBeTruthy()
+    const missingLine = within(checkable).getAllByText(/One date, number or document/)[0]
+    expect(missingLine.querySelector('.gwui-sr-only')?.textContent).toContain('Groundwork did not pick this up this time.')
+    const foundLine = within(checkable).getAllByText(/What you did, not just what was happening/)[0]
+    expect(foundLine.querySelector('.gwui-sr-only')?.textContent).toContain('Groundwork found this.')
     expect(within(checkable).getByText('This is about the check-in. Only you see it.')).toBeTruthy()
   })
 

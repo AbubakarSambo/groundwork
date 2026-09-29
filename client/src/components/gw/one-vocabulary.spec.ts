@@ -241,9 +241,14 @@ describe('the same solo report reads the same to everybody', () => {
       expect(src).toMatch(/import \{ SoloReportBody \}/)
       expect(src).toMatch(/<SoloReportBody report=/)
     }
-    /* The party view reaches it through `WhatYouAreCarryingForward`, where the solo report and the whole
-       sharing decision moved together. */
-    expect(PARTICIPANT).toMatch(/<WhatYouAreCarryingForward/)
+    /*
+     * REVIEW ROUND 3, "YOUR WORK" REBUILD: THE PARTY VIEW REACHES IT THROUGH `YourWork` NOW
+     * (components/gw/checkin/YourWork.tsx), which is the one place that renders
+     * `WhatYouAreCarryingForward` on My work/My record for both pages.
+     */
+    expect(PARTICIPANT).toMatch(/<YourWork/)
+    const YOUR_WORK = strip(readFileSync(join(SRC, 'components/gw/checkin/YourWork.tsx'), 'utf8'))
+    expect(YOUR_WORK).toMatch(/<WhatYouAreCarryingForward/)
   })
 
   it('and neither walks the report itself any more', () => {

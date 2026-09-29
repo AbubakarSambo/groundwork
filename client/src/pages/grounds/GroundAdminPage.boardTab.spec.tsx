@@ -82,14 +82,14 @@ describe('finding the team board', () => {
   })
 
   /**
-   * THE CHECK-IN REBUILD (docs/tasks-ui.md) FOLDED "Report" AND "Sessions" UNDER "My work".
+   * REVIEW ROUND 3, "YOUR WORK" REBUILD: "Report" and "Sessions" ARE NOT SUB-TABS ANY MORE.
    *
-   * They used to be two of the outer tab row's own entries, always on screen. The prototype's
-   * five-tab row (Board, Check-in, Context, My work, People and setup) has no room for them there
-   * - they are sub-tabs inside "My work" now, reached by opening it first. See the "ONE MOVE LIST"
-   * comment in GroundAdminPage.tsx.
+   * The prototype's my-record.txt has no sub-tabs at all - "My work" is one flat page
+   * (`YourWork`) now, and what used to be the "Report" sub-tab is a quiet link inside it,
+   * "Every session" (see `onSeeEverySession` in YourWork.tsx). Clicking it still lands on the
+   * same underlying `report` tab content, unchanged - only the way there changed.
    */
-  it('is offered from the report, not from the tab row', async () => {
+  it('is offered from "Every session", not from the tab row', async () => {
     ;(groundsApi.get as any).mockResolvedValue(ground())
     renderPage()
 
@@ -98,9 +98,9 @@ describe('finding the team board', () => {
     // THE REGRESSION THIS STILL GUARDS: the board once had no way in but a floating pill.
     expect(screen.queryByRole('button', { name: 'Team board' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    /** It is on Report, because that is where somebody is when they want it. */
-    await waitFor(() => expect(screen.getByRole('tab', { name: 'Report' })).toBeTruthy())
-    fireEvent.click(screen.getByRole('tab', { name: 'Report' }))
+    /** It is behind "Every session", because that is where somebody is when they want it. */
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Every session' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Every session' }))
     await waitFor(() => expect(document.body.textContent).toContain('Everything so far'))
   })
 
@@ -111,12 +111,12 @@ describe('finding the team board', () => {
 
     await waitFor(() => expect(screen.getByRole('tab', { name: 'My work' })).toBeTruthy())
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    await waitFor(() => expect(screen.getByRole('tab', { name: 'Report' })).toBeTruthy())
-    fireEvent.click(screen.getByRole('tab', { name: 'Report' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Every session' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Every session' }))
     await waitFor(() => expect(document.body.textContent).not.toContain('Everything so far'))
   })
 
-  it('leaves the other tabs alone', async () => {
+  it('leaves the other tabs alone, and offers both quiet links inside My work', async () => {
     ;(groundsApi.get as any).mockResolvedValue(ground())
     renderPage()
 
@@ -126,12 +126,10 @@ describe('finding the team board', () => {
     for (const label of ['Check-in', 'Documents', 'My work', 'People and setup']) {
       expect(screen.getByRole('tab', { name: label })).toBeTruthy()
     }
-    // "Sessions" became "Record" when the two views were put on one tab list, and both fold under
-    // My work now: one tab whose content differs by role, not two tabs about the same thing. See
-    // `ground-tabs.ts`. W13-8.
+    // "Report" and "Sessions" are quiet links inside My work now, not sub-tabs - see the note above.
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    for (const label of ['Report', 'Sessions']) {
-      expect(screen.getByRole('tab', { name: label })).toBeTruthy()
+    for (const label of ['Every session', 'Who has answered']) {
+      expect(await screen.findByRole('button', { name: label })).toBeTruthy()
     }
   })
 })

@@ -32,7 +32,12 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 
 describe('the lead who is a party can start their check-in', () => {
   it('the check-in page passes its own open check-in, not null', () => {
-    expect(strip(ADMIN)).toMatch(/openCheckInId=\{myOpenCheckIn && !myOpenOpensLater \? myOpenCheckIn\.id : null\}/)
+    /**
+     * ROUND 4, ITEM A STEP 3: NOW A NAMED CONST, READ BY THE REDIRECT, NOT A JSX PROP TO
+     * GroundChat. Same computation, computed once (also used by "who is in this"'s
+     * `notOpenYet`), rather than inlined three times.
+     */
+    expect(strip(ADMIN)).toMatch(/const myOpenCheckInId = myOpenCheckIn && !myOpenOpensLater \? myOpenCheckIn\.id : null/)
   })
 
   it('and it is narrowed to THEIR check-in, since a check-in is per person per session', () => {
@@ -56,22 +61,31 @@ describe('the button says what the rest of the product says', () => {
 })
 
 describe('the handoff, and the payment path it protects', () => {
-  it('the check-in page hands off rather than opening the session itself', () => {
-    expect(strip(ADMIN)).toMatch(/navigate\(`\/grounds\/\$\{id\}\/p\?open=1`\)/)
+  /**
+   * REVIEW ROUND 3, ITEM 2: THE HAND-OFF IS GONE. "One page per check-in: the lead's Check-in
+   * tab opens her own conversation (/checkin/:id) directly, like a party's, and never lands on
+   * the participant page." The `?open=1` trip to `/grounds/:id/p` existed only to borrow that
+   * page's paywall-aware `probeSession` - both pages now call the same shared hook
+   * (`useOpenSession.ts`), so neither needs the other's page to open a session.
+   */
+  it('the check-in tab opens the session itself, through the shared hook - it does not hand off to the other page', () => {
+    expect(strip(ADMIN)).toContain("useOpenSession(id)")
+    expect(strip(ADMIN)).not.toMatch(/\/grounds\/\$\{id\}\/p\?open=1/)
   })
 
   it('the check-in page does not grow its own copy of the paywall', () => {
     // The specific thing to never duplicate: the 403 branch that offers a free extension,
-    // an access code, or a subscription.
+    // an access code, or a subscription. Both pages import the same hook and modal now rather
+    // than each carrying its own copy of this logic.
     expect(strip(ADMIN)).not.toContain('freeExtensionAvailable')
     expect(strip(ADMIN)).not.toContain('setShowPaywall')
   })
 
   it('and the participant page fires the probe once, from a ref', () => {
-    // Not from the query key: probeSession navigates on success, and a re-render before the
+    // Not from the query key: opening a session navigates on success, and a re-render before the
     // navigation lands would open two sessions from one click - one of them chargeable.
     expect(strip(PARTICIPANT)).toMatch(/const autoOpenFired = useRef\(false\)/)
-    expect(strip(PARTICIPANT)).toMatch(/autoOpenFired\.current = true\s*\n\s*probeSession\.mutate/)
+    expect(strip(PARTICIPANT)).toMatch(/autoOpenFired\.current = true\s*\n\s*openSession\(/)
   })
 
   it('with every hook above every conditional return', () => {

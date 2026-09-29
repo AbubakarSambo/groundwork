@@ -226,7 +226,9 @@ export interface Ground {
    * comes out of a paste and is left as it is rather than put on the nearest person. `status` is
    * UNKNOWN until a person says otherwise - nothing here is the product's judgement.
    */
-  commitments?: { id: string; participantId: string | null; text: string; whenSaid: string | null; explicit: boolean; status: string }[]
+  /** `settledAt`: when the commitment was marked DONE/NOT_DONE/DROPPED - null while open. Review
+      round 3, item 5: added so "promises kept this month" can count by when it was settled. */
+  commitments?: { id: string; participantId: string | null; text: string; whenSaid: string | null; explicit: boolean; status: string; settledAt?: string | null }[]
   checkIns?: CheckInSummary[]
   signals?: GroundSignal[]
   report?: { id: string; releasedAt: string | null; createdAt?: string } | null

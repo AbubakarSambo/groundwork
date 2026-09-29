@@ -70,7 +70,10 @@ export function DeliveredPanel({
         uppercase grey section labels had a single shouting exception in the middle of it. Nothing
         about this band is more important than the expectations above it - it is the answer to them.
       */}
-      <Sec title="What you delivered" src="yours, against each expectation" />
+      {/* REVIEW ROUND 3, "YOUR WORK": THE PROTOTYPE'S OWN WORDS (my-record.txt) - "say" matters
+          here (see the comment at the top of this file: this is a claim waiting to be asked
+          about, never the record itself), which "What you delivered" alone dropped. */}
+      <Sec title="What you say you delivered" src="Your list, with what shows each one" />
 
       {/*
         THE CONTENT COMES FIRST AND THE FORM FOLDS AWAY.

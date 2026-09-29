@@ -8,14 +8,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SRC = path.join(__dirname, '..', '..')
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
 
+/**
+ * REVIEW ROUND 3, ITEM 2: THE PAYWALL DIALOG MOVED TO A SHARED COMPONENT, so
+ * GroundAdminPage.tsx could show the lead's own paywall without a trip through the participant
+ * page. The dialog markup (role, Escape, initial focus) lives in SessionPaywallModal.tsx now;
+ * the focus-restore ref (who to give focus back to on close) lives in the hook behind it,
+ * useOpenSession.ts, since both pages share one instance of that too.
+ */
 describe('the paywall', () => {
-  const p = strip(readFileSync(path.join(SRC, 'pages/grounds/GroundParticipantPage.tsx'), 'utf8'))
+  const p = strip(readFileSync(path.join(SRC, 'components/gw/checkin/SessionPaywallModal.tsx'), 'utf8'))
+  const hook = strip(readFileSync(path.join(SRC, 'hooks/useOpenSession.ts'), 'utf8'))
   it('is a dialog, takes focus, closes on Escape and gives focus back', () => {
     expect(p).toContain('role="dialog" aria-modal="true" aria-label="Your session is complete"')
-    expect(p).toMatch(/onKeyDown=\{e => \{ if \(e\.key === 'Escape'\) setShowPaywall\(false\) \}\}/)
+    expect(p).toMatch(/onKeyDown=\{e => \{ if \(e\.key === 'Escape'\) paywall\.close\(\) \}\}/)
     expect(p).toMatch(/<div tabIndex=\{-1\} ref=\{el => el\?\.focus\(\)\}/)
-    expect(p).toMatch(/if \(showPaywall\) paywallOpener\.current = document\.activeElement/)
-    expect(p).toMatch(/else paywallOpener\.current\?\.focus\?\.\(\)/)
+    expect(hook).toMatch(/if \(showPaywall\) paywallOpener\.current = document\.activeElement/)
+    expect(hook).toMatch(/else paywallOpener\.current\?\.focus\?\.\(\)/)
   })
 })
 

@@ -1,8 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { GroundChat } from './GroundChat'
+import { WhoIsInThis } from './WhoIsInThis'
 
 /**
  * NAMES, NOT ROLES - AND NEVER SAID TO THE LEAD ABOUT HERSELF (U.8 third review).
@@ -13,51 +11,34 @@ import { GroundChat } from './GroundChat'
  * semicolon joined two sentences into one - and the SAME sentence was shown to the lead when she is
  * a party in her own check-in (a common case: a lead who also takes part), so she read a
  * description of her own role in the third person, about herself.
+ *
+ * ROUND 4, ITEM A STEP 2: MOVED FROM `GroundChat`'s Check-in tab TO `WhoIsInThis`, on People and
+ * setup. The rule this file pins did not change; only which component draws it.
  */
 
-vi.mock('@/api/grounds', () => ({
-  groundsApi: {
-    myTranscript: vi.fn(async () => ({ sessions: [] })),
-    myNotes: vi.fn(async () => []),
-  },
-}))
-
-function renderTopic(props: { leadName?: string | null; viewerIsTheLead?: boolean }) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+function renderRoster(props: { leadName?: string | null; viewerIsTheLead?: boolean }) {
   return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter>
-        <GroundChat
-          groundId="g1"
-          openCheckInId={null}
-          openSessionNumber={null}
-          totalSessions={6}
-          nextOpensAt={null}
-          onOpenSession={() => {}}
-          openPending={false}
-          parties={[{ name: 'You', done: false, isSelf: true }]}
-          peersHidden
-          brief="A brief, so the card's heading renders."
-          {...props}
-        />
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <WhoIsInThis
+      parties={[{ name: 'You', done: false, isSelf: true }]}
+      peersHidden
+      {...props}
+    />,
   )
 }
 
 describe('the sentence when peers are hidden from each other', () => {
-  it('names the lead, and joins the two facts as two sentences, not one with a semicolon', async () => {
-    renderTopic({ leadName: 'Rukia' })
-    expect(await screen.findByText(
+  it('names the lead, and joins the two facts as two sentences, not one with a semicolon', () => {
+    renderRoster({ leadName: 'Rukia' })
+    expect(screen.getByText(
       'Rukia knows who is here. You will not see the others or what they wrote, and they will not see you.',
     )).toBeTruthy()
     expect(screen.queryByText(/Your lead knows/)).toBeNull()
     expect(screen.queryByText(/;/)).toBeNull()
   })
 
-  it('gives the lead her own true sentence, never the participant one about herself', async () => {
-    renderTopic({ viewerIsTheLead: true, leadName: null })
-    expect(await screen.findByText(
+  it('gives the lead her own true sentence, never the participant one about herself', () => {
+    renderRoster({ viewerIsTheLead: true, leadName: null })
+    expect(screen.getByText(
       'People on this check-in answer without seeing each other. You can see who is here.',
     )).toBeTruthy()
     expect(screen.queryByText(/knows who is here/)).toBeNull()

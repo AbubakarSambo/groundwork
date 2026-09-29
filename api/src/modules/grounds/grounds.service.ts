@@ -2160,9 +2160,16 @@ export class GroundsService {
      * none of the nineteen things somebody was supposed to do. Status is whatever it is - UNKNOWN
      * until a person says - and the unowned ones are listed as unowned rather than tidied away.
      */
+    /*
+     * REVIEW ROUND 3, ITEM 5 (SCREENS WORKSPACE): `settledAt` EXPOSED, NOT COMPUTED.
+     * The column has existed since week 9 ("kept in the last four weeks" counts by when a
+     * commitment was settled, not when it was promised) but was never selected here, so My work's
+     * "promises kept this month" tile had nothing to read. This is the same column, added to the
+     * same select - no new logic, nothing about how a commitment is judged.
+     */
     const commitments = await (this.prisma.groundCommitment?.findMany?.({
       where: { groundId: id },
-      select: { id: true, participantId: true, text: true, whenSaid: true, explicit: true, status: true },
+      select: { id: true, participantId: true, text: true, whenSaid: true, explicit: true, status: true, settledAt: true },
       orderBy: { createdAt: 'asc' },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
 

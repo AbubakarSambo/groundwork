@@ -6032,3 +6032,319 @@ itself shows, so I did not start either rather than build on ground that is abou
 
 **Commit this round:** `c1cde225` - "A suggested answer with "..." fills the box instead of
 sending" (item C). Nothing pushed or merged.
+
+## Round 4: A finished (all three steps); B started (Bubble, QuickReplies); E not started
+
+**A — DONE, all three steps.**
+
+1. **The session history moves under My work.** New `client/src/components/gw/MyCheckInSessions.tsx`:
+   a list, newest first, each row opening (and closing again) its own transcript in place, reusing
+   `GroundChat.tsx`'s own `Message`/`SessionDivider`/`SessionSummary` rendering (now exported rather
+   than duplicated) and the same `groundsApi.myTranscript` call and query key GroundChat used - so
+   it is still only ever the reader's own words. Wired into both pages' My work tab, under
+   `MyRecord` (whose own session rows are about how specific/checkable each session was - a
+   different question from the words themselves). New test: `MyCheckInSessions.spec.tsx`, against
+   the real `myTranscript` shape.
+2. **"Who is in this" moves to People and setup.** New `client/src/components/gw/WhoIsInThis.tsx`
+   carries `GroundTopic`'s roster half verbatim (every sentence, condition and comment); `GroundTopic`
+   keeps only the brief. Both pages compute the roster's inputs once and pass them to `<WhoIsInThis>`
+   on Setup instead of to `<GroundChat>`. Three existing test files
+   (`who-is-in-this.spec.tsx`, `who-is-in-this-when-peers-are-hidden.spec.tsx`,
+   `nobody-is-late-before-it-opens.spec.tsx`) moved from mounting `GroundChat` (with a QueryClient
+   and Router) to mounting `WhoIsInThis` directly - simpler, since it fetches nothing - with every
+   assertion unchanged.
+3. **The Check-in tab is the focused conversation.** A party is redirected (a `useEffect`, placed
+   before every early return) to `/checkin/:id` when today's session is already open, or the
+   unchanged `?open=1` hand-off when it needs `probeSession`'s paywall check first. A lead or org
+   admin who is not a party is told plainly ("You do not answer this check-in yourself. The board
+   shows what has come from it so far.") and linked to the board. On
+   `GroundParticipantPage.tsx`, landing on the tab now fires the same `probeSession` the `?open=1`
+   hand-off always used; between sessions, the tab reuses `GroundChat`'s own `Composer` directly
+   (now exported) rather than reinventing it - a first pass at this step nearly dropped the private
+   note-for-next-time box and "Change how often this runs", both of which only existed inside
+   `Composer`. `GroundChat.tsx` is no longer mounted anywhere in the app, but the file stays:
+   `MyCheckInSessions.tsx` and `GroundParticipantPage.tsx` still import parts of it.
+
+   Six test files updated for step 3, each documenting its own reasoning in the diff
+   (`a-ground-opens-to-its-history.spec.ts`, `nothing-about-next-while-the-current-one-opens.spec.tsx`,
+   `one-door-per-place.spec.ts`, `the-lead-sees-the-ground-not-a-blank.spec.tsx`,
+   `the-way-to-check-in-is-on-the-page.spec.tsx`, and one API spec that reads these client files by
+   source, `a-run-you-can-steer.spec.ts`).
+
+Full client suite after A: 3439-3447/3440-3448 across the three steps (the one recurring failure is
+the pre-existing, unrelated engine-prompt count from the merge). All API specs that read the touched
+client files by source pass.
+
+**B — STARTED, not finished.** `components/gw/ui/Bubble.tsx` and `components/gw/ui/QuickReplies.tsx`
+built from `docs/prototype/source/app.css`'s own values and genuinely wired into use (not left as
+unused files): `ChatPage.tsx`'s message bubble now uses `Bubble` (fixing a real bug along the way -
+the bubble was drawing Groundwork's "cream" turn on `var(--gw-paper-2)`, which round 2's H turned
+into the page colour itself, making it invisible; now `var(--gw-bg)`, the prototype's real `--chat`),
+and `SuggestedAnswers.tsx` now draws through `QuickReplies` instead of its own stacked column of
+buttons (a real fix too: a fourth or fifth suggestion used to run one per line down the whole
+screen; it wraps in a row now, as the prototype's own pills do). New tests: `Bubble.spec.tsx`,
+`QuickReplies.spec.tsx`.
+
+Composer and the card frame (`ConversationCard`) were built to the same standard - exact values in
+the commit message and below - but not kept in this round's commit: `ChatPage.tsx`'s real composer
+has an attach menu (photo/document, paste text) neither simple part covered, and its real card frame
+is interleaved with banners (clarification session, session-open-failure) between the header and
+the scrolling body that would need their own slot. Rather than force an incomplete fit, or leave two
+components nothing imports (which `nothing-is-left-behind.spec.ts` would have caught), they were
+removed from this commit. **For the next pass:** `.ci-c{padding:12px 16px;border-top:1px solid
+var(--rule);background:var(--paper)}`, `.ci-sq{width:48px;height:48px;font-size:20px}`,
+`.ci-focus{max-width:560px;margin:0 auto}`, `.ci-card{border-radius:16px;display:flex;
+flex-direction:column}` - `Composer` needs an attach-menu slot (or to take the whole "+" button as a
+prop) before it can replace `ChatPage.tsx`'s real footer; `ConversationCard` needs a banner slot
+between `header` and the scrolling body, or the three banners folded into the `header` prop as a
+Fragment (mechanically safe, just not attempted this round given remaining time).
+
+**E — NOT STARTED**, given B is not finished. `TheDonePage.tsx` still covers much of Done's content;
+Between-check-ins has nothing built.
+
+**Commits this round (local only, `wip/prototype-ui`, not pushed):**
+1. `c1cde225` - A suggested answer with "..." fills the box instead of sending (item C, carried
+   over from round 3's report)
+2. `4740e99a` - A, step 1: the session history moves under My work
+3. `c5721ad0` - A, step 2: "Who is in this" moves to People and setup
+4. `b9244b1f` - A, step 3: the Check-in tab is the focused conversation, GroundChat retired from it
+5. `709bfbc4` - B (partial): Bubble and QuickReplies extracted to ui parts, used by ChatPage
+
+## Round 5: Between check-ins and Done rebuilt; Composer/card frame finished; the admin header fixed
+
+**H1 — DONE.** "Your check-in" only shows in the header when the reader is a party
+(`viewerIsAParty`) - an admin who is not the lead does not answer the check-in, so it no longer
+offers her a button to one. The blue admin banner and the separate small line that both said "you
+are an admin here, not its lead" are gone, replaced by one plain sentence, the prototype's own
+(read-only-view.txt, A4): "You can read this check-in's board and reports. {lead's name} runs it." -
+drawn through new `components/gw/ui/Note.tsx` (prototype: `.note`, plain muted text in the page's
+own flow, never a coloured box - a correction from the earlier blue-box treatment).
+`what-an-admin-here-can-see.ts` is now unused (left in place; not a component the orphan guard
+scans). New test: `Note.spec.tsx`. One existing test retargeted
+(`nothing-pushes-the-page-sideways.spec.ts`, which looked for the literal old phrase).
+
+**B — FINISHED.** `Composer` grew the attach menu (`plusMenu`/`plusOpen`/`plusDisabled` - the
+caller's own content, a photo or a document, paste text, private by default) and `sendLabel`/
+`plusLabel` for a page's own exact wording. `ConversationCard` grew a `banners` slot (fixed, between
+the header and the scrolling body, for the clarification and session-open-failure notices) and
+`onBack` (a callback, for when leaving must confirm first). `ChatPage.tsx`'s whole outer frame - the
+back link, the white bordered card, the header/banners/messages/composer stack - now renders through
+these two parts; nothing between the slots was rewritten, only moved into them. One real wording
+change: the field's placeholder is now the prototype's own "Type, or hold to speak", not "Type your
+answer". Four source-scanning specs retargeted to check the same guarantees where they now live (in
+the shared parts, not ChatPage.tsx's own source) - each documents its reasoning in the diff. Neither
+file added to REBUILT_PAGES: ChatPage.tsx still has inline styles outside what moved (the end card,
+the document-upload sheet).
+
+**E1 — DONE.** New `components/gw/BetweenCheckIns.tsx` replaces GroundChat's bare Composer (flush
+against the sidebar, no page margin, none of the rest of the screen) with the prototype's own page
+(between-check-ins.jpg/.txt): the check-in's name, "No check-in open right now", "Your next check-in
+opens `<when>`. Anything I can help with in the meantime?" (`whenTheNextOneOpens()`, already shared
+with the end card and the Done page, so the sentence is identical everywhere), the four chips, inside
+the page's own column like every other page. Three chips ask Ask Groundwork that exact question via
+`useAskStore().showWith()` - no context needs wiring by hand, since `AskGroundwork.tsx` already reads
+which check-in "about" means off the page's own address, the same as the board's own Ask bar. The
+fourth reveals the private note box (GroundChat's `Composer`, kept exactly) instead of asking
+anything. New test: `BetweenCheckIns.spec.tsx` (6 tests).
+
+**E2 — DONE.** `TheDonePage.tsx` (done.txt) now draws through `PageTitle`, `Section`, `Panel`, and
+ui's own `Button`/`Tag` (API-compatible with kit.tsx's - only the import path changed).
+`StageLadder` stays from kit.tsx (no `ui/StageLadder` yet). One real fix along the way: "Two reports
+come from this" is only shown when there really are two, restructured as two render paths rather
+than an unconditional heading with conditional content, since `Section` always draws its heading.
+`Section` itself gained `aria-labelledby` (pointing at its own heading via `useId`), making every
+section a named landmark - a genuine improvement to the shared part, not only this page. Not added to
+REBUILT_PAGES: several inline spacing/colour values remain (the report-card rows, the five-things
+list).
+
+Full client suite after every item this round: 3458-3465/3459-3466 depending on the step (the one
+recurring failure, `src/lib/copy-does-not-sound-like-yoda.spec.ts`, is the pre-existing, unrelated
+engine-prompt count from the merge, confirmed reproducing before any of this round's changes too).
+Every API spec that reads the touched client files by source passes.
+
+**Commits this round (local only, `wip/prototype-ui`, not pushed):**
+1. `ab81cb74` - H1: "Your check-in" only for a party; one Note instead of two admin notices
+2. `fc60c1bb` - B, finished: Composer and the card frame, used by ChatPage
+3. `73c0db55` - E1: Between check-ins, from the parts, inside the page column
+4. `de08be91` - E2: The Done page rebuilt from the ui parts
+
+## Round 6 (before review): the header's own name, one quiet link, no grey strip, the Done page for a finished session
+
+**Item 1 — DONE.** The card header reads `<check-in name> check-in` now (bold, as before), with
+"About two minutes" under it - reversed from an earlier round's decision to drop that line
+("does not promise how long it takes"): the estimate is about this ONE CONVERSATION, which is
+honest to say the same way for every check-in, not a claim about the record behind it. "That's
+everything for today" still replaces it once the conversation has closed. Two tests updated in
+`the-check-in-as-a-person-reads-it.spec.tsx`, each with its reasoning in the diff.
+
+**Item 2 — DONE.** "WHAT THIS CHECK-IN IS ABOUT" and "WHAT YOU SAID LAST TIME" - two capitalised
+cards the prototype does not have - fold behind one quiet link, "What this check-in is about, and
+what you said last time", opening a `Modal` (`components/gw/ui`) with sentence-case `Section`
+headings. Nothing they carried is gone: both were written against real complaints
+(an-objective-nobody-has-seen.spec.ts; what a person said last time, so they are not asked to
+repeat it), so they are reachable, not removed. The engine's own colon-joined lists (`brief.says`,
+"The objectives on record:") are carried through unreworded, per the instruction (request 40 owns
+that wording); the screen's own "Worry:"/"Commitment:" labels are gone, replaced by a plain `Tag`
+naming the kind after each line. Two source-scanning tests retargeted to the new `hasAboutContent`
+const.
+
+**Item 3 — DONE.** The grey strip between the last message and the composer
+(`background: 'var(--gw-bg)'` with its own `borderBottom`) is gone - the row stays (it still says a
+real sentence when closing/correcting a session, and offers "Set the context"/"Add people" to
+whoever runs it, both real fixes for reported complaints), just on the page's own white now, not
+banded off from it.
+
+**Item 4 — DONE.** A session the server had already completed before this render - not just
+finished now, but loaded that way (`/checkin/:id`, a link followed the next day) - used to fall
+through to `ChatPage.tsx`'s own old "already complete" view instead of the Done page: its own report
+blocks, a dash-joined sentence, "Open the team board →", a "Back to check-ins" link cut off at the
+bottom. The early return to `TheDonePage` keys on `justFinished`; loading an already-`COMPLETED`
+transcript only ever set `completed`, never `justFinished` - now it does, matching the two live-finish
+paths that already paired them. `TheDonePage.tsx` itself had no self-correction affordance at all
+(the old view it replaces did, `TheCheckInYouJustFinished.tsx`'s own "Something here isn't right") -
+added, the same `reportsApi.startSelfCorrection` call the report page and the ground chat already
+make. New test: `ChatPage.alreadyCompleteOnLoad.spec.tsx`.
+
+Full client suite: 3466/3467 (the one failure is the pre-existing, unrelated engine-prompt count from
+the merge). The API specs that read the touched client files by source pass unchanged.
+
+**Commits this round (local only, `wip/prototype-ui`, not pushed):**
+1. `1239ba9a` - Round 6, items 1-3
+2. `121ab3e1` - Round 6, item 4
+
+## Review round 3: fixes from the first review of the check-in rebuild
+
+Item 6 (People and setup) is its own module later, per the coordinator's note - left alone.
+
+**Item 1 - DONE.** An IN_PROGRESS session with a future `availableFrom` (Aisha on 555ac67d, Amani
+on 9028f0ad) was told "No check-in open right now" instead of being carried back into it.
+`availableFrom` gates a session that has not started; it says nothing about one already running.
+Fixed in `myOpenForAutoOpen`/`opensLater` (GroundParticipantPage.tsx) and the matching
+`myOpenOpensLater` (GroundAdminPage.tsx). The header's "Start my check-in" opens the session
+directly now, or does not show when there is none - it linked to the page it was already on.
+Commit `c8091506`.
+
+**Item 2 - DONE.** The lead had two pages for one check-in: the Check-in tab sent her to
+`/grounds/:id/p?open=1` to borrow the participant page's paywall-aware opening flow. That flow
+moved to a shared hook (`useOpenSession.ts`) and a shared component (`SessionPaywallModal.tsx`),
+so the lead's Check-in tab now opens her own conversation directly, like a party's, and never
+lands on the other page. The 11-pixel dash-joined line explaining which of the two pages you were
+on is gone with the problem it existed to explain. Commit `38d8c078`.
+
+**Item 3 - DONE.** An admin who neither runs a check-in nor takes part in it got every tab and
+every one of the lead's own status lines. The read-only view now shows exactly the prototype's
+three tabs (Board, Context, People and setup) for that reader, carries the one sentence ("You can
+read this check-in's board and reports. `<lead>` runs it.") and not the lead's lines. "I have read
+this - sign it off" is removed everywhere, on her own instruction - the prototype's "Yes, set it"
+is the confirmation that matters. Deleted the module and two spec files behind the removed
+sign-off record; not weakened to pass, the capability is gone by design. Commit `38d8c078`
+(combined with item 2, same file).
+
+**Item 4 - DONE.** Between check-ins was a standalone page, not the prototype's conversation-style
+card. Rebuilt from the parts: `TheCheckInHeader`, a `Bubble` for Groundwork's sentence, stacked
+`QuickReplies` (a new `stacked` prop), and a `ConversationCard` with a `ui/Composer` footer ("Ask,
+or add a note"). The three "ask" chips (and the composer) call `askApi.ask` directly and draw the
+reply as bubbles in the same card, rather than opening the separate Ask Groundwork panel - the
+prototype's own picture. "Add a note for tomorrow" -> "Add a note for next time". "Change how
+often this runs" is its own quiet link under the card now - it was gated on `nextOpensAt`, always
+null there, so it was never actually reachable at all before. Commit `c785ec60`.
+
+**Item 5 - PARTIAL.** Not the full "Your work" page rebuild (the prototype's flat sections
+replacing today's Report/Sessions/What I shared sub-tabs) - that is a large restructuring this
+round did not reach; needs its own pass. Done: the "fix while you're there" wording list, and one
+real bug found in the same area - "Remind" no longer offered on the lead's own row (the condition
+was missing `p.userId !== user?.id`); the bare "✎" now says "Edit"; "SESSIONS" and two other
+capitals labels are sentence case; "no expectation set for them yet" and its two siblings are full
+sentences; the dash-joined pattern line is two sentences; the dark navy "Summary" card is gone
+(`SoloReportBody` takes `on: 'light' | 'dark'` now); the engine's "What you shared:" colon-opening
+is stripped there too, reusing `withoutTheColonOpening`'s fix rather than duplicating it. Commit
+`49eee4e8`. **Needs Hafsah's steer on priority**: should the full "Your work" rebuild be the next
+task, ahead of anything else on the list?
+
+**Item 7 - DONE.** The composer's field is the prototype's bordered white box now (it was
+transparent). The header no longer appends " check-in" to a name that already ends in a
+comma-joined part. The about pop-up has a visible "Close" button. The goals were listed twice in
+the pop-up (once in the engine's prose, once in the screen's own bulleted list) - the bulleted
+list, renamed to "These are the goals on record.", now draws only when there is no prose already
+naming them. "From your earlier session N, read-only" is a sentence now. At 375 wide the
+conversation card runs full width with no rounded border or side gutters, there is no app bottom
+bar on the conversation, and the Feedback trigger does not render there either (it sat on the
+composer). Commit `785ab226`.
+
+**Item 8 - DONE.** The team's report card carries a "Shared" tag once released, matching "Your own
+report"'s "Only you". "That's saved" is a soft green panel with its own heading inside, with a real
+gap between its two paragraphs. "How checkable today's check-in was" is the prototype's short
+one-line items now, tick or ring, with the found/missing sentence moved to a screen-reader-only
+span rather than shown twice over - the count stays hidden (request 45, unchanged). Space added
+above "This is about the check-in. Only you see it." Commit `d01b3898`.
+
+**Request to the engine - added.** Request 74: a session opened early asks about things that have
+not happened yet (Aisha asked about Thursday's deployment on the Tuesday before it; Rukia asked
+what went wrong at a visit that had not happened yet). Flagged, not fixed - it is the opening
+question's own prompt. Commit `39349d3f`.
+
+**Verification.** `npx tsc -b` clean throughout. Full client suite after every item:
+`src/components/gw/ src/pages/grounds/ src/pages/chat/ src/pages/report/` and a full run -
+1 pre-existing failure only (`the-reveal-row-names-who-you-are-waiting-on.spec.ts`, from the merge,
+unrelated to this round; confirmed by stashing this round's changes and re-running before starting).
+
+**Commits this round (local only, `wip/prototype-ui`, not pushed), in order:**
+1. `c8091506` - item 1
+2. `38d8c078` - items 2 and 3
+3. `c785ec60` - item 4
+4. `785ab226` - item 7
+5. `d01b3898` - item 8
+6. `39349d3f` - request 74 to the engine
+7. `49eee4e8` - item 5 (wording and the Remind bug; the page rebuild itself is not done)
+
+## The full "Your work" rebuild (review's item 5, done)
+
+**DONE.** My work is the prototype's "Your work" page now (my-record.jpg/.txt), no sub-tabs, on
+both GroundParticipantPage.tsx and GroundAdminPage.tsx: new `client/src/components/gw/checkin/
+YourWork.tsx`, built from the parts (`PageTitle`, `Section`, `Panel`, `Tag`, `Button`) plus the
+existing, previously-reviewed pieces it assembles (`WhatYouAreCarryingForward`,
+`WhatYourRecordCanSupport`, `TheFiveThingsThatMakeItCheckable`, `MyRecord`, `MyCheckInSessions`,
+`DeliveredPanel`, `WhatSuccessLooksLikeFor`, `WhatToWalkInWith`).
+
+Each section is filled from what is actually served and not drawn when nothing is: the tiles show
+only check-ins-of-opened and (new) promises-kept-this-month; "Your open deals" is not served
+anywhere (sales-only, no general equivalent) and is not drawn; "Something that keeps coming up"
+draws only when a pattern exists (patterns are off everywhere right now, so this is invisible
+today, which is correct); "What you said you'd do" reads the record's own commitments with the
+prototype's own two-state mark (done/open - **not** the four proven/confirmed/said/memory marks,
+which describe how a record LINE is known and do not exist on a `GroundCommitment`; used the
+mark that is actually true instead of inventing the one asked for); "Your reports",
+"What success looks like", "What you say you delivered" and "Corrections you've made" are new,
+each reusing already-served data or an already-built component rather than a new endpoint, except
+one small, safe backend addition: `settledAt` (in the schema since week 9, never selected) added
+to `grounds.service.ts`'s existing commitments `select` - exposure only, no new logic.
+
+Kept beyond the prototype's own list, per "nothing valuable is lost": `WhatYouAreCarryingForward`
+(now on white, not a dark navy card - matches every other card on the page), the specificity/
+confidence cards, `MyRecord`'s resolution and "insights locked" panels, and the post-report guide.
+For the lead: "Every session" and "Who has answered" (the old Report/Sessions sub-tabs' own code,
+completely unchanged) are quiet links inside "Your work" now; an admin who runs a check-in she is
+not a party to (so "Your work" never mounts for her) gets the same two links standalone on
+GroundAdminPage.tsx, so nothing that was reachable before is unreachable now.
+
+**REBUILT_PAGES: nothing added.** `YourWork.tsx` embeds several still-legacy pieces (`DeliveredPanel`
+imports `Sec` from `kit.tsx` directly, and others carry their own inline `fontSize`/`color`/
+`margin`/`padding`/`border` styling), and neither calling page is close to "fully on the parts" -
+both are large, long-standing files with extensive inline styling elsewhere on the page. Checked
+against `the-rebuilt-pages-use-only-the-new-parts.spec.ts`'s own rule (one level of local imports,
+not just the page itself) before deciding this, rather than guessing.
+
+**Verification.** `npx tsc -b` clean (client and api). Full client suite: 3490/3491 (the one
+failure is the pre-existing `the-reveal-row-names-who-you-are-waiting-on.spec.ts`, unrelated,
+confirmed before this work started). API `grounds` module: 1141/1141 (the only backend file
+touched). A full API `jest` run was also started for extra assurance; its result is in the next
+entry once it finishes, or noted as still running if this report is read before it lands.
+
+Thirteen existing source-pattern specs updated for the new architecture (sub-tab clicks replaced
+with the new quiet-link clicks; assertions pointed at `YourWork.tsx`/`useOpenSession.ts` where code
+moved) - reasoning given in each. One, `an-error-says-which-one.spec.tsx`, was pinned to the OLD
+location of the paywall probe's error message and had been missed since review round 3 item 2
+moved it to `useOpenSession.ts` - caught and fixed by this round's own full-suite pass, not a new
+regression.
+
+**Commit:** `8edca611` - "Rebuild My work as the prototype's "Your work" page, no sub-tabs"

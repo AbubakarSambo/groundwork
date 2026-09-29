@@ -88,7 +88,20 @@ describe('the header says nothing about the next session while this one is openi
   })
 
   it('once nothing is opening, the same data reads the next session\'s date honestly', async () => {
-    renderPage('')
+    /**
+     * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB ITSELF NOW AUTO-OPENS TOO.
+     *
+     * `tab === 'checkin'` is this page's own default, and opening that tab now fires the same
+     * paywall-aware probe `?open=1` always did (see GroundParticipantPage.tsx's own effect, right
+     * after `myOpenForAutoOpen`) - which reads the participant's OWN nested `checkIns`, the one
+     * with no `availableFrom` in this fixture (the discrepancy this file exists to describe). So
+     * landing on the DEFAULT tab with this fixture and no `?open=1` now auto-opens too, same as
+     * test 1 above - which is the new, correct behaviour, not a regression. This test is about the
+     * HEADER's own honest reading of the (different, top-level) date, which does not depend on
+     * which tab is active - so it lands on Context instead, to observe the header without also
+     * triggering the Check-in tab's own auto-open.
+     */
+    renderPage('?tab=context')
     expect(await screen.findByText(/The next session opens on/i)).toBeTruthy()
   })
 })

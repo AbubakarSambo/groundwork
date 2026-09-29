@@ -60,7 +60,15 @@ describe('waits are statuses', () => {
     const entry = strip(readFileSync(path.join(SRC, 'pages/enter/EntryChatPage.tsx'), 'utf8'))
     expect(entry.match(/ref=\{msgsRef\}\s*aria-live="polite"/g)?.length).toBe(2)
     expect(entry).toMatch(/<div style=\{\{ marginBottom: 18 \}\} role="status" aria-live="polite">/)
-    expect(strip(readFileSync(path.join(SRC, 'pages/chat/ChatPage.tsx'), 'utf8'))).toMatch(/ref=\{msgsRef\}\s*aria-live="polite"/)
+    /**
+     * ROUND 5, ITEM B: ChatPage.tsx's message list moved into ConversationCard.tsx's own scrolling
+     * body (components/gw/ui/ConversationCard.tsx), which sets `aria-live="polite"` unconditionally
+     * on that div - so the guarantee lives in the one shared part now, not per page. ChatPage.tsx
+     * itself just passes `bodyRef={msgsRef}`; the live-region attribute is no longer literally
+     * beside it in that file's own source.
+     */
+    expect(strip(readFileSync(path.join(SRC, 'pages/chat/ChatPage.tsx'), 'utf8'))).toMatch(/bodyRef=\{msgsRef\}/)
+    expect(strip(readFileSync(path.join(SRC, 'components/gw/ui/ConversationCard.tsx'), 'utf8'))).toMatch(/ref=\{bodyRef\}\s*aria-live="polite"/)
   })
   it('the one-time secret panels are alerts that take focus', () => {
     const integrations = strip(readFileSync(path.join(SRC, 'pages/org/IntegrationsPage.tsx'), 'utf8'))

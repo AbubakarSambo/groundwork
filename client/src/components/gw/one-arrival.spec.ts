@@ -151,16 +151,20 @@ describe('the check-in is not a trap', () => {
 
   it('the exit is on the left, where nothing floats over it', () => {
     /**
-     * Anchored on the button's own title, because `ChatPage` has two `gw-hdr` blocks - the loading
-     * state draws one too - and slicing from the first one measured the wrong header entirely.
+     * ROUND 5, ITEM B: THE BACK BUTTON MOVED INTO ConversationCard.tsx's OWN SLOT.
+     *
+     * `className="gw-back"` and a literal `title="Leave this session..."` used to sit directly in
+     * ChatPage.tsx, above the card. Both now live one level up: ChatPage passes `backTitle` and
+     * `onBack` to `<ConversationCard>`, which renders its own back button - always before the
+     * `header` slot in its own source - so the way back still sits above the card, on the left, as
+     * "← Sales team, Q3" does in check-in-start.jpg. The guarantee splits accordingly: ChatPage
+     * really does pass a real title and a real leave handler, and ConversationCard really does
+     * draw the back button before the header.
      */
-    const i = CHAT.indexOf('title="Leave this session')
-    expect(i).toBeGreaterThan(0)
-    const header = CHAT.slice(i - 600, i + 900)
-    /* Since U.8 the header is the prototype's card header (TheCheckInHeader), and the way back
-       sits above the card, on the left, as "← Sales team, Q3" does in check-in-start.jpg. */
-    expect(header).toContain('gw-back')
-    expect(CHAT.indexOf('className="gw-back"')).toBeLessThan(CHAT.indexOf('<TheCheckInHeader'))
+    expect(CHAT).toMatch(/backTitle="Leave this session\. Everything you have said is already saved\."/)
+    expect(CHAT).toMatch(/onBack=\{leave\}/)
+    const CARD = strip(readFileSync(join(__dirname, 'ui/ConversationCard.tsx'), 'utf8'))
+    expect(CARD.indexOf('← {backLabel}')).toBeLessThan(CARD.indexOf('{header}'))
   })
 
   it('and it returns you to the check-in, not to the list of every ground', () => {

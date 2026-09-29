@@ -1,7 +1,16 @@
-import { useQuery } from '@tanstack/react-query'
-import { Button, StageLadder, Tag } from '@/components/gw/kit'
+import { useId } from 'react'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { StageLadder } from '@/components/gw/kit'
+import { PageTitle } from '@/components/gw/ui/PageTitle'
+import { Section } from '@/components/gw/ui/Section'
+import { Panel } from '@/components/gw/ui/Panel'
+import { Button } from '@/components/gw/ui/Button'
+import { Tag } from '@/components/gw/ui/Tag'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
+import { reportsApi } from '@/api/reports'
 import { THE_FIVE, wasItThere } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -23,6 +32,12 @@ import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-che
  *   (how-checkable-is-yours-alone). The five are the engine's own five, in the product's words.
  * - "One thing for next time" is the sentence the session itself wrote (`whatToCarry`), which
  *   arrives a little after the check-in closes.
+ *
+ * ROUND 5, ITEM E2: rebuilt from components/gw/ui - PageTitle for the heading (the prototype's own
+ * Literata 30px, not an ad-hoc h1), Section for each of the four blocks (the prototype's own 21px
+ * heading, not four different sizes), Panel for the two report cards, and ui's own Button/Tag
+ * (already the prototype's values - only the import path changes). `StageLadder` stays from
+ * kit.tsx: there is no ui/StageLadder yet, and it is not one of the parts this task named.
  */
 /**
  * Off until request 45 (docs/requests-to-engine.md) is answered: the "n of 5" count and its bar
@@ -30,6 +45,61 @@ import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-che
  * on once the engine workspace has looked at why.
  */
 const SHOW_THE_COUNT = false
+
+/** The two report cards - see the comment above where this is called for why the heading above
+    it is conditional while this panel is not. */
+function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, teamReportReleased, onCorrect, correcting }: {
+  checkInId: string
+  groundId: string
+  sessionNumber: number
+  aTeamReport: boolean
+  teamReportReleased: boolean
+  onCorrect: () => void
+  correcting: boolean
+}) {
+  return (
+    <Panel pad={false}>
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <h3 className="gwui-panel-text" style={{ fontWeight: 700 }}>Your own report</h3>
+          <Tag tone="plain">Only you</Tag>
+        </div>
+        <p className="gwui-panel-text">What you said today and what it shows. Ready now.</p>
+        <div style={{ marginTop: 10 }}>
+          <Button kind="secondary" wide to={`/checkin/${checkInId}/report`}>Read yours</Button>
+        </div>
+        <button
+          onClick={onCorrect}
+          disabled={correcting}
+          style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, color: 'var(--gw-navy)', fontSize: 12.5, cursor: correcting ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+        >
+          {correcting ? 'Opening…' : 'Something here isn’t right'}
+        </button>
+      </div>
+      {aTeamReport && (
+        <div style={{ padding: '14px 16px', borderTop: '1px solid var(--gw-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <h3 className="gwui-panel-text" style={{ fontWeight: 700 }}>The team’s report</h3>
+            {/* REVIEW ROUND 3, ITEM 8: A TAG EITHER WAY, LIKE "Your own report"'s "Only you" -
+                this card used to say nothing at all once the report had released, so the two
+                halves of one card disagreed about whether a state is worth a tag. */}
+            {teamReportReleased ? <Tag tone="proven">Shared</Tag> : <Tag tone="attention">Not shared yet</Tag>}
+          </div>
+          {teamReportReleased ? (
+            <>
+              <p className="gwui-panel-text">Everyone’s check-ins together.</p>
+              <div>
+                <Button kind="secondary" wide to={`/grounds/${groundId}/session/${sessionNumber}`}>Read it</Button>
+              </div>
+            </>
+          ) : (
+            <p className="gwui-panel-text">Everyone’s check-ins together. You’ll get it once everyone has answered.</p>
+          )}
+        </div>
+      )}
+    </Panel>
+  )
+}
 
 export interface WhatChanged {
   title?: string | null
@@ -69,6 +139,24 @@ export function TheDonePage({
     refetchInterval: (q: any) => (q.state.data?.artifact?.whatToCarry ? false : 5000),
   })
 
+  /**
+   * ROUND 6, ITEM 4: "SOMETHING HERE ISN'T RIGHT", KEPT REACHABLE FROM THE DONE PAGE.
+   *
+   * The old "already complete" view this page replaces had it (TheCheckInYouJustFinished.tsx's
+   * own correction link); the Done page itself never did. Same call the report page, the ground
+   * chat and TheCheckInYouJustFinished.tsx all make - one way to open a correction, not a second.
+   */
+  /* The green panel's own accessible region, the same pattern Section uses (aria-labelledby
+     pointing at its own heading), since this panel is not built from Section any more - see the
+     comment where it renders, below. */
+  const savedHeadingId = useId()
+  const navigate = useNavigate()
+  const correct = useMutation({
+    mutationFn: () => reportsApi.startSelfCorrection(groundId, sessionNumber),
+    onSuccess: (res: { checkInId: string }) => navigate(`/checkin/${res.checkInId}`),
+    onError: () => toast.error('Could not open a correction. Try again.'),
+  })
+
   const g: any = ground.data
   const leadName = whoElseAnswers(g)
   const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId)
@@ -99,82 +187,64 @@ export function TheDonePage({
   const changed = (whatChanged?.items ?? []).filter(i => i?.name && Array.isArray(i.stages))
 
   return (
-    <div style={{ maxWidth: 440, margin: '0 auto', padding: '28px 16px 40px', display: 'grid', gap: 18 }}>
-      <div>
-        <h1 style={{ margin: 0, fontFamily: 'var(--gw-serif, Georgia, serif)', fontWeight: 400, fontSize: 30, lineHeight: 1.2, color: 'var(--gw-text)' }}>
-          {firstName ? `Done. Thanks, ${firstName}.` : 'Done. Thank you.'}
-        </h1>
-        <p style={{ margin: '6px 0 0', fontSize: 15, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-          Your check-in is saved.{next ? ` ${next}` : ''}
-        </p>
-      </div>
+    <div style={{ maxWidth: 440, margin: '0 auto', padding: '28px 16px 40px', display: 'grid', gap: 24 }}>
+      <PageTitle
+        title={firstName ? `Done. Thanks, ${firstName}.` : 'Done. Thank you.'}
+        subtitle={`Your check-in is saved.${next ? ` ${next}` : ''}`}
+      />
 
-      <section>
-        {aTeamReport && <h2 style={h2}>Two reports come from this</h2>}
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, background: 'white' }}>
-          <div style={{ padding: '14px 16px' }}>
-            <div style={rowHead}>
-              <h3 style={h3}>Your own report</h3>
-              <Tag tone="plain">Only you</Tag>
-            </div>
-            <p style={p}>What you said today and what it shows. Ready now.</p>
-            <div style={{ marginTop: 10 }}>
-              <Button kind="secondary" wide to={`/checkin/${checkInId}/report`}>Read yours</Button>
-            </div>
-          </div>
-          {aTeamReport && (
-            <div style={{ padding: '14px 16px', borderTop: '1px solid var(--gw-border)' }}>
-              <div style={rowHead}>
-                <h3 style={h3}>The team’s report</h3>
-                {!teamReportReleased && <Tag tone="attention">Not shared yet</Tag>}
-              </div>
-              {teamReportReleased ? (
-                <>
-                  <p style={p}>Everyone’s check-ins together.</p>
-                  <div style={{ marginTop: 10 }}>
-                    <Button kind="secondary" wide to={`/grounds/${groundId}/session/${sessionNumber}`}>Read it</Button>
-                  </div>
-                </>
-              ) : (
-                <p style={p}>Everyone’s check-ins together. You’ll get it once everyone has answered.</p>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
+      {/**
+        * THE HEADING IS THE TEAM'S NEWS, NOT A LABEL ON A LONE CARD.
+        *
+        * "Two reports come from this" is only true when there are two - a check-in of one still
+        * gets "Your own report", with no heading claiming a second report that does not exist.
+        * `Section` always draws a heading, so the solo case renders the same panel without it,
+        * rather than the component inventing an empty one.
+        */}
+      {aTeamReport ? (
+        <Section heading="Two reports come from this">
+          <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
+        </Section>
+      ) : (
+        <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport={false} teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
+      )}
 
       {changed.length > 0 && (
-        <section style={card}>
-          <h2 style={{ ...h3, marginBottom: 10 }}>{whatChanged?.title?.trim() || 'What changed'}</h2>
+        <Section heading={whatChanged?.title?.trim() || 'What changed'}>
           <div style={{ display: 'grid', gap: 14 }}>
             {changed.map((c, i) => (
               <div key={c.name + i}>
-                <div style={rowHead}>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-text)' }}>{c.name}</span>
-                  {c.says && <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{c.says}</span>}
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                  <span className="gwui-panel-text" style={{ fontWeight: 700 }}>{c.name}</span>
+                  {c.says && <span className="gwui-panel-text-muted">{c.says}</span>}
                 </div>
                 <StageLadder stages={c.stages} label={c.name} says={(c as any).stagesSays ?? undefined} />
               </div>
             ))}
           </div>
-        </section>
+        </Section>
       )}
 
+      {/*
+        REVIEW ROUND 3, ITEM 8: "That's saved" IS A SOFT GREEN PANEL WITH ITS HEADING INSIDE -
+        not a plain white Panel under a separate Section heading above it (two different things
+        reading as unrelated). A real gap between its two paragraphs now too - they sat with no
+        space between them, reading as one run-on block.
+      */}
       {(leadName || carry) && (
-        <section style={{ borderRadius: 12, padding: '16px 18px', background: 'var(--gw-green-bg)' }}>
-          <h2 style={{ ...h3, fontSize: 17, marginBottom: 8 }}>That’s saved</h2>
+        <section aria-labelledby={savedHeadingId} style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)', borderRadius: 12, padding: '15px 17px', display: 'grid', gap: 10 }}>
+          <h2 id={savedHeadingId} style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--gw-green-t)' }}>That’s saved</h2>
           {leadName && (
-            <p style={p}>
+            <p className="gwui-panel-text">
               <strong>Why answering matters:</strong> {leadName} also answers a check-in. The report puts the answers side by side. It does not decide who is right.
             </p>
           )}
-          {carry && <p style={{ ...p, marginTop: leadName ? 8 : 0 }}>One thing for next time: {carry}</p>}
+          {carry && <p className="gwui-panel-text">One thing for next time: {carry}</p>}
         </section>
       )}
 
       {five && (
-        <section style={card} aria-label="How checkable today’s check-in was">
-          <h2 style={h3}>How checkable today’s check-in was</h2>
+        <Section heading="How checkable today’s check-in was">
           {/*
             THE COUNT AND THE BAR ARE GONE, ON PURPOSE, NOT ONLY VISUALLY.
 
@@ -186,36 +256,38 @@ export function TheDonePage({
             else about this section depends on it.
           */}
           {SHOW_THE_COUNT && (
-            <div style={rowHead}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
               <span />
-              <span style={{ fontSize: 14, color: 'var(--gw-text)' }}>{five.filter(f => f.there).length} of 5</span>
+              <span className="gwui-panel-text">{five.filter(f => f.there).length} of 5</span>
             </div>
           )}
-          <p style={{ ...p, marginTop: 8 }}>
+          <p className="gwui-panel-text">
             Groundwork looked for these five things. It may have missed some of what you said.
           </p>
           <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid', gap: 6 }}>
+            {/*
+              REVIEW ROUND 3, ITEM 8: THE PROTOTYPE'S SHORT ITEMS - ONE LINE EACH, WITH THE TICK
+              OR RING (done.txt: "✓ Who The customer, by name" / "○ Proof A photo, a quote or a
+              message"). The trailing "Groundwork found this."/"Groundwork did not pick this up
+              this time." made each row two sentences instead of one short line.
+              THE ACCESSIBILITY FIX THAT SENTENCE EXISTED FOR STAYS, moved to an sr-only span:
+              without it the only thing telling found from missing is a filled ring's colour,
+              which is exactly the bug fixed before ("the only visible difference between found
+              and missing was a filled or empty circle"). A screen reader still hears the
+              difference; a sighted reader now sees the prototype's own short line.
+            */}
             {five.map(f => (
               <li key={f.key} style={{ display: 'flex', gap: 8, fontSize: 13.5, lineHeight: 1.45, color: f.there ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
                 <span aria-hidden style={{ width: 14, flexShrink: 0, color: f.there ? 'var(--gw-green-t)' : 'var(--gw-sub-d)', fontWeight: 700 }}>{f.there ? '✓' : '○'}</span>
-                {/*
-                  NEVER A FACT ABOUT ABSENCE, BUT SAID OUT LOUD, NOT ONLY TO A SCREEN READER.
-
-                  A sighted reader used to see only the icon and the same noun phrase either way -
-                  "What you did, not just what was happening" - with the one word that actually
-                  distinguished found from missing ("Groundwork found this." / "Groundwork did not
-                  pick this up this time.") hidden in a screen-reader-only span. So the only visible
-                  difference between "found" and "missing" was a filled or empty circle. Both readers
-                  now get the same plain sentence.
-                */}
                 <span>
-                  {f.there ? f.met : f.missing}. {f.there ? 'Groundwork found this.' : 'Groundwork did not pick this up this time.'}
+                  {f.there ? f.met : f.missing}
+                  <span className="gwui-sr-only"> {f.there ? 'Groundwork found this.' : 'Groundwork did not pick this up this time.'}</span>
                 </span>
               </li>
             ))}
           </ul>
-          <p style={{ ...p, fontSize: 13, color: 'var(--gw-sub)', marginTop: 10 }}>This is about the check-in. Only you see it.</p>
-        </section>
+          <p className="gwui-panel-text-muted" style={{ marginTop: 10 }}>This is about the check-in. Only you see it.</p>
+        </Section>
       )}
 
       {/* For whoever runs it: who the round is still waiting on. Kept from the old finished screen. */}
@@ -223,9 +295,3 @@ export function TheDonePage({
     </div>
   )
 }
-
-const h2: React.CSSProperties = { margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: 'var(--gw-text)' }
-const h3: React.CSSProperties = { margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--gw-text)' }
-const p: React.CSSProperties = { margin: '4px 0 0', fontSize: 14, lineHeight: 1.55, color: 'var(--gw-text)' }
-const rowHead: React.CSSProperties = { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }
-const card: React.CSSProperties = { border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', background: 'white' }

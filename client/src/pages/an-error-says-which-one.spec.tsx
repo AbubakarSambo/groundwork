@@ -36,7 +36,10 @@ describe('the screens', () => {
     expect(page).not.toMatch(/status === 403 \|\| \(error as any\)\?\.response\?\.status === 404\s*\?\s*'This session is not yours to open'/)
   })
   it('the probe says the sentence it extracted', () => {
-    expect(read('grounds/GroundParticipantPage.tsx')).toMatch(/onError: \(e: any\) => toast\.error\(e\?\.message \?\? 'Could not start session\. Try again\.'\)/)
+    /* REVIEW ROUND 3, ITEM 2: THE PROBE MOVED to the shared useOpenSession.ts hook, so
+       GroundAdminPage.tsx could open a session the same way - missed updating this test at the
+       time, caught doing the "Your work" rebuild's full-suite pass. */
+    expect(read('../hooks/useOpenSession.ts')).toMatch(/onError: \(e: any\) => toast\.error\(e\?\.message \?\? 'Could not start session\. Try again\.'\)/)
   })
   it('the invite and join pages keep a failure on the page', () => {
     /* U.20 sixth round (Hafsah's first review): the invite page's failure moved from the old
