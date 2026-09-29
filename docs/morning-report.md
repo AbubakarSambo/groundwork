@@ -27,6 +27,33 @@ None of the three failures noted on the base before this work are failing now.
 
 **Run-18 started at 12:54, in three parts** as run-16 was, on the build of `7f806500`. The API runs from `dist/main` on port 3000, so no edit can restart it mid-run. It writes to `api/journey/all-24/run-18/`. This is the first of today's two full runs.
 
+## 29 SEPTEMBER, 13:35 TO 20:35: SEVEN HOURS ON MY OWN
+
+**The screens workspace is merged again** (`c51b77bc`). Only `docs/requests-to-engine.md` clashed. I kept both sides: my answer to 72, and their new request 73.
+
+**A colleague's hidden target: every way it could slip through is tested, and the gaps are closed** (`c1676a59`, `c8f7ed65`). This is Kwame's target of 17, set by the lead, on a check-in where each person sees only their own. The tests read everything Ngozi, a colleague, and an admin who only reads are served.
+
+What still got through before these two commits:
+- **A list.** The name was in one item and the number in another, for example `["Kwame Mensah", "Target: 17"]`, or a table row with the name in one cell and 17 in the next.
+- **Some numbers in words:** "one hundred and twenty", "twelve hundred", "17k", "17 thousand", and "5.2 million", where the text was split at the decimal point.
+- **Names** with an accent or a curly apostrophe: Zoë, N’Golo.
+- **The check-in's own page and the list of check-ins.** These are where the lead's brief is shown, and they feed the You board. They never went through the rule at all.
+- **Ngozi's own check-in.** The lead's brief ("Kwame Mensah should reach seventeen…") and the lead's note to everyone reached the model that talks to her, as written.
+
+What already held: a pronoun ("He is behind. His target is 17."), the number two or three sentences after the name, a possessive ("Kwame's"), the first name alone, and the report and the board as served.
+
+What changed:
+- The rule knows every way a number is written, in figures and in words. It reads a list as one text, and matches names with accents and apostrophes evened out.
+- The check-in page and the list now go through it.
+- The brief and the lead's note are filtered before they reach another person's check-in. Ngozi's check-in now gets "We are behind the bank. Ngozi should land 14." The sentence with Kwame's seventeen is gone.
+- It still takes out whole sentences, never a number from inside one. It never touches anything a person said.
+- It also hides less where it hid too much. "On the 17th" is a date and stays. The lead and Kwame still read 17, and Ngozi still reads her own 14.
+- A line it empties is dropped from a list, so no empty line and no wrong count ("3 things you already see the same way" over two) reaches the screen.
+
+Tests: 83 new ones, all passing. The board, reports, check-ins, invitations and conversation parts pass: 5,894 tests. The live check waits until run-18 is finished, because run-18 is using the API.
+
+Left as it is, on purpose: the notes colleagues write "for whoever hits this next". Those are people's own words, written for others to read.
+
 ---
 
 ## HANDOVER, 29 SEPTEMBER 2026: WHERE THIS WORK STOPPED
