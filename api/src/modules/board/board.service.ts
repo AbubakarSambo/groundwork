@@ -1268,7 +1268,18 @@ export class BoardService {
       if (keep.length) out.hiddenContributors = { rows: keep, why: WHY_THIS_IS_HERE };
     }
 
-    if (has('contribution')) {
+    /*
+     * HOW THE LEADING IS LANDING IS A PATTERN, AND IS SERVED ONLY AS PATTERNS ARE. Screens request 64.
+     *
+     * `managerAlignment` is a pattern about how the check-in is being led ("seen across 2 sessions"),
+     * and it went on the wire outside `sections`, so it reached every reader while patterns are
+     * switched off, a participant included, although the report never gives a participant the
+     * leadership reads it is built from. Now it is served only when patterns are (PATTERNS_ARE_SERVED),
+     * and then only to the lead, whose leading it is about, and only once it has been seen in three
+     * periods (decision 8), the setup gap included. Nobody else reads it: it has no answer box and no
+     * clock of its own, so decision 39 (the person answers first) cannot be kept for anyone else.
+     */
+    if (has('contribution') && PATTERNS_ARE_SERVED && isInitiator) {
       // Only meaningful where someone actually manages someone: needs a manager
       // and at least one report, both with accounts on record.
       // The forbidden-name list is built from THIS ground's participants. See
@@ -1283,7 +1294,9 @@ export class BoardService {
           })),
         ),
       );
-      if (alignment.length) out.managerAlignment = alignment;
+      /* Three periods, whatever the pattern (decision 8). The builder's own floor is lower. */
+      const seenThreeTimes = alignment.filter((a) => Number(a.periods ?? 0) >= 3);
+      if (seenThreeTimes.length) out.managerAlignment = seenThreeTimes;
     }
 
     if (has('patterns')) {
