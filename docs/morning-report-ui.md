@@ -6414,26 +6414,9 @@ the grounds page and the interview) needed no change. New spec:
 `select` (so it would have caught this) - verified by reverting the fix locally and watching two of
 its four tests fail with the leaked name.
 
-**8. DONE - a decision Hafsah should confirm.** Context offered "Rewrite" on "What this check-in is
-for" to any org admin who runs a check-in with the lead's eyes, not only the lead - `ContextPage.tsx`'s
-own comment even recorded it as a decision ("An admin may rewrite it - 'she should rewrite'").
-Taking the more private option per the review task and Hafsah's item 31.2: only the check-in's own
-lead may now rewrite the brief; an admin still reads it, and keeps every other authoring power
-(renaming, the schedule, releasing the report, ending the check-in). Enforced on both ends -
-`ContextPage.tsx`'s `isLead`/`isTheLead` split (write gated on `isTheLead`, the read-only fold
-still on `isLead`) and `grounds.service.ts`'s `updateTimeline`, whose `dto.brief` branch now
-refuses anybody but the initiator.
+**8. Reverted, to your own decision.** The review asked whether an admin should be offered "Rewrite" on "What this check-in is for". I told the builder to take the more private option (only the lead), and it did. But you had already decided this on 8 September, in commit `072e6250`: an admin who runs the place may rewrite the brief ("she should rewrite"). So I reverted it in `76b472eb`: the lead and such an admin may rewrite it, as before. My earlier note that this was an open question (item 31.2) was wrong; your answer was already in the code.
 
 ### Decided for Hafsah to confirm
-
-**Item 8, only the lead may rewrite the brief.** This reverses a decision `ContextPage.tsx` had
-recorded in its own comment (an org admin running a check-in with the lead's eyes could rewrite
-"What this check-in is for", same as the lead). The review task instructed taking the more private
-of the two options, which is what shipped: only the check-in's initiator may change it now, on the
-screen and on `grounds.service.ts`'s `updateTimeline` route. Everything else an admin could do to a
-check-in they administer but do not lead - rename it, change its schedule, release its report, end
-it, read the brief - is unchanged. Flagging for a look because it is a genuine narrowing of an
-admin's authoring power over a check-in they were given administrative rights to, not a wording fix.
 
 **Verification.** `npx tsc -b` clean (client). `npx tsc --noEmit` clean (api). Targeted client
 suite (23 spec files touched by this round, including three newly-written regression specs and all
