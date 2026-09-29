@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from 'react'
  * THE CHECK-IN'S HEADER (B3, docs/prototype/screens/B3-the-check-in/check-in-start.txt).
  *
  * "Sales team check-in", a line under it, and "Pause" on the right. The line under it says
- * "That’s everything for today" once Groundwork has closed the conversation (check-in-end-card.txt).
- * The prototype's "About two minutes" is not shown: nothing in the record says how long a check-in
- * takes, and a promise of two minutes on a probation review would not be true.
+ * "About two minutes" (ROUND 6, ITEM 1: restored - the estimate is about this one conversation,
+ * which is honest to say for every check-in, not a claim about the record behind it) until
+ * Groundwork has closed the conversation, when it says "That’s everything for today" instead
+ * (check-in-end-card.txt). `title`/`underTitle` are the caller's own words - ChatPage.tsx builds
+ * both.
  *
  * PAUSE OPENS TWO CHOICES, and both are things the product already does:
  *   Stop for now        leave; every answer is already saved (nothing is sent on leaving)

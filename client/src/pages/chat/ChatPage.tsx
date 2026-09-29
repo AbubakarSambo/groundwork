@@ -18,6 +18,9 @@ import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { Bubble } from '@/components/gw/ui/Bubble'
 import { ConversationCard } from '@/components/gw/ui/ConversationCard'
 import { Composer } from '@/components/gw/ui/Composer'
+import { Modal } from '@/components/gw/ui/Modal'
+import { Section } from '@/components/gw/ui/Section'
+import { Tag } from '@/components/gw/ui/Tag'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
@@ -139,7 +142,8 @@ export function ChatPage() {
   const [sessionNumber, setSessionNumber] = useState<number>((location.state as any)?.sessionNumber ?? 1)
   const groundLabel: string   = (location.state as any)?.groundLabel ?? ''
   const [groundId, setGroundId] = useState<string | undefined>((location.state as any)?.groundId)
-  const [showAllPrior, setShowAllPrior] = useState(false)
+  /** ROUND 6, ITEM 2: the two cards fold behind one quiet link and this panel. */
+  const [showAboutPanel, setShowAboutPanel] = useState(false)
   /*
    * THE CHECK-IN ITSELF, for its name on the way back ("← Sales team, Q3") and, at the end, for who
    * else answers it. Read from the server rather than from how somebody got here: a check-in opened
@@ -585,7 +589,21 @@ export function ChatPage() {
           if (t.checkIn?.groundId && !groundId) setGroundId(t.checkIn.groundId)
           if (t.turns && t.turns.length > 0) {
             setMsgs(t.turns.map(turn => ({ id: turn.id, role: turn.role, content: turn.content, suggestedAnswers: turn.suggestedAnswers })))
-            if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true) }
+            /**
+              * ROUND 6, ITEM 4: A SESSION THAT WAS ALREADY FINISHED GETS THE SAME DONE PAGE AS
+              * ONE JUST FINISHED NOW.
+              *
+              * Loading `/checkin/:id` for a session completed earlier used to set `completed`
+              * alone - `justFinished` was only ever set by the two live-finish paths below (the
+              * normal finish, and the "already complete" refusal caught while sending) - so the
+              * early return to `TheDonePage` never fired here, and the OLD inline "already
+              * complete" block further down rendered instead: its own report blocks, a dash-joined
+              * sentence, "Open the team board →", and a "Back to check-ins" link cut off at the
+              * bottom - none of it the prototype's Done page. `justFinished` is what that early
+              * return actually keys on, so this sets it too - the prototype shows the same Done
+              * page whether you just finished or are opening a finished check-in fresh.
+              */
+            if (t.checkIn?.status === 'COMPLETED') { setDone(true); setCompleted(true); setJustFinished(true) }
             /** Reopening a session already declined must show the settled state, not the composer. */
             if (t.checkIn?.status === 'DECLINED') { setDone(true); setDeclined(true) }
             setOpened(true)
@@ -891,6 +909,15 @@ export function ChatPage() {
     )
   }
 
+  /**
+   * ROUND 6, ITEM 2: WHAT THE "WHAT THIS CHECK-IN IS ABOUT, AND WHAT YOU SAID LAST TIME" PANEL
+   * HOLDS, COMPUTED ONCE FOR BOTH THE LINK'S OWN "IS THERE ANYTHING TO OPEN" CHECK AND THE PANEL.
+   */
+  const hasAboutContent = !!brief && !!(brief.subject || brief.says || brief.objectives.length > 0)
+  const priorRecordLines = priorRecordEntries
+    .flatMap(s => s.entries.map(e => ({ session: s.sessionNumber, type: e.type, text: asTheirWords(e.text), raw: e.text })))
+    .filter(l => l.text && !isTheEnginesOwnNote(l.raw))
+
   /* Fills the screen exactly, so the composer sits at the bottom of the phone and the transcript scrolls inside. It was minHeight, and the composer measured 1,518px down on an 812px screen. */
   return (
     /* minHeight 100vh was fighting the height: on a narrow screen it re-added the nav strip the
@@ -918,7 +945,14 @@ export function ChatPage() {
         backTitle="Leave this session. Everything you have said is already saved."
         header={(
                 <TheCheckInHeader
-                  title="Your check-in"
+                  /**
+                    * ROUND 6, ITEM 1: THE CHECK-IN'S OWN NAME, THE PROTOTYPE'S SHAPE.
+                    * check-in-start.txt: "Sales team check-in" (bold), "About two minutes" under
+                    * it, Pause on the right - "Your check-in" named no check-in at all. The
+                    * estimate is honest about what it is measuring (this one conversation, not
+                    * the record it draws on), so it applies the same way to every check-in.
+                    */
+                  title={checkInName ? `${checkInName} check-in` : 'Your check-in'}
                   underTitle={
                     done && !completed && !declined
                       ? 'That’s everything for today'
@@ -926,7 +960,7 @@ export function ChatPage() {
                         ? `Correcting session ${correctingSession}`
                         : isFinalSession
                           ? `Closing session ${sessionNumber}. This is your final account.`
-                          : null
+                          : 'About two minutes'
                   }
                   mayPause={opened && !completed && !declined}
                   /* Not in the bare frame: the only control on that screen should not lead out of the thing
@@ -961,8 +995,18 @@ export function ChatPage() {
         )}
         bodyRef={msgsRef}
         footer={(
-                  <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-                    <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ background: 'white', flexShrink: 0 }}>
+                    {/**
+                      * ROUND 6, ITEM 3: THE GREY STRIP IS GONE.
+                      *
+                      * `background: 'var(--gw-bg)'` with its own `borderBottom` drew a visibly
+                      * separate grey band between the last message and the composer - the
+                      * prototype has none. The row stays (it still carries a real sentence when
+                      * closing or correcting a session, and "Set the context"/"Add people" for
+                      * whoever runs it - both real fixes for reported complaints, not decoration),
+                      * just on the page's own white now, not banded off from it.
+                      */}
+                    <div style={{ padding: '4px 14px 0', fontSize: 11, color: 'var(--gw-sub)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                       {/* Always the spacer, whether or not there is a sentence to put in it: the buttons after
                           it are laid out against this flex item, not against whether it has words in it. */}
                       <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
@@ -1113,122 +1157,80 @@ export function ChatPage() {
           )}
 
           {/*
-            WHAT YOU ARE CHECKING IN ON, ON SCREEN WHILE YOU ANSWER.
+            ROUND 6, ITEM 2: "WHAT THIS CHECK-IN IS ABOUT" AND "WHAT YOU SAID LAST TIME" FOLD
+            BEHIND ONE QUIET LINK.
             
-            A participant arrives by invite link and was asked "what did you understand your role in
-            this to be" with nothing on screen: not the subject, not the objectives, not who set it
-            up. So people freestyled, and the report was built on that.
+            The prototype starts straight with Groundwork's first turn (check-in-start.jpg) - two
+            cards above it, with their own capitalised headings, are not there. Both still carry
+            real things the person may want before answering (an objective they have never seen
+            elsewhere; what they said last time, so they are not asked to repeat it) - dropping
+            them would be the wall an-objective-nobody-has-seen.spec.ts and
+            what-you-said-last-time were written against. So they are reachable, not gone: one
+            plain link above the first turn opens a panel with both, built from the parts
+            (Modal), rather than sitting open on screen before anyone has typed a word.
             
-            `an-objective-nobody-has-seen.spec.ts` already states the rule this serves: "reading a
-            person against a target they have never seen is the definition of an unfair review, and
-            the fact that the product would be doing it silently makes it worse rather than better."
-            The objective carries a `seenBySubject` state for exactly this reason. Nothing was
-            showing it, so the state could never honestly become true.
-            
-            It stays visible rather than appearing once, because a target you saw at the top of a
-            ten-minute conversation is a target you are no longer looking at by the time it matters.
-            Only shared facts: the subject and the stated objectives, never another party's words.
+            NOT IN THE BARE FRAME, same reason as before: a team update's link opens on the
+            question, and a card - or now a link - above it says something before anybody has
+            typed a word. See the-link-opens-on-the-question.
           */}
-          {/* `says` is in the condition because it is rendered below: a check-in whose lead wrote a
-              description but which has no objectives and no label showed nothing at all. */}
-          {/*
-            AND NOT IN THE BARE FRAME. A team update's link opens on the question, and the question
-            is the first message: the band above it would say the same sentence twice before
-            anybody has typed a word. See the-link-opens-on-the-question.
-          */}
-          {!bareFrame && brief && (brief.subject || brief.says || brief.objectives.length > 0) && (
-            <div style={{ border: '1px solid var(--gw-border)', borderLeft: '3px solid var(--gw-navy)', borderRadius: 10, padding: '11px 13px', marginBottom: 4, background: 'white' }}>
-              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gw-muted)', marginBottom: 5 }}>
-                What this check-in is about
-              </div>
-              {brief.subject && (
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.45, marginBottom: 4 }}>
-                  {brief.subject}
-                </div>
-              )}
-              {/*
-                AND WHAT IT IS ACTUALLY ABOUT.
-
-                The subject is the check-in's label, and on the picker path the label is the
-                scenario - so this band, headed "What this check-in is about", said "New hire" and
-                stopped. Read on a real invitation: the lead had written four sentences describing
-                the situation and the person being asked to account for it never saw a word of them.
-              */}
-              {brief.says && (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: brief.objectives.length ? 7 : 0 }}>
-                  {brief.says}
-                </div>
-              )}
-              {brief.objectives.length > 0 && (
-                <>
-                  <div style={{ fontSize: 11, color: 'var(--gw-sub)', marginBottom: 4 }}>
-                    {brief.objectives.length === 1 ? 'The objective on record:' : 'The objectives on record:'}
-                  </div>
-                  {brief.objectives.map((o, i) => (
-                    <div key={i} style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.5, display: 'flex', gap: 6 }}>
-                      <span style={{ color: 'var(--gw-navy)', flexShrink: 0 }}>•</span>
-                      <span>{o.name}{o.target != null ? ` (${o.target.toLocaleString('en-US')})` : ''}</span>
-                    </div>
-                  ))}
-                </>
-              )}
-              {/*
-                AND WHY THE LIST IS SHORT, WHICH THE SERVER HAS BEEN SAYING TO NOBODY.
-
-                A check-in that keeps numbers to their owner sends this line with the brief: "Other
-                people on this check-in have numbers of their own, and those are theirs." Without
-                it, somebody reads two objectives on a check-in with four people and has no idea
-                whether the rest are missing, secret, or simply not set. The line was written on 15
-                September and rendered nowhere.
-              */}
-              {brief.alsoSay && (
-                <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6, lineHeight: 1.5, fontStyle: 'italic' }}>
-                  {brief.alsoSay}
-                </div>
-              )}
-              <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 7, lineHeight: 1.45 }}>
-                Answer in your own words. You are not expected to agree with any of it.
-              </div>
+          {!bareFrame && (hasAboutContent || priorRecordLines.length > 0) && (
+            <div style={{ marginBottom: 4 }}>
+              <button
+                type="button"
+                onClick={() => setShowAboutPanel(true)}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+              >
+                What this check-in is about, and what you said last time
+              </button>
             </div>
           )}
-          {priorRecordEntries.length > 0 && (() => {
-            /*
-             * WHAT YOU SAID LAST TIME, IN YOUR WORDS, THREE LINES UNLESS YOU ASK FOR MORE.
-             *
-             * This was every extracted line from every earlier session, with the engine's own marks
-             * left in, sitting above the first question. On a phone the question was two screens
-             * down. A participant read the machine's notes on her before she was asked anything.
-             * The most recent session's last three lines, cleaned, with the rest behind a tap.
-             */
-            const lines = priorRecordEntries
-              .flatMap(s => s.entries.map(e => ({ session: s.sessionNumber, type: e.type, text: asTheirWords(e.text), raw: e.text })))
-              .filter(l => l.text && !isTheEnginesOwnNote(l.raw))
-            const latest = Math.max(...priorRecordEntries.map(s => s.sessionNumber))
-            const shown = showAllPrior ? lines : lines.filter(l => l.session === latest).slice(-3)
-            const more = lines.length - shown.length
-            return (
-              <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
-                  What you said last time
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {shown.map((l, i) => (
-                    <div key={i} style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--gw-text)' }}>
-                      {showAllPrior && <span style={{ color: 'var(--gw-muted)', fontSize: 11, marginRight: 6 }}>S{l.session}</span>}
-                      <span style={{ fontWeight: 600 }}>{RECORD_ENTRY_LABELS[l.type] ?? l.type}: </span>
-                      {l.text}
-                    </div>
-                  ))}
-                </div>
-                {more > 0 && (
-                  <button type="button" onClick={() => setShowAllPrior(true)}
-                    style={{ background: 'none', border: 'none', padding: 0, marginTop: 8, fontSize: 11.5, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>
-                    {more === 1 ? 'One more line' : `${more} more lines`} on record
-                  </button>
-                )}
-              </div>
-            )
-          })()}
+          {showAboutPanel && (
+            <Modal title="What this check-in is about, and what you said last time" onClose={() => setShowAboutPanel(false)}>
+              {hasAboutContent && (
+                <Section heading="What this check-in is about">
+                  {brief!.subject && (
+                    <p className="gwui-panel-text" style={{ fontWeight: 600 }}>{brief!.subject}</p>
+                  )}
+                  {/*
+                    THE ENGINE'S OWN COLON LISTS, UNCHANGED. "The goals on this check-in: …; …" and
+                    "The objectives on record:" are the engine's own sentences (request 40 already
+                    asks it to write them as plain sentences) - not reworded here.
+                  */}
+                  {brief!.says && (
+                    <p className="gwui-panel-text">{brief!.says}</p>
+                  )}
+                  {brief!.objectives.length > 0 && (
+                    <>
+                      <p className="gwui-panel-text-muted">
+                        {brief!.objectives.length === 1 ? 'The objective on record:' : 'The objectives on record:'}
+                      </p>
+                      {brief!.objectives.map((o, i) => (
+                        <p key={i} className="gwui-panel-text">
+                          {o.name}{o.target != null ? ` (${o.target.toLocaleString('en-US')})` : ''}
+                        </p>
+                      ))}
+                    </>
+                  )}
+                  {brief!.alsoSay && (
+                    <p className="gwui-panel-text-muted">{brief!.alsoSay}</p>
+                  )}
+                  <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>
+                </Section>
+              )}
+              {priorRecordLines.length > 0 && (
+                <Section heading="What you said last time">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {priorRecordLines.map((l, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                        <span className="gwui-panel-text">{l.text}</span>
+                        <Tag tone="plain">{RECORD_ENTRY_LABELS[l.type] ?? l.type}</Tag>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              )}
+            </Modal>
+          )}
           {priorTurns.length > 0 && (
             <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>

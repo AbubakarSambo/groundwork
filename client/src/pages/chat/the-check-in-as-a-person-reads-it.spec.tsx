@@ -105,18 +105,32 @@ afterEach(() => {
 })
 
 describe('the header', () => {
-  it('names the check-in on the way back, and says it is your check-in, with Pause', async () => {
+  /**
+   * ROUND 6, ITEM 1: THE CHECK-IN'S OWN NAME, THE PROTOTYPE'S SHAPE (check-in-start.txt:
+   * "Sales team check-in", bold, "About two minutes" under it, Pause on the right). "Your
+   * check-in" named no check-in at all.
+   */
+  it('names the check-in in the heading, and on the way back, with Pause', async () => {
     renderChat()
     expect(await findByRole('button', { name: '← Sales team, Q3' }, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Your check-in' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Sales team, Q3 check-in' })).toBeTruthy()
     expect(await findByRole('button', { name: 'Pause' })).toBeTruthy()
     expect(await findByText(OPENING, {}, { timeout: 5000 })).toBeTruthy()
   })
 
-  it('does not promise how long it takes', async () => {
+  /**
+   * ROUND 6, ITEM 1: REVERSED FROM "DOES NOT PROMISE HOW LONG IT TAKES".
+   *
+   * That rule held while the header said "Your check-in": a fixed two-minute promise read as a
+   * claim about the RECORD behind a check-in, which is not true for every one of them (a
+   * probation review, for one). Hafsah's own read of the prototype at 1440 asked for it back -
+   * the estimate is about this ONE CONVERSATION, not the record, which is true the same way for
+   * every check-in, so it is honest to say plainly, as the prototype does.
+   */
+  it('says about how long the conversation takes', async () => {
     renderChat()
     await findByText(OPENING, {}, { timeout: 5000 })
-    expect(screen.queryByText(/About two minutes/)).toBeNull()
+    expect(screen.getByText('About two minutes')).toBeTruthy()
   })
 
   it('Pause offers to stop for now, which leaves with everything saved', async () => {
