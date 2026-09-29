@@ -85,6 +85,7 @@ import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-la
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
 import { linesBuiltAtTheRead } from './a-line-built-at-the-read-is-read-too';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
+import { whatTodayReads } from './what-today-reads-from-the-record';
 import { theSameThingForTheLead } from '../board/the-same-thing-read-from-the-record';
 import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRewrite, THE_LINES_REWRITTEN, theRewritesById } from './every-line-is-read-before-it-is-kept';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
@@ -5817,7 +5818,29 @@ happened, and what is in the way.`;
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const served = await this.getAsBuilt(groundId, requestingUserId, requestingUserOrgId);
-    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served));
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withWhatTodayReads(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served)));
+  }
+
+  /**
+   * SINCE THE LAST ROUND, AND WHAT ONLY THE LEAD CAN SETTLE, ON THE LATEST REPORT (week 16, screens
+   * request 3a and 3b). Built from the stored rows at the read: no model is asked and nothing is
+   * written. `sinceLast` goes to every reader, each only about what they may already see;
+   * `forTheLead` only to the person who runs the check-in. Served before whatTheLeadHasNotShared,
+   * so a hidden target, a private file's name or a goal not told yet is walled here as well.
+   * See what-today-reads-from-the-record.
+   */
+  private async withWhatTodayReads<T>(groundId: string, requestingUserId: string, requestingUserOrgId: string | undefined, served: T): Promise<T> {
+    if (!served || typeof served !== 'object') return served;
+    const ground = await (this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true, participants: { select: { userId: true } } } as any,
+    }) as Promise<any>).catch(() => null);
+    if (!ground) return served;
+    const isParty = ((ground.participants ?? []) as any[]).some((p) => p.userId === requestingUserId);
+    const isAdmin = ground.initiatorId !== requestingUserId && !isParty
+      && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId).catch(() => false));
+    const today = await whatTodayReads(this.prisma as any, groundId, { userId: requestingUserId, isAdmin }).catch(() => ({}));
+    return Object.keys(today).length ? { ...(served as any), ...today } : served;
   }
 
   /**
