@@ -6616,3 +6616,21 @@ The reviewer read every screen as Juma, Rukia, Amani and Neema, at 1440 and 375 
 11. Smaller points on the People page, and one on the participant's old view.
 
 **The reviewer's view on the items for you to confirm:** it agrees with Guest, the invitation wording, the shortened sentences (apart from "end it"), "Not let in" (once it reaches every page), keeping four sections the prototype has no place for, and keeping "Ending it" in the product's words. It disagrees with keeping "You in this check-in" on the lead's view, because it repeats "What it is" and "How it runs" as label pieces. I will fold it into the sections it repeats, since that is closer to the prototype, and list it.
+
+**Fixed, from the review above (30 September, builder pass):**
+
+1. Board privacy: a colleague's pattern now draws only for `viewerRunsThisCheckIn`, not for an admin who merely reads. Test added: an admin who does not run it sees nobody else's pattern even when the payload carries one.
+2. "Not let in" now reaches People and setup's roster (tag and strip say who decided and when, served by users.service.ts and grounds.service.ts) and the board (which no longer manufactures "Ask X to check in" for someone this organisation declined).
+3. "What an admin can see" now says "...change its setup, and ask us to end it."
+4. The strips under a person address an admin as "you", and "View plans" goes to `/billing`. For a lead who is not an admin, no button is offered where only an admin can act.
+5. "Joined" is no longer said of somebody never let in or waiting for a seat; Zawadi (no seat) reads why her invitation was never sent.
+6. Initials are taken from the resolved name, not the first letter of an email; a person with no name reads an admin's own email rather than lower-case "a colleague".
+7. Not fixed as asked: naming who changed a setting would let a person on a check-in with peers hidden learn a name from a settings page (`the-audit-log-has-a-reader.spec.ts`'s own privacy test says so). Made the page's own promise true instead ("noted with who made them and the date") and left naming the changer as a question for you.
+8. The delete text, the roles column's empty state, the lead/admin sentences under "When someone is blocked" and "Ending it", "Nobody sees another person's answers", "Who can confirm each other's work", the reminder sentence, and the "end" button are all rewritten to be true and full sentences.
+9. Not chased further this pass: the rendered test for "The team today" 's per-person pattern line already passes (`the-board-as-each-reader-reads-it.spec.tsx`). The reviewed gap most likely came from `theSameThingFromTheRows`'s three-completed-check-ins floor (a pattern needs three rounds before anything is said) rather than a broken render - worth your eyes if Amani genuinely had three sessions in the reviewed run.
+10. "Situation" no longer offers "Change" (the server drops the field silently); "Who can confirm each other's work" has its third state back.
+11. "You in this check-in" is folded into "What it is" and "How it runs" on the lead's own People and setup tab; GroundParticipantPage's own Setup tab is untouched.
+12. People page: "Letting them in takes a seat, and you have none free."; a team cell with nothing reads "No team"; the owner's own page no longer offers to remove them. Not done this pass, for lack of time: reconciling "5 people, on the free plan" against "6 people shown", and adding Zawadi as her own row on the People table.
+13. Not investigated this pass, for lack of time: the participant's old view's chip wording and the session-count mismatch.
+
+Two pre-existing failures found and left alone, both unrelated to this work: `api/src/modules/grounds/the-audit-log-has-a-reader.spec.ts` was already failing against `GroundAdminPage.tsx` before today's changes (the settings tab it reads moved to `CheckInPeopleAndSetup.tsx` a while back and nobody repointed it) - confirmed by running it against the unmodified branch.
