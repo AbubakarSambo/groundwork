@@ -1947,12 +1947,14 @@ export function GroundAdminPage() {
                                   set, or their own. Every party could edit every
                                   other party's remit, on a ground that may be
                                   deciding whether they keep their job. */}
+                              {/* REVIEW ROUND 3, ITEM 5: THE BARE "✎" HAD NO WORDS - a title
+                                  attribute is not read until a mouse hovers it, so on a phone,
+                                  or for anyone not hovering, this was an unlabelled glyph. */}
                               {(isInitiator || p.userId === user?.id) && (
                                 <button
                                   onClick={() => { setEditingRoleId(p.id); setEditingRoleValue(p.roleAsDescribed ?? '') }}
-                                  title="Edit role"
-                                  style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
-                                >✎</button>
+                                  style={{ fontSize: 10, color: 'var(--gw-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                ><span aria-hidden>✎</span> Edit</button>
                               )}
                             </div>
                           )}
@@ -1960,8 +1962,11 @@ export function GroundAdminPage() {
                           <div style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{statusLabel}</div>
                         </div>
                         {/* Chasing people is the lead's job. A peer nudging a peer
-                            on an evaluation ground is a different act entirely. */}
-                        {isInitiator && myCheckIn?.id && status !== 'COMPLETED' && p.userId && (
+                            on an evaluation ground is a different act entirely.
+                            REVIEW ROUND 3, ITEM 5: NOT FOR HERSELF. `p.userId !== user?.id` was
+                            missing, so a lead whose own session was still open saw "Remind" on
+                            her own row - there is nobody to remind there but her. */}
+                        {isInitiator && myCheckIn?.id && status !== 'COMPLETED' && p.userId && p.userId !== user?.id && (
                           <button onClick={() => remind.mutate(myCheckIn.id)} style={{ fontSize: 11, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer' }}>Remind</button>
                         )}
                         {!p.userId && p.inviteDeliveryStatus === 'BOUNCED' ? (
@@ -2076,8 +2081,10 @@ export function GroundAdminPage() {
                       {theirSessions.length > 0 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, marginLeft: 40, flexWrap: 'wrap' }}>
                           {/* Two bare numerals sat under a person's name with the meaning in a tooltip nobody hovers.
-   The row says what it is. */}
-                          <span style={{ fontSize: 10, color: 'var(--gw-muted)', marginRight: 6, letterSpacing: '.04em', textTransform: 'uppercase' }}>sessions</span>
+   The row says what it is.
+   REVIEW ROUND 3, ITEM 5: NOT SHOUTED IN CAPITALS - CLAUDE.md's wording rule keeps labels
+   in plain sentence case everywhere a person reads them. */}
+                          <span style={{ fontSize: 10, color: 'var(--gw-muted)', marginRight: 6 }}>Sessions</span>
                           {theirSessions.map((ci: any) => {
                             const done = ci.status === 'COMPLETED'
                             const going = ci.status === 'IN_PROGRESS'
@@ -2143,12 +2150,14 @@ export function GroundAdminPage() {
                             {/* Read on the Sessions tab, directly under "Some sessions done, some still
                                 open": "nothing expected of them yet". Two facts about two different
                                 things, and the second did not say which thing. It is about the
-                                EXPECTATION, so it says so. */}
+                                EXPECTATION, so it says so.
+                                REVIEW ROUND 3, ITEM 5: A SENTENCE, CAPITALISED, WITH A FULL STOP -
+                                it read as a lowercase fragment trailing off the row above it. */}
                             {!p.objective?.text?.trim()
-                              ? 'no expectation set for them yet'
+                              ? 'No expectation set for them yet.'
                               : p.objective.seenBySubject
-                                ? 'expectation set, they have seen it'
-                                : 'expectation set, not seen yet'}
+                                ? 'Expectation set. They have seen it.'
+                                : 'Expectation set. Not seen yet.'}
                           </button>
                         </div>
                       )}

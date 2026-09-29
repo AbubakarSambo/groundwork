@@ -116,7 +116,8 @@ export function WhatYourRecordCanSupport({
   return (
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '15px 17px' }}>
       <div>
-        <div style={{ fontSize: 10.5, letterSpacing: '.09em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--gw-muted)', marginBottom: 3 }}>
+        {/* REVIEW ROUND 3, ITEM 5: NOT SHOUTED IN CAPITALS. */}
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 3 }}>
           Where what you have shared stands
         </div>
         <div style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--gw-text)' }}>{read.says}</div>

@@ -17,10 +17,25 @@ import { Sec } from '@/components/gw/kit'
  *
  * The labels come from `Sec on="dark"` now rather than a third set of numbers.
  */
-export function SoloReportBody({ report, dense }: {
+/**
+ * REVIEW ROUND 3, ITEM 5: AN ENGINE COLON-OPENING, STRIPPED THE SAME WAY THE SESSION REPORT
+ * ALREADY DOES. `whatYouSaid` (rendered here as the "What you said" section) arrives from the
+ * engine as "What you shared: You have finished…" - the same prompt-written "What you shared:"
+ * prefix `withoutTheColonOpening` (SessionReportPage.tsx) already turns into a sentence, engine
+ * request 60. Reused here rather than duplicated, since it is the same fix for the same prefix.
+ */
+function withoutTheColonOpening(s: string): string {
+  return s.replace(/^What you shared:\s*/, 'Here is what you shared. ')
+}
+
+export function SoloReportBody({ report, dense, on = 'dark' }: {
   report: Record<string, unknown>
   /** The lead's view sits nested inside a participant row, so it runs a size down. */
   dense?: boolean
+  /** REVIEW ROUND 3, ITEM 5: light for "What you are carrying forward" on My work, which dropped
+      its own dark navy card; dark stays the default for the lead's roster, where this still sits
+      on `var(--gw-dark)`. */
+  on?: 'light' | 'dark'
 }) {
   const body = dense ? 12 : 13
   const indent = dense ? 14 : 16
@@ -32,15 +47,15 @@ export function SoloReportBody({ report, dense }: {
         const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())
         return (
           <div key={key} style={{ marginBottom: dense ? 10 : 12 }}>
-            <Sec title={label} on="dark" />
+            <Sec title={label} on={on} />
             {Array.isArray(val) ? (
-              <ul style={{ margin: 0, paddingLeft: indent }}>
+              <ul style={{ margin: 0, paddingLeft: indent, color: on === 'light' ? 'var(--gw-text)' : undefined }}>
                 {(val as string[]).map((v, i) => (
-                  <li key={i} style={{ fontSize: body, lineHeight: 1.6, marginBottom: dense ? 2 : 3 }}>{v}</li>
+                  <li key={i} style={{ fontSize: body, lineHeight: 1.6, marginBottom: dense ? 2 : 3 }}>{typeof v === 'string' ? withoutTheColonOpening(v) : v}</li>
                 ))}
               </ul>
             ) : (
-              <div style={{ fontSize: body, lineHeight: dense ? 1.6 : 1.65 }}>{String(val)}</div>
+              <div style={{ fontSize: body, lineHeight: dense ? 1.6 : 1.65, color: on === 'light' ? 'var(--gw-text)' : undefined }}>{withoutTheColonOpening(String(val))}</div>
             )}
           </div>
         )
