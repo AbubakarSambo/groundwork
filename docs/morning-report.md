@@ -257,6 +257,18 @@ Tests: 1,201 pass in the check-ins part, including 19 for this. The conversation
   - The wording "1 number against the person who holds it." is not a full sentence yet.
   - This changes how the check-in raises a disagreement, and it has not been through a scenario run yet.
 
+**The document wording is fixed** (`cf6bfdb9`). After a yes to a document's numbers, the person used to read "Recorded from Q3 targets.pdf. 1 number against the person who holds it." Now it reads "I have recorded this from Q3 targets.pdf. One number is now set for the person it belongs to. Nobody is measured against a number until they have seen it." The lead's own setup had the same clipped wording, and it is fixed too.
+
+**Week 15: photos, receipts and invoices** (`61c48f3d`, `7de5a695`).
+- **A photo already counted as proof,** like any document the person added.
+- **The person is told it was the photo.** If they said more after the card, the rebuilt card said "From the document you added." about a photo. It also did not check who added the document, so somebody else's plan could make a line proven there. Now the card says "From the photo you added." or "From the screenshot you added.", and it checks who added it.
+- **A receipt is never called a conversation.** A photo of a receipt reads as "Date:", "Cashier:", "Total:", which looked like people talking. So "IMG_2041.jpg is a conversation." was shown. Now it reads "IMG_2041.jpg is a receipt." or "…is an invoice.", and the card says "From the receipt you added." A call transcript that mentions an invoice is still a conversation.
+- **Not done:**
+  - Having the check-in ask for a photo when a claim is only someone's word needs a change to the conversation's instructions, and a scenario run to measure it.
+  - Files added before today keep the kind they were given until they are read again.
+
+Tests: 693 files and 6,544 tests pass in the parts touched.
+
 **The whole API test suite passes at the end of week 14: 1,191 files and 11,068 tests.** One guard failed first: the week 13 proposals code names whose number a goal is, and every such file must use the one rule or be listed with a reason. It only writes a goal the lead confirmed, and only the lead reads proposals, so it is now listed as a writer (`277b2225`).
 
 **Week 12c:** an unnamed person in the lead's list of what to ask was headed "Somebody", and is now "A colleague" (`0b6736d1`). The rest was already done.
