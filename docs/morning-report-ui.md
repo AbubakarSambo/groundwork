@@ -6296,3 +6296,55 @@ unrelated to this round; confirmed by stashing this round's changes and re-runni
 5. `d01b3898` - item 8
 6. `39349d3f` - request 74 to the engine
 7. `49eee4e8` - item 5 (wording and the Remind bug; the page rebuild itself is not done)
+
+## The full "Your work" rebuild (review's item 5, done)
+
+**DONE.** My work is the prototype's "Your work" page now (my-record.jpg/.txt), no sub-tabs, on
+both GroundParticipantPage.tsx and GroundAdminPage.tsx: new `client/src/components/gw/checkin/
+YourWork.tsx`, built from the parts (`PageTitle`, `Section`, `Panel`, `Tag`, `Button`) plus the
+existing, previously-reviewed pieces it assembles (`WhatYouAreCarryingForward`,
+`WhatYourRecordCanSupport`, `TheFiveThingsThatMakeItCheckable`, `MyRecord`, `MyCheckInSessions`,
+`DeliveredPanel`, `WhatSuccessLooksLikeFor`, `WhatToWalkInWith`).
+
+Each section is filled from what is actually served and not drawn when nothing is: the tiles show
+only check-ins-of-opened and (new) promises-kept-this-month; "Your open deals" is not served
+anywhere (sales-only, no general equivalent) and is not drawn; "Something that keeps coming up"
+draws only when a pattern exists (patterns are off everywhere right now, so this is invisible
+today, which is correct); "What you said you'd do" reads the record's own commitments with the
+prototype's own two-state mark (done/open - **not** the four proven/confirmed/said/memory marks,
+which describe how a record LINE is known and do not exist on a `GroundCommitment`; used the
+mark that is actually true instead of inventing the one asked for); "Your reports",
+"What success looks like", "What you say you delivered" and "Corrections you've made" are new,
+each reusing already-served data or an already-built component rather than a new endpoint, except
+one small, safe backend addition: `settledAt` (in the schema since week 9, never selected) added
+to `grounds.service.ts`'s existing commitments `select` - exposure only, no new logic.
+
+Kept beyond the prototype's own list, per "nothing valuable is lost": `WhatYouAreCarryingForward`
+(now on white, not a dark navy card - matches every other card on the page), the specificity/
+confidence cards, `MyRecord`'s resolution and "insights locked" panels, and the post-report guide.
+For the lead: "Every session" and "Who has answered" (the old Report/Sessions sub-tabs' own code,
+completely unchanged) are quiet links inside "Your work" now; an admin who runs a check-in she is
+not a party to (so "Your work" never mounts for her) gets the same two links standalone on
+GroundAdminPage.tsx, so nothing that was reachable before is unreachable now.
+
+**REBUILT_PAGES: nothing added.** `YourWork.tsx` embeds several still-legacy pieces (`DeliveredPanel`
+imports `Sec` from `kit.tsx` directly, and others carry their own inline `fontSize`/`color`/
+`margin`/`padding`/`border` styling), and neither calling page is close to "fully on the parts" -
+both are large, long-standing files with extensive inline styling elsewhere on the page. Checked
+against `the-rebuilt-pages-use-only-the-new-parts.spec.ts`'s own rule (one level of local imports,
+not just the page itself) before deciding this, rather than guessing.
+
+**Verification.** `npx tsc -b` clean (client and api). Full client suite: 3490/3491 (the one
+failure is the pre-existing `the-reveal-row-names-who-you-are-waiting-on.spec.ts`, unrelated,
+confirmed before this work started). API `grounds` module: 1141/1141 (the only backend file
+touched). A full API `jest` run was also started for extra assurance; its result is in the next
+entry once it finishes, or noted as still running if this report is read before it lands.
+
+Thirteen existing source-pattern specs updated for the new architecture (sub-tab clicks replaced
+with the new quiet-link clicks; assertions pointed at `YourWork.tsx`/`useOpenSession.ts` where code
+moved) - reasoning given in each. One, `an-error-says-which-one.spec.tsx`, was pinned to the OLD
+location of the paywall probe's error message and had been missed since review round 3 item 2
+moved it to `useOpenSession.ts` - caught and fixed by this round's own full-suite pass, not a new
+regression.
+
+**Commit:** `8edca611` - "Rebuild My work as the prototype's "Your work" page, no sub-tabs"
