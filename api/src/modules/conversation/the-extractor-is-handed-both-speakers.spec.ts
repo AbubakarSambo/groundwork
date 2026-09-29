@@ -14,7 +14,8 @@ const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, ' ')
   .replace(/^\s*\/\/.*$/gm, '');
 
-const EXTRACT = SRC.slice(SRC.indexOf('async extractRecordEntries('), SRC.indexOf('recordEntry.createMany'));
+/* The read itself lives in readTheRecord since the end card (task 2.7); extractRecordEntries is that read and one write. */
+const EXTRACT = SRC.slice(SRC.indexOf('private async readTheRecord('), SRC.indexOf('return valid.map((e) =>'));
 
 describe('what an extracted entry is checked against', () => {
   it('finds the extractor, so an empty slice cannot pass', () => {

@@ -1633,6 +1633,14 @@ model ConversationTurn {
   /// request 7a). Built from the question and their own last answer only. Stored so they survive a
   /// reload. Null for a turn that asks nothing. See conversation/suggested-answers.ts.
   suggestedAnswers Json? @map("suggested_answers")
+  /// THE END CARD, ON THE TURN THAT CLOSED THE CONVERSATION (task 2.7, screens request 7b): what is
+  /// now in the person's record and how each line is known. Served to that person only, on the
+  /// transcript. See conversation/the-end-card.ts.
+  endCard     Json? @map("end_card")
+  /// THE RECORD LINES THE CARD WAS BUILT FROM, NOT YET WRITTEN. Nothing reaches record_entries until
+  /// the person finishes; then exactly these are written, unless they said more after the card.
+  /// Never served to anybody.
+  recordDraft Json? @map("record_draft")
   createdAt DateTime @default(now()) @map("created_at")
 
   checkIn CheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)

@@ -48,6 +48,7 @@ import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../com
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
+import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
 import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel } from './how-checkable-a-session-was';
 
@@ -376,6 +377,9 @@ ONE THING IN THE RULES ABOVE DOES NOT APPLY HERE. They say to use people's names
  */
 export type WhoIsAsking = string | { theParticipant: string };
 
+/** How long the end card is given, after the goodbye, before it is left out and finishing reads the record as before. */
+const THE_END_CARD_WAITS_MS = 90_000;
+
 @Injectable()
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
@@ -570,8 +574,11 @@ export class ConversationService {
      * ceremony and house style, and running it over somebody's account would be the product editing
      * them.
      */
-    const asRead = <T extends { role: TurnRole; content: string }>(t: T): T =>
-      t.role === TurnRole.AI ? { ...t, content: forHumans(t.content) } : t;
+    const asRead = <T extends { role: TurnRole; content: string }>(t: T): T => {
+      /* The lines behind the end card are not written yet and are never served: only the card is. */
+      const { recordDraft: _notServed, ...turn } = t as any;
+      return (t.role === TurnRole.AI ? { ...turn, content: forHumans(t.content) } : turn) as T;
+    };
 
     return {
       checkIn: {
@@ -583,6 +590,9 @@ export class ConversationService {
       /* The turn floor the server will hold this to, so the screen offers to finish exactly when the server will honour it. See how-short-a-check-in-may-be. */
       mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null),
       turns: turns.map(asRead),
+      /* The end card, once the conversation has closed and it is ready: on the closing turn, and only
+         while nothing has been said after it (task 2.7). The screen reads it here. */
+      endCard: theCardStillStanding(turns as any),
       priorTurns: priorTurns.map(asRead),
       priorSessionNumber,
       priorRecordEntries,
@@ -2456,6 +2466,13 @@ export class ConversationService {
       this.logger?.warn?.(`Notes not updated for ${checkIn.id}: ${err?.message}`));
     /* Suggested answers under the question: task 2.6, screens request 7a. See suggested-answers. */
     const suggestedAnswers = sessionComplete ? [] : await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', message);
+    /*
+     * WHAT IS NOW IN THEIR RECORD, SHOWN BEFORE THEY FINISH (task 2.7, screens request 7b). Built after
+     * the goodbye and never in front of it: the record reader takes ten to forty-seven seconds on the
+     * local corpus, and nobody should wait that long for "That's all for today". It is kept on this
+     * turn and served on the transcript, where the screen picks it up.
+     */
+    if (sessionComplete) void this.theEndCardFor(checkIn as any, aiTurn.id);
     return {
       reply: [contextNotSaid, tookTheNumbers, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
@@ -5613,7 +5630,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * They do not read each other, so they run together.
      */
     const closingStartedAt = Date.now();
-    await this.extractRecordEntries(checkIn.id, checkIn.participantId).catch((err) =>
+    /* The lines the end card showed, if nothing was said after it (task 2.7). See writeTheRecordAtTheEnd. */
+    await this.writeTheRecordAtTheEnd(checkIn).catch((err) =>
       this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
     );
     this.logger.log(`Check-in ${checkIn.id}: took the record out of it in ${Date.now() - closingStartedAt}ms.`);
@@ -6992,8 +7010,97 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   async extractRecordEntries(checkInId: string, participantId: string) {
+    const rows = await this.readTheRecord(checkInId, participantId);
+    if (!rows.length) return;
+    await this.prisma.recordEntry.createMany({ data: rows });
+  }
+
+  /**
+   * THE END CARD, BUILT AT THE CLOSING REPLY (task 2.7, screens request 7b).
+   *
+   * Reads the record from the conversation without writing it, marks each line from the documents
+   * the person may have added, and keeps both on the closing turn: the card to be shown, and the
+   * lines, so that finishing writes exactly what the card said. Nothing reaches record_entries here.
+   * Anything that fails or takes too long leaves no card, and finishing reads the record as before.
+   */
+  private async theEndCardFor(checkIn: { id: string; participantId: string; groundId: string }, closingTurnId: string): Promise<EndCard | null> {
+    const started = Date.now();
+    const inTime = <T>(work: Promise<T>): Promise<T | null> =>
+      Promise.race([work, new Promise<null>((resolve) => setTimeout(() => resolve(null), THE_END_CARD_WAITS_MS).unref?.())]);
+    try {
+      const draft = await inTime((async () => {
+        const rows = await this.readTheRecord(checkIn.id, checkIn.participantId);
+        if (!rows.length) return { rows, photos: new Set<string>() };
+        /* A line a document backs is proven. Only asked when there is a document to ask about. */
+        const readable = await this.documentsThatMayBack(checkIn.participantId, checkIn.groundId);
+        const photos = new Set(readable.filter((d: any) => String(d.mimeType ?? '').startsWith('image/')).map((d) => d.id));
+        if (readable.length) {
+          const result = await this.whatTheDocumentsBack(readable, rows.map((r) => String(r.text ?? '')));
+          for (const b of result?.backed ?? []) {
+            const row = Number.isInteger(b.line) ? rows[b.line] : undefined;
+            const doc = Number.isInteger(b.document) ? readable[b.document] : undefined;
+            if (!row || !doc) continue;
+            Object.assign(row, { recallBased: false, anchoredDocumentId: doc.id, anchoredPassage: (b.where ?? '').slice(0, 400) || null, anchoredOrigin: (doc as any).origin ?? null });
+          }
+        }
+        return { rows, photos };
+      })());
+      if (!draft) {
+        this.logger.warn(`Check-in ${checkIn.id}: the end card took longer than ${THE_END_CARD_WAITS_MS}ms, so it was left out; the record is read when they finish.`);
+        return null;
+      }
+      const lines: ALineForTheCard[] = draft.rows.map((r) => ({
+        type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true,
+        anchoredDocumentId: (r as any).anchoredDocumentId ?? null, anchoredOrigin: (r as any).anchoredOrigin ?? null,
+        backedByAPhoto: !!(r as any).anchoredDocumentId && draft.photos.has((r as any).anchoredDocumentId),
+      }));
+      const card = theEndCard(lines);
+      await this.prisma.conversationTurn.update({
+        where: { id: closingTurnId },
+        data: { recordDraft: draft.rows as any, ...(card ? { endCard: card as any } : {}) },
+      });
+      this.logger.log(`Check-in ${checkIn.id}: end card with ${card?.inYourRecord?.length ?? 0} line(s) in ${Date.now() - started}ms; nothing written to the record yet.`);
+      return card;
+    } catch (err: any) {
+      this.logger.warn(`Check-in ${checkIn.id}: no end card (${err?.message ?? err}); the record is read when they finish.`);
+      return null;
+    }
+  }
+
+  /**
+   * WHAT FINISHING WRITES. The lines the end card showed, when nothing was said after it; otherwise
+   * the record is read again, as it always was.
+   */
+  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string }) {
+    const closing = await this.prisma.conversationTurn.findFirst({
+      where: { checkInId: checkIn.id, role: TurnRole.AI },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, createdAt: true, recordDraft: true },
+    });
+    const draft = Array.isArray(closing?.recordDraft) ? (closing!.recordDraft as unknown as Prisma.RecordEntryCreateManyInput[]) : null;
+    const saidSince = draft
+      ? await this.prisma.conversationTurn.count({ where: { checkInId: checkIn.id, role: TurnRole.PERSON, createdAt: { gt: closing!.createdAt } } })
+      : 0;
+    if (draft && saidSince === 0) {
+      if (draft.length) await this.prisma.recordEntry.createMany({ data: draft.map((r) => ({ ...r, checkInId: checkIn.id, participantId: checkIn.participantId })) });
+      this.logger.log(`Check-in ${checkIn.id}: wrote the ${draft.length} line(s) the end card showed.`);
+      return;
+    }
+    if (draft) this.logger.log(`Check-in ${checkIn.id}: they said more after the end card, so the record is read again.`);
+    await this.extractRecordEntries(checkIn.id, checkIn.participantId);
+  }
+
+  /**
+   * THE LINES THE RECORD READER TAKES OUT OF A CONVERSATION, WITHOUT WRITING THEM.
+   *
+   * Split from extractRecordEntries so the end card (task 2.7) can show a person what is going into
+   * their record before they finish, while nothing reaches record_entries until they do: forty-nine
+   * readers of that table do not wait for a check-in to finish. Same filters, same stamps, same
+   * logs as before; extractRecordEntries is this and then the write.
+   */
+  private async readTheRecord(checkInId: string, participantId: string): Promise<Prisma.RecordEntryCreateManyInput[]> {
     const turns = await this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } });
-    if (turns.length === 0) return;
+    if (turns.length === 0) return [];
 
     /*
      * A REMARK ABOUT THE TOOL IS NOT THE WORK, AND THIS IS THE READ THAT DECIDES IT.
@@ -7015,7 +7122,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     }
     /* Nothing but remarks is not a thin record, it is no record. Extracting from it would leave the
        themer only the AI's own words to work with, which is how a reply became a finding. */
-    if (work.length === 0) return;
+    if (work.length === 0) return [];
     const keep = new Set(work.map((t) => t.id));
 
     const transcript = turns
@@ -7105,7 +7212,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const dropped = (result?.entries ?? []).length - valid.length;
     if (dropped > 0) this.logger?.log?.(`Dropped ${dropped} extracted entr${dropped === 1 ? 'y' : 'ies'} on check-in ${checkInId} as not traceable to what the person said.`);
-    if (valid.length === 0) return;
+    if (valid.length === 0) return [];
 
     /*
      * Store entries. Verifiability is its OWN COLUMN now.
@@ -7121,8 +7228,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     /* What this person typed in this check-in, every turn of it, for the stamp below. */
     const whatTheyTyped = theirs.map((t) => String(t.content ?? ''));
-    await this.prisma.recordEntry.createMany({
-      data: valid.map((e) => {
+    return valid.map((e) => {
         /* Their quotation marks, where the marks are all the reader changed: the words are theirs, and
            the marks are part of them. See their-quotation-marks-are-theirs. */
         const line = theirQuotationMarksBack(theLineWithoutItsDanglingJoin(e.text), whatTheyTyped);
@@ -7142,8 +7248,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
              first may ever be quoted to anybody. See reports/a-quote-is-what-they-said. */
           saidWordForWord: saidWordForWord(line, whatTheyTyped),
         };
-      }),
-    });
+      });
   }
 
   /**
@@ -7271,19 +7376,42 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.documents?.checkDescription(docId).catch(() => null);
   }
 
+  /** The documents that may back this person's lines: their own and any open on the ground, readable, and as described. */
+  private async documentsThatMayBack(participantId: string, groundId: string) {
+    const docs = await this.prisma.groundDocument.findMany({
+      where: { groundId, OR: [{ participantId }, { visibility: 'OPEN' as any }] },
+      select: { id: true, fileName: true, content: true, origin: true, descriptionCheck: true, mimeType: true },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+    }).then((all) => all.filter((d) => {
+      /* A document that does not read as its uploader described it backs nothing until they have
+         answered for it. It is still on the list and still theirs; it just carries no weight yet. */
+      const check = d.descriptionCheck as any;
+      return !(check && check.matches === false);
+    }));
+    /*
+     * A DOCUMENT WE COULD NOT READ BACKS NOTHING. Its content is our own sentence saying we could
+     * not open it, and handing that to the model invites it to anchor somebody's record line to an
+     * apology - which then counts as document-backed, which is what makes a report say the evidence
+     * is strong. Three other readers already stepped around these; this one did not exist yet.
+     */
+    return onlyWhatWeCouldRead(docs);
+  }
+
+  /** Which of these lines these documents back, or read differently. A read only: nothing is written. */
+  private async whatTheDocumentsBack(readable: { fileName: string; content: string | null }[], lines: string[]) {
+    const documents = readable.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
+    const numbered = lines.map((t, i) => `[${i}] ${t.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join('\n');
+    return this.anthropic.extract<{ backed: { line: number; document: number; where: string }[]; readsDifferently?: { line: number; document: number; says: string }[] }>(
+      ANCHOR_TO_DOCUMENTS_PROMPT,
+      [{ role: 'user', content: `DOCUMENTS:\n${documents}\n\nRECORD LINES:\n${numbered}` }],
+      ANCHOR_TO_DOCUMENTS_SCHEMA,
+    ).catch(() => null);
+  }
+
   async anchorRecordToDocuments(participantId: string, groundId: string): Promise<{ backed: number; of: number; readsDifferently?: number }> {
-    const [docs, entries] = await Promise.all([
-      this.prisma.groundDocument.findMany({
-        where: { groundId, OR: [{ participantId }, { visibility: 'OPEN' as any }] },
-        select: { id: true, fileName: true, content: true, origin: true, descriptionCheck: true },
-        orderBy: { createdAt: 'desc' },
-        take: 12,
-      }).then((all) => all.filter((d) => {
-        /* A document that does not read as its uploader described it backs nothing until they have
-           answered for it. It is still on the list and still theirs; it just carries no weight yet. */
-        const check = d.descriptionCheck as any;
-        return !(check && check.matches === false);
-      })),
+    const [readable, entries] = await Promise.all([
+      this.documentsThatMayBack(participantId, groundId),
       /* Every line of theirs, backed or not: a line one document backs can still be read differently
          by a newer one (the revised offer letter that moves the start date), and that is the case that
          matters most. Only an unbacked line can become backed here. */
@@ -7294,21 +7422,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         take: 120,
       }),
     ]);
-    /*
-     * A DOCUMENT WE COULD NOT READ BACKS NOTHING. Its content is our own sentence saying we could
-     * not open it, and handing that to the model invites it to anchor somebody's record line to an
-     * apology - which then counts as document-backed, which is what makes a report say the evidence
-     * is strong. Three other readers already stepped around these; this one did not exist yet.
-     */
-    const readable = onlyWhatWeCouldRead(docs);
     if (!readable.length || !entries.length) return { backed: 0, of: entries.length, readsDifferently: 0 };
-    const documents = readable.map((d, i) => `[${i}] "${d.fileName}"\n${(d.content ?? '').slice(0, 6000)}`).join('\n\n');
-    const lines = entries.map((e, i) => `[${i}] ${e.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}`).join('\n');
-    const result = await this.anthropic.extract<{ backed: { line: number; document: number; where: string }[]; readsDifferently?: { line: number; document: number; says: string }[] }>(
-      ANCHOR_TO_DOCUMENTS_PROMPT,
-      [{ role: 'user', content: `DOCUMENTS:\n${documents}\n\nRECORD LINES:\n${lines}` }],
-      ANCHOR_TO_DOCUMENTS_SCHEMA,
-    ).catch(() => null);
+    const result = await this.whatTheDocumentsBack(readable, entries.map((e) => e.text));
     const rows = (result?.backed ?? []).filter((b) => Number.isInteger(b.line) && Number.isInteger(b.document) && entries[b.line]?.recallBased && readable[b.document]);
     let backed = 0;
     for (const b of rows) {
