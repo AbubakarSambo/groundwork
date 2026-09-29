@@ -49,6 +49,7 @@ import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-i
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
+import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
 import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel } from './how-checkable-a-session-was';
@@ -5782,8 +5783,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * was never built - see what-they-said-they-would-do-next.ts. Same fire-and-forget rule as the
      * fit above: nothing about a person finishing their own check-in may fail over it.
      */
-    this.writeWhatTheyPromised(checkIn.id).catch((err: any) =>
-      this.logger.warn(`Could not write what they promised on ${checkIn.id}: ${err?.message}`));
+    /* What they said happened to what they said last time, settled first so a promise they said is
+       done is not then counted as said again (week 9). See what-happened-to-what-they-said. */
+    this.settleWhatTheySaidTheyWouldDo(checkIn.id)
+      .catch((err: any) => this.logger.warn(`Could not settle what they said they would do on ${checkIn.id}: ${err?.message}`))
+      .then(() => this.writeWhatTheyPromised(checkIn.id))
+      .catch((err: any) => this.logger.warn(`Could not write what they promised on ${checkIn.id}: ${err?.message}`));
     this.usage.emit(UsageEventType.CHECK_IN_COMPLETED, { groundId: checkIn.groundId, participantId: checkIn.participantId }).catch(() => undefined);
 
     /*
@@ -6513,6 +6518,52 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    *
    * NOTHING HERE DECIDES ANYTHING WAS DONE. Status stays UNKNOWN and only a person moves it.
    */
+  /**
+   * WHAT HAPPENED TO WHAT THEY SAID THEY WOULD DO, FROM THEIR OWN WORDS IN THIS CHECK-IN (week 9).
+   * Only the commitments of theirs that were open before this check-in, and so were put to them;
+   * only DONE or NOT_DONE, and only what they plainly said. See what-happened-to-what-they-said.
+   */
+  async settleWhatTheySaidTheyWouldDo(checkInId: string): Promise<number> {
+    if (!this.prisma.groundCommitment?.findMany) return 0;
+    const row = await this.prisma.checkIn.findUnique({
+      where: { id: checkInId },
+      select: {
+        groundId: true, participantId: true, startedAt: true,
+        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } },
+      },
+    });
+    if (!row?.participantId) return 0;
+    const said = row.turns.map((t) => (t.content ?? '').trim()).filter(Boolean);
+    if (!said.length) return 0;
+    const open = await this.prisma.groundCommitment.findMany({
+      /* Open before they started this one: those are what it put to them. Not the check-in row's own
+         date, which is written when the one before finishes, before that one's promises are. */
+      where: { groundId: row.groundId, participantId: row.participantId, status: 'UNKNOWN', createdAt: { lt: row.startedAt ?? new Date() } },
+      select: { id: true, text: true, whenSaid: true, status: true },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+    });
+    if (!open.length) return 0;
+    const read = await this.anthropic.extract<{ outcomes: { item: number; happened: string }[] }>(
+      READ_WHAT_HAPPENED,
+      [{ role: 'user', content: theHappenedPrompt(open, said) }],
+      WHAT_HAPPENED_SCHEMA as any,
+      { fast: true, thinkingBudget: 0 },
+    );
+    const settled = theSettlements(open, read?.outcomes);
+    const now = new Date();
+    for (const s of settled) {
+      /* Still open at the moment of writing: somebody who pressed it by hand meanwhile wins. */
+      await this.prisma.groundCommitment.updateMany({
+        where: { id: s.id, status: 'UNKNOWN' },
+        data: { status: s.status, settledAt: now, settledInCheckInId: checkInId },
+      });
+    }
+    /* Ids and counts only: the words are theirs. */
+    if (settled.length) this.logger.log(`Check-in ${checkInId}: settled ${settled.length} of ${open.length} open commitment(s) from their own words (${settled.filter((x) => x.status === 'DONE').length} done).`);
+    return settled.length;
+  }
+
   async writeWhatTheyPromised(checkInId: string): Promise<void> {
     if (!this.prisma.groundCommitment?.create) return;
     const row = await this.prisma.checkIn.findUnique({

@@ -5212,6 +5212,12 @@ model GroundCommitment {
   /// The sessions they said it again in, unresolved. Saying it again is not a second commitment -
   /// it is the same one, still open, and this is what makes that countable.
   saidAgainIn Int[] @default([]) @map("said_again_in")
+  /// WHEN IT WAS SETTLED, DONE OR NOT DONE, so "kept in the last four weeks" counts by when it was
+  /// settled, not when it was promised (week 9). Null while it is open, and on rows settled before
+  /// this column existed.
+  settledAt           DateTime? @map("settled_at")
+  /// The check-in whose own words settled it. Null when a person settled it by hand.
+  settledInCheckInId  String?   @map("settled_in_check_in_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
