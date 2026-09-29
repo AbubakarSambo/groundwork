@@ -79,7 +79,7 @@
    * one name for one thing rather than two.
    */
   --gw-card: #FFFFFF;
-  --gw-slate: #FAF5EA;
+  --gw-slate: #F7F1E5; /* the prototype's --chat, the same as --gw-bg: soft fills and chat bubbles. It was #FAF5EA, the marketing band colour, which the product never uses. */
   --gw-line: #EDE5D6;
   --gw-ink: #1A1916;
   --gw-green: #085041;

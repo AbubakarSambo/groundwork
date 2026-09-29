@@ -115,6 +115,8 @@ You saw a darker beige in place of the prototype's cream (#FDFBF6) on many pages
 
 **Checked live, at 1440 pixels, as a participant, the lead and an admin:** Today, the check-in, the board, You, Company, Settings, People, Team boards, billing, the billing checkout and billing settings all measure #FDFBF6. Before, the participant's check-in page and the billing checkout measured #FAF5EA.
 
+**The live check (29 September):** `e2e/the-page-is-cream.spec.ts`, a Playwright test, signs in as a participant, the lead and an admin at 1440 pixels and fails if any page's background is not #FDFBF6 or #FAF5EA is painted anywhere. It runs at the end of every module (`cd e2e && npx playwright test the-page-is-cream.spec.ts`, with the local servers running). Its first run found one more: a button on a participant's Settings page, because a second colour setting, `--gw-slate`, was also #FAF5EA. It is now the prototype's chat cream, #F7F1E5, which the prototype uses for soft fills and chat bubbles. All three readers now pass.
+
 **The guard:** a test fails if #FAF5EA appears anywhere in the product, if a whole-page or band wrapper uses anything but the page cream, or if the page and `--gw-paper-2` colours stop being #FDFBF6.
 
 ## The invitation, rebuilt from the prototype's parts (29 September)

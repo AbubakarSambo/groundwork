@@ -166,6 +166,11 @@ describe('the darker cream #FAF5EA is nowhere in the product', () => {
     expect(pricing).toMatch(/background: 'var\(--gw-bg\)', border: '1\.5px solid var\(--gw-border\)'/)
   })
 
+  it('no colour setting in index.css is #FAF5EA (a second name for it slipped past once, --gw-slate)', () => {
+    const css = strip(readFileSync(join(SRC, 'index.css'), 'utf8'))
+    expect(css).not.toMatch(/#FAF5EA/i)
+  })
+
   it('index.css defines --gw-page and --gw-paper-2 as the same colour', () => {
     expect(hex('--gw-page')).toBe('#FDFBF6')
     expect(hex('--gw-paper-2')).toBe('#FDFBF6')
