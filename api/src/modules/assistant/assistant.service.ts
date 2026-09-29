@@ -63,6 +63,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
+import { targetsHiddenFrom, withoutHiddenTargetsIn, namesOnTheRoster } from '../board/a-hidden-target-stays-hidden';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -1462,16 +1463,34 @@ export class AssistantService {
   private async whatCameOfIt(organizationId: string, personId: string): Promise<Reply> {
     const me = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
-      select: { email: true },
+      select: { email: true, linkedUserId: true },
     });
     if (!me?.email) return rules('what_came_of_it', text('I cannot find you in what your organisation has sent us.'));
 
     const mine = await this.prisma.groundParticipant.findMany({
       where: { email: me.email, ground: { organizationId } },
       select: {
+        id: true,
         ground: {
           select: {
             label: true,
+            initiatorId: true,
+            /*
+             * WHOSE TARGET A COLLEAGUE MAY READ, read here because this pulls the report straight
+             * from the ground rather than through reports.service.ts's `get`, which already runs
+             * this net (`whatTheLeadHasNotShared`). Without it, a recall reached exactly what that
+             * file's own comment warns about: Ngozi asking "what came of it" and being handed
+             * Kwame's target inside the shared agreements, on a check-in where each person sees only
+             * their own. See board/whose-number-is-whose-business and board/a-hidden-target-stays-hidden.
+             */
+            whoSeesTargets: true,
+            objectives: { select: { ownerParticipantId: true, target: true } },
+            participants: {
+              select: {
+                id: true, nameGiven: true, roleAsDescribed: true, remitAsGiven: true, partyType: true,
+                user: { select: { firstName: true, lastName: true } },
+              },
+            },
             /*
              * AN ALLOWLIST, NOT A ROW. `Report` also carries `engagement`, `finalSynthesis`,
              * `arcSignals` and `inferences` - per-person material that `own-reads-only.ts` exists
@@ -1485,9 +1504,9 @@ export class AssistantService {
     });
 
     const finished = mine
-      .map((p) => p.ground)
-      .filter((g): g is NonNullable<typeof g> & { report: { releasedAt: Date } } => Boolean(g?.report?.releasedAt))
-      .sort((a, b) => b.report.releasedAt!.getTime() - a.report.releasedAt!.getTime());
+      .filter((p): p is typeof p & { ground: NonNullable<typeof p.ground> & { report: { releasedAt: Date } } } =>
+        Boolean(p.ground?.report?.releasedAt))
+      .sort((a, b) => b.ground.report.releasedAt!.getTime() - a.ground.report.releasedAt!.getTime());
 
     if (!finished.length) {
       /* Two different silences, and which one it is is the useful part. */
@@ -1496,13 +1515,31 @@ export class AssistantService {
 
     const now = new Date();
     const body: string[] = [];
-    for (const g of finished.slice(0, ROUNDS_RECALLED)) {
+    for (const p of finished.slice(0, ROUNDS_RECALLED)) {
+      const g = p.ground;
+      /* The same rule the report page runs, run again here because this is a second, direct read of
+         the report - a target belonging to somebody else stays out of what is recalled to them. */
+      const hiddenTargets = targetsHiddenFrom(
+        { participantId: p.id, isTheLead: g.initiatorId === me.linkedUserId },
+        g.whoSeesTargets,
+        g.objectives ?? [],
+        namesOnTheRoster(g.participants ?? []),
+        g.participants ?? [],
+      );
+      const guarded = withoutHiddenTargetsIn(
+        {
+          centralQuestion: g.report.centralQuestion,
+          agreements: (g.report as any).agreements,
+          divergences: (g.report as any).divergences,
+        },
+        hiddenTargets,
+      );
       const r = recall({
         groundLabel: g.label,
         releasedAt: g.report.releasedAt!,
-        centralQuestion: g.report.centralQuestion,
-        agreements: (g.report as any).agreements,
-        divergences: (g.report as any).divergences,
+        centralQuestion: guarded.centralQuestion,
+        agreements: guarded.agreements,
+        divergences: guarded.divergences,
       });
       body.push(...saidOf(r, howLongAgo(r.when, now)), '');
     }
