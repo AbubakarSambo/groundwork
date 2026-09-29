@@ -184,6 +184,16 @@ describe('nothing the check-in pages can do gets lost in a merge', () => {
  */
 const CONSUMERS: Record<string, string> = {
   '../../hooks/useOpenSession.ts': '../../components/gw/checkin/SessionPaywallModal.tsx',
+  /*
+   * THE SAME SHAPE, FOR A COMPONENT RATHER THAN A HOOK. People and setup
+   * (CheckInPeopleAndSetup.tsx) was pulled out of GroundAdminPage.tsx's `tab === 'settings'`
+   * branch so it could be rebuilt from components/gw/ui; GroundAdminPage.tsx keeps every
+   * mutation it needs - the server-side access rule lives there, next to
+   * `isInitiator`/`isOrgAdmin` - and hands each one down as a prop (`removeGround={removeGround}`)
+   * rather than returning it from a hook. PROP_PATTERN below checks for that shape wherever the
+   * hook check above looks for `return { ... }`.
+   */
+  'GroundAdminPage.tsx': './CheckInPeopleAndSetup.tsx',
 }
 
 describe('no mutation is left with no way to call it', () => {
@@ -205,8 +215,13 @@ describe('no mutation is left with no way to call it', () => {
         const returnedFromHook = consumerPath
           ? new RegExp(`return \\{[\\s\\S]*\\b${name}\\b[\\s\\S]*?\\n  \\}`).test(src) && /\.(mutate|mutateAsync)\(/.test(consumerSrc)
           : false
+        /* THE COMPONENT-AND-PROP VERSION OF THE SAME CHECK (see the CONSUMERS doc comment above):
+           `name={name}` handing a mutation down as a prop, in place of a hook's `return { name }`. */
+        const passedAsProp = consumerPath
+          ? new RegExp(`\\b${name}\\s*=\\{\\s*${name}\\s*\\}`).test(src) && /\.(mutate|mutateAsync)\(/.test(consumerSrc)
+          : false
         expect(
-          invokedDirectly || returnedFromHook,
+          invokedDirectly || returnedFromHook || passedAsProp,
           `${name} is declared in ${page} and nothing calls it (directly, or via ${consumerPath ?? 'a consumer'}). ` +
             `Wire it to a control or delete it - a declared mutation with no caller is how the paid ` +
             `session path survived as code nobody could reach.`,

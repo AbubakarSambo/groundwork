@@ -17,7 +17,17 @@ import { join } from 'path'
  * AND NOTHING IS SENT UNTIL THE QUEUE IS INVITED. Adding to the list is free and reversible; that is
  * the whole reason to have a list rather than firing an invitation per keystroke of enthusiasm.
  */
+/*
+ * REPOINTED (People and setup rebuild): the queue's STATE and its network calls (`addParticipant`,
+ * `rememberWhoWasNotInvited`, the toasts) stayed on GroundAdminPage.tsx, which keeps every hook for
+ * the tab that was pulled out into its own file. The QUEUE'S OWN MARKUP - the "+ Add another" button,
+ * the one-line-per-person list, the empty-note sentence, and the two guards on the list itself -
+ * moved to WhosInItRoster.tsx, which the new CheckInPeopleAndSetup.tsx renders inside "Who's in it".
+ * Read both, concatenated, so this still proves the one thing it always proved: a bulk paste never
+ * replaced the per-person queue.
+ */
 const PAGE = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
+  + '\n' + readFileSync(join(__dirname, '../../components/gw/WhosInItRoster.tsx'), 'utf8')
 
 describe('many parties at once', () => {
   it('queues people instead of inviting each one immediately', () => {

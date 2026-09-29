@@ -81,7 +81,13 @@ describe('the two views of a check-in are a pair', () => {
     const YOUR_WORK = readFileSync(join(__dirname, '../../components/gw/checkin/YourWork.tsx'), 'utf8')
     expect(YOUR_WORK).toMatch(/<MyRecord/)
     expect(YOUR_WORK).toMatch(/<WhatYouAreCarryingForward/)
-    expect(ADMIN).toMatch(/<MyParticipation/)
+    /*
+     * REPOINTED (People and setup rebuild, 29 Sept): "You in this check-in" (MyParticipation) moved
+     * with the rest of the settings tab into CheckInPeopleAndSetup.tsx, unchanged - a lead's role and
+     * standing are still shown to them, one tab over from where this test used to find them inline.
+     */
+    const PEOPLE_AND_SETUP = readFileSync(join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8')
+    expect(PEOPLE_AND_SETUP).toMatch(/<MyParticipation/)
   })
 
   it('but the way BACK still exists, for anybody who lands on the party view and can run it', () => {

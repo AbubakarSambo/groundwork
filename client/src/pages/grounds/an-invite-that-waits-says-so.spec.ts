@@ -20,6 +20,14 @@ import { join } from 'path'
  */
 const ADMIN = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
 /*
+ * REPOINTED (People and setup rebuild, 29 Sept): the add-a-person form and its "is on the check-in.
+ * Their invitation goes out on the start date." sentence moved to WhosInItRoster.tsx, which
+ * CheckInPeopleAndSetup.tsx renders inside "Who's in it". The state and the network call that
+ * produce `lastInvitedEmail`/`lastInviteWaits` stayed on GroundAdminPage.tsx, which is why that test
+ * still reads ADMIN alone.
+ */
+const ROSTER = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8')
+/*
  * THE SETUP FLOW IS THE CONVERSATION NOW. `/grounds/new` is a picker that hands over to it, and its
  * save is the only thing that creates a check-in - so the counting rule moved there rather than
  * being deleted with the screen that used to add people.
@@ -42,15 +50,19 @@ describe('an invite that waits says so', () => {
      * the truth about whether one was sent. The count going DOWN is a door closing; the count
      * going up without the sentence is the bug.
      */
-    const said = ADMIN.match(/is on the check-in\. Their invitation goes out on the start date\./g) ?? []
+    const said = ROSTER.match(/is on the check-in\. Their invitation goes out on the start date\./g) ?? []
     /* Was 2: the lead's waiting view reported invites too, and that view went on 10 Sep 2026. */
     expect(said.length).toBe(1)
   })
 
   it('never claims an invite was sent when the row says it was not', () => {
     /* Both spots are now conditional on the flag. A bare "Invite sent to" left anywhere is the bug. */
-    const unconditional = ADMIN.match(/>Invite sent to \{lastInvitedEmail\}</g) ?? []
+    const unconditional: string[] = [...(ADMIN.match(/>Invite sent to \{lastInvitedEmail\}</g) ?? [])]
+      .concat(ROSTER.match(/>Invite sent to \{lastInvitedEmail\}</g) ?? [])
     expect(unconditional).toEqual([])
+    /* And the guarded sentence is still there somewhere, so this is not passing by having said
+       nothing at all. */
+    expect(ROSTER).toMatch(/Invite sent to \$\{lastInvitedEmail\}/)
   })
 
   it('and the setup flow counts the people who are waiting, not only the ones refused', () => {

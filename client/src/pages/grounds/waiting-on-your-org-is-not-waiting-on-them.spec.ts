@@ -43,14 +43,22 @@ describe('a person the organisation has not let in yet', () => {
   })
 })
 
+/*
+ * REPOINTED (People and setup rebuild, 29 Sept): the add-a-person form and its approval-rule
+ * sentence moved to WhosInItRoster.tsx, which CheckInPeopleAndSetup.tsx renders inside "Who's in
+ * it" - the roster row logic this file's first describe block checks stayed on GroundAdminPage.tsx
+ * (the Sessions tab's own roster is untouched).
+ */
+const ROSTER = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'))
+
 describe('before anybody is added', () => {
   it('the rule is on the control that adds them', () => {
-    expect(PAGE).toContain('an admin here')
-    expect(PAGE).toContain('has to let them in before they can check in')
+    expect(ROSTER).toContain('an admin here')
+    expect(ROSTER).toContain('has to let them in before they can check in')
   })
 
   it('and it is the rule, not a lookup on the address they typed', () => {
     /* A per-address prediction would disclose whether that email is registered here. */
-    expect(PAGE).not.toMatch(/willNeedApproval|checkApprovalFor|lookupOrgFor/)
+    expect(ROSTER).not.toMatch(/willNeedApproval|checkApprovalFor|lookupOrgFor/)
   })
 })

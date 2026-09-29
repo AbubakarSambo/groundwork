@@ -185,9 +185,14 @@ describe('every card describes a run against an objective', () => {
 
 /** 21 Sep 2026: the Setup card's scenario select listed nine situations, so a discovery check-in read "New hire". */
 describe('the Setup card offers every situation', () => {
+  /*
+   * REPOINTED (People and setup rebuild, 29 Sept): "What it is" (name and situation) moved from
+   * GroundAdminPage.tsx's settings tab to CheckInPeopleAndSetup.tsx, unchanged - it is still not in
+   * the prototype, kept as its own row (see the file's own top comment).
+   */
   it('reads the select from the catalogue, not a list of its own', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'GroundAdminPage.tsx'), 'utf8');
-    const i = src.indexOf('Save scenario');
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8');
+    const i = src.indexOf('Save situation');
     const before = src.slice(Math.max(0, i - 1500), i);
     expect(before).toMatch(/SCENARIO_KEYS\.map/);
     expect(before).not.toMatch(/\['NEW_HIRE', 'New hire'\]/);
