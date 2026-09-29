@@ -52,13 +52,20 @@ describe('destinations', () => {
     expect(chat).toMatch(/<label htmlFor="doc-upload"/)
   })
   it('no permanently disabled primary control remains on the ending fold', () => {
-    /* REPOINTED (People and setup rebuild, 29 Sept): "Ending it" moved out of
-       GroundAdminPage.tsx's settings tab into CheckInPeopleAndSetup.tsx. */
+    /*
+     * REPOINTED (People and setup rebuild, 29 Sept): "Ending it" moved out of
+     * GroundAdminPage.tsx's settings tab into CheckInPeopleAndSetup.tsx.
+     *
+     * WORDING UPDATED (U.4 review, item 8, 30 Sept): "archive" was the product's own word for
+     * something the reader never asked for - they asked to END a check-in, and "Ending it" is what
+     * the heading above the button already calls it. The button now says the same thing the
+     * heading, and the rest of this section, say.
+     */
     const admin = read('grounds/GroundAdminPage.tsx')
     const page = read('grounds/CheckInPeopleAndSetup.tsx')
     expect(admin).not.toMatch(/<button disabled[^>]*>\s*Close this check-in/)
     expect(page).not.toMatch(/<button disabled[^>]*>\s*Close this check-in/)
-    expect(page).toContain('Ask us to archive this check-in')
+    expect(page).toContain('Ask us to end this check-in')
   })
   it('the destination a visitor arrived with is kept for the magic link', () => {
     expect(read('auth/AuthPage.tsx')).toMatch(/sessionStorage\.setItem\('gw_next', nextPath\)/)

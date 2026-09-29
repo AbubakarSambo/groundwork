@@ -82,12 +82,20 @@ describe('the two views of a check-in are a pair', () => {
     expect(YOUR_WORK).toMatch(/<MyRecord/)
     expect(YOUR_WORK).toMatch(/<WhatYouAreCarryingForward/)
     /*
-     * REPOINTED (People and setup rebuild, 29 Sept): "You in this check-in" (MyParticipation) moved
-     * with the rest of the settings tab into CheckInPeopleAndSetup.tsx, unchanged - a lead's role and
-     * standing are still shown to them, one tab over from where this test used to find them inline.
+     * REPOINTED (People and setup rebuild, 29 Sept), THEN FOLDED IN (U.4 review, item 11, 30 Sept):
+     * "You in this check-in" first moved with the rest of the settings tab into
+     * CheckInPeopleAndSetup.tsx as its own `<MyParticipation>` section, then the review found it
+     * repeating "What it is" and "How it runs" as a second copy of the same label pieces - Check-in,
+     * Situation, sessions completed. It is folded into those two sections now rather than kept as a
+     * third place saying the same thing: a lead's role and standing are still shown to them, as
+     * "Your role" in "What it is" and "Your status"/"Your sessions" in "How it runs".
+     * GroundParticipantPage's own Setup tab is unaffected and still renders `<MyParticipation>`
+     * directly, for a participant reading their own check-in.
      */
     const PEOPLE_AND_SETUP = readFileSync(join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8')
-    expect(PEOPLE_AND_SETUP).toMatch(/<MyParticipation/)
+    expect(PEOPLE_AND_SETUP).toMatch(/Your role/)
+    expect(PEOPLE_AND_SETUP).toMatch(/Your status/)
+    expect(PEOPLE_AND_SETUP).toMatch(/Your sessions/)
   })
 
   it('but the way BACK still exists, for anybody who lands on the party view and can run it', () => {

@@ -5,13 +5,14 @@ import {
 } from '@/components/gw/ui'
 import { WhosInItRoster } from '@/components/gw/WhosInItRoster'
 import { RolesInThisCheckIn } from '@/components/gw/RolesInThisCheckIn'
-import { MyParticipation } from '@/components/gw/MyParticipation'
+import { statusSentence } from '@/components/gw/MyParticipation'
+import { whatThisStatusMeans } from '@/components/gw/what-a-status-means-to-the-person-in-it'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
 import type { GroundCadence } from '@/api/grounds'
 import { SELECTABLE_CADENCES, sessionsFor, cadenceLabel } from '@/lib/cadence'
-import { SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
+import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
@@ -51,6 +52,23 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * (docs/prototype/screens/A4-people-roles-and-access/read-only-view.txt) shows this tab still on an
  * admin's own nav, with nothing to press.
  */
+/**
+ * THE REMINDER SCHEDULE, AS ONE SENTENCE (U.4 review, item 8). Every day in `chaseAfterDays` is
+ * counted from when the check-in opened, independently of the others (chasing-belongs-to-the-lead.ts,
+ * `whatToDoToday`) - never "3 days, then 4 more, then 7 more". This says that plainly instead of
+ * joining the days with "or", which read as a choice rather than a schedule.
+ */
+function chasingSentence(days: number[]): string {
+  const sorted = [...days].sort((a, b) => a - b)
+  const [first, ...rest] = sorted
+  const day = (n: number) => `${n} day${n === 1 ? '' : 's'}`
+  if (!rest.length) return `To anyone who has not answered, ${day(first)} after it opens.`
+  const restText = rest.length === 1
+    ? day(rest[0])
+    : `${rest.slice(0, -1).map((d) => d).join(', ')} and ${rest[rest.length - 1]} days`
+  return `To anyone who has not answered, ${day(first)} after it opens, then after ${restText}.`
+}
+
 export function CheckInPeopleAndSetup(props: {
   ground: any
   user: any
@@ -122,7 +140,6 @@ export function CheckInPeopleAndSetup(props: {
   const [showAddPeople, setShowAddPeople] = useState(false)
   const [showInviteLink, setShowInviteLink] = useState(false)
   const [editingName, setEditingName] = useState(false)
-  const [editingScenario, setEditingScenario] = useState(false)
 
   return (
     <div className="gwui-page-wrap">
@@ -173,21 +190,13 @@ export function CheckInPeopleAndSetup(props: {
         <RolesInThisCheckIn ground={ground} isInitiator={isInitiator} updateRole={props.updateRole} />
       </Section>
 
-      {/* NOT IN THE PROTOTYPE HERE. `My work` already shows a lead their own sessions; kept for now
-          rather than dropped silently - see the morning report. */}
-      {viewerIsAParty && (
-        <Section heading="You in this check-in" note={`${mySessionsDone} of ${plannedSessions ?? '?'} sessions done`}>
-          <MyParticipation
-            viewer={user}
-            ground={ground}
-            myParticipant={(ground.participants ?? []).find((p: any) => p.userId === user?.id)}
-            completedCount={mySessionsDone}
-            totalSessions={plannedSessions ?? null}
-          />
-        </Section>
-      )}
-
-      {/* NOT IN THE PROTOTYPE HERE - kept as its own section; list for Hafsah. */}
+      {/* NOT IN THE PROTOTYPE HERE - kept as its own section; list for Hafsah.
+          "YOU IN THIS CHECK-IN" IS FOLDED IN HERE, NOT A SECTION OF ITS OWN (U.4 review, item 11).
+          It used to repeat "What it is" (Check-in, Situation) and "How it runs" (Sessions completed)
+          as a second, separate copy of the same label pieces. `viewerIsAParty` is only ever true for
+          the lead on this tab (an admin who is not also a participant never is), so what it said that
+          nothing else here says - your role as described, and your own status - moves into the
+          section it is closest to instead. */}
       <Section heading="What it is">
         <FieldRows>
           <FieldRow
@@ -195,11 +204,19 @@ export function CheckInPeopleAndSetup(props: {
             value={ground.label}
             action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingName((v) => !v)}>Change</Button> : undefined}
           />
+          {/* NO "CHANGE" HERE (U.4 review, item 10). The update route takes no `scenario` field, so
+              pressing Change and saving used to say "Updated" and change nothing. Shown as a plain
+              row until the server can take it - see docs/requests-to-engine.md. */}
           <FieldRow
             label="Situation"
             value={SCENARIO_LABELS[ground.scenario as keyof typeof SCENARIO_LABELS] ?? ground.scenario}
-            action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingScenario((v) => !v)}>Change</Button> : undefined}
           />
+          {viewerIsAParty && (() => {
+            const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === user?.id)
+            return myParticipant?.roleAsDescribed
+              ? <FieldRow label="Your role" value={myParticipant.roleAsDescribed} />
+              : null
+          })()}
         </FieldRows>
 
         {editingName && canEditRunOrAdmin && (
@@ -212,21 +229,6 @@ export function CheckInPeopleAndSetup(props: {
               onClick={() => props.saveSetup.mutate({ label: props.groundLabel.trim() })}
             >
               Save name
-            </Button>
-          </Panel>
-        )}
-        {editingScenario && canEditRunOrAdmin && (
-          <Panel>
-            <FieldLabel htmlFor="ground-scenario">Situation</FieldLabel>
-            <Select id="ground-scenario" value={props.groundScenario} onChange={(e) => props.setGroundScenario(e.target.value)}>
-              {SCENARIO_KEYS.map((val) => <option key={val} value={val}>{SCENARIO_LABELS[val]}</option>)}
-            </Select>
-            <Button
-              size="small"
-              disabled={!props.groundScenario || props.groundScenario === ground.scenario}
-              onClick={() => props.saveSetup.mutate({ scenario: props.groundScenario })}
-            >
-              Save situation
             </Button>
           </Panel>
         )}
@@ -269,9 +271,16 @@ export function CheckInPeopleAndSetup(props: {
             label="Reminders"
             value={(ground as any)?.chasingStopped
               ? 'Off. Nobody is reminded.'
-              : `At the usual time, to anyone who has not answered after ${(((ground as any)?.chaseAfterDays ?? [1]) as number[]).join(' or ')} day${(((ground as any)?.chaseAfterDays ?? [1]) as number[]).every((d: number) => d === 1) ? '' : 's'}.`}
+              : chasingSentence(((ground as any)?.chaseAfterDays ?? [1]) as number[])}
             action={canEditLeadOnly ? <Button kind="quiet" size="small" onClick={() => setEditingReminders((v) => !v)}>Change</Button> : undefined}
           />
+          {/* Folded in from "You in this check-in" (item 11): your own status and progress here. */}
+          {viewerIsAParty && (
+            <>
+              <FieldRow label="Your status" value={statusSentence(whatThisStatusMeans(ground.status))} />
+              <FieldRow label="Your sessions" value={`${mySessionsDone}${plannedSessions != null ? ` of ${plannedSessions}` : ''} done`} />
+            </>
+          )}
         </FieldRows>
 
         {editingWhen && canEditRunOrAdmin && (
@@ -393,7 +402,7 @@ export function CheckInPeopleAndSetup(props: {
         <SwitchRow
           title="Each other's check-ins"
           detail={props.peersVisible
-            ? "Each person sees the others by name and whether they have checked in. Nobody ever sees what anybody wrote."
+            ? "Nobody sees another person's answers. Everyone sees the team's report once you share it."
             : (ground as any)?.peersVisibleToEachOther == null
               ? `Not set, so this check-in uses the default for its kind: ${props.peersDefaultHidden ? 'hidden' : 'shown'}. Nobody sees another person's answers. Everyone sees the team's report once you share it.`
               : "Each person sees only themselves. Nobody sees another person's answers. Everyone sees the team's report once you share it."}
@@ -417,11 +426,15 @@ export function CheckInPeopleAndSetup(props: {
           onChange={(on) => props.setWhoSeesTargets.mutate(on)}
           disabled={!canEditRunOrAdmin || props.setWhoSeesTargets.isPending}
         />
-        {/* NOT IN THE PROTOTYPE; kept - it decides whether people here can corroborate each other,
-            which the board's fairness reads depend on. */}
+        {/* NOT IN THE PROTOTYPE; kept - it decides whether people here can confirm each other's work,
+            which the board's fairness reads depend on. THE THIRD STATE (U.4 review, item 10): null
+            means nobody has answered this, and the board falls back to what the kind of check-in
+            usually means - the same three-state pattern "Each other's check-ins" already uses. */}
         <SwitchRow
-          title="Who can corroborate whom"
-          detail="Whether these people see each other's work day to day. If they cannot, nobody here is in a position to confirm what anyone else said, and the board says so rather than reading somebody being quiet as work going missing."
+          title="Who can confirm each other's work"
+          detail={ground.peopleWorkTogether == null
+            ? "Not answered yet, so it is assumed from the kind of check-in. Whether these people see each other's work day to day decides whether anybody here is in a position to confirm what someone else said."
+            : "Whether these people see each other's work day to day. If they cannot, nobody here is in a position to confirm what anyone else said, and the board says so rather than reading somebody being quiet as work going missing."}
           on={!!ground.peopleWorkTogether}
           onChange={(on) => props.setWorkTogether.mutate(on)}
           disabled={!canEditRunOrAdmin || props.setWorkTogether.isPending}
@@ -437,7 +450,7 @@ export function CheckInPeopleAndSetup(props: {
         {props.settingsChangeCount > 0 && (
           <details className="gwui-folded">
             <summary className="gwui-folded-summary">
-              <b>Anything you change here applies from the next check-in, and the change is noted with your name and the date.</b>
+              <b>Changes to how long it runs and how often are noted with who made them and the date.</b>
               <span className="gwui-folded-note">{props.settingsChangeCount === 1 ? '1 change since setup' : `${props.settingsChangeCount} changes since setup`}</span>
             </summary>
             <div className="gwui-folded-body">
@@ -453,8 +466,7 @@ export function CheckInPeopleAndSetup(props: {
         )}
         {props.settingsChangeCount === 0 && (
           <Note>
-            Anything you change here applies from the next check-in, and the change is noted with your
-            name and the date.
+            Changes to how long it runs and how often are noted with who made them and the date.
           </Note>
         )}
       </Section>
@@ -463,7 +475,7 @@ export function CheckInPeopleAndSetup(props: {
         <SwitchRow
           title="What we ask them"
           detail={props.expectsUnblocking
-            ? 'A blocker is recorded with what has already been done about it, and the person is offered ways through on their own report. Their lead sees the same thing as one thing to ask for.'
+            ? `A blocker is recorded with what has already been done about it, and the person is offered ways through on their own report. ${isInitiator ? 'You see it too, as one thing to ask for.' : 'Their lead sees the same thing as one thing to ask for.'}`
             : 'What is in their way is recorded, and nothing is asked about what they tried. For people with no standing to chase anybody, or a check-in that is there to hear what happened.'}
           on={props.expectsUnblocking}
           onChange={(on) => props.setExpectThemToUnblock.mutate(on)}
@@ -483,22 +495,23 @@ export function CheckInPeopleAndSetup(props: {
         <Note>
           You cannot end a check-in yourself yet. Ask us and we will end it for you, usually the same
           day.
-          {isOrgAdmin && !isInitiator && ' You are not the lead here, so closing it ends something somebody else is running.'}
+          {isOrgAdmin && !isInitiator && (props.whoIsInThisLeadName
+            ? ` ${props.whoIsInThisLeadName} runs it, so ending it ends something they are running.`
+            : ' Somebody else runs it, so ending it ends something they are running.')}
         </Note>
         <a
           className="gwui-btn gwui-btn-danger"
           href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
         >
-          Ask us to archive this check-in
+          Ask us to end this check-in
         </a>
 
         {isInitiator && (
           <Panel>
             <Note>
-              Delete it, if it was only a test. For the ones you started to see how this works. It goes
-              completely - the conversation, the sessions and anything uploaded. If somebody else has
-              already answered, this refuses and tells you: that is a record, not a test, and closing is
-              the thing to do with it.
+              If this was only a test, you can delete it. Everything goes, including the conversation,
+              the sessions and anything uploaded. If somebody else has already answered, it cannot be
+              deleted, because it is now a record. Ask us to end it instead.
             </Note>
             {props.deleteError && <Note tone="error">{props.deleteError}</Note>}
             {props.confirmDelete ? (

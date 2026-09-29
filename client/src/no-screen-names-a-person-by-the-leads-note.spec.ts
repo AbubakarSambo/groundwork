@@ -31,6 +31,13 @@ const ALLOWED: Record<string, string> = {
   'components/gw/EachPerson.tsx': 'the lead’s own labelled note, beside the name, for the lead only',
   'pages/grounds/GroundAdminPage.tsx': 'the lead’s own labelled note, and the box to change it',
   'components/gw/MyParticipation.tsx': 'your own role, on your own row',
+  /*
+   * U.4 REVIEW, ITEM 11 (30 Sept): "You in this check-in" (MyParticipation's own facts) folded into
+   * "What it is" and "How it runs" here, for the lead reading their own People and setup tab. Same
+   * reason as MyParticipation.tsx above - `myParticipant` is always the reader's own row, found by
+   * `p.userId === user?.id`, never another person's.
+   */
+  'pages/grounds/CheckInPeopleAndSetup.tsx': 'your own role, on your own row, folded in from MyParticipation',
   'components/gw/RolesInThisCheckIn.tsx': "the lead's own labelled note, for the person who runs the check-in only",
   'pages/admin/AdminPage.tsx': 'a role column for whoever runs the check-in',
   'pages/join/JoinPage.tsx': 'what the person types about themselves when joining',

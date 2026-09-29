@@ -24,7 +24,7 @@ import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
  * (picture check, 29 Sept: "Open - waiting on people to check in"). This turns that same label into
  * one full sentence, without a second, parallel copy of what each status means.
  */
-function statusSentence(label: string): string {
+export function statusSentence(label: string): string {
   if (label.startsWith('The report')) return `${label}.`
   const joined = label.replace(' - ', ', and ')
   return `This check-in is ${joined.charAt(0).toLowerCase()}${joined.slice(1)}.`
