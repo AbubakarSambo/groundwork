@@ -6,6 +6,67 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## SUMMARY, 29 SEPTEMBER, 13:35 TO 20:35 (read this first)
+
+### What I finished
+
+- **Why run-17 was slow.** It ran for 38 minutes, not 90, at the normal pace. It was slow only because it ran in one line instead of three parts. The model's limits and the computer were fine. The old process on port 3101 is stopped.
+- **Hidden targets.** A colleague's hidden target is tested every way it could slip through: a pronoun, the number several sentences later, a list, the number in words, and names with accents. Every gap found is closed. The check-in page, the list of check-ins, the lead's brief, the lead's note to everyone, and a target written only in the lead's own words were all leaking, and none of them do now.
+- **Every open request from the screens workspace is answered,** privacy ones first. About 40 are fixed or confirmed fixed, and each fix has a test on what is actually served. The large feature requests are answered with the week they belong to. Seven have no week in the plan yet and need scoping. Request 74 is planned next.
+- **Privacy faults fixed today** (all found by reading what people are served):
+  - someone waiting for a seat could read a report;
+  - any admin could release a report;
+  - a person's own check-in could be given the lead's setup answers;
+  - a decision about a person was a team target everyone read;
+  - the list of who has shown their report was open to other organisations;
+  - the board sent every row on a check-in where people do not see each other;
+  - a pattern went to participants while patterns are off;
+  - a line written to the lead was shown to everyone;
+  - colleagues could read what the lead weighs;
+  - the lead's board showed how a person's answers were rated;
+  - a goal the lead had not told the person about was shown to them.
+- **Opening a report or board asks no model now,** as decision 7 says. Two places still did, and both are fixed and tested.
+- **The weekly plan:**
+  - Week 6: the end card, fixed after the live check.
+  - Week 6b: the four marks on the team report and the board.
+  - Week 9: commitments kept or missed, settled by proof too, with each person's own count.
+  - Week 12: what has stayed the same for three check-ins, for the lead.
+  - Week 12c: no email address used as a name.
+  - Week 13: a plan becomes proposals, with the storage added by the engine as you asked.
+  - Week 14: a document read item by item, with pages.
+  - Week 15: photos, receipts and invoices.
+  - Week 16: what Today says, from the record.
+  - "Accounts" is gone from the board's and reports' own sentences.
+- **Two merges of the screens workspace,** at 13:35 and 18:52. Both were clean, apart from one clash in the requests file, which I resolved by keeping both sides.
+
+### In progress
+
+- **Task 2.7, the end card, is not ticked yet.** The first live check sent it back with 19 findings. All the ones about the card and the marks are fixed. The second live check, on run-19, sent it back again: in 13 of 20 closes the commitment the goodbye states was missing from the card, and about 20 of 496 lines were clipped pieces. The third try (`cc3d1165`, `c6ff297e`) adds the goodbye's commitment as the card's first line, and shows only lines that are sentences, apart from commitments, which always show. It is being checked live on two re-runs of sales, handover and drift, started at 19:38.
+- The screens need to call the new `GET /check-ins/:id/end-card` after the closing reply, or people still will not see the card until they press finish. This is written in request 7's answer.
+
+### Tests and runs
+
+- **The whole API test suite passes on the latest code: 1,195 files and 11,093 tests.**
+- **Run-18** (first full run, the morning's build): no problem counts except 3 lower-case starts. "Specific detail asked for" fell to 74. Two re-checks of the eight scenarios that fell most, on the same build, gave twice the number. So it was noise, not the code.
+- **Run-19** (second full run, the build with the day's privacy and end-card fixes): **nothing worse than the baseline.** Every problem count is 0, and every engine-value number is up. For example, specific detail asked for is 105 against 88, and commitments recorded are 49 against 33.
+  - Jargon in reports and boards rose to 126, from 46, just under the bar of 128. Most of it is people's own words said back.
+  - The model hit its rate limit 204 times, because a new warm-up runs up to 9 or 18 times when it should run once. That is the first thing to fix next.
+
+### Needs Hafsah
+
+- **Week 10, the first suggestion to a manager, is held.** It would rest on each person's private count ("kept 11 of 20"). Weeks 11 and 12b wait on it too.
+- **Changes to the conversation are waiting for scenario re-runs:**
+  - taking a goal the lead has not told the person about out of that person's own check-in;
+  - request 74, not asking about a date that has not come yet;
+  - asking for a photo when a claim is only someone's word.
+- **Still open from before:** deal stages (Contacted, Need, Pitched…); who may mark a to-do as done; and week 0's next step (the recommendation is option 2).
+- **The decisions I took for you are all listed below,** under "Decided for Hafsah to confirm", 28 items. The ones most worth a look:
+  - 4: a decision about a person is judged from its wording;
+  - 11: what an admin who cannot see a target is told;
+  - 25 and 27: hiding untold goals, which reverses an older note in the code.
+
+---
+
 ## 29 SEPTEMBER, AFTERNOON: A NEW SESSION PICKS UP FROM THE HANDOVER
 
 **Why run-17 was slow.** I read its own logs: the driver's log and the API's log, both kept in the old session's scratch folder, and the run's folder.
@@ -306,6 +367,27 @@ Tests: 693 files and 6,544 tests pass in the parts touched.
 - Jargon in Groundwork's turns is 21 (baseline 42).
 - **Jargon in reports and boards rose to 126,** from 46 on run-18. The baseline was 511, and the bar is 128, so it is under the bar, but it is a big rise. The new words are "bottleneck", "escalate", "deliverable" and "alignment". Most follow what people said this time: people themselves said "escalate" in five scenarios, against three on run-18, and each of the other words came from a person too. Decision 41 says a person's own word used back to them is not jargon, but the scorer cannot tell the difference.
 - **The model hit its rate limit 204 times,** against none on run-18. 15 calls failed after every retry. The cause is new today: the warm-up that words each report ahead of time, for each reader, ran up to 9 times after one session, and the board's warm-up up to 18 times. That multiplies model calls. It should run once per new thing. This is the first thing to fix next, before more readers or longer check-ins make it worse.
+
+**The second live check of the end card, on run-19, sent 2.7 back again.** It read all 86 finished check-ins in run-19 against their records.
+
+What passes now:
+- The card reaches only the person. Everyone else, the lead included, is refused.
+- The card's lines are exactly the record's lines, and "There are N more lines" is always right.
+- There are no engine notes.
+- The marks are consistent. "I have six approved facilities right now." is from memory, and targets are their word.
+- All 43 natural closes end with the prototype's sentences, and "report is ready" appears nowhere.
+- The lead's board shows no rating.
+
+What still fails:
+- **The commitment the closing reply states is missing from the card** in 13 of 20 closes. Femi was told "You will keep following up with customers for their statements. That's all for today. Below is what I wrote down…", and the card below it did not have it. The record reader never wrote it as a commitment.
+- **About 20 of 496 card lines are clipped pieces of speech,** such as "The last day of March.", "A target of 40." and "Hit my target of 14 approved facilities."
+
+Also found, outside 2.7:
+- The lead's own report still carries `specificityLabel` about herself. It is her own, so no rule is broken, but it is a rating field.
+- One closing reply asked for a document inside the goodbye, and said the commitment twice.
+- One card line shows markdown asterisks.
+
+A third, small try is being built: the card will add the commitment the closing reply states, and will not show a line that is not a sentence.
 
 **Run-19, the day's second full run, started at 17:37** on `c645570c`, in three parts. The two privacy items from the live check are being built alongside it. They filter what is served, so their tests prove them, not the run. Both are now done:
 - **A goal the lead has not told the person about reaches only the lead** (`7a81746c`). Tobi's You board listed "Take over the scheduling." before Wanjiru had spoken to him about it. As Tobi, the report read "Tobi Adewale has started well. Wanjiru Mwangi expects Tobi Adewale to take over the scheduling. Both have answered." It now reads "Tobi Adewale has started well. Both have answered." The lead reads all of it. This goes by what the lead chose ("not told"). It does not go by whether the person has opened the Context page, because that would hide every goal forever.
