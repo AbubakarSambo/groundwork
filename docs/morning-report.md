@@ -31,6 +31,19 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Part 3: evaluation check-ins (decisions 4 and 17, as clarified)
+
+Built in `fc2550a8`, `26f5e5a0`, `396459f7` and `20e7ef99`. **In an evaluation check-in, the person being reviewed reads the facts, and the decision with its reasons, never a colleague's exact words.**
+- **Which check-ins count:** one rule decides, and it counts a performance plan, a recognition round and a contract renewal, the check-ins where a verdict is reached.
+- **For the person being reviewed:**
+  - A colleague's row in "what each person said" reads "A colleague's own words are not shown to you here. What was found, and the decision with its reasons, are below."
+  - A colleague's quote in the team report's shared picture becomes "A colleague described this differently.", and the person's own quote stays.
+  - A quote that cannot be matched to the person's own words is taken out, so the rule errs on the private side.
+  - The same applies to the board's own words and to where people disagree.
+- **The manager, an admin, and the colleagues who gave views** read everything as before. An ordinary team check-in does not change, and a test proves it.
+- **Honest limit:** deciding whether a sentence still reads well once a quote is taken out is a rule of thumb. The colleague's words always go, but a sentence can read a little cut short.
+- **Decided for Hafsah to confirm:** nothing in the database says which person a check-in is about. In a performance plan or a renewal there are only two people, so it is clear. A recognition round can add colleagues, so the first person added after the lead is taken as the one being reviewed.
+
 ### Part 2B: a goal the lead has not told the person about, as the prototype has it (decision 56)
 
 Built in `5ee3c4b4`, `4886d2ed`, `f1ed931d`, `c542f51c`, `fb5da92f` and `7df73897`. Take Tobi's goal "Take over the scheduling and hit 40 stock counts by Friday", which Wanjiru has not told him about.
