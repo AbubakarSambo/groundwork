@@ -26,16 +26,15 @@ describe('nobody loses and nobody gains', () => {
     for (const s of [RUNS_IT, PARTY]) expect(s.length).toBeGreaterThan(5000)
   })
 
+  /**
+   * REVIEW ROUND 3, "YOUR WORK" REBUILD: `<WhatYouAreCarryingForward` NO LONGER SITS INLINE IN
+   * EITHER PAGE. Both pages render `<YourWork` on My record/My work now (components/gw/checkin/
+   * YourWork.tsx), and it is YourWork - not the two calling pages - that renders
+   * `WhatYouAreCarryingForward`. The two things this test protects still hold, checked one file
+   * over: the private report still renders somewhere reachable from My record, and the Report tab
+   * still does not carry it.
+   */
   it('NOBODY LOSES: both views still render the private report, on My record', () => {
-    /* Sliced from the RENDER, not from the first mention: both files name these keys in their
-       url maps long before they render anything. */
-    /*
-     * BOUNDED BY THE NEXT TAB, NOT BY A CHARACTER COUNT.
-     *
-     * It was `at + 1600`, and My record grew two cards above the private report - so the slice
-     * stopped short of it and the spec failed on code that still does exactly what it promises.
-     * The same trap `a-page-you-cannot-change-says-so` already wrote down, hit again.
-     */
     const renderOf = (src: string) => {
       const at = src.search(/\{tab === '(?:myrecord|record)' &&/)
       expect(at).toBeGreaterThan(-1)
@@ -43,9 +42,10 @@ describe('nobody loses and nobody gains', () => {
       return src.slice(at, next > -1 ? at + 1 + next : src.length)
     }
     for (const [name, src] of [['runs it', RUNS_IT], ['party', PARTY]] as const) {
-      expect(src, `${name} must still render it`).toMatch(/<WhatYouAreCarryingForward/)
-      expect(renderOf(src), `${name} must render it on My record`).toMatch(/<WhatYouAreCarryingForward/)
+      expect(renderOf(src), `${name} must render YourWork on My record`).toMatch(/<YourWork/)
     }
+    const YOUR_WORK = read('../../components/gw/checkin/YourWork.tsx')
+    expect(YOUR_WORK).toMatch(/<WhatYouAreCarryingForward/)
   })
 
   it('and the Report tab no longer carries it, on either view', () => {
@@ -53,6 +53,7 @@ describe('nobody loses and nobody gains', () => {
       const report = src.slice(src.indexOf("tab === 'report'"))
       const untilNext = report.slice(0, report.indexOf("tab === '", 20) + 1 || 2000)
       expect(untilNext).not.toMatch(/<WhatYouAreCarryingForward/)
+      expect(untilNext).not.toMatch(/<YourWork/)
     }
   })
 

@@ -227,11 +227,11 @@ export function WhatSuccessLooksLike({
 }
 
 /** The same band, fetching for itself, for pages that do not already hold a report. */
-export function WhatSuccessLooksLikeFor({ groundId, yourName, dense }: { groundId: string; yourName?: string | null; dense?: boolean }) {
+export function WhatSuccessLooksLikeFor({ groundId, yourName, dense, headingIsTheCallers }: { groundId: string; yourName?: string | null; dense?: boolean; headingIsTheCallers?: boolean }) {
   const { data } = useQuery({
     queryKey: ['against-success', groundId],
     queryFn: () => reportsApi.againstSuccess(groundId),
     enabled: !!groundId,
   })
-  return <WhatSuccessLooksLike data={data as AgainstSuccess | undefined} yourName={yourName} dense={dense} />
+  return <WhatSuccessLooksLike data={data as AgainstSuccess | undefined} yourName={yourName} dense={dense} headingIsTheCallers={headingIsTheCallers} />
 }

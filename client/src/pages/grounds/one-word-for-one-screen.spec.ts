@@ -52,19 +52,20 @@ describe('the conversation tab', () => {
   /**
    * UPDATED FOR THE CHECK-IN REBUILD (docs/tasks-ui.md): the outer row is the prototype's fixed
    * five now, drawn by `components/gw/ui/CheckInHeader.tsx` - neither page types its own copy of
-   * that list any more, so there is nothing left for the two to disagree about at that level. What
-   * moved is Report, Sessions and What I shared, folded inside "My work" as sub-tabs; the original
-   * bug (two pages, two private lists) is checked at THAT level now - the sub-tab labels must
-   * still be the words `groundTabs()` defines, not a private renaming one page could drift from.
+   * that list any more, so there is nothing left for the two to disagree about at that level.
+   *
+   * REVIEW ROUND 3, "YOUR WORK" REBUILD: Report, Sessions and What I shared are no longer a
+   * visible sub-tab row under "My work" at all - the prototype's my-record.txt has no sub-tabs,
+   * so "My work" is one flat page (`YourWork`) now, with "Report" ("Every session") and
+   * "Sessions" ("Who has answered") reached from quiet links inside it instead. There is nothing
+   * left to disagree about at that level either: both pages call the one shared `YourWork`
+   * component, rather than each keeping its own private layout.
    */
   it('and neither page keeps its own list to disagree with', () => {
     for (const page of [strip(ADMIN), strip(PARTICIPANT)]) {
       expect(page).toMatch(/<CheckInHeader/)
+      expect(page).toMatch(/<YourWork/)
     }
-    expect(strip(ADMIN)).toMatch(/label: 'Report'/)
-    expect(strip(ADMIN)).toMatch(/label: 'Sessions'/)
-    expect(strip(PARTICIPANT)).toMatch(/label: 'Report'/)
-    expect(strip(PARTICIPANT)).toMatch(/label: 'What I shared'/)
     expect(strip(ADMIN)).not.toMatch(/chat: 'Check-in'/)
     /*
      * `key: 'checkin', label: 'Check-in'` USED TO BE THE BUG THIS GUARDED AGAINST - a page

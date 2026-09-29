@@ -106,10 +106,11 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/).length).toBeGreaterThan(0))
     noNoteAsAName('lead, chat')
 
-    /* Report and Sessions fold under "My work" now (the check-in rebuild's tab consolidation);
-       open it first to reach either sub-tab. */
+    /* REVIEW ROUND 3, "YOUR WORK" REBUILD: Report and Sessions are quiet links inside "My work"
+       now ("Every session" / "Who has answered"), not sub-tabs - open "My work" first, then the
+       link. */
     expect(openTab(/^My work$/)).toBe(true)
-    expect(openTab(/^Sessions$/)).toBe(true)
+    expect(openTab(/^Who has answered$/)).toBe(true)
     await waitFor(() => expect(screen.getAllByText('One colleague').length).toBeGreaterThan(0))
     expect(screen.getAllByText('Another colleague').length).toBeGreaterThan(0)
     expect(screen.getAllByText('A third colleague').length).toBeGreaterThan(0)
@@ -123,7 +124,7 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
 
     /* The Report tab's list of sessions says who it is still waiting on, in a sentence. */
     expect(openTab(/^My work$/)).toBe(true)
-    expect(openTab(/^Report$/)).toBe(true)
+    expect(openTab(/^Every session$/)).toBe(true)
     await waitFor(() => expect(document.body.textContent).toMatch(/not checked in yet\./))
     expect(document.body.textContent).toContain('You, one colleague and a third colleague have not checked in yet.')
     noNoteAsAName('lead, report')

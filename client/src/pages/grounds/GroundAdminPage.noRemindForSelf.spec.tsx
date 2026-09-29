@@ -63,8 +63,9 @@ describe('the roster does not offer "Remind" for the lead herself', () => {
     renderPage()
     await waitFor(() => expect(screen.getByRole('tab', { name: 'My work' })).toBeTruthy())
     fireEvent.click(screen.getByRole('tab', { name: 'My work' }))
-    await waitFor(() => expect(screen.getByRole('tab', { name: 'Sessions' })).toBeTruthy())
-    fireEvent.click(screen.getByRole('tab', { name: 'Sessions' }))
+    /* REVIEW ROUND 3, "YOUR WORK" REBUILD: "Sessions" is the "Who has answered" quiet link inside
+       My work now, not a sub-tab. */
+    fireEvent.click(await screen.findByRole('button', { name: 'Who has answered' }))
     const reminds = await screen.findAllByRole('button', { name: 'Remind' })
     expect(reminds).toHaveLength(1)
   })

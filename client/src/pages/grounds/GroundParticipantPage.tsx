@@ -10,21 +10,15 @@ import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
-import { Tabs } from '@/components/gw/ui/Tabs'
 import { cadenceLabel } from '@/lib/cadence'
 import { useAskStore } from '@/stores/ask'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
-import { MyRecord } from '@/components/gw/MyRecord'
-import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
+import { YourWork } from '@/components/gw/checkin/YourWork'
 import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
 import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
-import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
-import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
-import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
-import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { SharedReportForAParty } from '@/components/gw/SharedReportForAParty'
 import { ContextPage } from '@/components/gw/ContextPage'
@@ -638,152 +632,42 @@ export function GroundParticipantPage() {
       <div style={{ maxWidth: 600, margin: '0 auto', width: '100%', padding: '16px 16px 48px' }}>
 
         {/**
-          * "MY WORK", FOLDED FROM TWO OLD TABS (Report, What I shared).
+          * "MY WORK" IS ONE FLAT PAGE NOW, NOT TWO SUB-TABS.
           *
-          * The prototype's my-record.txt holds these as one tab, not two - so this sub-tab row is
-          * what a click on the outer "My work" tab actually lands inside.
+          * REVIEW ROUND 3, "YOUR WORK" REBUILD: the prototype's my-record.txt has no sub-tabs at
+          * all - "Report" and "What I shared" folded into "My work" as two clickable rows was
+          * still two screens wearing one tab's name. `YourWork` (components/gw/checkin/YourWork.tsx)
+          * is the single flat page now; `tab` still privately tracks 'record' vs 'report' (a
+          * bookmark to `?tab=report` still works, and "the team's, Read" inside YourWork opens it),
+          * but nothing on screen offers it as a second tab to click.
           */}
-        {inMyWork && (
-          <div style={{ marginBottom: 14 }}>
-            <Tabs
-              label="My work"
-              active={tab}
-              onChange={(k) => goTab(k as Tab)}
-              items={[
-                { key: 'report', label: 'Report' },
-                { key: 'record', label: 'What I shared' },
-              ]}
-            />
-          </div>
-        )}
 
         {/* CHECK-IN TAB */}
         {/* MY RECORD TAB */}
         {tab === 'record' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/*
-              YOUR PRIVATE REPORT SITS WITH THE REST OF WHAT IS YOURS.
-              
-              It was on the Report tab, above the shared one, so that tab meant two things at once:
-              the account you wrote and the picture everybody gets. Report is the whole thing now and
-              My record is your part - the same whole-against-part split the two views' labels already
-              use, rather than a second axis to learn.
-            */}
-            {/*
-              THE SUMMARY IS THE FIRST THING ON THE PAGE. Her call.
-
-              It is the one block that says, in prose, what this person's record actually contains -
-              everything below it is a read OF that. It was fourth, under three cards assessing it,
-              so a person met three judgements before meeting the thing being judged.
-
-              It travels with "what to carry" and Share because they are one object: the summary is
-              the first half of the card the next session opens from.
-            */}
-            <WhatYouAreCarryingForward
-              groundId={id!}
-              mySoloReport={mySoloReport}
-              refetchSoloReport={refetchSoloReport}
-              otherParties={(ground.participants ?? [])
-                .filter((p: any) => p.userId !== user?.id)
-                .map((p: any) => ({ id: p.id, name: atTheStart(participantLabel(p)), email: p.email }))}
-            />
-
-            {/*
-              THE TWO THINGS AT A GLANCE, ABOVE EVERYTHING THEY SUMMARISE.
-
-              "What your record can support" was a five-segment bar with a one-word label, three
-              screens down; "How your answers are going" was another card below that. Both were
-              buried under the thing they were meant to introduce, and both were marks out of a
-              scale nobody can see. One card now, at the top, in sentences.
-            */}
-            <WhatYourRecordCanSupport
-              strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
-              trend={specificity?.trend}
-              sessions={mySessionDots}
-              totalSessions={totalSessions ?? null}
-              coverage={{
-                iHaveCheckedIn: completedCheckIns.length > 0,
-                answered: (ground as any)?.sessionProgress?.completed ?? completedCheckIns.length,
-                /*
-                 * `sessionProgress` GOES NULL ONCE THE REPORT RELEASES, and the fallback used to
-                 * count `ground.participants` - the array a hidden check-in reduces to this reader's
-                 * own row alone, so it read "1" for a real team of four the moment its report
-                 * released (U.8 fifth review, same bug as `aTeamReport` on the Done page).
-                 *
-                 * NOT A FABRICATED "2" EITHER (U.8 fifth review, second pass). That first fix
-                 * invented a total, which `WhatTheReportCanSayYet` printed as "X of 2 have
-                 * answered" - untrue the moment the real team had three or more people in it. A
-                 * genuinely solo check-in (`aTeamReportComes` false) still gets its true count, 1;
-                 * a team of unknown size gets `null`, which the component reads as "more than one,
-                 * exact number not known" and says something true instead of a guessed total.
-                 */
-                parties: (ground as any)?.sessionProgress?.total
-                  ?? ((ground as any)?.aTeamReportComes ? null : 1),
-                /* Empty where peers are hidden, and the component says "one person" instead. A page
-                   being private to its reader does not make somebody else's name theirs to know. */
-                waitingOn: (ground as any)?.peersVisibleEffective === false
-                  ? []
-                  : (ground.participants ?? [])
-                      .filter((p: any) => !p.managingOnly && p.userId !== user?.id)
-                      .filter((p: any) => !((p.checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
-                      .map((p: any) => participantLabel(p)),
-                corroborated: (report as any)?.engagement?.whatCouldBeChecked ?? null,
-                documentBackedPct: (report as any)?.engagement?.documentBackedPct ?? null,
-                roundsFinished: completedCheckIns.length,
-              }}
-              alsoNoticed={(myRecord as any)?.insightsLocked
-                ? []
-                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
-            />
-
-            {/*
-              AND SPECIFICITY AS THE FIVE THINGS IT IS MADE OF, WHICH THE ENGINE HAS ALWAYS STORED
-              AND NO SCREEN HAS EVER SHOWN. `specificityDimensions` is written per check-in; the
-              product was averaging it into one word and printing the word.
-            */}
-            <TheFiveThingsThatMakeItCheckable
-              dimensions={(myFinishedSessions[0] as any)?.specificityDimensions ?? null}
-              sessionNumber={(myFinishedSessions[0] as any)?.sessionNumber ?? null}
-              mostUseful={(myRecord as any)?.insightsLocked ? null : specificity?.mostUseful}
-              strongest={(myRecord as any)?.insightsLocked ? null : specificity?.strongest}
-            />
-            {/* MyPrivateReport is gone: the carry-forward moved to the top of the page, the session
-                list to Report, and sign-off and the two signposts were removed - what was left was an
-                empty grey box and a modal whose button had moved out from under it. */}
-            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
-            <MyRecord
-            groundId={id}
+          <YourWork
+            groundId={id!}
             ground={ground}
             myRecord={myRecord}
+            mySoloReport={mySoloReport}
+            refetchSoloReport={refetchSoloReport}
+            specificity={specificity}
+            report={report}
             totalSessions={totalSessions ?? null}
             completedCount={completedCheckIns.length}
-            />
-
-            {/*
-              ROUND 4, ITEM A STEP 1: THE SESSION HISTORY, MOVED HERE FROM THE CHECK-IN TAB.
-              `GroundChat.tsx`'s Check-in tab used to show every past session's full transcript
-              inline - the reason that tab could not be only the live conversation. `MyRecord`'s own
-              session rows (above) are about how specific and checkable each one was; this is the
-              words themselves, which is a different question and was not answered anywhere once
-              the transcript left the Check-in tab.
-            */}
-            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>Your check-ins</div>
-            <MyCheckInSessions groundId={id!} />
-
-            {/*
-              LAST, WHICH IS WHERE SHE PUT IT.
-
-              I had it third, on the argument that it is the only forward-looking thing here. Her
-              order settles it differently and better: the page runs from where the record stands,
-              to what to add next time, to what you are carrying, to signing off - and this is
-              private prep for a conversation, which is a different job from reading your record.
-              It is fine at the bottom, and putting it high pushed the reading down the page.
-            */}
-            {(report as any)?.postReportGuide && (
-              <WhatToWalkInWith guide={(report as any).postReportGuide} />
-            )}
-          </div>
+            myFinishedSessions={myFinishedSessions}
+            sessionDots={mySessionDots}
+            myParticipant={myParticipant}
+            leadFirstName={(ground as any)?.leadFirstName}
+            otherParties={(ground.participants ?? [])
+              .filter((p: any) => p.userId !== user?.id)
+              .map((p: any) => ({ id: p.id, name: atTheStart(participantLabel(p)), email: p.email }))}
+            postReportGuide={(report as any)?.postReportGuide}
+            aTeamReportComes={!!(ground as any)?.aTeamReportComes}
+            /* A party's "the team's, Read" opens the fuller shared-report reading experience below,
+               not a bare per-session link - see the note on `onReadTeamReport` in YourWork.tsx. */
+            onReadTeamReport={() => goTab('report')}
+          />
         )}
 
         {/* REPORT TAB */}

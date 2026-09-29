@@ -9,8 +9,7 @@ import { railAttention } from '@/lib/rail-attention'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
-import { MyRecord } from '@/components/gw/MyRecord'
-import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
+import { YourWork } from '@/components/gw/checkin/YourWork'
 import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
 import { Note } from '@/components/gw/ui/Note'
 import { MyParticipation } from '@/components/gw/MyParticipation'
@@ -42,17 +41,13 @@ import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
 import { whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
-import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
-import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
-import { TheFiveThingsThatMakeItCheckable } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { BaselinePanel } from '@/components/gw/BaselinePanel'
 import { StartingPointPanel } from '@/components/gw/StartingPointPanel'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
-import { Tabs } from '@/components/gw/ui/Tabs'
 import { useAskStore } from '@/stores/ask'
 import { billingApi } from '@/api/billing'
 import { SCENARIO_KEYS, SCENARIO_LABELS } from '@/lib/scenario-catalog'
-import { whoIsInRound, countsInRound } from '@/lib/who-is-in-this-round'
+import { whoIsInRound } from '@/lib/who-is-in-this-round'
 import { whoWasNotInvited, rememberWhoWasNotInvited, thatIsDealtWith, whatToSayAboutThem, type NotInvited } from './who-was-not-invited'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { copy } from '@/components/gw/copying-can-fail'
@@ -1722,20 +1717,12 @@ export function GroundAdminPage() {
           * shared is a party's own account. Same content as before the fold, just reached one
           * level down.
           */}
-        {inMyWork && (
-          <div style={{ marginBottom: 14 }}>
-            <Tabs
-              label="My work"
-              active={tab}
-              onChange={(k) => goTab(k as Tab)}
-              items={[
-                { key: 'report', label: 'Report' },
-                { key: 'checkins', label: 'Sessions' },
-                ...(viewerIsAParty ? [{ key: 'myrecord', label: 'What I shared' }] : []),
-              ]}
-            />
-          </div>
-        )}
+        {/*
+          REVIEW ROUND 3, "YOUR WORK" REBUILD: NO SUB-TAB ROW ANY MORE. The prototype's
+          my-record.txt has no sub-tabs at all; "Report", "Sessions" and "What I shared" are
+          reached from quiet links inside `YourWork` now (see its `onSeeEverySession`/
+          `onSeeRoster`), or by landing on "My work" itself, which always shows the flat page.
+        */}
 
         {/**
           * GATED ON BEING IN IT, NOT ONLY ON THE TAB BEING OFFERED.
@@ -1748,87 +1735,47 @@ export function GroundAdminPage() {
           * independently. This is so the screen does not offer somebody a page about themselves
           * that cannot be about them.
           */}
-        {tab === 'myrecord' && viewerIsAParty && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/*
-              THE SAME SPLIT AS THE PARTY VIEW, AND THE SAME ORDER.
-              
-              Report is the whole check-in; My record is your part of it. Your private report is
-              yours, so it sits here rather than above the shared report - which otherwise made that
-              tab mean two things at once.
-            */}
-            {/* The summary first, then the reads of it. The two views move together. */}
-            <WhatYouAreCarryingForward
-              groundId={id!}
-              mySoloReport={mySoloReport}
-              refetchSoloReport={refetchSoloReport}
-              otherParties={(ground.participants ?? [])
-                .filter((p: any) => p.userId !== user?.id)
-                .map((p: any) => ({ id: p.id, name: personLabel(p), email: p.email }))}
-            />
+        {/*
+          AN ADMIN WHO IS NOT A PARTY HAS NO "Your work" TO SHOW.
+          `YourWork` never mounts for her (it is gated on `viewerIsAParty` below, unchanged from
+          before this round), so the two quiet links inside it - "Every session", "Who has
+          answered" - never render either. She still runs this check-in (My work's own default
+          for her is already `report`, above), so both stay reachable directly rather than
+          disappearing with the sub-tab row that used to offer them unconditionally.
+        */}
+        {inMyWork && !viewerIsAParty && (
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
+            {tab !== 'report' && <TextAction onClick={() => goTab('report')} size={13}>Every session</TextAction>}
+            {tab !== 'checkins' && <TextAction onClick={() => goTab('checkins')} size={13}>Who has answered</TextAction>}
+          </div>
+        )}
 
-            {/* The same cards the party's view opens My record with. */}
-            <WhatYourRecordCanSupport
-              strength={(myRecord as any)?.insightsLocked ? null : (myRecord as any)?.confidence}
-              trend={mySpecificity?.trend}
-              sessions={mySessionDots}
-              totalSessions={plannedSessions ?? null}
-              coverage={{
-                iHaveCheckedIn: mySessionsDone > 0,
-                answered: (ground as any)?.sessionProgress?.completed ?? mySessionsDone,
-                parties: (ground as any)?.sessionProgress?.total
-                  ?? whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length,
-                /*
-                 * ITEM D/3, U.10 RE-REVIEW: ONE SOURCE FOR "WHO IS IN THIS ROUND", ON THE SCREENS.
-                 * This filtered `!p.managingOnly` on its own, a different rule from `countsInRound`
-                 * (a managing-only lead still counts for session 1 - who-is-in-this-round.ts) - the
-                 * same population `whoIsInRound` above already uses for `parties`. Two counts on one
-                 * card that could disagree about the very thing the card is about.
-                 * The lead sees who is on their own check-in, so no fallback is needed here.
-                 */
-                waitingOn: (ground.participants ?? [])
-                  .filter((p: any) => countsInRound(p, openRound, (ground as any).scenario) && p.userId !== user?.id)
-                  .filter((p: any) => !(((p as any).checkIns ?? []) as any[]).some((c) => c.status === 'COMPLETED'))
-                  .map((p: any) => labelInASentence(p)),
-                /* The lead's page does not fetch the shared report, and these two rows are about
-                   what it can say. Left null, so they read as not-yet rather than as absent. */
-                corroborated: null,
-                documentBackedPct: null,
-                roundsFinished: mySessionsDone,
-              }}
-              alsoNoticed={(myRecord as any)?.insightsLocked
-                ? []
-                : (((myRecord as any)?.patterns ?? []) as any[]).map((p) => p.text ?? p.observationText).filter(Boolean)}
-            />
-            <TheFiveThingsThatMakeItCheckable
-              dimensions={(mySessions[0] as any)?.specificityDimensions ?? null}
-              sessionNumber={(mySessions[0] as any)?.sessionNumber ?? null}
-              mostUseful={(myRecord as any)?.insightsLocked ? null : mySpecificity?.mostUseful}
-              strongest={(myRecord as any)?.insightsLocked ? null : mySpecificity?.strongest}
-            />
-            {/* MyPrivateReport is gone: the carry-forward moved to the top of the page, the session
-                list to Report, and sign-off and the two signposts were removed - what was left was an
-                empty grey box and a modal whose button had moved out from under it. */}
-            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
-            <MyRecord
-            groundId={id}
+        {tab === 'myrecord' && viewerIsAParty && (
+          <YourWork
+            groundId={id!}
             ground={ground}
             myRecord={myRecord}
+            mySoloReport={mySoloReport}
+            refetchSoloReport={refetchSoloReport}
+            specificity={mySpecificity}
+            /* The lead's page does not fetch the shared report - see the note this replaced
+               ("corroborated"/"documentBackedPct" read null for the same reason). */
+            report={null}
             totalSessions={plannedSessions ?? null}
             completedCount={mySessionsDone}
-            />
-            {/*
-              ROUND 4, ITEM A STEP 1: THE SESSION HISTORY, MOVED HERE FROM THE CHECK-IN TAB.
-              `GroundChat.tsx`'s Check-in tab used to show every past session's full transcript
-              inline - the reason that tab could not be only the live conversation. `MyRecord`'s own
-              session rows (above) are about how specific and checkable each one was; this is the
-              words themselves, which is a different question and was not answered anywhere once
-              the transcript left the Check-in tab.
-            */}
-            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>Your check-ins</div>
-            <MyCheckInSessions groundId={id!} />
-          </div>
+            myFinishedSessions={mySessions}
+            sessionDots={mySessionDots}
+            myParticipant={myParticipant}
+            leadFirstName={(ground as any)?.leadFirstName}
+            otherParties={(ground.participants ?? [])
+              .filter((p: any) => p.userId !== user?.id)
+              .map((p: any) => ({ id: p.id, name: personLabel(p), email: p.email }))}
+            aTeamReportComes={!!(ground as any)?.aTeamReportComes}
+            /* Both quiet links at the foot: this page's own "report" and "checkins" tabs, unchanged,
+               reached without a visible sub-tab. See the notes on these props in YourWork.tsx. */
+            onSeeEverySession={() => goTab('report')}
+            onSeeRoster={() => goTab('checkins')}
+          />
         )}
 
         {tab === 'checkins' && (

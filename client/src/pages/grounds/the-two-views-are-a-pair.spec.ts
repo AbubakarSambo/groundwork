@@ -71,9 +71,16 @@ describe('the two views of a check-in are a pair', () => {
     expect(ADMIN).not.toMatch(/Just my own/)
     expect(ADMIN).not.toMatch(/My own account/)
     expect(ADMIN).not.toMatch(/My check-ins →/)
-    /* And what replaced it: the things that used to be a page away. */
-    expect(ADMIN).toMatch(/<MyRecord/)
-    expect(ADMIN).toMatch(/<WhatYouAreCarryingForward/)
+    /*
+     * AND WHAT REPLACED IT: THE THINGS THAT USED TO BE A PAGE AWAY.
+     * REVIEW ROUND 3, "YOUR WORK" REBUILD: `MyRecord`/`WhatYouAreCarryingForward` no longer sit
+     * inline in this file - both pages call the shared `YourWork` (components/gw/checkin/
+     * YourWork.tsx), which is the one place that renders them now.
+     */
+    expect(ADMIN).toMatch(/<YourWork/)
+    const YOUR_WORK = readFileSync(join(__dirname, '../../components/gw/checkin/YourWork.tsx'), 'utf8')
+    expect(YOUR_WORK).toMatch(/<MyRecord/)
+    expect(YOUR_WORK).toMatch(/<WhatYouAreCarryingForward/)
     expect(ADMIN).toMatch(/<MyParticipation/)
   })
 
