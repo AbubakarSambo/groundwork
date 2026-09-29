@@ -1,4 +1,4 @@
-import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
@@ -1497,11 +1497,24 @@ export class BoardService {
     if (isInitiator && Array.isArray(out.eachPerson)) {
       const firstFor = new Map<string, any>();
       for (const t of (out.toLookAt as any[] | undefined) ?? []) if (!firstFor.has(t.participantId)) firstFor.set(t.participantId, t);
+      /*
+       * DECISION 56, ITEM 3. Wherever an untold goal counts against the person - here, the team
+       * board's per-person line - the lead is also shown it as a conversation point, so nothing is
+       * read into it before they have talked it through. Lead only, like the rest of this block: a
+       * colleague and an admin who only reads never see `eachPersonToday` at all.
+       */
+      const nameByParticipant = new Map((out.eachPerson as any[]).map((row) => [row.participantId, String(row.who ?? '').trim()]));
+      const untoldByParticipant = new Map<string, string[]>();
+      for (const g of await this.goalsNotToldYetByParticipant(groundId)) {
+        const name = nameByParticipant.get(g.participantId) || 'This person';
+        untoldByParticipant.set(g.participantId, [...(untoldByParticipant.get(g.participantId) ?? []), theConversationPointForTheLead(name)]);
+      }
       out.eachPersonToday = (out.eachPerson as any[]).map((row) => {
         const k = firstFor.get(row.participantId);
         const said = String(row.says ?? '');
         const line = k ? said.replace(/, and nothing here needs you this week\.$/, '.') : said;
-        return { participantId: row.participantId, who: row.who, line, ...(k ? { keepsComingUp: k.says } : {}) };
+        const points = untoldByParticipant.get(row.participantId);
+        return { participantId: row.participantId, who: row.who, line, ...(k ? { keepsComingUp: k.says } : {}), ...(points?.length ? { conversationPoints: points } : {}) };
       });
     }
 
@@ -1815,6 +1828,16 @@ export class BoardService {
       select: { text: true, awareness: true, authoredBy: true },
     }) ?? Promise.resolve([])).catch(() => []);
     return (rows as any[]).filter(notToldYet).map((r) => String(r.text ?? '')).filter(Boolean);
+  }
+
+  /** The same rows, kept by participant - decision 56, item 3: wherever an untold goal counts
+   *  against the person, the lead is shown it as a conversation point. */
+  private async goalsNotToldYetByParticipant(groundId: string): Promise<{ participantId: string; text: string }[]> {
+    const rows = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { participantId: true, text: true, awareness: true, authoredBy: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    return (rows as any[]).filter(notToldYet).map((r) => ({ participantId: r.participantId as string, text: String(r.text ?? '') })).filter((r) => r.text);
   }
 
   private buildManagerAlignment(

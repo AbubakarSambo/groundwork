@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { notToldYet, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { labelsForParties, namesVisibleTo, viewerLabelOf, withNames, displayName } from '../reports/party-labels';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import {
@@ -145,7 +146,24 @@ export class SuggestionsService {
     const rows = await this.rows({ groundId });
     const names = await this.deciders(rows);
     if (role === 'lead') {
-      return { suggestions: rows.map((r) => forTheLead(r, this.whoIsWho(ground, r, 'lead', names))) };
+      /*
+       * DECISION 56, ITEM 3. Wherever an untold goal counts against the person - here, a suggestion
+       * about them - the lead is shown it as a conversation point too. Lead only: `forThePerson` and
+       * `forAnAdmin` below never receive this.
+       */
+      const untoldRows = await ((this.prisma as any).personObjective?.findMany?.({
+        where: { groundId, awareness: 'NOT_TOLD' },
+        select: { participantId: true, text: true, awareness: true, authoredBy: true },
+      }) ?? Promise.resolve([])).catch(() => []);
+      const untoldFor = new Set((untoldRows as any[]).filter(notToldYet).map((o) => o.participantId));
+      return {
+        suggestions: rows.map((r) => {
+          const shaped = forTheLead(r, this.whoIsWho(ground, r, 'lead', names));
+          return untoldFor.has(r.aboutParticipantId)
+            ? { ...shaped, conversationPoints: [theConversationPointForTheLead(shaped.aboutName)] }
+            : shaped;
+        }),
+      };
     }
     /* An admin who is not in it: only what has been appealed. */
     return {

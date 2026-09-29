@@ -329,6 +329,33 @@ describe('a colleague, Miriam, and somebody outside, Kofi', () => {
   });
 });
 
+describe('decision 56, item 3: an untold goal counts against Daniel, so Wairimu reads it as a conversation point here too', () => {
+  it('Wairimu, the lead, reads it - Daniel does not, and it is absent when there is no untold goal', async () => {
+    const { svc, as, prisma } = setup();
+    prisma.personObjective = {
+      findMany: jest.fn(async ({ where }: any) => (where?.awareness === 'NOT_TOLD'
+        ? [{ participantId: 'p-d1', text: 'Take over the scheduling', awareness: 'NOT_TOLD', authoredBy: 'lead' }]
+        : [])),
+    };
+    await svc.record(aSuggestion());
+    const wairimuSees: any = (await svc.forGround('g-daniel', as('wairimu'))).suggestions[0];
+    expect(wairimuSees.conversationPoints).toEqual([
+      'Daniel has not been told about this goal yet, so talk it through with Daniel before reading anything into it.',
+    ]);
+
+    const danielSees: any = (await svc.forGround('g-daniel', as('daniel'))).suggestions[0];
+    expect(danielSees).not.toHaveProperty('conversationPoints');
+  });
+
+  it('is absent for the lead when nothing is untold', async () => {
+    const { svc, as, prisma } = setup();
+    prisma.personObjective = { findMany: jest.fn(async () => []) };
+    await svc.record(aSuggestion());
+    const wairimuSees: any = (await svc.forGround('g-daniel', as('wairimu'))).suggestions[0];
+    expect(wairimuSees).not.toHaveProperty('conversationPoints');
+  });
+});
+
 describe('no reader is served a label on a person, the verdict, or a rating', () => {
   it('scans everything each reader is handed, at every step', async () => {
     const { svc, as } = setup();

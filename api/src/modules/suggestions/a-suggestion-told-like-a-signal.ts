@@ -129,6 +129,13 @@ export interface ForTheLead {
   appealDecision: TheAppealDecision | null;
   /** The lead may change their decision until it is appealed. */
   mayChangeTheDecision: boolean;
+  /**
+   * DECISION 56, ITEM 3. Set only where this suggestion is about somebody with a goal the lead has
+   * written and not told them about yet - wherever an untold goal counts against the person, the
+   * lead is shown it as a conversation point here too. Filled in by the caller (suggestions.service.ts
+   * knows the goal rows; this shaper does not), never by anybody but the lead.
+   */
+  conversationPoints?: string[];
 }
 
 export function forTheLead(row: SuggestionRow, who: WhoIsWho): ForTheLead {
