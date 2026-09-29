@@ -26,6 +26,8 @@ import {
   detectR3,
   checkF1Conditions,
   DetectionInput,
+  PATTERN_DETECTORS,
+  detectPattern,
   collusionRuleGate,
   COLLUSION_COMPLETION_WORDS,
   COLLUSION_CONFIRM_PROMPT,
@@ -154,6 +156,30 @@ export class PatternsService {
       select: { onParticipantId: true, status: true, what: true },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
 
+    /*
+     * THE NUMBER-BASED RULES ARE A SECOND SOURCE OF EVIDENCE (decision 57, item 4), wherever one
+     * exists for the code the model found. Built once, lazily, from this person's own per-PERIOD
+     * scores (never sessions - see period-of.ts), and only when a code with a rule actually comes
+     * up, so a check-in with nothing to cross-check never pays for the extra query. The model's
+     * reading stays the one thing that can surface a bad-faith code at all: this never runs before
+     * the model has already spoken and, for bad faith, been confirmed - it only says, afterwards,
+     * whether a second, independent read agrees.
+     */
+    let detectionInputCache: DetectionInput | null = null;
+    const getDetectionInput = async (): Promise<DetectionInput> => {
+      if (!detectionInputCache) detectionInputCache = await this.buildDetectionInputForParticipant(checkIn.participantId);
+      return detectionInputCache;
+    };
+    const logWhatBackedIt = async (code: string) => {
+      if (!PATTERN_DETECTORS[code]) return;
+      const ruleAgrees = detectPattern(code, await getDetectionInput());
+      this.logger.log(
+        ruleAgrees
+          ? `Check-in ${checkInId}: ${code} backed by two separate reads of the record - the model's reading and the number-based rule.`
+          : `Check-in ${checkInId}: ${code} backed by the model's reading only; the number-based rule did not confirm it on this person's per-period scores.`,
+      );
+    };
+
     try {
       const result = await this.anthropic.extract<{ detections: { code: string; observation: string }[] }>(
         PATTERN_DETECTION_PROMPT + recogniseBlock,
@@ -198,6 +224,7 @@ export class PatternsService {
             this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; the observation carries nothing anybody could check.`);
             continue;
           }
+          await logWhatBackedIt(d.code);
           await this.observePositive(
             checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period,
           );
@@ -212,6 +239,7 @@ export class PatternsService {
          * too much is not an accusation of them.
          */
         if (isCarryingCode(d.code)) {
+          await logWhatBackedIt(d.code);
           await this.observe(
             checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period,
           );
@@ -244,13 +272,14 @@ export class PatternsService {
         // extraction pass can flag F1 too early; we enforce the composite rule
         // here using per-participant historical scores before accepting the signal.
         if (d.code === 'F1') {
-          const f1Input = await this.buildF1Input(checkIn.participantId);
+          const f1Input = await getDetectionInput();
           if (!checkF1Conditions(f1Input)) {
             this.logger.debug(`F1 gate: composite conditions not met for participant ${checkIn.participantId} - skipping`);
             continue;
           }
         }
 
+        await logWhatBackedIt(d.code);
         await this.observe(checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period);
       }
     } catch (err: any) {
@@ -743,36 +772,77 @@ export class PatternsService {
    * the CheckIn model). Includes prior surfaced codes so condition 4 can be
    * evaluated (no change despite prior F1 surfacing).
    */
-  private async buildF1Input(participantId: string): Promise<DetectionInput> {
-    const checkIns = await this.prisma.checkIn.findMany({
-      where: { participantId, status: CheckInStatus.COMPLETED },
-      orderBy: { sessionNumber: 'asc' },
-      select: {
-        id: true,
-        recordEntries: { select: { text: true } },
-      },
-    });
+  /**
+   * A PARTICIPANT'S OWN RECORD, AS A `DetectionInput` OF PER-PERIOD SCORES (decision 57, item 4).
+   *
+   * Was `buildF1Input`, one code's private helper, keyed by session. Every detector that reads a
+   * score series (`D`-`K` bad-faith codes, `M1`/`R3`'s siblings, `F1`-`F5`) needs the same shape, so
+   * this builds it once for whichever code asks. Grouped by PERIOD, never by session (`period-of.ts`,
+   * decision 57 item 1): a daily ground's several sessions inside one calendar week are the one
+   * period the three-period rule means, so their scores are averaged into it rather than counted as
+   * three separate weeks of evidence.
+   */
+  private async buildDetectionInputForParticipant(participantId: string): Promise<DetectionInput> {
+    const [participant, checkIns] = await Promise.all([
+      this.prisma.groundParticipant.findUnique({
+        where: { id: participantId },
+        select: { roleAsDescribed: true, ground: { select: { cadence: true } } },
+      }),
+      this.prisma.checkIn.findMany({
+        where: { participantId, status: CheckInStatus.COMPLETED },
+        orderBy: { sessionNumber: 'asc' },
+        select: {
+          sessionNumber: true, completedAt: true, startedAt: true, createdAt: true,
+          recordEntries: { select: { text: true } },
+        },
+      }),
+    ]);
 
+    const byPeriod = new Map<number, { texts: string[]; thinking: number[]; output: number[]; meeting: number[]; specificity: number[] }>();
+    for (const ci of checkIns) {
+      const period = periodOf(
+        { sessionNumber: ci.sessionNumber, when: ci.completedAt ?? ci.startedAt ?? ci.createdAt },
+        participant?.ground,
+      );
+      const periodText = ci.recordEntries.map((r) => r.text).join(' ');
+      const intake = runIntake(periodText);
+      const bucket = byPeriod.get(period) ?? { texts: [], thinking: [], output: [], meeting: [], specificity: [] };
+      bucket.texts.push(periodText);
+      bucket.thinking.push(intake.thinkingScore);
+      bucket.output.push(intake.outputScore);
+      bucket.meeting.push(intake.meetingScore);
+      bucket.specificity.push(intake.specificity);
+      byPeriod.set(period, bucket);
+    }
+
+    const avg = (nums: number[]) => (nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : 0);
+    const orderedPeriods = [...byPeriod.keys()].sort((a, b) => a - b);
     const submissions: string[] = [];
     const thinkingScore: number[] = [];
     const outputScore: number[] = [];
-
-    for (const ci of checkIns) {
-      const periodText = ci.recordEntries.map((r) => r.text).join(' ');
-      const intake = runIntake(periodText);
-      submissions.push(periodText);
-      thinkingScore.push(intake.thinkingScore);
-      outputScore.push(intake.outputScore);
+    const meetingScore: number[] = [];
+    const specificityScores: number[] = [];
+    for (const p of orderedPeriods) {
+      const bucket = byPeriod.get(p)!;
+      submissions.push(bucket.texts.join(' '));
+      thinkingScore.push(avg(bucket.thinking));
+      outputScore.push(avg(bucket.output));
+      meetingScore.push(avg(bucket.meeting));
+      specificityScores.push(avg(bucket.specificity));
     }
 
-    // Collect codes already surfaced for this participant (condition 4).
+    // Collect codes already surfaced for this participant (F1's condition 4).
     const surfaced = await this.prisma.patternDetection.findMany({
       where: { participantId, status: PatternStatus.SURFACED },
       select: { code: true },
     });
     const priorSurfacedCodes = surfaced.map((s) => s.code);
 
-    return { submissions, thinkingScore, outputScore, priorSurfacedCodes };
+    return {
+      submissions, thinkingScore, outputScore, meetingScore, specificityScores,
+      role: participant?.roleAsDescribed ?? undefined,
+      priorSurfacedCodes,
+    };
   }
 
   /**
