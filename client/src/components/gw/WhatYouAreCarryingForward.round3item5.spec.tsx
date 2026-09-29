@@ -46,4 +46,15 @@ describe('what you are carrying forward', () => {
     expect(screen.queryByText(/^What you shared:/)).toBeNull()
     expect(screen.getByText(/Here is what you shared\. You have finished the refund endpoint\./)).toBeTruthy()
   })
+
+  /*
+   * RE-REVIEW BUG: the heading carried a second, clipped fragment beside it - "the line the next
+   * session opens from" - which is not a sentence and repeats what the line underneath the
+   * heading already says in full ("From your own check-in only. Only you can see it unless you
+   * choose to share it."). Dropped rather than forced into a sentence that would only repeat it.
+   */
+  it('does not show the clipped fragment beside the heading', () => {
+    mount({ summary: 'What you shared: You have finished the refund endpoint.' })
+    expect(screen.queryByText('the line the next session opens from')).toBeNull()
+  })
 })

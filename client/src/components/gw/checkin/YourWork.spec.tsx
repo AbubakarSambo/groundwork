@@ -55,7 +55,10 @@ describe('Your work', () => {
   it('the check-ins tile, but not the promises-kept tile while nothing has settled this month', async () => {
     mount()
     expect(await screen.findByText('1 of 12')).toBeTruthy()
-    expect(screen.getByText('check-ins of 12')).toBeTruthy()
+    /* Changed from "check-ins of 12" (re-review): it repeated the number already shown above it -
+       "1 of 12" over "check-ins of 12" - and read as a clipped fragment. "check-ins so far" says
+       what the tile counts without saying the number twice. */
+    expect(screen.getByText('check-ins so far')).toBeTruthy()
     expect(screen.queryByText(/promises kept this month/)).toBeNull()
   })
 
@@ -72,6 +75,42 @@ describe('Your work', () => {
     expect(await screen.findByText('What you said you’d do')).toBeTruthy()
     expect(screen.getByText('Send Green Mart the quote')).toBeTruthy()
     expect(screen.getByText('Book a follow-up with Westgate Deli')).toBeTruthy()
+  })
+
+  /*
+   * RE-REVIEW BUG: "…on Wednesday 30 September to show them the fridges (on Wednesday 30
+   * September)" repeated the commitment's own date, because `whenSaid` was always appended in
+   * brackets whatever the text already said. And "send them the price list (the same day)" was a
+   * bracket, not a sentence, with no capital letter. Both are fixed together: the timing is only
+   * added when the line does not already say it, and it reads as its own capitalised sentence.
+   */
+  it('does not repeat a date the commitment already states', async () => {
+    mount({
+      ground: {
+        label: 'Sales team, Q3',
+        commitments: [
+          { id: 'c1', participantId: 'p1', text: 'Meet Baridi on Wednesday 30 September to show them the fridges', status: 'DONE', whenSaid: 'on Wednesday 30 September' },
+        ],
+      },
+    })
+    await screen.findByText('What you said you’d do')
+    expect(screen.getByText('Meet Baridi on Wednesday 30 September to show them the fridges')).toBeTruthy()
+    expect(screen.queryByText('(on Wednesday 30 September)')).toBeNull()
+    expect(screen.queryByText('On Wednesday 30 September.')).toBeNull()
+  })
+
+  it('gives the timing its own capitalised sentence when the line does not already say it', async () => {
+    mount({
+      ground: {
+        label: 'Sales team, Q3',
+        commitments: [
+          { id: 'c1', participantId: 'p1', text: 'send them the price list', status: 'UNKNOWN', whenSaid: 'the same day' },
+        ],
+      },
+    })
+    await screen.findByText('What you said you’d do')
+    expect(screen.getByText('Send them the price list')).toBeTruthy()
+    expect(screen.getByText('The same day.')).toBeTruthy()
   })
 
   it('not drawn when there are no commitments for this reader', async () => {

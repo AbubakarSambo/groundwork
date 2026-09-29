@@ -199,7 +199,16 @@ export function WhatTheReportCanSayYet({ facts }: { facts: CoverageFacts }) {
                 <div style={{ position: 'absolute', inset: 0, background: 'var(--gw-navy)' }} />
               )}
             </div>
-            <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>{r.short}</div>
+            {/*
+              RE-REVIEW: A CAPTION, NOT A CLIPPED FRAGMENT. `r.short` is still the field the tests
+              (and the code above) key rows by - "differences", "what lines up" - but a lower-case
+              fragment with no punctuation is exactly what plain-wording rejects. Capitalised here,
+              on render only, so it reads as a short caption under its bar rather than a piece of a
+              sentence that got cut off.
+            */}
+            <div style={{ fontSize: 9, color: 'var(--gw-muted)', textAlign: 'center', lineHeight: 1.25 }}>
+              {r.short.charAt(0).toUpperCase() + r.short.slice(1)}
+            </div>
           </div>
         ))}
       </div>

@@ -208,17 +208,25 @@ export function WhatSuccessLooksLike({
             And what each person says it is
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {data.definitions.map((d, i) => (
-              <div key={i} style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>
-                <span style={{ color: 'var(--gw-text)', fontWeight: 600 }}>
-                  {/* Null is the reader's own line, and so is their own name when the surface
-                      resolved it - both say "You" rather than printing a name back at them, and
-                      neither says "Somebody", which is what the null used to become. */}
-                  {d.who === null || (yourName && d.who === yourName) ? 'You' : d.who}
-                </span>
-                {': '}{d.text}
-              </div>
-            ))}
+            {data.definitions.map((d, i) => {
+              /* Null is the reader's own line, and so is their own name when the surface
+                 resolved it - both say "You" rather than printing a name back at them, and
+                 neither says "Somebody", which is what the null used to become. */
+              const who = d.who === null || (yourName && d.who === yourName) ? 'You' : d.who
+              /*
+               * RE-REVIEW: A NAME, A COLON, A LINE READS AS A LABEL, NOT A SENTENCE - "Rukia
+               * Otieno: Twelve signed supply contracts..." is a transcript excerpt, not a plain
+               * sentence a person reads. "You" keeps its own voice ("You say..."); a named
+               * colleague gets a plain sentence that says who is speaking.
+               */
+              const text = d.text ? d.text.charAt(0).toLowerCase() + d.text.slice(1) : d.text
+              return (
+                <div key={i} style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>
+                  <span style={{ color: 'var(--gw-text)', fontWeight: 600 }}>{who}</span>{' '}
+                  {who === 'You' ? 'say' : 'said'} {text}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
