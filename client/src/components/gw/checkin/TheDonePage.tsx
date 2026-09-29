@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -79,7 +80,10 @@ function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, te
         <div style={{ padding: '14px 16px', borderTop: '1px solid var(--gw-border)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
             <h3 className="gwui-panel-text" style={{ fontWeight: 700 }}>The team’s report</h3>
-            {!teamReportReleased && <Tag tone="attention">Not shared yet</Tag>}
+            {/* REVIEW ROUND 3, ITEM 8: A TAG EITHER WAY, LIKE "Your own report"'s "Only you" -
+                this card used to say nothing at all once the report had released, so the two
+                halves of one card disagreed about whether a state is worth a tag. */}
+            {teamReportReleased ? <Tag tone="proven">Shared</Tag> : <Tag tone="attention">Not shared yet</Tag>}
           </div>
           {teamReportReleased ? (
             <>
@@ -142,6 +146,10 @@ export function TheDonePage({
    * own correction link); the Done page itself never did. Same call the report page, the ground
    * chat and TheCheckInYouJustFinished.tsx all make - one way to open a correction, not a second.
    */
+  /* The green panel's own accessible region, the same pattern Section uses (aria-labelledby
+     pointing at its own heading), since this panel is not built from Section any more - see the
+     comment where it renders, below. */
+  const savedHeadingId = useId()
   const navigate = useNavigate()
   const correct = useMutation({
     mutationFn: () => reportsApi.startSelfCorrection(groundId, sessionNumber),
@@ -217,17 +225,22 @@ export function TheDonePage({
         </Section>
       )}
 
+      {/*
+        REVIEW ROUND 3, ITEM 8: "That's saved" IS A SOFT GREEN PANEL WITH ITS HEADING INSIDE -
+        not a plain white Panel under a separate Section heading above it (two different things
+        reading as unrelated). A real gap between its two paragraphs now too - they sat with no
+        space between them, reading as one run-on block.
+      */}
       {(leadName || carry) && (
-        <Section heading="That’s saved">
-          <Panel>
-            {leadName && (
-              <p className="gwui-panel-text">
-                <strong>Why answering matters:</strong> {leadName} also answers a check-in. The report puts the answers side by side. It does not decide who is right.
-              </p>
-            )}
-            {carry && <p className="gwui-panel-text">One thing for next time: {carry}</p>}
-          </Panel>
-        </Section>
+        <section aria-labelledby={savedHeadingId} style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)', borderRadius: 12, padding: '15px 17px', display: 'grid', gap: 10 }}>
+          <h2 id={savedHeadingId} style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--gw-green-t)' }}>That’s saved</h2>
+          {leadName && (
+            <p className="gwui-panel-text">
+              <strong>Why answering matters:</strong> {leadName} also answers a check-in. The report puts the answers side by side. It does not decide who is right.
+            </p>
+          )}
+          {carry && <p className="gwui-panel-text">One thing for next time: {carry}</p>}
+        </section>
       )}
 
       {five && (
@@ -252,26 +265,28 @@ export function TheDonePage({
             Groundwork looked for these five things. It may have missed some of what you said.
           </p>
           <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid', gap: 6 }}>
+            {/*
+              REVIEW ROUND 3, ITEM 8: THE PROTOTYPE'S SHORT ITEMS - ONE LINE EACH, WITH THE TICK
+              OR RING (done.txt: "✓ Who The customer, by name" / "○ Proof A photo, a quote or a
+              message"). The trailing "Groundwork found this."/"Groundwork did not pick this up
+              this time." made each row two sentences instead of one short line.
+              THE ACCESSIBILITY FIX THAT SENTENCE EXISTED FOR STAYS, moved to an sr-only span:
+              without it the only thing telling found from missing is a filled ring's colour,
+              which is exactly the bug fixed before ("the only visible difference between found
+              and missing was a filled or empty circle"). A screen reader still hears the
+              difference; a sighted reader now sees the prototype's own short line.
+            */}
             {five.map(f => (
               <li key={f.key} style={{ display: 'flex', gap: 8, fontSize: 13.5, lineHeight: 1.45, color: f.there ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
                 <span aria-hidden style={{ width: 14, flexShrink: 0, color: f.there ? 'var(--gw-green-t)' : 'var(--gw-sub-d)', fontWeight: 700 }}>{f.there ? '✓' : '○'}</span>
-                {/*
-                  NEVER A FACT ABOUT ABSENCE, BUT SAID OUT LOUD, NOT ONLY TO A SCREEN READER.
-
-                  A sighted reader used to see only the icon and the same noun phrase either way -
-                  "What you did, not just what was happening" - with the one word that actually
-                  distinguished found from missing ("Groundwork found this." / "Groundwork did not
-                  pick this up this time.") hidden in a screen-reader-only span. So the only visible
-                  difference between "found" and "missing" was a filled or empty circle. Both readers
-                  now get the same plain sentence.
-                */}
                 <span>
-                  {f.there ? f.met : f.missing}. {f.there ? 'Groundwork found this.' : 'Groundwork did not pick this up this time.'}
+                  {f.there ? f.met : f.missing}
+                  <span className="gwui-sr-only"> {f.there ? 'Groundwork found this.' : 'Groundwork did not pick this up this time.'}</span>
                 </span>
               </li>
             ))}
           </ul>
-          <p className="gwui-panel-text-muted">This is about the check-in. Only you see it.</p>
+          <p className="gwui-panel-text-muted" style={{ marginTop: 10 }}>This is about the check-in. Only you see it.</p>
         </Section>
       )}
 

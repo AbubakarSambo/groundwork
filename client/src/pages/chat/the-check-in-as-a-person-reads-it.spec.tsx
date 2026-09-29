@@ -423,16 +423,22 @@ describe('the Done page, after “That’s right, finish”', () => {
     /**
      * "4 of 5" no longer shows (U.8 re-review, request 45 to the engine workspace): it is a score
      * built from a read of the session that is known to miss real content, so it stays off until
-     * that is answered. What a sighted reader gets instead is the same plain sentence a screen
-     * reader always got - "Groundwork found this." or "Groundwork did not pick this up this time." -
-     * for every one of the five, not only the icon.
+     * that is answered.
+     *
+     * REVIEW ROUND 3, ITEM 8: THE PROTOTYPE'S SHORT ONE-LINE ITEMS, WITH THE TICK OR RING. The
+     * "Groundwork found this."/"Groundwork did not pick this up this time." trailing sentence -
+     * added so a sighted reader was not left to tell found from missing by the ring's colour
+     * alone - is a visually-hidden (sr-only) span now, not a second visible sentence on every
+     * line: a screen reader still gets it, a sighted reader gets the prototype's own short line.
      */
     expect(within(checkable).queryByText('4 of 5')).toBeNull()
     expect(within(checkable).getByText(
       'Groundwork looked for these five things. It may have missed some of what you said.',
     )).toBeTruthy()
-    expect(within(checkable).getByText(/One date, number or document\. Groundwork did not pick this up this time\./)).toBeTruthy()
-    expect(within(checkable).getByText(/What you did, not just what was happening\. Groundwork found this\./)).toBeTruthy()
+    const missingLine = within(checkable).getAllByText(/One date, number or document/)[0]
+    expect(missingLine.querySelector('.gwui-sr-only')?.textContent).toContain('Groundwork did not pick this up this time.')
+    const foundLine = within(checkable).getAllByText(/What you did, not just what was happening/)[0]
+    expect(foundLine.querySelector('.gwui-sr-only')?.textContent).toContain('Groundwork found this.')
     expect(within(checkable).getByText('This is about the check-in. Only you see it.')).toBeTruthy()
   })
 
