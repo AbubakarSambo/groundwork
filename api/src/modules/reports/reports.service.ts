@@ -154,7 +154,7 @@ import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { ONLY_THE_LEAD_RELEASES } from './only-the-lead-releases';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
-import { howManyHaveAnswered, whoIsExpected } from './how-many-have-answered';
+import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 
@@ -2944,6 +2944,18 @@ Close the report by framing - neutrally, without recommending one - the choice n
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber }, recallBased: false, anchoredOrigin: { in: [...COUNTS_AS_A_SOURCE] as any } } }),
       howManyHaveAnswered(this.prisma, groundId, sessionNumber),
     ]);
+    /*
+     * THE COUNT A PERSON READS, BY THE ONE RULE EVERY HALF COUNTS WITH (requests 56 and 69). This
+     * report said "4 of 5" beside a check-in header, and a board, reading "4 of 6": its count left
+     * out somebody invited who had not joined. The header's rule, which the board's glance already
+     * reads (whoIsInTheRound): everybody on the check-in, and a lead who only asks only where the
+     * round waits on them. Who the round WAITS on before it is written stays whoAnswered, above.
+     */
+    const theRound = howManyInTheRoundAnswered(
+      (ground.participants as any[]).map((p: any) => ({ ...p, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
+      sessionNumber,
+      (ground as any).scenario,
+    );
 
     /* Whose document backs each line: somebody else's proves nothing of theirs (how-a-line-is-known). */
     const backingIds = [...new Set(entries.map((e: any) => e.anchoredDocumentId).filter(Boolean))] as string[];
@@ -3112,7 +3124,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * managing-only, so the masthead said "4 people, 2 of 4 answered" while the finding three lines
      * below it - which asks how-many-have-answered - said "2 of 5". Same card, two denominators.
      */
-    const counting = whoIsExpected(
+    const counting = whoIsInTheRound(
       ground.participants.map((p: any) => ({ ...p, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
       sessionNumber,
       (ground as any).scenario,
@@ -3477,8 +3489,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
             const previous = rounds.find((r) => r.topics.join('|') !== current.topics.join('|')) ?? rounds[1] ?? null;
             return whatChangedSinceLastTime(current, previous);
           })(),
-          answered: whoAnswered.answered,
-          ofPeople: whoAnswered.expected,
+          answered: theRound.answered,
+          ofPeople: theRound.ofPeople,
           confidence: shape.confidence,
           tiles: shape.atAGlance,
           /* The picture is read by everybody in the check-in, and a pattern is never shared. */
