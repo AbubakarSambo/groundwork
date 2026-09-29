@@ -184,6 +184,17 @@ What was wrong, and is being fixed now:
 
 Not tested live: an admin who only reads (the run creates none), and documents (neither scenario has any), so "proven" was not seen.
 
+**The end card, fixed** (second try at 2.7):
+- **Finishing now waits for the card** (`c9880115`). It waits up to 50 seconds, writes exactly the card's lines, and returns the card. A new read, `GET /check-ins/:id/end-card`, waits for the card too, and only the person can read it. The screens need to call it after the closing reply; I wrote this in request 7's answer. WhatsApp does not wait, because its messages cannot be held open that long.
+- **The card is always what was recorded** (`30447b3c`). If the record has to be read again, the stored card is replaced with the lines actually written.
+- **No engine notes** (`dec17c28`). "I haven't had that conversation with Tobi yet. [INFERRED: about him taking over the scheduling]" now reads "I haven't had that conversation with Tobi yet." Every line starts with a capital and ends as a sentence.
+- **The commitment comes first** (`630c659e`). If lines are left out, the card says "There are 3 more lines in your record. You can read them all in your record after you finish."
+- **One rule for "from memory"** (`f407861a`). A line about what happened, with a figure and nothing written behind it, is from memory, whatever kind of line it is. "N19 million disbursed." and "Six facilities approved." now read the same.
+- **The prototype's close** (`4b49f05d`). The closing turn ends with "That's all for today. Below is what I wrote down from your answers. Is anything wrong?" and no longer says "Your report is ready now". This is done in code, because the stored prompt (`system` version 43) still asks for the old sentence.
+- **"You kept both of your commitments."** (`c25b1820`)
+
+Tests: 752 files and 6,907 tests pass in the parts touched.
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
