@@ -81,6 +81,8 @@ export interface WhatOnePersonSaid {
   who: string;
   isYou: boolean;
   lines: string[];
+  /** How each line is known, in the same order as `lines`: proven, confirmed, said or memory. */
+  lineMarks?: HowALineIsKnown[];
   /** Said instead of lines when they answered and named nothing specific. */
   saying?: string;
 }
@@ -519,9 +521,11 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     RecordEntryType.ASK,
   ];
   const said = new Map<string, string[]>();
+  const marked = new Map<string, HowALineIsKnown[]>();
   for (const e of input.entries.filter((e) => IN_THE_THEMES.includes(e.type))) {
     const key = e.who ?? '';
     said.set(key, [...(said.get(key) ?? []), e.text]);
+    marked.set(key, [...(marked.get(key) ?? []), howALineIsKnown({ type: e.type, text: e.text, recallBased: e.recallBased, anchoredOrigin: e.backedBy ?? null, confirmedAt: e.confirmedAt ?? null, documentIsTheirOwn: e.documentIsTheirOwn })]);
   }
   const whatEachPersonSaid: WhatOnePersonSaid[] = input.answeredThisSession.map((p) => {
     const lines = said.get(p.isYou ? '' : p.who) ?? [];
@@ -529,6 +533,9 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       who: p.who,
       isYou: p.isYou,
       lines,
+      /* How each of those lines is known, in the same order (week 6b, screens request 2). Beside
+         `lines` rather than in it, so a screen that reads `lines` as words is unchanged. */
+      ...(lines.length ? { lineMarks: marked.get(p.isYou ? '' : p.who) ?? [] } : {}),
       /* BEFORE RELEASE, ANOTHER PERSON'S LINES ARE WALLED, NOT ABSENT. A participant read "Answered, and nothing
          specific enough to record came out of it" beside twenty-three names whose lines he was not yet entitled
          to (run 10, 21 Sep 2026). The wall says so; it does not claim the person said nothing. */

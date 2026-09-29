@@ -60,6 +60,22 @@ describe('the session report marks each line the same way', () => {
     expect(marks.get('I will visit Westgate Deli on Friday')).toBe('said');
   });
 
+  it('and on what each person said they did, beside their lines in the same order', () => {
+    const out = theSessionReport({
+      ...base,
+      answeredThisSession: [{ who: 'Tomi', isYou: false }, { who: 'Zainab', isYou: false }],
+      entries: [
+        { ...line(RecordEntryType.PROGRESS, 'I have 31 applications from businesses'), who: 'Tomi' },
+        { ...line(RecordEntryType.PROGRESS, 'The quote went to Green Mart', { recallBased: false, backedBy: 'photo' }), who: 'Tomi' },
+      ],
+    });
+    const tomi = out.whatEachPersonSaid.find((p) => p.who === 'Tomi')!;
+    expect(tomi.lines).toEqual(['I have 31 applications from businesses', 'The quote went to Green Mart']);
+    expect(tomi.lineMarks).toEqual(['memory', 'proven']);
+    /* Nobody else's lines, so nothing to mark. */
+    expect(out.whatEachPersonSaid.find((p) => p.who === 'Zainab')!.lineMarks).toBeUndefined();
+  });
+
   it('and a line reads the same on the end card', () => {
     const lines = [
       { type: 'PROGRESS', text: 'I have 31 applications from businesses', recallBased: true },
