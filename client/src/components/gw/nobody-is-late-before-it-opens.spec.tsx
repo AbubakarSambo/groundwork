@@ -28,6 +28,15 @@ import { WhoIsInThis } from './WhoIsInThis'
  * three rules this file exists to hold are unweakened: nothing says "waiting", or any other word
  * for lateness, before the session opens; the tooltip says why; and the same signal is still
  * there, in words, once a session IS open.
+ *
+ * U.4 PEOPLE-GROUP REVIEW, ITEM 3: A BARE NAME IS NOT A SENTENCE EITHER. Reading this page as Neema
+ * (whose next session had not opened), Faraji's chip and the unnamed colleague's chip said only
+ * "Faraji Odhiambo" and "A colleague" - nothing at all, where every other reader's page, and every
+ * other chip once a session is open, is a full sentence. The first two tests below are updated for
+ * the chip's new words ("will check in once the next session opens" - still no "waiting", "late" or
+ * "has not checked in"), and the tooltip, which used to add a second sentence the chip itself did
+ * not say, is now simply the chip's own sentence again (matching the pattern for a done or overdue
+ * chip, neither of which had a different tooltip).
  */
 function renderRoster(parties: { name: string; done: boolean; isSelf: boolean }[], notOpenYet = false) {
   return render(<WhoIsInThis parties={parties} notOpenYet={notOpenYet} />)
@@ -40,16 +49,17 @@ describe('the roster between sessions', () => {
       { name: 'Abubakar', done: false, isSelf: true },
     ], true)
     screen.getByText(/Who is in this/)
-    /* Just the name - no status at all - is what "nobody is late for a session that has not
-       opened" looks like on screen. */
-    expect(screen.getByText('Ejiro')).toBeTruthy()
-    expect(screen.getByText('You')).toBeTruthy()
+    /* A full sentence, said of each of them, that names no lateness - not just their name with
+       nothing said about them (U.4 people-group review, item 3: Faraji's and "a colleague"'s chips
+       read as bare names, on Neema's own page, with no verb at all). */
+    expect(screen.getByText('Ejiro will check in once the next session opens.')).toBeTruthy()
+    expect(screen.getByText('You will check in once the next session opens.')).toBeTruthy()
     expect(screen.queryByText(/waiting/i)).toBeNull()
     expect(screen.queryByText(/not checked in/i)).toBeNull()
     expect(screen.queryByText(/late/i)).toBeNull()
   })
 
-  it('and the hover text says why, rather than nothing', () => {
+  it('and the hover text says the same true sentence, not a different one', () => {
     /* Two parties: the roster only renders once there is more than one (a check-in of one is a
        sentence about yourself, not a roster). */
     renderRoster([
@@ -57,7 +67,7 @@ describe('the roster between sessions', () => {
       { name: 'Abubakar', done: false, isSelf: true },
     ], true)
     screen.getByText(/Who is in this/)
-    expect(screen.getByTitle('Ejiro. The next session has not opened yet.')).toBeTruthy()
+    expect(screen.getByTitle('Ejiro will check in once the next session opens.')).toBeTruthy()
   })
 
   it('still says so, in words, when a session IS open', () => {

@@ -51,19 +51,22 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {(parties ?? []).map((p, i) => {
             /*
-              A FULL SENTENCE, NOT A NAME WITH A STATUS WORD STUCK ON WITH A DOT. Nothing is said
-              about a session that has not opened yet: nobody is late for one that has not started.
+              A FULL SENTENCE, NOT A NAME WITH NOTHING SAID ABOUT THEM (U.4 people-group review,
+              item 3): a chip that read just "Faraji Odhiambo", or just "A colleague", said nothing -
+              every other chip on this card is a sentence. Nobody is late for a session that has not
+              opened yet, so this still never says "has not checked in": it says what is true instead,
+              that they will check in once it does.
             */
             const have = p.isSelf ? 'have' : 'has'
             const sentence = p.done
               ? `${p.isSelf ? 'You' : p.name} ${have} checked in.`
               : notOpenYet
-                ? (p.isSelf ? 'You' : p.name)
+                ? `${p.isSelf ? 'You' : p.name} will check in once the next session opens.`
                 : `${p.isSelf ? 'You' : p.name} ${have} not checked in yet.`
             return (
               <span
                 key={i}
-                title={notOpenYet ? `${p.isSelf ? 'You' : p.name}. The next session has not opened yet.` : sentence}
+                title={sentence}
                 style={{
                   fontSize: 12, padding: '3px 9px', borderRadius: 20,
                   background: p.done ? 'var(--gw-green-bg)' : 'var(--gw-bg)',
