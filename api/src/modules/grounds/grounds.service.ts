@@ -55,7 +55,7 @@ import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-w
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
-import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT } from './what-a-participant-is-told-about-this';
+import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
 import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant } from './nothing-proposed-that-nobody-said';
@@ -470,7 +470,10 @@ export class GroundsService {
    * an empty rewrite leaves the column null and the read falls back to the filtered brief.
    */
   async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined): Promise<void> {
-    const text = (brief ?? '').trim();
+    /* The model is handed the situation only, never the answers setup put together from the lead's
+       conversation: those are the lead's instructions about people, not something to retell to them
+       (request 41). A brief that is nothing but those answers leaves nothing to tell. */
+    const text = withoutTheSetupAnswers(brief);
     try {
       if (!text) {
         await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: null } as any });
