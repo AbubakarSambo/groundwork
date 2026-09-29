@@ -3685,7 +3685,10 @@ Close the report by framing - neutrally, without recommending one - the choice n
       ...round,
       sharedPicture: typeof round.sharedPicture === 'string' ? notTheWordParty(round.sharedPicture) : round.sharedPicture,
     }));
-    const moved = howThisHasMoved(cleaned as any).map((m: any) => ({
+    /* The table calls it sessionNumber and the sequence reads `round`: without this every movement
+       came back with no session number, and the page printed "At the end of session undefined"
+       (request 59). */
+    const moved = howThisHasMoved(cleaned.map((r: any) => ({ ...r, round: r.sessionNumber }))).map((m: any) => ({
       ...m,
       says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says,
     }));
