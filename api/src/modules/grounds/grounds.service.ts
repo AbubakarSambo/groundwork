@@ -456,6 +456,8 @@ export class GroundsService {
       ground.whoSeesTargets,
       ground.objectives ?? [],
       namesOnTheRoster(ground.participants ?? []),
+      /* And a target written only in the lead's words about somebody (targetsFromTheirRemits). */
+      ground.participants ?? [],
     );
     return withoutHiddenTargetsIn(served, hidden);
   }

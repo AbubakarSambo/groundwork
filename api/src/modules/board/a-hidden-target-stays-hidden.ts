@@ -194,12 +194,52 @@ export function withoutHiddenTargetsIn<T>(value: T, hidden: readonly AHiddenTarg
  * reader's own; nobody's when the lead has shared targets with everybody, or when the reader runs
  * the check-in themselves (the lead set them).
  */
+/**
+ * A TARGET THAT LIVES ONLY IN THE LEAD'S WORDS ABOUT SOMEBODY IS STILL THEIR TARGET (29 September 2026).
+ *
+ * On a sales check-in the lead wrote each person's number into what they said about them ("Relationship
+ * officer, Ikeja. Target 14 approved facilities this quarter.") and set no objective for it, so this
+ * rule had nothing to take out: Femi read "Ngozi Eze is trying to get 14 new facilities approved and
+ * have N42 million disbursed." on a check-in where each person sees only their own target. The numbers
+ * in a sentence of the remit that speaks of a target are read as that person's targets, and go through
+ * the same rule as an objective's. Only such sentences, so "first 90 days" is not taken for a target.
+ */
+const SPEAKS_OF_A_TARGET = /\b(?:targets?|aim(?:s|ing)?|goals?|quota|to (?:reach|hit|close|sell|get|win|sign|deliver|disburse))\b/i;
+export function targetsInTheirRemit(text: string | null | undefined): number[] {
+  const out: number[] = [];
+  for (const sentence of String(text ?? '').split(/(?<=[.!?])\s+|\n+/)) {
+    if (!SPEAKS_OF_A_TARGET.test(sentence)) continue;
+    for (const m of sentence.matchAll(/(?<![\p{L}\d.,])[N₦$£€]?\s?(\d[\d,]*(?:\.\d+)?)\s?(k|thousand|m|mn|million|bn|billion)?(?![\p{L}\d])/giu)) {
+      const base = Number(m[1].replace(/,/g, ''));
+      if (!Number.isFinite(base)) continue;
+      const unit = (m[2] ?? '').toLowerCase();
+      const n = base * (unit === 'k' || unit === 'thousand' ? 1e3 : unit === 'm' || unit === 'mn' || unit === 'million' ? 1e6 : unit === 'bn' || unit === 'billion' ? 1e9 : 1);
+      if (!unit && n >= 1900 && n <= 2100 && Number.isInteger(n)) continue;
+      if (n >= 1 && !out.includes(n)) out.push(n);
+    }
+  }
+  return out;
+}
+
+/** Each person's targets written only in the lead's words about them, as rows the rule below reads. */
+export function targetsFromTheirRemits(
+  people: readonly { id: string; roleAsDescribed?: string | null; remitAsGiven?: string | null; partyType?: string | null }[] | null | undefined,
+): { ownerParticipantId: string; target: number }[] {
+  return (people ?? [])
+    .filter((p) => p?.id && p.partyType !== 'INITIATOR')
+    .flatMap((p) => [...new Set([...targetsInTheirRemit(p.remitAsGiven), ...targetsInTheirRemit(p.roleAsDescribed)])]
+      .map((target) => ({ ownerParticipantId: p.id, target })));
+}
+
 export function targetsHiddenFrom(
   reader: { participantId: string | null; isTheLead: boolean },
   whoSeesTargets: string | null | undefined,
   objectives: readonly { ownerParticipantId: string | null; target: number | null }[],
   namesOf: (participantId: string) => string[],
+  /** The people on the check-in, so a target written only in the lead's words about them counts too. */
+  people?: readonly { id: string; roleAsDescribed?: string | null; remitAsGiven?: string | null; partyType?: string | null }[],
 ): AHiddenTarget[] {
+  objectives = [...(objectives ?? []), ...targetsFromTheirRemits(people)];
   /* The one rule for whose number a reader may see (whose-number-is-whose-business). Whatever it does
      not show this reader is hidden in the words too. */
   const all = (objectives ?? []).map((o, i) => ({ name: String(i), target: o.target, ownerParticipantId: o.ownerParticipantId }));

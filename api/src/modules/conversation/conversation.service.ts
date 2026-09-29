@@ -536,6 +536,8 @@ export class ConversationService {
       ground.whoSeesTargets,
       (ground.objectives ?? []).map((o) => ({ ownerParticipantId: o.ownerParticipantId ?? null, target: o.target })),
       namesOnTheRoster(ground.participants ?? []),
+      /* And a target written only in the lead's words about somebody (targetsFromTheirRemits). */
+      ground.participants ?? [],
     );
     return withoutHiddenTargets(text, hidden) || null;
   }

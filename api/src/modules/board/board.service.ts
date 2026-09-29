@@ -1441,6 +1441,8 @@ export class BoardService {
         (ground as any).whoSeesTargets,
         (ground.objectives ?? []) as any[],
         namesOfPerson,
+        /* And a target written only in the lead's words about somebody (targetsFromTheirRemits). */
+        ground.participants as any[],
       );
       /* A row about one person loses any sentence with that person's hidden number in it. */
       if (Array.isArray(out.eachPerson) && hiddenTargets.length) {

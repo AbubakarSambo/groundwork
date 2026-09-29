@@ -5838,7 +5838,7 @@ happened, and what is in the way.`;
       where: { id: groundId },
       select: {
         initiatorId: true, organizationId: true, whoSeesTargets: true, scenario: true, peersVisibleToEachOther: true,
-        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } } },
         objectives: { select: { ownerParticipantId: true, target: true } },
       } as any,
     }) as Promise<any>).catch(() => null);
@@ -5854,7 +5854,7 @@ happened, and what is in the way.`;
       const full = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
       return [full, first, (p?.nameGiven ?? '').trim()].filter((n: string) => n && n.length > 1);
     };
-    const hiddenTargets = targetsHiddenFrom({ participantId: me?.id ?? null, isTheLead: isInitiator }, ground.whoSeesTargets, ground.objectives ?? [], namesOfPerson);
+    const hiddenTargets = targetsHiddenFrom({ participantId: me?.id ?? null, isTheLead: isInitiator }, ground.whoSeesTargets, ground.objectives ?? [], namesOfPerson, ground.participants ?? []);
     /* And no internal label reaches anyone, whichever field it sits in. See no-internal-label-reaches-anyone. */
     const called = whatEachLabelIsCalled(ground.participants ?? [], {
       viewerParticipantId: me?.id ?? null,
