@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { PeopleTable, PersonRow, Tag, Button, TextField, type TagTone } from '@/components/gw/ui'
-import { personLabel as onePersonsLabel } from '@/lib/utils'
+import { personLabel as onePersonsLabel, atTheStart } from '@/lib/utils'
 import { theLeadsNote } from '@/lib/the-leads-note'
+import { initialsOf } from '@/pages/org/people-here'
 
 /**
  * "ROLES IN THIS CHECK-IN"
@@ -49,11 +50,12 @@ export function RolesInThisCheckIn({
         {rows.map((p: any) => {
           const isLead = p.userId === ground.initiatorId
           const status = statusFor(p)
+          const name = atTheStart(onePersonsLabel(p))
           return (
             <PersonRow
               key={p.id}
               extraColumns={isInitiator ? '110px minmax(180px, 1fr) 150px' : '110px 150px'}
-              person={{ initials: (p.email || '?').charAt(0).toUpperCase(), name: onePersonsLabel(p) ?? p.email, email: p.email }}
+              person={{ initials: initialsOf(name), name, email: p.email }}
             >
               <Tag tone="plain">{isLead ? 'Runs it' : 'Checks in'}</Tag>
               {isInitiator && (
@@ -72,7 +74,7 @@ export function RolesInThisCheckIn({
                   </span>
                 ) : (
                   <span>
-                    {p.roleAsDescribed ? theLeadsNote(p.roleAsDescribed) : 'Not said'}
+                    {p.roleAsDescribed ? theLeadsNote(p.roleAsDescribed) : 'Nobody has described it yet.'}
                     <Button kind="quiet" size="small" onClick={() => { setEditingId(p.id); setValue(p.roleAsDescribed ?? '') }}>
                       Edit
                     </Button>
