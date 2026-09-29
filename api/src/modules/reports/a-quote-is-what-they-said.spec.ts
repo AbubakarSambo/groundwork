@@ -220,7 +220,7 @@ describe('and nothing touches the inside of a quote on the way out', () => {
       { name: 'Nadia Haddad' },
       { name: 'Zainab Suleiman' },
     ]);
-    expect(out).toBe('somebody in this check-in was moved at the request of somebody in this check-in and said "we are nearly there".');
+    expect(out).toBe('Somebody in this check-in was moved at the request of somebody in this check-in and said "we are nearly there".');
     expect(out).not.toContain('Nadia');
   });
 

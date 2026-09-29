@@ -89,7 +89,10 @@ export function withoutWhoSaidIt(text: string, identities: Identity[]): string {
     let out = piece;
     for (const [what, withWhat] of Array.from(words.entries()).sort((a, b) => b[0].length - a[0].length)) {
       const escaped = what.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), withWhat);
+      /* At the start of a sentence it takes a capital: "Somebody in this check-in reports 18 sales",
+         never "somebody in this check-in reports" (request 31). */
+      out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), (_m: string, offset: number, whole: string) =>
+        (/^\s*$|[.!?]["'”’)\]]?\s+$|\n\s*$/.test(whole.slice(0, offset)) ? withWhat.charAt(0).toUpperCase() + withWhat.slice(1) : withWhat));
     }
     return out;
   };
