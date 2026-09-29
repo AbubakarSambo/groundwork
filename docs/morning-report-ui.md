@@ -6167,3 +6167,47 @@ Every API spec that reads the touched client files by source passes.
 2. `fc60c1bb` - B, finished: Composer and the card frame, used by ChatPage
 3. `73c0db55` - E1: Between check-ins, from the parts, inside the page column
 4. `de08be91` - E2: The Done page rebuilt from the ui parts
+
+## Round 6 (before review): the header's own name, one quiet link, no grey strip, the Done page for a finished session
+
+**Item 1 — DONE.** The card header reads `<check-in name> check-in` now (bold, as before), with
+"About two minutes" under it - reversed from an earlier round's decision to drop that line
+("does not promise how long it takes"): the estimate is about this ONE CONVERSATION, which is
+honest to say the same way for every check-in, not a claim about the record behind it. "That's
+everything for today" still replaces it once the conversation has closed. Two tests updated in
+`the-check-in-as-a-person-reads-it.spec.tsx`, each with its reasoning in the diff.
+
+**Item 2 — DONE.** "WHAT THIS CHECK-IN IS ABOUT" and "WHAT YOU SAID LAST TIME" - two capitalised
+cards the prototype does not have - fold behind one quiet link, "What this check-in is about, and
+what you said last time", opening a `Modal` (`components/gw/ui`) with sentence-case `Section`
+headings. Nothing they carried is gone: both were written against real complaints
+(an-objective-nobody-has-seen.spec.ts; what a person said last time, so they are not asked to
+repeat it), so they are reachable, not removed. The engine's own colon-joined lists (`brief.says`,
+"The objectives on record:") are carried through unreworded, per the instruction (request 40 owns
+that wording); the screen's own "Worry:"/"Commitment:" labels are gone, replaced by a plain `Tag`
+naming the kind after each line. Two source-scanning tests retargeted to the new `hasAboutContent`
+const.
+
+**Item 3 — DONE.** The grey strip between the last message and the composer
+(`background: 'var(--gw-bg)'` with its own `borderBottom`) is gone - the row stays (it still says a
+real sentence when closing/correcting a session, and offers "Set the context"/"Add people" to
+whoever runs it, both real fixes for reported complaints), just on the page's own white now, not
+banded off from it.
+
+**Item 4 — DONE.** A session the server had already completed before this render - not just
+finished now, but loaded that way (`/checkin/:id`, a link followed the next day) - used to fall
+through to `ChatPage.tsx`'s own old "already complete" view instead of the Done page: its own report
+blocks, a dash-joined sentence, "Open the team board →", a "Back to check-ins" link cut off at the
+bottom. The early return to `TheDonePage` keys on `justFinished`; loading an already-`COMPLETED`
+transcript only ever set `completed`, never `justFinished` - now it does, matching the two live-finish
+paths that already paired them. `TheDonePage.tsx` itself had no self-correction affordance at all
+(the old view it replaces did, `TheCheckInYouJustFinished.tsx`'s own "Something here isn't right") -
+added, the same `reportsApi.startSelfCorrection` call the report page and the ground chat already
+make. New test: `ChatPage.alreadyCompleteOnLoad.spec.tsx`.
+
+Full client suite: 3466/3467 (the one failure is the pre-existing, unrelated engine-prompt count from
+the merge). The API specs that read the touched client files by source pass unchanged.
+
+**Commits this round (local only, `wip/prototype-ui`, not pushed):**
+1. `1239ba9a` - Round 6, items 1-3
+2. `121ab3e1` - Round 6, item 4
