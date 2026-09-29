@@ -40,9 +40,12 @@ export function withoutPrivateFileNames(text: string, names: readonly string[]):
       'gi',
     );
     /* "The attached X document" keeps its "the"; a bare "from X" becomes "from a document". */
-    out = out.replace(re, (m, the) => {
+    out = out.replace(re, (m, the, offset: number, whole: string) => {
       const word = the ? 'the document' : 'a document';
-      return /^[A-Z]/.test(m) ? word[0].toUpperCase() + word.slice(1) : word;
+      /* At the start of a sentence it takes a capital, even where the file name did not have one:
+         "chandarana-quote.png is a photo." becomes "A document is a photo." */
+      const startsASentence = /^\s*$|[.!?]\s+$/.test(whole.slice(0, offset));
+      return /^[A-Z]/.test(m) || startsASentence ? word[0].toUpperCase() + word.slice(1) : word;
     });
   }
   return out;

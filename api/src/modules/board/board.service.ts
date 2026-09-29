@@ -46,7 +46,7 @@ import { whyNothingIsCrossReferenced } from './why-nothing-is-cross-referenced';
 import { whatIsNotSettledAbout } from '../grounds/a-target-nobody-has-defined';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-board-is-not-read-before-you-answer';
-import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
+import { whatThisDocumentIs } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
@@ -2137,7 +2137,7 @@ export class BoardService {
       baselineSuccess: baseline?.successLooksLike ?? null,
       startingPoint: null,
       previousSharedPicture: null,
-      evidence: docs.map((d: any) => ({ text: originLabel(d.origin) ? `${d.fileName} · ${originLabel(d.origin)}` : d.fileName, who: nameOf(d.participantId) })),
+      evidence: docs.map((d: any) => ({ text: whatThisDocumentIs(d.fileName, d.origin), who: nameOf(d.participantId) })),
       specificityLevel: null,
       centralQuestion: report.centralQuestion ?? null,
       /* From the one owner, over the round in play - not a lifetime delta and not every dependency ever raised. */

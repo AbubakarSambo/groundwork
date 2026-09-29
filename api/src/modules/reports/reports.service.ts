@@ -32,7 +32,7 @@ import { rememberedCompose } from './a-line-worded-once-is-kept';
 import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
 import { sentenceWithANumber } from './where-you-are-against-what-you-named';
-import { originLabel, COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
+import { COUNTS_AS_A_SOURCE, whatThisDocumentIs } from '../documents/what-kind-of-thing-a-document-is';
 import { buildCoverage, buildContribution } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
@@ -3010,7 +3010,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       previousSharedPicture: previousSnapshot?.sharedPicture ?? null,
       /* A document with no participant belongs to the check-in rather than to a person. */
       /* Named for what kind of thing it is: a typed document, a photo, notes written with a model. */
-      evidence: docs.map((d) => ({ text: originLabel((d as any).origin) ? `${d.fileName} · ${originLabel((d as any).origin)}` : d.fileName, who: d.participantId ? whoOf(d.participantId) : null })),
+      /* One sentence each, never the file name and its kind joined with a dot (request 61). */
+      evidence: docs.map((d) => ({ text: whatThisDocumentIs(d.fileName, (d as any).origin), who: d.participantId ? whoOf(d.participantId) : null })),
       specificityLevel: checkIn?.specificityLevel ?? null,
       centralQuestion: snapshot?.centralQuestion ?? ground.report?.centralQuestion ?? null,
       /*
