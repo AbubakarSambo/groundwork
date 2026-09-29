@@ -91,17 +91,3 @@ describe('a line the card shows is a sentence', () => {
     expect(card.next).toContain('There are 2 more lines in your record. You can read them all in your record after you finish.');
   });
 });
-
-describe('a commitment worded as an instruction still shows', () => {
-  it('keeps "Call Tobi on Friday." on the card, first', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { theEndCard } = require('./the-end-card');
-    const card = theEndCard([
-      { id: 'a', type: 'PROGRESS', text: 'A target of 40.', disputedAt: null },
-      { id: 'b', type: 'COMMITMENT', text: 'Call Tobi on Friday.', disputedAt: null },
-    ] as any);
-    const says = (card?.lines ?? card?.inYourRecord ?? []).map((l: any) => l.says);
-    expect(says[0]).toBe('Call Tobi on Friday.');
-    expect(says).not.toContain('A target of 40.');
-  });
-});

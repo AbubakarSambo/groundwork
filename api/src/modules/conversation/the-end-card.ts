@@ -161,11 +161,9 @@ export function theEndCard(lines: readonly ALineForTheCard[]): EndCard | null {
   const all = (lines ?? []).filter((l) => !l.disputedAt && asTheyReadIt(l.text));
   /* Commitments first, then the rest in the order they were said. */
   const ordered = [...all.filter((l) => l.type === 'COMMITMENT'), ...all.filter((l) => l.type !== 'COMMITMENT')];
-  /* A piece that is not a sentence stays in the record and is counted below, not shown. A
-     commitment is always shown, however it is worded ("Call Tobi on Friday."): it is the line
-     that matters most, and the one they will be asked about next time. */
+  /* A piece that is not a sentence stays in the record and is counted below, not shown. */
   const shown = ordered
-    .filter((l) => l.type === 'COMMITMENT' || isASentence(l.text))
+    .filter((l) => isASentence(l.text))
     .slice(0, AT_MOST)
     .map((l) => ({ says: asTheyReadIt(l.text), ...markFor(l), type: l.type }));
   if (!ordered.length) return null;
