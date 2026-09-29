@@ -278,9 +278,15 @@ Tests: 693 files and 6,544 tests pass in the parts touched.
   - the report's disagreements are not in "for you to decide", because their board wording uses a banned word and needs rewriting first;
   - there is no way yet to answer a decision straight from Today.
 
+**"Accounts" is gone from the board's and reports' own sentences, and disagreements join "for you to decide"** (`03898fa9`, `755f4c0e`).
+- "The accounts differ on the main obstacle to signing new shops, so it needs settling." now reads "Brian Mwangi and Miriam Achieng said different things about whether the order is signed, so it needs settling." A reader who may not see a name reads "People in this check-in said different things…".
+- About 25 more code-built sentences are rewritten the same way. For example, "A picture is forming from the accounts that are in." is now "A picture is forming from what people have said so far."
+- The lead's "for you to decide" now has one item per open disagreement: "Agree what counts as a budget and tell both of them. Brian Otieno counts a price range as a budget, and Miriam Wanjiku counts only a written figure. … Four deals are counted differently until this is agreed."
+- Text the model writes, and the instructions the model is given, are not changed yet.
+
 **The screens workspace is merged a second time** (`1c3a5d14`), cleanly. Their new request 74 is answered as next: an early check-in asks whether something happened when its date has not come yet. The fix changes what the check-in asks, so it needs two scenario re-runs, and there was no room for them today.
 
-**The whole API test suite passes on the latest code: 1,195 files and 11,088 tests.**
+**The whole API test suite passes on the latest code: 1,195 files and 11,093 tests.**
 
 **The whole API test suite passes at the end of week 14: 1,191 files and 11,068 tests.** One guard failed first: the week 13 proposals code names whose number a goal is, and every such file must use the one rule or be listed with a reason. It only writes a goal the lead confirmed, and only the lead reads proposals, so it is now listed as a writer (`277b2225`).
 
