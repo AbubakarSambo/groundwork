@@ -25,36 +25,95 @@ export interface AHiddenTarget {
   participantId?: string;
 }
 
-const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
 const TENS: Record<number, string> = { 20: 'twenty', 30: 'thirty', 40: 'forty', 50: 'fifty', 60: 'sixty', 70: 'seventy', 80: 'eighty', 90: 'ninety' };
 
-function asWords(n: number): string | null {
-  if (!Number.isInteger(n) || n < 0) return null;
-  if (n <= 20) return WORDS[n];
+/*
+ * THE NUMBER IN WORDS, AS PEOPLE SAY IT (29 September 2026). Only up to twenty (and the round tens)
+ * were known, so "one hundred and twenty", "a hundred and twenty", "twelve hundred", "seventeen
+ * thousand" and "5.2 million" all got through. This gives a pattern for every way of saying a whole
+ * number up to the billions: "and" or not, "a hundred" or "one hundred", "twenty-one" or "twenty one".
+ */
+function wordsPattern(n: number): string | null {
+  if (!Number.isInteger(n) || n < 0 || n >= 1e12) return null;
+  if (n < 20) return WORDS[n];
   if (n < 100) {
     const t = Math.floor(n / 10) * 10;
-    return n % 10 ? `${TENS[t]}[- ]${WORDS[n % 10]}` : TENS[t];
+    return n % 10 ? `${TENS[t]}[- ]?${WORDS[n % 10]}` : TENS[t];
   }
-  return null;
+  const scale = (unit: number, word: string): string => {
+    const head = Math.floor(n / unit);
+    const rest = n % unit;
+    const headWords = head === 1 ? '(?:one|a)' : wordsPattern(head);
+    const joiner = rest < 100 ? '(?:,?\\s+and)?\\s+' : ',?\\s+(?:and\\s+)?';
+    return `${headWords}\\s+${word}${rest ? `${joiner}${wordsPattern(rest)}` : ''}`;
+  };
+  if (n < 1000) return scale(100, 'hundred');
+  if (n < 1e6) {
+    const main = scale(1000, 'thousand');
+    /* "twelve hundred" for 1200, as people say a figure between a thousand and ten thousand. */
+    const hundreds = n < 10000 && n % 100 === 0 && n % 1000 !== 0 ? `|${WORDS[n / 100] ?? wordsPattern(n / 100)}\\s+hundred` : '';
+    return `(?:${main}${hundreds})`;
+  }
+  if (n < 1e9) return scale(1e6, 'million');
+  return scale(1e9, 'billion');
 }
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** Whether a sentence gives this number, in figures (with thousands separators) or in words. */
-function givesTheNumber(sentence: string, n: number): boolean {
-  const figures = [String(n), n >= 1000 ? n.toLocaleString('en-US') : null].filter(Boolean) as string[];
-  if (figures.some((f) => new RegExp(`(?<![\\d.,])${escape(f)}(?![\\d])`).test(sentence))) return true;
-  const w = asWords(n);
-  return !!w && new RegExp(`\\b${w}\\b`, 'i').test(sentence);
+/* A figure standing alone: not inside a longer number or an id ("cm17x", "2026-09-17"), and not an
+   ordinal ("the 17th" is a date, not a target). */
+const figure = (f: string) => `(?<![\\p{L}\\d.,_-])${escape(f)}(?!\\d|[.,]\\d|st\\b|nd\\b|rd\\b|th\\b)`;
+/* A word standing alone: not inside a longer word ("seventeenth" and "seventeen" are not the same). */
+const word = (w: string) => `(?<![\\p{L}\\p{N}])${w}(?![\\p{L}\\p{N}])`;
+
+/** Every way this number is written: in figures, with separators, shortened ("17k", "5.2m"), in words. */
+function numberPatterns(n: number): RegExp[] {
+  const out = [figure(String(n))];
+  if (n >= 1000) out.push(figure(n.toLocaleString('en-US')));
+  /* Shortened: thousands and millions, as a figure ("17k", "17 thousand", "5.2m", "5.2 million") or in words. */
+  for (const [unit, short, long] of [[1e3, 'k', 'thousand'], [1e6, 'm|mn', 'million'], [1e9, 'bn|b', 'billion']] as [number, string, string][]) {
+    if (n < unit) continue;
+    const scaled = n / unit;
+    const text = Number.isInteger(scaled) ? String(scaled) : Number.isInteger(scaled * 10) || Number.isInteger(scaled * 100) ? String(Number(scaled.toFixed(2))) : null;
+    if (!text) continue;
+    out.push(`(?<![\\p{L}\\d.,_-])${escape(text)}\\s?(?:${short})(?![\\p{L}\\p{N}])`, `(?<![\\p{L}\\d.,_-])${escape(text)}\\s+${long}(?![\\p{L}])`);
+  }
+  const w = wordsPattern(n);
+  if (w) out.push(word(w));
+  return out.map((p) => new RegExp(p, 'iu'));
 }
 
-const sentencesOf = (text: string) => text.match(/[^.!?]+(?:[.!?]+|$)\s*/g) ?? [text];
+/** Whether a sentence gives this number, in figures (with thousands separators) or in words. */
+function givesTheNumber(sentence: string, n: number): boolean {
+  return numberPatterns(n).some((re) => re.test(sentence));
+}
+
+/*
+ * SENTENCES, AND LINES. A list written one item a line is split by line, so "- Kwame: 17" goes and
+ * "- Ngozi: 12" stays. And a full stop between two digits ends nothing: "1.2 million" was split into
+ * "1." and "2 million", and neither gave the number.
+ */
+const sentencesOf = (text: string): string[] =>
+  (text.match(/[^\n]*(?:\n|$)/g) ?? [text])
+    .filter((line) => line.length)
+    .flatMap((line) => line.match(/(?:[^.!?\n]|[.](?=\d))+(?:[.!?]+|\n|$)[^\S\n]*\n?/g) ?? [line]);
+
+/*
+ * A NAME, HOWEVER IT IS SPELT HERE. `\b` does not know an accented letter is a letter, so "Zoë" was
+ * never found, and "Zoe" written without the accent, or "N’Golo" with a curly apostrophe, is the
+ * same person. Accents and apostrophes are evened out on both sides before looking.
+ */
+const plain = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').replace(/[’‘`´]/g, "'");
+const namesIn = (h: AHiddenTarget, s: string) => {
+  const text = plain(s);
+  return h.names.some((name) => name && new RegExp(`(?<![\\p{L}\\p{N}])${escape(plain(name))}(?![\\p{L}\\p{N}])`, 'iu').test(text));
+};
 
 /** The text with every sentence that gives a hidden target taken out. */
 export function withoutHiddenTargets(text: string, hidden: readonly AHiddenTarget[], opts: { aboutOnly?: AHiddenTarget; about?: readonly AHiddenTarget[] } = {}): string {
   if (!text || (!hidden.length && !opts.aboutOnly)) return text;
   const sentences = sentencesOf(text);
-  const names = (h: AHiddenTarget, s: string) => h.names.some((name) => name && new RegExp(`\\b${escape(name)}\\b`, 'i').test(s));
   /*
    * ANYWHERE IN THE SAME TEXT, OR THE SAME ROW. "This sentence or the one before" was a rule of thumb,
    * and tests got past it: a pronoun two sentences on ("He is waiting on legal. His target is 17"),
@@ -65,31 +124,52 @@ export function withoutHiddenTargets(text: string, hidden: readonly AHiddenTarge
    * counts something else goes too. The structural fix, never giving the model someone else's hidden
    * target for text others read, is in docs/weekly-plan.md.
    */
-  const inScope = hidden.filter((h) => (opts.about ?? []).includes(h) || names(h, text));
+  const inScope = hidden.filter((h) => (opts.about ?? []).includes(h) || namesIn(h, text));
   const kept = sentences.filter((s) => {
     if (opts.aboutOnly && givesTheNumber(s, opts.aboutOnly.target)) return false;
     return !inScope.some((h) => givesTheNumber(s, h.target));
   });
-  return kept.join('').replace(/\s{2,}/g, ' ').trim();
+  if (kept.length === sentences.length) return text;
+  return kept.join('').replace(/[^\S\n]{2,}/g, ' ').replace(/\n{2,}/g, '\n').trim();
+}
+
+const NOT_WORDS = /^(?:id|.*Id|.*Ids|.*[Tt]oken|.*[Uu]rl|href|slug|email|.*At)$/;
+
+/** Each person's names as the words about them would use them: full name, first name, a name given. */
+export function namesOnTheRoster(participants: readonly { id: string; nameGiven?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null }[]) {
+  return (pid: string): string[] => {
+    const p = (participants ?? []).find((x) => x.id === pid);
+    const first = (p?.user?.firstName ?? '').trim();
+    const full = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
+    return [full, first, (p?.nameGiven ?? '').trim()].filter((n) => n && n.length > 1);
+  };
 }
 
 /** The same, through every string in a served object. Dates and non-strings are left as they are. */
 export function withoutHiddenTargetsIn<T>(value: T, hidden: readonly AHiddenTarget[]): T {
   if (!hidden.length) return value;
-  /* Whose row this is: any of its own string fields naming a person, or carrying their id. */
+  /* Whose row this is: any of its own short string fields naming a person, or carrying their id. */
   const aboutWhom = (o: Record<string, any>, inherited: readonly AHiddenTarget[]): AHiddenTarget[] => {
     const own = Object.values(o).filter((x) => typeof x === 'string') as string[];
-    const here = hidden.filter((h) => own.some((x) => (h.participantId && x === h.participantId)
-      || (x.length <= 80 && h.names.some((n) => n && new RegExp(`\\b${escape(n)}\\b`, 'i').test(x)))));
+    const here = hidden.filter((h) => own.some((x) => (h.participantId && x === h.participantId) || (x.length <= 80 && namesIn(h, x))));
     return [...new Set([...inherited, ...here])];
   };
   const walk = (v: any, about: readonly AHiddenTarget[]): any => {
     if (typeof v === 'string') return withoutHiddenTargets(v, hidden, { about });
     if (v instanceof Date || v === null || typeof v !== 'object') return v;
-    if (Array.isArray(v)) return v.map((x) => walk(x, about));
+    /* Only plain rows and lists are read; anything else (a Decimal, a Buffer) goes out as it came. */
+    if (!Array.isArray(v) && ![Object.prototype, null].includes(Object.getPrototypeOf(v))) return v;
+    /* A list is one text: a name in one of its strings and the number in another is still his number
+       (['Kwame Mensah', 'Target: 17']). The list keeps its length, so a row of cells keeps its columns. */
+    if (Array.isArray(v)) {
+      const strings = v.filter((x) => typeof x === 'string') as string[];
+      const scope = strings.length ? [...new Set([...about, ...hidden.filter((h) => strings.some((x) => namesIn(h, x)))])] : about;
+      return v.map((x) => walk(x, scope));
+    }
     const scope = aboutWhom(v, about);
     const out: Record<string, any> = {};
-    for (const [k, x] of Object.entries(v)) out[k] = walk(x, scope);
+    /* An id, a link, an address or a time is not a sentence anybody reads: "cm17x" is not seventeen. */
+    for (const [k, x] of Object.entries(v)) out[k] = typeof x === 'string' && NOT_WORDS.test(k) ? x : walk(x, scope);
     return out;
   };
   return walk(value, []);

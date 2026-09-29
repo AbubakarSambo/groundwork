@@ -192,6 +192,7 @@ import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABO
 import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, whatTheyHedged, keepTheirHedge, howThisTeamWorks } from './what-the-context-already-holds';
 import { alreadyAsked, withTheQuestionAsConfirmed } from '../grounds/a-question-asked-word-for-word';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
+import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
@@ -480,6 +481,28 @@ export class ConversationService {
       ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : UNLESS_SOMEBODY_SAYS,
       { isLead: checkIn.participant?.partyType === PartyType.INITIATOR },
     ).shown;
+  }
+
+  /**
+   * AND THE BRIEF, WITHOUT A COLLEAGUE'S HIDDEN TARGET (29 September 2026). The lead's setup words go
+   * to every person's check-in as the situation, and they can say "Kwame Mensah should reach
+   * seventeen approved facilities". Where people see only their own targets, that sentence is not
+   * given to Ngozi's model; the rule is the one every served text uses (a-hidden-target-stays-hidden).
+   * The lead, and a check-in where targets are shared with everybody, get the brief as written.
+   */
+  private theBriefThisPersonMayBeGiven(
+    ground: { brief?: string | null; whoSeesTargets?: string | null; objectives?: { target: number | null; ownerParticipantId?: string | null }[]; participants?: any[] },
+    checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
+  ): string | null {
+    const brief = ground.brief ?? null;
+    if (!brief) return brief;
+    const hidden = targetsHiddenFrom(
+      { participantId: checkIn.participantId ?? null, isTheLead: checkIn.participant?.partyType === PartyType.INITIATOR },
+      ground.whoSeesTargets,
+      (ground.objectives ?? []).map((o) => ({ ownerParticipantId: o.ownerParticipantId ?? null, target: o.target })),
+      namesOnTheRoster(ground.participants ?? []),
+    );
+    return withoutHiddenTargets(brief, hidden) || null;
   }
 
   async getTranscript(checkInId: string, requestingUserId: string) {
@@ -3567,7 +3590,8 @@ export class ConversationService {
       resolutionState: (ground as any).resolutionState ?? null,
       // Never reached the model before - see the comment on PromptContext.cadence.
       cadence: (ground as any).cadence ?? null,
-      adminBrief: (ground as any).brief ?? null,
+      /* The brief without a sentence giving a colleague's hidden target, in figures or in words. */
+      adminBrief: this.theBriefThisPersonMayBeGiven(ground as any, checkIn as any),
       /* ONLY THE TARGETS THIS PERSON MAY SEE (week 0). Every target went in, so on a check-in where
          people see only their own, each person's model was given everybody's numbers and could say
          them back. The same rule the brief on their screen uses. */
