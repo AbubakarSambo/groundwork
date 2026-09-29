@@ -31,6 +31,19 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Part 2B: a goal the lead has not told the person about, as the prototype has it (decision 56)
+
+Built in `5ee3c4b4`, `4886d2ed`, `f1ed931d`, `c542f51c`, `fb5da92f` and `7df73897`. Take Tobi's goal "Take over the scheduling and hit 40 stock counts by Friday", which Wanjiru has not told him about.
+- **The lead** reads it marked "Not told yet". Their Today list says "Tell Tobi about the goal you set for the scheduling and the stock counts. You have not told Tobi yet." Wherever the goal counts against Tobi, on the Context page, Today, the team board or a suggestion, the lead also reads "Tobi has not been told about this goal yet, so talk it through with Tobi before reading anything into it."
+- **The model in Tobi's own check-in** is given only the area of the work, "the scheduling and the stock counts", to ask about. It is never given the number or the deadline. If a reply still gives the number, or says that a goal has been set, it is caught and asked again once.
+- **The area is worded once by the model, when the goal is saved,** and checked in code: no digit, number word, amount, percentage, date or target verb. Until it is worded, every reader gets "this part of the work", never the goal's own wording.
+- **Tobi** sees nothing of it for a week. After a week he reads "Wanjiru has set a goal about the scheduling and the stock counts, and will talk it through with you." Wanjiru is reminded that he now knows a goal exists.
+- **A colleague, or an admin who only reads,** never sees it.
+- **The goal still counts.** Nothing had ever taken it out of how reports are built.
+- **Not done yet:** the judgement's own text does not carry the conversation point. The week is counted from when the goal was made, because nothing records when it was marked "not told".
+
+**It is being re-run now:** seniorhire, pip, cofounder and drift, the scenarios with the most untold goals, twice each. The first run started at 23:48 on `7df73897`. The pattern label rewrite from part 1 is in the same build, so these runs check both.
+
 ### Part 2A: sharing when the lead has left, the admin's line, and the decision field
 
 - **If the lead has left the organisation, an admin can share the report** (`d8a4ebb1`). Everybody reads, for example, "Grace Otieno shared this report, because Rukia Mwangi has left the organisation.", on the report and in the email. While the lead is still there, only the lead can share it, as before.
