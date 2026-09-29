@@ -5092,13 +5092,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return true;
   }
 
-  /** platform_settings.coaching_live = true, set by hand once the first outputs have been read. */
+  /**
+   * platform_settings.coaching_live: ON BY DEFAULT, ON EVERY DATABASE (decision 57, item 6, 30
+   * September 2026). Coaching is one of the product's protected capabilities (decision 55); a
+   * missing row used to read as off, which switched it off everywhere until somebody had set the
+   * row by hand, including on every new database. A missing row now reads as on. An admin can
+   * still pause it: a row whose value is explicitly `false` (or `"false"`) still turns it off.
+   */
   private async coachingIsLive(): Promise<boolean> {
     try {
       const row = await this.prisma.platformSetting.findUnique({ where: { key: COACHING_LIVE_KEY } });
-      return row?.value === true || row?.value === 'true';
+      if (row === null || row === undefined) return true;
+      return row.value !== false && row.value !== 'false';
     } catch {
-      return false;
+      return true;
     }
   }
 
