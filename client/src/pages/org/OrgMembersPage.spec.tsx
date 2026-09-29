@@ -133,6 +133,59 @@ describe('everyone at Baridi', () => {
     expect(screen.getByText('2 people shown.')).toBeTruthy()
   })
 
+  it('every row keeps all six cells - a team, a role, a status, its check-ins and Open - whatever the role or how many check-ins (regression: min-width: max-content)', async () => {
+    /*
+     * THE BUG (a picture check against the running product, U.4/People re-review): the shared
+     * PersonRow/PeopleTable CSS forced the whole row to size itself as if none of its text ever
+     * wrapped (`min-width: max-content`). A person on many check-ins - joined into one long,
+     * unbroken sentence - blew the row out to several thousand pixels wide, pushing Team, Role,
+     * Status and Open off the visible table for an admin, a lead and the owner, while a member on
+     * one short check-in read fine. jsdom does not lay out CSS grid, so this cannot be caught by
+     * asserting pixel positions here; what it CAN catch, and what regresses first if the fix is
+     * ever undone by trimming the row's children for some rows, is that every one of the six cells
+     * is still present in the row for every kind of person, including one with a long list of
+     * check-ins.
+     */
+    const withAllRoles = [
+      { id: 'an-admin', email: 'admin@baridi.co.ke', firstName: 'Ada', lastName: 'Admin', role: 'ADMIN', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, team: 'Leadership', checkIns: [{ id: 'c1', label: 'Leadership, Q3', runsIt: true }] },
+      { id: 'a-lead', email: 'lead@baridi.co.ke', firstName: 'Lena', lastName: 'Lead', role: 'LEAD', isEmailVerified: true, state: 'checked in', checkInsOn: 6, checkInsAnswered: 5, team: 'Sales', checkIns: [{ id: 'c1', label: 'Sales team, Q3', runsIt: true }, { id: 'c2', label: 'MarketView, where next, test', runsIt: false }, { id: 'c3', label: 'Kasarani Foods v Pwani Mills, test', runsIt: false }, { id: 'c4', label: 'Asset loans, cohort 3, test', runsIt: false }, { id: 'c5', label: 'Help a new hire get started', runsIt: false }, { id: 'c6', label: 'Check how the same role is going', runsIt: false }] },
+      { id: 'a-member', email: 'member@baridi.co.ke', firstName: 'Mona', lastName: 'Member', role: 'MEMBER', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, team: 'Sales', checkIns: [{ id: 'c1', label: 'Sales team, Q3', runsIt: false }] },
+      { id: 'a-waiter', email: 'waiting@baridi.co.ke', firstName: 'Wanda', lastName: 'Waiting', role: 'MEMBER', isEmailVerified: false, awaitingOrgApproval: true, state: 'signed in', checkInsOn: 0, checkInsAnswered: 0, team: null, checkIns: [] },
+    ]
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: withAllRoles, meta: { total: withAllRoles.length } } } as any
+      if (url === '/billing/status') return { data: { people: { count: 4, cap: 10 }, subscription: { plan: 'GROWTH' } } } as any
+      return { data: [] } as any
+    })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { EveryoneHere } = await import('./EveryoneHere')
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter><EveryoneHere orgName="Baridi Appliances" ownerId={null} /></MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await screen.findByText('Mona Member', { selector: '.gwui-person-name' })
+    const cases: [string, string, string][] = [
+      ['Ada Admin', 'Admin', 'Checking in'],
+      ['Lena Lead', 'Can open check-ins', 'Checking in'],
+      ['Mona Member', 'Takes part', 'Checking in'],
+      ['Wanda Waiting', 'Takes part', 'Waiting to be let in'],
+    ]
+    for (const [name, roleTag, statusTag] of cases) {
+      const row = within(screen.getByText(name, { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
+      expect(row.getByText(roleTag)).toBeTruthy()
+      expect(row.getByText(statusTag)).toBeTruthy()
+      expect(row.getByRole('button', { name: `Open ${name}` })).toBeTruthy()
+    }
+    /* Team: "Leadership" for Ada, "Sales" for Lena and Mona, "None" for Wanda (no team set). */
+    expect(within(screen.getByText('Ada Admin', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Leadership')).toBeTruthy()
+    /* Wanda has no team and no check-ins, so "None" reads twice in her row - one for each cell. */
+    expect(within(screen.getByText('Wanda Waiting', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getAllByText('None')).toHaveLength(2)
+    /* Lena's six check-ins are all still there, not truncated or dropped because the list is long. */
+    const lenaRow = within(screen.getByText('Lena Lead', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
+    expect(lenaRow.getByText(/Sales team, Q3, MarketView, where next, test, Kasarani Foods v Pwani Mills, test/)).toBeTruthy()
+  })
+
   it('"Open" goes to that person\'s own page', async () => {
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Open Miriam Wanjiku' }))
