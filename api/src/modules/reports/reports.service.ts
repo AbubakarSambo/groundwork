@@ -31,6 +31,7 @@ import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from './a-line-worded-once-is-kept';
+import { OneAtATime } from './one-warm-up-at-a-time';
 import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
 import { sentenceWithANumber } from './where-you-are-against-what-you-named';
@@ -881,7 +882,7 @@ export class ReportsService {
               const res = await this.anthropic.extract<{ saying: string }>(system, [{ role: 'user', content: draft }], SAYING_SCHEMA);
               return res?.saying?.trim() || null;
             }
-            : async () => null)(SAYING_PROMPT, `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}`);
+            : async () => null, mayWord)(SAYING_PROMPT, `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}`);
           /* And no pronoun guessed from a name. See nobody-is-he-or-she-here. */
           const text = withoutAGuessedPronoun(kept?.trim() ?? '');
           if (text) person.saying = text;
@@ -903,6 +904,8 @@ export class ReportsService {
    * completion's read is the last write.
    */
   private readonly synthesisQueue = new Map<string, Promise<unknown>>();
+  /* One warm-up of the reads at a time for each round, shared by every trigger. See one-warm-up-at-a-time. */
+  private readonly readsWarming = new OneAtATime<{ userId: string; sessionReport: any }[]>();
   /* One waiting run is enough: it will read everything that has landed by the time it starts. Six
      people finishing inside a minute asked for six syntheses at three minutes each; the sixth read
      nothing the second would not have. */
@@ -5104,10 +5107,43 @@ happened, and what is in the way.`;
       rememberedCompose(this.prisma, mayWord
         ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
         /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
-        : async () => null),
+        : async () => null, mayWord),
       mayWord ? (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`) : undefined,
     ).catch(() => drafts);
     return Object.fromEntries(out.map((d) => [d.key, d.text]));
+  }
+
+  /**
+   * WHAT THE READS OF A ROUND ARE BUILT FROM, AS ONE FINGERPRINT (decision 44).
+   *
+   * Read when a warm-up starts. If it is the same as the last warm-up of this round read, nothing
+   * new has come in and the warm-up does nothing: the report, its release, the round's own row, the
+   * record's lines and documents, the finished check-ins and who is in the check-in. Any of those
+   * moving is something new, and the reads are worded again.
+   *
+   * It waits first for any synthesis of this ground that is running or queued, because the reads are
+   * built from the report it is about to write: warming the report it is replacing would ask the
+   * model for lines nobody will read. A read that fails gives no fingerprint, and the warm-up runs.
+   */
+  private async whatTheReadsAreBuiltFrom(groundId: string, sessionNumber: number): Promise<string | null> {
+    for (let tries = 0; tries < 50; tries++) {
+      const queued = this.synthesisQueue?.get(groundId);
+      if (!queued) break;
+      await queued.catch(() => undefined);
+      await new Promise((r) => setImmediate(r));
+    }
+    const [report, round, lines, docs, done, people] = await Promise.all([
+      this.prisma.report.findUnique({ where: { groundId }, select: { updatedAt: true, releasedAt: true } }),
+      this.prisma.reportRound.findUnique({ where: { groundId_sessionNumber: { groundId, sessionNumber } }, select: { takenAt: true, amendedAt: true } }),
+      this.prisma.recordEntry.aggregate({ where: { disputedAt: null, participant: { groundId } }, _count: { _all: true }, _max: { createdAt: true } }),
+      this.prisma.groundDocument.count({ where: { groundId } }),
+      this.prisma.checkIn.count({ where: { groundId, status: CheckInStatus.COMPLETED } }),
+      this.prisma.groundParticipant.count({ where: { groundId } }),
+    ]);
+    return JSON.stringify([
+      report?.updatedAt ?? null, report?.releasedAt ?? null, round?.takenAt ?? null, round?.amendedAt ?? null,
+      (lines as any)?._count?._all ?? 0, (lines as any)?._max?.createdAt ?? null, docs, done, people,
+    ]);
   }
 
   /**
@@ -5120,6 +5156,11 @@ happened, and what is in the way.`;
    * caller can keep what the round found. Best effort: a reader that fails is skipped.
    */
   async wordTheReadsFor(groundId: string, sessionNumber: number): Promise<{ userId: string; sessionReport: any }[]> {
+    /* Once per new thing (decision 44): shared while one runs, skipped when nothing has changed. */
+    return (this.readsWarming ?? new OneAtATime<{ userId: string; sessionReport: any }[]>()).run(`${groundId}:${sessionNumber}`, () => this.whatTheReadsAreBuiltFrom(groundId, sessionNumber), () => this.wordTheReadsNow(groundId, sessionNumber));
+  }
+
+  private async wordTheReadsNow(groundId: string, sessionNumber: number): Promise<{ userId: string; sessionReport: any }[]> {
     return WORDING_NEW_LINES.run(true, async () => {
       const ground = await this.prisma.ground.findUnique({
         where: { id: groundId },
@@ -5141,6 +5182,8 @@ happened, and what is in the way.`;
         await this.get(groundId, userId, ground.organizationId).catch(() => undefined);
         out.push({ userId, sessionReport });
       }
+      /* Logged here, where the work is done, so a warm-up that was shared or skipped is not counted. */
+      this.logger.log(`Reads warmed for ${groundId}, session ${sessionNumber}, ${readers.length} reader(s).`);
       return out;
     });
   }
