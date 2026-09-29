@@ -38,6 +38,11 @@ const D1_PROBE = 'Has the team depending on this confirmed it works for them?';
 const F5_OBSERVATION = 'One cofounder absorbs the operational load while the other narrates strategy.';
 
 function makeConversationPrisma(patternRows: { code: string }[]) {
+  /* Decision 57, item 8 (30 September 2026): status alone is not three periods, so these fixtures
+     - which stand in for already-SURFACED rows - now carry an honest periodsObserved of 3, the
+     floor `hasBeenSeenInThreePeriods` checks. The test's own subject (statement vs probe routing)
+     is unchanged. */
+  const withPeriods = patternRows.map((r) => ({ periodsObserved: 3, ...r }));
   return {
     ground: { findUnique: jest.fn(async () => ({ id: 'g1', scenario: GroundScenario.NEW_PROJECT, label: 'Test', initiatorId: 'init-1', resolutionState: null, brief: null })) },
     checkIn: {
@@ -78,7 +83,7 @@ function makeConversationPrisma(patternRows: { code: string }[]) {
     leadContextNote: { findMany: jest.fn(async () => []) },
     groundDocument: { findMany: jest.fn(async () => []) },
     patternDetection: {
-      findMany: jest.fn(async () => patternRows),
+      findMany: jest.fn(async () => withPeriods),
       count: jest.fn(async () => 0),
     },
   };

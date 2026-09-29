@@ -5079,7 +5079,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     try {
       const rows = await this.prisma.patternDetection.findMany({
         where: { participantId, status: PatternStatus.SURFACED },
-        select: { code: true, periodsObserved: true, accuracyRating: true },
+        select: { code: true, periodsObserved: true, seenInSessions: true, accuracyRating: true },
       });
       return askAboutItBlockFor(theOneWorthAsking(rows));
     } catch (err) {
