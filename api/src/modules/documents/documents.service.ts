@@ -17,6 +17,7 @@ import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMP
 import { RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
+import { aReceiptOrAnInvoice } from './a-receipt-is-not-a-conversation';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
 import { withoutBankDetails, HIDDEN } from './bank-details-are-never-kept';
 import { withThePages, aDocumentReadItemByItem } from './a-document-read-item-by-item';
@@ -694,7 +695,7 @@ export class DocumentsService {
    * the standing of a contract. See what-kind-of-thing-a-document-is.ts.
    */
   private async decideOrigin(file: { mimetype: string; originalname: string }, content: string, isConversation: boolean): Promise<DocumentOrigin> {
-    const fromFile = originFromTheFile(file.mimetype, file.originalname, { isConversation, pdfHadNoTextLayer: this.lastPdfWasAScan });
+    const fromFile = originFromTheFile(file.mimetype, file.originalname, { isConversation, pdfHadNoTextLayer: this.lastPdfWasAScan, receiptOrInvoice: aReceiptOrAnInvoice(file.originalname, content) });
     this.lastPdfWasAScan = false;
     if (fromFile) return fromFile;
     if (weCouldNotReadIt(content)) return 'typed';

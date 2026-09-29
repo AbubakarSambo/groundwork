@@ -47,9 +47,11 @@ export interface ALineForTheCard {
   documentIsTheirOwn?: boolean;
 }
 
-export const HOW: Record<'photo' | 'screenshot' | 'document' | 'confirmed' | 'commitment' | 'memory' | 'said', string> = {
+export const HOW: Record<'photo' | 'screenshot' | 'receipt' | 'invoice' | 'document' | 'confirmed' | 'commitment' | 'memory' | 'said', string> = {
   photo: 'From the photo you added.',
   screenshot: 'From the screenshot you added.',
+  receipt: 'From the receipt you added.',
+  invoice: 'From the invoice you added.',
   document: 'From the document you added.',
   confirmed: 'The person who received it confirmed it.',
   commitment: 'You said you will do this. I will ask you how it went.',
@@ -70,6 +72,8 @@ export const AT_MOST = 6;
  * "From the photo you added." too.
  */
 export function whatProvedIt(line: Pick<ALineForTheCard, 'backedByAPhoto' | 'anchoredOrigin'>): string {
+  if (line.anchoredOrigin === 'receipt') return HOW.receipt;
+  if (line.anchoredOrigin === 'invoice') return HOW.invoice;
   if (line.anchoredOrigin === 'screenshot') return HOW.screenshot;
   if (line.anchoredOrigin === 'photo' || line.backedByAPhoto) return HOW.photo;
   return HOW.document;
