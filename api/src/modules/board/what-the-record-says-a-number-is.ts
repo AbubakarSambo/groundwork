@@ -169,6 +169,27 @@ export function theQuestion(targets: ATarget[], said: SomethingSaid[]): string {
  * screen says "the record shows X, not Y", and offering to change 40 to 40 is a prompt about
  * nothing that trains somebody to ignore the next one.
  */
+/**
+ * THE AIM, SAID, IS NOT A COUNT OF IT (screens request 65).
+ *
+ * Read on a live board: the objective "I want us to sign 12 shops by 20 December." was counted
+ * "12 of 12" while two shops were signed. The lead's own sentence setting the aim is on the record,
+ * it holds the target's number, and the lead's number on a target nobody has counted lands as the
+ * count. So a line that gives exactly the target, as something wanted or planned, with nothing in it
+ * saying it has happened, is the target being stated, and it is not read as where things stand.
+ * "We have signed all 12" still lands.
+ */
+const STATES_THE_AIM = /\b(?:want|wants|aim|aiming|target|goal|plan|plans|planning|hope|intend|should|need to|needs to|going to|will|by the end|to reach|to get to)\b/i;
+const SAYS_IT_HAPPENED = /\b(?:have|has|had|reached|hit|got|are at|is at|we're at|stands at|so far|already|done|now at|signed|closed|made)\b/i;
+export function theLineIsTheAim(count: number, target: { target: number | null }, said: string): boolean {
+  if (target.target == null || count !== target.target) return false;
+  const text = said ?? '';
+  if (!STATES_THE_AIM.test(text)) return false;
+  /* "signed" as an achievement, not "to sign": the infinitive is the aim. */
+  const withoutTheAim = text.replace(/\bto\s+[a-z]+/gi, ' ');
+  return !SAYS_IT_HAPPENED.test(withoutTheAim);
+}
+
 export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[], lines?: ALineOnRecord[]): AReadNumber[] {
   const byId = new Map(targets.map((t) => [t.id, t]));
   const seen = new Set<string>();
@@ -180,6 +201,8 @@ export function onlyWhatIsWorthOffering(read: AReadNumber[], targets: ATarget[],
     if (!r.said?.trim()) return false;
     if (lines && !theLineWasSaid(r.said, lines)) return false;
     if (!theNumberIsInTheLine(r.count, r.said)) return false;
+    /* The target said as an aim is not a count of it (request 65). See theLineIsTheAim. */
+    if (theLineIsTheAim(r.count, t, r.said)) return false;
     /*
      * ONE PERSON'S LINE DOES NOT COUNT AGAINST ANOTHER PERSON'S OWN TARGET. Rerun, 20 Sep 2026:
      * Dayo's "I hit N26m" was offered on Emeka's N35m. A target with somebody's name on it takes

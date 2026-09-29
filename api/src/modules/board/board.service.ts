@@ -976,6 +976,8 @@ export class BoardService {
               .map((d: any) => ({
                 what: d.what,
                 owner: d.onParticipantId ? nameOf(d.onParticipantId) : (d.onLabel ?? null),
+                /* With the reader themselves: the ask is theirs, not "speak to <their own name>" (request 65). */
+                onTheReader: !!me?.id && d.onParticipantId === me.id,
                 days: Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 86_400_000)),
                 /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
                 tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
