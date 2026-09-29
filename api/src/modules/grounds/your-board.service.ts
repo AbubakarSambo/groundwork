@@ -63,7 +63,7 @@ export class YourBoardService {
       participantIds.length
         ? this.prisma.groundCommitment.findMany({
             where: { groundId: { in: groundIds }, participantId: { in: participantIds } },
-            select: { id: true, groundId: true, participantId: true, text: true, whenSaid: true, status: true, createdAt: true },
+            select: { id: true, groundId: true, participantId: true, text: true, whenSaid: true, status: true, settledBy: true, createdAt: true },
             orderBy: { createdAt: 'asc' },
           })
         : none,

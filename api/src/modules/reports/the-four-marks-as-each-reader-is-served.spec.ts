@@ -205,3 +205,40 @@ describe('the weighing at the close, as each reader is served it', () => {
     }
   });
 });
+
+/*
+ * WHAT AISHA KEPT OF WHAT SHE SAID SHE WOULD DO IS HERS ALONE (week 9).
+ *
+ * "Kept 11 of 20 in the last 4 weeks" is each person's load across check-ins, which is private. It
+ * is on her own You board and nowhere else: with eleven of her commitments settled done and nine not
+ * done, the report and the board served to the lead, to her, to a colleague and to an admin carry no
+ * count of them.
+ */
+describe('the count of what Aisha kept reaches nobody through the report or the board', () => {
+  const recent = new Date(Date.now() - 5 * 86_400_000);
+  const row = (id: string, text: string, status: string, settledBy: string) => ({
+    id, groundId: 'g-sales', participantId: 'p-aisha', text, whenSaid: null, status, settledBy, settledAt: recent, createdAt: recent,
+    outcome: null, explicit: true, source: 'CHECK_IN', saidWordForWord: false, whenSaidWordForWord: false, saidAgainIn: [],
+  });
+  const HERS = [
+    ...Array.from({ length: 11 }, (_, i) => row(`k-d${i}`, `Call customer ${i}`, 'DONE', 'PROVEN')),
+    ...Array.from({ length: 9 }, (_, i) => row(`k-n${i}`, `Visit shop ${i}`, 'NOT_DONE', 'SAID')),
+  ];
+  const withHers = (role: string) => {
+    const prisma: any = prismaFor(role);
+    prisma.groundCommitment.findMany = jest.fn(async () => copy(HERS));
+    prisma.groundCommitment.count = jest.fn(async () => HERS.length);
+    return prisma;
+  };
+  const A_COUNT = /kept \S+ of|\b11 of (your |her |the )?20\b|of (your|her) \S+ commitments|keptLately|kept all|kept none/i;
+
+  it.each(READERS)('%s', async (_who, userId, role) => {
+    const grounds: any = { getSessionProgress: jest.fn(async () => ({ completed: 2, total: 2, missingParticipantIds: [], declinedParticipantIds: [] })) };
+    const config: any = { get: (k: string) => k === 'app.confidenceEnabled' };
+    const reports = new ReportsService(withHers(role), {} as any, {} as any, {} as any, config, { emit: async () => undefined } as any, grounds, { tell: async () => [] } as any);
+    const report = await reports.get('g-sales', userId, 'org-1');
+    const board = await new BoardService(withHers(role), { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, Object.create(ReportsService.prototype)).get('g-sales', userId);
+    expect(JSON.stringify(report)).not.toMatch(A_COUNT);
+    expect(JSON.stringify(board)).not.toMatch(A_COUNT);
+  });
+});
