@@ -2674,6 +2674,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
       select: {
         organizationId: true,
         initiatorId: true,
+        /*
+         * RE-REVIEW PRIVACY BUG (SCREENS WORKSPACE): `scenario` AND `peersVisibleToEachOther`
+         * WERE NEVER SELECTED, SO `peersAreNamedOn` BELOW COULD NOT SEE WHETHER THIS CHECK-IN
+         * HIDES ITS PEOPLE FROM EACH OTHER.
+         *
+         * `this.peersAreNamed(ground as any)` (below) calls the one shared rule the board, the
+         * grounds page and the interview all use - but with both fields missing from this
+         * select, `ground.scenario` and `ground.peersVisibleToEachOther` were always
+         * `undefined`. `peersAreNamedOn` reads an undefined scenario as "not evaluative" and an
+         * undefined override as "nobody has said", which together default to TRUE - so a
+         * participant on a hidden (evaluation or cohort) check-in was served every colleague's
+         * real name on "What success looks like", word for word, the exact thing peer-hiding
+         * exists to stop. Adding the two fields this function already expects is the whole fix -
+         * no change to the rule itself, which was already correct everywhere it had its inputs.
+         */
+        scenario: true,
+        peersVisibleToEachOther: true,
         participants: {
           select: {
             id: true, userId: true, roleAsDescribed: true, managingOnly: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true,
