@@ -11,6 +11,7 @@ import { WaitingToBeLetIn } from './WaitingToBeLetIn'
 import { EveryoneHere } from './EveryoneHere'
 import { InvitePeople } from './InvitePeople'
 import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
+import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Note, Stack } from '@/components/gw/ui'
 
 /**
  * THE PEOPLE PAGE (U.4, A4 people.txt), as an admin reads it, in the prototype's order:
@@ -27,6 +28,14 @@ import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
  * The one part the prototype does not draw is kept: people a lead added to a check-in when the plan
  * had no seat for them. Nothing has been sent to them, and only an admin can make room, so this is
  * where that lands, at the top, only when there is somebody.
+ *
+ * REBUILT FROM THE SHARED PARTS (design-audit.md section 3, "People (the admin's list)"; components/
+ * gw/ui only, no inline styles for size, colour or spacing). Item 1: the page is now `Page`, 1088
+ * pixels wide and left-aligned under the sidebar, not the old centred 860-pixel column. Item 2: the
+ * title is `PageTitle`, the organisation's name muted above "People" in Literata. Item 4: the no-seat
+ * warning is one `EdgeRow` with a red edge and its two buttons on the right, not a full-width amber
+ * card - what it does is unchanged. Item 16: "Help your team get started" is two full-width
+ * secondary `Button`s, 44px tall and 16px bold.
  */
 /**
  * WHO ADDED THE PEOPLE WITH NO SEAT, SAID TRULY (U.4 re-review). It said "A lead added them" even when
@@ -99,58 +108,63 @@ export function OrgMembersPage() {
 
   if (!isAdmin) {
     return (
-      <div style={{ padding: '48px 32px', maxWidth: 560 }}>
-        <div style={{ fontSize: 15, color: 'var(--gw-sub)' }}>You need admin access to manage team members.</div>
-      </div>
+      <Page>
+        <Note>You need admin access to manage team members.</Note>
+      </Page>
     )
   }
 
+  const noSeatHeading = (seatQueue.data?.length ?? 0) === 1
+    ? 'Somebody is on a check-in with no seat for them'
+    : `${seatQueue.data?.length ?? 0} people are on check-ins with no seat for them`
+
   return (
-    <div className="gw-people-page" style={{ padding: '28px 20px 80px', maxWidth: 860, margin: '0 auto' }}>
-      <div className="gw-people-crumb">{orgName}</div>
-      <h1 className="gw-people-h1">People</h1>
+    <Page>
+      <PageTitle eyebrow={orgName} title="People" />
 
       {(seatQueue.data?.length ?? 0) > 0 && (
-        <section className="gw-people-sec gw-people-amber" aria-labelledby="no-seat-h">
-          <h2 id="no-seat-h">
-            {seatQueue.data!.length === 1
-              ? 'Somebody is on a check-in with no seat for them'
-              : `${seatQueue.data!.length} people are on check-ins with no seat for them`}
-          </h2>
-          <p className="gw-people-note">{whoAddedThem(seatQueue.data!, seatsFree)}</p>
-          <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
-            {(person: any) => (
-              <div key={person.id} className="gw-waiting-row">
-                <div className="gw-waiting-who">
-                  <b>{person.email}</b>
-                  <p>{`Added by ${person.addedBy ?? 'a lead'}${person.forCheckIn ? ` for ${person.forCheckIn}` : ''}.`}</p>
-                </div>
-              </div>
+        <EdgeList label={noSeatHeading}>
+          <EdgeRow
+            kind="concern"
+            title={noSeatHeading}
+            detail={(
+              <>
+                <p className="gwui-panel-text-muted">{whoAddedThem(seatQueue.data!, seatsFree)}</p>
+                <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
+                  {(person: any) => (
+                    <div key={person.id}>
+                      <p className="gwui-panel-text"><b>{person.email}</b></p>
+                      <p className="gwui-panel-text-muted">
+                        {`Added by ${person.addedBy ?? 'a lead'}${person.forCheckIn ? ` for ${person.forCheckIn}` : ''}.`}
+                      </p>
+                    </div>
+                  )}
+                </ShowAFew>
+              </>
             )}
-          </ShowAFew>
-          <div className="gw-people-actions">
-            <button type="button" className="gw-btn" style={{ margin: 0 }} onClick={() => sendHeld.mutate()} disabled={sendHeld.isPending}>
-              {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
-            </button>
-            <button type="button" className="gw-link-btn" onClick={() => navigate('/billing')}>See the plans</button>
-          </div>
-        </section>
+            actions={(
+              <>
+                <Button onClick={() => sendHeld.mutate()} disabled={sendHeld.isPending}>
+                  {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
+                </Button>
+                <Button kind="quiet" onClick={() => navigate('/billing')}>See the plans</Button>
+              </>
+            )}
+          />
+        </EdgeList>
       )}
 
       <WaitingToBeLetIn orgName={orgName} />
 
       <EveryoneHere orgName={orgName} ownerId={ownerId} />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-12px 0 20px' }}>
-        <button
-          type="button"
-          className="gw-btn"
-          style={{ margin: 0 }}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
           onClick={() => {
             scrollToId('invite-list')
             document.getElementById('invite-list')?.focus()
           }}
-        >Invite a colleague</button>
+        >Invite a colleague</Button>
       </div>
 
       <InvitePeople />
@@ -160,21 +174,20 @@ export function OrgMembersPage() {
 
       <WhoCanOpenACheckIn orgName={orgName} />
 
-      <section className="gw-people-sec" aria-labelledby="get-started-h">
-        <h2 id="get-started-h">Help your team get started</h2>
-        <div className="gw-people-two">
-          <div className="gw-people-card">
-            <b>Send your team the guide</b>
-            <p>How a check-in works, what happens to what people write, and what you can see as their admin.</p>
-            <button type="button" className="gw-btn-sm" onClick={() => navigate('/org/guide')}>Send the guide</button>
-          </div>
-          <div className="gw-people-card">
-            <b>Put your whole team on</b>
-            <p>{`Everyone at ${orgName} on one plan, so nobody waits for a seat.`}</p>
-            <button type="button" className="gw-btn-sm" onClick={() => navigate('/billing')}>See the plans</button>
-          </div>
+      <Section heading="Help your team get started">
+        <div className="gwui-two-up">
+          <Stack gap={10}>
+            <p className="gwui-panel-text"><b>Send your team the guide</b></p>
+            <p className="gwui-panel-text-muted">How a check-in works, what happens to what people write, and what you can see as their admin.</p>
+            <Button kind="secondary" wide onClick={() => navigate('/org/guide')}>Send the guide</Button>
+          </Stack>
+          <Stack gap={10}>
+            <p className="gwui-panel-text"><b>Put your whole team on</b></p>
+            <p className="gwui-panel-text-muted">{`Everyone at ${orgName} on one plan, so nobody waits for a seat.`}</p>
+            <Button kind="secondary" wide onClick={() => navigate('/billing')}>See the plans</Button>
+          </Stack>
         </div>
-      </section>
-    </div>
+      </Section>
+    </Page>
   )
 }

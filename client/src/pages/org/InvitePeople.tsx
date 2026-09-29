@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
+import { Section, FieldLabel, TextArea, Select, Button, Note, Tag } from '@/components/gw/ui'
 
 /**
  * "INVITE PEOPLE" (A4 people.txt): one per line, a name and an email, or a list from a spreadsheet,
@@ -10,9 +11,18 @@ import { apiClient } from '@/api/client'
  * no seat), the page shows what would happen to each one and sends only after that is read. An
  * admin never emails half a company without knowing which half.
  *
- * Left out of the prototype's wording while WhatsApp is off: "or a WhatsApp number" and "or a
- * WhatsApp message". Left out entirely: "Guest", which is somebody from another organisation added
- * to one check-in, not somebody invited to the organisation.
+ * WORDING LEFT AS THE PRODUCT'S OWN, ON PURPOSE (design-audit.md item 12). The prototype's text
+ * offers "or a WhatsApp number" and "or a WhatsApp message", and a "Guest" role, here. Neither is
+ * true of this product yet: the paste-many endpoint this form calls
+ * (api/src/modules/users/putting-a-whole-company-on.ts) only ever reads email addresses, whatever
+ * the organisation's own WhatsApp switch says, and inviting somebody straight into "Guest" throws on
+ * the server (aRoleToInviteAs, inviting-with-a-role-and-a-name.spec.ts) - a guest is somebody a lead
+ * adds to one check-in, not somebody an admin invites to the organisation. So this keeps the
+ * product's true sentence rather than the prototype's, until WhatsApp invites and Guest-by-invite
+ * both exist.
+ *
+ * REBUILT FROM THE SHARED PARTS (item 11: the role choice, "Send their invitations" and "Upload a
+ * list" sit on one line under the text box, which is the standard 16px `TextArea`).
  */
 interface PastedRow { email: string; result: string }
 interface PasteAnswer { preview: boolean; seatsLeft: number | null; rows: PastedRow[]; summary: string }
@@ -71,74 +81,76 @@ export function InvitePeople() {
   const canGo = answer?.preview ? answer.rows.filter((r) => r.result === 'invited').length : 0
 
   return (
-    <section className="gw-people-sec" id="invite-people" aria-labelledby="invite-h">
-      <h2 id="invite-h">Invite people</h2>
-      <div className="gw-people-card">
-        <label htmlFor="invite-list" className="gw-people-label">One per line: a name and an email. Or paste a list from a spreadsheet.</label>
-        <textarea
+    <Section heading="Invite people">
+      <FieldLabel htmlFor="invite-list">
+        One per line: a name and an email. Or paste a list from a spreadsheet.
+        <TextArea
           id="invite-list"
           rows={4}
           value={pasted}
           onChange={(e) => { setPasted(e.target.value); setAnswer(null) }}
           placeholder={'Faith Kerubo, faith@yourcompany.com\nJoseph Kiprono, joseph@yourcompany.com'}
         />
-        <div className="gw-people-actions">
-          <label>
-            Role{' '}
-            <select value={role} onChange={(e) => { setRole(e.target.value); setAnswer(null) }} aria-label="Role">
-              {ROLES.map(([v, w]) => <option key={v} value={v}>{w}</option>)}
-            </select>
-          </label>
-          <button type="button" className="gw-btn" style={{ margin: 0 }} disabled={!pasted.trim() || check.isPending || send.isPending} onClick={() => check.mutate()}>
-            {check.isPending || send.isPending ? 'Sending…' : 'Send their invitations'}
-          </button>
-          <button type="button" className="gw-link-btn" onClick={() => file.current?.click()}>Upload a list</button>
-          <input
-            ref={file}
-            type="file"
-            accept=".csv,.txt,text/csv,text/plain"
-            hidden
-            aria-label="Upload a list"
-            onChange={async (e) => {
-              const f = e.target.files?.[0]
-              if (!f) return
-              const text = await f.text()
-              setPasted((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text))
-              setAnswer(null)
-              e.target.value = ''
-            }}
-          />
-        </div>
-        <p className="gw-people-note">They’ll get an email with a link to set themselves up.</p>
-
-        {answer && (
-          <div className="gw-people-answer">
-            <b>{answer.summary}</b>
-            {answer.seatsLeft !== null && (
-              <p className="gw-people-note">
-                {`Your plan has room for ${answer.seatsLeft} more ${answer.seatsLeft === 1 ? 'person' : 'people'}.`}{' '}
-                {answer.rows.some((r) => r.result === 'no seat') && <a href="/billing">See the plans</a>}
-              </p>
-            )}
-            <div className="gw-people-rows">
-              {answer.rows.map((r, i) => {
-                const how = HOW_IT_READS[r.result] ?? { says: r.result, tone: 'quiet' as const }
-                return (
-                  <div key={`${r.email}-${i}`} className={`gw-people-rowline ${how.tone}`}>
-                    <span>{r.email}</span>
-                    <b>{answer.preview ? how.says : (how.sent ?? how.says)}</b>
-                  </div>
-                )
-              })}
-            </div>
-            {answer.preview && canGo > 0 && (
-              <button type="button" className="gw-btn" style={{ margin: '10px 0 0' }} disabled={send.isPending} onClick={() => send.mutate()}>
-                {send.isPending ? 'Sending…' : canGo === 1 ? 'Send 1 invitation' : `Send ${canGo} invitations`}
-              </button>
-            )}
-          </div>
-        )}
+      </FieldLabel>
+      <div className="gwui-invite-actions">
+        <label className="gwui-inline-label">
+          Role{' '}
+          <Select value={role} onChange={(e) => { setRole(e.target.value); setAnswer(null) }} aria-label="Role" style={{ width: 'auto' }}>
+            {ROLES.map(([v, w]) => <option key={v} value={v}>{w}</option>)}
+          </Select>
+        </label>
+        <Button disabled={!pasted.trim() || check.isPending || send.isPending} onClick={() => check.mutate()}>
+          {check.isPending || send.isPending ? 'Sending…' : 'Send their invitations'}
+        </Button>
+        <Button kind="quiet" onClick={() => file.current?.click()}>Upload a list</Button>
+        <input
+          ref={file}
+          type="file"
+          accept=".csv,.txt,text/csv,text/plain"
+          hidden
+          aria-label="Upload a list"
+          onChange={async (e) => {
+            const f = e.target.files?.[0]
+            if (!f) return
+            const text = await f.text()
+            setPasted((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text))
+            setAnswer(null)
+            e.target.value = ''
+          }}
+        />
       </div>
-    </section>
+      <Note>They’ll get an email with a link to set themselves up.</Note>
+
+      {answer && (
+        <div className="gwui-invite-answer">
+          <p className="gwui-panel-text"><b>{answer.summary}</b></p>
+          {answer.seatsLeft !== null && (
+            <Note>
+              {`Your plan has room for ${answer.seatsLeft} more ${answer.seatsLeft === 1 ? 'person' : 'people'}.`}{' '}
+              {answer.rows.some((r) => r.result === 'no seat') && <a href="/billing">See the plans</a>}
+            </Note>
+          )}
+          <div>
+            {answer.rows.map((r, i) => {
+              const how = HOW_IT_READS[r.result] ?? { says: r.result, tone: 'quiet' as const }
+              const tone = how.tone === 'good' ? 'proven' : how.tone === 'bad' ? 'concern' : 'plain'
+              return (
+                <div key={`${r.email}-${i}`} className="gwui-invite-row">
+                  <span className="gwui-panel-text">{r.email}</span>
+                  <Tag tone={tone}>{answer.preview ? how.says : (how.sent ?? how.says)}</Tag>
+                </div>
+              )
+            })}
+          </div>
+          {answer.preview && canGo > 0 && (
+            <div className="gwui-invite-actions">
+              <Button disabled={send.isPending} onClick={() => send.mutate()}>
+                {send.isPending ? 'Sending…' : canGo === 1 ? 'Send 1 invitation' : `Send ${canGo} invitations`}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </Section>
   )
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { apiClient } from '@/api/client'
+import { Section, Stack, SwitchRow, Note } from '@/components/gw/ui'
 import { TheInviteLink } from './TheInviteLink'
 
 /**
@@ -12,6 +13,9 @@ import { TheInviteLink } from './TheInviteLink'
  * in its own sentence, which is shown here.
  *
  * The organisation's own invite link ("Baridi's invite link") sits under it (TheInviteLink.tsx).
+ *
+ * REBUILT FROM THE SHARED PARTS: the heading is the standard `Section` (21px, above the panel, not
+ * inside it - item 3), and the toggle row is `SwitchRow` (item 15).
  */
 interface Joining { on: boolean; domain: string | null; whyNot: string | null }
 
@@ -31,31 +35,22 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
   if (!data) return null
 
   return (
-    <section className="gw-who-can-join" aria-labelledby="who-can-join-h">
-      <h2 id="who-can-join-h">Who can join</h2>
-      {data.domain ? (
-        <div className="gw-who-can-join-row">
-          <div>
-            <b id="join-by-domain-label">{`Anyone with an @${data.domain} email`}</b>
-            <p>{`They can join ${orgName} without an invitation, as “Takes part”. You can change their role after.`}</p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={data.on}
-            aria-labelledby="join-by-domain-label"
-            className={`gw-switch${data.on ? ' on' : ''}`}
-            onClick={() => set.mutate(!data.on)}
+    <Section heading="Who can join">
+      <Stack gap={18}>
+        {data.domain ? (
+          <SwitchRow
+            title={`Anyone with an @${data.domain} email`}
+            detail={`They can join ${orgName} without an invitation, as “Takes part”. You can change their role after.`}
+            on={data.on}
+            onChange={() => set.mutate(!data.on)}
             disabled={set.isPending}
-          >
-            <span aria-hidden />
-          </button>
-        </div>
-      ) : (
-        <p>{data.whyNot}</p>
-      )}
-      {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
-      <TheInviteLink orgName={orgName} />
-    </section>
+          />
+        ) : (
+          <Note>{data.whyNot}</Note>
+        )}
+        {problem && <Note tone="error">{problem}</Note>}
+        <TheInviteLink orgName={orgName} />
+      </Stack>
+    </Section>
   )
 }

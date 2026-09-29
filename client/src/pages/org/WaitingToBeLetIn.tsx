@@ -4,6 +4,7 @@ import { authApi } from '@/api/auth'
 import { apiClient } from '@/api/client'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
+import { Section, EdgeList, EdgeRow, Button } from '@/components/gw/ui'
 import { A_FAILURE } from './people-here'
 
 /**
@@ -11,6 +12,10 @@ import { A_FAILURE } from './people-here'
  *
  * Somebody from outside, invited to a check-in, holds no seat and cannot check in until an admin
  * answers. The prototype's words, with "them" for "him": nothing here knows anyone's pronoun.
+ *
+ * REBUILT FROM THE SHARED PARTS (design-audit.md item 5: an `EdgeRow`, not a card - the prototype's
+ * own 4px amber edge, 17px bold name and email, a 15px sentence under it, and "Don't let them in" /
+ * "Let them in" on the right, both 44px tall).
  */
 interface Waiting { id: string; email: string; name: string | null; addedBy: string | null; forCheckIn: string | null; waitingSince?: string }
 
@@ -62,28 +67,33 @@ export function WaitingToBeLetIn({ orgName }: { orgName: string }) {
   const seatsFree = people && people.cap != null ? Math.max(0, people.cap - people.count) : null
 
   return (
-    <section className="gw-people-sec" aria-labelledby="waiting-h">
-      <div className="gw-people-sec-head">
-        <h2 id="waiting-h">Waiting to be let in</h2>
-        <span>{`People from outside ${orgName}, invited to a check-in`}</span>
-      </div>
-      <ShowAFew rows={rows} few={5} what="waiting to be let in">
-        {(p: Waiting) => (
-          <div key={p.id} className="gw-waiting-row">
-            <div className="gw-waiting-who">
-              <b>{p.name ? `${p.name}, ${p.email}` : p.email}</b>
-              <p>{whoAskedForThem(p, seatsFree)}</p>
-            </div>
-            <button type="button" className="gw-link-btn" disabled={answer.isPending} onClick={() => answer.mutate({ id: p.id, letIn: false })}>
-              Don’t let them in
-            </button>
-            <button type="button" className="gw-btn" style={{ margin: 0 }} disabled={answer.isPending} onClick={() => answer.mutate({ id: p.id, letIn: true })}>
-              Let them in
-            </button>
-          </div>
-        )}
-      </ShowAFew>
-      <p className="gw-people-note">Letting someone in tells them straight away, and tells whoever invited them.</p>
-    </section>
+    <Section
+      heading="Waiting to be let in"
+      note={`People from outside ${orgName}, invited to a check-in`}
+      foot="Letting someone in tells them straight away, and tells whoever invited them."
+    >
+      <EdgeList label="Waiting to be let in">
+        <ShowAFew rows={rows} few={5} what="waiting to be let in">
+          {(p: Waiting) => (
+            <EdgeRow
+              key={p.id}
+              kind="look"
+              title={p.name ? `${p.name}, ${p.email}` : p.email}
+              detail={whoAskedForThem(p, seatsFree)}
+              actions={(
+                <>
+                  <Button kind="quiet" disabled={answer.isPending} onClick={() => answer.mutate({ id: p.id, letIn: false })}>
+                    Don’t let them in
+                  </Button>
+                  <Button disabled={answer.isPending} onClick={() => answer.mutate({ id: p.id, letIn: true })}>
+                    Let them in
+                  </Button>
+                </>
+              )}
+            />
+          )}
+        </ShowAFew>
+      </EdgeList>
+    </Section>
   )
 }
