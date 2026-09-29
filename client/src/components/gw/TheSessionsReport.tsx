@@ -444,6 +444,28 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
   /* The read is computed when asked for and takes ten to twenty seconds. Say so, or it looks stuck. */
   if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading everybody&apos;s side of this session. It takes a moment.</div>
   if (isError || !data) return null
+
+  /**
+   * ANSWERS FROM THE ENGINE, 51: WITHHELD UNTIL YOU ANSWER.
+   *
+   * Before the report is released, a participant who has not answered THIS session gets only
+   * `{ sessionNumber, withheldUntilYouAnswer: true, saying }` - none of the detail below, which is
+   * exactly what reading somebody else's account before writing your own would be. Shown the same
+   * way SharedReportForAParty.tsx already shows the round-level version of this.
+   */
+  if ((data as any).withheldUntilYouAnswer) {
+    return (
+      <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
+          There is a picture forming, and you have not answered yet
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6 }}>
+          {(data as any).saying}
+        </div>
+      </div>
+    )
+  }
+
   const d = data as any
 
   const final = d.state === 'final'
