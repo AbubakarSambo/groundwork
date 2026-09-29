@@ -27,7 +27,7 @@ import { endStatesFor } from '../resolution/end-states';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { theFloorFor } from './how-short-a-check-in-may-be';
+import { almostNothingHereYet, theFloorFor } from './how-short-a-check-in-may-be';
 import { withoutTheLastOne } from './a-first-session-has-no-last-one';
 import { theContextWeHave, whoThisNameIs, theNameWeUseFor, WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ, type WhatADocumentHolds } from '../documents/what-a-document-holds';
 import { isAnApology, NOTHING_TO_APOLOGISE_FOR } from './an-apology-is-not-owed';
@@ -2605,6 +2605,14 @@ export class ConversationService {
       }),
     ]);
     const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
+    /*
+     * NEVER A GOODBYE FOR A RECORD THE SERVER WILL NOT WRITE (request 47). complete() refuses an
+     * empty record whatever was said, so the close refuses it by the same reading, first.
+     */
+    if (almostNothingHereYet(personSaid, isSelfCorrection)) {
+      this.logger.log(`Holding the close on ${checkInId}: almost nothing in the record yet.`);
+      return { ready: false };
+    }
     /*
      * THEIR SESSION, THEIR CALL, BEFORE ANY COUNT OR HOLD. Read live, 22 Sep 2026: "That's it from me
      * this week" was answered with "One more before this closes". closeReadiness has always let
@@ -5591,10 +5599,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // just as hard as the one avoiding.
     //
     // So: real sentences pass, even unverifiable ones. "ok / yes / fine" does not.
-    const substantiveTurns = personTurnRows.filter((t) => (t.content?.trim().length ?? 0) >= 12);
-    const totalPersonChars = personTurnRows.reduce((sum, t) => sum + (t.content?.trim().length ?? 0), 0);
-    const MIN_CHARS = checkIn.isSelfCorrection ? 20 : 50;
-    const MIN_REAL_TURNS = checkIn.isSelfCorrection ? 1 : 2;
 
     /**
      * ANSWERABLE. A REFUSAL THAT ASKS FOR SOMETHING HAS TO LEAVE A WAY TO GIVE IT.
@@ -5616,7 +5620,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * the sentence would make the copy load-bearing: somebody rewording it later would silently
      * reinstate the trap.
      */
-    if (totalPersonChars < MIN_CHARS || substantiveTurns.length < MIN_REAL_TURNS) {
+    if (almostNothingHereYet(personTurnRows.map((t) => t.content ?? ''), !!checkIn.isSelfCorrection)) {
       throw new BadRequestException({
         message: 'There is almost nothing here yet. Answer a couple of the questions properly, then complete.',
         canContinue: true,
