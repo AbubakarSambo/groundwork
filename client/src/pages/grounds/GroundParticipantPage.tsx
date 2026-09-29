@@ -262,7 +262,7 @@ export function GroundParticipantPage() {
     probeSession.mutate(myOpenForAutoOpen)
   }, [myOpenForAutoOpen, probeSession])
 
-  if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
+  if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-page)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
   /*
    * A FAILED REQUEST WAS TELLING PEOPLE THEY HAD BEEN REMOVED.
    *
@@ -275,7 +275,7 @@ export function GroundParticipantPage() {
    * a check-in that is genuinely gone answers 404, and anything else is a failure to load.
    */
   if (isError && !definitelyGone) return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>
           We could not load this check-in
@@ -363,7 +363,7 @@ export function GroundParticipantPage() {
 
   if (!myParticipant) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ maxWidth: 400, textAlign: 'center' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>You are not in this check-in</div>
           <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
@@ -449,7 +449,7 @@ export function GroundParticipantPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-paper-2)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', flexDirection: 'column' }}>
 
       {/*
         U.10 PICTURE-CHECK ROUND 7, ITEM 2 (CHECK-IN REBUILD): THE SAME HEADER PLACEMENT AS THE
@@ -458,6 +458,13 @@ export function GroundParticipantPage() {
         `position: sticky` wrapper on `var(--gw-paper-2)` (the beige the design audit flagged) -
         the one place round 7 never reached. Matched here now, so both views place their header the
         same way.
+
+        ROUND 2, ITEM F: AND THE WHOLE PAGE BEHIND IT WAS THE SAME DARKER BEIGE
+        (`var(--gw-paper-2)`, #FAF5EA - "the prototype's lighter cream, for a band above the page",
+        never the page itself). The prototype's My work, the board and Context all sit on
+        `#FDFBF6` for a participant exactly as they do for a lead - `var(--gw-page)`, the token the
+        lead's page already used. Switched here too, on every state (loading, not-found, out of
+        time, and the page itself), so the two pages share one background, not two.
       */}
       <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 0', width: '100%' }}>
         <CheckInHeader
