@@ -105,6 +105,12 @@ const SCENARIO_MAP: Record<string, GroundScenario> = {
 
 const scenarioLogger = new Logger('resolveScenario');
 
+/** A picked situation, only when it is one of ours; "other" or a label is not a choice to keep. */
+export function theSituationSheChose(picked?: string | null): GroundScenario | null {
+  if (!picked) return null;
+  return Object.values(GroundScenario).includes(picked as GroundScenario) ? (picked as GroundScenario) : null;
+}
+
 function resolveScenario(input?: string): GroundScenario {
   if (!input) return GroundScenario.NEW_PROJECT;
   if (Object.values(GroundScenario).includes(input as GroundScenario)) {
@@ -630,7 +636,15 @@ export class EntryService {
    * which-situation-this-is.ts; below the confidence bar the scenario is null and the flow keeps the
    * card the person chose rather than a guess.
    */
-  async classifyIntent(description: string, mode?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low' }> {
+  async classifyIntent(description: string, mode?: string, picked?: string): Promise<{ scenario: GroundScenario | null; confidence: 'high' | 'low' }> {
+    /*
+     * A SITUATION THE LEAD CHOSE IS HERS TO CHANGE, NOT THE CLASSIFIER'S (request 35). She picked
+     * "Help someone get back on track", said it was about Daniel, and the classifier read "once, in
+     * July" as a project gone off track: the bar switched to DRIFT without asking her. A picked key
+     * stands, and no model call is spent second-guessing it. Her way out is "It's something else".
+     */
+    const chosen = theSituationSheChose(picked);
+    if (chosen) return { scenario: chosen, confidence: 'high' };
     description = withoutBankDetails(description);
     this.anonymousModelCall('classify-intent', description.length);
     const prompt = theClassifierPrompt(description, mode);
