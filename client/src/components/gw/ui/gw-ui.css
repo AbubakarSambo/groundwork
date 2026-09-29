@@ -151,6 +151,8 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
   color: var(--gw-text); margin: 0;
 }
 .gwui-section-note { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-section-action { display: flex; gap: 10px; flex-wrap: wrap; }
+.gwui-section-h:has(.gwui-section-action) { align-items: center; }
 .gwui-section-body { margin-top: 14px; }
 .gwui-section-foot { margin-top: 14px; font-size: 13.5px; color: var(--gw-sub); }
 

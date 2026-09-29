@@ -1278,6 +1278,10 @@ export function GroundAdminPage() {
       const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
       const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
       return {
+        /* Carried for both readers: WhoIsInThis (still used and tested on its own) reads `name`;
+           CheckInPeopleAndSetup's roster matches its own rows to this by `id` instead, so it can
+           fold the session-completion fact into a row that already has the person's own label. */
+        id: p.id as string,
         name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
         done: hasDoneThisSession(theirs, current),
         isSelf: p.userId === user?.id,
@@ -1551,7 +1555,16 @@ export function GroundAdminPage() {
         */}
       </div>
 
-      <div className="gw-bd" style={{ paddingTop: 12, maxWidth: 600, margin: '0 auto', width: '100%' }}>
+      {/*
+        PEOPLE AND SETUP IS FULL WIDTH, LIKE EVERY OTHER REBUILT PAGE.
+        The other tabs here are a conversation and a list of sessions, which read better narrow
+        (600px) - the prototype agrees, drawing its own chat and session views narrow too. People and
+        setup is a settings page, and the prototype draws it the full width of the content column
+        (docs/prototype/screens/A4-people-roles-and-access/check-in-people-and-setup.jpg), the same
+        1060px this page's own header already uses (`maxWidth: 1060` a few lines up). So only this
+        one tab gets that width; the others are unchanged.
+      */}
+      <div className="gw-bd" style={{ paddingTop: 12, maxWidth: tab === 'settings' ? 1060 : 600, margin: '0 auto', width: '100%' }}>
 
         {/* OVERVIEW */}
         {/*

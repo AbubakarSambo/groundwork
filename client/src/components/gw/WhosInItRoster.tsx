@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { PeopleTable, PersonRow, Tag, Button } from '@/components/gw/ui'
+import { PeopleTable, PersonRow, Tag, Button, type TagTone } from '@/components/gw/ui'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { ShareSection } from '@/pages/grounds/ShareSection'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
@@ -25,6 +24,15 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * else's behalf. So the tinted strip under somebody waiting on an admin says the true thing and its
  * button goes to the real place a lead can act (the People page), rather than a "Remind Grace" that
  * would call nothing.
+ *
+ * 29 SEPT PICTURE CHECK: THE SEPARATE "WHO IS IN THIS" PILLS ARE GONE FROM HERE. They repeated this
+ * roster (a coverage pill per person) and said three things this roster did not: whether a person
+ * has checked in for THIS session (folded into each row below, as a plain sentence, gated on
+ * `notOpenYet` exactly as the pills were - nobody is late for a session that has not opened);
+ * whether peers are hidden from each other on this ground (kept as the note under the summary line);
+ * and the closing sentence about what the report will show once everyone has answered (kept, same
+ * place). Nothing the pills said is dropped; `WhoIsInThis.tsx` itself is untouched and still used and
+ * tested on its own (nobody-is-late-before-it-opens.spec.tsx).
  */
 export function WhosInItRoster({
   ground, isInitiator, isOrgAdmin, colleagues, addingMany, addManyParticipants,
@@ -32,7 +40,8 @@ export function WhosInItRoster({
   newParticipantDepartment, setNewParticipantDepartment, addParticipantMut,
   queuedToAdd, setQueuedToAdd, inviteTheQueue, lastInvitedEmail, whyItWaits, lastInviteWaits,
   billingStatus, navigate, onShareCode, fixingEmailId, setFixingEmailId, fixingEmailValue,
-  setFixingEmailValue, fixEmail, resendInvite,
+  setFixingEmailValue, fixEmail, resendInvite, showAdd, showLink,
+  sessionParties, peersHidden, notOpenYet, viewerIsParty, leadName, viewerIsTheLead,
 }: {
   ground: any
   isInitiator: boolean
@@ -62,9 +71,17 @@ export function WhosInItRoster({
   setFixingEmailValue: (v: string) => void
   fixEmail: { mutate: (v: { participantId: string; email: string }) => void; isPending: boolean }
   resendInvite: { mutate: (id: string) => void; isPending: boolean; variables?: string }
+  /** Controlled from CheckInPeopleAndSetup.tsx, whose "Who's in it" heading carries the two openers. */
+  showAdd: boolean
+  showLink: boolean
+  /** The old "Who is in this" pills' own per-person facts, matched here by participant id. */
+  sessionParties?: { id: string; done: boolean; isSelf: boolean }[]
+  peersHidden?: boolean
+  notOpenYet?: boolean
+  viewerIsParty?: boolean
+  leadName?: string | null
+  viewerIsTheLead?: boolean
 }) {
-  const [showAdd, setShowAdd] = useState(false)
-  const [showLink, setShowLink] = useState(false)
   const participants: any[] = ground.participants ?? []
   const checkingIn = participants.filter((p) => p.userId && p.inviteDeliveryStatus !== 'BOUNCED' && !p.awaitingSeat && !p.user?.awaitingOrgApproval).length
   const needSomething = participants.length - checkingIn
@@ -74,12 +91,26 @@ export function WhosInItRoster({
 
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-        {isInitiator && ground.joinToken && (
-          <Button kind="quiet" onClick={() => setShowLink((v) => !v)}>Copy an invite link</Button>
-        )}
-        {isInitiator && <Button kind="quiet" onClick={() => setShowAdd((v) => !v)}>Add people</Button>}
-      </div>
+      <p className="gwui-panel-text" style={{ fontWeight: 700 }}>
+        {participants.length} {participants.length === 1 ? 'person' : 'people'}.
+        {' '}{checkingIn} checking in{needSomething > 0 ? `; ${needSomething} need${needSomething === 1 ? 's' : ''} something before they can start.` : '.'}
+      </p>
+
+      {/* WHAT THE PILLS SAID THAT WAS NOT PER-PERSON: whether peers can see each other here, and what
+          the report will show once everyone has answered. */}
+      {peersHidden ? (
+        <p className="gwui-note">
+          {viewerIsTheLead
+            ? 'People on this check-in answer without seeing each other. You can see who is here.'
+            : `${leadName ?? 'Your lead'} knows who is here. You will not see the others or what they wrote, and they will not see you.`}
+        </p>
+      ) : (
+        <p className="gwui-note">
+          {viewerIsParty === false
+            ? 'When everyone has checked in, the report shows where the team agrees, where it differs, and what to do next.'
+            : 'When everyone has checked in, the report shows where you agree, where you differ, and what to do next.'}
+        </p>
+      )}
 
       {isInitiator && showLink && ground.joinToken && (
         <div className="gwui-panel gwui-panel-pad">
@@ -201,15 +232,33 @@ export function WhosInItRoster({
           const bounced = !p.userId && p.inviteDeliveryStatus === 'BOUNCED'
           const waitingForSeat = !!p.awaitingSeat
           const waitingForAdmin = !!p.userId && !!p.user?.awaitingOrgApproval
+          /* EVERYONE GETS A "WHEN" LINE, THE LEAD INCLUDED. The lead has no `invitedAt` (nobody
+             invited them - they created the check-in), which used to leave their own row reading
+             "Checking in" twice over (once as the date line, once as the status tag) while everyone
+             else's row said when they joined. `ground.createdAt` is the same fallback the server
+             itself uses for "when this check-in's clock starts" (when-the-clock-starts.ts). */
           const when = p.userId
-            ? (p.invitedAt ? `Joined ${whenItWas(p.invitedAt, 'dayAndMonthLong')}` : 'Checking in')
+            ? (p.invitedAt
+                ? `Joined ${whenItWas(p.invitedAt, 'dayAndMonthLong')}`
+                : `In it since ${whenItWas(ground.createdAt, 'dayAndMonthLong')}`)
             : (p.invitedAt ? `Invited ${whenItWas(p.invitedAt, 'dayAndMonthLong')}` : 'Invited')
 
           let statusText = 'Checking in'
-          if (bounced) statusText = 'The email bounced'
-          else if (waitingForSeat) statusText = 'Waiting for a seat'
-          else if (waitingForAdmin) statusText = 'Waiting for an admin'
-          else if (!p.userId) statusText = waitsForItsStart(p) ? 'Invited' : 'Not joined yet'
+          let tone: TagTone = 'proven'
+          if (bounced) { statusText = 'The email bounced'; tone = 'concern' }
+          else if (waitingForSeat) { statusText = 'Waiting for a seat'; tone = 'attention' }
+          else if (waitingForAdmin) { statusText = 'Waiting for an admin'; tone = 'attention' }
+          else if (!p.userId) { statusText = waitsForItsStart(p) ? 'Invited' : 'Not joined yet'; tone = 'plain' }
+
+          /* WHETHER THEY HAVE CHECKED IN FOR THIS SESSION - what the old "Who is in this" pills said
+             and this roster did not. Silent, exactly as the pills were, while the next session has
+             not opened: nobody is late for one that has not started. */
+          const session = sessionParties?.find((s) => s.id === p.id)
+          const sessionLine = notOpenYet || !session
+            ? null
+            : session.done
+              ? `${session.isSelf ? 'You have' : `${atTheStart(name)} has`} checked in for this session.`
+              : `${session.isSelf ? 'You have' : `${atTheStart(name)} has`} not checked in for this session yet.`
 
           let help: { tone: 'look' | 'concern'; text: string; action?: React.ReactNode } | undefined
           if (bounced) {
@@ -271,20 +320,16 @@ export function WhosInItRoster({
           return (
             <PersonRow
               key={p.id}
-              extraColumns="1fr 140px"
+              extraColumns="1fr 150px"
               person={{ initials: (p.email || '?').charAt(0).toUpperCase(), name, email: p.userId ? p.email : undefined, level: when }}
               help={help}
             >
-              <span />
-              <Tag tone="plain">{statusText}</Tag>
+              <span>{sessionLine}</span>
+              <Tag tone={tone}>{statusText}</Tag>
             </PersonRow>
           )
         })}
       </PeopleTable>
-      <p className="gwui-note">
-        {participants.length} {participants.length === 1 ? 'person' : 'people'}.
-        {' '}{checkingIn} checking in{needSomething > 0 ? `; ${needSomething} need${needSomething === 1 ? 's' : ''} something before they can start.` : '.'}
-      </p>
     </div>
   )
 }

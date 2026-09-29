@@ -42,9 +42,23 @@ describe('the dashboard uses the screen it is given', () => {
 
   it('and the pages that ARE reading keep theirs', () => {
     /* The point is not "wider everywhere". A check-in and a party's own account are read, not
-       scanned, and 600 is right for them. */
-    expect(CHECK_IN).toMatch(/maxWidth: 600/)
+       scanned, and 600 is right for them.
+       UPDATED 29 SEPT, PEOPLE AND SETUP REBUILD: GroundAdminPage.tsx's own conversation, sessions
+       list, documents and report tabs still cap at 600 - only "People and setup" (a settings page,
+       not a column of prose) now widens to 1060, the same width the header above it already uses.
+       This still proves the reading tabs keep 600; it no longer requires the literal `maxWidth: 600`
+       substring, which the settings-only ternary broke without changing what any tab actually does. */
+    expect(CHECK_IN).toMatch(/maxWidth: tab === 'settings' \? \d+ : 600/)
     expect(PARTY).toMatch(/maxWidth: 600/)
+  })
+
+  it("and People and setup is the one exception - a settings page, not a reading column", () => {
+    /* Picture check, 29 Sept: the whole tab was a narrow ~568px column where the prototype runs
+       full width, like every other rebuilt page (docs/prototype/screens/
+       A4-people-roles-and-access/check-in-people-and-setup.jpg). 1060 matches this same page's own
+       header a few lines above it (`maxWidth: 1060`), so the tab does not read as a different width
+       from the title and tabs sitting right above it. */
+    expect(CHECK_IN).toMatch(/tab === 'settings' \? 1060 : 600/)
   })
 
   it('it is a cap, not a fixed width, so it still fits a narrow screen', () => {

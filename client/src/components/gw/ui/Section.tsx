@@ -11,10 +11,16 @@ import './gw-ui.css'
  * `aria-labelledby` points the section at its own heading, so it is a named landmark
  * (`getByRole('region', { name: heading })`) without every caller writing an `aria-label` that
  * could drift from the heading text actually on screen.
+ *
+ * `action` is for a button (or two) beside the heading, on the right - "Who's in it", People and
+ * setup (check-in-people-and-setup.txt): a secondary "Copy an invite link" and a primary
+ * "Add people" sit beside that heading, not under it. Separate from `note`, which is a sentence,
+ * not a control.
  */
-export function Section({ heading, note, foot, children }: {
+export function Section({ heading, note, action, foot, children }: {
   heading: string
   note?: string
+  action?: React.ReactNode
   foot?: string
   children: React.ReactNode
 }) {
@@ -24,6 +30,7 @@ export function Section({ heading, note, foot, children }: {
       <div className="gwui-section-h">
         <h2 id={headingId} className="gwui-section-title">{heading}</h2>
         {note && <span className="gwui-section-note">{note}</span>}
+        {action && <span className="gwui-section-action">{action}</span>}
       </div>
       <div className="gwui-section-body">{children}</div>
       {foot && <p className="gwui-section-foot">{foot}</p>}

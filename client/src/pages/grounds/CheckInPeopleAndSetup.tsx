@@ -3,7 +3,6 @@ import {
   Section, Panel, FieldRows, FieldRow, SwitchRow, Choices, TextField, Select, FieldLabel,
   Button, Note, Callout,
 } from '@/components/gw/ui'
-import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
 import { WhosInItRoster } from '@/components/gw/WhosInItRoster'
 import { RolesInThisCheckIn } from '@/components/gw/RolesInThisCheckIn'
 import { MyParticipation } from '@/components/gw/MyParticipation'
@@ -76,7 +75,7 @@ export function CheckInPeopleAndSetup(props: {
   lastInviteWaits: boolean
   billingStatus: any
   onShareCode: () => void
-  whoIsInThisParties?: { name: string; done: boolean; isSelf: boolean }[]
+  whoIsInThisParties?: { id: string; done: boolean; isSelf: boolean }[]
   whoIsInThisPeersHidden?: boolean
   whoIsInThisNotOpenYet?: boolean
   whoIsInThisLeadName?: string | null
@@ -120,21 +119,24 @@ export function CheckInPeopleAndSetup(props: {
   const [editingReminders, setEditingReminders] = useState(false)
   const [editingWhere, setEditingWhere] = useState(false)
   const [remindDaysText, setRemindDaysText] = useState(((ground as any)?.chaseAfterDays ?? [1]).join(', '))
+  const [showAddPeople, setShowAddPeople] = useState(false)
+  const [showInviteLink, setShowInviteLink] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [editingScenario, setEditingScenario] = useState(false)
 
   return (
-    <div>
+    <div className="gwui-page-wrap">
       <Section
         heading="Who's in it"
-        note={`${(ground.participants ?? []).length} people`}
+        action={(
+          <>
+            {isInitiator && ground.joinToken && (
+              <Button kind="secondary" size="small" onClick={() => setShowInviteLink((v) => !v)}>Copy an invite link</Button>
+            )}
+            {isInitiator && <Button size="small" onClick={() => setShowAddPeople((v) => !v)}>Add people</Button>}
+          </>
+        )}
       >
-        <WhoIsInThis
-          parties={props.whoIsInThisParties}
-          peersHidden={props.whoIsInThisPeersHidden}
-          notOpenYet={props.whoIsInThisNotOpenYet}
-          viewerIsParty={viewerIsAParty}
-          leadName={props.whoIsInThisLeadName}
-          viewerIsTheLead={isInitiator}
-        />
         <WhosInItRoster
           ground={ground}
           isInitiator={isInitiator}
@@ -156,6 +158,14 @@ export function CheckInPeopleAndSetup(props: {
           fixingEmailValue={props.fixingEmailValue} setFixingEmailValue={props.setFixingEmailValue}
           fixEmail={props.fixEmail}
           resendInvite={props.resendInvite}
+          showAdd={showAddPeople}
+          showLink={showInviteLink}
+          sessionParties={props.whoIsInThisParties}
+          peersHidden={props.whoIsInThisPeersHidden}
+          notOpenYet={props.whoIsInThisNotOpenYet}
+          viewerIsParty={viewerIsAParty}
+          leadName={props.whoIsInThisLeadName}
+          viewerIsTheLead={isInitiator}
         />
       </Section>
 
@@ -177,31 +187,48 @@ export function CheckInPeopleAndSetup(props: {
         </Section>
       )}
 
-      {/* NOT IN THE PROTOTYPE HERE - kept as its own row; list for Hafsah. */}
-      <Section heading="What it is" note="What it is called, and which situation it runs as">
-        <FieldLabel htmlFor="ground-name">Name</FieldLabel>
-        <TextField id="ground-name" value={props.groundLabel} onChange={(e) => props.setGroundLabel(e.target.value)} disabled={!canEditRunOrAdmin} />
-        {canEditRunOrAdmin && (
-          <Button
-            size="small"
-            disabled={!props.groundLabel.trim() || props.groundLabel === ground.label}
-            onClick={() => props.saveSetup.mutate({ label: props.groundLabel.trim() })}
-          >
-            Save name
-          </Button>
+      {/* NOT IN THE PROTOTYPE HERE - kept as its own section; list for Hafsah. */}
+      <Section heading="What it is">
+        <FieldRows>
+          <FieldRow
+            label="Name"
+            value={ground.label}
+            action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingName((v) => !v)}>Change</Button> : undefined}
+          />
+          <FieldRow
+            label="Situation"
+            value={SCENARIO_LABELS[ground.scenario as keyof typeof SCENARIO_LABELS] ?? ground.scenario}
+            action={canEditRunOrAdmin ? <Button kind="quiet" size="small" onClick={() => setEditingScenario((v) => !v)}>Change</Button> : undefined}
+          />
+        </FieldRows>
+
+        {editingName && canEditRunOrAdmin && (
+          <Panel>
+            <FieldLabel htmlFor="ground-name">Name</FieldLabel>
+            <TextField id="ground-name" value={props.groundLabel} onChange={(e) => props.setGroundLabel(e.target.value)} />
+            <Button
+              size="small"
+              disabled={!props.groundLabel.trim() || props.groundLabel === ground.label}
+              onClick={() => props.saveSetup.mutate({ label: props.groundLabel.trim() })}
+            >
+              Save name
+            </Button>
+          </Panel>
         )}
-        <FieldLabel htmlFor="ground-scenario">Situation</FieldLabel>
-        <Select id="ground-scenario" value={props.groundScenario} onChange={(e) => props.setGroundScenario(e.target.value)} disabled={!canEditRunOrAdmin}>
-          {SCENARIO_KEYS.map((val) => <option key={val} value={val}>{SCENARIO_LABELS[val]}</option>)}
-        </Select>
-        {canEditRunOrAdmin && (
-          <Button
-            size="small"
-            disabled={!props.groundScenario || props.groundScenario === ground.scenario}
-            onClick={() => props.saveSetup.mutate({ scenario: props.groundScenario })}
-          >
-            Save situation
-          </Button>
+        {editingScenario && canEditRunOrAdmin && (
+          <Panel>
+            <FieldLabel htmlFor="ground-scenario">Situation</FieldLabel>
+            <Select id="ground-scenario" value={props.groundScenario} onChange={(e) => props.setGroundScenario(e.target.value)}>
+              {SCENARIO_KEYS.map((val) => <option key={val} value={val}>{SCENARIO_LABELS[val]}</option>)}
+            </Select>
+            <Button
+              size="small"
+              disabled={!props.groundScenario || props.groundScenario === ground.scenario}
+              onClick={() => props.saveSetup.mutate({ scenario: props.groundScenario })}
+            >
+              Save situation
+            </Button>
+          </Panel>
         )}
       </Section>
 
@@ -215,9 +242,21 @@ export function CheckInPeopleAndSetup(props: {
           />
           <FieldRow
             label="How long"
-            value={props.startsAtOnRecord
-              ? `Started ${whenItWas(props.startsAtOnRecord, 'dayAndMonthLong')}. Runs for ${ground.timelineDays ?? '?'} days.`
-              : `Not started yet. Runs for ${ground.timelineDays ?? '?'} days once it starts.`}
+            value={(() => {
+              /* THE REAL START, NOT ONLY WHAT WAS TYPED. `ground.startsAt` is set only when a lead
+                 chose a future date; otherwise the check-in's clock started when it was created -
+                 the same fallback the server itself uses (when-the-clock-starts.ts, clockStartsAt).
+                 Session 1 having already happened is proof the clock started even where `startsAt`
+                 was never set. */
+              const start = (ground as any).startsAt ?? ground.createdAt
+              if (!start) return `Runs for ${ground.timelineDays ?? '?'} days once it starts.`
+              const startText = whenItWas(start, 'dayAndMonthLong')
+              const end = (ground as any).endsOn
+              if (!end) return `Started ${startText}. Runs for ${ground.timelineDays ?? '?'} days.`
+              const daysLeft = (ground as any).daysLeft
+              const left = daysLeft != null ? ` ${daysLeft} day${daysLeft === 1 ? '' : 's'} left.` : ''
+              return `${startText} to ${whenItWas(end, 'dayAndMonthLong')}.${left}`
+            })()}
           />
           {props.whatsAppIsOn && (ground as any)?.orgHasWhatsApp && (
             <FieldRow
@@ -343,11 +382,11 @@ export function CheckInPeopleAndSetup(props: {
         )}
       </Section>
 
-      {/* NOT IN THE PROTOTYPE HERE - kept as its own section; list for Hafsah. */}
-      <Section heading="What good looks like" note="stated by the lead, read by everybody">
-        <BaselinePanel groundId={props.id} canState={isInitiator} />
-        <StartingPointPanel groundId={props.id} canRecord={isInitiator} />
-      </Section>
+      {/* NOT IN THE PROTOTYPE HERE - kept, one section each (each already carries its own single
+          heading - "What doing well looks like", "Where this stood at the start" - so this does not
+          wrap them in a second, redundant heading). List for Hafsah. */}
+      <BaselinePanel groundId={props.id} canState={isInitiator} />
+      <StartingPointPanel groundId={props.id} canRecord={isInitiator} />
 
       <Section heading="Who sees what">
         <SwitchRow
@@ -434,14 +473,14 @@ export function CheckInPeopleAndSetup(props: {
           grounds.controller.ts. The product's true state is kept instead: archiving is done by hand
           for now, and the real "delete it if it was only a test" control, which is not in the
           prototype and is not dropped for that reason. */}
-      <Section heading="Ending it" note="archiving is done by hand for now">
+      <Section heading="Ending it">
         <Callout>
           When it ends, nobody can add to it and everything stays as it is. Each person keeps their
           own history. This can't be undone.
         </Callout>
         <Note>
-          Closing a check-in permanently archives it. Self-serve close is coming; until then we
-          archive it by hand, usually the same day.
+          You cannot end a check-in yourself yet. Ask us and we will end it for you, usually the same
+          day.
           {isOrgAdmin && !isInitiator && ' You are not the lead here, so closing it ends something somebody else is running.'}
         </Note>
         <a
