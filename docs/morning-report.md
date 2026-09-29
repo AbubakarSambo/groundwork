@@ -126,6 +126,21 @@ Tests: 728 files and 6,704 tests pass in the parts touched. Two tests were chang
 
 **The whole API test suite passes at `cd1d1139`: 1,175 files and 10,885 tests.**
 
+**Week 6b: the four marks are on the team report and the board too** (`69ac07ed`). They use the same rule as the session report and the end card, so a line reads the same everywhere.
+- A person's own lines in the team report are marked.
+- So are the lines the lead weighs at the close, and each person's lines under "who owns what" on the board.
+- Read as Miriam, a colleague, Aisha's lines on the board are:
+  - "I sent the price list to Miriam": confirmed, because Miriam received it.
+  - "I will visit Westgate Deli on Friday": their word.
+  - "I made 8 visits this week": from memory.
+  - "Lakeside will buy on the 29th": their word, because only the lead's plan backs it, and a plan is not proof.
+- A line a document backs reads as proven, but the file is never named.
+- Model-written prose, such as the shared picture, carries no mark, because it is not one line of the record.
+- The marks are worked out from what is stored, so opening a page asks no model.
+- Deal stages are still left out, because they need your decision.
+
+Tests: 646 files and 6,068 tests pass in reports, board, check-ins and conversation. The new test reads the real board and team report as the lead, two participants and an admin.
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
