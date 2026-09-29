@@ -803,6 +803,16 @@ export class GroundsController {
     return this.grounds.setPeopleWorkTogether(id, userId, !!body.together);
   }
 
+  @Patch(':id/kind-of-work')
+  @ApiOperation({ summary: 'The lead sets the kind of work this check-in is about (one of eleven, or none), and its own stage names' })
+  async setKindOfWork(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { kind?: string | null; stages?: string[] | null },
+  ) {
+    return this.grounds.setKindOfWork(id, userId, body ?? {});
+  }
+
   @Patch(':id/who-sees-targets')
   @ApiOperation({ summary: "Whether people on this check-in see each other's numbers, or only their own" })
   async setWhoSeesTargets(

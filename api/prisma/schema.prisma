@@ -1008,6 +1008,20 @@ model Ground {
   /// brief changes; guarded in code so no instruction to the product and none of the lead's first
   /// person reaches them. Null falls back to the declarative sentences of the brief.
   toldToParticipants String? @map("told_to_participants")
+  /// THE KIND OF WORK THIS CHECK-IN IS ABOUT (request 76, Hafsah's ruling of 29 September 2026).
+  /// One of the eleven kinds the prototype's example boards show ("sales org", "engineering
+  /// release", "a law firm matter" and so on; the list is in board/the-kind-of-work.ts), or null
+  /// when nobody can tell. Read from the lead's own words and the brief when setup is saved, checked
+  /// in code against the eleven, and the lead can change it. The kind decides which records the
+  /// board holds (deals and their stages, releases, tickets), never which sections a situation has.
+  kindOfWork        String?   @map("kind_of_work")
+  /// Who set it: "read" when Groundwork read it from setup, "lead" when the lead chose it. A lead's
+  /// choice is never overwritten by a later read.
+  kindOfWorkSetBy   String?   @map("kind_of_work_set_by")
+  /// The organisation's own stage names for this kind of work, in order, when the lead has given
+  /// them. Null means the kind's defaults, which are the prototype's (for sales: Contacted, Need
+  /// established, Pitched, Qualified, Quoted, Won).
+  workStages        Json?     @map("work_stages")
   groundAuditLog  Json?     @map("ground_audit_log") // append-only JSON log of timeline/cadence changes
   createdByUserId String?   @map("created_by_user_id") // the admin who set this up for a lead; null for self-serve grounds
 
@@ -1182,6 +1196,7 @@ model Ground {
   expectThemToUnblock        Boolean                     @default(true) @map("expect_them_to_unblock")
   dependencies               GroundDependency[]
   workMentions               WorkMention[]
+  workItems                  WorkItem[]
   poll                       GroundPoll?
   participantRequests        ParticipantRequest[]
   contributorCodeRedemptions ContributorCodeRedemption[]
@@ -7985,4 +8000,35 @@ model LeadSetupWords {
   ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
 
   @@map("lead_setup_words")
+}
+
+/// THE RECORDS EACH KIND OF WORK'S BOARD NEEDS (request 76): a deal and its stage for sales, a
+/// release or task for engineering, a ticket for support, a county and its project for a programme,
+/// a party or a deadline for a law firm matter, a loan and its repayments, and so on.
+///
+/// One table rather than eleven, because every kind's records have the same bones: a name, where it
+/// has got to, whose it is, when it is due, and what else was said about it. `kind` says which of
+/// the board's records this is ("deal", "release", "ticket", "deadline", "party"...).
+///
+/// NEVER INVENTED. Every row comes either from a line somebody said in a check-in (`sourceEntryId`,
+/// and the name must be in that line's words) or from the lead typing it (`addedByUserId`). A row
+/// with neither is not written.
+model WorkItem {
+  id                 String    @id @default(uuid())
+  groundId           String    @map("ground_id")
+  kind               String
+  name               String
+  stage              String?
+  ownerParticipantId String?   @map("owner_participant_id")
+  dueAt              DateTime? @map("due_at")
+  fields             Json?
+  sourceEntryId      String?   @map("source_entry_id")
+  addedByUserId      String?   @map("added_by_user_id")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, kind])
+  @@map("work_items")
 }

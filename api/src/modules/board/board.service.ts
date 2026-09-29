@@ -1,6 +1,7 @@
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
+import { oneOfTheKinds } from './the-kind-of-work';
 import { targetsHiddenFrom, withoutHiddenTargets, withoutHiddenTargetsIn } from './a-hidden-target-stays-hidden';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
 import { THEIR_OWN_WORDS_ON_THE_BOARD, withTheirOwnWordsKept, withoutLinesWithNoWords } from './their-own-words-stay';
@@ -581,6 +582,9 @@ export class BoardService {
       sections,
       title: ground.label,
       scenario: ground.scenario,
+      /* The kind of work (request 76): one of the eleven names in the-kind-of-work.ts, or null. Checked
+         again on the way out, so a stored value that is not one of the eleven is served as none. */
+      kindOfWork: oneOfTheKinds((ground as any).kindOfWork),
       /**
        * HOW IT IS GOING, AT THE TOP, WHICH IS WHY SOMEBODY OPENED THIS.
        *
