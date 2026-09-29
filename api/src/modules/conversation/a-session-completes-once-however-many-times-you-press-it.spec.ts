@@ -47,7 +47,8 @@ describe('the shape of finishing', () => {
   it('ISSUE 6 stands: the record is extracted before the write, and the event is emitted after it', () => {
     const at = CODE.indexOf('private async finishTheSession(');
     const body = CODE.slice(at, at + 9000);
-    const extract = body.indexOf('extractRecordEntries(');
+    /* Since the end card (task 2.7) the record is written through writeTheRecordAtTheEnd: the card's lines, or a fresh read. */
+    const extract = body.indexOf('writeTheRecordAtTheEnd(');
     const write = body.indexOf('checkIn.updateMany(');
     const emit = body.indexOf('GroundworkEvents.CHECK_IN_COMPLETED');
     expect(extract).toBeGreaterThan(0);
@@ -80,7 +81,7 @@ describe('behaviourally', () => {
       groundParticipant: { findMany: jest.fn(async () => []) },
     };
     const svc: any = new ConversationService(prisma, {} as any, {} as any, {} as any, { emit: jest.fn((...a: any[]) => { emitted.push(a); return true; }) } as any, {} as any, {} as any, {} as any, { emit: jest.fn(async () => undefined) } as any, { get: () => undefined } as any);
-    for (const m of ['scoreSessionSpecificity', 'extractRecordEntries', 'anchorRecordToDocuments', 'extractDependencies', 'extractWorkMentions', 'extractExpectations', 'extractAlignment', 'extractWhatTheySayHappened', 'extractProgress', 'extractOperatingDifferences', 'extractObjection', 'reviseDetectedFunction', 'observeForCoaching', 'rememberStyle', 'buildSoloArtifact', 'ensureNextSession']) {
+    for (const m of ['scoreSessionSpecificity', 'writeTheRecordAtTheEnd', 'extractRecordEntries', 'anchorRecordToDocuments', 'extractDependencies', 'extractWorkMentions', 'extractExpectations', 'extractAlignment', 'extractWhatTheySayHappened', 'extractProgress', 'extractOperatingDifferences', 'extractObjection', 'reviseDetectedFunction', 'observeForCoaching', 'rememberStyle', 'buildSoloArtifact', 'ensureNextSession']) {
       svc[m] = jest.fn(async () => null);
     }
     const completions = () => emitted.filter((a) => a[0] === GroundworkEvents.CHECK_IN_COMPLETED);
@@ -103,7 +104,7 @@ describe('behaviourally', () => {
     expect(prisma.checkIn.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: CheckInStatus.COMPLETED, closedReason: CLOSED_BY_THE_CLOCK }) }));
     expect(completions()[0][1]).toMatchObject({ checkInId: 'ci', source: 'auto-close' });
     /* And it does what a person's completion does: the record, the artifact, the next session. */
-    expect(svc.extractRecordEntries).toHaveBeenCalledTimes(1);
+    expect(svc.writeTheRecordAtTheEnd).toHaveBeenCalledTimes(1);
     expect(svc.ensureNextSession).toHaveBeenCalledTimes(1);
   });
 

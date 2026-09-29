@@ -156,3 +156,35 @@ describe('where each person is against their number', () => {
     expect(line).not.toMatch(/lazy|excuse|coasting|underperform|poor|not chasing|behind/i);
   });
 });
+
+/* Read live on run-14, 28 September 2026, as the lead. */
+describe('the ask reads as something a lead can do', () => {
+  const row = (over: Partial<PersonRow> = {}): PersonRow => ({
+    participantId: 'p1', who: 'Jide Sanusi', target: null, count: 0,
+    answeredThisRound: true, roundsSoFar: 1, inTheWay: [], saidAnythingCheckable: true, ...over,
+  });
+
+  it('never asks anyone to speak to a thing', () => {
+    const ask = whatToAskFor(row({ inTheWay: [{ what: 'a shared calendar for year-end', owner: 'the handover from the current finance manager', days: 0, tried: 'nothing' }] }));
+    expect(ask).not.toMatch(/speak to the handover/);
+    expect(ask).toContain('Ask Jide Sanusi to find out who owns this by name.');
+  });
+
+  it('still asks them to speak to a person, by name or by role', () => {
+    expect(whatToAskFor(row({ inTheWay: [{ what: 'the approval', owner: 'Mr Eze', days: 3, tried: 'nothing' }] }))).toContain('speak to Mr Eze rather than write to them');
+    expect(whatToAskFor(row({ inTheWay: [{ what: 'the approval', owner: 'the head of credit', days: 3, tried: 'nothing' }] }))).toContain('speak to the head of credit rather than write to them');
+  });
+
+  it('says "is waiting" for something that came up today, never "0 days"', () => {
+    const ask = whatToAskFor(row({ inTheWay: [{ what: 'credit review', owner: null, days: 0, tried: 'nothing' }] }));
+    expect(ask).toMatch(/^Jide Sanusi is waiting on credit review,/);
+    expect(ask).not.toMatch(/0 days/);
+  });
+
+  it('and a row with something to ask never says nothing here needs you', () => {
+    const [r] = whereEachPersonIs([row({ inTheWay: [{ what: 'credit review', owner: null, days: 0, tried: 'nothing' }] })], 12);
+    expect(r.reason).toBe('nothing to do');
+    expect(r.says).toBe('Jide Sanusi has checked in.');
+    expect(r.ask).toBeTruthy();
+  });
+});

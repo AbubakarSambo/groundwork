@@ -50,6 +50,42 @@ async function http(path: string, o: { method?: string; body?: any; token?: stri
   }
 }
 
+/*
+ * THE RUNS GO THROUGH THE ROUTE PEOPLE USE. Hafsah, 28 September 2026: the screen sends every
+ * message through the streamed route, and until today this runner used the plain one, so the runs
+ * measured a route nobody used. The streamed route now runs the plain route's own code; this reads
+ * it the way ChatPage does: the draft arrives in pieces, and `done` carries the reply the screen is
+ * left showing, which is what is stored. ROUTE=plain keeps the old route, for comparison only.
+ */
+const ROUTE = process.env.ROUTE === 'plain' ? 'plain' : 'streamed';
+async function send(checkInId: string, message: string, token: string, retries = 3): Promise<any> {
+  if (ROUTE === 'plain') return http(`/check-ins/${checkInId}/messages`, { method: 'POST', token, body: { message }, retries });
+  try {
+    const res = await fetch(`${API}/check-ins/${checkInId}/messages/stream`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ message }),
+    });
+    if (!res.ok) { const e: any = new Error(`${res.status} /messages/stream :: ${(await res.text()).slice(0, 350)}`); e.status = res.status; throw e; }
+    const text = await res.text();
+    let done: any = null;
+    for (const line of text.split('\n')) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6).trim();
+      if (!data || data === '[DONE]') continue;
+      let evt: any; try { evt = JSON.parse(data); } catch { continue; }
+      if (evt?.type === 'error') throw new Error(`stream error: ${evt.code ?? ''} ${evt.message ?? ''}`);
+      if (evt?.type === 'done') done = evt;
+    }
+    if (!done) throw new Error('stream ended with no done event');
+    return done;
+  } catch (e: any) {
+    if (retries > 0 && /429|Too many tries/i.test(e.message ?? '')) { await new Promise((r) => setTimeout(r, 65000)); return send(checkInId, message, token, retries - 1); }
+    if (retries > 0 && /fetch failed|ECONN|socket|timeout|503/i.test(e.message ?? '')) { await new Promise((r) => setTimeout(r, 5000)); return send(checkInId, message, token, retries - 1); }
+    throw e;
+  }
+}
+
 async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
   const stamp = Date.now();
   const lead = s.people.find((p) => p.isLead)!;
@@ -238,9 +274,9 @@ async function runCheckIn(prisma: any, model: AnthropicService, gid: string, s: 
     chat.push({ role: 'assistant', content: said });
     turns.push({ from: p.name.toUpperCase(), text: said });
     try {
-      const r = await http(`/check-ins/${ci.id}/messages`, { method: 'POST', token, body: { message: said }, retries: 3 });
+      const r = await send(ci.id, said, token);
       asked = r?.reply ?? '';
-      turns.push({ from: 'GROUNDWORK', text: asked });
+      turns.push({ from: 'GROUNDWORK', text: asked, ...(Array.isArray(r?.suggestedAnswers) ? { suggestedAnswers: r.suggestedAnswers } : {}) });
       if (r?.sessionComplete || r?.complete) closed = true;
     } catch (e: any) { turns.push({ from: 'ERROR', text: e.message.slice(0, 220) }); break; }
   }
@@ -251,6 +287,7 @@ async function runCheckIn(prisma: any, model: AnthropicService, gid: string, s: 
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
+  log(`Messages go through the ${ROUTE} route.`);
   const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error'] });
   const prisma = app.get(PrismaService);
   const model = app.get(AnthropicService);

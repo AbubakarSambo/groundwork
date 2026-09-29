@@ -1,3 +1,7 @@
+import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
+import { targetsHiddenFrom, withoutHiddenTargets, withoutHiddenTargetsIn } from './a-hidden-target-stays-hidden';
+import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
+import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { Injectable, ForbiddenException, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -102,6 +106,12 @@ import { peersAreNamedOn } from '../reports/peers-are-named';
  * The newest row wins, because a handoff someone has stopped describing as
  * blocking is no longer blocking.
  */
+/** A phrase put inside a sentence: "Whether a range counts" becomes "whether a range counts"; "Kwame's target" stays. */
+export const inASentence = (phrase: string): string => {
+  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
+  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+};
+
 @Injectable()
 export class BoardService {
   private readonly logger = new Logger(BoardService.name);
@@ -1360,7 +1370,50 @@ export class BoardService {
       out.whyYouOnlySeeYourself = WHY_YOU_ONLY_SEE_YOURSELF;
     }
 
-    return out;
+    /*
+     * AND LAST, WHAT THE LEAD HAS NOT SHARED, IN THE WORDS AS WELL AS THE FIELDS. Hafsah, 28 September
+     * 2026: neither a private file's name nor a hidden target's number may reach anyone the lead has
+     * not shared it with. The fields were already walled; the sentences were not (screens requests
+     * 46 and 63). Read over everything this reader is served, once, here, so a section added later
+     * is covered by being served. See a-private-file-is-not-named and a-hidden-target-stays-hidden.
+     */
+    {
+      const reader = { participantId: me?.id ?? null, isLead: isInitiator || adminHere };
+      const docsHere = await ((this.prisma as any).groundDocument?.findMany?.({ where: { groundId }, select: { fileName: true, visibility: true, participantId: true } }) ?? Promise.resolve([])).catch(() => []);
+      const privateNames = namesThisReaderMayNotOpen(docsHere as any[], reader, (d, r) => canSeeDocument(d as any, r, true));
+      const namesOfPerson = (pid: string) => {
+        const p = (ground.participants as any[]).find((x) => x.id === pid);
+        const first = (p?.user?.firstName ?? '').trim();
+        const full = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
+        return [full, first, (p?.nameGiven ?? '').trim(), nameOf(pid) ?? ''].filter((n: string) => n && n.length > 1);
+      };
+      const hiddenTargets = targetsHiddenFrom(
+        { participantId: me?.id ?? null, isTheLead: isInitiator },
+        (ground as any).whoSeesTargets,
+        (ground.objectives ?? []) as any[],
+        namesOfPerson,
+      );
+      /* A row about one person loses any sentence with that person's hidden number in it. */
+      if (Array.isArray(out.eachPerson) && hiddenTargets.length) {
+        out.eachPerson = (out.eachPerson as any[]).map((row) => {
+          const theirs = ((ground.objectives ?? []) as any[]).find((o) => o.ownerParticipantId === row.participantId && typeof o.target === 'number');
+          const aboutOnly = theirs && hiddenTargets.length ? { names: namesOfPerson(row.participantId), target: theirs.target } : undefined;
+          if (!aboutOnly) return row;
+          return {
+            ...row,
+            ...(typeof row.says === 'string' ? { says: withoutHiddenTargets(row.says, hiddenTargets, { aboutOnly }) } : {}),
+            ...(typeof row.finding === 'string' ? { finding: withoutHiddenTargets(row.finding, hiddenTargets, { aboutOnly }) } : {}),
+          };
+        });
+      }
+      /* And no internal label reaches anyone, whichever section it sits in. See reports/no-internal-label-reaches-anyone. */
+      const called = whatEachLabelIsCalled(ground.participants as any[], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsThisGround, peersAreNamed: !!peersVisible });
+      /* Labels become names first, so the hidden-target read can find the person (see reports.service). */
+      let walled = withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(out, called), privateNames), hiddenTargets) as any;
+      /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
+      if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
+      return walled;
+    }
   }
 
   /**
@@ -1382,6 +1435,7 @@ export class BoardService {
     return (lines as { text: string }[]).map((l) => (l.text ?? '').trim()).filter(Boolean);
   }
 
+  /* A topic said inside a sentence: its first word lower-cased only when it is an ordinary word, never a name. */
   private deriveDecisions(
     divergences: any[],
     dependencies: { what: string; status: DependencyStatus; onParticipantId: string | null; onLabel: string | null }[],
@@ -1389,7 +1443,8 @@ export class BoardService {
     stillToDecide: string[] = [],
   ) {
     const fromDivergence = divergences.map((d) => ({
-      question: d.topic ? `Settle: ${d.topic}` : 'Settle this difference between accounts',
+      /* Full sentences, never a label and a colon (screens request 68, 28 Sep 2026). */
+      question: d.topic ? `The accounts differ on ${inASentence(d.topic)}, so it needs settling.` : 'The accounts differ here, so it needs settling.',
       why: 'The accounts do not match on this, so it cannot be assumed agreed.',
       owner: 'Lead and team',
       source: 'divergence' as const,
@@ -1399,7 +1454,7 @@ export class BoardService {
       // needs to make, and leaving them on grew this list to 15 items.
       .filter((d) => d.status === DependencyStatus.BLOCKING)
       .map((d) => ({
-        question: `Unblock: ${d.what}`,
+        question: `Somebody is waiting on ${inASentence(d.what)}, so it needs deciding.`,
         why: 'A hard blocker. Someone cannot move until this is decided.',
         owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? 'Unassigned') : (d.onLabel ?? 'Unassigned'),
         source: 'blocker' as const,
@@ -1985,13 +2040,15 @@ export class BoardService {
        * said it; falling back to when the check-in was made keeps an in-progress one from reading
        * as nought days old.
        */
-      select: { completedAt: true, createdAt: true, participant: { select: { email: true } } },
+      select: { completedAt: true, createdAt: true, participant: { select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } },
       orderBy: { createdAt: 'desc' },
       take: 50,
     }).catch(() => [] as any[]);
 
     for (const c of said as any[]) {
-      const who = c.participant?.email ?? 'somebody';
+      /* Never an address as a name (Hafsah, 28 Sep 2026; screens requests 56, 58, 65). */
+      const who = [c.participant?.user?.firstName, c.participant?.user?.lastName].filter(Boolean).join(' ').trim()
+        || (c.participant?.nameGiven ?? '').trim() || 'a colleague';
       needs.push({
         kind: 'ASKED_TO_BE_SHOWN',
         who,
@@ -2015,7 +2072,7 @@ export class BoardService {
     const [entries, docs, baseline, deps] = await Promise.all([
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, checkInId: { in: completed.map((c) => c.id) } },
-        select: { type: true, text: true, participantId: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true },
+        select: { type: true, text: true, participantId: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true, confirmedAt: true, anchoredDocumentId: true },
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.groundDocument.findMany({ where: { groundId, visibility: 'OPEN' as any }, select: { fileName: true, participantId: true, origin: true } }),
@@ -2030,12 +2087,19 @@ export class BoardService {
     const waiting = new Set(whoAnswered.waitingOn);
     const answered = ground.participants.filter((p: any) => !waiting.has(p.id) && completed.some((c) => c.participantId === p.id && c.sessionNumber === openRound));
     const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
+    /* Whose document backs each line: somebody else's proves nothing of theirs (how-a-line-is-known). */
+    const backingIds = [...new Set(entries.map((e: any) => e.anchoredDocumentId).filter(Boolean))] as string[];
+    const whoseDocument = new Map(
+      backingIds.length
+        ? ((await this.prisma.groundDocument.findMany({ where: { id: { in: backingIds } }, select: { id: true, participantId: true } }).catch(() => [])) as any[]).map((d) => [d.id, d.participantId])
+        : [],
+    );
     const shape = theSessionReport({
       sessionNumber: openRound,
       closed: !!report.releasedAt,
       agreements: (report.agreements ?? []) as unknown[],
       divergences: (report.divergences ?? []) as unknown[],
-      entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: nameOf(e.participantId), recallBased: e.recallBased, backedBy: (e as any).anchoredOrigin ?? null, threadKey: e.dimensionThreadKey ?? null })),
+      entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: nameOf(e.participantId), recallBased: e.recallBased, backedBy: (e as any).anchoredOrigin ?? null, confirmedAt: (e as any).confirmedAt ?? null, ...((e as any).anchoredDocumentId && whoseDocument.has((e as any).anchoredDocumentId) ? { documentIsTheirOwn: whoseDocument.get((e as any).anchoredDocumentId) === e.participantId } : {}), threadKey: e.dimensionThreadKey ?? null })),
       previousEntries: [],
       baselineSuccess: baseline?.successLooksLike ?? null,
       startingPoint: null,

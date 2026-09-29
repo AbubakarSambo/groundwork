@@ -13,8 +13,10 @@ describe('how many have answered, for every count', () => {
     [9, 9, 'All nine people have answered.'],
     [12, 12, 'All 12 people have answered.'],
     [0, 4, 'Nobody has answered yet.'],
-    [1, 3, 'One person has answered so far, of 3.'],
-    [2, 5, 'Two of the 5 people have answered so far.'],
+    /* All in words or all in figures in one sentence, 28 Sep 2026 (screens request 69). */
+    [1, 3, 'One of the three people has answered so far.'],
+    [2, 5, 'Two of the five people have answered so far.'],
+    [12, 41, '12 of the 41 people have answered so far.'],
   ])('%i of %i: %s', (answered, expected, says) => {
     expect(howManyAnsweredInWords(answered, expected)).toBe(says);
     expect(howManyAnsweredInWords(answered, expected)).not.toMatch(/\bAll (?:two|one|2|1)\b/i);
@@ -30,8 +32,8 @@ describe('the opening starts with the product\'s count, whatever the model wrote
 
   it('and any other count sentence with the right one', () => {
     expect(theCountSaidRight('All 3 people have checked in. The target is eight.', 3, 3)).toBe('All three people have answered. The target is eight.');
-    expect(theCountSaidRight('Two of four people have answered so far.', 2, 4)).toBe('Two of the 4 people have answered so far.');
-    expect(theCountSaidRight('Both people have checked in.', 1, 2)).toBe('One person has answered so far, of 2.');
+    expect(theCountSaidRight('Two of four people have answered so far.', 2, 4)).toBe('Two of the four people have answered so far.');
+    expect(theCountSaidRight('Both people have checked in.', 1, 2)).toBe('One of the two people has answered so far.');
   });
 
   it('leaves an opening alone when its first sentence says more than the count, or is not a count', () => {

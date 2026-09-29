@@ -118,7 +118,7 @@ describe('and when the picture cannot be written, it says so and stops', () => {
   });
 
   it('and it is the count that is true, not a guess', () => {
-    expect(whenThePictureCannotBeWritten(1, 4).opening).toContain('One person has answered so far, of 4.');
+    expect(whenThePictureCannotBeWritten(1, 4).opening).toContain('One of the four people has answered so far.');
     expect(whenThePictureCannotBeWritten(0, 3).opening).toContain('Nobody has answered yet.');
   });
 });
@@ -126,7 +126,8 @@ describe('and when the picture cannot be written, it says so and stops', () => {
 describe('how many have answered, in words', () => {
   it('never says "1 people"', () => {
     expect(howManyAnsweredInWords(1, 1)).toBe('One person has answered.');
-    expect(howManyAnsweredInWords(1, 4)).toBe('One person has answered so far, of 4.');
+    /* All in words or all in figures in one sentence, 28 Sep 2026 (screens request 69). */
+    expect(howManyAnsweredInWords(1, 4)).toBe('One of the four people has answered so far.');
     for (let a = 0; a <= 9; a++) {
       for (let e = a; e <= 9; e++) {
         expect(howManyAnsweredInWords(a, e)).not.toMatch(/\b1 people\b|\b1 of 1 people\b/);

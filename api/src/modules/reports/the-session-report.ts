@@ -1,3 +1,4 @@
+import { howALineIsKnown, type HowALineIsKnown } from './how-a-line-is-known';
 import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-was';
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
 import { RecordEntryType } from '@prisma/client';
@@ -54,6 +55,11 @@ export interface SaidThing {
    * never removes the line. Absent where the line holds no figure, so it does not become wallpaper.
    */
   figureIs?: 'their estimate' | 'from memory';
+  /**
+   * HOW THE LINE IS KNOWN: proven, confirmed by the person who received it, their word, or memory
+   * (week 6b, decision 43, screens request 2). The prototype's four marks; see how-a-line-is-known.
+   */
+  mark?: HowALineIsKnown;
 }
 
 export interface SessionReportSection {
@@ -75,6 +81,8 @@ export interface WhatOnePersonSaid {
   who: string;
   isYou: boolean;
   lines: string[];
+  /** How each line is known, in the same order as `lines`: proven, confirmed, said or memory. */
+  lineMarks?: HowALineIsKnown[];
   /** Said instead of lines when they answered and named nothing specific. */
   saying?: string;
 }
@@ -164,7 +172,7 @@ export interface SessionReportInputs {
   agreements: unknown[];
   divergences: unknown[];
   /** This session's entries, already typed at extraction. */
-  entries: { type: RecordEntryType; text: string; who: string | null; recallBased: boolean; threadKey: string | null; /** the origin of the document that backs it, when one does */ backedBy?: string | null }[];
+  entries: { type: RecordEntryType; text: string; who: string | null; recallBased: boolean; threadKey: string | null; /** the origin of the document that backs it, when one does */ backedBy?: string | null; /** when the colleague who received it confirmed it */ confirmedAt?: Date | null; /** false when the backing document is somebody else's */ documentIsTheirOwn?: boolean }[];
   /** The previous session's entries, for what has changed and what was not spoken to again. */
   previousEntries: { type: RecordEntryType; text: string; who: string | null; threadKey: string | null }[];
   /** What was said at the beginning: the baseline's success statement and the starting point. */
@@ -217,13 +225,14 @@ function titleOf(x: unknown): string | null {
   return null;
 }
 
-const said = (e: { text: string; who: string | null; recallBased: boolean }): SaidThing => {
+const said = (e: { type?: string; text: string; who: string | null; recallBased: boolean; backedBy?: string | null; confirmedAt?: Date | null; documentIsTheirOwn?: boolean }): SaidThing => {
   const how = howSolid({ text: e.text, recallBased: e.recallBased });
   return {
     text: e.text,
     who: e.who,
     documented: !e.recallBased,
     ...(how === 'estimated' || how === 'from-memory' ? { figureIs: MARK[how] as 'their estimate' | 'from memory' } : {}),
+    mark: howALineIsKnown({ type: String(e.type ?? ''), text: e.text, recallBased: e.recallBased, anchoredOrigin: e.backedBy ?? null, confirmedAt: e.confirmedAt ?? null, documentIsTheirOwn: e.documentIsTheirOwn }),
   };
 };
 
@@ -512,9 +521,11 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     RecordEntryType.ASK,
   ];
   const said = new Map<string, string[]>();
+  const marked = new Map<string, HowALineIsKnown[]>();
   for (const e of input.entries.filter((e) => IN_THE_THEMES.includes(e.type))) {
     const key = e.who ?? '';
     said.set(key, [...(said.get(key) ?? []), e.text]);
+    marked.set(key, [...(marked.get(key) ?? []), howALineIsKnown({ type: e.type, text: e.text, recallBased: e.recallBased, anchoredOrigin: e.backedBy ?? null, confirmedAt: e.confirmedAt ?? null, documentIsTheirOwn: e.documentIsTheirOwn })]);
   }
   const whatEachPersonSaid: WhatOnePersonSaid[] = input.answeredThisSession.map((p) => {
     const lines = said.get(p.isYou ? '' : p.who) ?? [];
@@ -522,6 +533,9 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       who: p.who,
       isYou: p.isYou,
       lines,
+      /* How each of those lines is known, in the same order (week 6b, screens request 2). Beside
+         `lines` rather than in it, so a screen that reads `lines` as words is unchanged. */
+      ...(lines.length ? { lineMarks: marked.get(p.isYou ? '' : p.who) ?? [] } : {}),
       /* BEFORE RELEASE, ANOTHER PERSON'S LINES ARE WALLED, NOT ABSENT. A participant read "Answered, and nothing
          specific enough to record came out of it" beside twenty-three names whose lines he was not yet entitled
          to (run 10, 21 Sep 2026). The wall says so; it does not claim the person said nothing. */

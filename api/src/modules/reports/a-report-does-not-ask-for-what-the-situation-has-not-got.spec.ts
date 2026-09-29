@@ -21,14 +21,17 @@ const named = { id: 'p2', partyType: PartyType.PARTICIPANT, user: { firstName: '
 const lead = { id: 'p1', partyType: PartyType.INITIATOR, user: { firstName: 'Hafsah' } } as any;
 
 describe('a roster does not name half of itself', () => {
-  it('gives the lead an address where there is no name, rather than a letter', () => {
+  /* Changed 28 Sep 2026, Hafsah: never an address as a name. The lead no longer gets the address in
+     place of a name; with no name there is none here, and every surface says "a colleague" instead
+     (plainWordsByPerson). Still never a letter. */
+  it('gives the lead no address in place of a name, and never a letter', () => {
     const names = namesVisibleTo('p1', [lead, named, noName]);
-    expect(names.get('Participant B')).toBe('sam@work.test');
+    expect(names.get('Participant B')).toBeUndefined();
     expect([...names.values()]).toContain('Amina Yusuf');
   });
 
   it('and their own row reads as them, not as a letter', () => {
-    expect(namesVisibleTo('p3', [lead, named, noName]).get('Participant B')).toBe('sam@work.test');
+    expect(namesVisibleTo('p3', [lead, named, noName]).get('Participant B')).toBeUndefined();
   });
 
   /* Never peer to peer: an address is an identity, and the wall between colleagues holds. */

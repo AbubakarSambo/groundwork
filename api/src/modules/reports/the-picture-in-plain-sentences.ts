@@ -243,7 +243,15 @@ export function howManyAnsweredInWords(answered: number, expected: number): stri
     if (answered === 2) return 'Both people have answered.';
     return `All ${INWORDS[answered]?.toLowerCase() ?? answered} people have answered.`;
   }
+  /*
+   * ALL IN WORDS OR ALL IN FIGURES, NEVER BOTH IN ONE SENTENCE. "Four of the 6 people" was read on a
+   * live board (screens request 69, 28 September 2026). Up to ten, both are words; past that, both
+   * are figures, because "Twelve of the forty-one" is harder to read than "12 of the 41".
+   */
+  const inWords = answered <= 10 && expected <= 10;
+  const first = inWords ? n : String(answered);
+  const total = inWords ? (INWORDS[expected] ?? String(expected)).toLowerCase() : String(expected);
   return answered === 1
-    ? `One person has answered so far, of ${expected}.`
-    : `${n} of the ${expected} people have answered so far.`;
+    ? `${inWords ? 'One' : '1'} of the ${total} people has answered so far.`
+    : `${first} of the ${total} people have answered so far.`;
 }

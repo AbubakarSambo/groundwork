@@ -246,14 +246,16 @@ export function displayName(p: LabelParty, theEmailIsFair = false): string | nul
    *
    * Never to a peer, which is what `theEmailIsFair` gates - see namesVisibleTo.
    */
-  if (theEmailIsFair) {
-    /* THE ROW'S ADDRESS TOO, NOT ONLY THE SIGN-IN'S. Hafsah, 22 Sep 2026, reading a session report as the
-       lead: "it still calls people participant A and participant B". Those two had not joined yet, so
-       there was no user to take an address from; the address the lead typed is on the row, and the lead
-       is reading. */
-    const email = p.user?.email?.trim() || p.email?.trim();
-    if (email) return email;
-  }
+  /*
+   * NEVER AN ADDRESS AS A NAME. Hafsah, 28 September 2026 (screens requests 56, 58, 65): "A lead never
+   * sees 'Start with zawadi.u8@example.test'; use the person's name, or a plain sentence when there
+   * isn't one." This used to return the address to a reader entitled to it, so the model and every
+   * sentence built from this wrote the address where a name belongs. Somebody with no name now gets
+   * the plain words every surface uses ("a colleague", "another colleague"; see plainWordsByPerson).
+   * The lead still sees the address where a list shows it beside the person, never as their name.
+   * `theEmailIsFair` is kept so callers need not change; it no longer turns an address into a name.
+   */
+  void theEmailIsFair;
   return null;
 }
 
@@ -1063,6 +1065,8 @@ export function theVerbAgreesWithYouIn(input: string): string {
                found while fixing the title in a name). Verbs of accounting again, all regular. */
             'agrees', 'disagrees', 'confirms', 'mentions', 'recalls', 'understands', 'considers',
             'suggests', 'argues', 'insists', 'admits', 'explains', 'hopes',
+            /* Read live on the session report (screens requests 54 and 65, 28 September 2026). */
+            'sends', 'assumes', 'asks', 'waits', 'works', 'leads', 'wishes', 'finishes', 'misses',
           ].join('|') +
           ')\\b',
         'gi',

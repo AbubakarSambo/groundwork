@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from '../conversation/__fixtures__/the-streamed-route-is-the-plain-route';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -59,9 +60,8 @@ describe('a document is read, not agreed', () => {
      * read "Great. What moved this week?", and nothing was written - found by doing it, not by
      * reading it.
      */
-    expect(CONVO).toContain('const tookFromTheSheet = await this.whatTheDocumentWaitsFor(checkIn as any, message)');
-    const stream = CONVO.slice(CONVO.indexOf('async *sendMessageStream('));
-    expect(stream).toContain('tookFromTheSheet');
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    expect(theStreamedRouteRunsThePlainRoute(CONVO)).toBe(true);
   });
 
   it("and what we said before the model spoke survives the end of the stream", () => {
@@ -70,10 +70,10 @@ describe('a document is read, not agreed', () => {
      * that is not folded into `reply` is wiped when the stream finishes. Read in the browser: nine
      * targets were written and the screen said only "Right. The Q4 targets are clear."
      */
-    const stream = CONVO.slice(CONVO.indexOf('async *sendMessageStream('));
-    expect(stream).toContain("const ourOwnWords = [contextFirst, tookFromTheSheet].filter(Boolean).join('\\n\\n')");
-    expect(stream).toContain('if (ourOwnWords) reply = `${ourOwnWords}');
-    /* Folded in BEFORE the turn is written, so the transcript holds it too. */
-    expect(stream.indexOf('const ourOwnWords')).toBeLessThan(stream.indexOf('const streamAiTurn = await this.prisma.conversationTurn.create('));
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    const plain = CONVO.slice(CONVO.indexOf('async sendMessage(checkInId'), CONVO.indexOf('async *sendMessageStream('));
+    expect(plain).toContain("const ourOwnWords = [contextNotSaid, tookTheNumbers].filter(Boolean).join('\\n\\n')");
+    expect(plain).toContain('data: { content: `${ourOwnWords}');
+    expect(theStreamedRouteRunsThePlainRoute(CONVO)).toBe(true);
   });
 });

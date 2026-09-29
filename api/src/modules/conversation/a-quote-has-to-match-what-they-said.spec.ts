@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 import { unmatchedQuotes, withoutQuotesTheyDidNotSay } from './a-quote-has-to-match-what-they-said';
 
 /**
@@ -88,10 +89,9 @@ describe('the reply goes through it too', () => {
   });
 
   it('and on the streaming path, which is the one the screen uses', () => {
-    const stream = src.slice(src.indexOf('async *sendMessageStream('));
-    expect(stream).toContain('const streamHonest = withoutQuotesTheyDidNotSay(reply, streamPersonWords)');
-    /* Before the turn is written, so the transcript does not keep a misquote either. */
-    expect(stream.indexOf('const streamHonest')).toBeLessThan(stream.indexOf('const streamAiTurn = await this.prisma.conversationTurn.create('));
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    expect(theStreamedRouteRunsThePlainRoute(src)).toBe(true);
+    expect(src.slice(src.indexOf('async sendMessage(checkInId'))).toMatch(/withoutQuotesTheyDidNotSay\(/);
   });
 
   it('and the product question that started this loses its marks', () => {

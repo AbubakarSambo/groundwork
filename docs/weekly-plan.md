@@ -19,21 +19,26 @@ The order follows Hafsah's: the check-in conversation first; then judging, and m
 
 ## The check-in conversation
 
-**Week 1. Asking for what someone holds back.** When a person states a limit ("I could open the Equity door") or leaves out a date, the check-in asks directly about the rest ("Which of the other two banks can you open?") and asks for dates. This is what advisor and shock needed in most runs. It includes the rule that the check-in never repeats a question already answered.
+**Week 0 (early, and before the weeks below where it can be). Text other people read is never written with someone else's hidden target given to the model.** Today a target the lead set for one person is taken out of what others are served, sentence by sentence, after the model has written it. That is a rule of thumb: it errs on the side of hiding, and it can only catch what it recognises. The structural fix is the one decision 32 uses for the lead's private notes: when the engine writes a report, a board line or a session that someone other than the target's owner will read, it is not given that person's hidden target at all. Where one text is read by several people, it is written without anyone's hidden target, and each person's own number is added only to what they alone read. The read-side rule stays as a second net.
 
-**Week 2. One question at a time, and the lead's name in every message about them.** These are tasks 2.1 and 2.2 in `docs/tasks.md`. The check is that "turns that ask more than one question" reaches 0.
+**Week 1. Asking for what someone holds back.** *Built 28 September (`020260e4`, `3fb7edf9`).* When a person states a limit ("I could open the Equity door") or leaves out a date, the check-in asks directly about the rest ("Which of the other two banks can you open?") and asks for dates. This is what advisor and shock needed in most runs. It includes the rule that the check-in never repeats a question already answered.
 
-**Week 3. Plain words and warm openings.** Tasks 2.3 and 2.4. The check-in has no jargon in its own turns, and starts from what the person said last time, with good news first when there is some. "Past words brought back" must not go down.
+**Week 2. One question at a time, and the lead's name in every message about them.** *Done 28 September: 0 turns with two questions on run-14.* These are tasks 2.1 and 2.2 in `docs/tasks.md`. The check is that "turns that ask more than one question" reaches 0.
 
-**Week 4. Asking for proof kindly, and never commenting on short answers.** Tasks 2.5 and 2.8. Groundwork says what the proof is for, and picks up from the last clear thing the person said. "Proof asked for" must not go down.
+**Week 3. Plain words and warm openings.** *Built and measured twice, 28 September (`edcaf719`, `7bdbec5b`). The jargon bar needs Hafsah's decision on people's own words.* Tasks 2.3 and 2.4. The check-in has no jargon in its own turns, and starts from what the person said last time, with good news first when there is some. "Past words brought back" must not go down.
 
-**Week 5. Suggested answers under each question.** Task 2.6. The engine returns two to four suggested answers with each question (screens request 7a).
+**Week 4. Asking for proof kindly, and never commenting on short answers.** *Built 28 September (`a0449e5a`, `f46a4b42`), being measured.* Tasks 2.5 and 2.8. Groundwork says what the proof is for, and picks up from the last clear thing the person said. "Proof asked for" must not go down.
+
+**Week 5. Suggested answers under each question.** *Built 28 September (`e313b579`), being measured.* Task 2.6. The engine returns two to four suggested answers with each question (screens request 7a).
 - **Screens later:** showing them. The screens already draw them when they arrive.
 
-**Week 6. The three-part ending, with a mark on each line.** Task 2.7: proven, confirmed, their word, or memory. This needs one new field, for "confirmed by the person who received the work" (screens request 7b).
+**Week 6. The three-part ending, with a mark on each line.** *Built on the engine's side 29 September (`47b4d04c`, `eebc48a8`); the screens need to fetch the card from the transcript after the close, and run-17 is measuring it.* Task 2.7: proven, confirmed, their word, or memory. This needs one new field, for "confirmed by the person who received the work" (screens request 7b).
 - **Screens later:** the end card, and the Done page's "what changed".
 
-**Week 7. The lead confirms the exact question (decision 34).** When the lead sets a question for a person, Groundwork writes the question once, the way it will ask it. The lead sees exactly that and confirms it, and the check-in then asks it word for word.
+**Week 6b. The same four marks on every line of the reports (decision 43).** The prototype marks each line a lead reads: "Proven", "Confirmed by the person who received it", "Only someone's word", "From memory only". Today the reports mark only lines with a figure ("counted", "estimated", "from memory"). This uses the field week 6 adds.
+- **Screens later:** the legend and the marks on the report pages.
+
+**Week 7. The lead confirms the exact question (decision 34).** *Built on the engine's side 28 September; the screens' card is theirs.* When the lead sets a question for a person, Groundwork writes the question once, the way it will ask it. The lead sees exactly that and confirms it, and the check-in then asks it word for word.
 - **Screens later:** the confirmation card on the Context page.
 
 ---
@@ -57,7 +62,12 @@ The order follows Hafsah's: the check-in conversation first; then judging, and m
 - **Needs Hafsah first:** whether the product itself starts reviews, and how often.
 - **Screens later:** any changes to the reviews board.
 
-**Week 12. Who is slipping, said as what happened.** Each person's line on the board says what needs the lead. It never says "nothing here needs you" and then names a blocker. It fixes "waiting 0 days". The alert reads like the prototype's "Samuel has chased the same 5 leads for 3 check-ins". Never a label on a person.
+**Week 12. Who is slipping, said as what happened.** *Partly done 28 September (`b450fbf2`): no row says "nothing here needs you" and then gives something to ask, "waiting 0 days" is gone, and nobody is asked to speak to a thing. The alert in the prototype's words is still to do.* Each person's line on the board says what needs the lead. It never says "nothing here needs you" and then names a blocker. It fixes "waiting 0 days". The alert reads like the prototype's "Samuel has chased the same 5 leads for 3 check-ins". Never a label on a person.
+
+**Week 12b. The weekly report's sentence about each person (decision 43).** The prototype's weekly report says, in one plain sentence, how people's accounts read, for example "Aisha and Miriam consistently get to specific customer needs and next steps." The engine has no weekly report yet (screens request 9). This writes that sentence from the record, never from the rating itself, and never as a label.
+- **Screens later:** the weekly report page.
+
+**Week 12c. An email address is never used as a name** (screens requests 56, 58 and 65). A lead is shown the address of someone who has not given a name, as a stand-in for the name, and the model then writes it into sentences such as "Start with zawadi.u8@example.test." Say "a colleague" in sentences, as everywhere else, and show the address only where the lead needs it to tell who is who, beside the name rather than in its place. The same person is counted in one place, so "4 of 5" and "4 of 6" cannot both appear (request 56).
 
 ---
 

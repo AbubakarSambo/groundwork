@@ -3832,7 +3832,9 @@ export class GroundsService {
     }
     const moved = await this.prisma.groundCommitment.update({
       where: { id: row.id },
-      data: { status: clean },
+      /* When it was settled, so a count over four weeks reads the date it was settled (week 9). By
+         hand, so no check-in settled it; moved back to open, it is not settled at all. */
+      data: { status: clean, settledAt: clean === 'DONE' || clean === 'NOT_DONE' ? new Date() : null, settledInCheckInId: null },
       select: { id: true, text: true, status: true, participantId: true },
     });
     this.logger.log(`Ground ${groundId}: somebody moved their own to-do to ${clean}.`);
@@ -5393,7 +5395,8 @@ export class GroundsService {
         .map((pid) => {
           const p = others.find((x) => x.id === pid);
           const named = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
-          return named || p?.email || 'somebody';
+          /* Never an address as a name (Hafsah, 28 Sep 2026; screens requests 56, 58, 65). */
+          return named || (p as any)?.nameGiven?.trim() || 'a colleague';
         });
       throw new BadRequestException(
         `${who.join(' and ')} ${who.length === 1 ? 'has' : 'have'} already given an account here, so this is not a test any more - deleting it would destroy what they wrote, and they cannot get it back. Close the check-in instead: everybody keeps their record.`,

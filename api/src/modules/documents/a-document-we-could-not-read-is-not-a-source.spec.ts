@@ -44,7 +44,9 @@ describe('every reader of document content asks', () => {
 
   it('the anchoring pass, which is the one that can make an apology into evidence', () => {
     const conv = CODE(['conversation', 'conversation.service.ts']);
-    expect(conv).toMatch(/const readable = onlyWhatWeCouldRead\(docs\)/);
+    /* documentsThatMayBack is the one list both the anchoring pass and the end card read. */
+    expect(conv).toMatch(/return onlyWhatWeCouldRead\(docs\);/);
+    expect(conv).toMatch(/const \[readable, entries\] = await Promise\.all\(\[\s*this\.documentsThatMayBack\(/);
     /* And it must index the filtered list, or the model's [2] is a different document from ours. */
     expect(conv).not.toMatch(/docs\[[bd]\.document\]/);
   });

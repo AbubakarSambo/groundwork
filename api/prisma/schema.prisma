@@ -1629,6 +1629,18 @@ model ConversationTurn {
   /// session, and the guard on check-in-scoped turn loads is right to refuse it. A count is not
   /// content; this makes the count available without the content.
   askedFor  String?  @map("asked_for")
+  /// TWO TO FOUR SHORT ANSWERS THE PERSON MIGHT GIVE TO THIS TURN'S QUESTION (task 2.6, screens
+  /// request 7a). Built from the question and their own last answer only. Stored so they survive a
+  /// reload. Null for a turn that asks nothing. See conversation/suggested-answers.ts.
+  suggestedAnswers Json? @map("suggested_answers")
+  /// THE END CARD, ON THE TURN THAT CLOSED THE CONVERSATION (task 2.7, screens request 7b): what is
+  /// now in the person's record and how each line is known. Served to that person only, on the
+  /// transcript. See conversation/the-end-card.ts.
+  endCard     Json? @map("end_card")
+  /// THE RECORD LINES THE CARD WAS BUILT FROM, NOT YET WRITTEN. Nothing reaches record_entries until
+  /// the person finishes; then exactly these are written, unless they said more after the card.
+  /// Never served to anybody.
+  recordDraft Json? @map("record_draft")
   createdAt DateTime @default(now()) @map("created_at")
 
   checkIn CheckIn @relation(fields: [checkInId], references: [id], onDelete: Cascade)
@@ -1699,6 +1711,12 @@ model RecordEntry {
   /// or straight marks). A line the record reader tidied, joined or bracketed stays false. A report
   /// may only quote a line that is true. See reports/a-quote-is-what-they-said.
   saidWordForWord      Boolean        @default(false) @map("said_word_for_word")
+  /// CONFIRMED BY THE PERSON WHO RECEIVED IT (week 6, the prototype's mark in B4 one-session.txt and
+  /// team-report.txt). Set when the colleague who was waiting on this work says, in their own check-in,
+  /// that it is no longer in their way, and this is the line that says it was delivered. Never set by
+  /// the person themselves, and never by a departure. See conversation/confirmed-by-who-received-it.ts.
+  confirmedAt              DateTime? @map("confirmed_at")
+  confirmedByParticipantId String?   @map("confirmed_by_participant_id")
 
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
   checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
@@ -5194,6 +5212,12 @@ model GroundCommitment {
   /// The sessions they said it again in, unresolved. Saying it again is not a second commitment -
   /// it is the same one, still open, and this is what makes that countable.
   saidAgainIn Int[] @default([]) @map("said_again_in")
+  /// WHEN IT WAS SETTLED, DONE OR NOT DONE, so "kept in the last four weeks" counts by when it was
+  /// settled, not when it was promised (week 9). Null while it is open, and on rows settled before
+  /// this column existed.
+  settledAt           DateTime? @map("settled_at")
+  /// The check-in whose own words settled it. Null when a person settled it by hand.
+  settledInCheckInId  String?   @map("settled_in_check_in_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

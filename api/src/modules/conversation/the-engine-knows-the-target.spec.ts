@@ -99,7 +99,9 @@ describe('and the service actually fetches them', () => {
 
   it('and passes them into the intake block rather than fetching and dropping them', () => {
     /** Fetched, typed, passed, rendered. Any one of the four missing makes the other three inert. */
-    expect(CODE).toMatch(/objectives: \(ground as any\)\.objectives \?\? \[\]/);
+    /* Since week 0 they pass through the rule for whose number is whose business first: the targets
+       this person may see, not every target on the check-in. Stricter, not weaker. */
+    expect(CODE).toMatch(/objectives: this\.theTargetsThisPersonMaySee\(ground as any, checkIn as any\)/);
   });
 });
 

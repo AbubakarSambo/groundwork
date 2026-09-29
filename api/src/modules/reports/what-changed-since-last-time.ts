@@ -48,7 +48,7 @@ export function whatChangedSinceLastTime(now: ARound, before: ARound | null): st
 
   const parts: string[] = [];
   if (carried.length) {
-    parts.push(`${carried.length === 1 ? 'One difference is' : `${carried.length} differences are`} still open from last time: ${andList(carried)}`);
+    parts.push(`${andList(carried)} ${carried.length === 1 ? 'is' : 'are'} still open from last time`);
   }
   if (gone.length) {
     parts.push(`${andList(gone)} ${gone.length === 1 ? 'is' : 'are'} no longer showing as a difference`);
@@ -57,9 +57,10 @@ export function whatChangedSinceLastTime(now: ARound, before: ARound | null): st
     parts.push(`${andList(fresh)} ${fresh.length === 1 ? 'is' : 'are'} new this round`);
   }
   if (now.answered !== before.answered) {
-    parts.push(`${now.answered} of the check-in answered this round, against ${before.answered} last time`);
+    parts.push(`${now.answered} ${now.answered === 1 ? 'person' : 'people'} answered this round, against ${before.answered} last time`);
   }
 
   if (!parts.length) return null;
-  return `Since the last round: ${parts.join('. ')}.`;
+  /* Full sentences, never a label and a colon (28 Sep 2026). Each topic starts its own sentence, so it keeps its own capital. */
+  return `This is what changed since the last round. ${parts.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('. ')}.`;
 }

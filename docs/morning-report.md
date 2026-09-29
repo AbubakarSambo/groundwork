@@ -6,6 +6,174 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 29 SEPTEMBER, AFTERNOON: A NEW SESSION PICKS UP FROM THE HANDOVER
+
+**Why run-17 was slow.** I read its own logs: the driver's log and the API's log, both kept in the old session's scratch folder, and the run's folder.
+- It ran for 38 minutes, not 90. It started at 11:55 and was stopped at about 12:33.
+- The pace was normal. Sales, the longest scenario, took 30 minutes. On run-16 it took 36 minutes. Each check-in turn took as long as before.
+- **It was not the model's limits.** There was not one "too many requests" error in the whole log. The model timed out 5 times while reading a check-in, and each worked on its first retry.
+- **It was not the computer.** It has 10 cores and 16 GB, and the load was about 2.
+- **The cause was that the run went in one line.** Run-16 ran in three parts at once, and took just under two hours. In one line the same 24 scenarios take about five hours. In 38 minutes, one line finishes sales and part of loans, which is what happened.
+- One real cost is new. Closing a check-in now takes 10 to 37 seconds, because the end card reads the record. The person does not wait for it, because it is built after the goodbye. But a scenario with nine people, like loans, is a few minutes longer.
+- So run-18 goes in three parts, as run-16 did.
+
+**The old process on port 3101 is stopped.** Hafsah approved it. It was the API built on 20 September, started from `api/dist/main` with no parent left, writing to `/tmp/api-dev.log`. It made no calls to the model. It was still running the scheduled jobs against the local test database: reminder nudges, "your check-in is waiting" emails (written to the log only, never sent), and webhook retries. I checked afterwards: the process is gone, and nothing listens on port 3101.
+
+---
+
+## HANDOVER, 29 SEPTEMBER 2026: WHERE THIS WORK STOPPED
+
+The work is moving to a new session on another account. Everything below was committed and pushed to `mine/wip/plain-reports`. The last commit before this note was `09fe5c0e`.
+
+### What is finished
+
+- **Week 6, the end card** (`47b4d04c`). When a check-in closes, the engine builds the prototype's "What is now in your record": each line with how it is known. It is built after the goodbye, because reading the record takes 10 to 47 seconds, and kept on the closing turn. The transcript serves it as `endCard`, only to the person themselves. Nothing reaches the record before they finish. Then exactly the card's lines are written, unless they said more after it. Migration `20260929090000_the_end_card_on_a_turn`.
+- **Week 6, confirmed by the person who received it** (`eebc48a8`). This is the new field on record lines (`confirmedAt`, `confirmedByParticipantId`), with the rule Hafsah agreed. When the colleague who was waiting says in their own check-in that it is no longer in their way, the model picks the one line that says it was delivered, and code checks that the line is about the same thing. Migration `20260929100000_a_line_confirmed_by_who_received_it`.
+- **Week 6b, the four marks on the session report** (`dafcfea1`, `1dbb26b6`). Every line in the session report's sections carries `mark` (proven, confirmed, said or memory), and each person's lines in "what each person said they did" carry `lineMarks`. One rule decides it for both the reports and the end card: `api/src/modules/reports/how-a-line-is-known.ts`. A line counts as proven only by a document the person added themselves.
+- **Week 9, first step** (`aa91a8d7`). After each check-in, what the person says about their earlier open commitments settles them as done or not done. Anything else stays open. Migration `20260929110000_when_a_commitment_was_settled`.
+- **Week 0, first step** (`55d13abb`). A colleague's hidden target is no longer given to the model that talks to a person in their own check-in.
+- **Answers to the screens workspace:** request 7b part (b), and part of request 2, in `docs/requests-to-engine.md`.
+- **The bug-fix branch** `fix/privacy-conversation-crash` (folder `groundwork-pr1`, local branch `wip/fix-privacy-conversation-crash`, up to `a89fd13f`) is saved on this computer only. This workspace may push only `wip/plain-reports`. Its last commit, the labels and the person's own session, is unfinished and untested. See `docs/pr-1.md`.
+
+All three migrations are applied to the local test database `gw_pw9_1786222102` only.
+
+### What is in progress, and exactly where it stopped
+
+- **No step is half done.** Every change above is committed with its tests.
+- **Run-17 was stopped by hand** at 29 September, early afternoon, because Hafsah asked for nothing to be left running.
+  - It had finished 1 of 24 scenarios: sales, in `api/journey/all-24/run-17/sales.json`. It was part way through loans.
+  - It ran on the build of `eebc48a8` (weeks 6 and 6-confirmed, nothing later), in one line rather than three parts, which is why it was slow.
+  - It has not been scored.
+  - The local API it used, on port 3000, was stopped too.
+- **Nothing that this session started is still running.** One older API process from 20 September is still listening on port 3101. This session did not start it, so it was left alone.
+- **Full test suite: not yet run** on the latest commit. By part, these passed: conversation, documents, people, grounds, reports and board (the last combined run was 4,677 tests across reports, board and conversation).
+
+### What comes next, in order
+
+1. Run the whole API test suite once: `cd api && npx jest --maxWorkers=3`. Before this work, three tests already failed on the base at `80beab98`, so compare against those.
+2. Start a fresh full run, run-18, on the latest commit, in three parts as run-16 was (`api/journey/chunked.sh`). Rebuild the API first (`npm run build`), then start it from `dist/main` so edits cannot restart it mid-run. Score it with `tools/score_run.py --against docs/baseline.json`. Check that no engine-value number drops. Pay most attention to anything about the record, since the record is now written from the end card's lines.
+3. Read what a person sees for the end card and the marks, as the lead, a participant and an admin. The reviewer's step has not been done for weeks 6, 6b, 9 and 0.
+4. Tick task 2.7 only after steps 1 to 3 pass. The screens also need to fetch the card from the transcript after the close (see request 7b).
+5. Then carry on with `docs/weekly-plan.md`:
+   - week 6b's remaining parts (team report lines and the board's lines), once the stages question below is answered;
+   - week 9's count, once the privacy question below is answered;
+   - week 0's next step, once option 1, 2 or 3 below is chosen;
+   - then weeks 10 onward.
+6. Merge the screens branch every few days: `git fetch mine`, then `git merge mine/wip/prototype-ui`. It was last merged on 28 September, night.
+
+### How to check on anything that runs
+
+- A run writes to `api/journey/all-24/run-N/`. Each finished scenario gets a `.json` file, and `run.log` shows the scenario it is on.
+- The API's own log shows the new steps as they happen:
+  - "end card with N line(s)"
+  - "wrote the N line(s) the end card showed"
+  - "settled N of M open commitment(s)"
+  - "confirmed-by-who-received-it"
+- Small tools that read without writing are in `api/journey/`, which git ignores: `peek-end-card.ts`, `peek-confirmed.ts`, `peek-session-marks.ts` and `peek-the-prompt-targets.ts`. The usage is at the top of each.
+
+### What needs Hafsah
+
+1. **Who may see "kept 11 of 20 in the last 4 weeks"?** Each person's load across check-ins is private under the rules, so today only that person could see it. Showing it to the lead would change a privacy rule.
+2. **Can proof settle a commitment?** For example, a document the person adds, or a colleague confirming it arrived. Today a commitment and a record line are not linked.
+3. **Who can mark a to-do as done?** The lead can mark someone else's to-do done through the Context chat (`makeTheChange` in `grounds.service.ts`), while the to-do button says only its owner may move it.
+4. **Where a deal's stages come from.** The team report's "What moved" needs the organisation's own stage names (Contacted, Need, Pitched, Qualified, Quoted). The engine has no stages anywhere.
+5. **Week 0's next step touches the must-keep list.** The shared team report and the picture's opening are written from each person's target numbers. Taking them out would weaken "notices what does not add up". The options are: (1) leave them in, with the net that removes them from what others are served; (2) give the model the gap without the number, then check with a run; (3) write a separate copy for the lead. The recommendation is option 2.
+6. **A total can give a number away.** "Yours is 21, of 270 across ten people" gives away a colleague's number when there are only two people. The fix is to show a total only when three or more people have a number. It tightens a privacy rule, so it needs a yes.
+7. **The bug-fix branch cannot be pushed from this workspace.** If it should be saved to GitHub, push it from the `groundwork-pr1` folder with `git push mine wip/fix-privacy-conversation-crash`.
+8. The earlier items further down this report are still open: the jargon bar, the ratings decisions, and the screens' requests marked Open.
+
+---
+
+## 28 SEPTEMBER, NIGHT: THE PULL REQUEST WORK IS STOPPED, AND THE BRANCH IS SAVED LOCALLY
+
+Hafsah decided there will be no pull requests for now. The whole build is finished first and released once, at the end. I stopped both helpers: the one building the last privacy fixes on the bug-fix branch, and the one researching the second pull request.
+
+The bug-fix branch is `fix/privacy-conversation-crash`, in the folder `groundwork-pr1`, and it is committed up to `a89fd13f`. Nine of its ten fixes are finished and tested. The last one (labels, the person's own session and the coaching note) was stopped partway. It compiles, but it has no tests yet. The details are in `docs/pr-1.md`. `docs/pr-2-plan.md` records that the research had found nothing yet when it was stopped.
+
+**Needs Hafsah: the push of the bug-fix branch was refused.** The safety check refused `git push mine fix/privacy-conversation-crash:wip/fix-privacy-conversation-crash`. It then refused `git push mine wip/fix-privacy-conversation-crash` as well, after I had given the commit a local branch of that name. Those two were refused because of how the command was written (a folder change and a pipe on the same line). Then I tried the bare `git push mine wip/fix-privacy-conversation-crash` from this workspace, and it was refused for a clear reason: each workspace may push only its own branch, and this one is `wip/plain-reports`. I stopped there. The branch exists only on this computer. If you want the copy saved to GitHub, you can push it yourself from the `groundwork-pr1` folder with `git push mine wip/fix-privacy-conversation-crash`.
+
+Next, I am back on `wip/plain-reports`: first the hidden-target tests, then week 6 of `docs/weekly-plan.md`.
+
+## 29 SEPTEMBER, MORNING: WEEK 6 BUILT ON THE ENGINE'S SIDE, AND RUN-17 STARTED
+
+**The end card** (`47b4d04c`). When a check-in closes, the person now gets the prototype's "What is now in your record": each line, and how it is known. For example, from a real sales check-in in the test database:
+- "I have 31 applications that I've taken from businesses." with "You gave this from memory. Nothing written backs it yet."
+- "My part is to contribute 12 approved facilities to the team target." with "You said this."
+- On a new hire's check-in with documents: "I was told to go direct to the members without waiting for an introduction." with "From the document you added."
+- Under "What happens next", at most one line: "If you have something written for any of these, such as a message or a photo, add it. Then that line counts as proven."
+
+Three things I found by reading real cards, and fixed:
+- A target with a number in it was called "from memory". Now only a line about what happened can be.
+- The "next" line said "shows this" under six lines. It now says "any of these".
+- Reading the record takes 10 to 47 seconds. So the card is built after the goodbye, never before it.
+
+That last point means the screens have to fetch the card from the transcript after the close. I wrote this in the answer to request 7b.
+
+Nothing reaches the record before the person presses finish. When they do, exactly the lines the card showed are written. If they said more after the card, the record is read again.
+
+**Confirmed by the person who received it** (`eebc48a8`). This is the new field, with the rule I proposed and you said yes to. The colleague who was waiting on the work says, in their own check-in, that it is no longer in their way. The model then picks the one line of the other person's that says they delivered it, and code checks that the line is about the same thing.
+- Read on 20 real waits in the test database: no line was wrongly marked.
+- One was wrongly marked before I added the "same thing" check. A wait for "clarity on Wanjiru's project" was matched to a line about a letter.
+- A line saying the deck was sent is confirmed. A promise to finish the pricing sheet is not.
+
+**Tests:** 2,816 in the conversation, people and documents parts pass. Four tests that read the source now point at where the record read lives; they check the same things.
+
+**Run-17** is running on this build, to check that no engine-value number drops now that the record is written from the card.
+
+**Week 6b, the marks on the reports** (`dafcfea1`, `1dbb26b6`). Every line in the session report's sections now carries its mark. So does each line of "what each person said they did", as a list beside the lines. The end card and the reports use one rule, so a line reads the same on both.
+
+Reading a real report found one thing, which I fixed. The lead's workplan had made a participant's "The build is on track for the 14th" and "I am waiting on legal" read as proven, because the plan mentions the 14th. A plan is not proof, so a line is now proven only by a document the person added themselves.
+
+Tests: 2,222 in reports and board, and 4,677 across reports, board and conversation, all pass.
+
+**Needs Hafsah: the stages of a deal.** The prototype's team report shows, under "What moved", each deal with its stages marked: Contacted, Need, Pitched, Qualified, Quoted ("Ringed is someone's word; filled is proven"). The engine has no idea of stages or deals anywhere. Nothing says where an organisation's stage names come from: the lead's rules in Context, a template, or something the lead sets. Until you decide, I have left `stages` out (screens requests 2 and 7c). The screens draw nothing when it is missing.
+
+**Week 9, first step: a commitment is settled from what the person says next time** (`aa91a8d7`). The next check-in already asked "what happened" about each open commitment, but nothing wrote the answer back. Now, after each check-in, the person's own words are read against their commitments that were open when it started.
+- A commitment is marked done when they plainly say they did it.
+- It is marked not done when they say they didn't and give no new time for it.
+- A new date, work in progress, "partly" and silence all stay open, because a promise that moved is not a missed one.
+
+Checked live twice with the real model. Five commitments came back as done, not done, open (new date), open (half done) and open (not mentioned), both times.
+
+**What already existed, so I did not rebuild it:** commitments are kept in four places (`Commitment`, `PersonObjective`, `GroundCommitment`, `OpsCommitment`). Kept could already be set by hand, and "finished" was already read into `PersonObjective`. Nothing ever recorded "missed", and no "kept 11 of 20" count exists anywhere.
+
+**Needs Hafsah, three questions about week 9:**
+1. **Who may see "kept 11 of 20 in the last 4 weeks"?** Your rules say each person's load across check-ins is private, always. The count is about one person, so today it could be shown only to that person. If the lead should see it too, for one check-in, that is a change to a privacy rule, so it is yours to decide. I have not built the count yet, because nothing reads it until week 10's suggestions.
+2. **Can proof settle a commitment?** For example, a document the person adds, or a colleague confirming the work arrived. Today the two are not linked: a commitment and a record line are separate rows. Linking them means the model matches a line to a commitment, as it does for "confirmed".
+3. **The lead can mark someone else's to-do as done.** They can do this by confirming a sentence in the Context chat (`grounds.service.ts`, `makeTheChange`), while the to-do button says "This one is somebody else's to move." These disagree. Which way should it go?
+
+**Run-17** is running in one line rather than three, at about 12 minutes per scenario, so it will take about five hours. One card has already been built in it: 6 lines, on a real close.
+
+**Week 0, first step: a colleague's hidden target is not given to the model that talks to you** (`55d13abb`). I mapped every place a target reaches the model. The worst was the check-in conversation itself. On a check-in where people see only their own targets, each person's model was still given everybody's numbers, so it could say a colleague's number to them. Now it gets exactly the targets their screen shows, and the lead gets all of them.
+
+Checked on a real sales check-in's prompt: the colleague's 5,200,000 and 4,000,000 are not in it, in any spelling, and the person's own 3,400,000 and 3,000,000 are. The stored engine rule already says the person "has been shown these on screen". That is now true, so no prompt text changed.
+
+**Needs Hafsah, week 0's next step, because it touches the must-keep list.** The team report and the picture's opening are written once and read by everybody. Their text is written from each person's own targets, for example "set 21, has said 14". Taking the numbers out, as week 0 says, would weaken "notices what does not add up: their number against the lead's", which is on the must-keep list (`docs/engine-value.md`). Three ways to go:
+1. Leave the numbers in, and keep relying on the net that takes them out of what other people are served. This is what happens today, and nothing is lost.
+2. Give the model each gap without the number, for example "has said less than the target set for them". The report still notices the difference, and the lead still sees the numbers on the board. It needs a run to show the number of differences found does not drop.
+3. Write the lead's copy separately, with the numbers. Nothing is lost, but it costs one more model call per report.
+
+My recommendation is 2, measured by a run.
+
+**Needs Hafsah: a total can give a number away.** A person is told "Yours is 21, of 270 across ten people". With only two people, the total minus your own number is your colleague's number. The same sum goes into the check-in in one place. The fix is to give the total only when three or more people have a number. That changes a privacy rule, even though it tightens it, so I have not made it.
+
+## 28 SEPTEMBER, NIGHT: BACK ON THE WEEKLY PLAN
+
+**The hidden-target tests are already done.** They are the twelve cases in `d8fa3648`: a pronoun, the number two and three sentences after the name, the number before the name, a list, the target in words, and a row whose name and number are in different fields. All of them are now taken out.
+
+**The screens branch is merged in** (16 commits, no conflicts). It includes a new `Mark` part on the screens, which is what week 6's marks will feed.
+
+**Week 6: the prototype does have "confirmed by the person who received it".** You asked me to check before adding the field. Here is where it is:
+- The mark itself is in the legend of the one-session report (`docs/prototype/screens/B4-reports-and-sharing/one-session.txt`, line 126) and of the team report (`team-report.txt`, line 130). The four marks are "Proven", "Confirmed by the person who received it", "Only someone's word" and "From memory only".
+- The kind of line it marks appears in the check-in ("The buyer has now confirmed the meeting. That is in your record.", `B3-the-check-in/check-in-phone.txt`, line 10), in the person's own report ("Lakeside's buyer confirmed your meeting on the 29th, as you said.", `own-report.txt`, line 28), and on the You board ("Operations confirmed they now match.", `you-board-daniel.txt`, line 61).
+- The check-in's own end card (`B3-the-check-in/check-in-end-card.txt`) does not use it. Its lines say "From the photo you added" and "You said this." That makes sense: a line said a minute ago cannot have been confirmed yet by the person who received the work. So the field matters most for the reports (week 6b).
+
+**Week 6 in two steps.** First, the end card, with three of the four marks: proven, their word, and memory. That is being built now. Second, the new field for "confirmed". The screens send the four marks as `proven`, `confirmed`, `said` and `memory` (screens request 7b).
+
+One thing the prototype does not say is **who confirms a line, and how**. My proposal: a line is confirmed when the person who was waiting for that work says, in their own check-in, that it arrived. The engine already records who waits on whom for what. I will build the field and this rule unless you want it done another way.
+
+How the end card gets its lines: record lines are written today only when the person presses "That's right, finish". But the card has to show them before that ("Is anything wrong?"), and 49 places read record lines without waiting for a check-in to finish. So the engine now reads the record at the closing reply **without storing it**, builds the card from those lines, and keeps them with the closing turn. When the person finishes, exactly those lines are written, so the card and the record match. If they change something first, the record is read again, as it is today.
+
 ## 28 SEPTEMBER, DAY: HAFSAH'S DECISIONS ON RATINGS AND PATTERNS
 
 **Ratings are never sent to anyone but the person they are about** (`828b4837`, decision 38 in `docs/decisions-merged.md`).
@@ -54,7 +222,21 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 - **Seen for real in the local test database.** A note shared with everyone names `harvestline-q4-targets.xlsx`, a file only its owner can open, and participants were sent it. I will check it again as a participant once the API is rebuilt.
 - **What stays:** what a document showed can still be said. Only which file it was is the owner's to share.
 
-**Run-14, the full run, started at 10:28 on `9e808ab9`,** with every fix above in it. It checks "proof asked for" after week 2, and task 1.5's bar again.
+**Run-14, today's full run, on `9e808ab9`, finished at 11:45.** It has every fix above except week 3 and "Nothing checkable".
+- **The checker fails it on one number: "proof asked for" is 37, against a baseline of 42.** The allowance is 10%, so 38 would have passed. Everything else is at or above the baseline.
+- **This fall started before week 2.** Across full runs, "proof asked for" was 50, 53 and 53 on runs 8, 9 and 10, then 42 on run-12 and 38 on run-13, both before week 2, and 37 now. The one-question rule asked the model again 24 times in run-14, but the log does not say which question was dropped, so I cannot show that week 2 cost any proof questions. I have kept week 2. Week 4 of the plan is about asking for proof kindly, and its bar is exactly that this number goes up, so that is where I will fix it. Per scenario the drop is mostly seniorhire, which went from 9 and 8 to 3, 2 and 4.
+- **For the first time on a full run, no turn asks two questions:** 0, against 37 at the baseline. This is task 2.2's bar.
+- **Every problem count is 0,** the third full run in a row, so task 1.6 holds.
+- **Quotes:** 619 of 619 served are word for word in the record.
+- **The lead's private words:** none reached an invited person, the fourth full run in a row. The helper flagged six places. Four were the person's own words or the targets this check-in is set to show. In the other two, Groundwork told Patience "after six years", which is in the check-in's brief, not only in the lead's description of her.
+- **Jargon in Groundwork's turns: 29**, against a bar of 10.5. Week 3 is not in this run.
+- **The judgements: 20 could be tested, and I read 18 of them as clearly right. Two more, renewal and workplan, are close calls I would also count, which would make 20 of 20.**
+  - Sales and openread were flagged incomplete, so they are left out. Advisor and shock could not be tested again: Peter never mentions the banks, and nobody mentions the missed QBRs or the champion leaving.
+  - **Snapshot is right for the first time:** "Sign the lease document for the office move", which is waiting on the lead.
+  - **Renewal**, a close call: it says there is "a single operational cause that has been known since March" and stops the talk being about the partner's performance, but it does not say in so many words that the cause is our own change.
+  - **Workplan**, a close call: it finds both leads planning work with the same supplier, and says the plans are over budget, but calls it "two different projects" rather than one contractor counted twice.
+  - **So run-14 meets your bar for task 1.5 on its own.** Run-13 did not, so the next full run decides it.
+- **"Nothing checkable" and three faults in the lead's rows, checked live after this run** (`b450fbf2`). On openread the lead now reads "Nothing Kofi Boateng said this round can be checked yet", then "Ask Kofi Boateng for a photo, a message or a document that shows what moved". While reading the rows I fixed three faults that were already there: "Ask Jide Sanusi to speak to the handover from the current finance manager rather than write to them", "has been waiting 0 days", and a row saying "nothing here needs you this week" and then giving something to ask.
 
 **Hafsah's correction: "Nothing checkable" is back on the lead's board** (`01379c6e`, decision 40 in `docs/decisions-merged.md`).
 
@@ -93,7 +275,147 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
   2. Make the runner use the streamed route, so that the runs measure what people get.
   The second can be done now, without changing what anyone sees. I would do both, in that order.
 
-**What is next, in your order:** read run-14, on a build with every fix, to check "proof asked for", then the weekly plan.
+**Week 3, measured live twice and kept** (sales, seniorhire and loans, 12:02 to 12:51).
+
+| Sales, seniorhire and loans together | Run-12 | Run-13 | Run-14 | Week 3, first | Week 3, second |
+| --- | --- | --- | --- | --- | --- |
+| Jargon in Groundwork's turns | 17 | 20 | 19 | 21 | 15 |
+| Proof asked for | 10 | 8 | 11 | 13 | 15 |
+| Specific detail asked for | 31 | 30 | 46 | 36 | 46 |
+| Blocker checked | 10 | 17 | 14 | 16 | 23 |
+| Past words brought back | 34 | 32 | 33 | 28 | 28 |
+| Commitments recorded | 31 | 44 | 30 | 29 | 25 |
+| Turns that ask more than one question | 8 | 10 | 0 | 0 | 0 |
+
+- **Jargon went down only a little, as expected.** The new check fired 9 times in the first set and made the reply plainer 3 times. Of the 21 jargon words left, 15 were the person's own word handed back, mostly "pipeline". That part is your decision, above.
+- **"Past words brought back" was 28 in both sets.** That is inside the spread for these scenarios, 26 to 37 across eight earlier sets, and the openings still start from last time in 13 and 11 of 14 later check-ins. So I kept week 3, but I am telling you plainly that it came in at the low end both times. The next full run will show whether it holds.
+- **A fault found in the openings, and fixed** (`8d86e0db`): "Since then, 5 of the 4 people involved in this check-in have submitted". It came from an older line that counted finished check-ins rather than people.
+- **Nothing in the "problems in what people read" list came up.**
+
+**Weeks 4 and 5 are built, and not yet measured live.**
+- **Week 4, task 2.5, asking for proof kindly** (`a0449e5a`). When someone says a piece of work is done, such as "I submitted the last of the eleven on May 23rd", and nothing shows it yet, Groundwork asks once, kindly, for the smallest thing that would show it, and says what it is for: "A photo of the signed order is enough. Then it counts as proven." Offline on run-14 it would have come up in 17 of 87 check-ins, 6 of them ones that never asked for proof at all.
+- **Week 4, task 2.8, never commenting on shorter answers** (`f46a4b42`). The prompt already forbids it, and no turn in seven runs did it. The remarks are now also on the list of phrases the check-in never writes, so a slip is rewritten rather than sent.
+- **Week 5, task 2.6, suggested answers** (`e313b579`). Each question now comes with two to four short answers the person might give, such as "Sent it. They want to wait until after December." and "Not yet.". They are built only from the question and the person's own last answer. They are stored on the turn, so they survive a reload, which needs one new empty column. That migration is applied only to the local test database.
+
+**What is next, in your order:** measure weeks 4 and 5 live, twice, then carry on with the weekly plan.
+
+## 28 SEPTEMBER, EVENING: THE PRIVATE FILE AND THE HIDDEN TARGETS, CHECKED LIVE (`d5f0e840`)
+
+**The live check found a fault the tests had missed, and it is fixed.**
+- **How it was checked.** No scenario has either case, so I added both to run-16's sales check-in, through the product's own API, as the lead would:
+  - Bisi, the lead, set targets for Kwame (17) and Femi (11), each private to that person.
+  - She attached a private file, `bisi-q4-plan.txt`.
+  - One line of her record named the file and both targets.
+  - The report was then rebuilt with the real model, and I read the board and every report read as Bisi, Kwame, Femi and Ngozi.
+- **The file held:** only Bisi, whose file it is, ever saw its name.
+- **The targets did not:** Kwame, Femi and Ngozi could each read the others' numbers on the session report and the rounds. Two causes:
+  - The check for hidden targets ran before labels were turned into names. So a line that still said "Participant B" hid nothing. Labels now become names first.
+  - "Kwame has three so far. … A target of 17 approved facilities appears in the record…": the sentence with the number did not name him; the one before it did. A sentence now goes when it, or the one just before it, names the person. A sentence further away stays, so "the team has 11 approved facilities" is kept.
+- **Live again after the fix:** Bisi reads every target she set. Kwame and Femi each read only their own, and Ngozi reads neither. Only Bisi reads the file's name.
+- **Cleaned up afterwards:** the added targets, file and record line were removed, and the report was rebuilt without them.
+- **All 10,537 API tests pass.** This joins the release: it fixes a problem the release has.
+- **Next:** the weekly plan from week 1, in small tested steps.
+
+## 28 SEPTEMBER, EVENING: NEVER AN EMAIL ADDRESS AS A NAME (`fdc1439b`)
+
+- **Before:** a lead was shown the address of someone who had not given a name, in place of their name. The model then wrote it into sentences such as "Start with zawadi.u8@example.test."
+- **Now:** nobody is ever shown an address as a name. A person with no name is "a colleague", or "another colleague", as everywhere else. I also fixed four places that fell back to the address in words people read.
+- **Text already stored with an address in it** is read once more when it is served, and the address becomes the name or the plain words.
+- **Checked live** on run-16's seniorhire check-in: a stored "Start with <Tobi's address>." reads "Start with Tobi Adewale." to the lead and to Tobi. The stored report was put back exactly afterwards.
+- **One thing to know:** a lead still sees an address where the screens list it beside a person, so they can tell who is who. It is never used in place of a name.
+- **Next:** a live check of the private file and hidden-target fixes, with a scenario that has both.
+
+## 28 SEPTEMBER, EVENING: RUN-16 PASSED, AND THE RELEASE CANDIDATE IS `6fe8d1fb`
+
+- **Run-16 passes the checker: nothing is worse than the baseline.** It was the full run on the streamed route, with every fix in.
+  - All 24 scenarios ran and no check-in broke; the stream's fallback caught 7 slow or busy moments.
+  - "Proof asked for" is 38 against 42, inside the allowance. It was 52 on the broken run-15, so it moves a lot between runs.
+  - No turn asks two questions. Every problem count is 0. All 576 quotes are word for word.
+  - None of the lead's private words reached anyone, for the sixth full run in a row.
+- **Task 1.5, the judgements: 20 right of the 22 that could be tested, 91%.**
+  - Not right: contractreview, which assumes the contract promises a four-hour fix when the point is that the two of them read it differently, and handover, which names the payment arrangement but misses the spreadsheet on her own drive.
+  - Close calls I counted as right: crisis (it lands on the on-call process, but does not name the stale rota), recognition (it names Victor, but only as its last thing to do) and pulse (it names the lead as the one holding the approvals).
+  - Could not be tested: shock, where nobody mentions the missed QBRs. Sales was flagged incomplete.
+  - **Task 1.5 is ticked.** Hafsah decided run-15 does not count, because it broke on a product fault now fixed. Run-14 had exactly 20 testable scenarios, so run-14 (18 of 20, 90%) and run-16 (20 of 22, 91%) are two in a row.
+- **The internal-label fix, checked live after the run, found one more route:** labels used as keys in three maps of the report. Fixed (`6fe8d1fb`). Then 85 live reads, none with a label.
+- **The release candidate is `6fe8d1fb`,** written into `docs/ready-to-deploy.md` with what it rests on. From here, nothing more joins the release unless it fixes a problem the release has.
+- **The screens branch is merged** (`f0168cff`), as Hafsah decided, and will be merged every few days from now on. `6fe8d1fb` stays in `docs/ready-to-deploy.md` as a known-good point. The final proof is one full run on the combined code at release.
+  - **On the combined code:** all 10,533 API tests pass once one label was changed to the prototype's words, "How checkable today’s check-in was" (screens request 62, which Hafsah had answered).
+  - **The client passes 3,403 of 3,407.** One failure is the "Jump to" test, as all day. The other three are the screens workspace's own tests of files they are rebuilding: an unused component (`GroundTabRow.tsx`), a heading style, and a page layout. The merge changed no client file of the engine's, so they fail on the screens branch as it stands. I have told them.
+
+## 28 SEPTEMBER, LATE AFTERNOON: NO INTERNAL LABEL REACHES ANYONE (`0bad62f2`)
+
+- **The routes it took:** several fields of the session report, and the shared picture in the rounds, were written after the step that swaps labels for names, so they kept "Participant A" and "the initiator". A lead and participants read them on the session report and on "How this has moved".
+- **Now every board and report read ends in one last step:** the board, the report, a session's report, the rounds, and where things stand against success. Any label left anywhere becomes the name this reader may see, or "a colleague" where they may not. A field added later is covered too, because it is served through the same step.
+- **"You is aiming" and "until you sends it" are mended there as well,** only outside quotation marks, so people's own words stay as they wrote them.
+- **Proven by a test** that serves the board and every report read to the lead, each participant and an admin who only reads, with people named to each other and not, and finds no label anywhere.
+- Also fixed: dates that arrived on the screen as an empty object (request 53).
+- **Not live yet:** run-16 is running on the build before this. It fixes a problem the release has, so it joins the release.
+
+## 28 SEPTEMBER, AFTERNOON: RUN-15 DID NOT PASS, AND WHY
+
+**Run-15 was the first full run on the streamed route (13:32 to 15:25, on `75b4d687`). It cannot be the release candidate.**
+- **It found a real fault in the streamed route, and that is why it failed.** In 8 of the 24 scenarios one person's check-in stopped part-way, on "The reply could not be finished. Send that again." The model's stream did not open within 20 seconds (6 times), the network call failed (twice), or the model said it was too busy (once). The plain route's model call tries again on exactly these; the stream's did not. No earlier run saw it, because the runner used the plain route. People using the screen would have.
+- **Fixed** (`4d91d5ec`): when the stream fails, the reply is asked for again the plain way, with its retries, and shown whole. The person sees the error only if that fails too.
+- **Because of it,** 8 reports were one person short and flagged incomplete: renewal, discovery, loans, project, recognition, crisis, board and shock. So too few judgements could be tested for task 1.5. And one scenario, openread, could not be set up: adding a person took 6.8 seconds against a 5-second database limit while three parts of the run went at once. That is load on this computer, but I have added it to the questions for Abubakar, since a busy server could hit the same limit.
+- **What run-15 still shows:**
+  - **"Proof asked for" is back above the baseline: 52, against 42.** Week 4 works.
+  - No turn asks two questions, every problem count is 0, and all 428 quotes are word for word.
+  - None of the lead's private words reached anyone, for the fifth full run in a row.
+  - Jargon in Groundwork's turns is 17 by the checker's count.
+  - The checker fails it on specific detail (75 against 88), blocker checked (31 against 37), agreements (50 against 56) and patterns (84 against 100). All of those are counted from the check-ins and reports that broke, and openread is missing entirely, so they cannot be read yet.
+- **Next: run-16, on a build with every fix,** the stream fallback and the privacy fixes from this afternoon included. It decides the release candidate.
+
+## 28 SEPTEMBER, AFTERNOON: A PRIVATE FILE'S NAME AND A HIDDEN TARGET, ON THE BOARD (`7afee54e`)
+
+- **Who could see each, before this:**
+  - A lead's own file name reached anyone who read a board or report line that mentioned it: participants, and an admin who only reads. The fix this morning cleaned what reports are written from, but not every sentence served.
+  - A person's target number reached anyone reading a sentence that stated it: an admin who only reads, in the row about that person, and other participants, in their report and in the aim on their board.
+  - **A correction to my correction.** At first I called Ngozi seeing "Kwame Mensah is working towards a target of 14 approved facilities" a leak. Checked against the database, it is not. The sales check-in has no per-person targets set by the lead, only team targets. Kwame said his own target in his own check-in ("I'm aiming for 14 approved facilities"), and your rules let the people in a check-in see what each of them said in it. So the new rule has nothing to hide there. It does hide targets the lead sets for each person, which the test proves.
+  - **For Hafsah:** should a number a person states as their own target in their check-in be treated like a target the lead set, and kept from colleagues when targets are each person's own? Today it is treated as their words, which colleagues in the same check-in may read.
+- **Now:** everything the board and the report send is read once more for each reader. A file's name comes out where that reader may not open the file; a lead's own file is not named even to an admin. A sentence giving someone's target comes out where that reader may not see it. The lead still reads both.
+- **Proven by a test** that serves the real board and report to the lead, the person whose target it is, another participant, and an admin who only reads.
+- **It errs on the side of hiding.** A sentence that names a person together with their target's number goes, even if the number counts something else. A fact lost from a line is better than a target shown.
+- **The wording requests are fixed too:** "Unblock: the discount decision" is now "Somebody is waiting on the discount decision, so it needs deciding." The head count counts the same people as the screens' header, and is all in words or all in figures: "Four of the six people have answered so far."
+- **Not live yet:** the local API keeps its build until run-15 ends, so this is proven by tests for now. It fixes a problem the release has, so it joins the release.
+
+**Four more privacy requests from the screens workspace, for Hafsah:**
+- **Request 49: may someone held for a seat read a check-in's report?** Faraji joined through an open link while no seat was free. He is waiting for an admin to let him into the organisation. The check-in itself refuses him, but the report did not. Should he be refused until he is let in, or until he has answered himself?
+- **Request 57: may any admin release a report, or only the lead?** Today any admin of the organisation can. The screens tell other admins that "sharing the report and ending the check-in are Rukia's to decide".
+- **Requests 51 and 52 are fixed** (`ef212298`), because they broke rules already written. Before the report is released, a session's report now waits until the participant has answered that session, as the main report does. And one more rating field (`parties[].confidence`) no longer reaches other participants.
+
+## 28 SEPTEMBER, AFTERNOON: THE PER-PERSON RATINGS, FOR HAFSAH TO DECIDE
+
+**None of the engine's per-person ratings is shown to a lead or an admin in the prototype, except "Nothing checkable".** Four have something close on a lead's screen, but it is a different kind of thing. Until you decide, decision 38 stays: these are not sent to a lead or an admin, except as decision 40 says.
+
+| Rating the engine makes | Does the prototype show it to a lead? | To an admin? | What the prototype shows instead, in its words |
+| --- | --- | --- | --- |
+| How specific each person's account was: high, moderate or low | No | No | One sentence in the weekly report, not a label: "Aisha and Miriam consistently get to specific customer needs and next steps." |
+| Notes on each part of a person's account, such as "vague on evidence in session 8" | No | No | A pattern named after it comes up again and again, on the lead's board: "Visits without the shop's name, for 2 weeks in a row". |
+| The cause of low or high specificity | No | No | Nothing. The ending screen names causes of outcomes ("Nobody set it up", "Improved after feedback"), not of how specific someone was. |
+| How sure the picture of each person is | No | No | One level for the whole report: "How much this report can rely on: medium." |
+| Whether a person's account rests on memory | Not per person | No | A mark on each line: "Proven", "Confirmed by the person who received it", "Only someone's word", "From memory only". |
+| A closing tier for each person, such as MIXED or STRONG | No | No | A suggestion with its counts: "Groundwork suggests keeping Kwame on". The admin's review screen says "No scores." |
+| How checkable one check-in's answers were | Only as "Nothing checkable" beside the name (decision 40) | No | The person sees their own: "How checkable today's check-in was, 4 of 5. This is about the check-in. Only you see it." |
+
+**Other labels the prototype shows a lead beside a person's name**, none of them to an admin: "Drifting" (check-ins missed), "Behind the pace" and "On pace" (a count against the target), "Stops before the date" and "Stuck on a dependency" (patterns), and counts such as "8 of 9 commitments kept this month". The lead's setup screen also has a "Check-in grades" switch, turned off for some situations: "Check-in grades would feel like a judgement on the person here, so they stay off."
+
+**So the choice is mostly whether any of these report ratings should reach the lead in some form.** The prototype's answer, read literally, is no: it shows patterns, marks on lines and counts, never a per-person rating.
+
+**Hafsah decided (decision 43): keep decision 38, and follow the prototype.** The lead and admins get only the prototype's plain forms. Whether the engine produces each today:
+
+| The plain form | Does the engine produce it today? |
+| --- | --- |
+| "Nothing checkable" beside the name, with what to ask next | **Yes**, since `01379c6e` this afternoon. |
+| One level for how much the whole report can rely on | **Yes.** The session report carries "how much there is to go on", and the released report carries a band of strong, moderate or thin. The prototype's words are "How much this report can rely on: medium", so the screens should say it that way. |
+| The pattern, once it keeps coming up | **Built, and switched off** until you approve the plain names (week 8). |
+| The mark on each line: proven, confirmed, only their word, from memory | **Only in part.** Lines with a figure are marked "counted", "estimated" or "from memory". There is no mark on every line, and "confirmed by the person who received it" does not exist yet. Now in the plan as week 6b, after week 6 adds the field. |
+| The suggestion with its counts | **No.** Nothing reaches a suggestion yet (weeks 9 to 11, which need your thresholds). |
+| The sentence in the weekly report | **No.** There is no weekly report yet. Now in the plan as week 12b. |
+
+None of the missing ones joins the release. They are in `docs/weekly-plan.md`.
+
+**Run-15 is running on the streamed route, with the safety net fixed.** Checked against the build rather than from memory. The runner's log for run-15 says "Messages go through the streamed route." The API it talks to was built at 13:22, a minute after the fix (`e9301d42`), and the built code has it in. During the run, the log shows the streamed route asking the model again for management words, banned words and replies that ask two questions.
 
 ## AT THE TOP, 28 SEPTEMBER: IS IT READY TO DEPLOY?
 

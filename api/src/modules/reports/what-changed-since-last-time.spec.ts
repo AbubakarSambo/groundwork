@@ -10,14 +10,14 @@ describe('what changed since last time', () => {
       { topics: ['Reaching the 10,000 unit objective', 'Ownership of the supermarket chain'], answered: 3 },
       { topics: ['Reaching the 10,000 unit objective', 'The deadline'], answered: 3 },
     )!;
-    expect(out).toMatch(/One difference is still open from last time: Reaching the 10,000 unit objective/);
+    expect(out).toMatch(/Reaching the 10,000 unit objective is still open from last time/);
     expect(out).toMatch(/The deadline is no longer showing as a difference/);
     expect(out).toMatch(/Ownership of the supermarket chain is new this round/);
   });
 
   it('counts who answered when that changed', () => {
     const out = whatChangedSinceLastTime({ topics: ['a'], answered: 3 }, { topics: ['a'], answered: 2 })!;
-    expect(out).toMatch(/3 of the check-in answered this round, against 2 last time/);
+    expect(out).toMatch(/3 people answered this round, against 2 last time/);
   });
 
   it('never says whether any of it is good', () => {

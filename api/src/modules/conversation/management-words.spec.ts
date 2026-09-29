@@ -25,7 +25,8 @@ describe('management words are not ours to bring in', () => {
 
 describe('and the check-in asks again when it reached for one', () => {
   it('is wired in before the other word guard, which stays last, on what the person has said', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8');
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'conversation.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/const jargonHere = managementWordsIn\(screened\.text, theirWords\)/);
     expect(src).toMatch(/sayItInPlainWords\(jargonHere, screened\.text\)/);
     expect(src.indexOf('const jargonHere')).toBeLessThan(src.indexOf('const notOurWords = wordsWeDoNotUse'));

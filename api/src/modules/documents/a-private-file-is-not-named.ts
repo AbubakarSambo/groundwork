@@ -47,3 +47,36 @@ export function withoutPrivateFileNames(text: string, names: readonly string[]):
   }
   return out;
 }
+
+/**
+ * AND FOR EVERYTHING A READER IS SERVED, NOT ONLY THE CORPUS. Hafsah, 28 September 2026: a private
+ * file's name may not reach anyone the lead has not shared it with, by any route - a report stored
+ * before the corpus was cleaned, a note typed by hand, a line nobody thought of. So what a reader is
+ * served is read once more at the end, against the files this reader may not open, by the same
+ * rule every document read uses (who-can-see-a-document.ts, with the context feature on: the
+ * strict reading for a name, since a name is never needed to say what a file showed).
+ */
+export function namesThisReaderMayNotOpen(
+  docs: readonly { fileName: string | null | undefined; visibility: any; participantId: string | null }[] | null | undefined,
+  reader: { participantId: string | null; isLead: boolean },
+  canSee: (doc: { participantId: string | null; visibility: any }, reader: { participantId: string | null; isLead: boolean }) => boolean,
+): string[] {
+  return [...new Set((docs ?? [])
+    .filter((d) => !canSee({ participantId: d.participantId, visibility: d.visibility }, reader))
+    .map((d) => (d.fileName ?? '').trim())
+    .filter((n) => n.length >= 3))];
+}
+
+/** Through every string in a served object. Dates and non-strings are left as they are. */
+export function withoutPrivateFileNamesIn<T>(value: T, names: readonly string[]): T {
+  if (!names.length) return value;
+  const walk = (v: any): any => {
+    if (typeof v === 'string') return withoutPrivateFileNames(v, names);
+    if (v instanceof Date || v === null || typeof v !== 'object') return v;
+    if (Array.isArray(v)) return v.map(walk);
+    const out: Record<string, any> = {};
+    for (const [k, x] of Object.entries(v)) out[k] = walk(x);
+    return out;
+  };
+  return walk(value);
+}

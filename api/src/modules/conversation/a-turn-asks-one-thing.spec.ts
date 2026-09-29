@@ -1,3 +1,4 @@
+import { theStreamedRouteRunsThePlainRoute } from './__fixtures__/the-streamed-route-is-the-plain-route';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { oneThingAsked, howManyQuestions, asksMoreThanOneThing, withTheOneMoreLine, wouldLeaveAQuestionOut, asAnExample } from './a-turn-asks-one-thing';
@@ -142,7 +143,9 @@ describe('and every path a turn is saved by keeps one question', () => {
   });
 
   it('the close line is put under the reply through the one helper, on both paths', () => {
-    expect((src.match(/withTheOneMoreLine\(/g) ?? []).length).toBe(2);
+    /* Changed 28 Sep 2026: the streamed route now runs sendMessage itself (the-streamed-route-is-the-plain-route), so a rule held on both paths is in sendMessage once, and the stream runs it. */
+    expect((src.match(/withTheOneMoreLine\(/g) ?? []).length).toBe(1);
+    expect(theStreamedRouteRunsThePlainRoute(src)).toBe(true);
     expect(src).not.toMatch(/`\$\{stillOpen\}\\n\\n\$\{close\.ask\}`/);
   });
 
