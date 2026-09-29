@@ -1435,8 +1435,18 @@ export class BoardService {
           })),
         ),
       );
-      /* Three periods, whatever the pattern (decision 8). The builder's own floor is lower. */
-      const seenThreeTimes = alignment.filter((a) => Number(a.periods ?? 0) >= 3);
+      /*
+       * THREE PERIODS, WHATEVER THE PATTERN (decision 8) - EXCEPT THE ONE THAT IS NOT A BEHAVIOUR.
+       *
+       * SETUP_NEVER_SAID only ever has one period (it reads what the setup did or did not say, and
+       * there is no second period in which an absence becomes more true - see coverage.ts and the
+       * builder above). Applying the three-period floor here unconditionally filtered it straight
+       * back out even though `buildManagerAlignment` already exempted it, which is why it never
+       * once reached a board (decision 55's "restored, fixed properly"; decision 57, item 7).
+       */
+      const seenThreeTimes = alignment.filter(
+        (a) => a.pattern === LeadershipPattern.SETUP_NEVER_SAID || Number(a.periods ?? 0) >= 3,
+      );
       if (seenThreeTimes.length) out.managerAlignment = seenThreeTimes;
     }
 
