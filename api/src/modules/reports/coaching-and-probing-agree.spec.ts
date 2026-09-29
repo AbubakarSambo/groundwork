@@ -117,6 +117,33 @@ describe('recurrence is what makes a pattern', () => {
     expect(twice.general).toBe(false);
   });
 
+  /*
+   * Hafsah, 29 September 2026: CARRYING_CODES (A1, A2, A3) were left out of this file's own
+   * LIBRARY map, so a carrying pattern genuinely served to this reader on the board (which reads
+   * the plain-name check in patterns/who-reads-a-pattern.ts, and does cover them) found no
+   * `recurring` entry here - the note said "Nothing has recurred..." beside a pattern that had.
+   */
+  it('a carrying pattern is recognised as recurring too, not only a bad-faith or positive one', () => {
+    const carrying = whatToWorkOnNext({ ...memberBase, patterns: [{ code: 'A1', periodsObserved: 3 }] });
+    expect(carrying.showingUp).not.toBeNull();
+    expect(carrying.general).toBe(false);
+  });
+
+  it('when nothing has recurred, it says so plainly, with no "which is worth keeping that way"', () => {
+    const nothing = whatToWorkOnNext({ ...memberBase, patterns: [], sessionNumber: 4 });
+    expect(nothing.whyItMatters).toContain('Nothing has come up often enough yet to be called a pattern.');
+    expect(nothing.whyItMatters).not.toContain('recurred');
+    expect(nothing.whyItMatters).not.toContain('worth keeping that way');
+  });
+
+  /* Hafsah, 29 September 2026: a role map's label can hold an acronym ("Founder or CEO"), and
+     lowering the whole label turned it into "founder or ceo work" in the sentence. */
+  it('never lower-cases a role, even mid-sentence', () => {
+    const founder = whatToWorkOnNext({ ...memberBase, patterns: [], detectedFunction: 'CEO', functionConfidence: 0.9, sessionNumber: 4 });
+    expect(founder.whyItMatters).toContain('founder or CEO work');
+    expect(founder.whyItMatters).not.toContain('founder or ceo');
+  });
+
   it('the lead sees the same threshold, and the history rather than a conclusion', () => {
     const lead = whatToProbe({
       ...leadBase,

@@ -1,5 +1,5 @@
 import { runsTheirOwnBusiness } from '../board/function-detection';
-import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
+import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
 import { plainNameOf } from '../patterns/plain-pattern-names';
 import { roleMapFor, MIN_COACHING_CONFIDENCE, type RoleMap } from '../board/role-maps';
 import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
@@ -143,7 +143,13 @@ export interface CoachingInputs {
   documentsExpected?: boolean;
 }
 
-const LIBRARY = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES].map((c) => [c.code, c]));
+/*
+ * Hafsah, 29 September 2026: this left CARRYING_CODES (A1, A2, A3) out, so a carrying pattern that
+ * was genuinely served to this reader on the board (patterns/who-reads-a-pattern.ts's plain-name
+ * check, which does cover them) found no `recurring` entry here, and the coaching note said
+ * "Nothing has recurred often enough to call it a pattern" beside a pattern that had.
+ */
+const LIBRARY = new Map([...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]));
 
 /**
  * WHICH ROLE MAP APPLIES, AND WHY THERE IS NOT ONE.
@@ -287,8 +293,12 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
   /* The role as a handle, not the whole sentence: "your work as poultry farmer in kaduna, battery cages on a
      tijara loan." was a sentence nobody would write. The first clause, up to five words. */
   const roleHandle = ((i.roleToSay !== undefined ? i.roleToSay : i.role) ?? '').split(/[.,;:(]|\s+-\s+/)[0].trim().split(/\s+/).slice(0, 5).join(' ').toLowerCase();
+  /* Lower the first letter only, mid-sentence ("founder or CEO work"), never the whole label: a
+     map label can hold an acronym ("Founder or CEO"), and lower-casing the lot turned it into
+     "founder or ceo work", which is not how anybody writes a role. */
+  const midSentence = (s: string) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
   const about = map
-    ? `${map.label.toLowerCase()} work`
+    ? `${midSentence(map.label)} work`
     : roleHandle ? `your work as ${roleHandle.replace(/^(a|an|the)\s+/, '')}` : 'this work';
 
   const early = i.sessionNumber <= 2;
@@ -389,7 +399,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
     showingUp: null,
     whyItMatters: early
       ? `This is ${where} of ${about}. Nothing repeats yet, which is normal this early. What decides whether the later sessions are worth anything is what you can point at.`
-      : `This is ${where} of ${about}. Nothing has recurred often enough to call it a pattern, which is worth keeping that way.`,
+      : `This is ${where} of ${about}. Nothing has come up often enough yet to be called a pattern.`,
     beforeNextTime: actions,
     general: true,
     role: roleBlock(map, pair),
