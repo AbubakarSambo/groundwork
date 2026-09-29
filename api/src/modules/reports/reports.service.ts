@@ -94,6 +94,8 @@ import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRe
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
+import { viewerIsTheSubjectOfAnEvaluationCheckIn } from './is-this-an-evaluation-check-in';
+import { whatEachPersonSaidForTheSubject } from './colleagues-exact-words-stay-with-the-manager';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -3143,6 +3145,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
         row.finding = String(f.text ?? '').replace(new RegExp(`^${esc}`), row.isYou ? 'You' : row.who).replace(/^You said this was for/, 'You said this was for');
         row.hasGap = !!f.hasGap;
       }
+    }
+
+    /*
+     * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being
+     * reviewed reads the facts, never a colleague's exact words - those go only to the manager (an
+     * admin reads as the manager does). This is the one reader that changes for: see
+     * colleagues-exact-words-stay-with-the-manager.ts. A colleague giving a view, and everybody on
+     * every other kind of check-in, reads `whatEachPersonSaid` exactly as before.
+     */
+    if (viewerIsTheSubjectOfAnEvaluationCheckIn({
+      scenario: (ground as any).scenario,
+      isLead: viewerIsLead,
+      viewerParticipantId: me?.id ?? null,
+      participants: ground.participants as any,
+    })) {
+      shape.whatEachPersonSaid = whatEachPersonSaidForTheSubject(shape.whatEachPersonSaid as any[]) as any;
     }
 
     /**
