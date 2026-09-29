@@ -66,6 +66,13 @@ export function Composer({
           +
         </button>
       )}
+      {/*
+        REVIEW ROUND 3, ITEM 7: THE PROTOTYPE'S BORDERED WHITE BOX, NOT A BARE, BORDERLESS FIELD.
+        The prototype's own `.input` (docs/prototype/source/app.css): a 1.5px rule-coloured
+        border, white, 10px corners - the same box every text field in the prototype uses. This
+        sat transparent, blended into the footer bar's own background, with no field to see at
+        all until you clicked inside it.
+      */}
       <textarea
         ref={inputRef}
         value={value}
@@ -76,8 +83,9 @@ export function Composer({
         aria-label="Your answer"
         rows={1}
         style={{
-          flex: 1, minWidth: 0, resize: 'none', border: 'none', outline: 'none', background: 'transparent',
-          fontFamily: 'inherit', fontSize: 16, lineHeight: 1.5, color: 'var(--gw-text)', padding: '10px 4px', maxHeight: 120,
+          flex: 1, minWidth: 0, resize: 'none', outline: 'none',
+          border: '1.5px solid var(--gw-rule-2)', borderRadius: 10, background: 'white',
+          fontFamily: 'inherit', fontSize: 16, lineHeight: 1.5, color: 'var(--gw-text)', padding: '11px 16px', maxHeight: 120,
         }}
       />
       <button

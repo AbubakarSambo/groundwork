@@ -109,11 +109,16 @@ describe('the header', () => {
    * ROUND 6, ITEM 1: THE CHECK-IN'S OWN NAME, THE PROTOTYPE'S SHAPE (check-in-start.txt:
    * "Sales team check-in", bold, "About two minutes" under it, Pause on the right). "Your
    * check-in" named no check-in at all.
+   *
+   * REVIEW ROUND 3, ITEM 7: NO " check-in" APPENDED. "Sales team, Q3 check-in" reads worse than
+   * the fragment it replaced - a name ending in a comma-joined part with a second noun stuck on
+   * after the comma. The prototype's own title ("Sales team check-in") IS a check-in's name; this
+   * one's name happens to be "Sales team, Q3", so that is the whole title, nothing appended.
    */
   it('names the check-in in the heading, and on the way back, with Pause', async () => {
     renderChat()
     expect(await findByRole('button', { name: '← Sales team, Q3' }, { timeout: 5000 })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Sales team, Q3 check-in' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Sales team, Q3' })).toBeTruthy()
     expect(await findByRole('button', { name: 'Pause' })).toBeTruthy()
     expect(await findByText(OPENING, {}, { timeout: 5000 })).toBeTruthy()
   })

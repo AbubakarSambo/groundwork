@@ -951,8 +951,16 @@ export function ChatPage() {
                     * it, Pause on the right - "Your check-in" named no check-in at all. The
                     * estimate is honest about what it is measuring (this one conversation, not
                     * the record it draws on), so it applies the same way to every check-in.
+                    *
+                    * REVIEW ROUND 3, ITEM 7: APPENDING " check-in" READ AS "Sales team, Q3
+                    * check-in" - a name ending in a comma-joined part, with a second noun stuck on
+                    * after the comma reads worse than the fragment it was meant to fix. The
+                    * prototype's own title, "Sales team check-in", IS the check-in's name (a
+                    * check-in's `label` already names it that way in the prototype's data, not
+                    * "Sales team" plus a suffix this screen adds). Simplest: the check-in's own
+                    * name, exactly as it is, with nothing appended.
                     */
-                  title={checkInName ? `${checkInName} check-in` : 'Your check-in'}
+                  title={checkInName || 'Your check-in'}
                   underTitle={
                     done && !completed && !declined
                       ? 'That’s everything for today'
@@ -1192,18 +1200,26 @@ export function ChatPage() {
                     <p className="gwui-panel-text" style={{ fontWeight: 600 }}>{brief!.subject}</p>
                   )}
                   {/*
-                    THE ENGINE'S OWN COLON LISTS, UNCHANGED. "The goals on this check-in: …; …" and
-                    "The objectives on record:" are the engine's own sentences (request 40 already
-                    asks it to write them as plain sentences) - not reworded here.
+                    THE ENGINE'S OWN COLON SENTENCE, UNCHANGED. "The goals on this check-in: …; …"
+                    is the engine's own sentence (request 40 already asks it to write it as a plain
+                    sentence) - not reworded here.
                   */}
                   {brief!.says && (
                     <p className="gwui-panel-text">{brief!.says}</p>
                   )}
-                  {brief!.objectives.length > 0 && (
+                  {/*
+                    REVIEW ROUND 3, ITEM 7: THE GOALS WERE LISTED TWICE. `brief.says` already names
+                    every shared (and, for its owner, personal) goal in prose whenever it is
+                    present - `whatAParticipantIsToldAboutThis` (api/src/modules/grounds) builds it
+                    from the same objectives this structured list draws from. So this list, which
+                    exists to catch an objective the prose might leave out (it never truncates,
+                    where `says` caps at four), only draws when there is no prose to have already
+                    said them - the one case an objective could otherwise go unseen. Renamed to a
+                    full sentence, not a screen-authored colon label.
+                  */}
+                  {brief!.objectives.length > 0 && !brief!.says && (
                     <>
-                      <p className="gwui-panel-text-muted">
-                        {brief!.objectives.length === 1 ? 'The objective on record:' : 'The objectives on record:'}
-                      </p>
+                      <p className="gwui-panel-text-muted">These are the goals on record.</p>
                       {brief!.objectives.map((o, i) => (
                         <p key={i} className="gwui-panel-text">
                           {o.name}{o.target != null ? ` (${o.target.toLocaleString('en-US')})` : ''}
@@ -1234,7 +1250,8 @@ export function ChatPage() {
           {priorTurns.length > 0 && (
             <div style={{ border: '1px dashed var(--gw-border)', borderRadius: 10, padding: '10px 12px', marginBottom: 4, background: 'var(--gw-bg)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--gw-muted)', marginBottom: 8 }}>
-                From your earlier session{priorSessionNumber != null ? ` ${priorSessionNumber}` : ''} · read-only
+                {/* REVIEW ROUND 3, ITEM 7: A SENTENCE, NOT A DOT-JOINED FRAGMENT. */}
+                From your earlier session{priorSessionNumber != null ? ` ${priorSessionNumber}` : ''}. You can read it, not change it.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: 0.72 }}>
                 {priorTurns.map(m => (

@@ -13,6 +13,20 @@ describe('Composer', () => {
     expect(screen.getByPlaceholderText('Type, or hold to speak')).toBeTruthy()
   })
 
+  /**
+   * REVIEW ROUND 3, ITEM 7: THE PROTOTYPE'S BORDERED WHITE BOX. This field sat transparent,
+   * blended into the footer bar's own background - between-check-ins.jpg shows a plain white box
+   * with a thin rule border around "Ask, or add a note", the prototype's own `.input` (app.css:
+   * `border:1.5px solid var(--rule2);background:var(--surface);border-radius:10px`).
+   */
+  it('the field is a bordered white box, not a bare, borderless field', () => {
+    render(<Composer value="" onChange={() => {}} onSend={() => {}} />)
+    const field = screen.getByPlaceholderText('Type, or hold to speak')
+    expect(field.style.background).toBe('white')
+    expect(field.style.border).toBe('1.5px solid var(--gw-rule-2)')
+    expect(field.style.borderRadius).toBe('10px')
+  })
+
   it('the "+" is a 48px square, and only appears when offered', () => {
     const { rerender } = render(<Composer value="" onChange={() => {}} onSend={() => {}} />)
     expect(screen.queryByRole('button', { name: /Add a photo/ })).toBeNull()

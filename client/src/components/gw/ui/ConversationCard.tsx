@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import './gw-ui.css'
 
 /**
  * THE FOCUSED CHECK-IN'S CARD FRAME (B3, docs/prototype/source/app.css: `.ci-focus`, `.ci-card`,
@@ -33,9 +34,9 @@ export function ConversationCard({ backLabel, backTo, onBack, backTitle, header,
   bodyRef?: React.RefObject<HTMLDivElement | null>
 }) {
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="gwui-conv-outer" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {backLabel && (onBack || backTo) && (
-        <div style={{ padding: '8px 12px 10px', flexShrink: 0 }}>
+        <div className="gwui-conv-back-row">
           {onBack ? (
             <button
               type="button"
@@ -52,7 +53,7 @@ export function ConversationCard({ backLabel, backTo, onBack, backTitle, header,
           )}
         </div>
       )}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 16, overflow: 'hidden' }}>
+      <div className="gwui-conv-card">
         {header}
         {banners}
         <div ref={bodyRef} aria-live="polite" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
