@@ -61,7 +61,7 @@ export function WhoIsInThis({ parties, peersHidden, notOpenYet, viewerIsParty, l
             const sentence = p.done
               ? `${p.isSelf ? 'You' : p.name} ${have} checked in.`
               : notOpenYet
-                ? `${p.isSelf ? 'You' : p.name} will check in once the next session opens.`
+                ? `${p.isSelf ? 'You have' : `${p.name} has`} nothing to answer until the next session opens.`
                 : `${p.isSelf ? 'You' : p.name} ${have} not checked in yet.`
             return (
               <span

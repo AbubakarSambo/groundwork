@@ -433,7 +433,7 @@ export function CheckInPeopleAndSetup(props: {
         <SwitchRow
           title="Who can confirm each other's work"
           detail={ground.peopleWorkTogether == null
-            ? "Not answered yet, so it is assumed from the kind of check-in. Whether these people see each other's work day to day decides whether anybody here is in a position to confirm what someone else said."
+            ? "Nobody has said yet whether these people see each other's work day to day, so it is assumed from the kind of check-in. If they do, they can confirm what each other says."
             : "Whether these people see each other's work day to day. If they cannot, nobody here is in a position to confirm what anyone else said, and the board says so rather than reading somebody being quiet as work going missing."}
           on={!!ground.peopleWorkTogether}
           onChange={(on) => props.setWorkTogether.mutate(on)}

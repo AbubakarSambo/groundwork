@@ -33,7 +33,7 @@ import { WhoIsInThis } from './WhoIsInThis'
  * (whose next session had not opened), Faraji's chip and the unnamed colleague's chip said only
  * "Faraji Odhiambo" and "A colleague" - nothing at all, where every other reader's page, and every
  * other chip once a session is open, is a full sentence. The first two tests below are updated for
- * the chip's new words ("will check in once the next session opens" - still no "waiting", "late" or
+ * the chip's new words ("has nothing to answer until the next session opens", true whether or not they are in yet - still no "waiting", "late" or
  * "has not checked in"), and the tooltip, which used to add a second sentence the chip itself did
  * not say, is now simply the chip's own sentence again (matching the pattern for a done or overdue
  * chip, neither of which had a different tooltip).
@@ -52,8 +52,8 @@ describe('the roster between sessions', () => {
     /* A full sentence, said of each of them, that names no lateness - not just their name with
        nothing said about them (U.4 people-group review, item 3: Faraji's and "a colleague"'s chips
        read as bare names, on Neema's own page, with no verb at all). */
-    expect(screen.getByText('Ejiro will check in once the next session opens.')).toBeTruthy()
-    expect(screen.getByText('You will check in once the next session opens.')).toBeTruthy()
+    expect(screen.getByText('Ejiro has nothing to answer until the next session opens.')).toBeTruthy()
+    expect(screen.getByText('You have nothing to answer until the next session opens.')).toBeTruthy()
     expect(screen.queryByText(/waiting/i)).toBeNull()
     expect(screen.queryByText(/not checked in/i)).toBeNull()
     expect(screen.queryByText(/late/i)).toBeNull()
@@ -67,7 +67,7 @@ describe('the roster between sessions', () => {
       { name: 'Abubakar', done: false, isSelf: true },
     ], true)
     screen.getByText(/Who is in this/)
-    expect(screen.getByTitle('Ejiro will check in once the next session opens.')).toBeTruthy()
+    expect(screen.getByTitle('Ejiro has nothing to answer until the next session opens.')).toBeTruthy()
   })
 
   it('still says so, in words, when a session IS open', () => {
