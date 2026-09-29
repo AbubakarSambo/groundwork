@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BoardPage } from './BoardPage'
+import { BoardPage, seenAcross } from './BoardPage'
 import { boardApi } from '@/api/board'
 
 /**
@@ -131,26 +131,44 @@ describe('the board, as each reader reads it', () => {
   })
 
   /*
-   * U.10 REVIEW ITEM 10: MANAGER ALIGNMENT IS A PATTERN CLAIM. Its own text says "seen across 2
-   * sessions" after one, which is exactly what PATTERNS_ARE_SERVED being off exists to stop. The
-   * server can still send `managerAlignment` outside `sections` (that gate is the engine's, not
-   * this screen's), so the board checks `sections.includes('patterns')` itself and draws nothing
-   * here while patterns are off - even though the data arrived.
+   * HOW THE LEADING IS LANDING IS PROTECTED (Hafsah, 29 September): never hidden to solve a
+   * problem. It used to vanish whenever patterns were off, because its count said "seen across 2
+   * sessions" after one. Now the lead always reads it, and the count is said only when true.
    */
-  it('never draws How the leading is landing while patterns are off, even if the server sent it', async () => {
+  const ALIGNMENT = [{
+    managerParticipantId: 'p-lead', managerName: 'Wairimu Kamau', pattern: 'SETUP_NEVER_SAID',
+    pole: 'NEITHER', label: 'Setup, never said', gap: 'Two sessions read this differently.',
+    note: 'Neither read is called wrong.', periods: 2,
+  }]
+  it('the lead reads How the leading is landing while patterns are off, with no count the record cannot bear', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
-    renderBoard({
-      ...AS_THE_LEAD,
-      sections: ['objectives'],
-      managerAlignment: [{
-        managerParticipantId: 'p-lead', managerName: 'Wairimu Kamau', pattern: 'SETUP_NEVER_SAID',
-        pole: 'NEITHER', label: 'Setup, never said', gap: 'Two sessions read this differently.',
-        note: 'Neither read is called wrong.', periods: 2,
-      }],
-    })
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives'], phaseSpine: { ...(AS_THE_LEAD as any).phaseSpine, currentSession: 1 }, managerAlignment: ALIGNMENT })
+    await screen.findByText(LAST_UPDATED)
+    expect(screen.getByText('How the leading is landing')).toBeTruthy()
+    expect(screen.getByText('Two sessions read this differently.')).toBeTruthy()
+    expect(screen.queryByText(/seen across/i)).toBeNull()
+  })
+  it('a participant never reads How the leading is landing, patterns on or off', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard({ ...AS_MIRIAM, sections: ['objectives', 'patterns'], managerAlignment: ALIGNMENT })
     await screen.findByText(LAST_UPDATED)
     expect(screen.queryByText('How the leading is landing')).toBeNull()
-    expect(screen.queryByText(/seen across/)).toBeNull()
+    expect(screen.queryByText('Two sessions read this differently.')).toBeNull()
+  })
+  it('an admin who only reads never reads it either', async () => {
+    me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
+    renderBoard({ ...AS_AN_ADMIN, sections: ['objectives', 'patterns'], managerAlignment: ALIGNMENT })
+    await screen.findByText(LAST_UPDATED)
+    expect(screen.queryByText('How the leading is landing')).toBeNull()
+  })
+})
+
+describe('seenAcross', () => {
+  it('says the count only when that many sessions have happened', () => {
+    expect(seenAcross(2, 1)).toBeNull()
+    expect(seenAcross(1, 5)).toBeNull()
+    expect(seenAcross(3, null)).toBeNull()
+    expect(seenAcross(3, 4)).toBe('Seen across 3 sessions.')
   })
 })
 

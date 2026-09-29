@@ -146,6 +146,17 @@ export function whoSeesThisDifferently(positions: { who?: string }[] | undefined
   return `${say(who[0])} and ${say(who[1])} see this differently.`
 }
 
+/**
+ * "Seen across 3 sessions", only when it is true: never more sessions than this check-in has had,
+ * never a count of one or none as if it were a pattern. `sessionNow` is the session number the
+ * board is on; a count above it is the engine's claim running ahead of the record, and is left out.
+ */
+export function seenAcross(periods: number | null | undefined, sessionNow: number | null): string | null {
+  if (!periods || periods < 2) return null
+  if (sessionNow == null || periods > sessionNow) return null
+  return `Seen across ${periods} sessions.`
+}
+
 /** What each record type under "Who owns what" is, in a sentence rather than a bare tag. */
 /**
  * THE WORDS OF ONE LINE UNDER "WHO OWNS WHAT", OR NOTHING. The server leaves a line's words out when
@@ -1737,15 +1748,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
-         * MANAGER ALIGNMENT IS A PATTERN CLAIM. Its pattern code is SETUP_NEVER_SAID and it says
-         * "seen across 2 sessions" from one, which is exactly what PATTERNS_ARE_SERVED being off is
-         * meant to stop the board from doing (see api/src/modules/patterns/patterns-are-served.ts).
-         * The server still sends this field on its own, outside `sections`, so the screen checks
-         * `has('patterns')` - the same flag the server itself uses to decide whether the `patterns`
-         * section belongs in `sections` - as its own guard, and draws nothing here while it is off.
-         * The data is kept (nothing is deleted); only the drawing stops.
+         * HOW THE LEADING IS LANDING: PROTECTED (Hafsah, 29 September). Patterns, role behaviour,
+         * coaching and the probe structure are never removed, hidden or simplified to solve a
+         * problem; something wrong is fixed in place, or shown only to the most private reader. This
+         * used to be hidden whenever patterns were off, because its count said "seen across 2
+         * sessions" after one. It is now always drawn for the person who runs the check-in, and only
+         * for them, and the count is fixed in place: `seenAcross` says it only when that many
+         * sessions have actually happened here.
          */}
-        {has('patterns') && viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
+        {viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
           <>
             <Sec size="board" title="How the leading is landing" src="Two sides of the same leadership." />
             <Card>
@@ -1764,9 +1775,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         {m.pole === 'CONTROL' ? 'nobody else gets to own it' : 'nobody is being held to it'}
                       </Pill>
                     )}
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 'auto' }}>
-                      seen across {m.periods} sessions
-                    </span>
+                    {seenAcross(m.periods, b.phaseSpine?.currentSession ?? null) && (
+                      <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 'auto' }}>
+                        {seenAcross(m.periods, b.phaseSpine?.currentSession ?? null)}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-text)', marginTop: 4, lineHeight: 1.45 }}>{m.gap}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{m.note}</div>
