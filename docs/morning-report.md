@@ -41,7 +41,12 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ### In progress
 
-- **Task 2.7, the end card, is not ticked yet.** The first live check sent it back with 19 findings. All the ones about the card and the marks are fixed. The second live check, on run-19, sent it back again: in 13 of 20 closes the commitment the goodbye states was missing from the card, and about 20 of 496 lines were clipped pieces. The third try (`cc3d1165`, `c6ff297e`) adds the goodbye's commitment as the card's first line, and shows only lines that are sentences, apart from commitments, which always show. It is being checked live on two re-runs of sales, handover and drift, started at 19:38.
+- **Task 2.7, the end card, needs you after three tries.**
+  - The first live check sent it back with 19 findings, and every finding about the card and the marks is fixed.
+  - The second live check, on run-19, passed everything except two things. In 13 of 20 closes, the commitment the goodbye states was missing from the card. And about 20 of 496 lines were clipped pieces, such as "A target of 40."
+  - The third try put the goodbye's commitment first on the card, and showed only whole sentences. On two re-runs of sales, handover and drift, the commitment was first in 4 of 6 closes that state one. Figure-only lines such as "14 approved facilities." still showed.
+  - Both re-runs also recorded fewer commitments than run-19 on the same three scenarios: 10 and 9, against 12. That may be noise, because the turn counts moved as much in both directions. But your rule is to drop anything that lowers the score, so **I reverted the third try** (`b4493661`, `ea96afa8`). The code is kept in the history, in `cc3d1165` and `c6ff297e`.
+  - The real fix is where the reviewer pointed. The record reader should write the commitment the goodbye states as a commitment, and write full sentences. That changes what is recorded, so it needs its own re-runs.
 - The screens need to call the new `GET /check-ins/:id/end-card` after the closing reply, or people still will not see the card until they press finish. This is written in request 7's answer.
 
 ### Tests and runs
@@ -54,6 +59,7 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ### Needs Hafsah
 
+- **Task 2.7, after three tries** (see above). The card itself works: it reaches only the person, it matches the record, the marks are consistent, and the close is the prototype's. What is left is the commitment from the goodbye, and clipped lines.
 - **Week 10, the first suggestion to a manager, is held.** It would rest on each person's private count ("kept 11 of 20"). Weeks 11 and 12b wait on it too.
 - **Changes to the conversation are waiting for scenario re-runs:**
   - taking a goal the lead has not told the person about out of that person's own check-in;

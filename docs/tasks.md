@@ -52,7 +52,7 @@ Read `docs/conversation-standard.md`. Work through its twelve points in this ord
 - [ ] **2.4** Starts from what they said last time, and good news first when there is some. Must not reduce "past words brought back".
 - [ ] **2.5** Asks for proof kindly, and says what the proof is for. Must not reduce "proof asked for".
 - [ ] **2.6** Suggested answers under each question (a backend change: the engine returns two to four suggested answers with each question).
-- [ ] **2.7** The three-part ending, with each line's mark: proven (a document or system backs it), confirmed (the person who received the work confirmed it; this needs one new field), their word, or memory.
+- [!] **2.7 Needs Hafsah** (29 September, after three tries; see the morning report) The three-part ending, with each line's mark: proven (a document or system backs it), confirmed (the person who received the work confirmed it; this needs one new field), their word, or memory.
 - [ ] **2.8** Never comments on shorter answers; starts from the last clear thing they said.
 
 ## Phase 3. Match the prototype, module by module
