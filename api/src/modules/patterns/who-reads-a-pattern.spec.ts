@@ -137,7 +137,18 @@ describe('the person sees it first, and can answer, before the lead reads it', (
       { id: 'p-guest', userId: null, nameGiven: 'Amaka Obi' },
     ], 'u-tunde');
     expect(who.leadName).toBe('Tunde');
+    expect(who.leadParticipantId).toBe('p-lead');
     expect(who.firstNameOf!('p-femi')).toBe('Femi');
     expect(who.firstNameOf!('p-guest')).toBe('Amaka');
+  });
+
+  it('a lead reading a pattern about their own work is never told they will see it too', () => {
+    /* Hafsah, 29 September 2026, from a live capture: whoSeesIt was telling the lead "Tunde will
+       see it too" about a pattern that is Tunde's own, because leadName is always the lead's name,
+       whoever is reading. It must say who else really reads it instead. */
+    const leadOnFirst = row({ participantId: 'p-lead', readyAt: daysAgo(0) });
+    const [mine] = servedPatterns([leadOnFirst], { participantId: 'p-lead', runsIt: true }, { ...on, leadParticipantId: 'p-lead' });
+    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    expect(mine.whoSeesIt).not.toContain('Tunde');
   });
 });

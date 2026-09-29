@@ -795,7 +795,7 @@ export class PatternsService {
         participant: {
           select: {
             userId: true,
-            ground: { select: { initiatorId: true, participants: { select: { userId: true, user: { select: { firstName: true } } } } } },
+            ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true, user: { select: { firstName: true } } } } } },
           },
         },
       },
@@ -816,7 +816,7 @@ export class PatternsService {
     });
     const ground = row.participant.ground;
     const lead = ground?.participants?.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId);
-    return servedPatterns([saved], reader, { now, leadName: lead?.user?.firstName ?? null })[0];
+    return servedPatterns([saved], reader, { now, leadName: lead?.user?.firstName ?? null, leadParticipantId: lead?.id ?? null })[0];
   }
 
   /**

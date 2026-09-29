@@ -110,6 +110,8 @@ export interface AServedPattern {
 /** The names a sentence needs: the lead's, for the person, and the person's first name, for the lead. */
 export interface WhoIsWho {
   leadName?: string | null;
+  /** The lead's own participant id in this check-in, so a pattern about the lead can be told apart from one about somebody else. */
+  leadParticipantId?: string | null;
   firstNameOf?: (participantId: string) => string | null;
 }
 
@@ -205,6 +207,10 @@ export function patternRowsThisReaderMayRead<T extends APatternRow>(
 
 function whoSeesIt(row: APatternRow, yours: boolean, names: WhoIsWho, now: Date): string {
   if (yours) {
+    /* Hafsah, 29 September 2026: when the person it is about is the lead themselves, the sentence
+       must not name the lead as if they were someone else reading it back to them. */
+    const isTheLeadsOwn = !!names.leadParticipantId && row.participantId === names.leadParticipantId;
+    if (isTheLeadsOwn) return 'Only you see this. Nothing is decided from it.';
     const lead = names.leadName?.trim() || 'The person who runs this check-in';
     return thePersonHasHadTheirTurn(row, now)
       ? `${lead} can see this too, with anything you say about it. Nothing is decided from it.`
@@ -286,6 +292,7 @@ export function whoIsWhoIn(
   const lead = rows.find((p) => !!initiatorId && p.userId === initiatorId);
   return {
     leadName: first(lead),
+    leadParticipantId: lead?.id ?? null,
     firstNameOf: (pid: string) => first(rows.find((p) => p.id === pid)),
   };
 }
