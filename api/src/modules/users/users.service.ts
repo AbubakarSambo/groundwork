@@ -459,19 +459,38 @@ export class UsersService {
      */
     const awaitingIds = users.filter((u) => u.awaitingOrgApproval).map((u) => u.id);
     const notLetInIds = new Set<string>();
+    /** Who declined them, and when - so "Not let in" can say who decided (U.4, request 84). */
+    const notLetInDecidedBy = new Map<string, { userId: string; decidedAt: Date | null }>();
     if (awaitingIds.length) {
       const requests = await this.prisma.membershipRequest.findMany({
         where: { organizationId, userId: { in: awaitingIds } },
         orderBy: { createdAt: 'desc' },
-        select: { userId: true, status: true },
+        select: { userId: true, status: true, decidedByUserId: true, decidedAt: true },
       });
       const decided = new Set<string>();
       for (const r of requests) {
         if (decided.has(r.userId)) continue;
         decided.add(r.userId);
-        if (r.status === MembershipRequestStatus.DECLINED) notLetInIds.add(r.userId);
+        if (r.status === MembershipRequestStatus.DECLINED) {
+          notLetInIds.add(r.userId);
+          if (r.decidedByUserId) notLetInDecidedBy.set(r.userId, { userId: r.decidedByUserId, decidedAt: r.decidedAt });
+        }
       }
     }
+    const decidersById = new Map<string, { firstName: string | null; lastName: string | null }>();
+    if (notLetInDecidedBy.size) {
+      const deciders = await this.prisma.user.findMany({
+        where: { id: { in: [...new Set([...notLetInDecidedBy.values()].map((d) => d.userId))] } },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      for (const d of deciders) decidersById.set(d.id, d);
+    }
+    const nameOfDecider = (userId: string): string | null => {
+      const d = decidersById.get(userId);
+      if (!d) return null;
+      const full = [d.firstName, d.lastName].filter(Boolean).join(' ').trim();
+      return full || null;
+    };
 
     const sits = await this.whereTheySit(organizationId, ids);
     const hasFinished = new Set([...answeredCount.keys()]);
@@ -520,6 +539,9 @@ export class UsersService {
         arrivedThroughACheckIn: arrivedThroughACheckIn(u),
         /** This organisation said no; the account still exists but stays out of this one. */
         notLetIn: notLetInIds.has(u.id),
+        /** Who decided that, and when - null when the decider's name is not known. */
+        notLetInBy: notLetInIds.has(u.id) ? nameOfDecider(notLetInDecidedBy.get(u.id)?.userId ?? '') : null,
+        notLetInAt: notLetInIds.has(u.id) ? (notLetInDecidedBy.get(u.id)?.decidedAt ?? null) : null,
         /* Where they sit here (U.4). Describes the organisation; grants nothing. */
         ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),
         /* Which of this organisation's check-ins they are on, and whether they run it. */

@@ -23,7 +23,7 @@ import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { howACheckInIsGoing } from '../grounds/how-a-check-in-is-going';
-import { CheckInStatus, DependencyStatus, GroundMode, PartyType } from '@prisma/client';
+import { CheckInStatus, DependencyStatus, GroundMode, MembershipRequestStatus, PartyType } from '@prisma/client';
 import { onlyWhatThisReaderMaySee, onlyHandoffsTheyAreIn, WHY_YOU_ONLY_SEE_YOURSELF } from './the-board-keeps-the-same-wall';
 import {
   BoardFamily,
@@ -257,7 +257,7 @@ export class BoardService {
             /* What the population rule reads: still holding a live invitation counts as expected. */
             invitedAt: true, inviteTokenExpiresAt: true,
             detectedFunction: true, detectedFunctionConfidence: true,
-            user: { select: { firstName: true, lastName: true } },
+            user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
           },
         },
         report: true,
@@ -1019,6 +1019,30 @@ export class BoardService {
           .filter((e) => hasANumberADateOrADocument({ text: cleanText(e.text ?? ''), anchoredDocumentId: e.anchoredDocumentId, documentSays: e.documentSays }))
           .map((e) => e.checkInId),
       );
+      /*
+       * WHO THIS ORGANISATION HAS ALREADY SAID NO TO (U.4 review, item 2). Read the same way
+       * users.service.ts reads it for People: their latest request to THIS organisation decided
+       * it. Without this, a person an admin had already declined still read as "has not answered",
+       * and the board asked the lead to chase somebody nobody here can let in.
+       */
+      const awaitingIds = ground.participants
+        .filter((p) => !p.managingOnly && p.id !== me?.id && p.userId && p.user?.awaitingOrgApproval)
+        .map((p) => p.userId!) as string[];
+      const notLetInUserIds = new Set<string>();
+      if (awaitingIds.length) {
+        const requests = await this.prisma.membershipRequest.findMany({
+          where: { organizationId: ground.organizationId, userId: { in: awaitingIds } },
+          orderBy: { createdAt: 'desc' },
+          select: { userId: true, status: true },
+        });
+        const decided = new Set<string>();
+        for (const r of requests) {
+          if (decided.has(r.userId)) continue;
+          decided.add(r.userId);
+          if (r.status === MembershipRequestStatus.DECLINED) notLetInUserIds.add(r.userId);
+        }
+      }
+
       out.eachPerson = whereEachPersonIs(
         /*
          * AND THE MANAGER IS NOT IN THEIR OWN LIST.
@@ -1057,6 +1081,7 @@ export class BoardService {
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
             answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,
+            notLetIn: !!p.userId && notLetInUserIds.has(p.userId),
             roundsSoFar: new Set(mine.map((c) => c.sessionNumber)).size,
             inTheWay: (ground.dependencies ?? [])
               .filter((d: any) => d.fromParticipantId === p.id && d.status !== 'CLEARED')

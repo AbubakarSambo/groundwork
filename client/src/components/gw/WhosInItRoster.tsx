@@ -3,6 +3,8 @@ import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { ShareSection } from '@/pages/grounds/ShareSection'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
 import { personLabel as onePersonsLabel, atTheStart } from '@/lib/utils'
+import { oneWithNoName } from '@/lib/a-colleague'
+import { initialsOf } from '@/pages/org/people-here'
 import { waitsForItsStart } from '@/lib/the-leads-note'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
@@ -228,25 +230,47 @@ export function WhosInItRoster({
 
       <PeopleTable>
         {participants.map((p: any) => {
-          const name = onePersonsLabel(p) ?? p.email
+          /*
+           * A ROW HEADING IS THE START OF A LINE, NOT THE MIDDLE OF A SENTENCE. `personLabel`'s
+           * "a colleague" is written lower case for inside a sentence (a-colleague.ts); read as a
+           * row heading it read as an uncapitalised fragment. `atTheStart` gives it the capital.
+           * An admin here already sees this person's email on People, so where there is no name at
+           * all to show, their address is more useful as the heading than "A colleague" (U.4
+           * review, item 6).
+           */
+          const bareLabel = onePersonsLabel(p)
+          const noNameOnRecord = bareLabel === oneWithNoName(p)
+          const name = isOrgAdmin && noNameOnRecord && p.email ? p.email : atTheStart(bareLabel)
           const bounced = !p.userId && p.inviteDeliveryStatus === 'BOUNCED'
           const waitingForSeat = !!p.awaitingSeat
-          const waitingForAdmin = !!p.userId && !!p.user?.awaitingOrgApproval
+          const notLetIn = !!p.notLetIn
+          const waitingForAdmin = !!p.userId && !!p.user?.awaitingOrgApproval && !notLetIn
           /* EVERYONE GETS A "WHEN" LINE, THE LEAD INCLUDED. The lead has no `invitedAt` (nobody
              invited them - they created the check-in), which used to leave their own row reading
              "Checking in" twice over (once as the date line, once as the status tag) while everyone
              else's row said when they joined. `ground.createdAt` is the same fallback the server
              itself uses for "when this check-in's clock starts" (when-the-clock-starts.ts). */
-          const when = p.userId
+          /*
+           * "JOINED" IS NOT TRUE OF SOMEBODY WHO NEVER GOT IN (U.4 review, item 5). Having an
+           * account (`p.userId`) is not the same as being in THIS check-in - `notLetIn` and
+           * `waitingForSeat` both have one and are still outside it, so they read "Invited" like
+           * anybody else waiting, not "Joined". And Zawadi, whose invitation the plan itself never
+           * let go out, reads why rather than a bare "Invited".
+           */
+          const inItAlready = !!p.userId && !notLetIn && !waitingForSeat
+          const when = inItAlready
             ? (p.invitedAt
                 ? `Joined ${whenItWas(p.invitedAt, 'dayAndMonthLong')}`
                 : `In it since ${whenItWas(ground.createdAt, 'dayAndMonthLong')}`)
-            : (p.invitedAt ? `Invited ${whenItWas(p.invitedAt, 'dayAndMonthLong')}` : 'Invited')
+            : waitingForSeat
+              ? 'Not invited yet, because there is no seat for them.'
+              : (p.invitedAt ? `Invited ${whenItWas(p.invitedAt, 'dayAndMonthLong')}` : 'Invited')
 
           let statusText = 'Checking in'
           let tone: TagTone = 'proven'
           if (bounced) { statusText = 'The email bounced'; tone = 'concern' }
           else if (waitingForSeat) { statusText = 'Waiting for a seat'; tone = 'attention' }
+          else if (notLetIn) { statusText = 'Not let in'; tone = 'concern' }
           else if (waitingForAdmin) { statusText = 'Waiting for an admin'; tone = 'attention' }
           else if (!p.userId) { statusText = waitsForItsStart(p) ? 'Invited' : 'Not joined yet'; tone = 'plain' }
 
@@ -294,16 +318,41 @@ export function WhosInItRoster({
                     : undefined,
                 }
           } else if (waitingForSeat) {
+            /*
+             * SPEAK TO AN ADMIN AS "YOU" (U.4 review, item 4). And "View plans" now goes to the
+             * plans page itself, not to People - pressing it used to land an admin back on the
+             * roster they were already reading, with nothing about a plan on it.
+             */
             help = {
               tone: 'look',
-              text: 'Your plan has no seat for them yet - an admin has to make room before their invitation goes out.',
-              action: <Button size="small" kind="secondary" onClick={() => navigate('/org/members')}>View plans</Button>,
+              text: isOrgAdmin
+                ? `Your plan has no seat for ${name}. Free one or move to a larger plan, and the invitation goes out.`
+                : 'Your plan has no seat for them yet - an admin has to make room before their invitation goes out.',
+              action: isOrgAdmin
+                ? <Button size="small" kind="secondary" onClick={() => navigate('/billing')}>View plans</Button>
+                : undefined,
+            }
+          } else if (notLetIn) {
+            /* WHAT HAPPENED, NOT "WAITING" (U.4 review, item 2). Once an admin has said no, "waiting
+               for an admin" is no longer true - this says who decided and that it is final, with no
+               button, because there is nothing left here for a lead to press. */
+            help = {
+              tone: 'concern',
+              text: p.notLetInAt
+                ? `${p.notLetInBy ?? 'An admin'} did not let ${name} in, on ${whenItWas(p.notLetInAt, 'dayAndMonthLong')}. ${atTheStart(name)} cannot check in.`
+                : `${p.notLetInBy ?? 'An admin'} did not let ${name} in, so ${atTheStart(name)} cannot check in.`,
             }
           } else if (waitingForAdmin) {
+            /* SPEAK TO AN ADMIN AS "YOU" (U.4 review, item 4). For a lead who is not an admin, no
+               button is offered - "Go to People" would only meet a page that refuses them. */
             help = {
               tone: 'look',
-              text: `${atTheStart(name)} is from outside your organisation, so an admin has to let them in before they can check in.`,
-              action: <Button size="small" kind="secondary" onClick={() => navigate('/org/members')}>Go to People</Button>,
+              text: isOrgAdmin
+                ? `You can let ${name} in on People.`
+                : `${atTheStart(name)} is from outside your organisation, so an admin has to let them in before they can check in.`,
+              action: isOrgAdmin
+                ? <Button size="small" kind="secondary" onClick={() => navigate('/org/members')}>Go to People</Button>
+                : undefined,
             }
           } else if (!p.userId && isInitiator) {
             help = {
@@ -321,7 +370,7 @@ export function WhosInItRoster({
             <PersonRow
               key={p.id}
               extraColumns="1fr 150px"
-              person={{ initials: (p.email || '?').charAt(0).toUpperCase(), name, email: p.userId ? p.email : undefined, level: when }}
+              person={{ initials: initialsOf(name), name, email: p.userId ? p.email : undefined, level: when }}
               help={help}
             >
               <span>{sessionLine}</span>

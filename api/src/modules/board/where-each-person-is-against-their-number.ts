@@ -66,6 +66,12 @@ export interface PersonRow {
   noProof?: boolean;
   /** "week" on a weekly check-in, so the row can say "the second week in a row". */
   roundIsA?: 'week' | 'fortnight' | 'month' | 'check-in';
+  /**
+   * THIS ORGANISATION'S OWN ADMIN SAID NO TO THEM (U.4 review, item 2). Set only once an admin has
+   * declined their request to join - not while they are merely waiting on one. Nobody can chase
+   * somebody who cannot check in for a reason that has nothing to do with chasing.
+   */
+  notLetIn?: boolean;
 }
 
 /**
@@ -252,6 +258,10 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
   const start = subjectFor(row, true);
   /* "Ask a colleague to check in" would mean anybody; the row is about one person, so "this colleague". */
   const them = subjectFor(row, false).replace(/^(?:a|an|one|another)\s+(?:[a-z]+\s+)?colleague$/, 'this colleague');
+  /* NOT LET IN, SO THERE IS NOTHING TO CHASE (U.4 review, item 2). Their own admin has already
+     said no; asking the lead to chase them to check in would be asking for something nobody here
+     can give. People and setup already says what happened and who decided it. */
+  if (row.notLetIn) return null;
   if (!row.answeredThisRound) return `Ask ${them} to check in.`;
   const worst = [...row.inTheWay]
     .filter((b) => b.tried !== 'escalated' && b.tried !== 'went-around')

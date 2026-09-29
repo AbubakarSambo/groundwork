@@ -26,6 +26,10 @@ export interface OrgMember {
   awaitingOrgApproval?: boolean
   /** This organisation's own admin said no to their latest request to join it. */
   notLetIn?: boolean
+  /** Who decided that, when known. */
+  notLetInBy?: string | null
+  /** When that decision was made. */
+  notLetInAt?: string | null
   /** A guest added when the plan had no seat for them: holds none, and is not offered the check-in yet. */
   heldForASeat?: boolean
   /** Where they sit here. Describes the organisation; grants nothing. */

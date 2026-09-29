@@ -1962,6 +1962,41 @@ export class GroundsService {
      */
     const aTeamReportComes = (ground.participants ?? []).filter((p: any) => !p.managingOnly).length > 1;
 
+    /*
+     * "NOT LET IN", ON THIS CHECK-IN'S OWN ROSTER TOO (U.4 review, item 2). `awaitingOrgApproval`
+     * alone reads "waiting for an admin" for good, even once this organisation has actually said no
+     * - the same gap `notLetIn` closes on the People page (users.service.ts). Read here the same
+     * way: this organisation's latest request for each waiting person decides it. Who decided, and
+     * when, is included only for whoever runs this check-in or an admin here - the same reader who
+     * can already see it, one click away, on that person's own People page.
+     */
+    const notLetInAwaitingIds = (ground.participants ?? [])
+      .filter((p: any) => !!p.userId && p.user?.awaitingOrgApproval)
+      .map((p: any) => p.userId as string);
+    const notLetInByUser = new Map<string, { decidedByUserId: string | null; decidedAt: Date | null }>();
+    if (notLetInAwaitingIds.length) {
+      const requests = await this.prisma.membershipRequest.findMany({
+        where: { organizationId, userId: { in: notLetInAwaitingIds } },
+        orderBy: { createdAt: 'desc' },
+        select: { userId: true, status: true, decidedByUserId: true, decidedAt: true },
+      });
+      const decided = new Set<string>();
+      for (const r of requests) {
+        if (decided.has(r.userId)) continue;
+        decided.add(r.userId);
+        if (r.status === 'DECLINED') notLetInByUser.set(r.userId, { decidedByUserId: r.decidedByUserId, decidedAt: r.decidedAt });
+      }
+    }
+    const canReadWhoDecided = viewerIsInitiator || !!viewerAdminsThisOrg;
+    const decidersById = new Map<string, string | null>();
+    if (canReadWhoDecided && notLetInByUser.size) {
+      const deciderIds = [...new Set([...notLetInByUser.values()].map((d) => d.decidedByUserId).filter((x): x is string => !!x))];
+      if (deciderIds.length) {
+        const deciders = await this.prisma.user.findMany({ where: { id: { in: deciderIds } }, select: { id: true, firstName: true, lastName: true } });
+        for (const d of deciders) decidersById.set(d.id, [d.firstName, d.lastName].filter(Boolean).join(' ').trim() || null);
+      }
+    }
+
     const participantsWithCheckIns = (ground.participants ?? [])
       .filter((p: any) => !hidePeers || (!!requestingUserId && p.userId === requestingUserId))
       .map((p: any) => {
@@ -1969,8 +2004,12 @@ export class GroundsService {
       const isSelf = !!requestingUserId && p.userId === requestingUserId;
       /* Somebody else's expectations, on a check-in that keeps numbers to their owner. */
       const withholdTheirNumbers = peersKeepTheirNumbers && !isSelf;
+      const notLetInInfo = p.userId ? notLetInByUser.get(p.userId) : undefined;
       return {
         ...p,
+        notLetIn: !!notLetInInfo,
+        notLetInBy: notLetInInfo && canReadWhoDecided ? (decidersById.get(notLetInInfo.decidedByUserId ?? '') ?? null) : null,
+        notLetInAt: notLetInInfo && canReadWhoDecided ? (notLetInInfo.decidedAt ?? null) : null,
         email: hideContact && !isSelf && !viewerIsInitiator ? null : p.email,
         /* The lead's words about a person reach the lead alone: not a participant, not an admin
            (U.7 review). See the-leads-words-about-someone.ts. */
