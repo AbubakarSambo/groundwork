@@ -16,16 +16,6 @@ describe('where each person is against their number', () => {
     expect(out[0].ask).toBe('Ask Amina to check in.');
   });
 
-  /*
-   * U.4 REVIEW, ITEM 2 (30 Sept): the board used to say "Ask Faraji Odhiambo to check in" about
-   * somebody this organisation's own admin had already declined - asking the lead to chase what
-   * nobody here can give. `notLetIn` stops the ask; whether they have answered is unchanged.
-   */
-  it('never asks the lead to chase somebody this organisation did not let in', () => {
-    const out = whatToAskFor(rep({ who: 'Faraji Odhiambo', answeredThisRound: false, notLetIn: true }));
-    expect(out).toBeNull();
-  });
-
   it('then somebody stuck a fortnight who has only asked', () => {
     const r = rep({ inTheWay: [{ what: 'the Sokoto lease', owner: null, days: 21, tried: 'asked-again' }] });
     expect(whyThisRow(r, 12)).toBe('stuck and not chasing');

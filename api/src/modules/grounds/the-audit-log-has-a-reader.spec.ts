@@ -46,19 +46,22 @@ describe('the ground returns its own change history', () => {
 });
 
 describe('and the settings page shows it', () => {
+  /* The settings tab moved into its own file when it was rebuilt from the shared parts (People
+     and setup, 29 September), so the log is read where it now lives. */
   const PAGE = readFileSync(
-    join(__dirname, '../../../../client/src/pages/grounds/GroundAdminPage.tsx'),
+    join(__dirname, '../../../../client/src/pages/grounds/CheckInPeopleAndSetup.tsx'),
     'utf8',
   ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
   it('under the controls that write it', () => {
-    expect(PAGE).toMatch(/What has been changed here/);
+    /* Under the settings it records, behind the sentence that says what is noted. */
+    expect(PAGE).toMatch(/Changes to how long it runs and how often are noted with who made them and the date\./);
     expect(PAGE).toMatch(/settingsChanges/);
   });
 
   it('newest first', () => {
     // The log is appended to, so raw order buries the change somebody just made.
-    expect(PAGE).toMatch(/\.settingsChanges\]\.reverse\(\)/);
+    expect(PAGE).toMatch(/\.settingsChanges(?: \?\? \[\]\))?\]\.reverse\(\)/);
   });
 
   it('and says what it changed from, not only what it is now', () => {
