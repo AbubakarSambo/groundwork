@@ -11,6 +11,11 @@ import { howManyHere } from './EveryoneHere'
 /**
  * THE PEOPLE PAGE, AS GRACE (AN ADMIN) READS IT, against A4 people.txt. And as anybody else, who
  * is told they need admin access (the server refuses the reads too: GET /users is admin only).
+ *
+ * UPDATED (design-audit.md section 3, "People", rebuilt from components/gw/ui): a person's name in
+ * the table is the shared `PersonCell`'s `.gwui-person-name` div, bold at 16px by its own CSS, not a
+ * semantic `<b>` tag - so every `{ selector: 'b' }` below is now `{ selector: '.gwui-person-name' }`.
+ * What each test checks (the row's own content, filters, counts, no label on anybody) is unchanged.
  */
 let me: any = { id: 'grace', role: 'ADMIN', organizationName: 'Baridi Appliances' }
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel?: any) => (sel ? sel({ user: me }) : { user: me }) }))
@@ -90,7 +95,7 @@ describe('everyone at Baridi', () => {
     /* U.19: Peter is a guest from outside, listed here, and billing does not count him. */
     /* The prototype's rule (U.4 re-review): a guest with an account takes a seat. */
     expect(screen.getByText('Guests with no account don’t take a seat.')).toBeTruthy()
-    const miriam = screen.getByText('Miriam Wanjiku', { selector: 'b' }).closest('[role="row"]') as HTMLElement
+    const miriam = screen.getByText('Miriam Wanjiku', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement
     const row = within(miriam)
     expect(row.getByText('Sales rep, reports to Wairimu Kamau')).toBeTruthy()
     expect(row.getByText('miriam@baridi.co.ke')).toBeTruthy()
@@ -99,29 +104,31 @@ describe('everyone at Baridi', () => {
     expect(row.getByText('Checking in')).toBeTruthy()
     expect(row.getByText('Sales team, Q3')).toBeTruthy()
     /* The owner is one field, and reads as "Owner". */
-    expect(within(screen.getByText('Amani Njoroge', { selector: 'b' }).closest('[role="row"]') as HTMLElement).getByText('Owner')).toBeTruthy()
-    expect(within(screen.getByText('Lina Mutua', { selector: 'b' }).closest('[role="row"]') as HTMLElement).getByText('Signed in, not on a check-in')).toBeTruthy()
-    expect(within(screen.getByText('Lucy Wairimu', { selector: 'b' }).closest('[role="row"]') as HTMLElement).getByText('Invited, not opened')).toBeTruthy()
-    const peter = within(screen.getByText('Peter Ouma', { selector: 'b' }).closest('[role="row"]') as HTMLElement)
+    expect(within(screen.getByText('Amani Njoroge', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Owner')).toBeTruthy()
+    expect(within(screen.getByText('Lina Mutua', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Signed in, not on a check-in')).toBeTruthy()
+    expect(within(screen.getByText('Lucy Wairimu', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Invited, not opened')).toBeTruthy()
+    const peter = within(screen.getByText('Peter Ouma', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
     expect(peter.getByText('Guest')).toBeTruthy()
     expect(peter.getByText('None')).toBeTruthy()
   })
 
   it('shows no label on anybody: no score, no rating, nothing but what they are and where they got to', async () => {
     const { container } = open()
-    await screen.findByText('Miriam Wanjiku', { selector: 'b' })
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(container.textContent).not.toMatch(/\bscore\b|\brating\b|at risk|\bPIP\b/i)
   })
 
   it('filters by role, by team, and by who needs something, and says how many are shown', async () => {
+    /* The role filters are the shared `Choices` (design-audit.md item 7): a radiogroup of radios,
+       40px tall, not plain buttons - so each one is found by its radio role now. */
     open()
-    await screen.findByText('Miriam Wanjiku', { selector: 'b' })
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(screen.getByText('7 people shown.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Can open check-ins' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Can open check-ins' }))
     expect(screen.getByText('2 people shown.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Needs something' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Needs something' }))
     expect(screen.getByText('2 people shown.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Everyone' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Everyone' }))
     fireEvent.change(screen.getByLabelText('Team'), { target: { value: 'Sales' } })
     expect(screen.getByText('2 people shown.')).toBeTruthy()
   })
@@ -134,7 +141,7 @@ describe('everyone at Baridi', () => {
 
   it('who reports to whom, under its line', async () => {
     open()
-    await screen.findByText('Miriam Wanjiku', { selector: 'b' })
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(screen.getByText('Who reports to whom')).toBeTruthy()
     expect(screen.getByText('Level and reporting lines describe the organisation; what someone can do still comes from their role')).toBeTruthy()
   })
@@ -157,7 +164,7 @@ describe('the rest of the page, in the prototype\'s order and words', () => {
 
   it('nothing on the page joins pieces with a dash', async () => {
     const { container } = open()
-    await screen.findByText('Miriam Wanjiku', { selector: 'b' })
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(container.textContent).not.toMatch(/ - /)
   })
 })
@@ -262,7 +269,7 @@ describe('somebody who left (U.4 fourth review)', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
     expect((await screen.findAllByText('7 people shown.')).length).toBeGreaterThan(0)
-    expect(screen.queryByText('Pendo Mwita', { selector: 'b' })).toBeNull()
+    expect(screen.queryByText('Pendo Mwita', { selector: '.gwui-person-name' })).toBeNull()
   })
 })
 
