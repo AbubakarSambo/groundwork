@@ -3870,7 +3870,7 @@ export class GroundsService {
       where: { id: row.id },
       /* When it was settled, so a count over four weeks reads the date it was settled (week 9). By
          hand, so no check-in settled it; moved back to open, it is not settled at all. */
-      data: { status: clean, settledAt: clean === 'DONE' || clean === 'NOT_DONE' ? new Date() : null, settledInCheckInId: null },
+      data: { status: clean, settledAt: clean === 'DONE' || clean === 'NOT_DONE' ? new Date() : null, settledInCheckInId: null, settledBy: clean === 'DONE' || clean === 'NOT_DONE' ? 'SAID' : null },
       select: { id: true, text: true, status: true, participantId: true },
     });
     this.logger.log(`Ground ${groundId}: somebody moved their own to-do to ${clean}.`);

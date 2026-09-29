@@ -56,8 +56,8 @@ describe('after a check-in', () => {
     const where = prisma.groundCommitment.findMany.mock.calls[0][0].where;
     expect(where).toMatchObject({ groundId: 'g1', participantId: 'p1', status: 'UNKNOWN', createdAt: { lt: new Date('2026-09-29T09:00:00Z') } });
     expect(prisma.groundCommitment.updateMany.mock.calls.map((c: any) => c[0])).toEqual([
-      { where: { id: 'c1', status: 'UNKNOWN' }, data: { status: 'DONE', settledAt: expect.any(Date), settledInCheckInId: 'ci2' } },
-      { where: { id: 'c3', status: 'UNKNOWN' }, data: { status: 'NOT_DONE', settledAt: expect.any(Date), settledInCheckInId: 'ci2' } },
+      { where: { id: 'c1', status: 'UNKNOWN' }, data: { status: 'DONE', settledAt: expect.any(Date), settledInCheckInId: 'ci2', settledBy: 'SAID' } },
+      { where: { id: 'c3', status: 'UNKNOWN' }, data: { status: 'NOT_DONE', settledAt: expect.any(Date), settledInCheckInId: 'ci2', settledBy: 'SAID' } },
     ]);
   });
   it('asks nothing when nothing of theirs was open', async () => {
@@ -72,8 +72,8 @@ describe('after a check-in', () => {
     expect(at).toBeGreaterThan(-1);
     expect(src.indexOf('this.writeWhatTheyPromised(checkIn.id)', at)).toBeGreaterThan(at);
   });
-  it('a commitment settled by hand gets its date too, and loses it when moved back to open', () => {
+  it('a commitment settled by hand gets its date too, is marked as their word, and loses both when moved back to open', () => {
     const grounds = readFileSync(join(__dirname, '..', 'grounds', 'grounds.service.ts'), 'utf8');
-    expect(grounds).toContain("data: { status: clean, settledAt: clean === 'DONE' || clean === 'NOT_DONE' ? new Date() : null, settledInCheckInId: null },");
+    expect(grounds).toContain("data: { status: clean, settledAt: clean === 'DONE' || clean === 'NOT_DONE' ? new Date() : null, settledInCheckInId: null, settledBy: clean === 'DONE' || clean === 'NOT_DONE' ? 'SAID' : null },");
   });
 });

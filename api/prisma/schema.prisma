@@ -5218,6 +5218,11 @@ model GroundCommitment {
   settledAt           DateTime? @map("settled_at")
   /// The check-in whose own words settled it. Null when a person settled it by hand.
   settledInCheckInId  String?   @map("settled_in_check_in_id")
+  /// HOW IT WAS SETTLED, so a screen can show the mark (week 9, decision 12): SAID on the person's own
+  /// word (in a check-in or by hand), PROVEN by a document they added themselves, CONFIRMED by the
+  /// colleague who received it. Proof never settles NOT_DONE. Null while it is open. See
+  /// conversation/settled-by-proof.ts.
+  settledBy           String?   @map("settled_by")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

@@ -51,6 +51,8 @@ import { Prisma } from '@prisma/client';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
+import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
+import { whoAddedEachBackingDocument } from '../reports/how-a-line-is-known';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
 import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel, whatWasSaidOnce, atLeastMet } from './how-checkable-a-session-was';
@@ -6663,6 +6665,56 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * NOTHING HERE DECIDES ANYTHING WAS DONE. Status stays UNKNOWN and only a person moves it.
    */
   /**
+   * PROOF SETTLES WHAT THEY SAID THEY WOULD DO (week 9, decision 12). See settled-by-proof.ts. Reads
+   * this person's commitments proof may still settle and their own lines a document of theirs backs
+   * or a colleague confirmed; the model pairs them and code checks every pair. Only ever DONE: proof
+   * never marks anything not done. A commitment already DONE on their word keeps its status and date
+   * and gains the mark. Asks no model when there is nothing to pair.
+   */
+  async settleByProof(participantId: string): Promise<number> {
+    if (!this.prisma.groundCommitment?.findMany || !participantId) return 0;
+    const commitments = (await this.prisma.groundCommitment.findMany({
+      where: { participantId, OR: [{ status: 'UNKNOWN' }, { status: 'DONE', OR: [{ settledBy: null }, { settledBy: 'SAID' }] }] },
+      select: { id: true, participantId: true, text: true, status: true, settledBy: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+      take: 30,
+    })).filter(mayBeSettledByProof);
+    if (!commitments.length) return 0;
+    const earliest = commitments[0].createdAt;
+    const rows = await this.prisma.recordEntry.findMany({
+      where: {
+        participantId, disputedAt: null, createdAt: { gt: earliest },
+        OR: [{ recallBased: false, anchoredDocumentId: { not: null } }, { confirmedAt: { not: null } }],
+      },
+      select: { id: true, participantId: true, type: true, text: true, recallBased: true, anchoredDocumentId: true, anchoredOrigin: true, confirmedAt: true, disputedAt: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 26,
+    });
+    const whoAdded = await whoAddedEachBackingDocument(this.prisma, rows);
+    const lines = rows.filter((l: any) => whatThisLineProves(l, whoAdded));
+    if (!lines.length) return 0;
+    const read = await this.anthropic.extract<{ pairs: { commitment: number; line: string }[] }>(
+      WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT,
+      [{ role: 'user', content: theProofPrompt(commitments, lines) }],
+      WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA as any,
+      { fast: true, thinkingBudget: 0 },
+    );
+    const settled = theProofSettlements(commitments as any, lines as any, whoAdded, read?.pairs);
+    const now = new Date();
+    let wrote = 0;
+    for (const s of settled) {
+      /* Written only if it is still as it was read: a hand that moved it meanwhile wins. */
+      const done = s.wasOpen
+        ? await this.prisma.groundCommitment.updateMany({ where: { id: s.id, status: 'UNKNOWN' }, data: { status: 'DONE', settledAt: now, settledInCheckInId: null, settledBy: s.settledBy } })
+        : await this.prisma.groundCommitment.updateMany({ where: { id: s.id, status: 'DONE', OR: [{ settledBy: null }, { settledBy: 'SAID' }] }, data: { settledBy: s.settledBy } });
+      wrote += done?.count ?? 0;
+      /* Ids only: the words are theirs. */
+      this.logger.log(`settled-by-proof commitment=${s.id} line=${s.lineId} by=${s.settledBy} wasOpen=${s.wasOpen}`);
+    }
+    return wrote;
+  }
+
+  /**
    * WHAT HAPPENED TO WHAT THEY SAID THEY WOULD DO, FROM THEIR OWN WORDS IN THIS CHECK-IN (week 9).
    * Only the commitments of theirs that were open before this check-in, and so were put to them;
    * only DONE or NOT_DONE, and only what they plainly said. See what-happened-to-what-they-said.
@@ -6700,7 +6752,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       /* Still open at the moment of writing: somebody who pressed it by hand meanwhile wins. */
       await this.prisma.groundCommitment.updateMany({
         where: { id: s.id, status: 'UNKNOWN' },
-        data: { status: s.status, settledAt: now, settledInCheckInId: checkInId },
+        data: { status: s.status, settledAt: now, settledInCheckInId: checkInId, settledBy: 'SAID' },
       });
     }
     /* Ids and counts only: the words are theirs. */
@@ -7703,6 +7755,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         .catch(() => undefined);
     }
     if (backed || differs.length) this.logger.log(`Document anchoring: ${backed} of ${entries.length} line(s) for participant ${participantId} now backed by a document; ${differs.length} read differently.`);
+    /* A line their own document now backs may keep something they said they would do (week 9). */
+    if (backed) await this.settleByProof(participantId).catch((err: any) =>
+      this.logger.warn(`Could not settle by proof for participant ${participantId}: ${err?.message ?? err}`));
     return { backed, of: entries.length, readsDifferently: differs.length };
   }
 
@@ -8977,6 +9032,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.prisma.recordEntry.update({ where: { id: line.id }, data: { confirmedAt: new Date(), confirmedByParticipantId: receivedByParticipantId } });
     /* Ids, not content: see the anchoring-decision log line. */
     this.logger.log(`confirmed-by-who-received-it entry=${line.id} about=${onParticipantId} by=${receivedByParticipantId}`);
+    /* The line the colleague confirmed may keep something the person said they would do (week 9). */
+    await this.settleByProof(onParticipantId).catch((err: any) =>
+      this.logger.warn(`Could not settle by proof for participant ${onParticipantId}: ${err?.message ?? err}`));
   }
 
   async extractDependencies(checkInId: string, participantId: string, groundId: string) {
