@@ -2,6 +2,7 @@ import { plainWordsByPerson, atTheStart, labelsForParties, namesVisibleTo, withN
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
+import { PATTERN_ROW_SELECT, servedPatterns, patternTalkNudge } from '../patterns/who-reads-a-pattern';
 
 /** A phrase put inside a sentence, as the board does it (board.service's inASentence, kept here so
  *  the report does not import the board's service). */
@@ -82,6 +83,7 @@ async function load(prisma: any, groundId: string) {
     select: {
       initiatorId: true,
       whoSeesTargets: true,
+      cadence: true,
       participants: {
         select: {
           id: true, email: true, userId: true, partyType: true, createdAt: true, roleAsDescribed: true,
@@ -254,6 +256,32 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
 
   /* Where people said different things, one item per open difference on the stored report. */
   out.push(...(await whereWhatPeopleSaidDiffers(prisma, groundId, participants, lead)).map((x) => ({ ...x, order: 1 })));
+
+  /*
+   * DECISION 57, ITEM 3. "AFTER A PATTERN REACHES THE LEAD, THEY ARE NUDGED ONCE TO HAVE THE
+   * CONVERSATION." A pattern about somebody else reaches the lead through the same rule as anywhere
+   * else it is served (servedPatterns / patternRowsThisReaderMayRead), so this is exactly the set the
+   * lead may already read on the board or the ground page - nothing new is exposed here. The nudge
+   * goes away the moment `talkedAboutAt` is set, which is why it is left out below rather than left
+   * on the list with a "done" flag.
+   */
+  if (lead) {
+    const patternRows = (((await prisma.patternDetection?.findMany?.({
+      where: { groundId, participantId: { not: lead.id } },
+      select: PATTERN_ROW_SELECT,
+    })?.catch?.(() => [])) ?? []) as any[]);
+    const served = servedPatterns(patternRows, { participantId: lead.id, runsIt: true }, {
+      leadName: nameOf(lead.id),
+      leadParticipantId: lead.id,
+      firstNameOf: (pid: string) => nameOf(pid),
+      isDaily: ground.cadence === 'DAILY',
+    });
+    for (const p of served) {
+      const row = patternRows.find((r) => r.id === p.id);
+      if (row?.talkedAboutAt) continue; // the nudge goes away once marked
+      out.push({ ...patternTalkNudge(p, nameOf(p.participantId)), order: 0 });
+    }
+  }
 
   /*
    * DECISION 56, ITEM 1. A goal the lead wrote and has not told its person about yet, flagged here as

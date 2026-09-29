@@ -124,3 +124,57 @@ describe('week 16: the report’s open differences reach the lead’s list, and 
     expect(JSON.stringify(r)).not.toMatch(/Agree what counts as a budget|Four deals are counted/);
   });
 });
+
+/**
+ * DECISION 57, ITEM 3: THE LEAD IS NUDGED ONCE TO TALK A PATTERN THROUGH, AND IT GOES AWAY ONCE
+ * MARKED. Built from the same rows and the same reading rule as the pattern itself (servedPatterns),
+ * so nothing here shows the lead a pattern they could not already read on the board or the ground
+ * page.
+ */
+describe('week 16 / decision 57 item 3: the pattern nudge in Today', () => {
+  const PATTERN_ROW = {
+    id: 'pd-brian-b3', participantId: 'p-brian', code: 'B3',
+    observationText: 'Brian described the Kito Foods deal as his own although Miriam prepared the pricing.',
+    periodsObserved: 3, seenInSessions: [1, 2, 3],
+    readyAt: new Date('2026-09-16T00:00:00Z'), shownToPersonAt: new Date('2026-09-16T00:00:00Z'),
+    personAnswer: 'I ran the call, Miriam built the numbers.', personAnsweredAt: new Date('2026-09-16T01:00:00Z'),
+    talkedAboutAt: null as Date | null,
+  };
+  function withPattern(row: any, requestingUserId = 'u-wairimu') {
+    const { prisma, writes } = prismaFor('MEMBER');
+    prisma.patternDetection = { findMany: jest.fn(async () => structuredClone([row])) };
+    const svc = Object.create(ReportsService.prototype) as any;
+    svc.prisma = prisma;
+    svc.logger = new Logger('test');
+    svc.getAsBuilt = jest.fn(async () => ({ groundId: 'g-sales', report: { findings: [] } }));
+    return { report: (svc as ReportsService).get('g-sales', requestingUserId, 'org-1') as Promise<any>, writes };
+  }
+
+  it('nudges the lead once, naming Brian and quoting what he said', async () => {
+    const r = await withPattern(PATTERN_ROW).report;
+    const item = (r.forTheLead as any[]).find((x) => x.id === 'pattern-talk-pd-brian-b3');
+    expect(item).toEqual({
+      id: 'pattern-talk-pd-brian-b3',
+      decide: 'Talk with Brian about “Others describe doing work they described as theirs”.',
+      why: 'Brian has seen it and said: “I ran the call, Miriam built the numbers.”.',
+    });
+  });
+
+  it('goes away once the lead has marked they talked about it', async () => {
+    const r = await withPattern({ ...PATTERN_ROW, talkedAboutAt: new Date('2026-09-23T00:00:00Z') }).report;
+    const ids = ((r.forTheLead as any[]) ?? []).map((x) => x.id);
+    expect(ids).not.toContain('pattern-talk-pd-brian-b3');
+  });
+
+  it('never reaches a participant, and never names the pattern’s code or internal name', async () => {
+    const r = await withPattern(PATTERN_ROW, 'u-brian').report;
+    expect(r).not.toHaveProperty('forTheLead');
+  });
+
+  it('is not nudged before three periods (decision 8): nothing to talk through yet', async () => {
+    const early = { ...PATTERN_ROW, seenInSessions: [1, 2], periodsObserved: 2, readyAt: null, shownToPersonAt: null };
+    const r = await withPattern(early).report;
+    const ids = ((r.forTheLead as any[]) ?? []).map((x) => x.id);
+    expect(ids).not.toContain('pattern-talk-pd-brian-b3');
+  });
+});
