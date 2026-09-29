@@ -77,6 +77,22 @@ Tests: 816 files and 7,485 tests pass in the parts these touch. The new tests fo
 
 Tests: 626 files and 5,981 tests pass in reports, board, check-ins and conversation. Each new test for a fix fails on the old code.
 
+**Eleven more requests from the screens workspace are answered, including 73.** One commit each.
+- **73** (`1fe0b9d1`). Their wording test failed on one of my new lines. It is now three short sentences, and their test passes unchanged.
+- **60** (`dc60208c`). The private summary opened "What you shared: You are aiming for six shops by December." It now opens "Here is what you shared. You are aiming for six shops by December."
+- **61** (`f5cc4c23`). "chandarana-quote.png · a photo" is now "chandarana-quote.png is a photo."
+- **67** (`e537b675`). "15% documented" with "of what was said is anchored to a document" under it now has "15 of every 100 things people said have a document behind them." A second fault was found and fixed: every line under a tile started with a space.
+- **68** (test `07493e71`). "Unblock: the discount decision" was already "Somebody is waiting on the discount decision, so it needs deciding."
+- **31** (`d5199cca`). "The initiator" already reached nobody. In a report shared without names, one sentence started in lower case, and that is fixed.
+- **33, part answered** (`59cf4b40`). "You forecasts 3 sales" is now "You forecast 3 sales". An older fault in the same rule is fixed: "finishes" had become "finishe". A second verb after "and" is left for the check in task 1.6, because a rule cannot tell whose verb it is.
+- **53, 55 and 59.**
+  - Dates in reports shared without names arrived empty, and now arrive as dates (53).
+  - A session report now knows how many sessions there are (55).
+  - "At the end of session undefined" now carries the session number (59).
+- **62** was already done.
+
+Tests: 663 files and 6,302 tests pass in reports, board, check-ins, conversation and documents. Four tests were changed, because they expected the old wording or a lower-case start, which were the faults. No prompt stored in the database is affected.
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
