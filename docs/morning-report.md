@@ -44,6 +44,29 @@ Built in `5ee3c4b4`, `4886d2ed`, `f1ed931d`, `c542f51c`, `fb5da92f` and `7df7389
 
 **It is being re-run now:** seniorhire, pip, cofounder and drift, the scenarios with the most untold goals, twice each. The first run started at 23:48 on `7df73897`. The pattern label rewrite from part 1 is in the same build, so these runs check both.
 
+**First re-run, finished at about 00:10.**
+- **The untold number never reached the person.** Pip's goal is "Consistently meet the eight renewals per quarter target". The person's check-in never mentions "eight", "8", the target, or renewals per quarter, from Groundwork or from them. The other three had no number in their untold goals, and nothing of them leaked.
+- **Quotes:** 146 of 146 are word for word in the record.
+- **Reports:** two copies are older than the database, not different from it. This is the run script taking its last copy early, as before.
+
+**Scores on the same four scenarios, against run-19:**
+
+| Number | run-19 | This run |
+| --- | --- | --- |
+| Specific detail asked for | 10 | 15 |
+| Blocker checked | 3 | 5 |
+| Agreements found | 16 | 19 |
+| Proof asked for | 7 | 5 |
+| Past words brought back | 19 | 14 |
+| Commitments recorded | 19 | 13 |
+| Patterns found | 22 | 20 |
+| Jargon in reports and boards | 23 | 8 |
+
+The rest are the same, and every problem count is 0. Four scenarios is a small sample, and these numbers move by this much between runs. The second re-run, started at 00:12, decides. If commitments or past words stay down, the change is dropped, as the rule says.
+
+**A privacy leak the quick checks found, already there on run-19, being fixed now.** The lead's private description of Tobi reads "Engagement Director. Owns the relationships with the five largest clients." Tobi's own report and board say "Dr Amina Bello says you are here to own the relationships with the five largest clients." Nobody said that in any check-in, so it reaches his report through what the report writer is given. That breaks decision 30.
+
+
 ### Part 2A: sharing when the lead has left, the admin's line, and the decision field
 
 - **If the lead has left the organisation, an admin can share the report** (`d8a4ebb1`). Everybody reads, for example, "Grace Otieno shared this report, because Rukia Mwangi has left the organisation.", on the report and in the email. While the lead is still there, only the lead can share it, as before.
