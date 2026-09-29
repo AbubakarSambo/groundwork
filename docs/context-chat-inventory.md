@@ -1,0 +1,524 @@
+# The context chat, everything it does today
+
+Decision 50: there is no separate context chat. Ask Groundwork becomes the one chat for everything,
+and nothing the context chat does today may be lost. This is step (a): a complete list of what the
+context chat, and the Context page around it, does today, before anything changes.
+
+Every item below says what it does in plain words, where the code is, the rule it keeps, the tests
+that cover it, and whether Ask Groundwork already does it.
+
+## 1. The setup conversation itself
+
+The lead (or an org admin) opens a chat about the check-in's setup, not about a person. It works
+out what is missing and asks for it in the order it costs most to be without: how long it runs, how
+often people check in, what doing well looks like, the measures, who else is in it, what each person
+is meant to achieve, and whether there is anything in writing everybody should read.
+
+- **Where.** Route `POST :id/context-chat` in `api/src/modules/grounds/grounds.controller.ts`
+  (`contextChat`), served by `GroundsService.contextChat` in `grounds.service.ts` (from line 2473).
+  The gap list and the system prompt are built by `contextGaps` and `contextChatPrompt` in
+  `api/src/modules/grounds/the-context-chat.ts`.
+- **Rule it keeps.** Who may run it: the lead who started the check-in, or an admin in the same
+  organisation (`ground.initiatorId !== requestingUserId && !isOrgAdmin` throws). It is not a
+  check-in: "nothing said here is anybody's account of anything", never reaches a report, and is
+  never compared against what anyone else said. It does not decide: it only proposes, and nothing is
+  written until the lead confirms it separately (see item 5). When nothing is missing it says so and
+  stops, on purpose, "a setup conversation that will not end teaches people to skip setup."
+- **Tests.** `the-context-chat.spec.ts`, `the-context-chat-says-check-in.spec.ts`,
+  `the-context-chat-reads-them.spec.ts`, `lead-confirmation-not-skipped.spec.ts`,
+  `covering-for-a-lead-means-steering-it.spec.ts`.
+- **In Ask Groundwork today:** not at all. `api/src/modules/ask/ask.service.ts` answers a signed-in
+  person's own private questions about a check-in they are already in; it does not run a setup
+  conversation, does not compute gaps, and has no notion of "what this check-in is missing".
+
+## 2. Working out what is missing (the gaps)
+
+Before it says anything, the chat computes exactly what a check-in still needs: no length, no
+rhythm, no stated success, no measures (only for situations where a measure makes sense), fewer than
+two people, people with nothing expected of them yet, and nothing in writing that has actually been
+read.
+
+- **Where.** `contextGaps()` in `api/src/modules/grounds/the-context-chat.ts` (lines 124-203), fed by
+  real numbers `GroundsService.contextChat` pulls from the ground, its objectives, its documents and
+  its baseline (lines 2545-2585 of `grounds.service.ts`).
+- **Rule it keeps.** A situation that only holds a question (a crisis, a one-off read, a drift, an
+  open read) is never asked for measures, because that would tell someone their situation is a
+  different shape than it is on the day they can least argue with it (the `WORTH_COUNTING` set). An
+  expectation nobody has seen yet is not counted as missing (`perPersonAnyCount`), so the chat does
+  not ask again for something it just wrote down and the person has not read.
+- **Tests.** `the-context-chat.spec.ts`, `nobody-is-read-against-a-target-they-never-saw.spec.ts`,
+  `a-target-nobody-has-defined.spec.ts`.
+- **In Ask Groundwork today:** not at all.
+
+## 3. Reading documents people add, and pulling out what they hold
+
+Every open document on the ground (and the lead's own private ones, only for the lead) is read into
+the conversation as text, up to what fits in the model's context, with a note about anything left
+out. A separate reader pulls structured facts out of a document: a number for one named person, a
+number for the whole check-in, a date something is due, and a one-line description of what the
+document is.
+
+- **Where.** Document assembly: `openDocuments` query and `whatFitsInTheRoom` /
+  `whatTheDocumentsSay` / `tellThemWhatIsMissing` calls in `grounds.service.ts` lines 2533-2607
+  (`api/src/modules/grounds/what-the-documents-say.ts`). Structured extraction:
+  `api/src/modules/documents/what-a-document-holds.ts`.
+- **Rule it keeps.** A document is context, never an account (G24 rule 1 in
+  `api/src/modules/documents/a-document-is-context.ts`): nothing pulled from a document may be used
+  as evidence that a person holds a position, because that would let anyone win a disagreement by
+  uploading a file. Who uploaded it travels with the claim. A judgement about a person in a comments
+  column is deliberately not read as a target.
+- **Tests.** `what-a-document-holds.spec.ts`, `the-context-page-keeps-its-promises.spec.ts`,
+  `documents-isolation.spec.ts`, `a-document-is-read-not-agreed.spec.ts`.
+- **In Ask Groundwork today:** not at all. Ask Groundwork does not read ground documents.
+
+## 4. Pulling targets out of documents and attaching them to the right people or goals
+
+When a document holds a number for a named person ("Dayo: Q4 sales, 45,000,000") or a number for the
+whole check-in, that is matched to the actual participant on the record (or left unmatched and said
+out loud rather than guessed), and offered as a target proposal. A lead can also just say "use the
+targets in the delivery plan" mid-conversation and the chat reads them out of the document already
+in front of it.
+
+- **Where.** `what-a-document-holds.ts` (extraction shape); matching against real participants
+  happens the same way as the paste reader, via `whoThisNameIs` in `grounds.service.ts`; writable
+  proposals for named-document targets go through `theMeasuresTheyNamed()` and the `targets` branch
+  of `proposalFrom()` in `api/src/modules/grounds/what-the-context-chat-heard.ts` (lines 105-144).
+- **Rule it keeps.** A target read out of a document and written without anyone saying yes is "a bar
+  nobody set, appearing on a board people are then read against" — still proposed, still confirmed.
+  A qualitative target with no number is kept, not refused (`GroundObjective.target` is nullable). An
+  unmatched name is never guessed onto the nearest person.
+- **Tests.** `a-target-nobody-has-defined.spec.ts`, `what-a-target-assumes.spec.ts`,
+  `a-dump-is-many-things.spec.ts` (for the paste path).
+- **In Ask Groundwork today:** not at all.
+
+## 5. Saying it back and requiring confirmation before saving (the proposal/confirm split)
+
+The chat never writes anything by itself. `contextChat` only ever returns a `proposal` with a
+plain-English `say` sentence ("I will set this to run for twelve weeks"). A second, separate call —
+`POST :id/context-chat/confirm` — re-derives the same value from the lead's own words (not from a
+field the client sends) and only then writes it. Two guards sit underneath this: a proposed value
+has to be traceable to words the lead actually typed (`traceableToWhatTheySaid`), and a greeting or
+filler message ("hi", "ok", "thanks") is recognised as having nothing to record
+(`nothingToTakeFrom`), so the model cannot manufacture a proposal out of small talk (this is exactly
+the bug where the chat's own greeting, "Hi! What's on your mind?", was once offered back as "what
+doing well looks like").
+
+- **Where.** Route `POST :id/context-chat/confirm` → `confirmContextProposal` in
+  `grounds.controller.ts` (line 623) → `GroundsService.applyContextProposal` in `grounds.service.ts`
+  (line 3296). The extraction/validation rules live in
+  `api/src/modules/grounds/what-the-context-chat-heard.ts` (`proposalFrom`, `extractionToolFor`,
+  `MIN_DAYS`/`MAX_DAYS`/`MIN_SUCCESS`/`MAX_SUCCESS` bounds, refused rather than clamped). The
+  traceability guard is `api/src/modules/grounds/nothing-proposed-that-nobody-said.ts`
+  (`traceableToWhatTheySaid`, `nothingToTakeFrom`, `aLengthTheyCouldHaveMeant`).
+- **Rule it keeps.** "Extraction is confirmed rather than adopted" (G24 rule 4, and decision 12).
+  Only the field the open question was about is ever writable — an answer about duration cannot also
+  change the cadence, even if it was mentioned in passing. Implausible values (e.g. a check-in
+  running for 4,000 days) are refused outright, never silently clamped to the nearest legal value.
+  **There is a permission asymmetry worth flagging directly: `contextChat` (the propose half) allows
+  the lead or an org admin, but `applyContextProposal` (line 3320) checks `ground.initiatorId !==
+  requestingUserId` with no admin fallback at all — "Setting this check-in up is the lead's."** An
+  org admin covering for an absent lead can have the conversation but cannot actually confirm and
+  save anything from it. No spec file was found that pins this asymmetry down by name, so a rewrite
+  that reuses the general "lead or admin" guard here would silently widen who can write to the
+  ground.
+- **Tests.** `the-context-chat-can-close-what-it-opens.spec.ts`, `lead-confirmation-not-skipped.spec.ts`,
+  `setup-can-write-an-expectation.spec.ts`, `setup-writes-an-expectation.spec.ts`.
+- **In Ask Groundwork today:** partly. The assistant's own request/confirm shape
+  (`api/src/modules/assistant/a-suggestion-you-can-answer.ts`, `nothing-leaves-without-a-yes.spec.ts`)
+  already says a request back and waits for a yes before acting — the general mechanism exists — but
+  it is not wired to ground setup fields (timeline, cadence, success, targets, per-person
+  expectations) at all.
+
+## 6. Reading a "dump" — someone pasting everything at once — as one thing to confirm
+
+If a lead pastes something long (400+ characters) instead of answering the open question one field
+at a time, the chat recognises it as a paste rather than an answer, reads it once for everything it
+holds (success statement, team-wide numbers, per-person expectations and their numbers, dates,
+strategy, ways of working, notes, open decisions, unsettled items, observations about named people,
+commitments/to-dos, questions for people, and issues between two named people), and offers it back
+as one thing to say yes to, rather than asking eight follow-up questions.
+
+- **Where.** `looksLikeADump()`, `A_DUMP_PROMPT`, `A_DUMP_SCHEMA` in
+  `api/src/modules/grounds/a-dump-is-many-things.ts`; consumed by
+  `GroundsService.whatAPasteGives` in `grounds.service.ts` (line 3162) and surfaced through
+  `contextChat`'s `fromAPaste` branch (line 2685).
+- **Rule it keeps.** Same confirmation rule as everything else — nothing is written until the lead
+  says yes, and the confirmation re-reads their words rather than a value from the screen. A name
+  that matches nobody on the check-in is said out loud, never guessed. An expectation of somebody
+  goes down as the lead's, marked unseen until that person reads it.
+- **Tests.** `a-dump-is-many-things.spec.ts`, `the-context-chat-takes-what-you-bring.spec.ts`.
+- **In Ask Groundwork today:** not at all.
+
+## 7. Hearing a change to something already on the record
+
+If the lead types a correction rather than an answer — "drop the 30-day rule", "the 12m is signed
+not collected", "Client C is Hassan's", "that one is decided" — the chat recognises it as a change
+request against an existing line, target, or commitment, says back exactly which line it would
+change and how, and only changes it once the lead says yes.
+
+- **Where.** `GroundsService.whatTheyWantChanged` (referenced at `grounds.service.ts` line 2705) and
+  `GroundsService.makeTheChange` (line 3083), which applies a `{intent, thing}` change to a
+  `groundContextItem`, `groundCommitment`, or `groundObjective` row (close/reword/assign/drop).
+- **Rule it keeps.** A target can only be dropped by the lead, and only after it is said out loud
+  first, "because dropping one takes its counts and its history with it." A change request is
+  answered as the whole of that turn even when the model cannot place which line is meant — it never
+  gets silently swallowed by whatever gap question was still open underneath it.
+- **Tests.** `what-the-lead-wants-changed.spec.ts`.
+- **In Ask Groundwork today:** not at all.
+
+## 8. The lead's exact questions for people, and confirming them word for word (decision 34)
+
+A lead can ask for something to be raised with a specific person in their next check-in. Before it
+ever reaches that person, the lead is shown the exact sentence Groundwork will ask, drafted by a
+model from the lead's own words and the person's first name, and must confirm it — as shown, or
+edited into their own words — before it can be asked. Declining leaves the question out entirely.
+
+- **Where.** Routes `GET :id/questions-for-people`, `POST :id/questions-for-people/:itemId/confirm`,
+  and (found while reading) `POST :id/questions-for-people/:itemId/decline` in
+  `grounds.controller.ts` (lines 428-450+). Served by `GroundsService.questionsForPeople` (line
+  4037), `theQuestionsForPeople` (line 4016), `confirmQuestionForPerson` (line 4061),
+  `declineQuestionForPerson` (line 4104), and the drafting helper `theExactQuestionFor` (line 3139),
+  which calls `api/src/modules/grounds/a-question-asked-word-for-word.ts`.
+- **Rule it keeps.** Decision 34 exactly: "the lead sees the exact question as Groundwork will ask
+  it, and confirms it, changes it, or leaves it out. Nothing is read into a person's check-in until
+  it is confirmed here." Confirming and declining are both strictly lead-only, with no admin
+  fallback at all — `confirmQuestionForPerson` and `declineQuestionForPerson` both check only
+  `ground.initiatorId !== requestingUserId` (lines 4069 and 4107), which is stricter than every other
+  write in this feature (compare item 5, `applyContextProposal`, and item 14, which are also
+  lead-only but for the same reason; contrast item 1's `contextChat` and items 9/17, which do allow
+  an org admin). Reading the list of questions (`questionsForPeople`, `GET`) is open to lead or org
+  admin; only confirming or declining one is lead-only. A question is retired ("left out"), never
+  silently deleted, and reopening it clears any prior confirmation so it must be confirmed again.
+- **Tests.** `a-question-asked-word-for-word.spec.ts`.
+- **In Ask Groundwork today:** not at all. Ask Groundwork has no concept of a lead's question queued
+  for another person.
+
+## 9. Notes about a person, always private to the lead (LEAD_ONLY)
+
+The lead can write a private note about a check-in, or about one named person on it. A note about a
+named person can never be shared with the check-in — the endpoint refuses that outright rather than
+accepting it and hiding it. A note about the whole check-in (not about a person) can be shared with
+everyone, one note at a time, by the lead.
+
+- **Where.** Routes `POST :id/lead-context` (`addLeadContext`) and
+  `POST :id/lead-context/:noteId/share` (`shareLeadContext`) in `grounds.controller.ts` (lines
+  363-377), served by `GroundsService.addLeadContext` (line 4123) and `shareLeadContext` (line
+  3828) in `grounds.service.ts`, backed by the `LeadContextNote` table.
+- **Rule it keeps.** "A note everyone reads is about the whole check-in, not about one person" — a
+  request to share a note that has a `participantId` throws `BadRequestException` rather than
+  proceeding. Only the lead, or an admin in the same organisation, may add or share a note. A note is
+  never quoted as a claim, and a note about a person is never shown to that person.
+- **Tests.** `the-leads-note-reaches-the-lead-alone.spec.ts`,
+  `the-leads-words-about-someone-stay-with-the-lead.spec.ts`,
+  `a-decision-about-a-person-is-the-leads.spec.ts`.
+- **In Ask Groundwork today:** not at all. There is no lead-private-note concept in Ask Groundwork.
+
+## 10. Coaching the lead about a named person, kept as the lead's own read
+
+If the lead tells the chat somebody is struggling, difficult, or "the problem", the conversation is
+not shut down and not redirected elsewhere — it asks what the lead has seen, what they have already
+tried, and what they want to be different, and records the answer as the lead's own private read of
+that person. It is never quoted to that person as a finding and never put into that person's own
+check-in.
+
+- **Where.** Rule 2 of `contextChatPrompt()` in `api/src/modules/grounds/the-context-chat.ts` (lines
+  305-325) — this is enforced only by the system prompt text, not by a separate code check, beyond
+  the fact that whatever gets recorded as "their read" lands as a `LEAD_ONLY` note through the normal
+  note-writing path in item 9. This is one of the places where the rule genuinely lives only in the
+  prompt.
+- **Rule it keeps.** "A judgement is not a fact about somebody and is never recorded as one." A
+  judgement ("struggling", "difficult") is different in kind from an expectation ("give her 3,000
+  units by December") — see item 11 — and the chat is expected to tell them apart. `readsAsAJudgement()`
+  in `what-setup-agreed.ts` is the one place this distinction is actually checked in code, and only
+  for the objectives-writing path, not for this coaching path itself.
+- **Tests.** No dedicated spec file for the coaching conversation itself was found; `worthRecording`
+  and `readsAsAJudgement` are exercised by `setup-can-write-an-expectation.spec.ts` and
+  `setup-writes-an-expectation.spec.ts`, which cover the adjacent write-path guard, not the coaching
+  turn in isolation.
+- **In Ask Groundwork today:** not at all.
+
+## 11. Setting what the lead expects of a named person (an "objective", not an agreement)
+
+The lead can tell the chat what they expect a specific person to do or reach — a number, a date, a
+piece of work to own. This is recorded as the lead's own expectation (`authoredBy: 'lead-setup'`),
+never as something agreed, and is marked `seenBySubject: false` until that person actually reads it
+in their own check-in.
+
+- **Where.** `objectives` branch of `proposalFrom()` in `what-the-context-chat-heard.ts` (lines
+  190-227); the write-worthiness check `worthRecording()` and the person-is-not-a-judgement check
+  `readsAsAJudgement()` in `api/src/modules/grounds/what-setup-agreed.ts`; the disclosure sentence
+  `WHAT_RECORDING_IT_MEANS` (same file, lines 126-130), attached to the prompt in
+  `grounds.service.ts` whenever there is more than one party (line 2621).
+- **Rule it keeps.** "It is NOT agreement... recording the lead's version as though it were shared
+  would close that gap by fiat." A sentence with nothing checkable in it ("do a good job", "be more
+  proactive") is refused outright — the bar is deliberately high, and silence is the ordinary answer,
+  because the first check-in interview is better at drawing a real expectation out. A description of
+  what someone IS ("is struggling with the wholesale accounts") is refused even though it reads as
+  checkable, because it is a judgement, not an expectation (see item 10).
+- **Tests.** `setup-can-write-an-expectation.spec.ts`, `setup-writes-an-expectation.spec.ts`,
+  `a-target-for-somebody-is-not-an-opinion-about-them.spec.ts`,
+  `nobody-is-read-against-a-target-they-never-saw.spec.ts`.
+- **In Ask Groundwork today:** not at all.
+
+## 12. Which documents are private to the lead
+
+A document has three possible visibilities, not two: `OWN` (private to whoever uploaded it — the
+default for every new upload, with no exceptions, including the lead's own files), `OPEN` (everybody
+on the ground can read it), and `CLOSED` (the lead only — including an org admin acting with the
+lead's eyes, but never the uploader if they are not the lead). Only the uploader can move their own
+document between `OWN` and `OPEN`; only the lead can move a document to `CLOSED`; a lead can never
+promote someone else's private document to shared. The context chat includes the lead's own `OWN`
+documents (because the lead is also the uploader and the only reader of this particular
+conversation) plus every `OPEN` document, but no one else's `OWN` document.
+
+- **Where.** `openDocuments` query in `grounds.service.ts` (lines 2533-2540): `OR: [{visibility:
+  'OPEN'}, {participant: {userId: requestingUserId}}]`. The three-state model and its read rules are
+  in `api/src/modules/documents/who-can-see-a-document.ts` (`canSeeDocument`, `documentWhereFor`,
+  `whoCanSeeItInWords`; `DocumentVisibility` enum in `api/prisma/schema.prisma`). Upload defaults to
+  `OWN` in `api/src/modules/documents/a-document-is-context.ts` (rule 3,
+  `defaultVisibilityForUpload`). Visibility changes: `PATCH grounds/:groundId/documents/:docId/visibility`
+  in `documents.controller.ts` → `DocumentsService.setVisibility`. Document names are scrubbed from
+  anyone who cannot see the document itself in `api/src/modules/documents/a-private-file-is-not-named.ts`
+  — a real fixed bug where a report once named a lead's private file to the whole team by quoting the
+  chat's own words back.
+- **Rule it keeps.** "A person's own file is not behind a wall FROM THEM. The wall is other people
+  reading it." A performance plan dropped into shared context in a hurried first week must be
+  recoverable as private — upload defaults to private, on purpose. With the `CONTEXT_ENABLED` flag
+  off, every document is treated as `OWN` regardless of its stored column, checked inside the reader
+  function itself rather than at each call site, so a flag flip cannot accidentally leak a document
+  written `OPEN` while the flag was on.
+- **Tests.** `your-own-file-is-not-behind-a-wall-from-you.spec.ts` (grounds),
+  `a-private-file-is-not-named.spec.ts`, `closed-is-the-leads-only.spec.ts`,
+  `documents-isolation.spec.ts`, `off-is-the-old-product.spec.ts`, `who-can-see-it-in-words.spec.ts`.
+- **In Ask Groundwork today:** no. Ask Groundwork does not read ground documents at all yet, so this
+  rule has nothing to apply to there.
+
+## 13. Which targets are hidden from whom (`whoSeesTargets`, `THEIR_OWN`)
+
+A check-in has a setting for whether everyone on it can see everyone's numbers, or only their own.
+`THEIR_OWN` is the default; a lead or org admin can switch it to `EVERYBODY`. Both the board and the
+context chat read this setting before showing anyone a target that is not theirs.
+
+- **Where.** Route `PATCH :id/who-sees-targets` in `grounds.controller.ts` (line 816);
+  `aSettingOnlyTheLeadMayChange` guard and the `whoSeesTargets` read/write logic in
+  `grounds.service.ts` (around lines 1905-1921, 2252-2262, 4218-4310).
+  `default 'THEIR_OWN'` in the Prisma schema.
+- **Rule it keeps.** Only the lead of the check-in, or an admin in the same organisation, may change
+  it. A participant on a `THEIR_OWN` ground must never be handed numbers that are not theirs — the
+  comment records a real incident where this leaked.
+- **Tests.** `one-answer-about-whose-numbers-somebody-reads.spec.ts`,
+  `one-rule-for-whose-share-is-shown.spec.ts`.
+- **In Ask Groundwork today:** confirmed not at all. `whoSeesTargets` is not read anywhere under
+  `api/src/modules/ask/` or `api/src/modules/assistant/`; `ask.service.ts`'s own comment admits "the
+  check-in chosen is checked here, and is not yet read by the assistant." This is a live gap that
+  exists today, independent of any migration: if Ask Groundwork is ever asked about targets, this
+  visibility rule is not there yet to stop a colleague's number being shown to somebody it is not
+  theirs.
+
+## 14. Who is allowed to use the context chat at all
+
+Only the lead who started the check-in, or an admin in the same organisation, can open the context
+chat, add or change context lines, add or share lead notes, or confirm a question for a person.
+Participants never get access to it — it is not their tool.
+
+- **Where.** Enforced independently in every one of `contextChat`, `applyContextProposal`,
+  `addLeadContext`, `shareLeadContext`, `addContextLine`, `changeContextLine`, `questionsForPeople`,
+  `confirmQuestionForPerson`, `stateBaseline` — each repeats the same check:
+  `ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)` throws
+  `ForbiddenException`.
+- **Rule it keeps.** "An admin in this organisation could release the report and close the check-in
+  — the two least reversible acts in the product — and could not write a note or use the context
+  chat," which the code comment calls out as a gap that was closed deliberately, so covering for an
+  absent lead means being able to steer the check-in, not just end it. A participant is never one of
+  the two roles checked, by construction.
+- **Tests.** `covering-for-a-lead-means-steering-it.spec.ts`, `managing-only-lead.spec.ts`,
+  `an-admin-of-this-org-runs-the-ground.spec.ts`.
+- **In Ask Groundwork today:** partly, by a different route. `ask.service.ts` establishes who is
+  asking (the signed-in person) and answers only for a check-in "the person runs or takes part in,
+  and not one that has ended" — a similar shape of gate, but it has no lead-vs-admin-vs-participant
+  distinction because it isn't answering setup questions at all, only the person's own private
+  questions about a check-in they're already in.
+
+## 15. What it asks for when setup is thin (the gap list itself, restated)
+
+Restating item 2 as user-facing behaviour: when a check-in has just been created from very little
+(the original defect this whole feature was built to fix — "a real Ground 1 run produced a
+ninety-day ground from a single answer with no duration, no rhythm and no sense of who was
+involved"), the chat's very first message names what is missing and asks for the most important
+thing first, rather than a generic greeting — and if the check-in already holds something, it opens
+by saying what is already there instead of asking again.
+
+- **Where.** `contextChatPrompt()`'s `holds`/`onRecord` blocks in `the-context-chat.ts` (lines
+  216-258), fed by `GroundsService.whatThisCheckInAlreadyHolds` and `whatIsOnThisCheckIn` (called at
+  `grounds.service.ts` lines 2625-2627).
+- **Rule it keeps.** "OPEN ON THAT, NOT ON A GREETING... never ask for something this list says you
+  already have." This was a real defect Hafsah reported (22 September 2026): a lead pasted a whole
+  quarter in and the chat opened with "Hello! We're setting up the Groundwork ground...".
+- **Tests.** `the-context-chat.spec.ts`.
+- **In Ask Groundwork today:** not at all — Ask Groundwork has no "what this check-in already holds"
+  opening-line behaviour.
+
+## 16. Setting what success looks like (`GroundBaseline`)
+
+What doing well looks like is stored separately from the brief, versioned, with every past version
+kept and a reason recorded whenever it is restated. It is stated by the lead (or org admin) but
+readable by anyone on the ground — "the yardstick a person is being read against is the last thing
+that should be private from them."
+
+- **Where.** Routes `POST :id/baseline` (`stateBaseline`) and `GET :id/baseline`
+  (`baselineHistory`) in `grounds.controller.ts` (lines 641-655); served by
+  `GroundsService.stateBaseline` (line 6400) and `baselineHistory` (line 6464). The context chat's
+  `success` gap reads and writes this same table (`statedSuccessFor`, `success` proposal kind in
+  `what-the-context-chat-heard.ts`).
+- **Rule it keeps.** A restatement requires a reason once a prior version exists — "the reason is the
+  thing that makes the change legible later." Nothing is overwritten; each restatement is a new
+  version, and unspecified fields (e.g. conditions) are carried forward rather than silently cleared.
+  Baseline history is readable by any participant, the lead, or an org admin — not lead-only, unlike
+  most other context-chat output.
+- **Tests.** Not confirmed by spec-file name in this pass; `a-bar-nobody-set-is-a-bar-nobody-agreed.spec.ts`
+  and `a-standard-set-afterwards-is-not-a-standard.spec.ts` are the closest-named files and likely
+  cover baseline behaviour, but their content was not read to confirm.
+- **In Ask Groundwork today:** not at all.
+
+## 17. Typing a context line directly, without the chat (the door for when there is no chat)
+
+Besides the conversation, a lead (or org admin) can type one line directly onto the Context page:
+a strategy note, a way of working, a decision, something unsettled, or a general note. This exists
+because a check-in with the chat switched off would otherwise show five empty buckets each saying
+"say it in the conversation above" with no conversation there. A line about a named person can never
+be created this way — it is refused outright, not silently filed as private.
+
+- **Where.** Routes `POST :id/context` (`addContextLine`) and `PATCH :id/context/:itemId`
+  (`changeContextLine`) in `grounds.controller.ts` (lines 402-421); served by
+  `GroundsService.addContextLine` (line 3922) and `changeContextLine` (line 3969). Sharing rules in
+  `api/src/modules/grounds/what-this-check-in-knows.ts` (`ABOUT_SOMEBODY`, `mayBeShared`,
+  `WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS`).
+- **Rule it keeps.** Only `STRATEGY`, `WAY_OF_WORKING`, `DECISION`, `UNSETTLED`, `NOTE` kinds may be
+  typed this way — `ABOUT_A_PERSON` and `QUESTION_FOR_PERSON` kinds are refused with
+  `WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS`, because "a line about a person cannot be created here at
+  all... it belongs to the conversation that can ask what it rests on." A line about a person can
+  never be shared with `EVERYONE`, whoever asks, even through the change endpoint. A retired line is
+  closed (`closedAt`), never deleted — "a decision that was made is not a decision that never
+  existed." A reworded question loses its prior confirmation and must be confirmed again (item 8).
+- **Tests.** `a-line-is-changed-by-talking-about-it.spec.tsx` (client), and coverage inferred from
+  `nothing-gets-lost-in-the-merge.spec.ts` mentioning "the guard fired for every document and
+  lead-context call."
+- **In Ask Groundwork today:** not at all.
+
+## 18. Bank and card numbers are hidden everywhere the chat touches text
+
+Before any document text is stored, before any message history reaches the model, and before any
+typed line or note is saved, account numbers, card numbers (Luhn-checked), IBANs, sort codes,
+routing numbers and SWIFT/BIC codes are replaced with a labelled placeholder (`[account number
+hidden]`, etc). This applies to documents, to what the lead types directly into a context line or
+note, and — per decision 35 — to numbers typed into a check-in message or the setup chat itself.
+
+- **Where.** `api/src/modules/documents/bank-details-are-never-kept.ts` (the detector); called via
+  `withoutBankDetails` / `withoutBankDetailsInEachTurn` at the top of `contextChat` (line 2480),
+  inside `addContextLine` (line 3927), `changeContextLine` (line 3975), `addLeadContext` (line
+  4124), and `confirmQuestionForPerson` (line 4082).
+- **Rule it keeps.** Decision 35: "The same code as for documents hides them, before anything is
+  stored and before any model call. Where a quote shows the message, it says a number was hidden.
+  This is protection, not changing someone's words." Deliberately narrow: an ordinary figure (an
+  amount, a date, a phone number, a short reference) is never hidden.
+- **Tests.** `bank-details-are-never-kept.spec.ts`, `bank-details-are-what-it-left-out.spec.ts`,
+  `bank-details-never-reach-the-record-or-the-model.spec.ts`.
+- **In Ask Groundwork today:** unclear — `withoutBankDetails` was not confirmed as called anywhere
+  under `api/src/modules/ask/` or `api/src/modules/assistant/` in this pass. Given Ask Groundwork
+  already takes free-text questions from people, this is worth checking directly before treating it
+  as covered.
+
+## 19. Setup sign-offs (found while reading the neighbouring routes)
+
+Separate from the context chat but on the same Context/setup surface: each person can mark their own
+setup questions as signed off, and only ever their own — `GET :id/setup-sign-offs` returns only the
+requesting user's marks, never anyone else's.
+
+- **Where.** Routes `GET :id/setup-sign-offs`, `POST :id/setup-sign-offs/:step`,
+  `DELETE :id/setup-sign-offs/:step` in `grounds.controller.ts` (lines 562-579); served by
+  `GroundsService.setupSignOffs` (line 5368) and neighbours.
+- **Rule it keeps.** "A person's own marks against the setup questions. Their own only: this never
+  returns anybody [else's]." Comment directly above the route in the controller.
+- **Tests.** Not identified by name in this pass.
+- **In Ask Groundwork today:** not at all; unrelated surface, listed here only because it lives next
+  to the context-chat routes on the same controller and the same Context page.
+
+## 20. What the client's Context page actually calls (cross-reference only)
+
+Confirmed by reading `client/src/api/grounds.ts` and `client/src/components/gw/ContextChat.tsx`,
+`ContextPage.tsx`, `ExpectationsPanel.tsx` (the Context page lives under `client/src/components/gw/`,
+not `client/src/pages/`, despite the task's pointer — noted as a correction). The client calls:
+`POST /grounds/:id/context-chat`, `POST /grounds/:id/context-chat/confirm`,
+`POST /grounds/:id/context`, `PATCH /grounds/:id/context/:itemId`,
+`POST /grounds/:id/lead-context/:noteId/share`, `POST/GET /grounds/:id/baseline`,
+`GET/POST /grounds/:id/baseline-entries` and `/baseline-entries/candidates`. This confirms every
+route named in items 1-17 is actually reachable from the screen a lead uses, not dead code.
+
+## 21. Other mechanics found while reading, worth knowing before anything is rebuilt
+
+A few smaller pieces that do not deserve their own numbered privacy/confirmation rule but would be
+easy to silently drop in a rewrite, since each one exists only because a specific real defect forced
+it in:
+
+- **A document is read three separate times, for three separate purposes.** `extractContent` pulls
+  the raw, bank-scrubbed text; `assessDocument` produces a short "what this suggests / what we will
+  do with it" card; `whatItHolds` pulls the structured numbers and dates (item 4). An agreement-type
+  ground has a fourth, narrower read (`readTheAgreementInIt`) that extracts contract terms into a
+  separate `Agreements` table entirely. (`api/src/modules/documents/documents.service.ts`.)
+- **Name matching against the roster has at least three separate implementations** that all have to
+  stay in agreement: `whoTheyMeant` (objectives), `whoThisNameIs` (document reads and the paste
+  reader), and inline matching inside the paste-writing path in `grounds.service.ts`. All three
+  refuse to guess when a name is ambiguous — two people both called "David" matches neither — rather
+  than picking the nearest person. This is deliberate and repeated, but it is three places to keep
+  right rather than one.
+- **A confirmed paste is recognised and never written twice.** A hash of the trimmed pasted text is
+  kept (`GroundPaste`), and a paste that has already been fully confirmed is refused a second write
+  ("That is already on the record, exactly as you sent it"). Separately, a fuzzy, stemmed
+  word-overlap check (`theSameMeasure`) recognises the same measure reworded slightly between two
+  reads of a similar paste ("signed" vs "signed sales"), so a re-paste does not double the board.
+  Both mechanisms would need to survive a rewrite for a lead who pastes something twice, by accident
+  or on purpose, not to see it duplicated.
+- **Pronoun resolution reads only the last message for content**, and earlier turns only to resolve
+  who "her"/"him"/"them" refers to (`asContextThenTheSentence`, `WHO_AND_WHAT_THEY_EXPECT` in
+  `what-the-context-chat-heard.ts`). This exists because a real run once had the extractor return the
+  literal word "her" as a person's name, matched nobody, and silently dropped a target the lead had
+  just been asked for.
+- **Several of the prompt's own rules have no code-level backstop at all**, beyond the traceability
+  and refusal checks already covered in item 5 — for instance "if a lead says somebody is
+  struggling, coach them rather than deflecting" (item 10) and "never tell them individual targets
+  cannot be set here" are pure prompt instructions, evidenced only by a code comment describing the
+  live incident where the old prompt got both wrong. A prompt rewrite or model swap could silently
+  regress either with nothing in the test suite to catch it.
+
+---
+
+## Summary table
+
+| # | Item | Where (primary file) | Covered by tests | Already in Ask Groundwork |
+|---|---|---|---|---|
+| 1 | The setup conversation itself | grounds.service.ts `contextChat`; the-context-chat.ts | Yes | No |
+| 2 | Working out what is missing | the-context-chat.ts `contextGaps` | Yes | No |
+| 3 | Reading documents, pulling out facts | what-a-document-holds.ts; what-the-documents-say.ts | Yes | No |
+| 4 | Targets out of documents, matched to people | what-the-context-chat-heard.ts `proposalFrom` | Partly | No |
+| 5 | Say-back and confirm before saving | grounds.service.ts `applyContextProposal`; nothing-proposed-that-nobody-said.ts | Yes | Partly (mechanism exists, not wired to setup) |
+| 6 | Reading a whole "dump" at once | a-dump-is-many-things.ts | Yes | No |
+| 7 | Hearing a change to something already recorded | grounds.service.ts `whatTheyWantChanged`/`makeTheChange` | Yes | No |
+| 8 | Exact question for a person, confirmed (decision 34) | a-question-asked-word-for-word.ts; grounds.service.ts `confirmQuestionForPerson` | Yes | No |
+| 9 | Private lead notes, LEAD_ONLY, never shared if about a person | grounds.service.ts `addLeadContext`/`shareLeadContext` | Yes | No |
+| 10 | Coaching the lead about a named person, kept private | the-context-chat.ts prompt rule 2 (prompt-only) | No dedicated spec found | No |
+| 11 | Setting an expectation of a named person | what-setup-agreed.ts; what-the-context-chat-heard.ts | Yes | No |
+| 12 | Documents private to the lead | grounds.service.ts `openDocuments` query; a-document-is-context.ts | Yes | No |
+| 13 | Targets hidden from whom (whoSeesTargets) | grounds.service.ts (multiple) | Yes | Unclear/not found |
+| 14 | Who may use it (lead/admin, never participant) | repeated guard in grounds.service.ts | Yes | Partly (different gate, same shape) |
+| 15 | Opening on what's already there, not a greeting | the-context-chat.ts prompt | Yes | No |
+| 16 | Setting success (GroundBaseline), versioned | grounds.service.ts `stateBaseline`/`baselineHistory` | Not confirmed by name | No |
+| 17 | Typing a context line directly (door with no chat) | grounds.service.ts `addContextLine`/`changeContextLine` | Yes | No |
+| 18 | Bank/card details hidden everywhere | bank-details-are-never-kept.ts | Yes | Unclear/not found |
+| 19 | Setup sign-offs (own only) | grounds.service.ts `setupSignOffs` | Not identified by name | No (unrelated surface) |
+| 20 | Client Context page route cross-reference | client/src/api/grounds.ts | n/a | n/a |
+| 21 | Other mechanics (document triple-read, name matching x3, paste/hash dedup, prompt-only rules) | multiple | Mixed | No |
+
+## Comparison, item by item
+
+*(Left empty here, on purpose — this is filled in as step (c), once the move into Ask Groundwork is
+planned.)*
