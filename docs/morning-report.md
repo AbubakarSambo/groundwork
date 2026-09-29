@@ -105,6 +105,27 @@ Tests: 663 files and 6,302 tests pass in reports, board, check-ins, conversation
 
 Tests: 728 files and 6,704 tests pass in the parts touched. Two tests were changed, because they checked the old colon-and-dash wording.
 
+**The rest of the requests: three more worked through, and every large one answered.**
+- **44, in part** (`fd3a9ba0`). Opening a check-in could make five model calls, one after another, before the first question. The two reads of the lead's brief now run side by side, so the first opening waits for one read, not two. The first question is unchanged. The rest must wait for each other. The answer lists two larger changes that would help.
+- **45** (`771ec520`). The Done page's "how checkable" read missed things people said. It averaged over every turn, so one date disappeared. It also never counted "waiting on Rukia". Now one date, number or document, or who they are waiting on, counts when it is said once. The lead still gets none of this.
+- **65, in part** (`3272bf72`).
+  - Rukia read "Ask Amani Wekesa to speak to Rukia Otieno…" about herself. She now reads "Amani Wekesa has been waiting 3 days on you for the signed price list. Give Amani Wekesa an answer, or say when you will."
+  - The lead's aim, "I want us to sign 12 shops", was being read as 12 signed, so the board showed 12 of 12. It no longer does.
+  - Three items of that request are still open.
+- **27** (`51bbf042`). After a yes, Ask Groundwork says the prototype's "Added to your to-dos for Tuesday: call Lakeside's buyer."
+- **30, part a** (`4beb133b`). Someone who loses the race for the last check-in reads billing's own sentence, never "ten free check-ins".
+- **Every large request now has an answer** (`f85de201`), with the week of `docs/weekly-plan.md` it belongs to. For example: suggestions in week 10, leave through chat in week 21, the weekly report in week 12b.
+- **Seven have no week in the plan yet,** so they need scoping first:
+  - 5, renaming the situations to the prototype's names;
+  - 17, the Company page;
+  - 18, links between check-ins;
+  - 25, the role map;
+  - 28, customers;
+  - 37, a check-in with no end date;
+  - 70, the switchboard's 22 sections.
+
+**The whole API test suite passes at `cd1d1139`: 1,175 files and 10,885 tests.**
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
@@ -139,6 +160,11 @@ I looked at where the drop is. It is spread thinly over many scenarios, one or t
 14. **Requests 56 and 69: "N of M" counts everybody on the check-in,** including someone invited who never joined. The stricter rule, which leaves out a lapsed invitation, only decides when a round's report is written, and never prints a count.
 15. **Request 58: a person's own private summary, and the lead's own setup report, may keep names the person typed.** Only that person reads them. The "stored without names" rule is for shared reports.
 16. **Request 39: the screens workspace adds the unit and currency fields** to targets, so two workspaces do not write clashing database changes.
+17. **Requests 10 and 15: a new suggestion does not replace one nobody has decided yet.** The thresholds, such as "below 6 in 10", are still yours to set.
+18. **Request 21: leave is approved by the person's line manager** where one is set, and otherwise by the lead of their check-in.
+19. **Request 23: only a manager starts a performance review,** as today. The product does not start one by itself.
+20. **Request 71: the weekly report is written on Friday,** as in the prototype.
+21. **Request 5: the situations are renamed to the prototype's names.** The client's list has to change on the same day, so it is written up but not done.
 
 ---
 
