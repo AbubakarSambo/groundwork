@@ -191,8 +191,16 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       return `Nothing ${mid} said this round can be checked yet.${again} A number, a date or a document for what moved would change that.`;
     }
     case 'nothing to do':
-    default:
+    default: {
+      /* Never "nothing here needs you" while they are waiting on you (week 16): Today lists it too. */
+      const onYou = row.inTheWay.find((b) => b.onTheReader);
+      if (onYou) {
+        const what = onYou.what.trim().replace(/[.!?]+$/, '').replace(/^(The|A|An|Whether|What|How|Which|Who|When|If)\b/, (w) => w.toLowerCase());
+        const forWhat = /^(whether|what|how|which|who|when|if)\b/.test(what) ? `a decision on ${what}` : what;
+        return `${start} has checked in, and is waiting on you for ${forWhat}.`;
+      }
       return `${start} has checked in, and nothing here needs you this week.`;
+    }
   }
 }
 
@@ -303,7 +311,7 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
         target: r.target,
         count: r.count,
         reason,
-        says: reason === 'nothing to do' && ask
+        says: reason === 'nothing to do' && ask && !r.inTheWay.some((b) => b.onTheReader)
           /* Not "nothing here needs you" over a row that then asks for something (read live, run-14). */
           ? `${subjectFor(r, true)} has checked in.`
           : whatHappened(r, reason, roundsPlanned),
