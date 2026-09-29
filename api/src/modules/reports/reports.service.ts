@@ -5463,7 +5463,7 @@ happened, and what is in the way.`;
            * the heading of a section in a list of people - it rendered a card titled "you" above
            * two cards titled by name. `nameOf2` is the same resolver without that substitution.
            */
-          who: nameOf2(p.id) ?? 'Somebody',
+          who: nameOf2(p.id) ?? 'A colleague',
           participantId: p.id,
           role: p.roleAsDescribed ?? null,
           answeredThisSession: answered,
