@@ -14,10 +14,8 @@ describe('what the record shows over time', () => {
         whenSaid: 'next week', explicit: true, status: 'UNKNOWN', source: 'CHECK_IN',
         statedInSession: 1, saidAgainIn: [2, 3, 5],
       }], labelOf, 6);
-      expect(c.say).toContain('said in session 1');
-      expect(c.say).toContain('said again in sessions 2, 3, 5');
-      expect(c.say).toContain('open 5 sessions');
-      expect(c.say).toContain('"I will arrange meetings with the technical team"');
+      /* Changed 29 Sep 2026: full sentences, no colon, dash or semicolon joins (review, item 5). */
+      expect(c.say).toBe('In session 1, Marcus Oyelaran said, "I will arrange meetings with the technical team". The time Marcus Oyelaran gave for it was "next week". Marcus Oyelaran said it again in sessions 2, 3 and 5. It has been open for 5 sessions, and nobody has said whether it happened.');
     });
 
     it('never says anything happened, because only a person says that', () => {
@@ -25,7 +23,8 @@ describe('what the record shows over time', () => {
         participantId: 'marcus', text: 'I will call her', whenSaid: null, explicit: true,
         status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 4, saidAgainIn: [],
       }], labelOf, 4);
-      expect(c.say).toContain('nobody has said whether it happened');
+      expect(c.say).toContain('Nobody has said yet whether it happened.');
+      expect(c.say).not.toMatch(/marked|done/);
     });
 
     it('says when the lead said it rather than them', () => {
@@ -33,7 +32,23 @@ describe('what the record shows over time', () => {
         participantId: 'marcus', text: 'get the MOU signed', whenSaid: null, explicit: false,
         status: 'UNKNOWN', source: 'PASTE', statedInSession: null, saidAgainIn: [],
       }], labelOf, 3);
-      expect(c.say).toContain('the lead said they would, not them');
+      expect(c.say).toBe('The lead said that Marcus Oyelaran would do this, "get the MOU signed". Marcus Oyelaran did not say it. Nobody has said yet whether it happened.');
+    });
+
+    it('says truly how it was settled, never "somebody marked it done", in full sentences', () => {
+      const row = (settledBy: string | null, status = 'DONE') => commitmentsOverTime([{
+        participantId: 'marcus', text: 'I will continue to monitor client health closely.', whenSaid: 'next', explicit: true,
+        status, source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], settledBy,
+      }], labelOf, 3)[0].say;
+      expect(row('SAID')).toBe('In session 1, Marcus Oyelaran said, "I will continue to monitor client health closely." The time Marcus Oyelaran gave for it was "next". Marcus Oyelaran said later that it was done.');
+      expect(row('PROVEN')).toMatch(/A document Marcus Oyelaran added shows it was done\.$/);
+      expect(row('CONFIRMED')).toMatch(/The colleague who received it confirmed that it was done\.$/);
+      expect(row('SAID', 'NOT_DONE')).toMatch(/Marcus Oyelaran said later that it was not done\.$/);
+      expect(row(null)).toMatch(/It is marked done, and the record does not say who marked it\.$/);
+      for (const by of ['SAID', 'PROVEN', 'CONFIRMED', null]) {
+        expect(row(by)).not.toMatch(/somebody marked|; | - |Oyelaran:/);
+        expect(row(by)).toContain('"I will continue to monitor client health closely."');
+      }
     });
 
     it('puts the most-restated open one first', () => {

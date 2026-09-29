@@ -4062,7 +4062,7 @@ happened, and what is in the way.`;
         orderBy: { createdAt: 'asc' },
         select: {
           participantId: true, text: true, whenSaid: true, explicit: true, status: true, source: true,
-          statedInSession: true, saidAgainIn: true,
+          statedInSession: true, saidAgainIn: true, settledBy: true,
         },
       }) ?? Promise.resolve([])).catch(() => [] as any[]),
       (this.prisma.groundDependency?.findMany?.({
