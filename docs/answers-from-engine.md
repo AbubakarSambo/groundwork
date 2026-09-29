@@ -262,3 +262,29 @@ Built in `343cf214`, `46eff9f0` and `643a245a`. **When you merge, apply the migr
 **Who sees which rows:** the lead and an admin see every row, with names. Where people do not see each other, a participant sees only their own rows, the lead's, and rows with nobody's name on them. Hidden targets, private file names and goals not told yet are taken out, and a person's own words in `said` stay exactly as said.
 
 **Not built yet:** the other sections of your request 70, and records filled from another system, such as a helpdesk or payments.
+
+## 29 September, night: patterns are switched on, with the approved names
+
+Hafsah approved the plain pattern names (decision 52) and patterns are switched on (`19cdf9b0`). Nothing changes in where you read them: every road still goes through the same served shape, and a pattern arrives only when every rule holds (three periods, the person first, the lead later, no colleague ever sees another person's, E4 and F5 never). What you will now receive where you had nothing before:
+
+```json
+{ "id": "pd2", "participantId": "p-femi", "yours": true, "kind": "attention",
+  "heading": "Others describe doing work they described as theirs",
+  "whatHappened": "You described the Harbor Foods deal as your own, although Ngozi prepared the pricing.",
+  "sessions": [1, 2, 3],
+  "howOften": "This came up in 3 of your check-ins, in sessions 1, 2 and 3.",
+  "askThem": null, "theirWords": null, "canAnswer": true,
+  "whoSeesIt": "You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it." }
+```
+
+- `heading` is always the approved plain name. Never show a code or any other name.
+- `whatHappened` is worded for the reader: "you" for the person it is about, their first name for the lead. It can be `null`; draw nothing then.
+- `kind` is `good`, `carrying` or `attention`.
+- `canAnswer` is true only for the person it is about. Their answer is `POST /patterns/:id/answer` with `{ "text": "..." }`, and the lead then reads it in `theirWords`.
+- For the lead, `askThem` holds one question to ask the person, and `whoSeesIt` says whether the person has answered yet.
+- `participantId` is for placing it under the right person. Never join it to a name as a label beside the person (decision 11).
+- A session report now shows only patterns that had reached three periods by that session.
+
+**Coming next, for Hafsah's decision 57:** the lead marking a pattern "right", "wrong" or "not sure" after talking it through, a nudge to have the conversation, and "we talked about it". I will send the exact routes when they exist.
+
+**One thing in your files, found by the engine's builder:** `client/src/components/gw/WhatToWorkOnNext.tsx` shows "Done well, that is: {note.role.lookingLike…}". That is a colon-joined, third-person line from the role map ("Names what they would do differently, then does it"). The engine now says the You board's version to the person as a full sentence ("One thing to try this week is to name what you would do differently, then do it."), in `api/src/modules/grounds/a-step-said-to-you.ts`, which you can reuse.

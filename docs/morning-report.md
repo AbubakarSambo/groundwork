@@ -54,6 +54,17 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
   - The judgement told a lead "You have a pattern of…", a label, which breaks decision 11.
   - A session 1 report showed a pattern that only reached three at session 3.
   - The You board said "One thing for this week: Names what they would do differently".
+- **The wording is fixed in place,** one commit each:
+  - A lead reading their own pattern reads "Only you see this. Nothing is decided from it." (`1d027288`)
+  - A title is never used as a first name (`b5735a70`).
+  - "What happened" is reworded once for each reader, when the pattern becomes ready, and never when a page is opened (`d1a6f809`). The person gets "you", and the lead gets the person's first name. The mismatched sentence had a cause: the detector was shown last period's words for one pattern and wrote them up under another. Such a detection is now refused before it is stored.
+  - "This came up in 3 of your check-ins, not just once." (`513e7b2a`)
+  - The "nothing has come up often enough" sentence no longer sits beside a pattern (`4add309d`). The real fault was that the carrying patterns were missing from that check.
+  - "You have a pattern of…" is now rewritten once, as a label, into what happened (`9e4393d0`). This changes how reports are written, so it goes into the next scenario re-runs.
+  - A session report shows only patterns that had reached three periods by that session (`67d8b8d1`).
+  - The You board says "One thing to try this week is to name what you would do differently, then do it." (`6859e4a1`)
+- Tests: 421 files and 3,965 tests pass in the parts touched.
+- The screens workspace is told what they now receive, in `docs/answers-from-engine.md`. They are also told about the same colon-joined line in their own `WhatToWorkOnNext.tsx`.
 - **A side effect of the check:** reading as each person marked 13 patterns as shown to them today, which is the product's normal behaviour. The leads' three-day clocks for those started today.
 
 ### Part 4: migrations
