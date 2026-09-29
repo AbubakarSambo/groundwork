@@ -6564,9 +6564,9 @@ The builder built the pattern screens to the engine's new shape, from the shared
 
 Then I deleted the test pattern. The switch file was never changed by me.
 
-**Found by the live test, being fixed:**
-1. Before Amani answered, Rukia's board said "No patterns have repeated often enough to show yet." That is untrue while someone is having their turn. It must become a sentence that is true and still does not tell the lead a pattern exists.
-2. "In your own words:", "In their own words:" and "Ask them:" are labels joined to text with colons. They become full sentences.
+**Found by the live test (the first two now fixed; screen and privacy tests pass, 866 in 91 files):**
+1. Before Amani answered, Rukia's board said "No patterns have repeated often enough to show yet." That is untrue while someone is having their turn. It now reads "Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.", which is true either way and tells the lead nothing.
+2. "In your own words:", "In their own words:" and "Ask them:" were labels joined to text with colons. They now read, for example, "Amani Wekesa said this about it." with her words quoted, and "A question you could ask Amani Wekesa, to hear their side." I wrote these sentences myself, since the prototype has none for them.
 3. The prototype's second part of "What keeps coming up", "How what people say can run ahead of what happened", has no data from the engine, so nothing is drawn for it. Under your rule that these screens are never simplified, I asked the engine to serve it (request 82).
 
 Tests the builder changed, and why: the switchboard's and the You board's tests carried the old pattern shape, which the engine no longer sends; they now carry the new one. One engine test reads the board's source for the old wording; the builder asked the engine to update it (request 81) and did not touch it.
