@@ -53,7 +53,7 @@ import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
-import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel } from './how-checkable-a-session-was';
+import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel, whatWasSaidOnce, atLeastMet } from './how-checkable-a-session-was';
 
 /** `CheckIn.closedReason` when the sweep, not the person, ended the session. */
 export const CLOSED_BY_THE_CLOCK = 'auto_closed';
@@ -6212,6 +6212,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Measuring recall honestly (RecordEntry.recallBased) is structurally zero for any ground with no
    * documents (planaudit_b.md C7), so the column is written null and its sentence is gone.
    */
+  /** A document this person attached to this check-in's ground since the session started. Best effort. */
+  private async theyAttachedADocumentIn(checkInId: string): Promise<boolean> {
+    try {
+      const row = await this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true, participantId: true, startedAt: true } as any });
+      if (!(row as any)?.groundId || !(row as any)?.participantId || !this.prisma.groundDocument?.count) return false;
+      const n = await this.prisma.groundDocument.count({
+        where: {
+          groundId: (row as any).groundId,
+          participantId: (row as any).participantId,
+          ...((row as any).startedAt ? { createdAt: { gte: (row as any).startedAt } } : {}),
+        } as any,
+      });
+      return n > 0;
+    } catch {
+      return false;
+    }
+  }
+
   private async scoreSessionSpecificity(checkInId: string): Promise<{
     level: SpecificityLevel;
     dimensions: Record<string, SpecificityLevel>;
@@ -6249,10 +6267,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const coverageScore = Math.min(1, (intakes.filter(r => r.types.includes('absorption') || r.types.includes('rescue')).length / n) * 1.5);
     const commitScore   = intakes.filter(r => r.types.includes('movement')).length / n;
 
+    /* Two of the five read as the Done page names them: said once is there (request 45). */
+    const attachedADocument = await this.theyAttachedADocumentIn(checkInId);
+    const saidOnce = whatWasSaidOnce(personTurns.map((t) => t.content ?? ''), attachedADocument);
+
     const dimensions: Record<string, SpecificityLevel> = {
       delivery:   mapSpecificityLevel(avgDelivery),
-      evidence:   mapSpecificityLevel(avgSpecificity),
-      enablement: mapSpecificityLevel(avgEnablement),
+      evidence:   atLeastMet(mapSpecificityLevel(avgSpecificity), anyCheckable || saidOnce.aDateNumberOrDocument),
+      enablement: atLeastMet(mapSpecificityLevel(avgEnablement), saidOnce.whatTheyWereWaitingOn),
       coverage:   mapSpecificityLevel(coverageScore),
       commitment: mapSpecificityLevel(commitScore),
       /* Kept as a level so the column's type holds: 'specific' means at least one turn could be checked. */

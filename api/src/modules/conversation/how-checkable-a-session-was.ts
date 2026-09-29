@@ -54,3 +54,37 @@ export function labelFromMean(mean: number): 'high' | 'moderate' | 'low' {
  */
 export const WHERE_IT_WAS_READ_FROM =
   'Read from how much of what was said could be checked against a date, a number or a named piece of work - not from anything about the person.';
+
+/**
+ * TWO OF THE FIVE, READ THE WAY THE PERSON IS TOLD THEY ARE READ (request 45).
+ *
+ * The Done page says what each of the five means: "One date, number or document" for evidence, and
+ * "What you were waiting on, and from whom" for enablement. The engine read evidence as the mean of
+ * a keyword score over every turn, so one date among six turns was averaged away, and it read
+ * enablement as advice-giving verbs ("mentored", "reframed"), which is not what the line says at
+ * all. A person who said "waiting on Rukia" and gave dates, a number and a document was told
+ * neither was there.
+ *
+ * So each is at least met once the thing the line names was said once: a date, a number or a
+ * document for evidence; a thing waited on with somebody named for enablement. Met means
+ * `directional`, never `specific`, so nothing that asks for proof (the board's "no proof yet")
+ * is loosened by it. Only ever raises a dimension; it never lowers one.
+ */
+const A_DOCUMENT =
+  /\b(?:attached|attachment|document|spreadsheet|sheet|pdf|invoice|receipt|photo|screenshot|contract|quote|minutes|the report|the file|lpo|purchase order)\b/i;
+const WAITING_ON =
+  /\b(?:waiting (?:on|for)|wait(?:ing)? to hear (?:back )?from|still to hear from|blocked (?:by|on)|held up by|stuck on|depends? on|depending on|dependent on|chasing|need(?:s|ed)? (?:a |an |the )?\S+(?: \S+){0,4} from|until (?:\S+ ){1,3}(?:sends?|signs?|approves?|replies|gets? back|confirms?))\s+\S/i;
+
+export function whatWasSaidOnce(turns: string[], attachedADocument = false): { aDateNumberOrDocument: boolean; whatTheyWereWaitingOn: boolean } {
+  const said = turns.filter((t) => (t ?? '').trim());
+  return {
+    aDateNumberOrDocument: attachedADocument || said.some((t) => A_DOCUMENT.test(t)),
+    whatTheyWereWaitingOn: said.some((t) => WAITING_ON.test(t)),
+  };
+}
+
+/** The level raised to `directional` when the thing was said; a level already higher is kept. */
+export function atLeastMet(level: SpecificityLevel, said: boolean): SpecificityLevel {
+  if (!said) return level;
+  return (rankOf(level) ?? 0) >= (rankOf('directional') ?? 2) ? level : 'directional';
+}
