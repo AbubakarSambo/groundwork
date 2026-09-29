@@ -137,6 +137,25 @@ export function hasBeenSeenInThreePeriods(row: Pick<APatternRow, 'seenInSessions
 }
 
 /**
+ * A ROW, AS IT STOOD AT A GIVEN SESSION - NOT AS IT STANDS TODAY.
+ *
+ * `/report/session/N` is a report for session N, and a pattern that only reached three periods at
+ * session 3 has no business on session 1's report: it had not happened yet. `periodsSeen` reads
+ * `seenInSessions` and `periodsObserved` as they are stored NOW, which is the ground's current
+ * state, so a session report built from the raw rows silently used information from the future.
+ *
+ * `periodsObserved` is a consecutive-run counter with no history of its own value at an earlier
+ * session, so it cannot be trimmed to "as it stood then" - only the distinct count can, from
+ * `seenInSessions`, which is a per-session record. Using that count as the substitute never
+ * overstates how many periods had been seen by `sessionNumber`, which is the direction that matters:
+ * decision 8 is a floor, never a reason to show something early.
+ */
+export function patternRowAsOfSession<T extends APatternRow>(row: T, sessionNumber: number): T {
+  const seenInSessions = (row.seenInSessions ?? []).filter((n) => Number.isFinite(n) && n <= sessionNumber);
+  return { ...row, seenInSessions, periodsObserved: seenInSessions.length };
+}
+
+/**
  * The engine's sentence, when a person may read it. The archive prefix from startNewPeriod and the
  * courtroom opener come off; a sentence that names a pattern by its internal name or code, or is the
  * library's own signal, is dropped whole rather than edited, because a half-edited sentence about

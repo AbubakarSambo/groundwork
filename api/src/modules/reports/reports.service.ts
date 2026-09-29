@@ -139,7 +139,7 @@ import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType,
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternRow } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternRow } from '../patterns/who-reads-a-pattern';
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
@@ -3274,16 +3274,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const patternRowsForPage = PATTERNS_ARE_SERVED
       ? await this.prisma.patternDetection.findMany({ where: { groundId }, orderBy: [{ lastSeenAt: 'desc' }], select: PATTERN_ROW_SELECT })
       : [];
+    /* A report for session N shows only what had reached three periods BY session N - not the
+       ground's current state, which may have reached it later. See patternRowAsOfSession. */
+    const patternRowsAsOfThisSession = (patternRowsForPage as APatternRow[]).map((r) => patternRowAsOfSession(r, sessionNumber));
     const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId);
     const patternsForPage = await wordPatternEvidence(
       servedPatterns(
-        patternRowsForPage as any,
+        patternRowsAsOfThisSession as any,
         { participantId: me?.id ?? null, runsIt: viewerIsLead },
         namesForPatterns,
       ),
       namesForPatterns.firstNameOf ?? (() => null),
       this.patternEvidenceCompose(),
-    ).catch(() => servedPatterns(patternRowsForPage as any, { participantId: me?.id ?? null, runsIt: viewerIsLead }, namesForPatterns));
+    ).catch(() => servedPatterns(patternRowsAsOfThisSession as any, { participantId: me?.id ?? null, runsIt: viewerIsLead }, namesForPatterns));
     /* The person reading their own for the first time starts the clock on when the lead may read it. */
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(patternRowsForPage as any, patternsForPage));
     /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */

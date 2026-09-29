@@ -1,5 +1,5 @@
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from './pattern-library';
-import { servedPatterns, whatHappenedIn, periodsSeen, thePersonHasHadTheirTurn, theOnesTheyAreSeeingFirst, whoIsWhoIn, type APatternRow } from './who-reads-a-pattern';
+import { servedPatterns, whatHappenedIn, periodsSeen, thePersonHasHadTheirTurn, theOnesTheyAreSeeingFirst, whoIsWhoIn, patternRowAsOfSession, type APatternRow } from './who-reads-a-pattern';
 
 /**
  * THE RULES FOR SERVING A PATTERN, READ AS EACH READER. See who-reads-a-pattern.
@@ -162,5 +162,32 @@ describe('the person sees it first, and can answer, before the lead reads it', (
     const [mine] = servedPatterns([leadOnFirst], { participantId: 'p-lead', runsIt: true }, { ...on, leadParticipantId: 'p-lead' });
     expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
     expect(mine.whoSeesIt).not.toContain('Tunde');
+  });
+});
+
+describe('a session report shows only what had reached three periods by that session', () => {
+  /* Reached its third period at session 3. A report for session 1 must not know that yet. */
+  const row: APatternRow = {
+    id: 'x', participantId: 'p-femi', code: 'B11', observationText: 'Blockages are attributed to customers being slow.',
+    seenInSessions: [1, 2, 3], periodsObserved: 3, readyAt: new Date('2026-09-03'), shownToPersonAt: null,
+  };
+
+  it('leaves it off session 1 and session 2, where it had not reached three periods yet', () => {
+    expect(servedPatterns([patternRowAsOfSession(row, 1)], FEMI, on)).toEqual([]);
+    expect(servedPatterns([patternRowAsOfSession(row, 2)], FEMI, on)).toEqual([]);
+  });
+
+  it('shows it from session 3 on, where it had', () => {
+    expect(servedPatterns([patternRowAsOfSession(row, 3)], FEMI, on)).toHaveLength(1);
+    expect(servedPatterns([patternRowAsOfSession(row, 30)], FEMI, on)).toHaveLength(1);
+  });
+
+  it('never counts a session after the one the report is for', () => {
+    const asOf1 = patternRowAsOfSession(row, 1);
+    expect(asOf1.seenInSessions).toEqual([1]);
+    expect(asOf1.periodsObserved).toBe(1);
+    /* The id and everything else about the row is unchanged - only what "as of" trims. */
+    expect(asOf1.id).toBe('x');
+    expect(asOf1.observationText).toBe(row.observationText);
   });
 });
