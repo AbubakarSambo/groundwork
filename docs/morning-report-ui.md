@@ -107,6 +107,12 @@ and that is when the first entry goes in.
 setup", the invitation and the check-in header used by every check-in page are all still built
 from the old parts, waiting for their own sessions as the audit's order sets out.
 
+## The invitation, rebuilt from the prototype's parts (29 September)
+
+The invitation and every state it hands over to (the fresh invitation, already joined, held for a seat, "Almost in", out of time, an expired link, and a link that did not work) are rebuilt from the shared parts and passed their review. Each was pictured at 1440 pixels against the prototype. The privacy rules held throughout: the invitation carries none of the lead's words, the two held sentences stay held, and "Your number" now sends only who can see the person's share, never the number. Two small differences from the prototype are on purpose: "Not you? Sign out." on "Almost in", so nobody is stuck on a shared computer, and the name fields, which the flow needs.
+
+**The full run at the end, 29 September:** 10,475 of 10,477 API tests and 3,430 of 3,433 screen tests passed, and both type checks are clean. None of the five failures comes from the invitation. One waits on the engine's heading label (request 62). One is two of the engine's own new specs reading source without stripping comments (request 72). Two are the sidebar's "Jump to" focus and its failed-list message, which the engine workspace also saw failing without any code change on 27 September; they look order- or time-dependent and are still to be pinned down. One is a leftover file, `GroundTabRow.tsx`, which the check-in rebuild removes after moving its test to the new tabs.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
