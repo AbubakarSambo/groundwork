@@ -1,6 +1,7 @@
 import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
+import { aStepSaidToYou } from './a-step-said-to-you';
 
 /**
  * THE YOU BOARD (C2, U.12): WHAT IS YOURS, ACROSS YOUR CHECK-INS, FOR YOUR EYES ONLY.
@@ -323,9 +324,10 @@ export function yourBoard(
     .filter((c) => myParticipantIds.has(c.participantId) && (c.currentStep ?? '').trim())
     .sort((a, b) => time(b.updatedAt) - time(a.updatedAt))[0];
   let coaching: YourBoard['coaching'] = null;
-  if (step) {
+  const saidToYou = step ? aStepSaidToYou(step.currentStep) : null;
+  if (step && saidToYou) {
     const g = mine.find((x) => (x.participants ?? []).some((p) => p.id === step.participantId));
-    coaching = { says: `One thing for this week: ${step.currentStep!.trim()}`, checkIn: g?.label ?? '' };
+    coaching = { says: saidToYou, checkIn: g?.label ?? '' };
   }
 
   return {

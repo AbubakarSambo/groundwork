@@ -131,7 +131,9 @@ describe('Miriam reads her own You board', () => {
       ['Send Green Mart the quote, with a photo', null, 'Sales team, Q3', 'Kept'],
     ]);
     expect(b.todos.map((t) => t.text)).toEqual(['Send a photo of Green Mart’s written order.']);
-    expect(b.coaching).toEqual({ says: 'One thing for this week: Ask Westgate what would get the deposit paid this week.', checkIn: 'Sales team, Q3' });
+    /* Hafsah, 29 September 2026: a full sentence spoken to "you", not "One thing for this week:"
+       colon-joined onto the library's third-person text. See a-step-said-to-you.ts. */
+    expect(b.coaching).toEqual({ says: 'One thing to try this week is to ask Westgate what would get the deposit paid this week.', checkIn: 'Sales team, Q3' });
     expect(b.ownReports).toEqual([{ checkIn: 'Sales team, Q3', at: ago(1).toISOString(), to: '/checkin/c-m2/report' }]);
   });
 
