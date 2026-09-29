@@ -6641,3 +6641,21 @@ Two pre-existing failures found and left alone, both unrelated to this work: `ap
 - **The change log stays without names, on purpose.** The reviewer asked for "Changed by Rukia Otieno", but an existing privacy test says the log never names who made a change, because on a check-in where people cannot see each other a name there would tell someone who else is in it. That is the more private option, so it stays; the page's sentence now says only what is true ("Changes to how long it runs and how often are noted with who made them and the date."). Logging every switch, not only length and how often, is left for later.
 - **One of our tests, broken by the People and setup move, now reads the new file** (`the-audit-log-has-a-reader.spec.ts`), with its privacy check untouched.
 - **Left with a builder now:** the People page's two different counts, Zawadi missing from the table, and the participant view's chips and session count.
+
+## Re-review of the people group and the pattern screens (30 September)
+
+The reviewer checked every earlier finding and clicked through each screen as Juma, Rukia, Amani and Neema, and sent the group back once more. **Fixed and reading well:** "What an admin can see"; the strips under each person, speaking to an admin as "you"; initials on every avatar; every rewritten sentence on People and setup; each person's pattern on their line under "The team today"; "Situation" no longer offering a Change that never saved; the confirm-each-other's-work setting's third state; Zawadi as a row on People, and the counts agreeing; the owner not offered Remove; and the participant's "You have completed 1 session, out of 12." Nothing scrolls sideways at either width.
+
+**Found again or new, now with the builder:**
+1. **The lead's "Alignment feed" on the board is broken whenever a pattern exists** (protected). It still reads the old pattern shape, so it says "0 to look at" and draws one empty card. It is being rebuilt from the new shape, not removed.
+2. "Not let in" is still missing from "Roles in this check-in" and from the People page's count sentence, and the roster says Faraji "has not checked in for this session yet", which he cannot.
+3. Someone waiting at the door still reads "Joined" rather than "Invited".
+4. For an admin, a person with no name reads "A colleague" mid-sentence ("Your plan has no seat for A colleague."), and People and setup makes up "Zawadi U8" from her email.
+5. The change log's entries still say "Changed by the party" and join pieces with colons.
+6. Small wording points, and three readers told three different stories about which session it is.
+
+**Still open on the server, and the most important thing here:** until request 84 is done, the privacy for patterns lives only on the screen. The server still sends Amani's pattern, and her own words, to Juma, an admin who does not run the check-in, though the screen no longer draws it. CLAUDE.md says privacy is enforced in the backend, never only hidden on screen. This needs your decision in item 0-pat2 and then the engine's change; I have marked request 84 as the one to do first.
+
+**The reviewer's view on the two settled points:** it agrees that the change log does not name who made a change, provided "the party" goes (being fixed); and it agrees that another person's pattern is shown only to whoever runs the check-in, for now, as the more private choice, with the server side still to come.
+
+Both temporary database changes the reviewer made were put back and checked (Faraji's request back to waiting; the test pattern row deleted).
