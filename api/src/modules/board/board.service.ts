@@ -1414,6 +1414,25 @@ export class BoardService {
     }
 
     /*
+     * EACH PERSON TODAY, AND WHAT KEEPS COMING UP (week 12, screens request 11). The prototype's
+     * "The team today" puts under each person's line what keeps coming up ("Same leads, 3 check-ins
+     * running"). Here that is the same sentence as `toLookAt`, from the same read of the record, so
+     * the two can never disagree. The line is the one the lead's row already says; where something
+     * keeps coming up it no longer ends "nothing here needs you", because something does. Lead only,
+     * like `toLookAt`: a colleague and an admin who only reads get no field.
+     */
+    if (isInitiator && Array.isArray(out.eachPerson)) {
+      const firstFor = new Map<string, any>();
+      for (const t of (out.toLookAt as any[] | undefined) ?? []) if (!firstFor.has(t.participantId)) firstFor.set(t.participantId, t);
+      out.eachPersonToday = (out.eachPerson as any[]).map((row) => {
+        const k = firstFor.get(row.participantId);
+        const said = String(row.says ?? '');
+        const line = k ? said.replace(/, and nothing here needs you this week\.$/, '.') : said;
+        return { participantId: row.participantId, who: row.who, line, ...(k ? { keepsComingUp: k.says } : {}) };
+      });
+    }
+
+    /*
      * APPLIED IN ONE PLACE, AT THE END, ON PURPOSE. Threading the rule through eight builders is
      * eight chances to forget it and no single place to read what the board gives away. Here the
      * whole answer is one paragraph, and a section added later is walled by being added to it

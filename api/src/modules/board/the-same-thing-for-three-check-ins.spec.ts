@@ -232,3 +232,31 @@ describe('the same thing for three check-ins, as each reader reads the latest re
     expect(JSON.stringify(r)).not.toMatch(/same promise|same thing in the way/);
   });
 });
+
+/**
+ * SCREENS REQUEST 11: EACH PERSON TODAY, WITH WHAT KEEPS COMING UP UNDER THEIR LINE, from the same
+ * read as toLookAt, to the lead only.
+ */
+describe('what keeps coming up, under each person on the lead’s board', () => {
+  it('the lead reads it under Samuel, and a line that no longer says nothing needs them', async () => {
+    const b = await boardFor('u-wairimu').board;
+    const samuel = (b.eachPersonToday ?? []).find((r: any) => r.participantId === 'p-samuel');
+    expect(samuel).toBeDefined();
+    expect(samuel.who).toBe('Samuel Kariuki');
+    expect(samuel.keepsComingUp).toBe('Samuel Kariuki has had the same thing in the way for 3 check-ins.');
+    expect(samuel.line).not.toMatch(/nothing here needs you/);
+    const zawadi = b.eachPersonToday.find((r: any) => r.participantId === 'p-zawadi');
+    expect(zawadi.keepsComingUp).toBe('A colleague has made the same promise for 3 check-ins.');
+    expect(JSON.stringify(b.eachPersonToday)).not.toMatch(/@|example\.test|at risk|PIP|score|rating/i);
+    /* The rows are the lead's rows, one for each: nobody is added or dropped. */
+    expect(b.eachPersonToday.map((r: any) => r.participantId)).toEqual(b.eachPerson.map((r: any) => r.participantId));
+  });
+
+  it('a participant and an admin who only reads get no field', async () => {
+    for (const [who, role] of [['u-samuel', 'MEMBER'], ['u-grace', 'ADMIN']] as const) {
+      const b = await boardFor(who, role).board;
+      expect(b).not.toHaveProperty('eachPersonToday');
+      expect(JSON.stringify(b)).not.toMatch(/same promise|same thing in the way/);
+    }
+  });
+});
