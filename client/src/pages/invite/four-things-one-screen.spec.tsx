@@ -85,6 +85,16 @@ describe('the invitation a participant reads', () => {
     await screen.findByText('Who sees your answers')
     expect(screen.queryByText('Your number')).toBeNull()
   })
+
+  /* U.20 eighth round: the server sends this person's own share (through the engine's own
+     visibility rule, participants.service.ts's preview), and the block reads the prototype's
+     own sentence, naming the lead. */
+  it('shows "Your number" when the server sends this person\'s own share of a target', async () => {
+    open({ ...PREVIEW, yourShareOfTarget: 13 })
+    await screen.findByText('Who sees your answers')
+    expect(screen.getByText('Your number')).toBeTruthy()
+    expect(screen.getByText('Only you and Wairimu see your share of the target.')).toBeTruthy()
+  })
 })
 
 describe('the two lines built from the record', () => {

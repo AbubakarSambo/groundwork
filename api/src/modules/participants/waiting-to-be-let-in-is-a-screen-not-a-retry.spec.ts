@@ -43,7 +43,9 @@ describe('the invite page', () => {
   });
   it('and the waiting screen renders the wait, and never sends them to a check-in', () => {
     const waiting = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'client', 'src', 'pages', 'join', 'WaitingForAnAdminPage.tsx'), 'utf8'));
-    expect(waiting).toMatch(/<AuthCard title="Almost in" sub=\{youAreFromOutside\(w\)\}>/);
+    /* U.20: the screens workspace rebuilt this page from components/gw/ui (the invitation task) -
+       AuthCard's `sub` became PageTitle's `subtitle`. Same sentence, same source, new markup. */
+    expect(waiting).toMatch(/<PageTitle title="Almost in" subtitle=\{youAreFromOutside\(w\)\}/);
     expect(waiting).not.toMatch(/\/checkin\//);
     expect(waiting).not.toMatch(/navigate\(/);
   });

@@ -337,6 +337,17 @@ export function InvitePage() {
                     with everyone in it.
                   </p>
                 </div>
+                {/* "Your number" (U.20 eighth round): shown only when the server sends this
+                    person's own share of a target, through the engine's own visibility rule
+                    (targetsFor, participants.service.ts's preview). Never anyone else's share. */}
+                {preview.yourShareOfTarget != null && (
+                  <div>
+                    <SubHeading>Your number</SubHeading>
+                    <p className="gwui-panel-text">
+                      {`Only you and ${preview.leadFirstName ?? 'the person who runs it'} see your share of the target.`}
+                    </p>
+                  </div>
+                )}
               </div>
             </Panel>
 

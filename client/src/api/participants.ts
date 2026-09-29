@@ -18,6 +18,10 @@ export interface InvitePreview {
   /** When their first check-in opens, only when that is later than now (U.6 review). */
   opensOn?: string | null
   schedule?: string
+  /** "Your number" (U.20 eighth round): this person's own share of a target, through the engine's
+      own visibility rule (targetsFor, board/whose-number-is-whose-business.ts). Null when they own
+      no numeric target - never anyone else's share, whatever it is. */
+  yourShareOfTarget?: number | null
   /** An expired invitation carries only this and the lead's first name. */
   expired?: false
 }

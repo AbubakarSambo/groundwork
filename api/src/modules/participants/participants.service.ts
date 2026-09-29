@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { AuthService } from '../auth/auth.service';
 import { CheckInStatus, TokenType, Cadence, PartyType, GroundScenario } from '@prisma/client';
+import { targetsFor } from '../board/whose-number-is-whose-business';
 
 /**
  * Participant magic-link entry. A participant is added to a ground by email and
@@ -64,9 +65,26 @@ export class ParticipantsService {
       include: {
         initiator: { select: { firstName: true, lastName: true } },
         organization: { select: { name: true } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true } },
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+
+    /*
+     * "YOUR NUMBER" (join-invite.txt: "Only you and Wairimu see your share of the target."), THROUGH
+     * THE RULE THAT OWNS WHO SEES A SHARE (whose-number-is-whose-business.ts, board.service.ts's own
+     * caller - the fix for ten people each seeing all ten targets). Nothing new is decided here about
+     * visibility: `targetsFor` is asked for exactly what this one participant, not yet the lead, may
+     * see, the same as the board asks it; a number is shown only when the participant's own share
+     * turns up in what it hands back, never anyone else's, and never when the row has no target set
+     * (a qualitative objective) or nobody owns one at all.
+     */
+    const myShare = targetsFor(
+      (ground as any).objectives ?? [],
+      participant.id,
+      (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
+      { isLead: false },
+    ).shown.find((o: any) => o.ownerParticipantId === participant.id && o.target != null)?.target ?? null;
 
     return {
       /* For "Wairimu invited you to the sales team's check-in" and "Baridi Appliances, until 30 September." */
@@ -98,6 +116,10 @@ export class ParticipantsService {
          to hear your version" - see InvitePage, which goes straight through on this. */
       hasAnswered: await this.prisma.checkIn.count({ where: { participantId: participant.id, status: CheckInStatus.COMPLETED } }).then((n) => n > 0).catch(() => false),
       nameGiven: (participant as any).nameGiven ?? null,
+      /* Null when there is nothing to say: no target is owned by this person, or the check-in has
+         no numeric target for them, or targetsFor withheld it (it never will, for their own share,
+         but the field says nothing rather than guessing when the rule changes). */
+      yourShareOfTarget: myShare,
     };
   }
 
