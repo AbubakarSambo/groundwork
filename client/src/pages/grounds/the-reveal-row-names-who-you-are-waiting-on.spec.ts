@@ -73,8 +73,10 @@ describe('who the report is counting', () => {
   it('never counts somebody who was never going to answer', () => {
     /* The roster asks the one population rule now rather than filtering here - see
        how-many-have-answered.ts, and the day four screens quoted four numbers for one session. */
-    expect(API).toContain('const counting = whoIsExpected(')
-    const theRule = readFileSync(join(__dirname, '..', '..', '..', '..', 'api', 'src', 'modules', 'reports', 'how-many-have-answered.ts'), 'utf8')
-    expect(theRule).toContain('if (p.managingOnly && !waitsOnTheLead) return false;')
+    /* Since 28 September the number people read counts by the header's rule, whoIsInTheRound
+       (Hafsah, requests 56 and 69); it still leaves out a lead who only manages. */
+    expect(strip(API)).toContain('const counting = whoIsInTheRound(')
+    const theRule = strip(readFileSync(join(__dirname, '..', '..', '..', '..', 'api', 'src', 'modules', 'reports', 'how-many-have-answered.ts'), 'utf8'))
+    expect(theRule).toContain('return (people ?? []).filter((p) => !p.managingOnly || waitsOnTheLead);')
   })
 })

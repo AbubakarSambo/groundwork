@@ -118,7 +118,9 @@ describe('what success looks like never names a hidden peer', () => {
   it('the ground select this endpoint reads from includes the two fields peersAreNamedOn needs', () => {
     const { readFileSync } = require('fs');
     const { join } = require('path');
-    const src: string = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
+    const src: string = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/\/\/[^\n]*/g, ' ');
     const start = src.indexOf('private async whereAgainstSuccessAsBuilt(');
     const end = src.indexOf('if (!ground) throw new NotFoundException', start);
     const body = src.slice(start, end);
