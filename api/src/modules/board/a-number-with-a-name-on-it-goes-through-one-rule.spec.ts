@@ -78,6 +78,8 @@ describe('every surface that hands out whose number it is', () => {
      * peer's target is a question of its own and is not answered here.
      */
     'modules/reports/reports.service.ts': 'adds per-person figures up for the synthesis; its own reader wall decides what renders',
+    /* Week 16: rows a test hands the report and the board, which then go through targetsFor there. */
+    'modules/reports/__fixtures__/today-sales-team.ts': 'test rows for the week 16 specs; what-today-reads-from-the-record asks targetsFor',
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {
