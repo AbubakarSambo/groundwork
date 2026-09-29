@@ -87,14 +87,14 @@ describe('the page is cream, not grey', () => {
 
 describe('the fills inside cards and the secondary text are cream and brown, not grey', () => {
   /*
-   * ROUND 2, ITEM H: `--gw-paper-2` REPLACED WITH `--gw-band`.
+   * ROUND 2, ITEM H: `--gw-paper-2` TAKEN OUT OF THIS LIST.
    *
    * `--gw-paper-2` used to be a distinct fill, darker than the page - the very thing that made it
    * the wrong colour for a page or band background everywhere else it was used (see "the darker
    * cream is the enterprise panel's alone" below). It is the page colour itself now, by design, so
-   * it no longer belongs in this list; `--gw-band`, the prototype's real darker cream, does.
+   * it no longer belongs in this list.
    */
-  it.each(['--gw-bg', '--gw-band', '--gw-slate'])('%s, a fill, is warm and still darker than the page', (t) => {
+  it.each(['--gw-bg', '--gw-slate'])('%s, a fill, is warm and still darker than the page', (t) => {
     expect(isWarm(hex(t))).toBe(true)
     expect(lightness(hex(t))).toBeLessThan(lightness(hex('--gw-page')))
   })
@@ -152,40 +152,22 @@ describe('every page is painted with the page colour, not the card fill', () => 
  * ends: the token itself, and that nothing new picks the prototype's real #FAF5EA (now `--gw-band`)
  * for a page or band, since that would silently reintroduce the same bug with a different name.
  */
-describe('the darker cream is the enterprise panel\'s alone', () => {
-  /** Same shape as "no full-page wrapper paints itself with --gw-bg" above, extended to the two
-      names a page-or-band background must never use again. */
-  const fullPageOrBand = (l: string) => /minHeight: '100d?vh'|height: 'calc\(100dvh|position: 'sticky'|position: 'fixed'/.test(l)
-
-  it('no full-page or sticky-band wrapper paints itself with --gw-band', () => {
-    const offenders: string[] = []
-    for (const f of files) {
-      const lines = strip(readFileSync(f, 'utf8')).split('\n')
-      lines.forEach((l, i) => {
-        if (fullPageOrBand(l) && /var\(--gw-band\)/.test(l)) offenders.push(`${f.replace(SRC, '')}:${i + 1}`)
-      })
-    }
+describe('the darker cream #FAF5EA is nowhere in the product', () => {
+  /** The prototype uses #FAF5EA (--band) only on its marketing pages; in the product its
+      Enterprise panel is --chat (#F7F1E5, our --gw-bg), docs/prototype/source/s16.js. */
+  it('no file in the product uses #FAF5EA or a band token for it', () => {
+    const offenders = files.filter(f => /#FAF5EA|--gw-band/i.test(strip(readFileSync(f, 'utf8')))).map(f => f.replace(SRC, ''))
     expect(offenders).toEqual([])
   })
 
-  it('--gw-band is used only by the Enterprise panel on /pricing, nowhere else', () => {
-    const usedIn = files.filter(f => /var\(--gw-band\)/.test(readFileSync(f, 'utf8')))
-    expect(usedIn.map(f => f.replace(SRC, ''))).toEqual(['/pages/billing/PricingPage.tsx'])
-  })
-
-  it('and PricingPage really is the one using it, so the check above is not passing on an empty list', () => {
-    const pricing = readFileSync(join(SRC, 'pages/billing/PricingPage.tsx'), 'utf8')
+  it('the Enterprise panel on /pricing is the prototype\'s chat cream, --gw-bg', () => {
+    const pricing = strip(readFileSync(join(SRC, 'pages/billing/PricingPage.tsx'), 'utf8'))
     expect(pricing).toMatch(/Enterprise/)
-    expect(pricing).toMatch(/var\(--gw-band\)/)
+    expect(pricing).toMatch(/background: 'var\(--gw-bg\)', border: '1\.5px solid var\(--gw-border\)'/)
   })
 
   it('index.css defines --gw-page and --gw-paper-2 as the same colour', () => {
     expect(hex('--gw-page')).toBe('#FDFBF6')
     expect(hex('--gw-paper-2')).toBe('#FDFBF6')
-  })
-
-  it('and --gw-band is the prototype\'s own darker cream, not the page colour', () => {
-    expect(hex('--gw-band')).toBe('#FAF5EA')
-    expect(hex('--gw-band')).not.toBe(hex('--gw-page'))
   })
 })

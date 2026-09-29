@@ -107,6 +107,16 @@ and that is when the first entry goes in.
 setup", the invitation and the check-in header used by every check-in page are all still built
 from the old parts, waiting for their own sessions as the audit's order sets out.
 
+## Where the darker beige came from, and the fix (29 September)
+
+You saw a darker beige in place of the prototype's cream (#FDFBF6) on many pages. It came from one colour setting left over from the old parts, `--gw-paper-2` (#FAF5EA), which about 28 files used as a whole-page or band background: the participant's check-in page, the billing checkout, loading screens, and others. The prototype uses #FAF5EA only on its public marketing pages.
+
+**Fixed at that one source:** `--gw-paper-2` is now the page cream, #FDFBF6, so every page that used it is right without being touched. The Enterprise panel on the plans page takes the prototype's own in-product colour, its chat cream #F7F1E5, as the prototype paints it. The darker #F7F1E5 stays only where the prototype has it: behind Groundwork's messages in a conversation, and in soft fills. Two hover colours that would have disappeared now use the prototype's hover.
+
+**Checked live, at 1440 pixels, as a participant, the lead and an admin:** Today, the check-in, the board, You, Company, Settings, People, Team boards, billing, the billing checkout and billing settings all measure #FDFBF6. Before, the participant's check-in page and the billing checkout measured #FAF5EA.
+
+**The guard:** a test fails if #FAF5EA appears anywhere in the product, if a whole-page or band wrapper uses anything but the page cream, or if the page and `--gw-paper-2` colours stop being #FDFBF6.
+
 ## The invitation, rebuilt from the prototype's parts (29 September)
 
 The invitation and every state it hands over to (the fresh invitation, already joined, held for a seat, "Almost in", out of time, an expired link, and a link that did not work) are rebuilt from the shared parts and passed their review. Each was pictured at 1440 pixels against the prototype. The privacy rules held throughout: the invitation carries none of the lead's words, the two held sentences stay held, and "Your number" now sends only who can see the person's share, never the number. Two small differences from the prototype are on purpose: "Not you? Sign out." on "Almost in", so nobody is stuck on a shared computer, and the name fields, which the flow needs.

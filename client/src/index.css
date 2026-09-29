@@ -177,13 +177,10 @@
    *
    * Fixed at this one source rather than in each of those files: `--gw-paper-2` IS the page cream
    * now, the same value as `--gw-page`/`--gw-paper`. Every file that used it for a page or band
-   * background now renders correctly without being touched. `--gw-band` is the new, separate name
-   * for the prototype's real #FAF5EA, used only where the prototype uses it.
+   * background now renders correctly without being touched. The prototype's #FAF5EA (`--band`)
+   * belongs to its marketing pages only, so the product has no token for it at all.
    */
   --gw-paper-2: #FDFBF6;
-  /** The prototype's real #FAF5EA (`--band`). Used only by the Enterprise panel on /pricing - see
-      the-page-is-cream-and-opens-light.spec.ts, "the darker cream is the enterprise panel's alone". */
-  --gw-band: #FAF5EA;
 
   /**
    * THE FOUR THAT WERE REAL, out of what I had called one-off accents without looking.
