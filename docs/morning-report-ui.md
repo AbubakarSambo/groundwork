@@ -14,6 +14,13 @@ same file.
 
 **The test results.** At the end of the check-in module, the page-colour test passed for the participant, the lead and the admin, on every page it opens. The full suites before the merge had 10,897 of 10,898 API tests and 3,514 of 3,515 screen tests passing, and both type checks were clean. The two failures were in our own tests and I fixed both. One read a source file without first removing its comments. The other still named the old counting rule, which the engine replaced with the one you chose on 28 September; the test still checks that a lead who only manages is never counted. After the second merge, every test passes: 11,097 API tests and 3,515 screen tests, and both type checks are clean. The engine's merge added a new field to the database's shape (`settledBy`, on a commitment), so the tester regenerated the database client locally before the API tests would run. The local database has not been migrated for that field yet, so the local API needs its migration run and a restart before the next picture check.
 
+**Found and fixed in the last hour.** After the merge I applied the engine's two new database changes to the local database only (groundwork_dev on this Mac), rebuilt the local API and restarted it, still listening on 127.0.0.1 only. Then I read Sales team, Q3's board as Juma, an admin who only reads it. Two things were wrong, and both are fixed and pictured:
+
+- The engine's fix that stops a board naming a file the reader may not open was not running before the restart. Once it ran, the board still drew three of Rukia's lines as a label with no words. The board now leaves out a line with no words. I asked the engine workspace, in request 77, to leave such lines out itself. I also asked it to check two of her lines that may have been removed for the wrong reason.
+- The board still offered Juma "Your check-in" and a Check-in tab, though he is not in this check-in. It now shows him the prototype's three tabs. Amani and Rukia still see their own buttons.
+
+**One refusal.** The safety check refused a command of mine because it contained the words "merge-base". I was only asking git whether a commit had arrived in an earlier merge. I did not retry it, and found what I needed another way: when the fix was made, and when the running API was started.
+
 **Decided for you to confirm.** I took each of these as the option closest to the prototype and to your own decisions:
 
 - The check-in's "Board" tab is back on every check-in page, as in the prototype's five tabs. An earlier decision had said the board is never a tab (`one-door-per-place.spec.ts`); the prototype and the instruction to put the header on every page point the other way.
