@@ -186,7 +186,13 @@ describe('removing somebody from the organisation', () => {
 describe('Across check-ins (D3, U.16): an admin reads only how many', () => {
   it('Grace reads how many check-ins Miriam is in, and that what is asked of her is on her own page', async () => {
     const { container } = open()
-    expect(await screen.findByRole('heading', { name: 'Across check-ins' })).toBeTruthy()
+    /*
+     * "Across check-ins" IS NOT A SECTION HEADING here (a 1440px picture check against
+     * one-proto-0.png): the bold line sits inside the white panel, with the sentence under it, and
+     * there is no separate heading above the panel - unlike "Where they sit" or "Role at...".
+     */
+    expect(await screen.findByText('Across check-ins')).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Across check-ins' })).toBeNull()
     expect(screen.getByText('1 check-in. What’s asked of them is on their own You page.')).toBeTruthy()
     const text = container.textContent ?? ''
     /* Nothing lets anybody share their load yet, so the page does not promise it. */

@@ -72,6 +72,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-pt-crumb .gwui-pt-sep { margin: 0 6px; }
 .gwui-pt-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
 .gwui-pt-head { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.gwui-pt-headtext { min-width: 0; }
 .gwui-pt-title {
   font-family: var(--gw-font-name); font-size: 30px; line-height: 1.18; font-weight: 500;
   color: var(--gw-text); margin: 0;
@@ -277,6 +278,16 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    "Who can join": the domain switch and the invite link, in one white panel) ─────────────────── */
 .gwui-panel-row { padding: 20px 22px; }
 .gwui-panel-row + .gwui-panel-row { border-top: 1px solid var(--gw-border); }
+
+/* ── SENTENCE ROW (a fact and one button, side by side, inside a Panel - one-person.txt's
+   "Remove from Baridi": the sentence on the left, "Remove" on the right, one line) ───────────── */
+.gwui-sentence-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+/* ── A NARROW FIELD BESIDE ITS BUTTON (one-person.txt's "Team": a 260px field, "Save" beside it
+   on the same line, inside a Panel - not the field's own default full width). Doubled class: the
+   same specificity as `.gwui-input`'s own `width: 100%` (defined later in this file), which would
+   otherwise win the cascade by source order and put Save back underneath a full-width field. ──── */
+.gwui-narrow-field.gwui-narrow-field { width: 260px; max-width: 100%; }
 
 /* ── FLUSH FIELD ROWS (a FieldRows not sitting inside a Panel - "Who can open a check-in"'s
    "Opening check-ins"/"New check-ins" facts, which the prototype starts at the page's own left

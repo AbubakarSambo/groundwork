@@ -12,6 +12,12 @@ import './gw-ui.css'
  * invitation's hand-off screens - "Almost in", "Out of time", "This link has expired" - read it in
  * ink instead, as the prototype has it: `subtitleTone="ink"`), and an optional primary button on
  * the right, lined up with the bottom of the title.
+ *
+ * THE SUBTITLE SITS IN THE SAME COLUMN AS THE TITLE, BESIDE THE AVATAR (one-person.txt, a picture
+ * check at 1440px against one-proto-0.png): "miriam@baridi.co.ke" sits directly under "Miriam
+ * Wanjiku", both to the right of her avatar - not as a full-width line starting at the page's own
+ * left edge, under the avatar. So the subtitle is nested inside the same head block as the title,
+ * next to the avatar, rather than sitting after the whole title row.
  */
 export type Crumb = { label: string; to?: string }
 
@@ -44,11 +50,13 @@ export function PageTitle({ eyebrow, crumbs, title, avatarInitials, subtitle, su
       <div className="gwui-pt-row">
         <div className="gwui-pt-head">
           {avatarInitials && <Avatar initials={avatarInitials} size={56} />}
-          <h1 className="gwui-pt-title">{title}</h1>
+          <div className="gwui-pt-headtext">
+            <h1 className="gwui-pt-title">{title}</h1>
+            {subtitle && <p className={subtitleTone === 'ink' ? 'gwui-pt-sub gwui-pt-sub-ink' : 'gwui-pt-sub'}>{subtitle}</p>}
+          </div>
         </div>
         {action}
       </div>
-      {subtitle && <p className={subtitleTone === 'ink' ? 'gwui-pt-sub gwui-pt-sub-ink' : 'gwui-pt-sub'}>{subtitle}</p>}
     </div>
   )
 }

@@ -187,19 +187,19 @@ export function OnePersonPage() {
       />
 
       <Section heading="Where they sit" foot={`This describes the organisation. What ${first} can do still comes only from their role and their access to each check-in.`}>
-        <Panel pad={false}>
-          <FieldRows>
-            <EditableField label="Level" value={m.level ?? ''} empty="Not set" saving={sit.isPending} onSave={(v) => sit.mutate({ level: v })} />
-            <EditableField label="Reports to" value={m.reportsTo?.id ?? ''} empty="Nobody" choices={managers} saving={sit.isPending} onSave={(v) => sit.mutate({ reportsToUserId: v })} />
-          </FieldRows>
-        </Panel>
+        <FieldRows flush>
+          <EditableField label="Level" value={m.level ?? ''} empty="Not set" saving={sit.isPending} onSave={(v) => sit.mutate({ level: v })} />
+          <EditableField label="Reports to" value={m.reportsTo?.id ?? ''} empty="Nobody" choices={managers} saving={sit.isPending} onSave={(v) => sit.mutate({ reportsToUserId: v })} />
+        </FieldRows>
       </Section>
 
-      <Section heading="Across check-ins">
-        <Panel>
+      {/* No Section heading here (one-proto-0.png): the title is a bold line inside the panel itself, with the sentence under it. */}
+      <Panel>
+        <Stack gap={10}>
+          <p className="gwui-panel-text"><b>Across check-ins</b></p>
           <p className="gwui-panel-text-muted">{`${checkIns.length === 1 ? '1 check-in' : `${checkIns.length} check-ins`}. What’s asked of them is on their own You page.`}</p>
-        </Panel>
-      </Section>
+        </Stack>
+      </Panel>
 
       <Section heading={`Role at ${orgName}`} note="Changes apply straight away.">
         {isOwner && <Note>{isMe ? 'You own this organisation, so your role cannot be changed here.' : `${first} owns this organisation, so their role cannot be changed here.`}</Note>}
@@ -223,49 +223,45 @@ export function OnePersonPage() {
       <Section heading="Team" note="Used to add whole teams to a check-in">
         <Panel>
           <div className="gwui-invite-actions">
-            <TextField aria-label="Team" value={team ?? m.team ?? ''} onChange={(e) => setTeam(e.target.value)} maxLength={120} />
+            <TextField className="gwui-narrow-field" aria-label="Team" value={team ?? m.team ?? ''} onChange={(e) => setTeam(e.target.value)} maxLength={120} />
             <Button kind="secondary" disabled={team === null || sit.isPending} onClick={() => { sit.mutate({ team: team ?? '' }); setTeam(null) }}>Save</Button>
           </div>
         </Panel>
       </Section>
 
       <Section heading="Status">
-        <Panel pad={false}>
-          <FieldRows>
-            <FieldRow label="Now" value={status === 'Checking in' ? <Tag tone="proven">Checking in</Tag> : status} />
-            {/* A guest with an account takes a seat too (U.4 re-review); one held for a seat does not yet. */}
-            {!m.awaitingOrgApproval && <FieldRow label="Seat" value={m.heldForASeat ? 'No seat on your plan' : 'Holds a seat'} />}
-            {whatsappOn && (
-              <EditableField
-                label="WhatsApp"
-                inputLabel={`WhatsApp number for ${first}`}
-                value={m.phoneNumber ?? ''}
-                empty="Not set"
-                saving={phone.isPending}
-                onSave={(v) => phone.mutate(v)}
-              />
-            )}
-          </FieldRows>
-        </Panel>
+        <FieldRows flush>
+          <FieldRow label="Now" value={status === 'Checking in' ? <Tag tone="proven">Checking in</Tag> : status} />
+          {/* A guest with an account takes a seat too (U.4 re-review); one held for a seat does not yet. */}
+          {!m.awaitingOrgApproval && <FieldRow label="Seat" value={m.heldForASeat ? 'No seat on your plan' : 'Holds a seat'} />}
+          {whatsappOn && (
+            <EditableField
+              label="WhatsApp"
+              inputLabel={`WhatsApp number for ${first}`}
+              value={m.phoneNumber ?? ''}
+              empty="Not set"
+              saving={phone.isPending}
+              onSave={(v) => phone.mutate(v)}
+            />
+          )}
+        </FieldRows>
         {m.arrivedThroughACheckIn && <Note>They came in by accepting an invitation to a check-in.</Note>}
       </Section>
 
       <Section heading="Check-ins" note={checkIns.length === 1 ? '1 check-in' : `${checkIns.length} check-ins`}>
         {checkIns.length === 0 ? (
-          <Panel><p className="gwui-panel-text-muted">{`${first} is not on a check-in here yet.`}</p></Panel>
+          <Note>{`${first} is not on a check-in here yet.`}</Note>
         ) : (
-          <Panel pad={false}>
-            <FieldRows>
-              {checkIns.map((c) => (
-                <FieldRow
-                  key={c.id}
-                  label={c.label ?? 'A check-in with no name yet'}
-                  value={c.runsIt ? 'Runs it' : 'Checks in'}
-                  action={<Button kind="quiet" size="small" aria-label={`Open ${c.label ?? 'this check-in'}`} onClick={() => navigate(`/grounds/${c.id}`)}>Open</Button>}
-                />
-              ))}
-            </FieldRows>
-          </Panel>
+          <FieldRows flush>
+            {checkIns.map((c) => (
+              <FieldRow
+                key={c.id}
+                label={c.label ?? 'A check-in with no name yet'}
+                value={c.runsIt ? 'Runs it' : 'Checks in'}
+                action={<Button kind="quiet" size="small" aria-label={`Open ${c.label ?? 'this check-in'}`} onClick={() => navigate(`/grounds/${c.id}`)}>Open</Button>}
+              />
+            ))}
+          </FieldRows>
         )}
       </Section>
 
@@ -278,10 +274,10 @@ export function OnePersonPage() {
       {!isMe && (
         <Section heading={`Remove from ${orgName}`}>
           <Panel>
-            <Stack gap={10}>
+            <div className="gwui-sentence-row">
               <p className="gwui-panel-text-muted">They lose access and their seat is freed. What they shared stays in the check-ins they were part of.</p>
               <Button
-                kind="danger"
+                kind="secondary"
                 disabled={removeThem.isPending}
                 onClick={() => {
                   if (window.confirm(`Remove ${name} from ${orgName}?\n\nThey lose access and their seat is freed. What they shared stays in the check-ins they were part of.`)) {
@@ -289,7 +285,7 @@ export function OnePersonPage() {
                   }
                 }}
               >Remove</Button>
-            </Stack>
+            </div>
           </Panel>
         </Section>
       )}
