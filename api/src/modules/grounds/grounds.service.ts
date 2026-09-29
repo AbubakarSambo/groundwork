@@ -1542,7 +1542,7 @@ export class GroundsService {
          */
         /* Whose number it is, so the page can group them rather than stack nine of one person's
            beside the team's - see the target table on the Context page. */
-        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, assumes: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, assumes: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
         /**
          * `agreements` and `divergences` are selected because `alignmentRead` COUNTS them. Without
          * them this endpoint could only ever report null, so the ground page said "No read yet"
@@ -1600,7 +1600,7 @@ export class GroundsService {
              */
             /* Whose number it is, so the page can group them rather than stack nine of one person's
            beside the team's - see the target table on the Context page. */
-        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, assumes: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, assumes: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
             /**
              * `agreements` and `divergences` are here because `alignmentRead` COUNTS them, and
              * without them in the select it could only ever return null - so the ground page said

@@ -88,7 +88,7 @@ async function load(prisma: any, groundId: string) {
         },
       },
       dependencies: { orderBy: { createdAt: 'asc' } },
-      objectives: { select: { id: true, name: true, target: true, count: true, prevCount: true, ownerParticipantId: true, sortOrder: true } },
+      objectives: { select: { id: true, name: true, target: true, count: true, prevCount: true, ownerParticipantId: true, sortOrder: true, isADecisionAboutAPerson: true } },
     },
   })?.catch?.(() => null);
   if (!ground) return null;

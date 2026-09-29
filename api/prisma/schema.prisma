@@ -1868,6 +1868,21 @@ model GroundObjective {
   /// Null keeps the original meaning and is still the common case: a target for the whole thing,
   /// belonging to nobody in particular.
   ownerParticipantId String? @map("owner_participant_id")
+  /// THE LEAD SAYS PLAINLY WHEN THIS TARGET IS A DECISION ABOUT A PERSON (decision 46, 29 September
+  /// 2026), never guessed from its wording.
+  ///
+  /// `whose-number-is-whose-business.ts` used to test the target's `name` against a pair of regular
+  /// expressions ("decide", "confirm", "probation") to keep a decision like "Decide whether to
+  /// confirm Aisha in her role" off everybody's board but the lead's - a guess, and every guess here
+  /// is either a false positive that hides an ordinary team target from people who should see it, or
+  /// a false negative that puts a decision about somebody's place on their own check-in. Hafsah: this
+  /// is a field the lead sets when the target is made, set by the lead alone, never inferred.
+  ///
+  /// False on every row that existed before this column - existing targets are not guessed at either;
+  /// they stay false until a lead marks one. `targetsFor` (whose-number-is-whose-business.ts) reads
+  /// this instead of the old wording guess: a target with it set is shown to the check-in's lead and
+  /// nobody else, whoever else is reading and whatever `whoSeesTargets` says.
+  isADecisionAboutAPerson Boolean @default(false) @map("is_a_decision_about_a_person")
   /// Who SAID this target, when it came out of a check-in rather than the setup form. A target the
   /// lead set for a person is put to that person as the lead's expectation; one they set themselves
   /// is theirs. Without this the two read the same and a rep was asked about "the N4m gap that the

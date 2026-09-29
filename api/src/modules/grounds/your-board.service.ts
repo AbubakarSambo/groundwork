@@ -59,7 +59,7 @@ export class YourBoardService {
       participantIds.length
         ? this.prisma.groundObjective.findMany({
             where: { groundId: { in: groundIds }, ownerParticipantId: { in: participantIds } },
-            select: { id: true, groundId: true, name: true, target: true, count: true, ownerParticipantId: true },
+            select: { id: true, groundId: true, name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true },
             orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
           })
         : none,

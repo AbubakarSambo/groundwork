@@ -1,4 +1,3 @@
-import { isADecisionAboutAPerson } from './a-decision-about-a-person-is-the-leads';
 /**
  * TEN PEOPLE EACH SAW ALL TEN TARGETS, AND NOBODY DECIDED THAT.
  *
@@ -31,6 +30,10 @@ export interface Target {
   name: string;
   target: number | null;
   ownerParticipantId?: string | null;
+  /** THE LEAD SAYS PLAINLY (decision 46, 29 September 2026), set when the target is made, never
+   * guessed from its wording - see GroundObjective.isADecisionAboutAPerson in schema.prisma. A
+   * target with this set is shown to the check-in's lead and nobody else. */
+  isADecisionAboutAPerson?: boolean;
 }
 
 /**
@@ -47,8 +50,10 @@ export function targetsFor(
   opts: { isLead?: boolean } = {},
 ): { shown: Target[]; alsoSay: string | null } {
   if (opts.isLead) return { shown: targets, alsoSay: null };
-  /* A decision the lead has to make about somebody is the lead's alone, whoever else reads (request 42). */
-  targets = targets.filter((t) => !isADecisionAboutAPerson((t as any)?.name));
+  /* A decision the lead has to make about somebody is the lead's alone, whoever else reads (request
+     42, decision 46). Read off the field the lead set when the target was made, never guessed from
+     its wording - see Target.isADecisionAboutAPerson above. */
+  targets = targets.filter((t) => !t.isADecisionAboutAPerson);
   if (whoSees === 'everybody') return { shown: targets, alsoSay: null };
 
   const unowned = targets.filter((t) => !t.ownerParticipantId);

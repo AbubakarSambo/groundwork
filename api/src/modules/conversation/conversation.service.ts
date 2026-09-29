@@ -304,7 +304,7 @@ const WHAT_THE_BRIEF_IS_READ_FROM = {
      who set this up said". See nothing-said-yet-cannot-be-quoted. */
   initiator: { select: { firstName: true, lastName: true } },
   whoSeesTargets: true,
-  objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' as const } },
+  objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' as const } },
 } as const;
 
 const RECORD_EXTRACTION_SCHEMA = {
@@ -3076,7 +3076,7 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       include: {
-        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
         /* The product's finding per person, for the lead's side of the disagreement. */
         report: { select: { findings: true } },
         /**
@@ -9899,7 +9899,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: groundId, initiatorId: requestingUserId },
       select: {
         id: true, label: true, scenario: true, brief: true,
-        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
         participants: {
           select: {
             id: true, email: true, partyType: true, roleAsDescribed: true,

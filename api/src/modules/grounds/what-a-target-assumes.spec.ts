@@ -41,7 +41,8 @@ describe('what a target assumes is read with the target, by the same people', ()
     const src = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/.*$/gm, '');
-    const selects = src.match(/objectives: \{ select: \{ id: true, name: true, target: true, ownerParticipantId: true, assumes: true \}/g) ?? [];
+    /* Gained isADecisionAboutAPerson (decision 46, 29 September 2026) alongside assumes. */
+    const selects = src.match(/objectives: \{ select: \{ id: true, name: true, target: true, ownerParticipantId: true, assumes: true, isADecisionAboutAPerson: true \}/g) ?? [];
     expect(selects.length).toBe(2);
   });
 });

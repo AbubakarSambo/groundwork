@@ -65,7 +65,7 @@ export class ParticipantsService {
       include: {
         initiator: { select: { firstName: true, lastName: true } },
         organization: { select: { name: true } },
-        objectives: { select: { name: true, target: true, ownerParticipantId: true } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } },
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');

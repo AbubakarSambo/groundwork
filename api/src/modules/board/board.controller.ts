@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestjs/common';
-import { IsString, IsInt, IsOptional, IsArray, MaxLength, Min, ArrayMaxSize, ValidateNested } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsArray, IsBoolean, MaxLength, Min, ArrayMaxSize, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BoardService, type WorkItemInput } from './board.service';
@@ -30,6 +30,15 @@ class ObjectiveDto {
   /** What the target assumes, one thing per line. The lead's words; an empty list clears it. */
   @IsOptional() @IsArray() @ArrayMaxSize(12) @IsString({ each: true }) @MaxLength(300, { each: true })
   assumes?: string[];
+
+  /**
+   * SAID PLAINLY BY THE LEAD, NEVER GUESSED FROM THE WORDING (decision 46, 29 September 2026).
+   * Optional, and false is the ordinary case. A target with this set is shown to the check-in's
+   * lead and nobody else - see whose-number-is-whose-business.ts. This route already checks the
+   * caller is the lead (assertInitiatorOfBoardGround), so nobody else can set it.
+   */
+  @IsOptional() @IsBoolean()
+  isADecisionAboutAPerson?: boolean;
 }
 
 class ProposePersonDto {

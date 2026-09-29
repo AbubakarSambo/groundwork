@@ -2051,7 +2051,7 @@ export class BoardService {
   async createObjective(
     groundId: string,
     requestingUserId: string,
-    dto: { name: string; target?: number | null; ownerParticipantId?: string | null },
+    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
@@ -2080,6 +2080,10 @@ export class BoardService {
         ownerParticipantId: owner,
         sortOrder: count,
         addedAtSession,
+        /* Decision 46, 29 September 2026: said plainly by the lead when the target is made, never
+           guessed from its wording. This route is already the lead's alone - assertInitiatorOfBoardGround
+           above. */
+        isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true,
       },
     });
   }
@@ -2144,7 +2148,7 @@ export class BoardService {
     groundId: string,
     objectiveId: string,
     requestingUserId: string,
-    dto: { name?: string; target?: number | null; count?: number; assumes?: string[] },
+    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
@@ -2159,6 +2163,8 @@ export class BoardService {
           : {}),
         ...(dto.target !== undefined ? { target: dto.target } : {}),
         ...(dto.count !== undefined ? { count: dto.count, prevCount: existing.count } : {}),
+        /* Decision 46: the lead alone (assertInitiatorOfBoardGround above), set plainly, never guessed. */
+        ...(dto.isADecisionAboutAPerson !== undefined ? { isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true } : {}),
       },
     });
   }
