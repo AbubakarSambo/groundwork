@@ -38,7 +38,23 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Two leaks found and fixed while proving it** (`fe3f2684`). The lead's "what to probe" list and the person's own coaching note printed the detector's own internal description, for example "Ownership claimed for work others delivered.", where the plain name should be. Both now use the plain name, and each has a test that fails on the old code.
 - **What the person reads first**, for example: "Others describe doing work they described as theirs." Then what happened, how often ("This came up in 3 of your check-ins, in sessions 1, 2 and 3."), a place to answer, and "You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it."
 - A guard test failed after the evening's Ask Groundwork privacy fix, which reads a target's owner only to pass it to the one rule. It is now listed with that reason (`7c1a74f9`).
-- **A live check** as the person, the lead and a colleague is running now.
+- **The live check** read 22 readers across 8 check-ins, as the person, the lead and a colleague. **The rules all hold:**
+  - nothing is served before three periods;
+  - the person sees theirs first, and no lead saw one yet;
+  - no internal name, code or detector text reaches anyone;
+  - no colleague sees another person's pattern;
+  - E4 and F5 reach nobody;
+  - every heading is the approved name.
+- **It sent the wording back, and it is being fixed in place** (decision 55):
+  - A lead read about their own pattern "Bisi will see it too", where Bisi is the lead herself.
+  - A title was used as a name: "Dr will see it too".
+  - "What happened" is the detector's own sentence, passive and full of jargon: "Lack of progress is attributed to an external factor…". One did not match its heading.
+  - "not once" read as "never".
+  - A sentence said nothing had come up often enough to be a pattern, beside a pattern.
+  - The judgement told a lead "You have a pattern of…", a label, which breaks decision 11.
+  - A session 1 report showed a pattern that only reached three at session 3.
+  - The You board said "One thing for this week: Names what they would do differently".
+- **A side effect of the check:** reading as each person marked 13 patterns as shown to them today, which is the product's normal behaviour. The leads' three-day clocks for those started today.
 
 ### Part 4: migrations
 
