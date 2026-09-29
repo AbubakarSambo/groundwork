@@ -145,7 +145,9 @@ describe('every board and report read goes through it', () => {
     expect(REPORTS).toMatch(new RegExp(`const served = await this\\.${built}\\([^)]*\\);\\s*return this\\.whatTheLeadHasNotShared\\(`));
   });
   it('and the last read and the board both take out every label', () => {
-    expect(REPORTS).toMatch(/return withoutHiddenTargetsIn\(withoutPrivateFileNamesIn\(withoutInternalLabelsIn\(served, called\)/);
-    expect(BOARD).toMatch(/withoutHiddenTargetsIn\(withoutPrivateFileNamesIn\(withoutInternalLabelsIn\(out, called\)/);
+    /* Since screens request 77 the hidden-target read runs inside withTheirOwnWordsKept, which holds
+       aside the lines people said; labels still come off everything served, those lines included. */
+    expect(REPORTS).toMatch(/return withTheirOwnWordsKept\(\s*withoutPrivateFileNamesIn\(withoutInternalLabelsIn\(served, called\), privateNames\),\s*THEIR_OWN_WORDS_IN_A_REPORT,\s*\(v\) => withoutHiddenTargetsIn\(v, hiddenTargets\)/);
+    expect(BOARD).toMatch(/withTheirOwnWordsKept\(\s*withoutPrivateFileNamesIn\(withoutInternalLabelsIn\(out, called\), privateNames\),\s*THEIR_OWN_WORDS_ON_THE_BOARD,\s*\(v\) => withoutHiddenTargetsIn\(v, hiddenTargets\)/);
   });
 });

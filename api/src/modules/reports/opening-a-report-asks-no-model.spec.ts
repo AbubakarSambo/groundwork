@@ -205,3 +205,106 @@ describe('the written sentence per person on a session report (fillWhatEachPerso
     expect(aishasRow(again).saying).toBe(aishasRow(first).saying);
   });
 });
+
+/*
+ * THE WARM-UP RUNS ONCE FOR EACH NEW THING (decision 44).
+ *
+ * On run-19 one cohort's round was warmed nine times and its board eighteen, and the model refused
+ * 204 calls for its rate limit. Here the trigger is fired again and again for the same round, one
+ * after another and all at once, and the model is asked for each line once. A round with something
+ * new in it is warmed again; a line already worded is never asked for again.
+ */
+describe('the warm-up runs once for each new thing, however often it is triggered', () => {
+  /* What one warm-up asks the model, each call as the text it was sent. */
+  const asked = () => [
+    ...respond.mock.calls.map((c: any[]) => `${c[0]}\u0000${c[1][0].content}`),
+    ...extract.mock.calls.map((c: any[]) => `${c[0]}\u0000${c[1][0].content}`),
+  ];
+  /* The round's report, as the fingerprint reads it: a new updatedAt is a new report written. */
+  const withReportAt = (svc: any, at: string) => {
+    svc.prisma.report.findUnique = jest.fn(async () => ({ updatedAt: new Date(at), releasedAt: null }));
+    return svc;
+  };
+  let once: string[];
+  beforeEach(async () => {
+    await withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z').wordTheReadsFor('g-sales', 1);
+    once = asked();
+    KEPT.clear(); respond.mockClear(); extract.mockClear();
+  });
+
+  it('one warm-up asks the model something, and never the same line twice', () => {
+    expect(once.length).toBeGreaterThan(0);
+    expect(new Set(once).size).toBe(once.length);
+  });
+
+  it('fired five times one after another for the same round: one warm-up, each line asked once', async () => {
+    const svc: any = withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z');
+    const runs = jest.spyOn(svc, 'wordTheReadsNow');
+    for (let n = 0; n < 5; n++) await svc.wordTheReadsFor('g-sales', 1);
+    expect(runs).toHaveBeenCalledTimes(1);
+    expect(asked().sort()).toEqual([...once].sort());
+  });
+
+  it('fired five times at once for the same round: one warm-up, each line asked once, and all five get its result', async () => {
+    const svc: any = withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z');
+    const runs = jest.spyOn(svc, 'wordTheReadsNow');
+    const results = await Promise.all([1, 2, 3, 4, 5].map(() => svc.wordTheReadsFor('g-sales', 1)));
+    expect(runs).toHaveBeenCalledTimes(1);
+    expect(asked().sort()).toEqual([...once].sort());
+    for (const r of results) expect(r).toBe(results[0]);
+    expect(results[0].map((r: any) => r.userId)).toEqual(['u-wairimu', 'u-aisha', 'u-miriam', 'u-grace']);
+  });
+
+  it('a new report for the round, written after the first warm-up, is warmed again', async () => {
+    const svc: any = withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z');
+    const runs = jest.spyOn(svc, 'wordTheReadsNow');
+    await svc.wordTheReadsFor('g-sales', 1);
+    withReportAt(svc, '2026-09-23T15:09:00Z');
+    await svc.wordTheReadsFor('g-sales', 1);
+    expect(runs).toHaveBeenCalledTimes(2);
+    /* The lines themselves had not changed, so the second run found every one of them kept. */
+    expect(asked().sort()).toEqual([...once].sort());
+  });
+
+  it('a new report written WHILE a warm-up runs is warmed by one more run after it, never skipped', async () => {
+    const svc: any = withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z');
+    const runs = jest.spyOn(svc, 'wordTheReadsNow');
+    const first = svc.wordTheReadsFor('g-sales', 1);
+    withReportAt(svc, '2026-09-23T15:09:00Z');
+    const later = [svc.wordTheReadsFor('g-sales', 1), svc.wordTheReadsFor('g-sales', 1), svc.wordTheReadsFor('g-sales', 1)];
+    await Promise.all([first, ...later]);
+    expect(runs).toHaveBeenCalledTimes(2);
+  });
+
+  it('another round of the same check-in is its own warm-up', async () => {
+    const svc: any = withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z');
+    const runs = jest.spyOn(svc, 'wordTheReadsNow');
+    await Promise.all([svc.wordTheReadsFor('g-sales', 1), svc.wordTheReadsFor('g-sales', 2)]);
+    expect(runs).toHaveBeenCalledTimes(2);
+  });
+
+  it('two warm-ups that reach the same new lines at the same moment ask the model for each line once', async () => {
+    /* Two services, so nothing is shared but the lines: the release's warm-up and a check-in's, say. */
+    await Promise.all([
+      withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z').wordTheReadsFor('g-sales', 1),
+      withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z').wordTheReadsFor('g-sales', 1),
+    ]);
+    expect(asked().sort()).toEqual([...once].sort());
+  });
+
+  it('a line already worded is not asked for again, by any later warm-up', async () => {
+    await withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z').wordTheReadsFor('g-sales', 1);
+    respond.mockClear(); extract.mockClear();
+    await withReportAt(reportsFor('MEMBER'), '2026-09-23T15:30:00Z').wordTheReadsFor('g-sales', 1);
+    expect(asked()).toEqual([]);
+  });
+
+  it('opening the report while a warm-up is out still asks no model of its own', async () => {
+    const svc: any = withReportAt(reportsFor('MEMBER'), '2026-09-23T15:02:00Z');
+    const warming = svc.wordTheReadsFor('g-sales', 1);
+    await reportsFor('MEMBER').get('g-sales', 'u-wairimu', 'org-1');
+    await reportsFor('MEMBER').sessionReport('g-sales', 1, 'u-aisha', 'org-1').catch(() => undefined);
+    await warming;
+    expect(asked().sort()).toEqual([...once].sort());
+  });
+});

@@ -5,6 +5,7 @@ import { whoIsInTheRound } from './how-many-have-answered';
 import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
+import { THEIR_OWN_WORDS_IN_A_REPORT, withTheirOwnWordsKept } from '../board/their-own-words-stay';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
@@ -31,6 +32,7 @@ import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from './a-line-worded-once-is-kept';
+import { OneAtATime } from './one-warm-up-at-a-time';
 import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
 import { sentenceWithANumber } from './where-you-are-against-what-you-named';
@@ -137,6 +139,7 @@ import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCH
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternRow } from '../patterns/who-reads-a-pattern';
+import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
@@ -881,7 +884,7 @@ export class ReportsService {
               const res = await this.anthropic.extract<{ saying: string }>(system, [{ role: 'user', content: draft }], SAYING_SCHEMA);
               return res?.saying?.trim() || null;
             }
-            : async () => null)(SAYING_PROMPT, `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}`);
+            : async () => null, mayWord)(SAYING_PROMPT, `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}`);
           /* And no pronoun guessed from a name. See nobody-is-he-or-she-here. */
           const text = withoutAGuessedPronoun(kept?.trim() ?? '');
           if (text) person.saying = text;
@@ -903,6 +906,8 @@ export class ReportsService {
    * completion's read is the last write.
    */
   private readonly synthesisQueue = new Map<string, Promise<unknown>>();
+  /* One warm-up of the reads at a time for each round, shared by every trigger. See one-warm-up-at-a-time. */
+  private readonly readsWarming = new OneAtATime<{ userId: string; sessionReport: any }[]>();
   /* One waiting run is enough: it will read everything that has landed by the time it starts. Six
      people finishing inside a minute asked for six syntheses at three minutes each; the sixth read
      nothing the second would not have. */
@@ -5121,10 +5126,43 @@ happened, and what is in the way.`;
       rememberedCompose(this.prisma, mayWord
         ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
         /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
-        : async () => null),
+        : async () => null, mayWord),
       mayWord ? (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`) : undefined,
     ).catch(() => drafts);
     return Object.fromEntries(out.map((d) => [d.key, d.text]));
+  }
+
+  /**
+   * WHAT THE READS OF A ROUND ARE BUILT FROM, AS ONE FINGERPRINT (decision 44).
+   *
+   * Read when a warm-up starts. If it is the same as the last warm-up of this round read, nothing
+   * new has come in and the warm-up does nothing: the report, its release, the round's own row, the
+   * record's lines and documents, the finished check-ins and who is in the check-in. Any of those
+   * moving is something new, and the reads are worded again.
+   *
+   * It waits first for any synthesis of this ground that is running or queued, because the reads are
+   * built from the report it is about to write: warming the report it is replacing would ask the
+   * model for lines nobody will read. A read that fails gives no fingerprint, and the warm-up runs.
+   */
+  private async whatTheReadsAreBuiltFrom(groundId: string, sessionNumber: number): Promise<string | null> {
+    for (let tries = 0; tries < 50; tries++) {
+      const queued = this.synthesisQueue?.get(groundId);
+      if (!queued) break;
+      await queued.catch(() => undefined);
+      await new Promise((r) => setImmediate(r));
+    }
+    const [report, round, lines, docs, done, people] = await Promise.all([
+      this.prisma.report.findUnique({ where: { groundId }, select: { updatedAt: true, releasedAt: true } }),
+      this.prisma.reportRound.findUnique({ where: { groundId_sessionNumber: { groundId, sessionNumber } }, select: { takenAt: true, amendedAt: true } }),
+      this.prisma.recordEntry.aggregate({ where: { disputedAt: null, participant: { groundId } }, _count: { _all: true }, _max: { createdAt: true } }),
+      this.prisma.groundDocument.count({ where: { groundId } }),
+      this.prisma.checkIn.count({ where: { groundId, status: CheckInStatus.COMPLETED } }),
+      this.prisma.groundParticipant.count({ where: { groundId } }),
+    ]);
+    return JSON.stringify([
+      report?.updatedAt ?? null, report?.releasedAt ?? null, round?.takenAt ?? null, round?.amendedAt ?? null,
+      (lines as any)?._count?._all ?? 0, (lines as any)?._max?.createdAt ?? null, docs, done, people,
+    ]);
   }
 
   /**
@@ -5137,6 +5175,11 @@ happened, and what is in the way.`;
    * caller can keep what the round found. Best effort: a reader that fails is skipped.
    */
   async wordTheReadsFor(groundId: string, sessionNumber: number): Promise<{ userId: string; sessionReport: any }[]> {
+    /* Once per new thing (decision 44): shared while one runs, skipped when nothing has changed. */
+    return (this.readsWarming ?? new OneAtATime<{ userId: string; sessionReport: any }[]>()).run(`${groundId}:${sessionNumber}`, () => this.whatTheReadsAreBuiltFrom(groundId, sessionNumber), () => this.wordTheReadsNow(groundId, sessionNumber));
+  }
+
+  private async wordTheReadsNow(groundId: string, sessionNumber: number): Promise<{ userId: string; sessionReport: any }[]> {
     return WORDING_NEW_LINES.run(true, async () => {
       const ground = await this.prisma.ground.findUnique({
         where: { id: groundId },
@@ -5158,6 +5201,8 @@ happened, and what is in the way.`;
         await this.get(groundId, userId, ground.organizationId).catch(() => undefined);
         out.push({ userId, sessionReport });
       }
+      /* Logged here, where the work is done, so a warm-up that was shared or skipped is not counted. */
+      this.logger.log(`Reads warmed for ${groundId}, session ${sessionNumber}, ${readers.length} reader(s).`);
       return out;
     });
   }
@@ -5487,6 +5532,15 @@ happened, and what is in the way.`;
           role: p.roleAsDescribed ?? null,
           answeredThisSession: answered,
           /* What the lead may read of this person's, and nothing sooner. See patterns/who-reads-a-pattern. */
+          /*
+           * THE PLAIN NAME, NEVER THE LIBRARY'S OWN SIGNAL. `patternCatalogue().get(d.code)?.signal`
+           * is the detector's internal description ("Ownership claimed for work others delivered."),
+           * written for whoever reads the detector, not for a lead. This printed straight onto the
+           * probe list until decision 52: the same rule that keeps an internal name off a board kept
+           * it off this list, so it reads the plain name from plain-pattern-names.ts, the one place
+           * every other reader's pattern is named from. `patternRowsThisReaderMayRead` already
+           * guarantees a plain name exists for every row it returns.
+           */
           patterns: patternRowsThisReaderMayRead(held.detections, { participantId: null, runsIt: true })
             .filter((d) => d.participantId === p.id)
             .map((d) => {
@@ -5494,7 +5548,7 @@ happened, and what is in the way.`;
               return {
                 code: d.code,
                 periodsObserved: periodsSeen(d),
-                signal: lib?.signal ?? d.code,
+                signal: plainPatternNameOf(d.code)?.name ?? lib?.signal ?? d.code,
                 probe: lib?.probe,
               };
             })
@@ -5929,7 +5983,13 @@ happened, and what is in the way.`;
       }) ?? Promise.resolve([])).catch(() => []);
       served = withoutGoalsNotToldIn(served, (notTold as any[]).filter(notToldYet).map((r) => String(r.text ?? '')));
     }
-    return withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames), hiddenTargets);
+    /* What people said stays as they said it: the hidden-target rule is for the report's own words.
+       See board/their-own-words-stay (screens request 77). */
+    return withTheirOwnWordsKept(
+      withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames),
+      THEIR_OWN_WORDS_IN_A_REPORT,
+      (v) => withoutHiddenTargetsIn(v, hiddenTargets),
+    );
   }
 
   private async getAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {

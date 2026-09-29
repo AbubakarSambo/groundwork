@@ -202,3 +202,63 @@ The `table` prop and the `showTable` state can go whenever you are next in that 
 **When something is refused**, you get a 400 with a plain sentence to show as it is. For example: "That one is already confirmed.", "Musa Bello is not on this check-in yet. Add them first, then confirm this.", or "The number or the date is not in the plan's own words, so it was not changed."
 
 **Not done yet:** when a goal is confirmed, its date is not kept, because a target has no date field. The date stays on the proposal and in its sentence.
+
+## 29 September, evening: your requests 76 and 77
+
+### Request 77: a person's own words are never removed
+
+The cause was not the private-file rule. It was the engine's new filter for colleagues' hidden targets, which went through every string on Rukia's row, including her own lines. It emptied each line with "four" in it, because Juma may not see her target of 4. Fixed in `7eb0aed1`:
+- A person's own words from their check-in stay for every reader. That covers `whoOwnsWhat[].items[].text` on the board, and `whatEachPersonSaid[].lines[]` in the report.
+- A private file's name inside such a line is still replaced ("As a document says, four shops each by Friday.").
+- An item with no words is never served, so you can drop your client-side guard whenever you like.
+
+### Request 76: the kind of work, and each kind's records
+
+Built in `343cf214`, `46eff9f0` and `643a245a`. **When you merge, apply the migration `20260929140000_the_kind_of_work` to your own local database.** It adds three nullable columns to `grounds` and a new table, `work_items`.
+
+**`kindOfWork` on the board** (`GET /grounds/:id/board`) is one of these eleven names, exactly as written, or `null`: `"sales org"`, `"engineering release"`, `"support desk"`, `"distribution operations"`, `"trader training programme"`, `"founder's own check-in"`, `"asset loans"`, `"MarketView where next"`, `"MarketView Q4"`, `"a law firm matter"`, `"a government programme"`.
+- It is read from the lead's words when setup is saved, and checked in code to be one of the eleven.
+- The lead, or an admin of the organisation, can change it with `PATCH /grounds/:id/kind-of-work` and `{ "kind": "...", "stages": ["...", ...] }`. A later read never overwrites the lead's choice. A name that is not one of the eleven is refused with a sentence you can show as it is.
+
+**`workRecords` on the board** is a list of sections under the switchboard's names. Each is in one of three states:
+
+```json
+{ "section": "Deal grid", "holds": "deals", "state": "filled",
+  "stages": ["Contacted","Need established","Pitched","Qualified","Quoted","Won"],
+  "rows": [ { "id": "w-1", "kind": "deal", "name": "Nyama Choma Palace", "stage": "Won",
+              "owner": "Rukia Mwangi", "ownerParticipantId": "p-rukia", "due": null,
+              "fields": { "Value": "KES 90K" }, "from": "said",
+              "said": "Nyama Choma Palace paid KES 90K on 22 September, so that one is won." } ] }
+
+{ "section": "Deal grid", "holds": "deals", "state": "none-yet", "rows": [] }
+
+{ "section": "Forecast", "holds": "where the sales numbers are likely to end up", "state": "not-known",
+  "why": "Groundwork does not keep this yet. It needs numbers from another system, such as payment records or a helpdesk." }
+```
+
+- `none-yet` means Groundwork keeps this kind of record, but none has come up yet. `not-known` means it is not something Groundwork knows. Draw them differently.
+- `stages` is there only where the kind has stages. The lead's own stage names replace the defaults.
+- `from` is `"said"` (read from somebody's check-in, with `said` holding their words exactly) or `"lead"` (added by the lead, with no `said`).
+
+**Which sections each kind gets:**
+
+| Kind | Filled from records | Served as not-known |
+| --- | --- | --- |
+| sales org | Deal grid: deals, with stages Contacted, Need established, Pitched, Qualified, Quoted, Won | Forecast |
+| engineering release | Deal grid: releases and tasks, with stages Worked on, Written, Merged, Tested, Deployed, Used | none |
+| support desk | Deal grid: tickets | Themes |
+| distribution operations | Deal grid: incidents | none |
+| trader training programme | Deal grid: trader groups, with stages Enrolled, Session 1, Session 2, Completed | none |
+| founder's own check-in | Work plan: commitments and decisions | none |
+| asset loans | Deal grid: loans and their repayments, with stages Disbursed, Repaying, Late, Repaid | none |
+| MarketView where next | Themes: priorities people named | none |
+| MarketView Q4 | Deal grid: subscriptions, with stages Said, Paid | Forecast |
+| a law firm matter | Timeline: deadlines. Obligations: the parties | none |
+| a government programme | Deal grid: counties and their projects | none |
+| no kind yet | nothing | Deal grid, Forecast, Themes, Work plan, Timeline and Obligations, each saying Groundwork does not know what kind of work this is yet |
+
+**The lead can add, change or remove a record** with `POST`, `PATCH` and `DELETE /grounds/:id/board/work-items`. Only the lead can do this, and every refusal is a plain sentence.
+
+**Who sees which rows:** the lead and an admin see every row, with names. Where people do not see each other, a participant sees only their own rows, the lead's, and rows with nobody's name on them. Hidden targets, private file names and goals not told yet are taken out, and a person's own words in `said` stay exactly as said.
+
+**Not built yet:** the other sections of your request 70, and records filled from another system, such as a helpdesk or payments.

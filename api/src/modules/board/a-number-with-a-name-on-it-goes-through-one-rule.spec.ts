@@ -65,10 +65,15 @@ describe('every surface that hands out whose number it is', () => {
    */
   const NOT_HANDING_IT_TO_A_READER: Record<string, string> = {
     'modules/board/board.listener.ts': 'writes owners onto targets read out of a sheet',
+    /* Request 76: the owner of a deal, a release or a deadline (WorkItem), never of a target. The board serves those rows behind its own walls. */
+    'modules/board/the-kind-of-work.ts': 'the owner of a record of the kind of work, such as a deal or a deadline, not of a target',
     'modules/documents/documents.service.ts': 'writes owners when a document of targets is read',
     'modules/documents/what-a-document-holds.ts': 'the shape a document is read into, before anybody reads it',
     /* Week 13: the one place it names an owner is the goal it writes when the lead confirms a
        proposal from their own plan. Every proposal route is the lead's alone (403 for everyone else). */
+    /* Ask Groundwork's recall (f25e97d9) selects each target's owner only to hand it to
+       targetsHiddenFrom, which asks targetsFor itself; it never serves an owner or a number. */
+    'modules/assistant/assistant.service.ts': 'reads owners only to hand them to targetsHiddenFrom, which asks the one rule; serves neither',
     'modules/grounds/a-plan-is-many-proposals.service.ts': 'writes an owner onto a goal the lead confirmed from their own plan; only the lead reads proposals',
     /*
      * Arithmetic, not a field: the report selects the column to add per-person figures up for the

@@ -1,11 +1,23 @@
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
+import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
+
+/** What the lead sends to add or change a record of the kind of work. */
+export interface WorkItemInput {
+  kind?: string;
+  name?: string;
+  stage?: string | null;
+  ownerParticipantId?: string | null;
+  due?: string | null;
+  fields?: Record<string, string>;
+}
 import { targetsHiddenFrom, withoutHiddenTargets, withoutHiddenTargetsIn } from './a-hidden-target-stays-hidden';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
+import { THEIR_OWN_WORDS_ON_THE_BOARD, withTheirOwnWordsKept, withoutLinesWithNoWords } from './their-own-words-stay';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
-import { Injectable, ForbiddenException, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { GroundworkEvents, CheckInCompletedEvent } from '../../common';
 import { whoNeedsYou, Need } from '../detectors/who-needs-you-this-week';
@@ -51,6 +63,7 @@ import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-boa
 import { whatThisDocumentIs } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
+import { OneAtATime } from '../reports/one-warm-up-at-a-time';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import { oneBlockerPerThingWaitedOn } from './a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
@@ -137,6 +150,8 @@ export const inASentence = (phrase: string): string => {
 @Injectable()
 export class BoardService {
   private readonly logger = new Logger(BoardService.name);
+  /* One board warm-up at a time for each ground, shared by every trigger. See one-warm-up-at-a-time. */
+  private readonly boardWarming = new OneAtATime<void>();
 
   /*
    * `AnthropicService` for one job: rewording the reads' reason lines. The board decides nothing
@@ -183,16 +198,41 @@ export class BoardService {
    * few seconds after the check-in that changed it, means the lead's first open pays nothing.
    * Best-effort: a failure here is logged and the open still works, it is just slower.
    */
+  /*
+   * ONCE PER CHECK-IN THAT CHANGES IT (decision 44). Check-ins landing while a warm-up runs share
+   * one more run after it, which reads all of them; nothing starts beside a run already out. The
+   * fingerprint is what the board is built from, so a check-in event that brings nothing new (a
+   * repair of one already counted) asks nothing. And there is one instance of this service: run-19
+   * warmed every board twice because the public API module built a second one (see
+   * only-one-board-listens.spec).
+   */
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async warmOnCheckInCompleted(event: CheckInCompletedEvent) {
     try {
-      const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
-      if (!ground?.initiatorId) return;
-      await this.get(event.groundId, ground.initiatorId, DEFAULT_COVERAGE_VARIANT, { mayWordNewLines: true });
-      this.logger.log(`Board warmed for ${event.groundId} after session ${event.sessionNumber}.`);
+      await (this.boardWarming ?? new OneAtATime<void>()).run(event.groundId, () => this.whatTheBoardIsBuiltFrom(event.groundId), async () => {
+        const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
+        if (!ground?.initiatorId) return;
+        await this.get(event.groundId, ground.initiatorId, DEFAULT_COVERAGE_VARIANT, { mayWordNewLines: true });
+        this.logger.log(`Board warmed for ${event.groundId} after session ${event.sessionNumber}.`);
+      });
     } catch (err: any) {
       this.logger.warn(`Board warm-up failed for ${event.groundId}: ${err?.message}`);
     }
+  }
+
+  /* The board's inputs, as one fingerprint: check-ins, the record's lines and documents, the aims and
+     numbers, what is in the way, who is in it, and the report whose story it carries. */
+  private async whatTheBoardIsBuiltFrom(groundId: string): Promise<string | null> {
+    const [checkIns, lines, docs, aims, blockers, people, report] = await Promise.all([
+      this.prisma.checkIn.aggregate({ where: { groundId }, _count: { _all: true }, _max: { completedAt: true } }),
+      this.prisma.recordEntry.aggregate({ where: { disputedAt: null, participant: { groundId } }, _count: { _all: true }, _max: { createdAt: true } }),
+      this.prisma.groundDocument.count({ where: { groundId } }),
+      this.prisma.groundObjective.aggregate({ where: { groundId }, _count: { _all: true }, _max: { updatedAt: true } }),
+      this.prisma.groundDependency.aggregate({ where: { groundId }, _count: { _all: true }, _max: { updatedAt: true } }),
+      this.prisma.groundParticipant.count({ where: { groundId } }),
+      this.prisma.report.findUnique({ where: { groundId }, select: { updatedAt: true } }),
+    ]);
+    return JSON.stringify([checkIns, lines, docs, aims, blockers, people, report?.updatedAt ?? null]);
   }
 
   /*
@@ -552,6 +592,9 @@ export class BoardService {
       sections,
       title: ground.label,
       scenario: ground.scenario,
+      /* The kind of work (request 76): one of the eleven names in the-kind-of-work.ts, or null. Checked
+         again on the way out, so a stored value that is not one of the eleven is served as none. */
+      kindOfWork: oneOfTheKinds((ground as any).kindOfWork),
       /**
        * HOW IT IS GOING, AT THE TOP, WHICH IS WHY SOMEBODY OPENED THIS.
        *
@@ -1281,7 +1324,7 @@ export class BoardService {
             rememberedCompose(this.prisma, opts.mayWordNewLines
               ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
               /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
-              : async () => null),
+              : async () => null, !!opts.mayWordNewLines),
           )).map((d) => [d.key, d.text]));
           out.contribution = (out.contribution ?? []).map((r: any, i: number) => ({ ...r, reason: said[`c${i}`] ?? r.reason }));
           if (out.coverage) out.coverage = { ...out.coverage, reads: out.coverage.reads.map((r: any, i: number) => ({ ...r, reasonText: said[`v${i}`] ?? r.reasonText })) };
@@ -1450,6 +1493,43 @@ export class BoardService {
     }
 
     /*
+     * THE RECORDS THIS KIND OF WORK NEEDS (request 76): deals and their stages, releases, tickets, a
+     * matter's deadlines and parties. Each section is served under the switchboard's own name, and
+     * says whether it is filled, has none yet, or is not something Groundwork keeps ("not-known").
+     * Only the rows: whose each is, named for this reader, and the line it came from word for word.
+     * A row from a line the person has since disputed is left out, as it is from every read.
+     */
+    {
+      const kind = oneOfTheKinds((ground as any).kindOfWork);
+      const items = kind
+        ? await ((this.prisma as any).workItem?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => [])
+        : [];
+      const sourceIds = (items as any[]).map((i) => i.sourceEntryId).filter(Boolean);
+      const sources = sourceIds.length
+        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true } }) as Promise<any[]>).catch(() => [] as any[])
+        : [];
+      const lineOf = new Map((sources as any[]).map((l) => [l.id, l]));
+      const rows: AServedRecord[] = [];
+      for (const i of items as any[]) {
+        const line = i.sourceEntryId ? lineOf.get(i.sourceEntryId) : null;
+        if (i.sourceEntryId && (!line || line.disputedAt)) continue;
+        rows.push({
+          id: i.id,
+          kind: i.kind,
+          name: i.name,
+          stage: i.stage ?? null,
+          owner: i.ownerParticipantId ? nameOf(i.ownerParticipantId) ?? aColleague(i.ownerParticipantId) : null,
+          ownerParticipantId: i.ownerParticipantId ?? null,
+          due: i.dueAt ? new Date(i.dueAt).toISOString().slice(0, 10) : null,
+          fields: plainFields(i.fields),
+          from: i.sourceEntryId ? 'said' : 'lead',
+          ...(line ? { said: cleanText(line.text) } : {}),
+        });
+      }
+      out.workRecords = theRecordSections(kind, (ground as any).workStages, rows);
+    }
+
+    /*
      * APPLIED IN ONE PLACE, AT THE END, ON PURPOSE. Threading the rule through eight builders is
      * eight chances to forget it and no single place to read what the board gives away. Here the
      * whole answer is one paragraph, and a section added later is walled by being added to it
@@ -1467,6 +1547,13 @@ export class BoardService {
         out.coverage = { ...(out.coverage as any), reads: onlyWhatThisReaderMaySee((out.coverage as any).reads, whoMaySee) ?? [] };
       }
       out.whoOwnsWhat = onlyWhatThisReaderMaySee(out.whoOwnsWhat as any, whoMaySee);
+      /* A record whose person is walled from this reader is not served to them: only their own, the lead's, and those with nobody's name on them. */
+      out.workRecords = ((out.workRecords ?? []) as any[]).map((sec) => (Array.isArray(sec.rows)
+        ? (() => {
+          const rows = sec.rows.filter((r: any) => !r.ownerParticipantId || r.ownerParticipantId === me?.id || r.ownerParticipantId === theLeadsRow);
+          return { ...sec, rows, state: rows.length ? 'filled' : 'none-yet' };
+        })()
+        : sec));
       out.managerAlignment = onlyWhatThisReaderMaySee(out.managerAlignment as any, whoMaySee);
       /* servedPatterns already serves a participant only their own; the wall stays round it as well. */
       if (out.patterns) out.patterns = onlyWhatThisReaderMaySee(out.patterns as any, whoMaySee);
@@ -1531,12 +1618,33 @@ export class BoardService {
       /* And no internal label reaches anyone, whichever section it sits in. See reports/no-internal-label-reaches-anyone. */
       const called = whatEachLabelIsCalled(ground.participants as any[], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsThisGround, peersAreNamed: !!peersVisible });
       /* Labels become names first, so the hidden-target read can find the person (see reports.service). */
-      let walled = withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(out, called), privateNames), hiddenTargets) as any;
+      /*
+       * WHAT PEOPLE SAID STAYS AS THEY SAID IT (screens request 77). Names and a private file's name
+       * are swapped in every field, the lines people said included; the hidden-target rule is for
+       * Groundwork's own sentences, so each line a person said is held aside while it runs. See
+       * their-own-words-stay.
+       */
+      let walled = withTheirOwnWordsKept(
+        withoutPrivateFileNamesIn(withoutInternalLabelsIn(out, called), privateNames),
+        THEIR_OWN_WORDS_ON_THE_BOARD,
+        (v) => withoutHiddenTargetsIn(v, hiddenTargets),
+      ) as any;
       /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
          grounds/a-goal-not-told-stays-with-the-lead. */
       if (!isInitiator) walled = withoutGoalsNotToldIn(walled, await this.goalsNotToldYet(groundId));
       /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
+      /* And a line with no words is left out here, never served for the page to draw as an empty line. */
+      walled = withoutLinesWithNoWords(walled, ['whoOwnsWhat', '*', 'items'], 'text');
+      /* A record whose name was only a hidden number is not left as a row with no name. */
+      if (Array.isArray(walled.workRecords)) {
+        walled.workRecords = walled.workRecords.map((sec: any) => (Array.isArray(sec.rows)
+          ? (() => {
+            const rows = sec.rows.filter((r: any) => typeof r?.name === 'string' && r.name.trim());
+            return { ...sec, rows, state: rows.length ? 'filled' : 'none-yet' };
+          })()
+          : sec));
+      }
       return walled;
     }
   }
@@ -1843,6 +1951,88 @@ export class BoardService {
       throw new ForbiddenException('Only the person who set this check-in up can change what it is aiming for');
     }
     return ground;
+  }
+
+  /**
+   * THE LEAD ADDS, CHANGES OR REMOVES A RECORD OF THE KIND OF WORK (request 76): a deal, a release,
+   * a deadline. Only the lead of the check-in. The record's kind must belong to the check-in's kind
+   * of work, its stage must be one of the check-in's stages, and its person must be on the check-in.
+   * A record read from a check-in line keeps pointing at that line; the lead can move it on.
+   */
+  private async theLeadsWorkItemGround(groundId: string, requestingUserId: string) {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, initiatorId: true, kindOfWork: true, workStages: true, participants: { select: { id: true } } } as any,
+    }) as any;
+    if (!ground) throw new NotFoundException('Check-in not found');
+    if (ground.initiatorId !== requestingUserId) throw new ForbiddenException('Only the lead of this check-in can change its records.');
+    const kind = oneOfTheKinds(ground.kindOfWork);
+    if (!kind) throw new BadRequestException('Choose what kind of work this check-in is about first, then add its records.');
+    return { ground, kind };
+  }
+
+  private theWorkItemFields(ground: any, kind: KindOfWork, dto: WorkItemInput, isNew: boolean) {
+    const data: Record<string, any> = {};
+    if (isNew || dto.kind !== undefined) {
+      if (!dto.kind || !itemKindsFor(kind).includes(dto.kind)) {
+        throw new BadRequestException(`This check-in keeps these kinds of record: ${itemKindsFor(kind).join(', ')}.`);
+      }
+      data.kind = dto.kind;
+    }
+    if (isNew || dto.name !== undefined) {
+      const name = (dto.name ?? '').trim();
+      if (!name) throw new BadRequestException('Give the record a name.');
+      data.name = name.slice(0, 120);
+    }
+    if (dto.stage !== undefined) {
+      const itemKind = data.kind ?? dto.kind;
+      const section = RECORDS_FOR_EACH_KIND[kind].find((s) => !itemKind || s.itemKinds.includes(itemKind));
+      const stages = section ? stagesFor(section, ground.workStages) ?? [] : [];
+      if (dto.stage === null) data.stage = null;
+      else {
+        const stage = stages.find((s) => s.toLowerCase() === String(dto.stage).trim().toLowerCase());
+        if (!stage) throw new BadRequestException(stages.length ? `The stage has to be one of these: ${stages.join(', ')}.` : 'These records have no stages.');
+        data.stage = stage;
+      }
+    }
+    if (dto.ownerParticipantId !== undefined) {
+      if (dto.ownerParticipantId !== null && !(ground.participants ?? []).some((p: any) => p.id === dto.ownerParticipantId)) {
+        throw new BadRequestException('That person is not on this check-in.');
+      }
+      data.ownerParticipantId = dto.ownerParticipantId;
+    }
+    if (dto.due !== undefined) {
+      if (dto.due === null) data.dueAt = null;
+      else {
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(String(dto.due)) ? new Date(`${dto.due}T00:00:00.000Z`) : null;
+        if (!d || isNaN(d.getTime())) throw new BadRequestException('Give the date as year, month and day, like 2026-10-02.');
+        data.dueAt = d;
+      }
+    }
+    if (dto.fields !== undefined) data.fields = plainFields(dto.fields);
+    return data;
+  }
+
+  async addWorkItem(groundId: string, requestingUserId: string, dto: WorkItemInput) {
+    const { ground, kind } = await this.theLeadsWorkItemGround(groundId, requestingUserId);
+    const data = this.theWorkItemFields(ground, kind, dto, true);
+    return (this.prisma as any).workItem.create({ data: { groundId, ...data, addedByUserId: requestingUserId } });
+  }
+
+  async updateWorkItem(groundId: string, itemId: string, requestingUserId: string, dto: WorkItemInput) {
+    const { ground, kind } = await this.theLeadsWorkItemGround(groundId, requestingUserId);
+    const item = await (this.prisma as any).workItem.findFirst({ where: { id: itemId, groundId } });
+    if (!item) throw new NotFoundException('That record is not on this check-in.');
+    const data = this.theWorkItemFields(ground, kind, { kind: item.kind, ...dto }, false);
+    return (this.prisma as any).workItem.update({ where: { id: itemId }, data });
+  }
+
+  async deleteWorkItem(groundId: string, itemId: string, requestingUserId: string) {
+    await this.theLeadsWorkItemGround(groundId, requestingUserId);
+    const item = await (this.prisma as any).workItem.findFirst({ where: { id: itemId, groundId }, select: { id: true } });
+    if (!item) throw new NotFoundException('That record is not on this check-in.');
+    await (this.prisma as any).workItem.delete({ where: { id: itemId } });
+    return { deleted: true };
   }
 
   async createObjective(

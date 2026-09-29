@@ -207,7 +207,7 @@ describe('with the switch on, every reader reads patterns under the rules', () =
     const served = await everyPageAs(withTheSwitch(true), 'u-femi', groundWith(GROUNDS[0][1]));
     expect(served.record.patterns).toEqual([{
       id: 'pd2', participantId: 'p-femi', yours: true, kind: 'attention',
-      heading: 'Claimed work somebody else did',
+      heading: 'Others describe doing work they described as theirs',
       whatHappened: FEMI_SAID,
       sessions: [1, 2, 3],
       howOften: 'This came up in 3 of your check-ins, in sessions 1, 2 and 3.',
@@ -222,7 +222,7 @@ describe('with the switch on, every reader reads patterns under the rules', () =
     const served = await everyPageAs(withTheSwitch(true), 'u-tunde', groundWith(GROUNDS[0][1]));
     expect(served.board.patterns).toEqual([{
       id: 'pd1', participantId: 'p-ngozi', yours: false, kind: 'attention',
-      heading: 'Problems are always put down to something outside',
+      heading: 'Problems are mostly put down to things outside the team',
       whatHappened: NGOZI_SAID,
       sessions: [1, 2, 4],
       howOften: 'This came up in 3 check-ins, in sessions 1, 2 and 4.',

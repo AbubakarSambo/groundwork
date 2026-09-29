@@ -6,6 +6,219 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## HOW THE ENGINE WORK RUNS NOW (Hafsah, 29 September, evening)
+
+Hafsah wants the engine work done much faster. Every session keeps to this:
+1. **Tests:** while working, run only the tests for the files changed. Run all the API tests once at the end of each finished piece of the weekly plan.
+2. **Scenario runs:** only when a change affects what the model is given or what it writes (the conversation, reports, boards, judgements). For storing data, new fields and plumbing, such as request 76, use tests and one live try instead.
+3. **Re-runs:** re-run an affected scenario once. Run it a second time only for a prompt or judgement change, or when the first result is borderline.
+4. **Full runs:** group several small pieces into one scenario run. At most one full 24-scenario run a day, to prove the day's work together.
+5. **Quick checks after every run:** quotes are word for word, none of the lead's private words reach anyone, and reports match the database.
+6. **While a run or a helper works,** prepare the next piece.
+7. **Models:** Sonnet 5 for the builder, and Opus 5.5 for the main session and anything that reads judgements, such as the reviewer.
+
+One helper at a time, and a helper never starts helpers of its own.
+
+The safety check refused saving these rules to Claude's own memory folder, which is protected. So they are kept here instead.
+
+---
+
+## 29 SEPTEMBER, NIGHT: HAFSAH'S SECOND SET OF ANSWERS
+
+All recorded in `docs/decisions-merged.md` (`2dfec86f`):
+- **Decision 52:** the pattern names, approved with eight reworded.
+- **Decision 53:** the 29 provisional decisions confirmed, with four changes.
+- **Decision 54:** existing check-ins are not reopened by a migration.
+- **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
+
+### Part 1: pattern names approved, and patterns switched on
+
+- **The names** (`5595c033`) live in one place, `api/src/modules/patterns/plain-pattern-names.ts`, and every served pattern reads its name from there. Hafsah's eight rewordings are in, and B5 is as written. `docs/pattern-names.md` is marked approved, and a test keeps the two word for word the same. E4 and F5 are in a list nothing that serves a pattern reads.
+- **Switched on** (`19cdf9b0`). Patterns were off by one constant in the code, `PATTERNS_ARE_SERVED`, and it is now on. No database row holds it, so nothing needs setting on a database.
+- **Two leaks found and fixed while proving it** (`fe3f2684`). The lead's "what to probe" list and the person's own coaching note printed the detector's own internal description, for example "Ownership claimed for work others delivered.", where the plain name should be. Both now use the plain name, and each has a test that fails on the old code.
+- **What the person reads first**, for example: "Others describe doing work they described as theirs." Then what happened, how often ("This came up in 3 of your check-ins, in sessions 1, 2 and 3."), a place to answer, and "You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it."
+- A guard test failed after the evening's Ask Groundwork privacy fix, which reads a target's owner only to pass it to the one rule. It is now listed with that reason (`7c1a74f9`).
+- **The live check** read 22 readers across 8 check-ins, as the person, the lead and a colleague. **The rules all hold:**
+  - nothing is served before three periods;
+  - the person sees theirs first, and no lead saw one yet;
+  - no internal name, code or detector text reaches anyone;
+  - no colleague sees another person's pattern;
+  - E4 and F5 reach nobody;
+  - every heading is the approved name.
+- **It sent the wording back, and it is being fixed in place** (decision 55):
+  - A lead read about their own pattern "Bisi will see it too", where Bisi is the lead herself.
+  - A title was used as a name: "Dr will see it too".
+  - "What happened" is the detector's own sentence, passive and full of jargon: "Lack of progress is attributed to an external factor…". One did not match its heading.
+  - "not once" read as "never".
+  - A sentence said nothing had come up often enough to be a pattern, beside a pattern.
+  - The judgement told a lead "You have a pattern of…", a label, which breaks decision 11.
+  - A session 1 report showed a pattern that only reached three at session 3.
+  - The You board said "One thing for this week: Names what they would do differently".
+- **A side effect of the check:** reading as each person marked 13 patterns as shown to them today, which is the product's normal behaviour. The leads' three-day clocks for those started today.
+
+### Part 4: migrations
+
+**Existing check-ins are no longer reopened by a migration** (decision 54, `b74c5fa7`).
+- `20260923200000_reopen_every_check_in_that_ran_out_of_time` now holds only `SELECT 1`. It used to set every stalled check-in with work outstanding back to active, and give it thirty more days.
+- The file stays, so the order of migrations does not change. Prisma accepts it on the local test database.
+- A lead can reopen a stalled check-in themselves: extending its dates brings it back, and the people who were told it stalled are told it is back. The same test file already covers that.
+- Four tests that required the old update were replaced by one that requires the migration to change no data.
+
+**Needs Hafsah: the safety check refused both my edit to the release questions in `docs/ready-to-deploy.md` and a report note that quoted them.** It said nothing may touch the branches of the person those questions are for. The edit only changed that document on this branch. I did not retry. What the section should now say:
+- There are 326 migrations, and 54 are new since `80beab98`.
+- Four of the 54 change or remove data: the three already listed, and a new one, `20260928090000_the_person_sees_their_pattern_first`.
+- The reopening migration no longer changes anything.
+- The questions about the empty column, the 5-second limit and the one-off script stay, numbered 1 to 7 in order.
+
+**This matters before patterns go live.** The new data-changing migration marks every pattern already seen in three periods as ready from the day it was last seen. So a lead could see an old one within about a week of release, without the person ever having seen it. Please check live for such patterns first.
+
+### The merged decisions checked again against 31 to 54: new disagreements
+
+I changed nothing else. These are for Hafsah:
+
+1. **Decision 47 against decision 53, the admin's sentence.** Decision 47 says an admin who cannot see everything reads "Nothing you have access to needs you this week." Decision 53 says an admin who cannot see a target reads only "has checked in". An admin who cannot see a target is exactly someone who cannot see everything, so both sentences fit the same case. I will build 53's "has checked in" beside the person's name. I will use 47's sentence only where a page sums up the whole check-in for that admin. Please say if that is wrong.
+2. **Decision 43 against decision 53, counts in a suggestion.** Decision 43 lists "the suggestion with its counts" among the forms a lead may get. Decision 53 says the manager gets a plain line with no count behind it. I will follow 53, the newer and more private one.
+3. **Decision 33 against decision 53, the thresholds.** Decision 33 says the thresholds for verdicts are decided later, when that work starts. Decision 53 says to build week 10 now. Week 10 needs a threshold to reach a suggestion at all. Until Hafsah sets one, I will build week 10 so that it cannot reach a suggestion without a threshold being set, and leave the threshold empty.
+4. **Decision 4's new exception against decision 5, admins in an evaluation check-in.** Decision 4 now says colleagues' exact words in an evaluation check-in go only to the manager. Decision 5 says admins see every board and report, including what people said. It does not say whether an admin reading an evaluation check-in sees those words. I will treat an admin there like the manager, so they may read them, because decision 5 already keeps performance plans from admins without access. Please say if they should not.
+5. **Decision 45 against the new working rules, the number of re-runs.** Decision 45 says the goodbye's commitment is checked with two re-runs. The working rules of this evening say one re-run, and a second only for a prompt or judgement change. The record reader is a model step, so I will run it twice, as 45 says.
+6. **Decision 42 is out of date.** It says decision 38 stands "until Hafsah decides", and decision 43 is that decision. Nothing needs building. The line is just stale.
+
+## 29 SEPTEMBER, EVENING: HAFSAH'S ANSWERS, AND WHAT FOLLOWS
+
+Hafsah answered five of the questions. They are recorded as decisions 44 to 49 in `docs/decisions-merged.md`:
+- **44:** the warm-up runs once.
+- **45:** the goodbye's commitment is saved as a commitment.
+- **46:** a field for a decision about a person.
+- **47:** "Nothing you have access to needs you this week."
+- **48:** untold goals do not count until shared.
+- **49:** her answer on week 10 came through as a placeholder ("Hafsah to fill in"), so week 10 stays held. I did not guess.
+
+Today's two full runs are used, so everything this evening is checked with short re-runs of the scenarios it affects.
+
+**First: the warm-up must run once.** Being fixed now.
+
+**Then two requests from the screens workspace, before the weekly plan, as Hafsah asked:**
+- **Request 77.** Two of Rukia's own lines disappeared from Juma's board: "Four shops for me" and "Baraka has four shops in Westlands and Neema has four in Karen". Hafsah's ruling: a person's own words from their check-in are never removed because they look like a private file, and the private-file rule hides only the file's name. My first guess is that the cause is not the file rule. Today's hidden-target filter may have taken the lines out, because "Four shops for me" gives Rukia's own target, and Juma is an admin who cannot see it. Either way, a person's own words must stay. The builder will confirm the real cause.
+- **Request 76.** Store the kind of work of each check-in (sales, engineering, support, a law firm matter, a programme, and so on), set during setup. Serve the records each kind's board needs. Tell the screens workspace exactly what they will receive.
+
+**The warm-up now runs once** (`1a481c32`, `48b6e107`). There were two causes:
+- **The board ran twice per check-in.** Its service was set up twice, because the developer API built its own copy, so two copies each warmed the board. That is where 18 came from: nine check-ins, twice each.
+- **The reports repeated each other's work.** Overlapping check-ins, and the release straight after the last one, each started their own warm-up of the same report. Two warm-ups that met the same new line both asked the model.
+
+Now only one warm-up runs at a time for each check-in and round. A trigger that arrives meanwhile joins it, a report that has not changed is not warmed again, and each line is asked for once. Opening a page still never asks the model. 28 new tests cover it, and each fails when the fix is switched off. A short live run on loans and sales is proving it now.
+
+**Request 77 is fixed** (`7eb0aed1`). The cause was not the private-file rule. It was today's hidden-target filter. It went through every string on Rukia's row, including her own lines, and emptied each one with "four" in it, because Juma cannot see her target of 4. The report had the same fault: her lines came back empty for Juma and for a colleague. Now:
+- A person's own words from their check-in are held aside while the hidden-target filter runs. This goes by field: the board's own-lines field, and the report's "what each person said".
+- A private file's name is still replaced ("As a document says, four shops each by Friday.").
+- Juma reads "Four shops for me." and "Baraka has four shops in Westlands and Neema has four in Karen." again.
+- Groundwork's own sentence giving her 4 is still taken out for him.
+- An item with no words is never served.
+- A test has a person saying the same words as a private file: their words stay, and only the file's name is hidden.
+
+**The warm-up fix is proven live** (loans and sales on `ea6e87cb`).
+
+| Loans, nine people, one session | run-19 | Now |
+| --- | --- | --- |
+| Board warm-ups | 18 | 9, once per check-in |
+| Report warm-ups | 9 | 3, once per new report version |
+
+- In sales, every check-in warmed the board once, where it used to be twice.
+- The model hit its rate limit 14 times on this short run, and 2 calls failed after every retry. The day's full run-19 had 204.
+- **Sales, finished:** each of its 12 check-ins warmed the board once, 4 per session for 4 people. Its report warmed 3 times, then once.
+- **The quick checks all pass on the whole proof run:**
+  - **Quotes:** 261 quotes served, and all 261 are word for word in the record.
+  - **The lead's private words:** none reached anyone else. This is a new read-only script, `api/journey/quick-checks.py`.
+  - **Reports against the database:** the loans report matches. The sales copy is older than the database, not different from it. The run took its copy at 21:24, and the round 3 report was finished and released at 21:26:46. The run's driver takes its last copy before the last report is done, and it should wait. That is a fault in the test driver, not in the product.
+
+**Request 76 is built** (`343cf214`, `46eff9f0`, `643a245a`, migration `20260929140000_the_kind_of_work`, applied to the local test database only). It still needs its one live try.
+- Each check-in stores its kind of work, one of the prototype's eleven, read from the lead's words at setup. The lead can change it.
+- The board serves `kindOfWork`, and each kind's records under the switchboard's names:
+  - deals with stages for sales;
+  - releases for engineering;
+  - tickets for a support desk;
+  - deadlines and parties for a law firm matter;
+  - counties and projects for a programme;
+  - and so on for the other kinds.
+- Records come from what people said, or from the lead, and are never invented. Code checks that a record's name is in the words it came from.
+- A section Groundwork does not keep is served as "not known", which is different from "none yet".
+- The screens workspace has exactly what they will receive, in `docs/answers-from-engine.md`.
+- The asset loans stages (Disbursed, Repaying, Late, Repaid) and MarketView Q4's (Said, Paid) were read from the prototype's screens, because SEED2 gives none for them.
+
+**One chat: the inventory is written** (`b8afadd9`, `docs/context-chat-inventory.md`). There are 21 items, each with where its code is, the rule it keeps, its tests, and whether Ask Groundwork already does it. Most are not in Ask Groundwork yet. The findings that matter most:
+- **A live privacy gap:** Ask Groundwork never checks who may see which target. It is being fixed now, before anything moves.
+- **An uneven permission:** an admin may start the context chat's proposal, but only the lead may confirm it. No test pins this.
+- **A rule kept only by the prompt:** "if a lead says somebody is struggling, coach them, do not deflect". A rewrite of the prompt could lose it unnoticed.
+- **The helper broke a rule.** The helper that wrote the inventory started a research helper of its own, which the rules forbid. The next brief says so plainly.
+
+**After those:** the rest of Hafsah's answers (the goodbye's commitment, the decision field, the admin sentence, untold goals), then the weekly plan.
+
+## SUMMARY, 29 SEPTEMBER, 13:35 TO 20:35 (read this first)
+
+### What I finished
+
+- **Why run-17 was slow.** It ran for 38 minutes, not 90, at the normal pace. It was slow only because it ran in one line instead of three parts. The model's limits and the computer were fine. The old process on port 3101 is stopped.
+- **Hidden targets.** A colleague's hidden target is tested every way it could slip through: a pronoun, the number several sentences later, a list, the number in words, and names with accents. Every gap found is closed. The check-in page, the list of check-ins, the lead's brief, the lead's note to everyone, and a target written only in the lead's own words were all leaking, and none of them do now.
+- **Every open request from the screens workspace is answered,** privacy ones first. About 40 are fixed or confirmed fixed, and each fix has a test on what is actually served. The large feature requests are answered with the week they belong to. Seven have no week in the plan yet and need scoping. Request 74 is planned next.
+- **Privacy faults fixed today** (all found by reading what people are served):
+  - someone waiting for a seat could read a report;
+  - any admin could release a report;
+  - a person's own check-in could be given the lead's setup answers;
+  - a decision about a person was a team target everyone read;
+  - the list of who has shown their report was open to other organisations;
+  - the board sent every row on a check-in where people do not see each other;
+  - a pattern went to participants while patterns are off;
+  - a line written to the lead was shown to everyone;
+  - colleagues could read what the lead weighs;
+  - the lead's board showed how a person's answers were rated;
+  - a goal the lead had not told the person about was shown to them.
+- **Opening a report or board asks no model now,** as decision 7 says. Two places still did, and both are fixed and tested.
+- **The weekly plan:**
+  - Week 6: the end card, fixed after the live check.
+  - Week 6b: the four marks on the team report and the board.
+  - Week 9: commitments kept or missed, settled by proof too, with each person's own count.
+  - Week 12: what has stayed the same for three check-ins, for the lead.
+  - Week 12c: no email address used as a name.
+  - Week 13: a plan becomes proposals, with the storage added by the engine as you asked.
+  - Week 14: a document read item by item, with pages.
+  - Week 15: photos, receipts and invoices.
+  - Week 16: what Today says, from the record.
+  - "Accounts" is gone from the board's and reports' own sentences.
+- **Two merges of the screens workspace,** at 13:35 and 18:52. Both were clean, apart from one clash in the requests file, which I resolved by keeping both sides.
+
+### In progress
+
+- **Task 2.7, the end card, needs you after three tries.**
+  - The first live check sent it back with 19 findings, and every finding about the card and the marks is fixed.
+  - The second live check, on run-19, passed everything except two things. In 13 of 20 closes, the commitment the goodbye states was missing from the card. And about 20 of 496 lines were clipped pieces, such as "A target of 40."
+  - The third try put the goodbye's commitment first on the card, and showed only whole sentences. On two re-runs of sales, handover and drift, the commitment was first in 4 of 6 closes that state one. Figure-only lines such as "14 approved facilities." still showed.
+  - Both re-runs also recorded fewer commitments than run-19 on the same three scenarios: 10 and 9, against 12. That may be noise, because the turn counts moved as much in both directions. But your rule is to drop anything that lowers the score, so **I reverted the third try** (`b4493661`, `ea96afa8`). The code is kept in the history, in `cc3d1165` and `c6ff297e`.
+  - The real fix is where the reviewer pointed. The record reader should write the commitment the goodbye states as a commitment, and write full sentences. That changes what is recorded, so it needs its own re-runs.
+- The screens need to call the new `GET /check-ins/:id/end-card` after the closing reply, or people still will not see the card until they press finish. This is written in request 7's answer.
+
+### Tests and runs
+
+- **The whole API test suite passes on the latest code: 1,195 files and 11,093 tests.**
+- **Run-18** (first full run, the morning's build): no problem counts except 3 lower-case starts. "Specific detail asked for" fell to 74. Two re-checks of the eight scenarios that fell most, on the same build, gave twice the number. So it was noise, not the code.
+- **Run-19** (second full run, the build with the day's privacy and end-card fixes): **nothing worse than the baseline.** Every problem count is 0, and every engine-value number is up. For example, specific detail asked for is 105 against 88, and commitments recorded are 49 against 33.
+  - Jargon in reports and boards rose to 126, from 46, just under the bar of 128. Most of it is people's own words said back.
+  - The model hit its rate limit 204 times, because a new warm-up runs up to 9 or 18 times when it should run once. That is the first thing to fix next.
+
+### Needs Hafsah
+
+- **Task 2.7, after three tries** (see above). The card itself works: it reaches only the person, it matches the record, the marks are consistent, and the close is the prototype's. What is left is the commitment from the goodbye, and clipped lines.
+- **Week 10, the first suggestion to a manager, is held.** It would rest on each person's private count ("kept 11 of 20"). Weeks 11 and 12b wait on it too.
+- **Changes to the conversation are waiting for scenario re-runs:**
+  - taking a goal the lead has not told the person about out of that person's own check-in;
+  - request 74, not asking about a date that has not come yet;
+  - asking for a photo when a claim is only someone's word.
+- **Still open from before:** deal stages (Contacted, Need, Pitched…); who may mark a to-do as done; and week 0's next step (the recommendation is option 2).
+- **The decisions I took for you are all listed below,** under "Decided for Hafsah to confirm", 28 items. The ones most worth a look:
+  - 4: a decision about a person is judged from its wording;
+  - 11: what an admin who cannot see a target is told;
+  - 25 and 27: hiding untold goals, which reverses an older note in the code.
+
+---
+
 ## 29 SEPTEMBER, AFTERNOON: A NEW SESSION PICKS UP FROM THE HANDOVER
 
 **Why run-17 was slow.** I read its own logs: the driver's log and the API's log, both kept in the old session's scratch folder, and the run's folder.
@@ -307,6 +520,27 @@ Tests: 693 files and 6,544 tests pass in the parts touched.
 - **Jargon in reports and boards rose to 126,** from 46 on run-18. The baseline was 511, and the bar is 128, so it is under the bar, but it is a big rise. The new words are "bottleneck", "escalate", "deliverable" and "alignment". Most follow what people said this time: people themselves said "escalate" in five scenarios, against three on run-18, and each of the other words came from a person too. Decision 41 says a person's own word used back to them is not jargon, but the scorer cannot tell the difference.
 - **The model hit its rate limit 204 times,** against none on run-18. 15 calls failed after every retry. The cause is new today: the warm-up that words each report ahead of time, for each reader, ran up to 9 times after one session, and the board's warm-up up to 18 times. That multiplies model calls. It should run once per new thing. This is the first thing to fix next, before more readers or longer check-ins make it worse.
 
+**The second live check of the end card, on run-19, sent 2.7 back again.** It read all 86 finished check-ins in run-19 against their records.
+
+What passes now:
+- The card reaches only the person. Everyone else, the lead included, is refused.
+- The card's lines are exactly the record's lines, and "There are N more lines" is always right.
+- There are no engine notes.
+- The marks are consistent. "I have six approved facilities right now." is from memory, and targets are their word.
+- All 43 natural closes end with the prototype's sentences, and "report is ready" appears nowhere.
+- The lead's board shows no rating.
+
+What still fails:
+- **The commitment the closing reply states is missing from the card** in 13 of 20 closes. Femi was told "You will keep following up with customers for their statements. That's all for today. Below is what I wrote down…", and the card below it did not have it. The record reader never wrote it as a commitment.
+- **About 20 of 496 card lines are clipped pieces of speech,** such as "The last day of March.", "A target of 40." and "Hit my target of 14 approved facilities."
+
+Also found, outside 2.7:
+- The lead's own report still carries `specificityLabel` about herself. It is her own, so no rule is broken, but it is a rating field.
+- One closing reply asked for a document inside the goodbye, and said the commitment twice.
+- One card line shows markdown asterisks.
+
+A third, small try is being built: the card will add the commitment the closing reply states, and will not show a line that is not a sentence.
+
 **Run-19, the day's second full run, started at 17:37** on `c645570c`, in three parts. The two privacy items from the live check are being built alongside it. They filter what is served, so their tests prove them, not the run. Both are now done:
 - **A goal the lead has not told the person about reaches only the lead** (`7a81746c`). Tobi's You board listed "Take over the scheduling." before Wanjiru had spoken to him about it. As Tobi, the report read "Tobi Adewale has started well. Wanjiru Mwangi expects Tobi Adewale to take over the scheduling. Both have answered." It now reads "Tobi Adewale has started well. Both have answered." The lead reads all of it. This goes by what the lead chose ("not told"). It does not go by whether the person has opened the Context page, because that would hide every goal forever.
 - **A colleague's target in the lead's own words stays with its owner** (`1ea89d29`). Femi read "Ngozi Eze is trying to get 14 new facilities approved and have N42 million disbursed." Now that sentence reaches only Ngozi and the lead. Femi still reads his own ("Femi Okonkwo is trying to get 12 new facilities approved."). A number counts as a target only in a sentence about a target, so "the first 90 days" and years stay.
@@ -369,6 +603,7 @@ The same build asked twice as often in both re-checks as it did in run-18. With 
 26. **On a check-in where each person sees only their own target, the product's own sentences never give a colleague's target,** even when that colleague said it out loud in their check-in. Their own words, shown word for word to the people in the check-in, stay as they are. This is the more private option.
 27. **A goal the lead marked "not told" is hidden from the person,** reversing an older note in the code that said to show "you were never told". **Not done yet, and recommended next:** the model that talks to the person in their own check-in is still given that goal, so it could raise it. Taking it out is the more private option. It changes the conversation, so it needs two re-runs of the scenarios it affects, and there was no room for them today.
 28. **Week 10, the first suggestion, is held, not built.** It would give the manager a suggestion about a person, built on counts like "kept 11 of 20 in the last four weeks". Each person's load across check-ins is private, and today that count goes only to the person. The two rules pull against each other. The more private option is to show a suggestion to the person first, and to the manager only as a plain line with no count behind it, but that is a product decision. Weeks 11 and 12b rest on it too. I moved on to week 12.
+29. **Request 77: a person's own words are served in full, even when they give someone else's hidden target.** For example, if a lead who also takes part said "Aisha needs 40 shops" in their own check-in, an admin or a colleague would read that line under the lead's row. This follows decisions 4 and 5 and Hafsah's ruling, but it widens what people read, so please confirm it. The rule for a goal the lead has not told the person about still applies to people's own words.
 
 ---
 

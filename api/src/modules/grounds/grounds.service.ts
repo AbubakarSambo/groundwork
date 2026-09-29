@@ -21,6 +21,7 @@ import { daysRemaining, deadlineOf, clockStartsAt } from './when-the-clock-start
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { KINDS_OF_WORK, THE_KIND_OF_WORK_PROMPT, THE_KIND_OF_WORK_SCHEMA, oneOfTheKinds, theSetupWords } from '../board/the-kind-of-work';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
@@ -697,6 +698,8 @@ export class GroundsService {
       return ground;
     });
     await this.tellParticipantsAboutThis(ground.id, dto.brief);
+    /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
+    void this.readTheKindOfWork(ground.id);
 
     // GW-19: no-verdict expectation contract - set at creation so the initiator
     // sees this before they invite anyone or pay. "Evidence both of you can stand
@@ -896,6 +899,8 @@ export class GroundsService {
 
     this.usage.emit(UsageEventType.GROUND_CREATED, { organizationId, groundId: ground.id, userId: leadUser.id }).catch(() => undefined);
     await this.tellParticipantsAboutThis(ground.id, dto.brief);
+    /* The kind of work, read from what the lead said at setup (request 76). Not awaited: setup is saved either way. */
+    void this.readTheKindOfWork(ground.id);
 
     return ground;
   }
@@ -952,6 +957,8 @@ export class GroundsService {
       },
     });
     if (edits?.brief !== undefined) await this.tellParticipantsAboutThis(groundId, edits.brief);
+    /* A changed brief can change the kind of work (request 76); a lead's own choice is kept. */
+    if (edits?.brief !== undefined) void this.readTheKindOfWork(groundId);
 
     if (managingOnly) {
       /**
@@ -4239,6 +4246,63 @@ export class GroundsService {
   }
 
   /** Whether people on this check-in see each other's numbers, or only their own. */
+  /**
+   * THE KIND OF WORK, READ FROM SETUP (request 76). One of the eleven kinds in
+   * board/the-kind-of-work.ts, read from the lead's own words and the brief with the model, and kept
+   * only when the answer is exactly one of the eleven. Never over a lead's own choice: once the lead
+   * has set it, only the lead changes it. Best effort: a failed read leaves it as it was.
+   */
+  async readTheKindOfWork(groundId: string): Promise<void> {
+    try {
+      const g = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { label: true, brief: true, endState: true, resolutionState: true, kindOfWorkSetBy: true },
+      });
+      if (!g || g.kindOfWorkSetBy === 'lead') return;
+      const words = theSetupWords(g);
+      if (!words.trim()) return;
+      const answer = await this.anthropic.extract<{ kind?: string }>(
+        THE_KIND_OF_WORK_PROMPT,
+        [{ role: 'user', content: words }],
+        THE_KIND_OF_WORK_SCHEMA,
+      );
+      const kind = oneOfTheKinds(answer?.kind);
+      await this.prisma.ground.update({
+        where: { id: groundId },
+        data: { kindOfWork: kind, kindOfWorkSetBy: kind ? 'read' : null },
+      });
+    } catch (err: any) {
+      this.logger.warn(`Reading the kind of work for ${groundId} failed: ${err?.message}`);
+    }
+  }
+
+  /**
+   * THE LEAD CHANGES THE KIND OF WORK, AND ITS STAGE NAMES. `kind` must be one of the eleven or null
+   * (none of them); anything else is refused in plain words rather than stored. `stages` are the
+   * organisation's own names, in order; an empty list goes back to the kind's defaults.
+   */
+  async setKindOfWork(groundId: string, requestingUserId: string, body: { kind?: string | null; stages?: string[] | null }) {
+    await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
+    const data: Record<string, any> = {};
+    if (body.kind !== undefined) {
+      const kind = body.kind === null ? null : oneOfTheKinds(body.kind);
+      if (body.kind !== null && !kind) {
+        throw new BadRequestException(`That is not one of the kinds of work Groundwork knows. Choose one of these: ${KINDS_OF_WORK.join(', ')}.`);
+      }
+      data.kindOfWork = kind;
+      data.kindOfWorkSetBy = 'lead';
+    }
+    if (body.stages !== undefined) {
+      const own = Array.isArray(body.stages) ? body.stages.filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim().slice(0, 60)).slice(0, 12) : [];
+      data.workStages = own.length ? own : null;
+    }
+    return this.prisma.ground.update({
+      where: { id: groundId },
+      data,
+      select: { id: true, kindOfWork: true, kindOfWorkSetBy: true, workStages: true },
+    });
+  }
+
   async setWhoSeesTargets(groundId: string, requestingUserId: string, everybody: boolean) {
     await this.aSettingOnlyTheLeadMayChange(groundId, requestingUserId);
     return this.prisma.ground.update({
@@ -5790,6 +5854,8 @@ export class GroundsService {
       },
     });
     if (dto.brief !== undefined) await this.tellParticipantsAboutThis(groundId, dto.brief);
+    /* A changed brief can change the kind of work (request 76); a lead's own choice is kept. */
+    if (dto.brief !== undefined) void this.readTheKindOfWork(groundId);
     if (opensAgain) {
       auditData.timeline.push({
         changedAt: new Date().toISOString(),
@@ -6800,7 +6866,7 @@ export class GroundsService {
           orderBy: { lastSeenAt: 'desc' },
         },
         /* For the one sentence that says who else reads it: the lead's first name. */
-        ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true } } } } } },
+        ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } },
         checkIns: {
           select: { sessionNumber: true, completedAt: true, status: true },
           orderBy: { sessionNumber: 'asc' },

@@ -30,7 +30,9 @@ const STRANGER = { participantId: null, runsIt: false };
 
 describe('who reads a pattern', () => {
   it('nobody reads one while the switch is off, whoever they are', () => {
-    for (const r of [LEAD, NGOZI, FEMI, ADMIN, STRANGER]) expect(servedPatterns(ROWS, r)).toEqual([]);
+    /* PATTERNS_ARE_SERVED is true since decision 52, so `on: false` here stands in for the switch
+       being off, the same way the rest of this file passes `on` to stand in for it being on. */
+    for (const r of [LEAD, NGOZI, FEMI, ADMIN, STRANGER]) expect(servedPatterns(ROWS, r, { on: false })).toEqual([]);
   });
 
   it('a participant reads their own and never a colleague’s', () => {
@@ -58,7 +60,7 @@ describe('who reads a pattern', () => {
       participantId: 'p-ngozi',
       yours: true,
       kind: 'attention',
-      heading: 'Problems are always put down to something outside',
+      heading: 'Problems are mostly put down to things outside the team',
       whatHappened: 'The failure to secure approvals is attributed entirely to the credit committee not clearing submitted files.',
       sessions: [1, 2, 4],
       howOften: 'This came up in 3 of your check-ins, in sessions 1, 2 and 4.',
@@ -135,7 +137,30 @@ describe('the person sees it first, and can answer, before the lead reads it', (
       { id: 'p-guest', userId: null, nameGiven: 'Amaka Obi' },
     ], 'u-tunde');
     expect(who.leadName).toBe('Tunde');
+    expect(who.leadParticipantId).toBe('p-lead');
     expect(who.firstNameOf!('p-femi')).toBe('Femi');
     expect(who.firstNameOf!('p-guest')).toBe('Amaka');
+  });
+
+  it('a title is never used as a first name in who sees it', () => {
+    /* Hafsah, 29 September 2026, from a live capture: "Dr will see it too" - the lead's own first
+       name field held "Dr", with the rest of her name in the last name field. */
+    const who = whoIsWhoIn([
+      { id: 'p-lead', userId: 'u-amina', user: { firstName: 'Dr', lastName: 'Amina Bello' } },
+      { id: 'p-guest', userId: null, nameGiven: 'Madam Okoye' },
+    ], 'u-amina');
+    expect(who.leadName).toBe('Amina');
+    /* "Madam Okoye" has no first name to drop the title for, so it is left as people say it. */
+    expect(who.firstNameOf!('p-guest')).toBe('Madam Okoye');
+  });
+
+  it('a lead reading a pattern about their own work is never told they will see it too', () => {
+    /* Hafsah, 29 September 2026, from a live capture: whoSeesIt was telling the lead "Tunde will
+       see it too" about a pattern that is Tunde's own, because leadName is always the lead's name,
+       whoever is reading. It must say who else really reads it instead. */
+    const leadOnFirst = row({ participantId: 'p-lead', readyAt: daysAgo(0) });
+    const [mine] = servedPatterns([leadOnFirst], { participantId: 'p-lead', runsIt: true }, { ...on, leadParticipantId: 'p-lead' });
+    expect(mine.whoSeesIt).toBe('Only you see this. Nothing is decided from it.');
+    expect(mine.whoSeesIt).not.toContain('Tunde');
   });
 });

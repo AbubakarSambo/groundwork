@@ -2,6 +2,7 @@ import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CO
 import { PATTERNS_ARE_SERVED } from './patterns-are-served';
 import { plainNameOf, type PlainKind } from './plain-pattern-names';
 import { plainVoice } from './plain-voice';
+import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 
 /**
  * WHO READS A PATTERN, WHEN, AND IN WHAT WORDS. THE ONE PLACE THAT DECIDES IT.
@@ -110,6 +111,8 @@ export interface AServedPattern {
 /** The names a sentence needs: the lead's, for the person, and the person's first name, for the lead. */
 export interface WhoIsWho {
   leadName?: string | null;
+  /** The lead's own participant id in this check-in, so a pattern about the lead can be told apart from one about somebody else. */
+  leadParticipantId?: string | null;
   firstNameOf?: (participantId: string) => string | null;
 }
 
@@ -205,6 +208,10 @@ export function patternRowsThisReaderMayRead<T extends APatternRow>(
 
 function whoSeesIt(row: APatternRow, yours: boolean, names: WhoIsWho, now: Date): string {
   if (yours) {
+    /* Hafsah, 29 September 2026: when the person it is about is the lead themselves, the sentence
+       must not name the lead as if they were someone else reading it back to them. */
+    const isTheLeadsOwn = !!names.leadParticipantId && row.participantId === names.leadParticipantId;
+    if (isTheLeadsOwn) return 'Only you see this. Nothing is decided from it.';
     const lead = names.leadName?.trim() || 'The person who runs this check-in';
     return thePersonHasHadTheirTurn(row, now)
       ? `${lead} can see this too, with anything you say about it. Nothing is decided from it.`
@@ -277,15 +284,24 @@ export async function markShownToThePerson(
  * sentence about who has seen it, never joined to the pattern's name.
  */
 export function whoIsWhoIn(
-  participants: readonly { id: string; userId?: string | null; nameGiven?: string | null; user?: { firstName?: string | null } | null }[] | null | undefined,
+  participants: readonly { id: string; userId?: string | null; nameGiven?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null }[] | null | undefined,
   initiatorId: string | null | undefined,
 ): WhoIsWho {
-  const first = (p: { nameGiven?: string | null; user?: { firstName?: string | null } | null } | undefined) =>
-    (p?.user?.firstName ?? '').trim() || (p?.nameGiven ?? '').trim().split(/\s+/)[0] || null;
+  /* A title is not a first name ("Dr" is not who anybody is called): skip it and use the next
+     name, through the one helper that knows every title people here really carry. */
+  const first = (p: { nameGiven?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null } | undefined) => {
+    const viaUser = theFirstNameFrom(p?.user?.firstName, p?.user?.lastName);
+    if (viaUser) return viaUser;
+    const given = (p?.nameGiven ?? '').trim();
+    if (!given) return null;
+    const [firstWord, ...restWords] = given.split(/\s+/);
+    return theFirstNameFrom(firstWord, restWords.join(' '));
+  };
   const rows = participants ?? [];
   const lead = rows.find((p) => !!initiatorId && p.userId === initiatorId);
   return {
     leadName: first(lead),
+    leadParticipantId: lead?.id ?? null,
     firstNameOf: (pid: string) => first(rows.find((p) => p.id === pid)),
   };
 }

@@ -163,8 +163,9 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
    * person can answer it. Anything about why they do it is not.
    */
   for (const p of i.patterns.filter((x) => x.periodsObserved >= 2)) {
+    const said = /[.!?]$/.test(p.signal.trim()) ? p.signal.trim() : `${p.signal.trim()}.`;
     probe.push(
-      `${p.signal} On record across ${p.periodsObserved} sessions.${p.probe ? ` Worth asking: ${p.probe}` : ''}`,
+      `${said} On record across ${p.periodsObserved} sessions.${p.probe ? ` Worth asking: ${p.probe}` : ''}`,
     );
   }
 
