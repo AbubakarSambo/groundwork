@@ -22,7 +22,12 @@ function groundWith(goal: any) {
 }
 
 const reader: Reader = { userId: 'u-wanjiru', isAdmin: false };
-const prisma: any = { groundContextItem: { findMany: async () => [] } };
+/* The worded area (the-area-of-a-goal-is-worded-once.ts) is read from WordedLine; stubbed here as
+   already kept, so these tests exercise the sentence-building, not the model call. */
+const prisma: any = {
+  groundContextItem: { findMany: async () => [] },
+  wordedLine: { findUnique: async () => ({ text: 'the scheduling and the stock counts' }) },
+};
 
 describe('the lead is nudged to tell them (decision 56)', () => {
   it('within the first week: nudges the lead, using the name, never a pronoun', async () => {
@@ -33,9 +38,10 @@ describe('the lead is nudged to tell them (decision 56)', () => {
     const out = await forTheLeadFrom(prisma, 'g1', { ground, participants: ground.participants, checkIns: [], nameOf: (pid: string) => (pid === 'p-tobi' ? 'Tobi' : 'Wanjiru') } as any, reader);
     const item = out!.find((x) => x.id === 'not-told-o-not-told');
     expect(item).toBeTruthy();
-    expect(item!.decide).toBe('Tell Tobi about take over the scheduling.');
-    expect(item!.why).toBe('You set this goal and have not told Tobi yet.');
+    expect(item!.decide).toBe('Tell Tobi about the goal you set for the scheduling and the stock counts.');
+    expect(item!.why).toBe('You have not told Tobi yet.');
     expect(item!.why).not.toMatch(/\bhim\b|\bher\b/i);
+    expect(item!.decide).not.toMatch(/\d/);
   });
 
   it('after a week not told: says the person has now been told plainly, and reminds the lead once', async () => {
@@ -45,8 +51,11 @@ describe('the lead is nudged to tell them (decision 56)', () => {
     });
     const out = await forTheLeadFrom(prisma, 'g1', { ground, participants: ground.participants, checkIns: [], nameOf: (pid: string) => (pid === 'p-tobi' ? 'Tobi' : 'Wanjiru') } as any, reader);
     const item = out!.find((x) => x.id === 'not-told-o-week');
-    expect(item!.why).toMatch(/has now been told a goal exists, with no number/);
-    expect(item!.why).toMatch(/talk it through with Tobi/);
+    expect(item!.why).toBe(
+      'You have not told Tobi yet. It has been a week, so Tobi has now been told that a goal exists, without any number. Talk it through with Tobi yourself.',
+    );
+    /* Full sentences, never a dash join. */
+    expect(item!.why).not.toContain(' - ');
   });
 
   it('a goal the person wrote themselves is never a nudge', async () => {

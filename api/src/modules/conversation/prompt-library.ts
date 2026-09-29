@@ -3880,7 +3880,7 @@ export interface PromptContext {
     status?: string | null;
     /**
      * DECISION 56, ITEM 2. Set when the lead wrote this goal and has not told the person yet: `text`
-     * here is already `theAreaOfAGoal` (the number, amount, date-as-target and quantity taken out),
+     * here is already the worded area (see the-area-of-a-goal-is-worded-once.ts: worded once by the model,
      * never the full sentence, and every other number-carrying field (`dueSaid`, `dueDate`,
      * `whyThisNumber`) is left null upstream for the same reason. This flag is what tells the model to
      * ask about the area of work and never state a number, a target, or that a goal exists - the
@@ -4167,7 +4167,7 @@ function cadenceLabel(cadence: PromptContext['cadence']): string {
 function describeObjective(o: NonNullable<PromptContext['personObjective']>): string {
   /*
    * DECISION 56, ITEM 2. The lead has set this and not yet told them. `text` is already the area of
-   * work with every number taken out (`theAreaOfAGoal`), and nothing below this branch runs, because
+   * work with every number, date and target verb checked out by the wording pass, and nothing below this branch runs, because
    * `dueSaid`/`dueDate`/`whyThisNumber` would each reintroduce a number or a date this person has not
    * been given. Ask about the work; never say a goal exists or state anything it would be measured
    * against.

@@ -1,4 +1,5 @@
 import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
+import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
@@ -1906,20 +1907,22 @@ export class GroundsService {
       : objectiveRowsAsStored.filter((o: any) => notToldYet(o) && !aWeekHasPassedSinceNotTold(o)).map((o) => o.text ?? '');
     /*
      * DECISION 56, ITEM 4. Once a week has passed still not told, the person reads it plainly here
-     * too, on their own check-in page, not only on their You board: who set it, and that they have
-     * not been told the number - `theAreaOfAGoal`'s own words, never the number.
+     * too, on their own check-in page, not only on their You board: who set it, and the worded area
+     * - never the number, never the raw sentence.
      */
     if (!viewerIsInitiator && requestingUserId) {
       const viewerParticipantId = (ground.participants ?? []).find((p: any) => p.userId === requestingUserId)?.id ?? null;
       const dueAWeek = objectiveRowsAsStored.filter((o: any) => o.participantId === viewerParticipantId && aWeekHasPassedSinceNotTold(o));
       if (dueAWeek.length) {
         const leadFirst = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')?.user?.firstName?.trim() || 'Your lead';
-        objectiveRows = [
-          ...objectiveRows,
+        const worded = await Promise.all(dueAWeek.map(async (o: any) => ({
+          ...o,
           /* The plain sentence only - never the lead's own private note about telling them
              (`awarenessDetail`), which stays the lead's alone like any other private note. */
-          ...dueAWeek.map((o: any) => ({ ...o, text: whatThePersonReadsAfterAWeek(leadFirst, o.text ?? ''), awarenessDetail: null })),
-        ];
+          text: whatThePersonReadsAfterAWeek(leadFirst, await areaOfGoalOrFallback(this.prisma, o.text ?? '')),
+          awarenessDetail: null,
+        })));
+        objectiveRows = [...objectiveRows, ...worded];
       }
     }
     /**

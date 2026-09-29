@@ -1,6 +1,7 @@
 import { plainWordsByPerson, atTheStart, labelsForParties, namesVisibleTo, withNames, eachSideGetsSomebody } from './party-labels';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 
 /** A phrase put inside a sentence, as the board does it (board.service's inASentence, kept here so
  *  the report does not import the board's service). */
@@ -256,22 +257,25 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
 
   /*
    * DECISION 56, ITEM 1. A goal the lead wrote and has not told its person about yet, flagged here as
-   * needing their attention, with the exact nudge the Context page carries: "Tell Tobi about taking
-   * over the scheduling. You set this goal and have not told him yet" (reworded to use the name
-   * throughout, never a pronoun). Ordered with the other things only the lead can settle - first,
-   * since telling somebody a goal exists is rarely something to leave for later.
+   * needing their attention: "Tell Tobi about the goal you set for the scheduling and the stock
+   * counts. You have not told Tobi yet." - the person's name throughout, never a pronoun, and the
+   * worded area (the-area-of-a-goal-is-worded-once.ts), never the raw sentence with its number.
+   * Ordered with the other things only the lead can settle - first, since telling somebody a goal
+   * exists is rarely something to leave for later.
    */
   const untold = ((ground.personObjectives ?? []) as any[]).filter(notToldYet);
   for (const o of untold) {
     const name = nameOf(o.participantId);
-    const nudge = theLeadIsNudgedToTell(name, o.text ?? '');
+    const area = await areaOfGoalOrFallback(prisma, o.text ?? '');
+    const nudge = theLeadIsNudgedToTell(name, area);
     /*
-     * A WEEK ON, THE REMINDER IS STRONGER, ONCE. Item 4: once a week has passed not told, the person
-     * has already been told plainly on their own board that a goal exists, with no number - so the
-     * lead reads that this has now happened, and is reminded once to have the actual conversation.
+     * A WEEK ON, THE REMINDER IS STRONGER, ONCE, IN FULL SENTENCES. Item 4: once a week has passed
+     * not told, the person has already been told plainly on their own board that a goal exists, with
+     * no number - so the lead reads that this has now happened, and is reminded once to have the
+     * actual conversation.
      */
     const why = aWeekHasPassedSinceNotTold(o)
-      ? `You set this goal and have not told ${name} yet. It has been a week, so ${name} has now been told a goal exists, with no number - talk it through with ${name} yourself.`
+      ? `${nudge.why} It has been a week, so ${name} has now been told that a goal exists, without any number. Talk it through with ${name} yourself.`
       : nudge.why;
     out.push({ id: `not-told-${o.id}`, decide: nudge.decide, why, order: 0 });
   }

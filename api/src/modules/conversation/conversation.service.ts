@@ -205,7 +205,8 @@ import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { whatWasRecordedFromADocument } from '../documents/what-was-recorded-from-a-document';
-import { notToldYet, theAreaOfAGoal } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { wordTheAreaOfAGoal, areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { saysWhatAnUntoldGoalWithholds, IT_NAMED_THE_UNTOLD_NUMBER, type AnUntoldGoal } from './an-untold-goals-number-is-not-said';
 
 /**
@@ -3611,15 +3612,17 @@ export class ConversationService {
        */
       /*
        * DECISION 56, ITEM 2. A goal the lead wrote and has not yet told this person about still
-       * reaches the model - so it can ask about the work - but with `text` cut back to the area
-       * (`theAreaOfAGoal`) and every number-carrying field left null, so nothing here can say the
-       * number or the date the lead has not shared. `notToldYetAreaOnly` is what tells
-       * `describeObjective` to render it that way instead of the ordinary sentence.
+       * reaches the model - so it can ask about the work - but with `text` cut back to the WORDED
+       * area (see the-area-of-a-goal-is-worded-once.ts: worded once by the model when the goal was
+       * saved, kept, and only ever read here - never asked for on this turn), and every
+       * number-carrying field left null, so nothing here can say the number or the date the lead has
+       * not shared. `notToldYetAreaOnly` is what tells `describeObjective` to render it that way
+       * instead of the ordinary sentence.
        */
-      personObjectives: personObjectives.map((o: any) => {
+      personObjectives: await Promise.all(personObjectives.map(async (o: any) => {
         const untold = notToldYet(o);
         return {
-          text: untold ? theAreaOfAGoal(o.text) : o.text,
+          text: untold ? await areaOfGoalOrFallback(this.prisma, o.text) : o.text,
           authoredBy: o.authoredBy,
           seenBySubject: o.seenBySubject,
           authoredByThem: o.authoredBy === 'self',
@@ -3637,10 +3640,10 @@ export class ConversationService {
           status: o.status ?? null,
           notToldYetAreaOnly: untold,
         };
-      }),
+      })),
       personObjective: personObjective
         ? {
-            text: notToldYet(personObjective) ? theAreaOfAGoal(personObjective.text) : personObjective.text,
+            text: notToldYet(personObjective) ? await areaOfGoalOrFallback(this.prisma, personObjective.text) : personObjective.text,
             authoredBy: personObjective.authoredBy,
             seenBySubject: personObjective.seenBySubject,
             /*
@@ -8760,6 +8763,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             ...(textChanged ? { seenBySubject: false } : {}),
           },
         });
+        /* DECISION 56, ITEM 2: the area is worded once, here, at the point the goal is saved - never
+           on a page read (decision 7). Best effort: a failure here is retried by the next save or by
+           the warm-up, and every reader falls back to FALLBACK_AREA until then. */
+        if (awareness === 'NOT_TOLD') {
+          wordTheAreaOfAGoal(this.anthropic, this.prisma, text).catch((err: any) => this.logger.warn(`Wording the area of an untold goal failed: ${err?.message}`));
+        }
       } else {
         const created = await this.prisma.personObjective.create({
           data: {
@@ -8774,6 +8783,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             seenBySubject: false,
           },
         });
+        /* Decision 56, item 2 - see the update branch above for why this is fire-and-forget. */
+        if (awareness === 'NOT_TOLD') {
+          wordTheAreaOfAGoal(this.anthropic, this.prisma, text).catch((err: any) => this.logger.warn(`Wording the area of an untold goal failed: ${err?.message}`));
+        }
 
         /*
          * AND A COPY THAT OUTLIVES THIS GROUND, for the org layer.
