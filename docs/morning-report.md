@@ -141,6 +141,178 @@ Tests: 728 files and 6,704 tests pass in the parts touched. Two tests were chang
 
 Tests: 646 files and 6,068 tests pass in reports, board, check-ins and conversation. The new test reads the real board and team report as the lead, two participants and an admin.
 
+**Two faults found while building week 6b are fixed.**
+- **Only the lead, and the person it is about, read what the lead weighs at the close** (`0cd2b0fc`). Any colleague in the check-in, and an admin reading along, could read another person's weighed lines. The code meant it for the lead and the subject, but nothing enforced it. Now anyone else is not sent that part at all. This is the more private option.
+- **Opening a report never asks the model now** (`dfcbbe17`). Opening the team report made 3 model calls, to word the list of things worth getting on record and the coaching note. The wording is now done when the report is built, for the lead, each person and an admin. Opening serves what is stored. A report built before this change opens with the engine's own words, and still asks no model. A new test opens the report, the session report, the rounds and the board as each reader, and fails if any model is asked.
+
+Tests: 647 files and 6,079 tests pass in reports, board, check-ins and conversation.
+
+**Week 9: a commitment is kept or missed, and each person sees their own count** (`a1a30790`, `e706737c`, migration `20260929120000_how_a_commitment_was_settled`, applied to the local test database only).
+- **Proof can now settle a commitment as done.** It counts in two cases. The first is a line of their own that says they delivered it, backed by a document they added themselves. The second is the colleague who was waiting confirming it arrived. Code checks that the line is about the same thing and was written after the promise. When in doubt, it stays open. Proof never marks a commitment as missed.
+- **Each commitment records how it was settled:** by their word, proven or confirmed.
+- **The count goes only to the person,** on their own You board, in the prototype's wording: "In the last four weeks, you kept nine of your ten commitments." or "In the last 4 weeks, you kept 11 of your 20 commitments." Open commitments do not count. The lead, colleagues and admins get no count anywhere. Tests check every route.
+- This has only been tested in the code so far. The next live check will show it with the real model.
+
+Tests: 649 files and 6,119 tests pass in reports, board, check-ins and conversation.
+
+**The live check of the end card and the marks sent task 2.7 back.** The reviewer ran sales and seniorhire fresh on today's build, then read everything as each person through the live API.
+
+What held:
+- A transcript and its end card reach only their owner. Every attempt to read someone else's was refused.
+- The "you kept" count reaches only the person.
+- The lead's remit is taken out for participants, and no colleague's target is in anyone's own check-in.
+- Participants get no judgement.
+
+What was wrong, and is being fixed now:
+1. **Nobody sees their end card.** It is built 10 to 47 seconds after the goodbye, and nothing fetches it again. This is the heart of 2.7.
+2. **A card could say something different from what was recorded,** when the person finished before the card was ready.
+3. **The engine's own notes reached the person,** for example "I haven't had that conversation with Tobi yet. [INFERRED: about him taking over the scheduling]".
+4. **The card showed six lines and dropped the commitment,** the line that matters most.
+5. **The marks were not consistent.** "N19 million disbursed." read as their word, but "Six facilities approved." read as from memory.
+6. **The closing reply said "Your report is ready now"** before the person had seen the card. The prototype says "That's all for today. Below is what I wrote down from your answers. Is anything wrong?"
+7. **"You kept all two of your commitments."**
+8. **The lead's board showed how a person's answers were rated:** "37 lines taken from what they said, 10 with a name, a number or a date in them, 5 of those specific enough…". This breaks decision 38. It was there before today.
+9. **Opening a session report still asked the model,** in one part today's fix missed. It took 20 to 68 seconds, and gave a different sentence each time.
+10. **Other faults:**
+    - A person's own row said "nothing specific enough to record came out of it" when they had given seven lines.
+    - "somebody marked it done" was untrue.
+    - A clear "I haven't done anything further" left the commitment open, and one commitment was listed twice.
+    - Promises such as "I'll talk to Tobi tomorrow" were never recorded as commitments.
+11. **Two privacy questions,** decided below:
+    - A goal the lead has not told the person yet showed on that person's You board.
+    - On a check-in where each person sees only their own target, people say their target out loud, and the product then repeats it to colleagues in its own sentences.
+
+Not tested live: an admin who only reads (the run creates none), and documents (neither scenario has any), so "proven" was not seen.
+
+**The end card, fixed** (second try at 2.7):
+- **Finishing now waits for the card** (`c9880115`). It waits up to 50 seconds, writes exactly the card's lines, and returns the card. A new read, `GET /check-ins/:id/end-card`, waits for the card too, and only the person can read it. The screens need to call it after the closing reply; I wrote this in request 7's answer. WhatsApp does not wait, because its messages cannot be held open that long.
+- **The card is always what was recorded** (`30447b3c`). If the record has to be read again, the stored card is replaced with the lines actually written.
+- **No engine notes** (`dec17c28`). "I haven't had that conversation with Tobi yet. [INFERRED: about him taking over the scheduling]" now reads "I haven't had that conversation with Tobi yet." Every line starts with a capital and ends as a sentence.
+- **The commitment comes first** (`630c659e`). If lines are left out, the card says "There are 3 more lines in your record. You can read them all in your record after you finish."
+- **One rule for "from memory"** (`f407861a`). A line about what happened, with a figure and nothing written behind it, is from memory, whatever kind of line it is. "N19 million disbursed." and "Six facilities approved." now read the same.
+- **The prototype's close** (`4b49f05d`). The closing turn ends with "That's all for today. Below is what I wrote down from your answers. Is anything wrong?" and no longer says "Your report is ready now". This is done in code, because the stored prompt (`system` version 43) still asks for the old sentence.
+- **"You kept both of your commitments."** (`c25b1820`)
+
+Tests: 752 files and 6,907 tests pass in the parts touched.
+
+**The rest of what the live check found, fixed:**
+- **The lead's board no longer shows how a person's answers were rated** (`eac3b856`, decision 38). Only the person reads their own. Where nothing they said can be checked, the lead and an admin get the one allowed form: "Nothing checkable. Nothing Aisha Otieno has said so far can be checked by somebody else yet. A number, a date or a document for what moved would change that."
+- **Opening a session report no longer asks the model** (`5f9de1d2`). The sentence about each person is written at the warm-up, kept, and served as kept. The test meant to catch this had a hidden fault: it never really opened the session report. That is fixed, and the test now fails on the old code.
+- **The close on each door tells the truth** (`fde25a4f`).
+  - The web keeps the prototype's close.
+  - WhatsApp says "That's all for today. Reply "finish" to close this check-in, and your report will come here."
+  - The API says "That's all for today. Thank you for your answers. When this check-in is closed, they go into the report."
+- **A person's own row holds their own lines** (`0dfbfd66`). Femi read "Answered, and nothing specific enough to record came out of it" about a session where he gave seven lines. The row was looking up his lines under an empty name.
+- **Commitments say truly how they were settled** (`c6f26913`).
+  - Before: `Tobi Adewale: "I will continue to monitor client health closely." - said in session 1; by their own timing, "next"; somebody marked it done.`
+  - After: `In session 1, Tobi Adewale said, "I will continue to monitor client health closely." The time Tobi Adewale gave for it was "next". Tobi Adewale said later that it was done.`
+- **A promise not kept is now settled, and a promise is listed once** (`61eecc91`). The step that settles promises was given the person's answers without the questions. So "I haven't done anything further. He didn't reply." had nothing to be about. Each answer now goes with its question.
+- A WhatsApp test looked for the exact old line of code, and now looks for the new one (`c645570c`).
+
+**The whole API test suite passes at `c645570c`: 1,184 files and 10,986 tests.**
+
+**Week 12: the lead's board says what has stayed the same for three check-ins** (`70ff1ce3`). A new part of the board, `toLookAt`, reaches only the person who runs the check-in. It comes from the record, never from a rating. It covers a promise still open after being made in three or more check-ins, and a blocker said again three check-ins later. Things settled, cleared or worked round are left out. It shows at most five. What the lead reads:
+- "Samuel Kariuki has had the same thing in the way for 3 check-ins. … So far it has only been asked about. Chasing it, or asking someone else, would move it."
+- "Samuel Kariuki has made the same promise for 3 check-ins. … Nobody has said yet whether it happened. Asking Samuel what is stopping it, or agreeing to drop it, would settle it."
+- Someone who gave no name is "A colleague", never their email address.
+
+The name is being shortened to "Samuel" after its first use, as the prototype does. Not done yet:
+- the alert on the latest report and on Today;
+- the prototype's "the same 5 leads", because the record has no rows per lead to count.
+
+**Week 12, finished** (`babb064f`, `5f87a98b`):
+- The same "stayed the same for three check-ins" sentences are now on the latest report the lead reads, as well as the board.
+- The board has one short line per person for Today, `eachPersonToday`, whose `keepsComingUp` is, for example, "Samuel Kariuki has had the same thing in the way for 3 check-ins."
+- Both reach only the person who runs the check-in. Opening the page asks no model and writes nothing.
+- The prototype's line about each person's day ("Visited John Butchery…") is still week 26.
+
+**Week 13: a plan becomes proposals, confirmed one by one** (`6872b3b3`, `db2bf16c`, `a1c58f7c`).
+- **Reading a plan.** The lead pastes a plan, or picks a document they may see. The model reads it into separate goals, roles, commitments and rules. Code then checks each one:
+  - its quote must be in the plan;
+  - every number and date must be in that quote, exactly as written;
+  - a person must be named in the plan.
+  Anything that fails is dropped, never invented. A name that is not on the check-in is kept, with the note "One name in it, Musa Bello, is not on this check-in. Add them, and this will go on too."
+- **Storage is the engine's,** as Hafsah decided today. A new table, `plan_proposals`, holds each proposal until the lead confirms it, puts it aside with "not now", or edits it. Its database change, `20260929130000_plan_proposals`, is applied to the local test database only. Confirming writes exactly one row, once. Only the lead can see or act on proposals.
+  - The builder was stopped by the permission system when it tried to add the table, because it had Hafsah's instruction only through me. She gave it to me directly, so I added the table myself.
+- **The screens workspace is told** in `docs/answers-from-engine.md`: what to call, what comes back, and not to add storage of their own.
+- **Not done yet:**
+  - a confirmed goal's date is not kept, because a target has no date field;
+  - the kinds "definition", "decision" and "resource" are not read from a plan.
+
+Tests: 1,201 pass in the check-ins part, including 19 for this. The conversation and documents parts were not re-run for this piece.
+
+**Week 14: a document is read item by item** (`3d60bbaf`, `37467fa5`, `301e558e`).
+- **What it took, and from which page.** Each document now lists what was taken, one item at a time, with the page it came from. It also lists what was left out, and why. For example:
+  - "Otieno Ouma's target for Q3 sales is 45,000,000." (page 2)
+  - Left out: "Bank account details. Never kept, in any document." (page 4)
+  - A colleague's number in a participant's own file is left out with "Only the lead can set a number for someone else."
+
+  Pages come from the page markers in the stored text, never from the model. A scanned file says plainly that it cannot tell pages. Only people who may see the document get this, and a colleague gets nothing of a private one.
+- **"Yes, but it's 45 now" keeps 45,** and says so: "For Q3 sales, it has 45, as you said, instead of the 40 in the document." If it cannot tell which number is meant, it asks, and writes nothing.
+- **A document that disagrees with the record is asked about once.** Once a check-in has put the document's own number to the person as a question, that line is never offered again.
+- **Not done yet:**
+  - The "Add a document" page does not yet show the disagreement or take the answer there.
+  - The answer is kept only as the person's next turn.
+  - Documents read before today have no pages until they are read again.
+  - The wording "1 number against the person who holds it." is not a full sentence yet.
+  - This changes how the check-in raises a disagreement, and it has not been through a scenario run yet.
+
+**The document wording is fixed** (`cf6bfdb9`). After a yes to a document's numbers, the person used to read "Recorded from Q3 targets.pdf. 1 number against the person who holds it." Now it reads "I have recorded this from Q3 targets.pdf. One number is now set for the person it belongs to. Nobody is measured against a number until they have seen it." The lead's own setup had the same clipped wording, and it is fixed too.
+
+**Week 15: photos, receipts and invoices** (`61c48f3d`, `7de5a695`).
+- **A photo already counted as proof,** like any document the person added.
+- **The person is told it was the photo.** If they said more after the card, the rebuilt card said "From the document you added." about a photo. It also did not check who added the document, so somebody else's plan could make a line proven there. Now the card says "From the photo you added." or "From the screenshot you added.", and it checks who added it.
+- **A receipt is never called a conversation.** A photo of a receipt reads as "Date:", "Cashier:", "Total:", which looked like people talking. So "IMG_2041.jpg is a conversation." was shown. Now it reads "IMG_2041.jpg is a receipt." or "…is an invoice.", and the card says "From the receipt you added." A call transcript that mentions an invoice is still a conversation.
+- **Not done:**
+  - Having the check-in ask for a photo when a claim is only someone's word needs a change to the conversation's instructions, and a scenario run to measure it.
+  - Files added before today keep the kind they were given until they are read again.
+
+Tests: 693 files and 6,544 tests pass in the parts touched.
+
+**Week 16: what Today says, built from the record** (`5e826ae2`, `30e398df`).
+- **"Since last time"** (`sinceLast`) goes to every reader, each only about what they may see. The lead reads "The count for Freezers sold went from 18 to 21, of the 25 aimed for. Miriam's count for Quotes sent went from 4 to 6, of the 10 aimed for." Miriam reads "…Your count for Quotes sent went from 4 to 6." She never gets a colleague's share or the number aimed for.
+- **"For you to decide"** (`forTheLead`) goes only to the person who runs the check-in. For example: "Decide whether a price range counts as a budget. Brian and Miriam are both waiting on you for it. Once it is settled, it changes how 4 deals are counted."
+- **The board and Today now agree.** Someone waiting on the lead used to read "has checked in, and nothing here needs you this week." That row now reads "Brian Otieno has checked in, and is waiting on you for a decision on whether a price range counts as a budget."
+- Opening the page asks no model and writes nothing. Hidden targets, private file names and untold goals are still taken out for each reader.
+- **Not done yet:**
+  - the report's disagreements are not in "for you to decide", because their board wording uses a banned word and needs rewriting first;
+  - there is no way yet to answer a decision straight from Today.
+
+**"Accounts" is gone from the board's and reports' own sentences, and disagreements join "for you to decide"** (`03898fa9`, `755f4c0e`).
+- "The accounts differ on the main obstacle to signing new shops, so it needs settling." now reads "Brian Mwangi and Miriam Achieng said different things about whether the order is signed, so it needs settling." A reader who may not see a name reads "People in this check-in said different things…".
+- About 25 more code-built sentences are rewritten the same way. For example, "A picture is forming from the accounts that are in." is now "A picture is forming from what people have said so far."
+- The lead's "for you to decide" now has one item per open disagreement: "Agree what counts as a budget and tell both of them. Brian Otieno counts a price range as a budget, and Miriam Wanjiku counts only a written figure. … Four deals are counted differently until this is agreed."
+- Text the model writes, and the instructions the model is given, are not changed yet.
+
+**The screens workspace is merged a second time** (`1c3a5d14`), cleanly. Their new request 74 is answered as next: an early check-in asks whether something happened when its date has not come yet. The fix changes what the check-in asks, so it needs two scenario re-runs, and there was no room for them today.
+
+**The whole API test suite passes on the latest code: 1,195 files and 11,093 tests.**
+
+**The whole API test suite passes at the end of week 14: 1,191 files and 11,068 tests.** One guard failed first: the week 13 proposals code names whose number a goal is, and every such file must use the one rule or be listed with a reason. It only writes a goal the lead confirmed, and only the lead reads proposals, so it is now listed as a writer (`277b2225`).
+
+**Week 12c:** an unnamed person in the lead's list of what to ask was headed "Somebody", and is now "A colleague" (`0b6736d1`). The rest was already done.
+
+**Run-19 finished: all 24 scenarios, in 1 hour 50 minutes, on `c645570c`. Nothing is worse than the baseline.**
+- Every problem count is 0, including sentences that start in lower case, which were 3 on run-18.
+- Every engine-value number is above the baseline:
+  - specific detail asked for: 105 (baseline 88; run-18 had 74, which the re-checks showed was noise)
+  - blocker checked: 45 (37)
+  - proof asked for: 47 (42)
+  - past words brought back: 33 (25)
+  - differences found: 42 (29)
+  - agreements found: 66 (56)
+  - commitments recorded: 49 (33)
+  - judgement present: 29 (21)
+- Jargon in Groundwork's turns is 21 (baseline 42).
+- **Jargon in reports and boards rose to 126,** from 46 on run-18. The baseline was 511, and the bar is 128, so it is under the bar, but it is a big rise. The new words are "bottleneck", "escalate", "deliverable" and "alignment". Most follow what people said this time: people themselves said "escalate" in five scenarios, against three on run-18, and each of the other words came from a person too. Decision 41 says a person's own word used back to them is not jargon, but the scorer cannot tell the difference.
+- **The model hit its rate limit 204 times,** against none on run-18. 15 calls failed after every retry. The cause is new today: the warm-up that words each report ahead of time, for each reader, ran up to 9 times after one session, and the board's warm-up up to 18 times. That multiplies model calls. It should run once per new thing. This is the first thing to fix next, before more readers or longer check-ins make it worse.
+
+**Run-19, the day's second full run, started at 17:37** on `c645570c`, in three parts. The two privacy items from the live check are being built alongside it. They filter what is served, so their tests prove them, not the run. Both are now done:
+- **A goal the lead has not told the person about reaches only the lead** (`7a81746c`). Tobi's You board listed "Take over the scheduling." before Wanjiru had spoken to him about it. As Tobi, the report read "Tobi Adewale has started well. Wanjiru Mwangi expects Tobi Adewale to take over the scheduling. Both have answered." It now reads "Tobi Adewale has started well. Both have answered." The lead reads all of it. This goes by what the lead chose ("not told"). It does not go by whether the person has opened the Context page, because that would hide every goal forever.
+- **A colleague's target in the lead's own words stays with its owner** (`1ea89d29`). Femi read "Ngozi Eze is trying to get 14 new facilities approved and have N42 million disbursed." Now that sentence reaches only Ngozi and the lead. Femi still reads his own ("Femi Okonkwo is trying to get 12 new facilities approved."). A number counts as a target only in a sentence about a target, so "the first 90 days" and years stay.
+
+Tests: 657 files and 6,192 tests pass in reports, board, check-ins and conversation.
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
@@ -155,7 +327,17 @@ Tests: 646 files and 6,068 tests pass in reports, board, check-ins and conversat
   - "specific detail asked for" is 74, against 88 at the baseline and 87 on run-16;
   - "blocker checked" is 34, against 37.
 
-I looked at where the drop is. It is spread thinly over many scenarios, one or two turns each, and most of it is in the lead's own check-ins: 18 there, against 27 on run-16 and 23 on run-14. Nothing that changed since run-16 touches the lead's questions. The hidden-target filter only changes what a participant's check-in is given. So it looks like the model varying from run to run. To be sure, I am running the eight scenarios that dropped most again, twice, on the same build. Task 2.7 is not ticked until this is settled.
+I looked at where the drop is. It is spread thinly over many scenarios, one or two turns each, and most of it is in the lead's own check-ins: 18 there, against 27 on run-16 and 23 on run-14. Nothing that changed since run-16 touches the lead's questions. The hidden-target filter only changes what a participant's check-in is given. So it looks like the model varying from run to run. To be sure, I ran the eight scenarios that dropped most again, twice, on the same build. **It was the model varying, not a real drop.**
+
+| The eight scenarios | Specific detail asked for | Blocker checked |
+| --- | --- | --- |
+| Run-18 | 10 | 4 |
+| First re-check | 20 | 6 |
+| Second re-check | 21 | 9 |
+| Run-16 | 29 | 13 |
+| Run-14 | 20 | 11 |
+
+The same build asked twice as often in both re-checks as it did in run-18. With the re-checks' average in place of run-18's draw, the full run comes to about 84 and 37, against 88 and 37 at the baseline. So nothing in the code lowered them. "Specific detail asked for" still moves a lot from run to run, by 10 or more, and I have written that below for Hafsah.
 
 ### Decided for Hafsah to confirm
 
@@ -180,6 +362,13 @@ I looked at where the drop is. It is spread thinly over many scenarios, one or t
 19. **Request 23: only a manager starts a performance review,** as today. The product does not start one by itself.
 20. **Request 71: the weekly report is written on Friday,** as in the prototype.
 21. **Request 5: the situations are renamed to the prototype's names.** The client's list has to change on the same day, so it is written up but not done.
+22. **What the lead weighs at the close is read only by the lead and the person it is about.** On a team check-in, that is the lead alone.
+23. **Week 9: proof can settle a commitment as done** (a document the person added, or the colleague confirming it arrived), but never as missed.
+24. **Week 9: "you kept 11 of your 20 commitments" is the person's alone.** Each person's load across check-ins is private, so the lead does not see this count.
+25. **A goal the lead has not told the person about yet is not shown to that person.** It appears once the lead has told them. This is the more private option.
+26. **On a check-in where each person sees only their own target, the product's own sentences never give a colleague's target,** even when that colleague said it out loud in their check-in. Their own words, shown word for word to the people in the check-in, stay as they are. This is the more private option.
+27. **A goal the lead marked "not told" is hidden from the person,** reversing an older note in the code that said to show "you were never told". **Not done yet, and recommended next:** the model that talks to the person in their own check-in is still given that goal, so it could raise it. Taking it out is the more private option. It changes the conversation, so it needs two re-runs of the scenarios it affects, and there was no room for them today.
+28. **Week 10, the first suggestion, is held, not built.** It would give the manager a suggestion about a person, built on counts like "kept 11 of 20 in the last four weeks". Each person's load across check-ins is private, and today that count goes only to the person. The two rules pull against each other. The more private option is to show a suggestion to the person first, and to the manager only as a plain line with no count behind it, but that is a product decision. Weeks 11 and 12b rest on it too. I moved on to week 12.
 
 ---
 

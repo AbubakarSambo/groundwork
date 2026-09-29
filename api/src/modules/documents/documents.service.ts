@@ -17,8 +17,10 @@ import { DOCUMENT_ORIGIN_PROMPT, DOCUMENT_ORIGIN_SCHEMA, DESCRIPTION_CHECK_PROMP
 import { RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
+import { aReceiptOrAnInvoice } from './a-receipt-is-not-a-conversation';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
 import { withoutBankDetails, HIDDEN } from './bank-details-are-never-kept';
+import { withThePages, aDocumentReadItemByItem } from './a-document-read-item-by-item';
 import { familyFor, BoardFamily } from '../board/board-families';
 import { AgreementsService } from '../alignment/agreements.service';
 import {
@@ -129,6 +131,9 @@ function toDocShape(
     theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any) : null,
     /* The same sentence with the question on it, for the conversation that is waiting on the read. */
     askingAboutIt: doc.holds ? theContextWeHave(doc.holds as any, { asking: true }) : null,
+    /* ITEM BY ITEM, WITH PAGES (week 14, request 6c): what it took, and what it left out and why.
+       Served on the same rows as `holds`, so to exactly the people who may see this document. */
+    read: aDocumentReadItemByItem(doc.holds as any),
     /* Null holds on a row that has only just arrived means the read is still running, and the page
        says so rather than showing a file that looks like it was ignored. */
     stillReading: !doc.holds && Date.now() - new Date(doc.createdAt).getTime() < 3 * 60_000,
@@ -567,9 +572,21 @@ export class DocumentsService {
     const unmatched: string[] = [];
     const toWrite: { groundId: string; name: string; target: number; ownerParticipantId: string | null; setByParticipantId: string; sortOrder: number }[] = [];
     let sortOrder = 100 + (ground.objectives?.length ?? 0);
+    /*
+     * A COLLEAGUE'S NUMBER IN A PARTICIPANT'S FILE IS LEFT OUT, NOT "NOT ON THIS CHECK-IN" (week 14).
+     * Only the lead may set somebody else's number, so these rows were never going to be kept - and
+     * they were said as names missing from the check-in, which was not true: the person is here.
+     */
+    const onTheCheckIn = ground.participants.filter((p) => !p.managingOnly);
+    const notTheirsToSet: string[] = [];
     for (const r of rows) {
       const who = resolve(r.personName);
-      if (!who) { if (!unmatched.includes(r.personName.trim())) unmatched.push(r.personName.trim()); continue; }
+      if (!who) {
+        const name = r.personName.trim();
+        if (!isLead && whoThisNameIs(name, onTheCheckIn as any)) { if (!notTheirsToSet.includes(name)) notTheirsToSet.push(name); continue; }
+        if (!unmatched.includes(name)) unmatched.push(name);
+        continue;
+      }
       const name = r.what.trim().slice(0, 120);
       if (held.has(`${who.id}::${name.toLowerCase()}`)) continue;
       held.add(`${who.id}::${name.toLowerCase()}`);
@@ -600,7 +617,15 @@ export class DocumentsService {
      * when the person says yes - see whatTheDocumentWaitsFor in the conversation service.
      */
     const waiting = toWrite.map((r) => ({ name: r.name, target: r.target, ownerParticipantId: r.ownerParticipantId }));
-    const landed: WhatLanded = {
+    const leftOut: NonNullable<WhatLanded['leftOut']> = [
+      /* Bank details the file held go under what it left out, never under what it took (request 40). */
+      ...(Object.values(HIDDEN).some((h) => content.includes(h)) ? [{ ...BANK_DETAILS_LEFT_OUT }] : []),
+      ...notTheirsToSet.map((name) => ({ what: `The numbers for ${name}`, why: 'Only the lead can set a number for someone else.' })),
+      ...(content.length > MOST_OF_A_DOCUMENT_WE_READ
+        ? [{ what: 'The rest of the document', why: 'It is too long to read in full, so only the first part was read.' }]
+        : []),
+    ];
+    const read0: WhatLanded = {
       fileName,
       whatItIs: read.whatItIs?.trim() || null,
       forOnePerson,
@@ -610,9 +635,10 @@ export class DocumentsService {
       /* What will be written when they say yes, with the owner already resolved. */
       waiting,
       takenAt: null,
-      /* Bank details the file held go under what it left out, never under what it took (request 40). */
-      ...(Object.values(HIDDEN).some((h) => content.includes(h)) ? { leftOut: [BANK_DETAILS_LEFT_OUT] } : {}),
+      ...(leftOut.length ? { leftOut } : {}),
     };
+    /* The page each item came from, found in the text's own page markers. See a-document-read-item-by-item. */
+    const landed = withThePages(read0, content, fileName);
     await this.prisma.groundDocument.update({ where: { id: docId }, data: { holds: landed as any } }).catch(() => undefined);
     this.logger?.log?.(`Read ${JSON.stringify(fileName)}: ${forOnePerson.length} for one person, ${forEverybody.length} for everybody, ${landed.dates.length} date(s), ${unmatched.length} unmatched name(s).`);
     return landed;
@@ -669,7 +695,7 @@ export class DocumentsService {
    * the standing of a contract. See what-kind-of-thing-a-document-is.ts.
    */
   private async decideOrigin(file: { mimetype: string; originalname: string }, content: string, isConversation: boolean): Promise<DocumentOrigin> {
-    const fromFile = originFromTheFile(file.mimetype, file.originalname, { isConversation, pdfHadNoTextLayer: this.lastPdfWasAScan });
+    const fromFile = originFromTheFile(file.mimetype, file.originalname, { isConversation, pdfHadNoTextLayer: this.lastPdfWasAScan, receiptOrInvoice: aReceiptOrAnInvoice(file.originalname, content) });
     this.lastPdfWasAScan = false;
     if (fromFile) return fromFile;
     if (weCouldNotReadIt(content)) return 'typed';

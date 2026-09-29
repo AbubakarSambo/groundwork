@@ -1,3 +1,4 @@
+import { notToldYet } from './a-goal-not-told-stays-with-the-lead';
 import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
@@ -49,9 +50,11 @@ export class YourBoardService {
       participantIds.length
         ? this.prisma.personObjective.findMany({
             where: { groundId: { in: groundIds }, participantId: { in: participantIds } },
-            select: { id: true, groundId: true, participantId: true, text: true, kind: true, status: true, authoredBy: true, dueSaid: true, createdAt: true },
+            select: { id: true, groundId: true, participantId: true, text: true, kind: true, status: true, authoredBy: true, dueSaid: true, awareness: true, createdAt: true },
             orderBy: { createdAt: 'asc' },
-          })
+          /* A goal the lead has not told you about is not on your board until they have. The lead of
+             that check-in still reads it. See a-goal-not-told-stays-with-the-lead. */
+          }).then((rows: any[]) => rows.filter((o) => !notToldYet(o) || mine.some((g) => g.id === o.groundId && g.initiatorId === reader.userId)))
         : none,
       participantIds.length
         ? this.prisma.groundObjective.findMany({
@@ -63,7 +66,7 @@ export class YourBoardService {
       participantIds.length
         ? this.prisma.groundCommitment.findMany({
             where: { groundId: { in: groundIds }, participantId: { in: participantIds } },
-            select: { id: true, groundId: true, participantId: true, text: true, whenSaid: true, status: true, createdAt: true },
+            select: { id: true, groundId: true, participantId: true, text: true, whenSaid: true, status: true, settledBy: true, createdAt: true },
             orderBy: { createdAt: 'asc' },
           })
         : none,

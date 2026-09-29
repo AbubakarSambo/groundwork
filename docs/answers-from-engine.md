@@ -163,3 +163,42 @@ The screen should render them as two sentences, or as a sentence and a line unde
 `table={(b as any).theTable}` to `TheJudgement`. Nothing is served in that field any more, for
 anybody, so the component guards on it and the "See the counts behind this" toggle never renders.
 The `table` prop and the `showTable` state can go whenever you are next in that file.
+
+## 29 September: a plan becomes proposals, and the engine stores them (week 13, your request 6a)
+
+**Please do not add any storage for proposals of your own.** Hafsah decided on 29 September that storing proposals is engine work. The engine has added the table, `plan_proposals` (Prisma model `PlanProposal`, migration `20260929130000_plan_proposals`), in `db2bf16c`. When you merge, apply the migration to your own local database. You only need to show the proposals and send the lead's choice back. The routes are in `a1c58f7c`.
+
+**Who can use them:** only the person who runs the check-in. Everyone else gets 403, including a participant and an admin who only reads. A participant never sees a proposal.
+
+**The routes**
+
+| What the lead does | Route | Send | You get back |
+| --- | --- | --- | --- |
+| Pastes a plan, or picks a document | `POST /grounds/:id/plan/proposals` | `{ "text": "..." }` or `{ "documentId": "..." }` | `{ "proposals": [proposal, ...], "says": "That's 5 things to confirm. Nothing goes into Context until you do." }` Nothing is written to targets, roles, commitments or rules yet. |
+| Opens "Waiting for you to confirm" | `GET /grounds/:id/plan/proposals` | nothing | `{ "proposals": [proposal, ...] }`, the ones still waiting, oldest first |
+| Confirm | `POST /grounds/:id/plan/proposals/:pid/confirm` | nothing | `{ "confirmed": proposal, "wrote": { "table": "...", "id": "..." } }` Exactly one row is written. A second confirm is refused. |
+| Not now | `POST /grounds/:id/plan/proposals/:pid/not-now` | nothing | the proposal, with `"status": "NOT_NOW"` |
+| Edit | `PATCH /grounds/:id/plan/proposals/:pid` | `{ "says"?: "...", "fields"?: { "personName"?, "what"?, "number"?, "date"? } }` | the proposal, still waiting, with `editedAt` set. A number or date must still be in the plan's own words. |
+
+**One proposal, as the lead reads it**
+
+```json
+{ "id": "3f1c…", "kind": "commitment",
+  "says": "Samuel will call every butchery in Ikeja by Friday 10 October.",
+  "fields": { "personName": "Samuel", "participantId": "p-samuel", "personOnTheCheckIn": "Samuel Okoro",
+              "what": "call every butchery in Ikeja", "date": "Friday 10 October" },
+  "fromThePlan": "Samuel will call every butchery in Ikeja by Friday 10 October.",
+  "heading": "A commitment, from Q4 plan.pdf. It would go in commitments.",
+  "landsIn": "Commitments", "from": "Q4 plan.pdf",
+  "status": "PENDING", "editedAt": null }
+```
+
+- `kind` is `goal`, `role`, `commitment` or `rule`.
+- `landsIn` is "Targets", "People and roles", "Commitments" or "How we work".
+- `from` is the file's name, or "the plan you pasted".
+- `note` is there only when a name in it is not on the check-in, for example "One name in it, Musa Bello, is not on this check-in. Add them, and this will go on too."
+- Show `says` as the card's sentence and `heading` above it. Show `fromThePlan` where the prototype shows the plan's own words.
+
+**When something is refused**, you get a 400 with a plain sentence to show as it is. For example: "That one is already confirmed.", "Musa Bello is not on this check-in yet. Add them first, then confirm this.", or "The number or the date is not in the plan's own words, so it was not changed."
+
+**Not done yet:** when a goal is confirmed, its date is not kept, because a target has no date field. The date stays on the proposal and in its sentence.

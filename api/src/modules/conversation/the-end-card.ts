@@ -1,4 +1,5 @@
 import { howALineIsKnown } from '../reports/how-a-line-is-known';
+import { cleanText } from '../reports/what-the-record-actually-holds';
 
 /**
  * THE END OF A CHECK-IN: WHAT IS NOW IN YOUR RECORD, AND WHAT WOULD CHANGE IT (task 2.7, screens
@@ -46,8 +47,11 @@ export interface ALineForTheCard {
   documentIsTheirOwn?: boolean;
 }
 
-export const HOW: Record<'photo' | 'document' | 'confirmed' | 'commitment' | 'memory' | 'said', string> = {
+export const HOW: Record<'photo' | 'screenshot' | 'receipt' | 'invoice' | 'document' | 'confirmed' | 'commitment' | 'memory' | 'said', string> = {
   photo: 'From the photo you added.',
+  screenshot: 'From the screenshot you added.',
+  receipt: 'From the receipt you added.',
+  invoice: 'From the invoice you added.',
   document: 'From the document you added.',
   confirmed: 'The person who received it confirmed it.',
   commitment: 'You said you will do this. I will ask you how it went.',
@@ -58,30 +62,72 @@ export const HOW: Record<'photo' | 'document' | 'confirmed' | 'commitment' | 'me
 export const WHAT_WOULD_MAKE_IT_PROVEN =
   'If you have something written for any of these, such as a message or a photo, add it. Then that line counts as proven.';
 
-/** At most this many lines: the card is read in the moment before finishing, on a phone. */
+/** At most this many lines: the card is read in the moment before finishing, on a phone. Commitments come first, and a card that leaves lines out says how many. */
 export const AT_MOST = 6;
+
+/*
+ * WHAT KIND OF THING PROVED IT, IN THE CARD'S WORDS (week 15). A photo counts exactly as a document
+ * does; the person is told it was the photo. The kind is read from the line's own anchoredOrigin, so
+ * a card built from the stored record (not only the first card, which also knew the file type) says
+ * "From the photo you added." too.
+ */
+export function whatProvedIt(line: Pick<ALineForTheCard, 'backedByAPhoto' | 'anchoredOrigin'>): string {
+  if (line.anchoredOrigin === 'receipt') return HOW.receipt;
+  if (line.anchoredOrigin === 'invoice') return HOW.invoice;
+  if (line.anchoredOrigin === 'screenshot') return HOW.screenshot;
+  if (line.anchoredOrigin === 'photo' || line.backedByAPhoto) return HOW.photo;
+  return HOW.document;
+}
 
 /* The mark is the reports' rule (reports/how-a-line-is-known.ts), so a line reads the same on both. */
 function markFor(line: ALineForTheCard): { mark: EndCardMark; how: string } {
   const mark = howALineIsKnown(line);
-  if (mark === 'proven') return { mark, how: line.backedByAPhoto ? HOW.photo : HOW.document };
+  if (mark === 'proven') return { mark, how: whatProvedIt(line) };
   if (mark === 'confirmed') return { mark, how: HOW.confirmed };
   if (mark === 'memory') return { mark, how: HOW.memory };
   return { mark, how: line.type === 'COMMITMENT' ? HOW.commitment : HOW.said };
 }
 
+/**
+ * THE LINE AS A PERSON READS IT. The engine's own notes come off, the way every report takes them
+ * off (cleanText): the reviewer read "I haven't had that conversation with Tobi yet. [INFERRED: about
+ * him taking over the scheduling]" on a card. Then it starts with a capital letter and ends as a
+ * sentence. Their words are otherwise left exactly as recorded.
+ */
+export function asTheyReadIt(text: string): string {
+  const clean = cleanText(String(text ?? '')).replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  const capital = clean.charAt(0).toUpperCase() + clean.slice(1);
+  return /[.!?…]["'”’)]*$/.test(capital) ? capital : `${capital}.`;
+}
+
+/**
+ * WHEN NOT EVERY LINE FITS, SAY SO. The reviewer read a card that had dropped the commitment, the
+ * line that matters most, because it came seventh. Commitments now come first, and a card that
+ * leaves lines out says how many, in one plain sentence.
+ */
+export function theLinesLeftOut(count: number): string | null {
+  if (count <= 0) return null;
+  return count === 1
+    ? 'There is 1 more line in your record. You can read it in your record after you finish.'
+    : `There are ${count} more lines in your record. You can read them all in your record after you finish.`;
+}
+
 export function theEndCard(lines: readonly ALineForTheCard[]): EndCard | null {
-  const shown = (lines ?? [])
-    .filter((l) => !l.disputedAt && (l.text ?? '').trim())
+  const all = (lines ?? []).filter((l) => !l.disputedAt && asTheyReadIt(l.text));
+  /* Commitments first, then the rest in the order they were said. */
+  const ordered = [...all.filter((l) => l.type === 'COMMITMENT'), ...all.filter((l) => l.type !== 'COMMITMENT')];
+  const shown = ordered
     .slice(0, AT_MOST)
-    .map((l) => ({ says: l.text.trim(), ...markFor(l), type: l.type }));
+    .map((l) => ({ says: asTheyReadIt(l.text), ...markFor(l), type: l.type }));
   if (!shown.length) return null;
+  const leftOut = theLinesLeftOut(ordered.length - shown.length);
   /* What would change a line: something written, for a line that is only their word or memory. A
      commitment is not proven by a document now; it is asked about next time. */
   const couldBeProven = shown.some((l) => l.mark === 'memory' || (l.mark === 'said' && l.type !== 'COMMITMENT'));
   return {
     inYourRecord: shown.map(({ says, how, mark }) => ({ says, how, mark })),
-    ...(couldBeProven ? { next: [WHAT_WOULD_MAKE_IT_PROVEN] } : {}),
+    ...(couldBeProven || leftOut ? { next: [...(leftOut ? [leftOut] : []), ...(couldBeProven ? [WHAT_WOULD_MAKE_IT_PROVEN] : [])] } : {}),
   };
 }
 

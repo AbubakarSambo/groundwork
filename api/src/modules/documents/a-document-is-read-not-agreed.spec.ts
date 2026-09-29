@@ -1,6 +1,7 @@
 import { theStreamedRouteRunsThePlainRoute } from '../conversation/__fixtures__/the-streamed-route-is-the-plain-route';
 import * as fs from 'fs';
 import * as path from 'path';
+import { whatWasRecordedFromADocument } from './what-was-recorded-from-a-document';
 
 /**
  * READING A DOCUMENT IS NOT AGREEING TO IT.
@@ -42,14 +43,19 @@ describe('a document is read, not agreed', () => {
 
   it('the yes is a yes, not any answer', () => {
     const waits = CONVO.slice(CONVO.indexOf('private async whatTheDocumentWaitsFor('), CONVO.indexOf('private async composeSystemPrompt('));
-    expect(waits).toMatch(/\^\(yes\|yep\|yeah/);
+    /* Changed 29 Sep 2026 (week 14): the yes is read in yes-but-a-new-number, so a "yes, but it's 45 now" keeps its number. */
+    expect(waits).toContain('startsWithAYes(answer)');
+    expect(waits).toContain('whatTheYesSays(answer, waiting)');
+    const YES = fs.readFileSync(path.join(__dirname, '..', 'conversation', 'yes-but-a-new-number.ts'), 'utf8');
+    expect(YES).toMatch(/\^\(yes\|yep\|yeah/);
   });
 
   it('and the receipt says whose numbers went where, and what nobody is measured against yet', () => {
     const waits = CONVO.slice(CONVO.indexOf('private async whatTheDocumentWaitsFor('), CONVO.indexOf('private async composeSystemPrompt('));
-    expect(waits).toContain('against the person who holds');
-    expect(waits).toContain('for the whole check-in, which everybody here sees');
-    expect(waits).toContain('Nobody is measured against any of it until they have seen it');
+    /* Changed 29 Sep 2026: the words are built in what-was-recorded-from-a-document, in plain full sentences; this checks the method uses it and reads what it says. */
+    expect(waits).toContain('whatWasRecordedFromADocument(');
+    const said = whatWasRecordedFromADocument({ fileName: 'Q3 targets.pdf', forAPerson: 2, forEveryone: 1, reader: 'check-in' });
+    expect(said).toBe('I have recorded this from Q3 targets.pdf. Two numbers are now set, each for the person it belongs to. One number is for the whole check-in, and everybody here sees it. Nobody is measured against a number until they have seen it.');
   });
 
   it('and it is wired into the turn that answers the question, on BOTH paths', () => {

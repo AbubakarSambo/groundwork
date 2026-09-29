@@ -1,4 +1,6 @@
+import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
+import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { targetsHiddenFrom, withoutHiddenTargets, withoutHiddenTargetsIn } from './a-hidden-target-stays-hidden';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
@@ -67,6 +69,8 @@ import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
+import { type ToLookAt } from './the-same-thing-for-three-check-ins';
+import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
 import { whichRoundIsOpen } from './which-round-is-open';
@@ -109,6 +113,22 @@ import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../re
  * blocking is no longer blocking.
  */
 /** A phrase put inside a sentence: "Whether a range counts" becomes "whether a range counts"; "Kwame's target" stays. */
+/**
+ * WHO SAID DIFFERENT THINGS, BY NAME WHERE THIS READER MAY SEE THE NAMES.
+ *
+ * "The accounts differ" is how the engine talks, not how a person does. Every side of the
+ * difference is named only when every side resolves to a name this reader may see; one missing
+ * name and nobody is named, so a hidden person is never left out of a list that names the others.
+ */
+export function whoSaidDifferentThings(d: any, nameForLabel: (label: string) => string | undefined): string {
+  const sides: any[] = Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : [];
+  const names = [...new Set(sides.map((s) => nameForLabel(String(s?.participantLabel ?? ''))?.trim() ?? ''))];
+  if (sides.length >= 2 && names.length >= 2 && names.every(Boolean)) {
+    return names.length === 2 ? `${names[0]} and ${names[1]}` : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  }
+  return 'People in this check-in';
+}
+
 export const inASentence = (phrase: string): string => {
   const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
   return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
@@ -135,6 +155,27 @@ export class BoardService {
      */
     @Inject(forwardRef(() => ReportsService)) private readonly reports: ReportsService,
   ) {}
+
+  /**
+   * What has stayed open for three or more of a person's check-ins, for the lead. Read from the
+   * record: the promises said again, and what was said to be in the way in the first and the latest
+   * of their check-ins. Names as this reader resolves them, or "a colleague".
+   */
+  private async whatHasStayedTheSameFor(
+    groundId: string,
+    ground: { participants: any[]; dependencies?: any[] },
+    checkIns: { id: string; participantId: string; sessionNumber: number; status: string; completedAt: Date | null }[],
+    rawDependencies: any[],
+    myParticipantId: string | null,
+    nameOf: (pid: string) => string | null,
+    aColleague: (pid: string | null | undefined) => string,
+  ): Promise<ToLookAt[]> {
+    /* One read with the report's, so both say the same sentences. See the-same-thing-read-from-the-record. */
+    return theSameThingFromTheRows(this.prisma, {
+      groundId, participants: ground.participants, checkIns, rawDependencies,
+      dependencies: (ground as any).dependencies ?? [], myParticipantId, nameOf, aColleague,
+    });
+  }
 
   /*
    * THE BOARD IS BUILT WHEN THE SESSION ENDS, NOT WHEN THE LEAD OPENS IT. Every worded line the
@@ -233,7 +274,7 @@ export class BoardService {
          * so it says so.
          */
         reason:
-          'There is no board for this check-in yet. Read the report instead - it has everything the accounts produced.',
+          'There is no board for this check-in yet. Read the report instead. It has everything people said in their check-ins.',
       };
     }
 
@@ -304,6 +345,8 @@ export class BoardService {
      * of one named thing; `oneBlockerPerThingWaitedOn` joins the times somebody said they were
      * stuck without naming anything. See that file for why neither is a similarity threshold.
      */
+    /* The rows as written, for when each thing was first and last said (the-same-thing-for-three-check-ins). */
+    const rawDependencies = [...((ground as any).dependencies ?? [])] as any[];
     (ground as any).dependencies = oneBlockerPerThingWaitedOn(dedupeDependencies(ground.dependencies as any));
 
     /* What this run can actually show: a one-round read has no across-rounds sections. See sectionsForARunOf. */
@@ -1026,6 +1069,16 @@ export class BoardService {
       }
     }
 
+    /*
+     * THE SAME THING, STILL OPEN, FOR THREE CHECK-INS (week 12, screens requests 3c and 11): the
+     * prototype's "Samuel has chased the same 5 leads for 3 check-ins", from the record's own counts
+     * and never from a rating. To the lead only: it is one person's work across their check-ins, so
+     * no colleague reads it, and neither does an admin who only reads. See the-same-thing-for-three-check-ins.
+     */
+    if (isInitiator) {
+      out.toLookAt = await this.whatHasStayedTheSameFor(groundId, ground as any, checkIns as any[], rawDependencies, me?.id ?? null, nameOf, aColleague);
+    }
+
     if (has('checkInGrid')) {
       out.checkInGrid = {
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b),
@@ -1115,6 +1168,7 @@ export class BoardService {
          * section is - so they belong here the moment the lead shares the note.
          */
         await this.whatTheLeadSaysIsStillToDecide(groundId),
+        (label: string) => visibleNames.get(label),
       );
     }
 
@@ -1205,7 +1259,10 @@ export class BoardService {
        * `remitDefined` stays, because it says only that a role was given, not what it says.
        */
       if (has('contribution')) {
-        out.contribution = buildContribution(readInput, nameOf)
+        /* Only the person reads their own rating; everybody else, the lead and an admin included,
+           reads "Nothing checkable" or nothing (decisions 38, 40, 43). Done before the wording, so
+           no rating is ever handed to the model to word either. */
+        out.contribution = contributionAsThisReaderMayRead(buildContribution(readInput, nameOf), me?.id ?? null)!
           .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
       }
       if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
@@ -1367,10 +1424,29 @@ export class BoardService {
       const requoted: string[] = [];
       const q = <T,>(v: T): T => (v == null ? v : quotesBuiltAtTheRead(v, quotable, requoted));
       if (Array.isArray(out.quickRead)) out.quickRead = (out.quickRead as any[]).map((t) => ({ ...t, sub: q(t?.sub) }));
-      for (const k of ['howItIsGoing', 'divergence', 'eachPerson', 'stillUnanswered', 'contribution', 'coverage', 'hiddenContributors', 'decisions', 'managerAlignment'] as const) {
+      for (const k of ['howItIsGoing', 'divergence', 'eachPerson', 'toLookAt', 'stillUnanswered', 'contribution', 'coverage', 'hiddenContributors', 'decisions', 'managerAlignment'] as const) {
         if (out[k] != null) out[k] = q(out[k]);
       }
       if (requoted.length) this.logger?.warn?.(`Board for ${groundId}: ${requoted.length} quote(s) built at the read were not the record's words. First: ${requoted[0].slice(0, 200)}`);
+    }
+
+    /*
+     * EACH PERSON TODAY, AND WHAT KEEPS COMING UP (week 12, screens request 11). The prototype's
+     * "The team today" puts under each person's line what keeps coming up ("Same leads, 3 check-ins
+     * running"). Here that is the same sentence as `toLookAt`, from the same read of the record, so
+     * the two can never disagree. The line is the one the lead's row already says; where something
+     * keeps coming up it no longer ends "nothing here needs you", because something does. Lead only,
+     * like `toLookAt`: a colleague and an admin who only reads get no field.
+     */
+    if (isInitiator && Array.isArray(out.eachPerson)) {
+      const firstFor = new Map<string, any>();
+      for (const t of (out.toLookAt as any[] | undefined) ?? []) if (!firstFor.has(t.participantId)) firstFor.set(t.participantId, t);
+      out.eachPersonToday = (out.eachPerson as any[]).map((row) => {
+        const k = firstFor.get(row.participantId);
+        const said = String(row.says ?? '');
+        const line = k ? said.replace(/, and nothing here needs you this week\.$/, '.') : said;
+        return { participantId: row.participantId, who: row.who, line, ...(k ? { keepsComingUp: k.says } : {}) };
+      });
     }
 
     /*
@@ -1436,6 +1512,8 @@ export class BoardService {
         (ground as any).whoSeesTargets,
         (ground.objectives ?? []) as any[],
         namesOfPerson,
+        /* And a target written only in the lead's words about somebody (targetsFromTheirRemits). */
+        ground.participants as any[],
       );
       /* A row about one person loses any sentence with that person's hidden number in it. */
       if (Array.isArray(out.eachPerson) && hiddenTargets.length) {
@@ -1454,6 +1532,9 @@ export class BoardService {
       const called = whatEachLabelIsCalled(ground.participants as any[], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsThisGround, peersAreNamed: !!peersVisible });
       /* Labels become names first, so the hidden-target read can find the person (see reports.service). */
       let walled = withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(out, called), privateNames), hiddenTargets) as any;
+      /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
+         grounds/a-goal-not-told-stays-with-the-lead. */
+      if (!isInitiator) walled = withoutGoalsNotToldIn(walled, await this.goalsNotToldYet(groundId));
       /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
       return walled;
@@ -1485,11 +1566,14 @@ export class BoardService {
     dependencies: { what: string; status: DependencyStatus; onParticipantId: string | null; onLabel: string | null }[],
     nameOf: (id: string) => string | null,
     stillToDecide: string[] = [],
+    /** The name this reader may see for a report label, or undefined. Nothing else is printed. */
+    nameForLabel: (label: string) => string | undefined = () => undefined,
   ) {
     const fromDivergence = divergences.map((d) => ({
-      /* Full sentences, never a label and a colon (screens request 68, 28 Sep 2026). */
-      question: d.topic ? `The accounts differ on ${inASentence(d.topic)}, so it needs settling.` : 'The accounts differ here, so it needs settling.',
-      why: 'The accounts do not match on this, so it cannot be assumed agreed.',
+      /* Full sentences, never a label and a colon (screens request 68, 28 Sep 2026). Said as what
+         each person said, never as "the accounts differ" (29 Sep 2026). */
+      question: `${whoSaidDifferentThings(d, nameForLabel)} said different things about ${d.topic ? inASentence(d.topic) : 'this'}, so it needs settling.`,
+      why: 'What people said about this does not match, so nobody can assume it is agreed.',
       owner: 'Lead and team',
       source: 'divergence' as const,
     }));
@@ -1603,6 +1687,15 @@ export class BoardService {
    * This method only shapes what synthesis produced for display. It adds no
    * detection of its own.
    */
+  /** The words of every lead-written goal on this check-in the lead has not told its person about. */
+  private async goalsNotToldYet(groundId: string): Promise<string[]> {
+    const rows = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { text: true, awareness: true, authoredBy: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    return (rows as any[]).filter(notToldYet).map((r) => String(r.text ?? '')).filter(Boolean);
+  }
+
   private buildManagerAlignment(
     reportSafe: Record<string, any> | null,
     names: ForbiddenName[],

@@ -29,6 +29,7 @@ export const READ_WHAT_HAPPENED = [
   '',
   'RULES:',
   '  - Use only this person\'s own words. Never decide from what somebody else did or what the interviewer said.',
+  '  - Some answers come with the question they answered, in brackets before them. The question only tells you what a short answer is about ("I have not done anything further" after a question about following up is about the follow-up). Decide from their answer, never from the question.',
   '  - A new date or a new plan for the same thing is OPEN, never NOT_DONE.',
   '  - When in doubt, OPEN.',
 ].join('\n');
@@ -55,9 +56,39 @@ export const WHAT_HAPPENED_SCHEMA = {
   },
 } as const;
 
-export function thePrompt(open: readonly { text: string; whenSaid?: string | null }[], said: readonly string[]): string {
+/** One thing they said, with the question it answered where there was one. */
+export type AnAnswer = string | { asked?: string | null; said: string };
+
+export function thePrompt(open: readonly { text: string; whenSaid?: string | null }[], said: readonly AnAnswer[]): string {
   const things = open.map((c, i) => `${i + 1}. ${c.text}${c.whenSaid ? ` (${c.whenSaid})` : ''}`).join('\n');
-  return `WHAT THEY SAID THEY WOULD DO:\n${things}\n\nWHAT THEY SAID IN THIS CHECK-IN, in order:\n${said.map((x, n) => `${n + 1}. ${x}`).join('\n')}`;
+  const answer = (a: AnAnswer) => (typeof a === 'string' ? a : a.asked ? `(Asked: "${a.asked}") ${a.said}` : a.said);
+  return `WHAT THEY SAID THEY WOULD DO:\n${things}\n\nWHAT THEY SAID IN THIS CHECK-IN, in order:\n${said.map((x, n) => `${n + 1}. ${answer(x)}`).join('\n')}`;
+}
+
+/**
+ * THE SAME COMMITMENT, WRITTEN TWICE. Ngozi's "I will follow up with Mr. Adebayo again" and "I will
+ * follow up with Mr. Adebayo again by tomorrow." were two rows, both with "by tomorrow" as their
+ * time, so her You board listed the one promise twice. The key is the words without their time,
+ * their case or their punctuation.
+ */
+export function aCommitmentKey(text: string, whenSaid?: string | null): string {
+  let t = String(text ?? '').toLowerCase().replace(/[’']/g, "'").replace(/[^\p{L}\p{N}' ]+/gu, ' ').replace(/\s+/g, ' ').trim();
+  const when = String(whenSaid ?? '').toLowerCase().replace(/[^\p{L}\p{N}' ]+/gu, ' ').replace(/\s+/g, ' ').trim();
+  if (when && t.endsWith(` ${when}`)) t = t.slice(0, -when.length).trim();
+  return t;
+}
+
+/** One of each commitment, the first written kept. */
+export function oneOfEach<T extends { text?: string | null; whenSaid?: string | null }>(rows: readonly T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const r of rows) {
+    const k = aCommitmentKey(r.text ?? '', r.whenSaid);
+    if (k && seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return out;
 }
 
 /**

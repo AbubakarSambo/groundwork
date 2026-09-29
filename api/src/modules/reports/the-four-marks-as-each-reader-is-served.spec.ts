@@ -76,14 +76,14 @@ const GROUND: any = {
 const copy = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 const revive = (rows: any[]) => rows.map((r) => ({ ...r, confirmedAt: r.confirmedAt ? new Date(r.confirmedAt) : null }));
 
-function prismaFor(viewerRole: string) {
+function prismaFor(viewerRole: string, ground: any = GROUND) {
   const reads = {
     findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), findUnique: jest.fn(async () => null),
     count: jest.fn(async () => 0), aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })),
   };
   const model = (own: Record<string, any> = {}) => ({ ...reads, ...own, create: jest.fn(async () => ({})), update: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({})), createMany: jest.fn(async () => ({})), upsert: jest.fn(async () => ({})) });
   return new Proxy({
-    ground: model({ findUnique: jest.fn(async () => copy(GROUND)) }),
+    ground: model({ findUnique: jest.fn(async () => copy(ground)) }),
     user: model({ findUnique: jest.fn(async () => ({ role: viewerRole, organizationId: 'org-1', awaitingOrgApproval: false })) }),
     checkIn: model({ findMany: jest.fn(async () => copy(CHECK_INS)) }),
     groundDocument: model({ findMany: jest.fn(async (q: any) => copy(q?.where?.id?.in ? DOCS.filter((d) => q.where.id.in.includes(d.id)) : DOCS)) }),
@@ -145,10 +145,11 @@ describe('the team report: each record line a reader is served carries its mark'
     /* Their own lines, as rows, each with how it is known. Only Aisha has any. */
     if (ownId === 'p-aisha') expect(marksIn(report.myRows)).toEqual(EXPECTED);
     else expect(report.myRows ?? []).toEqual([]);
-    /* What the lead weighs at the close, from the record, with the same marks. */
+    /* What the lead weighs at the close, from the record, with the same marks. On a team check-in
+       nobody but the lead reads it (see the weighing describe below). */
     const weighed = report.whatTheGroundCanTellYou?.whatTheRecordHolds;
-    expect(weighed).toBeTruthy();
-    expect(marksIn(weighed)).toEqual(EXPECTED);
+    if (userId === 'u-wairimu') expect(marksIn(weighed)).toEqual(EXPECTED);
+    else expect(weighed).toBeUndefined();
     /* The lead's private plan is never named to anyone but the lead, marks or not. */
     const served = JSON.stringify(report);
     if (userId !== 'u-wairimu') expect(served).not.toContain(LEADS_PLAN);
@@ -163,5 +164,81 @@ describe('the team report: each record line a reader is served carries its mark'
     const report: any = await svc.get('g-sales', 'u-aisha', 'org-1');
     /* The marks are all there although every model call would fail. */
     expect(marksIn(report.myRows)).toEqual(EXPECTED);
+  });
+});
+
+/*
+ * WHAT THE LEAD WEIGHS REACHES ONLY THE LEAD AND THE PERSON IT IS ABOUT.
+ *
+ * The code always said "only for the lead or the subject - never for a colleague", and every reader
+ * of a released report was served it (29 September 2026). A team check-in is about nobody in
+ * particular, so only its lead reads it. A check-in about one person is read by the lead and by that
+ * person. An admin reading along never gets it. Absent, never an empty section.
+ */
+describe('the weighing at the close, as each reader is served it', () => {
+  const ONE_PERSON: any = { ...GROUND, participants: [LEAD, AISHA] };
+  const reportAs = async (ground: any, userId: string, role: string) => {
+    const grounds: any = { getSessionProgress: jest.fn(async () => ({ completed: 1, total: 1, missingParticipantIds: [], declinedParticipantIds: [] })) };
+    const config: any = { get: (k: string) => k === 'app.confidenceEnabled' };
+    const svc = new ReportsService(prismaFor(role, ground), {} as any, {} as any, {} as any, config, { emit: async () => undefined } as any, grounds, { tell: async () => [] } as any);
+    return svc.get('g-sales', userId, 'org-1') as Promise<any>;
+  };
+  const WEIGHING = ['whatTheGroundCanTellYou', 'whatTheGroundCanTellYouNote', 'whatItRestedOn'];
+
+  it.each([
+    ['a team check-in', GROUND, 'the lead', 'u-wairimu', 'MEMBER', true],
+    ['a team check-in', GROUND, 'Aisha, one of the team', 'u-aisha', 'MEMBER', false],
+    ['a team check-in', GROUND, 'Miriam, one of the team', 'u-miriam', 'MEMBER', false],
+    ['a team check-in', GROUND, 'an admin who only reads', 'u-grace', 'ADMIN', false],
+    ['a check-in about Aisha', ONE_PERSON, 'the lead', 'u-wairimu', 'MEMBER', true],
+    ['a check-in about Aisha', ONE_PERSON, 'Aisha, whom it is about', 'u-aisha', 'MEMBER', true],
+    ['a check-in about Aisha', ONE_PERSON, 'an admin who only reads', 'u-grace', 'ADMIN', false],
+  ])('%s: %s', async (_kind, ground, _who, userId, role, reads) => {
+    const report = await reportAs(ground, userId as string, role as string);
+    expect(report.sharedPicture).toContain('Three sales moved forward');
+    if (reads) {
+      expect(marksIn(report.whatTheGroundCanTellYou.whatTheRecordHolds)).toEqual(EXPECTED);
+    } else {
+      for (const k of WEIGHING) expect(k in report).toBe(false);
+      /* And none of the weighed wording reaches them by another road. */
+      expect(JSON.stringify(report)).not.toContain('Five new sales a month');
+    }
+  });
+});
+
+/*
+ * WHAT AISHA KEPT OF WHAT SHE SAID SHE WOULD DO IS HERS ALONE (week 9).
+ *
+ * "Kept 11 of 20 in the last 4 weeks" is each person's load across check-ins, which is private. It
+ * is on her own You board and nowhere else: with eleven of her commitments settled done and nine not
+ * done, the report and the board served to the lead, to her, to a colleague and to an admin carry no
+ * count of them.
+ */
+describe('the count of what Aisha kept reaches nobody through the report or the board', () => {
+  const recent = new Date(Date.now() - 5 * 86_400_000);
+  const row = (id: string, text: string, status: string, settledBy: string) => ({
+    id, groundId: 'g-sales', participantId: 'p-aisha', text, whenSaid: null, status, settledBy, settledAt: recent, createdAt: recent,
+    outcome: null, explicit: true, source: 'CHECK_IN', saidWordForWord: false, whenSaidWordForWord: false, saidAgainIn: [],
+  });
+  const HERS = [
+    ...Array.from({ length: 11 }, (_, i) => row(`k-d${i}`, `Call customer ${i}`, 'DONE', 'PROVEN')),
+    ...Array.from({ length: 9 }, (_, i) => row(`k-n${i}`, `Visit shop ${i}`, 'NOT_DONE', 'SAID')),
+  ];
+  const withHers = (role: string) => {
+    const prisma: any = prismaFor(role);
+    prisma.groundCommitment.findMany = jest.fn(async () => copy(HERS));
+    prisma.groundCommitment.count = jest.fn(async () => HERS.length);
+    return prisma;
+  };
+  const A_COUNT = /kept \S+ of|\b11 of (your |her |the )?20\b|of (your|her) \S+ commitments|keptLately|kept all|kept none/i;
+
+  it.each(READERS)('%s', async (_who, userId, role) => {
+    const grounds: any = { getSessionProgress: jest.fn(async () => ({ completed: 2, total: 2, missingParticipantIds: [], declinedParticipantIds: [] })) };
+    const config: any = { get: (k: string) => k === 'app.confidenceEnabled' };
+    const reports = new ReportsService(withHers(role), {} as any, {} as any, {} as any, config, { emit: async () => undefined } as any, grounds, { tell: async () => [] } as any);
+    const report = await reports.get('g-sales', userId, 'org-1');
+    const board = await new BoardService(withHers(role), { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, Object.create(ReportsService.prototype)).get('g-sales', userId);
+    expect(JSON.stringify(report)).not.toMatch(A_COUNT);
+    expect(JSON.stringify(board)).not.toMatch(A_COUNT);
   });
 });

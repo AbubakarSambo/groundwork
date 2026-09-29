@@ -29,6 +29,31 @@ describe('how a line is known', () => {
   it('a figure about what happened, with nothing attached, is memory', () => {
     expect(howALineIsKnown({ type: 'PROGRESS', text: 'I have 31 applications from businesses', recallBased: true })).toBe('memory');
   });
+  /* The reviewer's reads (task 2.7): the same kind of line came out as their word on one line and as
+     memory on the next. Every one of these is about what happened, with a figure and nothing attached. */
+  it("a figure about what happened is memory whatever its type and however it was worded (the reviewer's strings)", () => {
+    for (const [type, text] of [
+      ['PROGRESS', 'N19 million disbursed.'],
+      ['OUTCOME', 'Six facilities approved.'],
+      ['PROGRESS', 'The total disbursed is N8 million.'],
+      ['WORRY', 'N8 million has been disbursed this quarter.'],
+      ['TENSION', 'About 30 of the 40 clients have not paid.'],
+      ['PROGRESS', 'We sold ₦2.5m of stock last week.'],
+    ]) expect([text, howALineIsKnown({ type, text, recallBased: true })]).toEqual([text, 'memory']);
+  });
+  it('a line with a figure that a document of theirs backs is still proven, not memory', () => {
+    expect(howALineIsKnown({ type: 'PROGRESS', text: 'N19 million disbursed.', recallBased: false, anchoredOrigin: 'photo' })).toBe('proven');
+  });
+  it('a date, a time, a year or "this quarter" is not a figure', () => {
+    for (const text of ['The build is on track for the 14th', 'The meeting happened this quarter', 'Harbor Foods paid on the 3rd', 'We met at 4pm', 'It launched in 2025'])
+      expect([text, howALineIsKnown({ type: 'PROGRESS', text, recallBased: true })]).toEqual([text, 'said']);
+  });
+  it('a target, a plan or a promise with a figure in it is their word, whatever its type', () => {
+    expect(howALineIsKnown({ type: 'SUCCESS_DEFINITION', text: 'Twelve approved facilities by December', recallBased: true })).toBe('said');
+    expect(howALineIsKnown({ type: 'COMMITMENT', text: 'I will disburse N5 million by Friday', recallBased: true })).toBe('said');
+    expect(howALineIsKnown({ type: 'PROGRESS', text: 'We plan to approve 6 more facilities', recallBased: true })).toBe('said');
+    expect(howALineIsKnown({ type: 'WORRY', text: 'We might lose 3 clients', recallBased: true })).toBe('said');
+  });
   it('a target, a plan or a line with no figure is their word', () => {
     expect(howALineIsKnown({ type: 'INTENT', text: 'My part is 12 approved facilities', recallBased: true })).toBe('said');
     expect(howALineIsKnown({ type: 'PROGRESS', text: 'Green Mart will buy in January', recallBased: true })).toBe('said');

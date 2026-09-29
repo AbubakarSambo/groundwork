@@ -67,6 +67,9 @@ describe('every surface that hands out whose number it is', () => {
     'modules/board/board.listener.ts': 'writes owners onto targets read out of a sheet',
     'modules/documents/documents.service.ts': 'writes owners when a document of targets is read',
     'modules/documents/what-a-document-holds.ts': 'the shape a document is read into, before anybody reads it',
+    /* Week 13: the one place it names an owner is the goal it writes when the lead confirms a
+       proposal from their own plan. Every proposal route is the lead's alone (403 for everyone else). */
+    'modules/grounds/a-plan-is-many-proposals.service.ts': 'writes an owner onto a goal the lead confirmed from their own plan; only the lead reads proposals',
     /*
      * Arithmetic, not a field: the report selects the column to add per-person figures up for the
      * synthesis. What the report RENDERS goes through its own reader wall - own-reads-only and
@@ -75,6 +78,8 @@ describe('every surface that hands out whose number it is', () => {
      * peer's target is a question of its own and is not answered here.
      */
     'modules/reports/reports.service.ts': 'adds per-person figures up for the synthesis; its own reader wall decides what renders',
+    /* Week 16: rows a test hands the report and the board, which then go through targetsFor there. */
+    'modules/reports/__fixtures__/today-sales-team.ts': 'test rows for the week 16 specs; what-today-reads-from-the-record asks targetsFor',
   };
 
   it('goes through the one rule, or says why it is not a reader', () => {

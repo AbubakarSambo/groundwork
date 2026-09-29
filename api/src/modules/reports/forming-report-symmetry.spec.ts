@@ -92,7 +92,7 @@ describe('forming report: the initiator gets the same pre-release content a part
     expect(res.withheldUntilYouAnswer).toBe(true);
     expect(res.sharedPicture).toBeUndefined();
     /* A fact about the method, not a refusal - and it says when it lifts. */
-    expect(res.saying).toContain('as soon as you have given yours');
+    expect(res.saying).toContain('as soon as you have answered');
     /* The copy pass turned "the whole point is that they are independent" into the plainer "the
        point is that they are separate". The claim is the reason they cannot read it yet, so that
        is what is asserted rather than the adjective. */

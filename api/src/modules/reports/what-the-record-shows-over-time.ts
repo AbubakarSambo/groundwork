@@ -37,6 +37,9 @@ export interface ACommitmentOverTime {
   status: string;
   /** Whether they said it themselves, or the lead said they would. */
   theySaidIt: boolean;
+  /** How it was settled: SAID, PROVEN or CONFIRMED (week 9). Null while open or not known. */
+  settledBy?: string | null;
+  fromAPaste?: boolean;
   /** The product's sentence about it, sessions and all. */
   say: string;
 }
@@ -120,6 +123,8 @@ export interface ACommitmentRow {
   source: string;
   statedInSession: number | null;
   saidAgainIn: number[];
+  /** How it was settled: SAID, PROVEN or CONFIRMED (week 9). Null while open. */
+  settledBy?: string | null;
 }
 
 export function commitmentsOverTime(
@@ -130,34 +135,73 @@ export function commitmentsOverTime(
   return (rows ?? []).map((c) => {
     const restatedIn = [...(c.saidAgainIn ?? [])].sort((a, b) => a - b);
     const stated = c.statedInSession ?? null;
-    const open = String(c.status).toUpperCase() === 'UNKNOWN';
-    const sessionsOpen = stated !== null ? Math.max(0, sessionsSoFar - stated) : null;
-
-    const parts: string[] = [];
-    if (stated !== null) parts.push(`said in session ${stated}`);
-    else if (c.source === 'PASTE') parts.push('from what the lead pasted in');
-    if (c.whenSaid) parts.push(`by their own timing, "${c.whenSaid}"`);
-    if (restatedIn.length) {
-      parts.push(`said again in ${restatedIn.length === 1 ? `session ${restatedIn[0]}` : `sessions ${restatedIn.join(', ')}`}`);
-    }
-    if (!open) parts.push(`somebody marked it ${String(c.status).toLowerCase()}`);
-    else if (sessionsOpen !== null && sessionsOpen > 0) parts.push(`open ${sessionsOpen} ${sessionsOpen === 1 ? 'session' : 'sessions'}, nobody has said whether it happened`);
-    else parts.push('nobody has said whether it happened');
-    if (!c.explicit) parts.push('the lead said they would, not them');
-
-    return {
+    const who = labelOf(c.participantId);
+    const row = {
       participantId: c.participantId,
-      who: labelOf(c.participantId),
+      who,
       what: c.text,
       when: c.whenSaid ?? null,
       statedInSession: stated,
       restatedIn,
       status: c.status,
       theySaidIt: !!c.explicit,
-      say: `${labelOf(c.participantId)}: "${c.text}" - ${parts.join('; ')}.`,
+      settledBy: c.settledBy ?? null,
+      fromAPaste: c.source === 'PASTE',
     };
+    return { ...row, say: aCommitmentSaid(row, sessionsSoFar) };
   });
 }
+
+/**
+ * ONE COMMITMENT, IN FULL SENTENCES, SAYING TRULY HOW IT WAS SETTLED (week 9).
+ *
+ * It read "Tobi Adewale: "I will continue to monitor client health closely." - said in session 1; by
+ * their own timing, "next"; somebody marked it done." Joined with a colon, dashes and semicolons, and
+ * "somebody marked it done" was untrue: Tobi settled it himself, in his own check-in. `settledBy`
+ * says how it was settled (SAID on the person's own word, PROVEN by a document they added, CONFIRMED
+ * by the colleague who received it), and the sentence says that. The person's quoted words are kept
+ * exactly. No pronoun is guessed: the name is used again.
+ */
+export function aCommitmentSaid(
+  c: { who: string; what: string; when: string | null; statedInSession: number | null; restatedIn: number[]; status: string; theySaidIt: boolean; settledBy?: string | null; fromAPaste?: boolean },
+  sessionsSoFar: number,
+): string {
+  const who = c.who;
+  const stated = c.statedInSession ?? null;
+  const status = String(c.status).toUpperCase();
+  const open = status === 'UNKNOWN';
+  const sessionsOpen = stated !== null ? Math.max(0, sessionsSoFar - stated) : null;
+  const out: string[] = [];
+
+  if (!c.theySaidIt) {
+    out.push(stated !== null
+      ? `In session ${stated}, the lead said that ${who} would do this, "${c.what}"`
+      : `The lead said that ${who} would do this, "${c.what}"`);
+    out.push(`${who} did not say it.`);
+  } else if (stated !== null) out.push(`In session ${stated}, ${who} said, "${c.what}"`);
+  else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} is down to do this, "${c.what}"`);
+  else out.push(`${who} said, "${c.what}"`);
+  if (c.when) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was "${c.when}".`);
+  if (c.restatedIn.length) {
+    out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
+  }
+  if (open) {
+    out.push(sessionsOpen !== null && sessionsOpen > 0
+      ? `It has been open for ${sessionsOpen} ${sessionsOpen === 1 ? 'session' : 'sessions'}, and nobody has said whether it happened.`
+      : 'Nobody has said yet whether it happened.');
+  } else {
+    const outcome = status === 'DONE' ? 'done' : status === 'NOT_DONE' ? 'not done' : status === 'DROPPED' ? 'dropped' : status.toLowerCase().replace(/_/g, ' ');
+    const by = String(c.settledBy ?? '').toUpperCase();
+    if (by === 'PROVEN' && status === 'DONE') out.push(`A document ${who} added shows it was done.`);
+    else if (by === 'CONFIRMED' && status === 'DONE') out.push(`The colleague who received it confirmed that it was done.`);
+    else if (by === 'SAID') out.push(`${who} said later that it was ${outcome}.`);
+    else out.push(`It is marked ${outcome}, and the record does not say who marked it.`);
+  }
+  /* A quote ends inside its own marks; the sentence after it still starts on its own. */
+  return out.map((t) => (/[.!?]"?$/.test(t) ? t : `${t}.`)).join(' ').replace(/([.!?])"\./g, '$1"');
+}
+
+const listed = (ns: number[]) => (ns.length <= 1 ? ns.join('') : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`);
 
 /**
  * THE ONES WORTH A FOUNDER'S EYE FIRST: open, and either old or said more than once.
@@ -441,7 +485,7 @@ export function whatThisCannotTellYou(o: {
     out.push('Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.');
   }
   if (o.peopleWhoAnswered < o.peopleInvited) {
-    out.push(`${o.peopleInvited - o.peopleWhoAnswered} of ${o.peopleInvited} people have not given their account, so anything about them is missing rather than absent.`);
+    out.push(`${o.peopleInvited - o.peopleWhoAnswered} of ${o.peopleInvited} people have not answered yet, so anything about them is missing rather than absent.`);
   }
   if (!o.anybodyAskedWhoArrangedThings) {
     out.push('Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.');
@@ -529,6 +573,10 @@ export function overTimeAsServed(it: WhatTheRecordShowsOverTime | null | undefin
   if (!it) return null;
   return {
     ...it,
+    /* The sentence is rebuilt from the row, so a report stored before it was rewritten reads it too. */
+    commitments: (it.commitments ?? []).map((c) => (c && typeof c.what === 'string' && typeof c.who === 'string' && typeof c.theySaidIt === 'boolean'
+      ? { ...c, say: aCommitmentSaid({ ...c, restatedIn: c.restatedIn ?? [] }, it.sessions ?? 0) }
+      : c)),
     patterns: [],
     toSettleFirst: (it.toSettleFirst ?? []).filter((q) => !String(q).endsWith(A_QUESTION_BUILT_FROM_A_PATTERN_ENDS)),
   };

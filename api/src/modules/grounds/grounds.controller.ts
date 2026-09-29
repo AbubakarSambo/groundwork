@@ -4,6 +4,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsOptional, IsInt, Min, Max, IsEnum, IsIn, IsArray } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { GroundsService } from './grounds.service';
+import { APlanIsManyProposalsService } from './a-plan-is-many-proposals.service';
 import { ConversationService } from '../conversation/conversation.service';
 import { CreateGroundDto, AddParticipantDto, CreateGroundForLeadDto } from './dto';
 import { CurrentUser, CurrentUserData, Roles, Role } from '../../common';
@@ -252,7 +253,44 @@ export class GroundsController {
   constructor(
     private readonly grounds: GroundsService,
     private readonly conversation: ConversationService,
+    private readonly plans: APlanIsManyProposalsService,
   ) {}
+
+  /**
+   * A PLAN, READ INTO SEPARATE PROPOSALS, EACH KEPT AS WAITING, AND NOTHING ELSE WRITTEN. The lead only. See
+   * a-plan-is-many-proposals: each proposal quotes the plan, and one that does not is dropped.
+   */
+  @Post(':id/plan/proposals')
+  @ApiOperation({ summary: 'Lead only: read a pasted plan, or a document on this check-in, into separate goals, roles, commitments and rules, each kept as waiting for you to confirm. Nothing else is written.' })
+  async planProposals(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: { text?: string; documentId?: string }) {
+    return this.plans.read(id, userId, dto ?? {});
+  }
+
+  /** "Waiting for you to confirm": the lead's proposals still waiting. Lead only. */
+  @Get(':id/plan/proposals')
+  @ApiOperation({ summary: "Lead only: the proposals from a plan that are waiting for you to confirm" })
+  async waitingPlanProposals(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.plans.waiting(id, userId);
+  }
+
+  /** ONE stored proposal, checked again against its own quote, written into the table it belongs in, once. */
+  @Post(':id/plan/proposals/:pid/confirm')
+  @ApiOperation({ summary: 'Lead only: confirm one proposal from a plan, which writes exactly one thing' })
+  async confirmPlanProposal(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string) {
+    return this.plans.confirm(id, userId, pid);
+  }
+
+  @Post(':id/plan/proposals/:pid/not-now')
+  @ApiOperation({ summary: 'Lead only: put one proposal from a plan off. Nothing is written.' })
+  async planProposalNotNow(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string) {
+    return this.plans.notNow(id, userId, pid);
+  }
+
+  @Patch(':id/plan/proposals/:pid')
+  @ApiOperation({ summary: "Lead only: change one proposal's sentence or values. Checked again against the plan's own words; it stays waiting." })
+  async editPlanProposal(@Param('id') id: string, @Param('pid') pid: string, @CurrentUser('id') userId: string, @Body() dto: { says?: string; fields?: any }) {
+    return this.plans.edit(id, userId, pid, dto ?? {});
+  }
 
   @Get()
   @ApiOperation({ summary: 'List grounds in the organization, including grounds as a participant' })

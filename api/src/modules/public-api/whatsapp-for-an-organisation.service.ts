@@ -1,3 +1,4 @@
+import { endsOnTheClose } from '../conversation/the-close-says-what-comes-next';
 import { Injectable, Logger } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -232,7 +233,8 @@ export class WhatsAppForAnOrganisationService {
     }
     if (A_FINISH_WORD.test(text) && current.status === 'IN_PROGRESS') {
       try {
-        await this.conversation.complete(current.id, userId!);
+        /* Not waiting for the end card: Meta's webhook will not hold a reply for fifty seconds. */
+        await this.conversation.complete(current.id, userId!, { waitForTheCard: false });
         await this.prisma.whatsAppThread.deleteMany({ where: { organizationId, checkInId: current.id } }).catch(() => undefined);
         /* The report comes from the completion listener below, off this request: four polls at four
            seconds each and a translation held Meta's webhook past its patience, and the redelivery
@@ -261,9 +263,10 @@ export class WhatsAppForAnOrganisationService {
            handed in - matched by a list, not by a length. */
         if (A_GREETING_ALONE.test(text)) { await say(reply); return; }
       }
-      const r = await this.conversation.sendMessage(current.id, userId!, text);
+      const r = await this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' });
       reply = reply ? `${reply}\n\n${r.reply}` : r.reply;
-      if (r.sessionComplete) reply += '\n\nThat is enough to close this check-in. Reply "finish" to complete it, or keep going.';
+      /* The close already says to reply "finish" (the-close-says-what-comes-next); said once. */
+      if (r.sessionComplete && !endsOnTheClose(r.reply)) reply += '\n\nThat is enough to close this check-in. Reply "finish" to complete it, or keep going.';
       await say(reply);
     } catch (e: any) {
       const said = e?.response?.message ?? e?.message ?? 'That could not be answered just now. Try again in a moment.';

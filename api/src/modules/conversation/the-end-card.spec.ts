@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { TurnRole } from '@prisma/client';
-import { theEndCard, theCardStillStanding, HOW, WHAT_WOULD_MAKE_IT_PROVEN, AT_MOST } from './the-end-card';
+import { theEndCard, theCardStillStanding, theLinesLeftOut, HOW, WHAT_WOULD_MAKE_IT_PROVEN, AT_MOST } from './the-end-card';
 import { ConversationService } from './conversation.service';
 
 /**
@@ -16,8 +16,8 @@ describe('each line, and how it is known', () => {
       { type: 'OUTCOME', text: 'The budget sheet is signed', recallBased: false, anchoredDocumentId: 'd2', anchoredOrigin: null },
     ])!;
     expect(card.inYourRecord).toEqual([
-      { says: 'Green Mart has a quote', how: HOW.photo, mark: 'proven' },
-      { says: 'The budget sheet is signed', how: HOW.document, mark: 'proven' },
+      { says: 'Green Mart has a quote.', how: HOW.photo, mark: 'proven' },
+      { says: 'The budget sheet is signed.', how: HOW.document, mark: 'proven' },
     ]);
     expect(card.next).toBeUndefined();
   });
@@ -34,7 +34,7 @@ describe('each line, and how it is known', () => {
 
   it('a commitment is their word, and says it will be asked about', () => {
     const card = theEndCard([{ type: 'COMMITMENT', text: "I'll visit Westgate Deli on Friday", recallBased: true }])!;
-    expect(card.inYourRecord).toEqual([{ says: "I'll visit Westgate Deli on Friday", how: 'You said you will do this. I will ask you how it went.', mark: 'said' }]);
+    expect(card.inYourRecord).toEqual([{ says: "I'll visit Westgate Deli on Friday.", how: 'You said you will do this. I will ask you how it went.', mark: 'said' }]);
     /* A commitment is not proven by a document today; it is asked about next time. */
     expect(card.next).toBeUndefined();
   });
@@ -56,13 +56,34 @@ describe('each line, and how it is known', () => {
 
   it('anything else is their word, and says what would prove it', () => {
     const card = theEndCard([{ type: 'OUTCOME', text: 'Green Mart will buy in January', recallBased: true }])!;
-    expect(card.inYourRecord).toEqual([{ says: 'Green Mart will buy in January', how: 'You said this.', mark: 'said' }]);
+    expect(card.inYourRecord).toEqual([{ says: 'Green Mart will buy in January.', how: 'You said this.', mark: 'said' }]);
     expect(card.next).toEqual([WHAT_WOULD_MAKE_IT_PROVEN]);
   });
 
-  it('keeps their words exactly as recorded', () => {
+  /* Changed with the reviewer's read (task 2.7): a line now ends as a sentence, so the one change to
+     their words is the full stop at the end. */
+  it('keeps their words exactly as recorded, ending as a sentence', () => {
     const text = 'Harbor Foods paid on the 3rd, "finally", after two reminders';
-    expect(theEndCard([{ type: 'OUTCOME', text, recallBased: true }])!.inYourRecord![0].says).toBe(text);
+    expect(theEndCard([{ type: 'OUTCOME', text, recallBased: true }])!.inYourRecord![0].says).toBe(`${text}.`);
+    expect(theEndCard([{ type: 'OUTCOME', text: `${text}.`, recallBased: true }])!.inYourRecord![0].says).toBe(`${text}.`);
+  });
+
+  it("never carries the engine's own notes, and starts with a capital letter (the reviewer's strings)", () => {
+    const card = theEndCard([
+      { type: 'TENSION', text: "I haven't had that conversation with Tobi yet. [INFERRED: about him taking over the scheduling]", recallBased: true },
+      { type: 'OUTCOME', text: 'six facilities approved', recallBased: true },
+      { type: 'OUTCOME', text: 'Nobody has said [what I am supposed to have learned by when]', recallBased: true },
+      /* A line that is only a note is not a line at all. */
+      { type: 'OUTCOME', text: '[INFERRED: only a note]', recallBased: true },
+    ])!;
+    const says = card.inYourRecord!.map((l) => l.says);
+    expect(says).toEqual([
+      "I haven't had that conversation with Tobi yet.",
+      'Six facilities approved.',
+      'Nobody has said.',
+    ]);
+    for (const s of says) expect(s).not.toMatch(/\[INFERRED/);
+    for (const s of says) expect(s).toMatch(/^[A-Z].*[.!?]$/);
   });
 });
 
@@ -74,15 +95,33 @@ describe('what is left out', () => {
     expect(theEndCard([{ type: 'OUTCOME', text: '   ' }])).toBeNull();
     expect(theEndCard([])).toBeNull();
   });
-  it(`no more than ${AT_MOST} lines`, () => {
+  it(`no more than ${AT_MOST} lines, and it says how many more there are`, () => {
     const many = Array.from({ length: 9 }, (_, i) => ({ type: 'OUTCOME', text: `Line number ${i} about the work` }));
-    expect(theEndCard(many)!.inYourRecord).toHaveLength(AT_MOST);
+    const card = theEndCard(many)!;
+    expect(card.inYourRecord).toHaveLength(AT_MOST);
+    expect(card.next![0]).toBe('There are 3 more lines in your record. You can read them all in your record after you finish.');
+  });
+
+  it('never drops the commitment: commitments come first', () => {
+    const many = [
+      ...Array.from({ length: 7 }, (_, i) => ({ type: 'PROGRESS', text: `Line number ${i} about the work` })),
+      { type: 'COMMITMENT', text: 'I will call Tobi on Monday about the scheduling' },
+    ];
+    const card = theEndCard(many)!;
+    expect(card.inYourRecord![0]).toEqual({ says: 'I will call Tobi on Monday about the scheduling.', how: HOW.commitment, mark: 'said' });
+    expect(card.inYourRecord).toHaveLength(AT_MOST);
+    expect(card.next![0]).toBe('There are 2 more lines in your record. You can read them all in your record after you finish.');
+  });
+
+  it('says nothing about lines left out when none are', () => {
+    const card = theEndCard([{ type: 'COMMITMENT', text: 'I will call Tobi on Monday' }])!;
+    expect(card.next).toBeUndefined();
   });
 });
 
 describe('the words a person reads', () => {
   it('are whole sentences, and say nothing about the person or how they were rated', () => {
-    const all = [...Object.values(HOW), WHAT_WOULD_MAKE_IT_PROVEN];
+    const all = [...Object.values(HOW), WHAT_WOULD_MAKE_IT_PROVEN, theLinesLeftOut(1)!, theLinesLeftOut(3)!];
     for (const s of all) {
       expect(s).toMatch(/^[A-Z].*\.$/);
       expect(s).not.toMatch(/rating|score|verifiab|specific|weak|strong|reliable/i);
@@ -131,7 +170,8 @@ describe('at the closing reply', () => {
     const service = aService(prisma, anthropic);
     service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
     const card = await service.theEndCardFor({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9');
-    expect(card.inYourRecord[0]).toEqual({ says: 'Green Mart will buy in January', how: HOW.photo, mark: 'proven' });
+    /* Commitments come first, so the Green Mart line is second. */
+    expect(card.inYourRecord[1]).toEqual({ says: 'Green Mart will buy in January.', how: HOW.photo, mark: 'proven' });
     const kept = prisma.conversationTurn.update.mock.calls[0][0].data.recordDraft;
     expect(kept[0]).toMatchObject({ recallBased: false, anchoredDocumentId: 'doc-1' });
   });
@@ -229,27 +269,36 @@ describe('when they finish', () => {
     expect(prisma.conversationTurn.count.mock.calls[0][0].where).toMatchObject({ checkInId: 'ci1', role: TurnRole.PERSON });
   });
 
-  it('reads the record again when they said more after the card', async () => {
+  /* Changed with the reviewer's read (task 2.7): the second read is now the same read and write that
+     extractRecordEntries did, done here so the card can be replaced with what was written. */
+  it('reads the record again when they said more after the card, and the card then says what was written', async () => {
     const prisma: any = {
-      conversationTurn: { findFirst: jest.fn(async () => closing), count: jest.fn(async () => 1) },
+      conversationTurn: { findFirst: jest.fn(async () => closing), count: jest.fn(async () => 1), update: jest.fn(async () => ({})) },
       recordEntry: { createMany: jest.fn() },
     };
     const service = aService(prisma);
-    service.extractRecordEntries = jest.fn(async () => undefined);
-    await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
-    expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
-    expect(service.extractRecordEntries).toHaveBeenCalledWith('ci1', 'p1');
+    const reread = [{ ...ROWS[1] }];
+    service.readTheRecord = jest.fn(async () => reread);
+    const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
+    expect(service.readTheRecord).toHaveBeenCalledWith('ci1', 'p1');
+    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: reread });
+    const replaced = prisma.conversationTurn.update.mock.calls[0][0];
+    expect(replaced.where).toEqual({ id: 'turn-9' });
+    expect(replaced.data.endCard.inYourRecord.map((l: any) => l.says)).toEqual(["I'll visit Westgate Deli on Friday."]);
+    expect(card).toEqual(replaced.data.endCard);
   });
 
-  it('reads the record as before when there was no card', async () => {
+  it('reads the record as before when there was no card, and stores the card of what was written', async () => {
     const prisma: any = {
-      conversationTurn: { findFirst: jest.fn(async () => ({ ...closing, recordDraft: null })), count: jest.fn() },
+      conversationTurn: { findFirst: jest.fn(async () => ({ ...closing, recordDraft: null })), count: jest.fn(), update: jest.fn(async () => ({})) },
       recordEntry: { createMany: jest.fn() },
     };
     const service = aService(prisma);
-    service.extractRecordEntries = jest.fn(async () => undefined);
-    await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
-    expect(service.extractRecordEntries).toHaveBeenCalledWith('ci1', 'p1');
+    service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
+    const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
+    expect(prisma.recordEntry.createMany).toHaveBeenCalledTimes(1);
+    expect(card.inYourRecord).toHaveLength(2);
+    expect(prisma.conversationTurn.update.mock.calls[0][0].data.endCard).toEqual(card);
   });
 });
 
@@ -307,5 +356,37 @@ describe('the card the transcript serves', () => {
   it('is nothing before any close', () => {
     expect(theCardStillStanding([])).toBeNull();
     expect(theCardStillStanding([{ role: 'AI' }])).toBeNull();
+  });
+});
+
+/*
+ * WEEK 15: A PHOTO COUNTS AS PROOF, AND THE PERSON IS TOLD IT WAS THE PHOTO. Read as the words on
+ * the card, from the stored origin alone: the card rebuilt from the written record knows only
+ * anchoredOrigin, not the file type, and it said "From the document you added." for a photo.
+ */
+describe('a photo that backs a line, as the person reads it', () => {
+  it('reads "From the photo you added." from the stored origin alone', () => {
+    const card = theEndCard([{ type: 'OUTCOME', text: 'Green Mart has a quote', recallBased: false, anchoredDocumentId: 'd1', anchoredOrigin: 'photo' }])!;
+    expect(card.inYourRecord).toEqual([{ says: 'Green Mart has a quote.', how: 'From the photo you added.', mark: 'proven' }]);
+  });
+
+  it('a screenshot reads as a screenshot, and a typed document as a document', () => {
+    const card = theEndCard([
+      { type: 'OUTCOME', text: 'The client approved it', recallBased: false, anchoredDocumentId: 'd1', anchoredOrigin: 'screenshot' },
+      { type: 'OUTCOME', text: 'The budget sheet is signed', recallBased: false, anchoredDocumentId: 'd2', anchoredOrigin: 'typed' },
+    ])!;
+    expect(card.inYourRecord!.map((l) => l.how)).toEqual(['From the screenshot you added.', 'From the document you added.']);
+  });
+
+  it('somebody else\'s photo proves nothing of theirs', () => {
+    const card = theEndCard([{ type: 'OUTCOME', text: 'Green Mart has a quote', recallBased: false, anchoredDocumentId: 'd1', anchoredOrigin: 'photo', documentIsTheirOwn: false }])!;
+    expect(card.inYourRecord![0]).toEqual({ says: 'Green Mart has a quote.', how: 'You said this.', mark: 'said' });
+  });
+
+  it('the card rebuilt from the written record asks who added each backing document', () => {
+    const SRC = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8');
+    const rewrite = SRC.slice(SRC.indexOf('private async writeTheRecordAtTheEnd('), SRC.indexOf('private async readTheRecord('));
+    expect(rewrite).toContain('whoAddedEachBackingDocument(this.prisma, rows');
+    expect(rewrite).toContain('documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId');
   });
 });

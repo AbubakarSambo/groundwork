@@ -93,7 +93,8 @@ describe('when the waiter says it arrived', () => {
 describe('on the end card', () => {
   it('a confirmed line says so, in a sentence', () => {
     const card = theEndCard([{ type: 'PROGRESS', text: 'I sent the sales deck to Brian on Tuesday', confirmedAt: new Date() }])!;
-    expect(card.inYourRecord![0]).toEqual({ says: 'I sent the sales deck to Brian on Tuesday', how: HOW.confirmed, mark: 'confirmed' });
+    /* Ends as a sentence since task 2.7's review. */
+    expect(card.inYourRecord![0]).toEqual({ says: 'I sent the sales deck to Brian on Tuesday.', how: HOW.confirmed, mark: 'confirmed' });
     expect(HOW.confirmed).toBe('The person who received it confirmed it.');
     expect(card.next).toBeUndefined();
   });

@@ -527,15 +527,23 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     said.set(key, [...(said.get(key) ?? []), e.text]);
     marked.set(key, [...(marked.get(key) ?? []), howALineIsKnown({ type: e.type, text: e.text, recallBased: e.recallBased, anchoredOrigin: e.backedBy ?? null, confirmedAt: e.confirmedAt ?? null, documentIsTheirOwn: e.documentIsTheirOwn })]);
   }
+  /*
+   * THE READER'S OWN LINES ARE FILED UNDER THEIR NAME. The read names the reader's own rows the way it
+   * names everybody's (whoOf), and this looked them up under '' only, so a person read "Answered, and
+   * nothing specific enough to record came out of it." on their own row while seven of their lines
+   * were on record and the lead read a summary of them (review, 29 September). Their name first,
+   * and '' for a read that leaves their own rows unnamed.
+   */
+  const keyOf = (p: { who: string; isYou: boolean }) => (said.has(p.who) || !p.isYou ? p.who : '');
   const whatEachPersonSaid: WhatOnePersonSaid[] = input.answeredThisSession.map((p) => {
-    const lines = said.get(p.isYou ? '' : p.who) ?? [];
+    const lines = said.get(keyOf(p)) ?? [];
     return {
       who: p.who,
       isYou: p.isYou,
       lines,
       /* How each of those lines is known, in the same order (week 6b, screens request 2). Beside
          `lines` rather than in it, so a screen that reads `lines` as words is unchanged. */
-      ...(lines.length ? { lineMarks: marked.get(p.isYou ? '' : p.who) ?? [] } : {}),
+      ...(lines.length ? { lineMarks: marked.get(keyOf(p)) ?? [] } : {}),
       /* BEFORE RELEASE, ANOTHER PERSON'S LINES ARE WALLED, NOT ABSENT. A participant read "Answered, and nothing
          specific enough to record came out of it" beside twenty-three names whose lines he was not yet entitled
          to (run 10, 21 Sep 2026). The wall says so; it does not claim the person said nothing. */

@@ -12,7 +12,7 @@
  * in the confidence read can leave generated notes out, and What this rests on can say what kind of
  * thing each document is.
  */
-export type DocumentOrigin = 'typed' | 'photo' | 'scan' | 'screenshot' | 'generated' | 'pasted' | 'conversation';
+export type DocumentOrigin = 'typed' | 'photo' | 'scan' | 'screenshot' | 'generated' | 'pasted' | 'conversation' | 'receipt' | 'invoice';
 
 export const ORIGIN_LABEL: Record<DocumentOrigin, string> = {
   typed: 'a typed document',
@@ -22,10 +22,13 @@ export const ORIGIN_LABEL: Record<DocumentOrigin, string> = {
   generated: 'notes written with a model',
   pasted: 'pasted text',
   conversation: 'a conversation',
+  /* Week 15: a receipt or an invoice is called what it is, never "a conversation" or just "a photo". */
+  receipt: 'a receipt',
+  invoice: 'an invoice',
 };
 
 /** Origins that count as an independent source in the documented share. */
-export const COUNTS_AS_A_SOURCE: ReadonlySet<string> = new Set<DocumentOrigin>(['typed', 'photo', 'scan', 'screenshot', 'pasted', 'conversation']);
+export const COUNTS_AS_A_SOURCE: ReadonlySet<string> = new Set<DocumentOrigin>(['typed', 'photo', 'scan', 'screenshot', 'pasted', 'conversation', 'receipt', 'invoice']);
 
 export function originLabel(origin: string | null | undefined): string | null {
   return origin && origin in ORIGIN_LABEL ? ORIGIN_LABEL[origin as DocumentOrigin] : null;
@@ -47,7 +50,9 @@ export function whatThisDocumentIs(fileName: string, origin: string | null | und
 const IMAGE = /^image\//;
 
 /** What the file type alone can say. Null means the content has to be read to decide. */
-export function originFromTheFile(mimeType: string, fileName: string, opts: { isConversation?: boolean; pdfHadNoTextLayer?: boolean; pastedByHand?: boolean } = {}): DocumentOrigin | null {
+export function originFromTheFile(mimeType: string, fileName: string, opts: { isConversation?: boolean; pdfHadNoTextLayer?: boolean; pastedByHand?: boolean; receiptOrInvoice?: 'receipt' | 'invoice' | null } = {}): DocumentOrigin | null {
+  /* A receipt or an invoice is said as one, whether it came as a photo, a scan or a typed file. */
+  if (opts.receiptOrInvoice && !opts.isConversation) return opts.receiptOrInvoice;
   if (opts.isConversation) return 'conversation';
   if (opts.pastedByHand) return 'pasted';
   if (IMAGE.test(mimeType)) return /screen ?shot|screenshot|capture/i.test(fileName) ? 'screenshot' : 'photo';

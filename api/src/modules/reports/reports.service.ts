@@ -1,6 +1,8 @@
+import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
+import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
@@ -15,7 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import { confidenceInThePicture, CURRENT_BEST_READING } from './confidence-in-the-picture';
 import { softSpots, whatWouldRaiseIt } from './harder-to-fool';
 import { markWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-not-evidence';
-import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT } from './what-a-leader-can-weigh';
+import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT, whoIsReadingTheWeighing } from './what-a-leader-can-weigh';
 import { accountShapeFor, standardsAndWhatTouchedThem, type EntryRow } from './what-the-record-actually-holds';
 import { forbiddenNames, sanitiseGuide, PostReportGuide } from './guide-sanitiser';
 import { whereYouAreAgainstWhatYouNamed } from './where-you-are-against-what-you-named';
@@ -83,6 +85,8 @@ import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-la
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
 import { linesBuiltAtTheRead } from './a-line-built-at-the-read-is-read-too';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
+import { whatTodayReads } from './what-today-reads-from-the-record';
+import { theSameThingForTheLead } from '../board/the-same-thing-read-from-the-record';
 import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRewrite, THE_LINES_REWRITTEN, theRewritesById } from './every-line-is-read-before-it-is-kept';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
@@ -502,7 +506,11 @@ ${WRITTEN_ONCE_FOR_SEVERAL_READERS}`;
 
 /** What a participant who has not answered yet is told, on the report and on a session's report alike. */
 export const A_PICTURE_IS_FORMING =
-  'A picture is forming from the accounts that are in. You can read it as soon as you have given yours. Reading somebody else\'s first would turn yours into an answer to theirs, and the point is that they are separate.';
+  'A picture is forming from what people have said so far. You can read it as soon as you have answered. Reading somebody else\'s first would turn yours into an answer to theirs, and the point is that they are separate.';
+
+/* Set only while the warm-up words what each reader will read (ReportsService.wordTheReadsFor). At
+   module scope so a service made without its constructor still reads "not warming". */
+const WORDING_NEW_LINES = new AsyncLocalStorage<true>();
 
 @Injectable()
 export class ReportsService {
@@ -546,6 +554,8 @@ export class ReportsService {
     groundId: string,
     participants: { id: string; partyType: PartyType }[],
     viewerIsLead: boolean,
+    /** Who is reading, for the weighing: the lead and the subject only. See whoIsReadingTheWeighing. */
+    reader: { isTheLead: boolean; participantId: string | null } = { isTheLead: false, participantId: null },
   ): Promise<Record<string, any>> {
     try {
       const lead = participants.find((p) => p.partyType === PartyType.INITIATOR);
@@ -607,7 +617,9 @@ export class ReportsService {
        * the reading this product exists to prevent.
        */
       const restsOn = Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [];
-      const section = whatALeaderCanWeigh({
+      /* Built only for the lead and the subject; anybody else gets no section (whoIsReadingTheWeighing). */
+      const mayWeigh = whoIsReadingTheWeighing(reader, participants as any) !== 'somebody else';
+      const section = mayWeigh && whatALeaderCanWeigh({
         statedStandards: stated,
         standardsTouched,
         entries: entries.map((r) => ({ kind: r.type as any, text: cleanText(r.text), session: r.sessionNumber, mark: r.mark })),
@@ -856,13 +868,22 @@ export class ReportsService {
         if (lines.length === 0) return;
 
         try {
-          const res = await this.anthropic.extract<{ saying: string }>(
-            SAYING_PROMPT,
-            [{ role: 'user', content: `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}` }],
-            SAYING_SCHEMA,
-          );
+          /*
+           * WRITTEN WHEN SOMETHING NEW COMES IN, KEPT, AND SERVED KEPT (decision 7). Opening a session
+           * report asked the model for this sentence on every open: 20 to 68 seconds, and a different
+           * sentence each time. Now only the warm-up (wordTheReadsFor, after a synthesis or a release)
+           * asks, and keeps what it wrote by the hash of the lines. Every open reads the kept sentence;
+           * where none is kept yet, the lines are served without one and no model is asked.
+           */
+          const mayWord = WORDING_NEW_LINES.getStore() === true;
+          const kept = await rememberedCompose(this.prisma, mayWord
+            ? async (system, draft) => {
+              const res = await this.anthropic.extract<{ saying: string }>(system, [{ role: 'user', content: draft }], SAYING_SCHEMA);
+              return res?.saying?.trim() || null;
+            }
+            : async () => null)(SAYING_PROMPT, `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}`);
           /* And no pronoun guessed from a name. See nobody-is-he-or-she-here. */
-          const text = withoutAGuessedPronoun(res?.saying?.trim() ?? '');
+          const text = withoutAGuessedPronoun(kept?.trim() ?? '');
           if (text) person.saying = text;
         } catch (err: any) {
           /* One person loses their sentence and keeps every line. The report is unaffected. */
@@ -4061,7 +4082,7 @@ happened, and what is in the way.`;
         orderBy: { createdAt: 'asc' },
         select: {
           participantId: true, text: true, whenSaid: true, explicit: true, status: true, source: true,
-          statedInSession: true, saidAgainIn: true,
+          statedInSession: true, saidAgainIn: true, settledBy: true,
         },
       }) ?? Promise.resolve([])).catch(() => [] as any[]),
       (this.prisma.groundDependency?.findMany?.({
@@ -4543,6 +4564,10 @@ happened, and what is in the way.`;
     await this.generatePostReportGuides(released, ground.participants.map((p) => p.id)).catch((err) =>
       this.logger.error(`Post-report guide generation failed for ground ${groundId}: ${err.message}`),
     );
+
+    /* Released is something new: word what each reader will now read, off the critical path, so the
+       first open serves kept wording rather than asking a model (decision 7). */
+    void this.wordTheReadsFor(groundId, roundNow).catch((err: any) => this.logger.warn(`Wording the reads after release failed for ${groundId}: ${err?.message}`));
 
     return released;
   }
@@ -5078,13 +5103,63 @@ happened, and what is in the way.`;
     }
   }
 
+  /**
+   * OPENING A REPORT NEVER ASKS A MODEL (decision 7).
+   *
+   * Every worded line is kept by its hash (a-line-worded-once-is-kept). Only the warm-up that runs
+   * when something new comes in (`wordTheReadsFor`, after a synthesis or a release) may ask the model
+   * to word a line that is not kept yet. Every other read - the lead opening the report, a
+   * participant, an admin, the API - serves the kept wording, and the engine's own words where a
+   * line has not been worded yet. Found 29 September 2026: the probe list and the coaching note were
+   * worded by the model on the first open after every change.
+   */
+
   private async phrase(what: string, drafts: Drafted[]): Promise<Record<string, string>> {
+    const mayWord = WORDING_NEW_LINES.getStore() === true;
     const out = await wordedByTheModel(
       drafts,
-      rememberedCompose(this.prisma, (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])),
-      (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`),
+      rememberedCompose(this.prisma, mayWord
+        ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
+        /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
+        : async () => null),
+      mayWord ? (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`) : undefined,
     ).catch(() => drafts);
     return Object.fromEntries(out.map((d) => [d.key, d.text]));
+  }
+
+  /**
+   * WORD EVERY READ NOW, FOR EVERYBODY WHO WILL OPEN IT, WHILE SOMETHING NEW HAS COME IN.
+   *
+   * Runs each reader's report and session report once with the model allowed, so the lines they
+   * will read are kept before anybody opens the page: the lead, each person in the check-in, and one
+   * admin of the organisation (every admin reads the same drafts). A discovery session's direction
+   * is read and kept here too, if it is not kept yet. Returns each reader's session report, so the
+   * caller can keep what the round found. Best effort: a reader that fails is skipped.
+   */
+  async wordTheReadsFor(groundId: string, sessionNumber: number): Promise<{ userId: string; sessionReport: any }[]> {
+    return WORDING_NEW_LINES.run(true, async () => {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { organizationId: true, initiatorId: true, scenario: true, participants: { select: { userId: true } }, report: { select: { direction: true } } },
+      } as any).catch(() => null) as any;
+      if (!ground) return [];
+      if (ground.scenario === 'DISCOVERY' && !ground.report?.direction) {
+        await this.readAndKeepTheDirection(groundId).catch((err: any) => this.logger.warn(`Direction for ${groundId} failed: ${err?.message}`));
+      }
+      const inTheCheckIn = [...new Set([ground.initiatorId, ...(ground.participants ?? []).map((p: any) => p.userId)].filter(Boolean))] as string[];
+      const anAdmin = await (this.prisma.user?.findFirst?.({
+        where: { organizationId: ground.organizationId, role: 'ADMIN', id: { notIn: inTheCheckIn } } as any,
+        select: { id: true },
+      }) ?? Promise.resolve(null)).catch(() => null);
+      const readers = [...inTheCheckIn, ...(anAdmin?.id ? [anAdmin.id] : [])];
+      const out: { userId: string; sessionReport: any }[] = [];
+      for (const userId of readers) {
+        const sessionReport = await this.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
+        await this.get(groundId, userId, ground.organizationId).catch(() => undefined);
+        out.push({ userId, sessionReport });
+      }
+      return out;
+    });
   }
 
   /**
@@ -5407,7 +5482,7 @@ happened, and what is in the way.`;
            * the heading of a section in a list of people - it rendered a card titled "you" above
            * two cards titled by name. `nameOf2` is the same resolver without that substitution.
            */
-          who: nameOf2(p.id) ?? 'Somebody',
+          who: nameOf2(p.id) ?? 'A colleague',
           participantId: p.id,
           role: p.roleAsDescribed ?? null,
           answeredThisSession: answered,
@@ -5612,19 +5687,15 @@ happened, and what is in the way.`;
     /*
      * READ ONCE, SERVED FROM THE ROW. Computed on every read, a twenty-four-account direction timed out
      * on every read and the page took two minutes (adversarial run, 20 Sep 2026). The stored read is
-     * what the release wrote; a report read before release, or whose release read failed, gets it
-     * computed in the background and null now - the page never waits on the model.
+     * what the release or the warm-up after a new check-in wrote; until one of them has run, the read
+     * gets null - the page never waits on the model, and opening it never starts one.
      */
     const stored = ground.report?.direction as TheDirection | null | undefined;
     if (stored) return this.presentTheDirection(stored, viewerLabel);
-    if (!this.directionInFlight.has(ground.id)) {
-      this.directionInFlight.add(ground.id);
-      void this.readAndKeepTheDirection(ground.id).finally(() => this.directionInFlight.delete(ground.id));
-    }
+    /* Opening the report never asks a model, not even in the background (decision 7): the direction
+       is read when something new comes in (wordTheReadsFor) and at release. Until then, nothing. */
     return null;
   }
-
-  private readonly directionInFlight = new Set<string>();
 
   /**
    * THE DIRECTION AS SENTENCES, for the picture of a one-time session: each list the room answered,
@@ -5764,7 +5835,45 @@ happened, and what is in the way.`;
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const served = await this.getAsBuilt(groundId, requestingUserId, requestingUserOrgId);
-    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withWhatTodayReads(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served)));
+  }
+
+  /**
+   * SINCE THE LAST ROUND, AND WHAT ONLY THE LEAD CAN SETTLE, ON THE LATEST REPORT (week 16, screens
+   * request 3a and 3b). Built from the stored rows at the read: no model is asked and nothing is
+   * written. `sinceLast` goes to every reader, each only about what they may already see;
+   * `forTheLead` only to the person who runs the check-in. Served before whatTheLeadHasNotShared,
+   * so a hidden target, a private file's name or a goal not told yet is walled here as well.
+   * See what-today-reads-from-the-record.
+   */
+  private async withWhatTodayReads<T>(groundId: string, requestingUserId: string, requestingUserOrgId: string | undefined, served: T): Promise<T> {
+    if (!served || typeof served !== 'object') return served;
+    const ground = await (this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, organizationId: true, participants: { select: { userId: true } } } as any,
+    }) as Promise<any>).catch(() => null);
+    if (!ground) return served;
+    const isParty = ((ground.participants ?? []) as any[]).some((p) => p.userId === requestingUserId);
+    const isAdmin = ground.initiatorId !== requestingUserId && !isParty
+      && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId).catch(() => false));
+    const today = await whatTodayReads(this.prisma as any, groundId, { userId: requestingUserId, isAdmin }).catch(() => ({}));
+    return Object.keys(today).length ? { ...(served as any), ...today } : served;
+  }
+
+  /**
+   * WHAT HAS STAYED THE SAME FOR THREE CHECK-INS, ON THE LATEST REPORT AS THE LEAD READS IT (week
+   * 12, screens request 3c). The board's `toLookAt`, the same sentences from the same read, built
+   * from the stored rows at the read: no model is asked and nothing is written. Only the person
+   * who runs the check-in: it is one person's work across their check-ins, so a colleague never
+   * reads it, and neither does an admin who only reads. `theSameThingForTheLead` checks that
+   * itself, so a caller cannot hand it to anybody else by mistake.
+   */
+  private async withWhatHasStayedTheSame<T>(groundId: string, requestingUserId: string, served: T): Promise<T> {
+    if (!served || typeof served !== 'object') return served;
+    const toLookAt = await theSameThingForTheLead(this.prisma as any, groundId, requestingUserId).catch(() => []);
+    if (!toLookAt.length) return served;
+    const quotable = await theRecordAQuoteMayComeFrom(this.prisma as any, groundId);
+    return { ...(served as any), toLookAt: this.quotesAsTheRecordHasThem(toLookAt, groundId, 'what has stayed the same', quotable) };
   }
 
   /** The same for the report of one session. */
@@ -5786,7 +5895,7 @@ happened, and what is in the way.`;
       where: { id: groundId },
       select: {
         initiatorId: true, organizationId: true, whoSeesTargets: true, scenario: true, peersVisibleToEachOther: true,
-        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, user: { select: { firstName: true, lastName: true } } } },
+        participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } } },
         objectives: { select: { ownerParticipantId: true, target: true } },
       } as any,
     }) as Promise<any>).catch(() => null);
@@ -5802,7 +5911,7 @@ happened, and what is in the way.`;
       const full = [p?.user?.firstName, p?.user?.lastName].filter(Boolean).join(' ').trim();
       return [full, first, (p?.nameGiven ?? '').trim()].filter((n: string) => n && n.length > 1);
     };
-    const hiddenTargets = targetsHiddenFrom({ participantId: me?.id ?? null, isTheLead: isInitiator }, ground.whoSeesTargets, ground.objectives ?? [], namesOfPerson);
+    const hiddenTargets = targetsHiddenFrom({ participantId: me?.id ?? null, isTheLead: isInitiator }, ground.whoSeesTargets, ground.objectives ?? [], namesOfPerson, ground.participants ?? []);
     /* And no internal label reaches anyone, whichever field it sits in. See no-internal-label-reaches-anyone. */
     const called = whatEachLabelIsCalled(ground.participants ?? [], {
       viewerParticipantId: me?.id ?? null,
@@ -5811,6 +5920,15 @@ happened, and what is in the way.`;
     });
     /* Labels become names FIRST: the hidden-target read looks for a person's name, and a line still
        saying "Participant B" hid nothing (read live, 28 Sep 2026). */
+    /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
+       grounds/a-goal-not-told-stays-with-the-lead. Its words carry no label, so this can go first. */
+    if (!isInitiator) {
+      const notTold = await ((this.prisma as any).personObjective?.findMany?.({
+        where: { groundId, awareness: 'NOT_TOLD' },
+        select: { text: true, awareness: true, authoredBy: true },
+      }) ?? Promise.resolve([])).catch(() => []);
+      served = withoutGoalsNotToldIn(served, (notTold as any[]).filter(notToldYet).map((r) => String(r.text ?? '')));
+    }
     return withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames), hiddenTargets);
   }
 
@@ -6164,7 +6282,7 @@ happened, and what is in the way.`;
          account of what happened. See what-this-record-rests-on.ts. */
       restsOn: await this.whatItRestsOn(groundId, ground.participants as any, participant?.id ?? null, isInitiator || isOrgAdmin),
       ...(this.confidenceEnabled()
-        ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin)
+        ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin, { isTheLead: isInitiator, participantId: participant?.id ?? null })
         : {}),
     };
     if (!isInitiator && !isOrgAdmin) {

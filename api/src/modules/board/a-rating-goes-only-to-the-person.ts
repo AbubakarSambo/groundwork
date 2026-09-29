@@ -1,0 +1,43 @@
+import type { ContributionRead } from './reads';
+
+/**
+ * A RATING GOES ONLY TO THE PERSON IT IS ABOUT (decisions 38, 40 and 43).
+ *
+ * "Contribution against role" was built from the engine's count of how specific and checkable a
+ * person's lines were, and the lead read it as that count: "3 check-ins on record. 37 lines taken
+ * from what they said, 10 with a name, a number or a date in them, 5 of those specific enough for
+ * somebody else to go and check. ... Read against Management: on track here means ...". That is how
+ * a person's answers were rated, served to the lead as a rating.
+ *
+ * The person may read their own row as it is. Anybody else, the lead and an admin included, gets
+ * only the prototype's plain form, "Nothing checkable" beside the name with what would change it,
+ * and nothing else from the rating: no counts, no confidence, no yardstick, no basis. The row itself
+ * stays, so the role the lead gave and whether it was defined still show.
+ */
+export function contributionAsThisReaderMayRead(
+  rows: ContributionRead[] | undefined,
+  meParticipantId: string | null,
+): ContributionRead[] | undefined {
+  if (!rows) return rows;
+  return rows.map((r) => {
+    if (meParticipantId && r.participantId === meParticipantId) return r;
+    const who = r.name || 'this person';
+    return {
+      participantId: r.participantId,
+      name: r.name,
+      remit: r.remit,
+      remitDefined: r.remitDefined,
+      position: null,
+      positionLabel: null,
+      ...(r.note ? { note: r.note } : {}),
+      reason: r.remitDefined && r.nothingCheckable
+        ? `Nothing checkable. Nothing ${who} has said so far can be checked by somebody else yet. A number, a date or a document for what moved would change that.`
+        : null,
+      nothingCheckable: !!r.nothingCheckable,
+      isBlocked: r.isBlocked,
+      ownVoice: null,
+      shown: true,
+      guard: r.guard,
+    };
+  });
+}

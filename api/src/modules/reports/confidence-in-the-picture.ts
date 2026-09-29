@@ -106,15 +106,15 @@ export function provenanceLine(p: Provenance): string {
   const where = p.firstSeenSession ? ` (session ${p.firstSeenSession})` : '';
 
   if (p.contradicted) {
-    return `Described differently by more than one person${where}. This is a difference between accounts, not a settled fact.`;
+    return `Described differently by more than one person${where}. People said different things about it, so it is not settled.`;
   }
   if (p.accounts >= 2) {
     return `Described independently by ${p.accounts} people${where}.`;
   }
   if (p.supported) {
-    return `One account${where}, with something else in the record supporting it.`;
+    return `One person said this${where}, and something else in the record supports it.`;
   }
-  return `One account${where}, and nothing else in the record touches it. Nobody has disagreed, and nobody has confirmed it either.`;
+  return `One person said this${where}, and nothing else in the record touches it. Nobody has disagreed, and nobody has confirmed it either.`;
 }
 
 /**

@@ -1,3 +1,4 @@
+import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 
@@ -56,6 +57,8 @@ export interface GroundCommitmentRow {
   text: string;
   whenSaid: string | null;
   status: string | null;
+  /** How it was settled: SAID, PROVEN or CONFIRMED (conversation/settled-by-proof.ts). */
+  settledBy?: string | null;
   createdAt?: Date | string | null;
 }
 
@@ -97,6 +100,21 @@ export interface SomethingYouSaid {
   state: SaidState;
   /** The word the screen shows beside it. */
   stateSays: string;
+  /** How a settled one is known, for the mark: their word, their own document, or the colleague who received it. */
+  settledBy?: 'said' | 'proven' | 'confirmed';
+}
+
+/**
+ * HOW MANY OF THE THINGS YOU SAID YOU WOULD DO YOU KEPT, IN THE LAST FOUR WEEKS (week 9).
+ *
+ * Private to you: each person's load across check-ins is private (CLAUDE.md), so this is on the You
+ * board and nowhere a lead, a colleague or an admin reads. Never a score and never a label; the
+ * sentence says what happened, and the screen may show the two numbers.
+ */
+export interface KeptLately {
+  kept: number;
+  of: number;
+  says: string;
 }
 
 export interface YourReport {
@@ -114,6 +132,8 @@ export interface YourBoard {
   todos: { id: string; text: string; when: string | null }[];
   coaching: { says: string; checkIn: string } | null;
   ownReports: YourReport[];
+  /** Left null when nothing of yours was settled in the last four weeks. */
+  keptLately: KeptLately | null;
 }
 
 export interface BoardReader {
@@ -139,6 +159,52 @@ function goalFromTarget(t: OwnedTargetRow): string {
   if (t.target === null || t.target === undefined) return `${name}.`;
   return `${name}. You have ${t.count ?? 0} of ${t.target}.`;
 }
+
+/** Four weeks, as the prototype counts them ("in the last 4 weeks", C2 you-board-daniel.txt). */
+export const THE_LAST_FOUR_WEEKS_MS = 28 * 24 * 60 * 60 * 1000;
+
+const INWORDS = ['none', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+/**
+ * THE SENTENCE, IN THE PROTOTYPE'S WORDS: "In the last 4 weeks, you kept 11 of your 20 commitments."
+ * (C2 you-board-daniel.txt, "Where you stand"). All in words or all in figures in one sentence, the
+ * rule of reports/the-picture-in-plain-sentences.ts: up to ten, words ("In the last four weeks, you
+ * kept nine of your ten commitments."); past ten, figures.
+ */
+export function keptLatelySays(kept: number, of: number): string {
+  const inWords = of <= 10;
+  const n = (x: number) => (inWords ? INWORDS[x] : String(x));
+  const weeks = inWords ? 'four' : '4';
+  if (of === 1) return kept === 1 ? `In the last ${weeks} weeks, you kept your one commitment.` : `In the last ${weeks} weeks, you did not keep your one commitment.`;
+  /* Two is "both" and "either", never "all two" or "none of your two" (the reviewer's read). */
+  if (of === 2 && kept === 2) return `In the last ${weeks} weeks, you kept both of your commitments.`;
+  if (of === 2 && kept === 0) return `In the last ${weeks} weeks, you did not keep either of your two commitments.`;
+  if (kept === 0) return `In the last ${weeks} weeks, you kept none of your ${n(of)} commitments.`;
+  if (kept === of) return `In the last ${weeks} weeks, you kept all ${n(of)} of your commitments.`;
+  return `In the last ${weeks} weeks, you kept ${n(kept)} of your ${n(of)} commitments.`;
+}
+
+/**
+ * WHICH COMMITMENTS COUNT: yours, settled done or not done, whose check-in fell in the 28 days before
+ * now. A commitment has no due date of its own (its "when" is kept in their words and never turned
+ * into a date), so the day it was made, the day of the check-in it was said in, is the one used.
+ * Open ones count in neither number, and a dropped one is not a miss.
+ */
+export function keptLately(rows: readonly { status: string | null; createdAt?: Date | string | null }[], now: Date): KeptLately | null {
+  const from = now.getTime() - THE_LAST_FOUR_WEEKS_MS;
+  let kept = 0;
+  let of = 0;
+  for (const r of rows) {
+    if (r.status !== 'DONE' && r.status !== 'NOT_DONE') continue;
+    const t = time(r.createdAt);
+    if (!t || t < from || t > now.getTime()) continue;
+    of++;
+    if (r.status === 'DONE') kept++;
+  }
+  return of ? { kept, of, says: keptLatelySays(kept, of) } : null;
+}
+
+const SETTLED_BY: Record<string, 'said' | 'proven' | 'confirmed'> = { SAID: 'said', PROVEN: 'proven', CONFIRMED: 'confirmed' };
 
 const STATE_SAYS: Record<SaidState, string> = { open: 'Open', kept: 'Kept', not_done: 'Not done' };
 
@@ -219,13 +285,27 @@ export function yourBoard(
 
   /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere. */
   const said: (SomethingYouSaid & { t: number })[] = [];
+  const saidKey = new Map<string, number>();
+  const mineCommitments: GroundCommitmentRow[] = [];
   for (const c of rows.commitments) {
     if (!isMine(c.groundId, c.participantId)) continue;
+    mineCommitments.push(c);
     const state: SaidState | null =
       c.status === 'DONE' ? 'kept' : c.status === 'NOT_DONE' ? 'not_done' : c.status === 'DROPPED' ? null : 'open';
     const text = (c.text ?? '').trim();
     if (!state || !text) continue;
-    said.push({ id: c.id, text, when: c.whenSaid?.trim() || null, checkIn: labelOf.get(c.groundId)!, state, stateSays: STATE_SAYS[state], t: time(c.createdAt) });
+    const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
+    const item = { id: c.id, text, when: c.whenSaid?.trim() || null, checkIn: labelOf.get(c.groundId)!, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt) };
+    /* The same promise written twice ("...again" and "...again by tomorrow.") is listed once; where
+       one copy is settled, that one is shown. See aCommitmentKey. */
+    const key = `${c.groundId}\u0000${aCommitmentKey(text, c.whenSaid)}`;
+    const at = saidKey.get(key);
+    if (at !== undefined) {
+      if (said[at].state === 'open' && state !== 'open') said[at] = item;
+      continue;
+    }
+    saidKey.set(key, said.length);
+    said.push(item);
   }
   for (const o of rows.objectives) {
     if (!isMine(o.groundId, o.participantId)) continue;
@@ -258,5 +338,6 @@ export function yourBoard(
       .map((t) => ({ id: t.id, text: t.text.trim(), when: t.dueSaid?.trim() || null })),
     coaching,
     ownReports: ownReports.sort((a, b) => b.t - a.t).map(({ t: _t, ...r }) => r),
+    keptLately: keptLately(mineCommitments, now),
   };
 }

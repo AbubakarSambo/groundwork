@@ -93,6 +93,6 @@ export function onlyWhoIsActuallyOutside(
  * somebody forgot.
  */
 export const WHY_THIS_IS_HERE =
-  'Named in somebody\'s account as doing work here, and not in this check-in. That is worth knowing '
+  'Somebody in this check-in said this person does work here, and this person is not in the check-in. That is worth knowing '
   + 'before anything is decided about the work they are part of - they cannot correct a record they '
   + 'are not in.';

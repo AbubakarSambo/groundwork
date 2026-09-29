@@ -1,3 +1,4 @@
+import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn } from './a-goal-not-told-stays-with-the-lead';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
@@ -78,6 +79,7 @@ import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExa
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
+import { whatWasRecordedFromADocument } from '../documents/what-was-recorded-from-a-document';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -455,6 +457,8 @@ export class GroundsService {
       ground.whoSeesTargets,
       ground.objectives ?? [],
       namesOnTheRoster(ground.participants ?? []),
+      /* And a target written only in the lead's words about somebody (targetsFromTheirRemits). */
+      ground.participants ?? [],
     );
     return withoutHiddenTargetsIn(served, hidden);
   }
@@ -1841,7 +1845,8 @@ export class GroundsService {
      * with the text, always, because "your objective is X" and "your manager has suggested X and you
      * have not replied" are different statements and the difference is the whole point.
      */
-    const objectiveRows = await this.prisma.personObjective.findMany({
+    /* A goal the lead has not told the person about reaches the lead alone. See a-goal-not-told-stays-with-the-lead. */
+    const objectiveRowsAsStored = await this.prisma.personObjective.findMany({
       where: { groundId: id },
       select: {
         id: true, participantId: true, text: true, authoredBy: true, seenBySubject: true, updatedAt: true,
@@ -1869,6 +1874,8 @@ export class GroundsService {
         dueDate: true, status: true,
       },
     });
+    const objectiveRows = goalsThisReaderMaySee(objectiveRowsAsStored, viewerIsInitiator);
+    const goalsNotToldHere = viewerIsInitiator ? [] : objectiveRowsAsStored.filter(notToldYet).map((o) => o.text ?? '');
     /**
      * ALL OF THEM, PER PERSON. A person can be held to a commitment and a standing role expectation
      * at once, and the map used to keep whichever row happened to come back last - so the page showed
@@ -2212,7 +2219,8 @@ export class GroundsService {
     /* AND NO SENTENCE WITH A COLLEAGUE'S HIDDEN TARGET, in any text on this page: the brief, the
        report's words, a note. The same rule the report and the board apply, over the whole read, so a
        field added later is covered by being served. See board/a-hidden-target-stays-hidden. */
-    return this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
+    /* And no sentence carrying a goal the lead has not told its person about (a-goal-not-told-stays-with-the-lead). */
+    return withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
       ...rest,
       /* Everyone on the check-in may see what is to be done; only the lead's private notes are walled. */
       commitments,
@@ -2433,7 +2441,7 @@ export class GroundsService {
       guestIn: ground.organizationId !== organizationId
         ? ((ground as any).organization?.name ?? 'another organisation')
         : null,
-    });
+    }), goalsNotToldHere);
   }
 
   /**
@@ -2911,13 +2919,7 @@ export class GroundsService {
       await this.prisma.groundDocument.update({ where: { id: d.id }, data: { holds: { ...holds, takenAt: new Date().toISOString() } as any } }).catch(() => undefined);
       const mine = rows.filter((r) => r.ownerParticipantId).length;
       const team = rows.length - mine;
-      if (!rows.length) return 'Those are already on the record, so nothing was written twice.';
-      return [
-        `Recorded from ${d.fileName}.`,
-        mine ? `${mine} ${mine === 1 ? 'number' : 'numbers'} against the person who holds ${mine === 1 ? 'it' : 'them'}, marked as yours and not yet seen by them.` : '',
-        team ? `${team} for the whole check-in, which everybody here sees.` : '',
-        'They are on the Context page now, and every check-in asks against them.',
-      ].filter(Boolean).join(' ');
+      return whatWasRecordedFromADocument({ fileName: d.fileName, forAPerson: mine, forEveryone: team, reader: 'setup' });
     }
     return null;
   }
@@ -3877,7 +3879,7 @@ export class GroundsService {
       where: { id: row.id },
       /* When it was settled, so a count over four weeks reads the date it was settled (week 9). By
          hand, so no check-in settled it; moved back to open, it is not settled at all. */
-      data: { status: clean, settledAt: clean === 'DONE' || clean === 'NOT_DONE' ? new Date() : null, settledInCheckInId: null },
+      data: { status: clean, settledAt: clean === 'DONE' || clean === 'NOT_DONE' ? new Date() : null, settledInCheckInId: null, settledBy: clean === 'DONE' || clean === 'NOT_DONE' ? 'SAID' : null },
       select: { id: true, text: true, status: true, participantId: true },
     });
     this.logger.log(`Ground ${groundId}: somebody moved their own to-do to ${clean}.`);

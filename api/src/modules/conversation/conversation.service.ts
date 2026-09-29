@@ -1,4 +1,6 @@
 import { suggestAnswers } from './suggested-answers';
+import { whatTheYesSays, startsWithAYes } from './yes-but-a-new-number';
+import { READS_DIFFERENTLY, alreadyAsked as theLinesInTheStamps, theStampForWhatItRaised } from './a-document-that-disagrees-is-asked-once';
 import { aClaimNothingShowsYet, askForProofKindly } from './asking-for-proof-kindly';
 import { managementWordsIn, sayItInPlainWords } from './management-words';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
@@ -48,9 +50,12 @@ import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../com
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
+import { endingOnTheClose, endsOnTheClose, type Door } from './the-close-says-what-comes-next';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
-import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
+import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
+import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
+import { whoAddedEachBackingDocument } from '../reports/how-a-line-is-known';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
 import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel, whatWasSaidOnce, atLeastMet } from './how-checkable-a-session-was';
@@ -199,6 +204,7 @@ import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } fro
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
+import { whatWasRecordedFromADocument } from '../documents/what-was-recorded-from-a-document';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -384,6 +390,9 @@ export type WhoIsAsking = string | { theParticipant: string };
 /** How long the end card is given, after the goodbye, before it is left out and finishing reads the record as before. */
 const THE_END_CARD_WAITS_MS = 90_000;
 
+/** How long finishing, or the screen asking for the card, waits for the card still being built. The live reads took 10 to 47 seconds. */
+const FINISHING_WAITS_FOR_THE_CARD_MS = 50_000;
+
 @Injectable()
 export class ConversationService {
   /** Answers being worked on right now, so the same answer arriving twice is answered once. See sendMessage. */
@@ -530,6 +539,8 @@ export class ConversationService {
       ground.whoSeesTargets,
       (ground.objectives ?? []).map((o) => ({ ownerParticipantId: o.ownerParticipantId ?? null, target: o.target })),
       namesOnTheRoster(ground.participants ?? []),
+      /* And a target written only in the lead's words about somebody (targetsFromTheirRemits). */
+      ground.participants ?? [],
     );
     return withoutHiddenTargets(text, hidden) || null;
   }
@@ -1151,6 +1162,8 @@ export class ConversationService {
         /* Stamped as it is written, so the two-party balance can be counted without ever reading
            one person's turns while answering another - see the-same-burden-on-both-sides.ts. */
         askedFor: stampWhatItAskedFor(opening),
+          /* A turn that put a document's side to them is stamped with that line instead, so it is asked once. */
+          ...await this.theDocumentQuestionItRaised(checkIn.participantId, opening).then((raised) => (raised ? { askedFor: raised } : {})),
       },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
@@ -1215,7 +1228,8 @@ export class ConversationService {
     said: string | null | undefined,
   ): Promise<string | null> {
     const answer = (said ?? '').trim();
-    if (!answer || !/^(yes|yep|yeah|yup|ok|okay|sure|correct|that is right|thats right|that's right|right|confirmed?|take (it|them|those)|record (it|them|those))\b[\s\S]{0,40}$/i.test(answer)) return null;
+    /* A bare yes, or a "yes, but" with the new number in it. See yes-but-a-new-number. */
+    if (!answer || !startsWithAYes(answer)) return null;
     try {
       const docs = await this.prisma.groundDocument.findMany({
         where: { groundId: checkIn.groundId, participantId: checkIn.participantId, NOT: { holds: { equals: null as any } } },
@@ -1230,7 +1244,14 @@ export class ConversationService {
         /* Nothing already on the record twice: the same measure for the same owner is one target. */
         const already = await this.prisma.groundObjective.findMany({ where: { groundId: checkIn.groundId }, select: { name: true, ownerParticipantId: true } });
         const held = new Set(already.map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
-        const rows = waiting.filter((w) => !held.has(`${w.ownerParticipantId ?? 'team'}::${(w.name ?? '').trim().toLowerCase()}`));
+        const yes = whatTheYesSays(answer, waiting);
+        if (yes.kind === 'not a yes') return null;
+        if (yes.kind === 'yes, but which one') {
+          return `Which number should be ${yes.target.toLocaleString('en-GB')}? Tell me what it is for, and I will write that one down with the new number and the rest as ${d.fileName} has them.`;
+        }
+        /* The person's number wins over the document's, on the one line their answer is about. */
+        const corrected = yes.kind === 'yes, with a new number' ? waiting.map((w, i) => (i === yes.row ? { ...w, target: yes.target } : w)) : waiting;
+        const rows = corrected.filter((w) => !held.has(`${w.ownerParticipantId ?? 'team'}::${(w.name ?? '').trim().toLowerCase()}`));
         if (rows.length) {
           await this.prisma.groundObjective.createMany({
             data: rows.map((w, i) => ({
@@ -1250,13 +1271,15 @@ export class ConversationService {
         this.logger.log(`Check-in ${checkIn.id}: took ${rows.length} number(s) from ${d.fileName} on a yes.`);
         const mine = rows.filter((r) => r.ownerParticipantId).length;
         const team = rows.length - mine;
-        if (!rows.length) return `Those are already on the record, so nothing was written twice.`;
-        return [
-          `Recorded from ${d.fileName}.`,
-          mine ? `${mine} ${mine === 1 ? 'number' : 'numbers'} against the person who holds ${mine === 1 ? 'it' : 'them'}.` : '',
-          team ? `${team} for the whole check-in, which everybody here sees.` : '',
-          'Nobody is measured against any of it until they have seen it.',
-        ].filter(Boolean).join(' ');
+        return whatWasRecordedFromADocument({
+          fileName: d.fileName,
+          forAPerson: mine,
+          forEveryone: team,
+          corrected: yes.kind === 'yes, with a new number' && rows.length
+            ? { name: waiting[yes.row].name, theirs: yes.target, documents: waiting[yes.row].target }
+            : null,
+          reader: 'check-in',
+        });
       }
       return null;
     } catch (err: any) {
@@ -1459,7 +1482,7 @@ export class ConversationService {
    * through `streamDraft`. Everything after the draft is the same code, and the final text, which is
    * what is saved, replaces the draft on the screen. See sendMessageStream.
    */
-  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean } = {}): Promise<any> {
+  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean; door?: Door } = {}): Promise<any> {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     /*
      * ONE ANSWER, ONE REPLY, HOWEVER MANY TIMES IT ARRIVES (request 48). The closing reply was read
@@ -1494,7 +1517,7 @@ export class ConversationService {
        * card. A goodbye is only ever left on a turn that closed (see the goodbye rule below), so the
        * reply itself says whether it closed.
        */
-      return { reply: again.reply, sessionComplete: hasAGoodbye(again.reply) && !stillAsking(again.reply) };
+      return { reply: again.reply, sessionComplete: endsOnTheClose(again.reply) || (hasAGoodbye(again.reply) && !stillAsking(again.reply)) };
     }
     if (again.kind === 'the same answer, still working') {
       return { reply: STILL_ON_YOUR_LAST_ANSWER, sessionComplete: false };
@@ -2410,6 +2433,8 @@ export class ConversationService {
         data: {
           checkInId: checkIn.id, role: TurnRole.AI, content: reply,
           askedFor: stampWhatItAskedFor(reply),
+          /* A turn that put a document's side to them is stamped with that line instead, so it is asked once. */
+          ...await this.theDocumentQuestionItRaised(checkIn.participantId, reply).then((raised) => (raised ? { askedFor: raised } : {})),
         },
       });
     } catch (err) {
@@ -2543,6 +2568,12 @@ export class ConversationService {
      * product's own plumbing: the twenty-answer ceiling is a fact about our storage and nobody
      * being told a conversation is over needs the number.
      */
+    /* AND THE CLOSE ENDS AS THE PROTOTYPE'S DOES, with the card below it. See the-close-says-what-comes-next. */
+    if (sessionComplete) {
+      /* WhatsApp and the API show no card, so they end on their own next step, never on "Below is". */
+      const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web');
+      if (closed !== (aiTurn.content ?? '')) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: closed } });
+    }
     const room = sessionComplete ? null : howMuchRoomIsLeft(personTurnCount + 1);
     const withRoomLeft = room ? `${aiTurn.content}\n\n${room}` : aiTurn.content;
 
@@ -4608,12 +4639,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       this.prisma.recordEntry
         .findMany({
           where: { participantId: checkIn.participantId, documentSays: { not: null }, disputedAt: null },
-          select: { text: true, documentSays: true },
+          select: { id: true, text: true, documentSays: true },
           orderBy: { createdAt: 'desc' },
-          take: 3,
+          take: 12,
+        })
+        /* ASKED ONCE, IN CODE (week 14): a line whose question a turn already raised is never put again. */
+        .then(async (all) => {
+          const asked = await this.theLinesAlreadyAskedAbout(checkIn.participantId);
+          return all.filter((r) => !asked.has(r.id)).slice(0, 1);
         })
         .then((rows) => rows.length
-          ? 'A DOCUMENT THEY CAN SEE READS DIFFERENTLY FROM SOMETHING THEY SAID. This is theirs to answer, once, as an ordinary question: put the two side by side and ask which is current. Never say the document is right. Never say they were wrong. Do not raise it twice.\n'
+          ? 'A DOCUMENT THEY CAN SEE READS DIFFERENTLY FROM SOMETHING THEY SAID. This is theirs to answer, once, as an ordinary question: put the two side by side, with the document\'s own number or words, and ask which is current. Never say the document is right. Never say they were wrong. It is asked only once, so ask it now if it fits.\n'
             + rows.map((r) => `- They said: "${r.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}". The document says: "${r.documentSays}".`).join('\n')
           : '')
         .catch(() => ''),
@@ -5582,7 +5618,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    *   Read live, 22 Sep 2026: three answers on an open-link discovery, "I am done", and "a few more
    *   exchanges are needed" - the pop-up Hafsah had reported that morning, on the other path.
    */
-  async complete(checkInId: string, requestingUserId: WhoIsAsking, how: { theyAskedToFinish?: boolean } = {}) {
+  async complete(checkInId: string, requestingUserId: WhoIsAsking, how: { theyAskedToFinish?: boolean; waitForTheCard?: boolean } = {}) {
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
@@ -5679,7 +5715,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
     }
 
-    return this.finishTheSession(checkIn, 'the person');
+    return this.finishTheSession(checkIn, 'the person', { waitForTheCard: how.waitForTheCard !== false });
   }
 
   /**
@@ -5703,7 +5739,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true, lastName: true } } } } },
     });
     if (!checkIn) throw new NotFoundException('Check-in not found');
-    return this.finishTheSession(checkIn, 'the clock');
+    return this.finishTheSession(checkIn, 'the clock', { waitForTheCard: false });
   }
 
   /**
@@ -5732,7 +5768,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   private async finishTheSession(
     checkIn: any,
     by: 'the person' | 'the clock',
-  ): Promise<{ status: 'completed'; groundId: string; whatYouGave?: WhatTheyGave }> {
+    how: { waitForTheCard?: boolean } = {},
+  ): Promise<{ status: 'completed'; groundId: string; endCard?: EndCard | null; whatYouGave?: WhatTheyGave }> {
     // Score session specificity from person's turns before marking complete
     /* A scorer that fails is logged by check-in, and the row says it was TRIED: specificityScoredAt set
        with no level is "scoring failed", which is not "not scored yet" and not a fact about the ground. */
@@ -5754,10 +5791,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * They do not read each other, so they run together.
      */
     const closingStartedAt = Date.now();
+    /* The card still being built is waited for, so what is written is what the card says. */
+    /* Not for the clock, or a door that cannot hold a reply that long (WhatsApp's webhook). */
+    if (how.waitForTheCard) await this.waitForTheCardBeingBuilt(checkIn.id);
     /* The lines the end card showed, if nothing was said after it (task 2.7). See writeTheRecordAtTheEnd. */
-    await this.writeTheRecordAtTheEnd(checkIn).catch((err) =>
-      this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
-    );
+    const endCard: EndCard | null = await this.writeTheRecordAtTheEnd(checkIn).catch((err) => {
+      this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`);
+      return null;
+    });
     this.logger.log(`Check-in ${checkIn.id}: took the record out of it in ${Date.now() - closingStartedAt}ms.`);
 
     // Handoffs are a board object, so this only runs on SHARED-mode grounds.
@@ -5867,7 +5908,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     if (won.count === 0) {
       this.logger.warn(`Check-in ${checkIn.id} was completed by another call first; nothing emitted twice.`);
-      return { status: 'completed', groundId: checkIn.groundId };
+      return { status: 'completed', groundId: checkIn.groundId, ...(endCard ? { endCard } : {}) };
     }
 
     /*
@@ -5975,7 +6016,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* Only where there is something true to say. An empty block on the screen after somebody has
        just finished is worse than no block, and a session with nothing in its notes has nothing to
        tell anybody about their own answers. */
-    return { status: 'completed', groundId: checkIn.groundId, ...(whatYouGave.saying ? { whatYouGave } : {}) };
+    /* The card, with exactly the lines just written, so the screen shows it even if it never saw it arrive. */
+    return { status: 'completed', groundId: checkIn.groundId, ...(endCard ? { endCard } : {}), ...(whatYouGave.saying ? { whatYouGave } : {}) };
   }
 
   /**
@@ -6663,6 +6705,56 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * NOTHING HERE DECIDES ANYTHING WAS DONE. Status stays UNKNOWN and only a person moves it.
    */
   /**
+   * PROOF SETTLES WHAT THEY SAID THEY WOULD DO (week 9, decision 12). See settled-by-proof.ts. Reads
+   * this person's commitments proof may still settle and their own lines a document of theirs backs
+   * or a colleague confirmed; the model pairs them and code checks every pair. Only ever DONE: proof
+   * never marks anything not done. A commitment already DONE on their word keeps its status and date
+   * and gains the mark. Asks no model when there is nothing to pair.
+   */
+  async settleByProof(participantId: string): Promise<number> {
+    if (!this.prisma.groundCommitment?.findMany || !participantId) return 0;
+    const commitments = (await this.prisma.groundCommitment.findMany({
+      where: { participantId, OR: [{ status: 'UNKNOWN' }, { status: 'DONE', OR: [{ settledBy: null }, { settledBy: 'SAID' }] }] },
+      select: { id: true, participantId: true, text: true, status: true, settledBy: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+      take: 30,
+    })).filter(mayBeSettledByProof);
+    if (!commitments.length) return 0;
+    const earliest = commitments[0].createdAt;
+    const rows = await this.prisma.recordEntry.findMany({
+      where: {
+        participantId, disputedAt: null, createdAt: { gt: earliest },
+        OR: [{ recallBased: false, anchoredDocumentId: { not: null } }, { confirmedAt: { not: null } }],
+      },
+      select: { id: true, participantId: true, type: true, text: true, recallBased: true, anchoredDocumentId: true, anchoredOrigin: true, confirmedAt: true, disputedAt: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 26,
+    });
+    const whoAdded = await whoAddedEachBackingDocument(this.prisma, rows);
+    const lines = rows.filter((l: any) => whatThisLineProves(l, whoAdded));
+    if (!lines.length) return 0;
+    const read = await this.anthropic.extract<{ pairs: { commitment: number; line: string }[] }>(
+      WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT,
+      [{ role: 'user', content: theProofPrompt(commitments, lines) }],
+      WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA as any,
+      { fast: true, thinkingBudget: 0 },
+    );
+    const settled = theProofSettlements(commitments as any, lines as any, whoAdded, read?.pairs);
+    const now = new Date();
+    let wrote = 0;
+    for (const s of settled) {
+      /* Written only if it is still as it was read: a hand that moved it meanwhile wins. */
+      const done = s.wasOpen
+        ? await this.prisma.groundCommitment.updateMany({ where: { id: s.id, status: 'UNKNOWN' }, data: { status: 'DONE', settledAt: now, settledInCheckInId: null, settledBy: s.settledBy } })
+        : await this.prisma.groundCommitment.updateMany({ where: { id: s.id, status: 'DONE', OR: [{ settledBy: null }, { settledBy: 'SAID' }] }, data: { settledBy: s.settledBy } });
+      wrote += done?.count ?? 0;
+      /* Ids only: the words are theirs. */
+      this.logger.log(`settled-by-proof commitment=${s.id} line=${s.lineId} by=${s.settledBy} wasOpen=${s.wasOpen}`);
+    }
+    return wrote;
+  }
+
+  /**
    * WHAT HAPPENED TO WHAT THEY SAID THEY WOULD DO, FROM THEIR OWN WORDS IN THIS CHECK-IN (week 9).
    * Only the commitments of theirs that were open before this check-in, and so were put to them;
    * only DONE or NOT_DONE, and only what they plainly said. See what-happened-to-what-they-said.
@@ -6673,11 +6765,21 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: checkInId },
       select: {
         groundId: true, participantId: true, startedAt: true,
-        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } },
+        /* Both sides, so each answer carries the question it answered. "I haven't done anything further.
+           He didn't reply." means nothing on its own; after "What have you done to get an answer from
+           Mr. Adebayo?" it plainly says the follow-up was not done (review, 29 September). */
+        turns: { orderBy: { createdAt: 'asc' }, select: { role: true, content: true } },
       },
     });
     if (!row?.participantId) return 0;
-    const said = row.turns.map((t) => (t.content ?? '').trim()).filter(Boolean);
+    const said: AnAnswer[] = [];
+    let asked: string | null = null;
+    for (const t of row.turns as any[]) {
+      const text = String(t.content ?? '').trim();
+      if (!text) continue;
+      if (t.role === TurnRole.PERSON || t.role === undefined) { said.push(asked ? { asked, said: text } : text); asked = null; }
+      else asked = text.length > 300 ? `${text.slice(0, 300)}...` : text;
+    }
     if (!said.length) return 0;
     const open = await this.prisma.groundCommitment.findMany({
       /* Open before they started this one: those are what it put to them. Not the check-in row's own
@@ -6688,19 +6790,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       take: 20,
     });
     if (!open.length) return 0;
+    /* The same promise written twice is put once, and what they said about it settles both rows. */
+    const once = oneOfEach(open);
     const read = await this.anthropic.extract<{ outcomes: { item: number; happened: string }[] }>(
       READ_WHAT_HAPPENED,
-      [{ role: 'user', content: theHappenedPrompt(open, said) }],
+      [{ role: 'user', content: theHappenedPrompt(once, said) }],
       WHAT_HAPPENED_SCHEMA as any,
       { fast: true, thinkingBudget: 0 },
     );
-    const settled = theSettlements(open, read?.outcomes);
+    const settled = theSettlements(once, read?.outcomes).flatMap((s) => {
+      const key = aCommitmentKey(once.find((o) => o.id === s.id)?.text ?? '', once.find((o) => o.id === s.id)?.whenSaid);
+      return open.filter((o) => o.id === s.id || (key && aCommitmentKey(o.text, o.whenSaid) === key)).map((o) => ({ id: o.id, status: s.status }));
+    });
     const now = new Date();
     for (const s of settled) {
       /* Still open at the moment of writing: somebody who pressed it by hand meanwhile wins. */
       await this.prisma.groundCommitment.updateMany({
         where: { id: s.id, status: 'UNKNOWN' },
-        data: { status: s.status, settledAt: now, settledInCheckInId: checkInId },
+        data: { status: s.status, settledAt: now, settledInCheckInId: checkInId, settledBy: 'SAID' },
       });
     }
     /* Ids and counts only: the words are theirs. */
@@ -6735,7 +6842,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const theirs = await this.prisma.groundCommitment.findMany({
       where: { groundId: row.groundId, participantId: row.participantId },
-      select: { id: true, text: true, status: true, saidAgainIn: true, statedInSession: true },
+      select: { id: true, text: true, whenSaid: true, status: true, saidAgainIn: true, statedInSession: true },
     }).catch(() => [] as any[]);
 
     let written = 0;
@@ -6743,7 +6850,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     for (const kept of keep) {
       /* Their quotation marks, as in the record. See their-quotation-marks-are-theirs. */
       const c = { ...kept, action: theirQuotationMarksBack(kept.action, said), when: kept.when ? theirQuotationMarksBack(kept.when, said) : kept.when };
-      const same = (theirs as any[]).find((h) => theSameMeasure(h.text ?? '', c.action));
+      /* The same promise said twice in one breath, once with its time on the end, is one promise. */
+      const same = (theirs as any[]).find((h) => theSameMeasure(h.text ?? '', c.action)
+        || (!!aCommitmentKey(c.action, c.when) && aCommitmentKey(h.text ?? '', h.whenSaid) === aCommitmentKey(c.action, c.when)));
       if (same) {
         /* Already settled by a person: saying it again does not reopen it and is not counted. */
         if (same.status !== 'UNKNOWN') continue;
@@ -6772,7 +6881,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           saidWordForWord: saidWordForWord(c.action.slice(0, 400), said),
           whenSaidWordForWord: c.when ? saidWordForWord(c.when, said) : false,
         },
-      }).then(() => { written += 1; })
+      }).then((made: any) => {
+        written += 1;
+        /* Known from now on, so a second copy later in this same list is not written again. */
+        (theirs as any[]).push({ id: made?.id, text: c.action, whenSaid: c.when ?? null, status: 'UNKNOWN', saidAgainIn: [], statedInSession: row.sessionNumber });
+      })
         .catch((err: any) => this.logger.warn(`Could not write a commitment from ${checkInId}: ${err?.message}`));
     }
     if (written || again) {
@@ -7251,8 +7364,53 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * reply has already gone, and finishing reads the record as before.
    */
   private startTheEndCard(checkIn: { id: string; participantId: string; groundId: string }, closingTurnId: string): void {
-    this.theEndCardFor(checkIn, closingTurnId).catch((err: any) =>
-      this.logger.warn(`Check-in ${checkIn.id}: no end card (${err?.message ?? err}); the record is read when they finish.`));
+    const building: Promise<EndCard | null> = this.theEndCardFor(checkIn, closingTurnId).catch((err: any) => {
+      this.logger.warn(`Check-in ${checkIn.id}: no end card (${err?.message ?? err}); the record is read when they finish.`);
+      return null;
+    });
+    /* Kept while it is being built, so finishing and the screen can wait for it instead of missing it. */
+    const cards = this.endCardsBeingBuilt();
+    cards.set(checkIn.id, building);
+    building.finally(() => { if (cards.get(checkIn.id) === building) cards.delete(checkIn.id); }).catch(() => undefined);
+  }
+
+  /** End cards still being built, by check-in. See startTheEndCard. */
+  private endCardsBeingBuilt(): Map<string, Promise<EndCard | null>> {
+    return ((this as any).endCardsInFlight ??= new Map());
+  }
+
+  /**
+   * WAIT FOR THE CARD THAT IS BEING BUILT, IF ONE IS, FOR AT MOST FINISHING_WAITS_FOR_THE_CARD_MS.
+   *
+   * The card arrives 10 to 47 seconds after the goodbye, and the screen read it only when the
+   * transcript loaded, so nobody saw it; and finishing before it was ready read the record again, so
+   * the card was not what was written. Both now wait for it here. Nothing fails if it never comes.
+   */
+  private async waitForTheCardBeingBuilt(checkInId: string): Promise<void> {
+    const building = this.endCardsBeingBuilt().get(checkInId);
+    if (!building) return;
+    let timer: NodeJS.Timeout | undefined;
+    await Promise.race([
+      building.catch(() => null),
+      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), FINISHING_WAITS_FOR_THE_CARD_MS); timer.unref?.(); }),
+    ]);
+    if (timer) clearTimeout(timer);
+  }
+
+  /**
+   * THE END CARD FOR THE SCREEN TO WAIT ON (GET /check-ins/:id/end-card). The card if it is ready,
+   * or the one being built once it is, for the person themselves only: the same owner check as the
+   * transcript. Null when there is no card standing.
+   */
+  async theEndCardWhenReady(checkInId: string, requestingUserId: WhoIsAsking): Promise<{ endCard: EndCard | null }> {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    await this.waitForTheCardBeingBuilt(checkIn.id);
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId: checkIn.id },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, endCard: true },
+    });
+    return { endCard: theCardStillStanding(turns as any) };
   }
 
   /**
@@ -7314,11 +7472,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * WHAT FINISHING WRITES. The lines the end card showed, when nothing was said after it; otherwise
    * the record is read again, as it always was.
    */
-  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string }) {
+  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string }): Promise<EndCard | null> {
     const closing = await this.prisma.conversationTurn.findFirst({
       where: { checkInId: checkIn.id, role: TurnRole.AI },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, createdAt: true, recordDraft: true },
+      select: { id: true, createdAt: true, recordDraft: true, endCard: true },
     });
     const draft = Array.isArray(closing?.recordDraft) ? (closing!.recordDraft as unknown as Prisma.RecordEntryCreateManyInput[]) : null;
     const saidSince = draft
@@ -7327,10 +7485,30 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (draft && saidSince === 0) {
       if (draft.length) await this.prisma.recordEntry.createMany({ data: draft.map((r) => ({ ...r, checkInId: checkIn.id, participantId: checkIn.participantId })) });
       this.logger.log(`Check-in ${checkIn.id}: wrote the ${draft.length} line(s) the end card showed.`);
-      return;
+      return ((closing as any).endCard as EndCard | null) ?? null;
     }
     if (draft) this.logger.log(`Check-in ${checkIn.id}: they said more after the end card, so the record is read again.`);
-    await this.extractRecordEntries(checkIn.id, checkIn.participantId);
+    const rows = await this.readTheRecord(checkIn.id, checkIn.participantId);
+    if (rows.length) await this.prisma.recordEntry.createMany({ data: rows });
+    /*
+     * AND THE CARD SAYS WHAT WAS WRITTEN. Read again, the record can differ from the card that was
+     * shown (the reviewer saw it), so the card on the closing turn is replaced with the lines just
+     * written. "What is now in your record" is then always true.
+     */
+    /* Who added each backing document, as the first card knew: somebody else's plan proves nothing of theirs. */
+    const whoAdded = await whoAddedEachBackingDocument(this.prisma, rows as any[]);
+    const card = theEndCard(rows.map((r) => {
+      const doc = (r as any).anchoredDocumentId ?? null;
+      return {
+        type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true, anchoredDocumentId: doc, anchoredOrigin: (r as any).anchoredOrigin ?? null,
+        ...(doc && whoAdded.has(doc) ? { documentIsTheirOwn: whoAdded.get(doc) === checkIn.participantId } : {}),
+      };
+    }));
+    if (closing?.id) {
+      await this.prisma.conversationTurn.update({ where: { id: closing.id }, data: { endCard: (card ?? Prisma.DbNull) as any, recordDraft: rows as any } })
+        .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: could not replace the end card with what was written (${err?.message})`));
+    }
+    return card;
   }
 
   /**
@@ -7619,6 +7797,36 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.documents?.checkDescription(docId).catch(() => null);
   }
 
+  /** The record lines a document reads differently from that a turn has already put to this person. */
+  private async theLinesAlreadyAskedAbout(participantId: string): Promise<Set<string>> {
+    /* A groupBy, like the burden count: it can return the stamps and never a turn's content. */
+    const stamps = await this.prisma.conversationTurn.groupBy({
+      by: ['askedFor'],
+      where: { role: TurnRole.AI, askedFor: { startsWith: READS_DIFFERENTLY }, checkIn: { participantId } },
+    }).catch(() => [] as { askedFor: string | null }[]);
+    return theLinesInTheStamps(((stamps ?? []) as { askedFor: string | null }[]).map((t) => t.askedFor));
+  }
+
+  /**
+   * THE STAMP FOR A TURN THAT PUT A DOCUMENT'S SIDE TO THEM, so it is never asked again. Read from
+   * what the turn says, not from what the prompt offered. See a-document-that-disagrees-is-asked-once.
+   */
+  private async theDocumentQuestionItRaised(participantId: string, reply: string): Promise<string | null> {
+    try {
+      const lines = await this.prisma.recordEntry.findMany({
+        where: { participantId, documentSays: { not: null }, disputedAt: null },
+        select: { id: true, text: true, documentSays: true },
+        orderBy: { createdAt: 'desc' },
+        take: 12,
+      });
+      if (!lines?.length) return null;
+      const asked = await this.theLinesAlreadyAskedAbout(participantId);
+      return theStampForWhatItRaised(reply, lines.filter((l) => !asked.has(l.id)));
+    } catch {
+      return null;
+    }
+  }
+
   /** The documents that may back this person's lines: their own and any open on the ground, readable, and as described. */
   private async documentsThatMayBack(participantId: string, groundId: string) {
     const docs = await this.prisma.groundDocument.findMany({
@@ -7703,6 +7911,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         .catch(() => undefined);
     }
     if (backed || differs.length) this.logger.log(`Document anchoring: ${backed} of ${entries.length} line(s) for participant ${participantId} now backed by a document; ${differs.length} read differently.`);
+    /* A line their own document now backs may keep something they said they would do (week 9). */
+    if (backed) await this.settleByProof(participantId).catch((err: any) =>
+      this.logger.warn(`Could not settle by proof for participant ${participantId}: ${err?.message ?? err}`));
     return { backed, of: entries.length, readsDifferently: differs.length };
   }
 
@@ -8977,6 +9188,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.prisma.recordEntry.update({ where: { id: line.id }, data: { confirmedAt: new Date(), confirmedByParticipantId: receivedByParticipantId } });
     /* Ids, not content: see the anchoring-decision log line. */
     this.logger.log(`confirmed-by-who-received-it entry=${line.id} about=${onParticipantId} by=${receivedByParticipantId}`);
+    /* The line the colleague confirmed may keep something the person said they would do (week 9). */
+    await this.settleByProof(onParticipantId).catch((err: any) =>
+      this.logger.warn(`Could not settle by proof for participant ${onParticipantId}: ${err?.message ?? err}`));
   }
 
   async extractDependencies(checkInId: string, participantId: string, groundId: string) {
