@@ -1,4 +1,4 @@
-import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn } from './a-goal-not-told-stays-with-the-lead';
+import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
@@ -1891,11 +1891,37 @@ export class GroundsService {
          * somebody returns to: "by end of October" cannot be read as late, and an expectation that
          * was met, dropped or changed should not sit here looking outstanding forever.
          */
-        dueDate: true, status: true,
+        dueDate: true, status: true, createdAt: true,
       },
     });
-    const objectiveRows = goalsThisReaderMaySee(objectiveRowsAsStored, viewerIsInitiator);
-    const goalsNotToldHere = viewerIsInitiator ? [] : objectiveRowsAsStored.filter(notToldYet).map((o) => o.text ?? '');
+    let objectiveRows = goalsThisReaderMaySee(objectiveRowsAsStored, viewerIsInitiator);
+    /*
+     * A goal past its week (item 4 below) is no longer scrubbed out of every other sentence: the
+     * person is now told, plainly, that it exists - so its words stop needing to be kept out of the
+     * rest of what they read. Still never its full raw sentence, only the area-of-work placeholder
+     * built below.
+     */
+    const goalsNotToldHere = viewerIsInitiator
+      ? []
+      : objectiveRowsAsStored.filter((o: any) => notToldYet(o) && !aWeekHasPassedSinceNotTold(o)).map((o) => o.text ?? '');
+    /*
+     * DECISION 56, ITEM 4. Once a week has passed still not told, the person reads it plainly here
+     * too, on their own check-in page, not only on their You board: who set it, and that they have
+     * not been told the number - `theAreaOfAGoal`'s own words, never the number.
+     */
+    if (!viewerIsInitiator && requestingUserId) {
+      const viewerParticipantId = (ground.participants ?? []).find((p: any) => p.userId === requestingUserId)?.id ?? null;
+      const dueAWeek = objectiveRowsAsStored.filter((o: any) => o.participantId === viewerParticipantId && aWeekHasPassedSinceNotTold(o));
+      if (dueAWeek.length) {
+        const leadFirst = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')?.user?.firstName?.trim() || 'Your lead';
+        objectiveRows = [
+          ...objectiveRows,
+          /* The plain sentence only - never the lead's own private note about telling them
+             (`awarenessDetail`), which stays the lead's alone like any other private note. */
+          ...dueAWeek.map((o: any) => ({ ...o, text: whatThePersonReadsAfterAWeek(leadFirst, o.text ?? ''), awarenessDetail: null })),
+        ];
+      }
+    }
     /**
      * ALL OF THEM, PER PERSON. A person can be held to a commitment and a standing role expectation
      * at once, and the map used to keep whichever row happened to come back last - so the page showed
@@ -2022,6 +2048,21 @@ export class GroundsService {
             awareness: (row as any)?.awareness ?? null,
             awarenessDetail: (row as any)?.awarenessDetail ?? null,
             /**
+             * DECISION 56, ITEM 1. The prototype's own flag ("Not told yet", Context page): true only
+             * for a goal the lead wrote and has not told this person about. Served here whatever the
+             * reader is, because `withholdTheirNumbers`/the peer rule above already decide whether
+             * this row reaches them at all - a colleague who cannot see the goal cannot see this flag
+             * either, since `row` is undefined for them.
+             */
+            notToldYet: notToldYet(row as any),
+            /**
+             * DECISION 56, ITEM 3. Wherever this goal counts against the person - and it does, this
+             * flag changes nothing about that - the lead is shown it as a conversation point, so
+             * nothing is read into it before they have talked it through. The person's own name,
+             * never a pronoun.
+             */
+            conversationPoint: notToldYet(row as any) ? theConversationPointForTheLead((p.user?.firstName ?? '').trim() || 'This person') : null,
+            /**
              * GW-EXP-3. Null means they have not said what doing well looks like to them yet, which the
              * surface reports as "not yet said". An absent view is never a matching one.
              */
@@ -2062,6 +2103,8 @@ export class GroundsService {
               alignmentNote: (o as any).alignmentNote ?? null,
               objection: (o as any).objection ?? null,
               seenBySubject: o.seenBySubject,
+              /* Decision 56, item 1 - see the single-expectation shape above. */
+              notToldYet: notToldYet(o as any),
             })),
             kind: (row as any)?.kind ?? null,
             check: (row as any)?.check ?? null,

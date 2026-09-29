@@ -3,7 +3,10 @@ import { BoardService } from '../board/board.service';
 import { ReportsService } from '../reports/reports.service';
 import { YourBoardService } from './your-board.service';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
-import { withoutGoalsNotToldIn, notToldYet } from './a-goal-not-told-stays-with-the-lead';
+import {
+  withoutGoalsNotToldIn, notToldYet, theAreaOfAGoal, aWeekHasPassedSinceNotTold,
+  theLeadIsNudgedToTell, theConversationPointForTheLead, whatThePersonReadsAfterAWeek,
+} from './a-goal-not-told-stays-with-the-lead';
 
 /**
  * A GOAL THE LEAD HAS NOT TOLD THE PERSON ABOUT IS NOT SHOWN TO THAT PERSON (29 September 2026).
@@ -27,8 +30,12 @@ const people = () => [
   { id: 'p-tobi', userId: TOBI, email: 't@x.test', partyType: PartyType.PARTICIPANT, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly: false, invitedAt: new Date(), notifiedAt: new Date(), soloArtifactAt: null, soloArtifactShared: false, createdAt: new Date('2026-09-02'), user: { firstName: 'Tobi', lastName: 'Adewale' } },
   { id: 'p-baraka', userId: BARAKA, email: 'b@x.test', partyType: PartyType.PARTICIPANT, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly: false, invitedAt: new Date(), notifiedAt: new Date(), soloArtifactAt: null, soloArtifactShared: false, createdAt: new Date('2026-09-03'), user: { firstName: 'Baraka', lastName: 'Kip' } },
 ];
+/* Within the week, so the "always hidden" assertions below hold on any day this suite runs
+   (decision 56, item 4 makes a NOT_TOLD goal start showing, plainly, after a week - covered in its
+   own tests further down, with its own fixture). */
+const TWO_DAYS_AGO = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 const GOALS = [
-  { id: 'o-not-told', groundId: 'g1', participantId: 'p-tobi', text: GOAL, kind: 'TODO', status: 'OPEN', authoredBy: 'lead', seenBySubject: false, awareness: 'NOT_TOLD', awarenessDetail: LEADS_NOTE, dueSaid: 'tomorrow', createdAt: new Date('2026-09-05'), updatedAt: new Date('2026-09-05') },
+  { id: 'o-not-told', groundId: 'g1', participantId: 'p-tobi', text: GOAL, kind: 'TODO', status: 'OPEN', authoredBy: 'lead', seenBySubject: false, awareness: 'NOT_TOLD', awarenessDetail: LEADS_NOTE, dueSaid: 'tomorrow', createdAt: TWO_DAYS_AGO, updatedAt: TWO_DAYS_AGO },
   { id: 'o-told', groundId: 'g1', participantId: 'p-tobi', text: TOLD, kind: 'GOAL', status: 'OPEN', authoredBy: 'lead', seenBySubject: false, awareness: 'TOLD', awarenessDetail: null, dueSaid: null, createdAt: new Date('2026-09-04'), updatedAt: new Date('2026-09-04') },
 ];
 /* A product sentence carrying the goal, as a report's picture would. */
@@ -147,5 +154,120 @@ describe('a goal the lead has not told Tobi about', () => {
     expect(notToldYet({ awareness: 'NOT_TOLD', authoredBy: 'lead' })).toBe(true);
     expect(notToldYet({ awareness: 'UNSURE', authoredBy: 'lead' })).toBe(false);
     expect(withoutGoalsNotToldIn({ id: 'take over the scheduling please', a: 'x' }, [GOAL]).id).toBe('take over the scheduling please');
+  });
+});
+
+/**
+ * DECISION 56: the four parts added on top of the more-private option above.
+ */
+describe('theAreaOfAGoal (decision 56, item 2)', () => {
+  it('takes the number and the deadline out, and leaves the work', () => {
+    expect(theAreaOfAGoal('Hit 40 stock counts by Friday')).toBe('Hit stock counts');
+  });
+  it('takes a currency amount and a date out', () => {
+    expect(theAreaOfAGoal('Close $150k of pipeline by October 15')).not.toMatch(/\$|150|october|15/i);
+  });
+  it('takes a percentage out', () => {
+    expect(theAreaOfAGoal('Cut churn by 12%')).not.toMatch(/12|%/);
+  });
+  it('leaves a goal with no number exactly as it was', () => {
+    expect(theAreaOfAGoal('Take over the scheduling')).toBe('Take over the scheduling');
+  });
+  it('never returns empty: falls back to the original when stripping would remove everything', () => {
+    expect(theAreaOfAGoal('40')).toBe('40');
+  });
+});
+
+describe('aWeekHasPassedSinceNotTold (decision 56, item 4)', () => {
+  const now = new Date('2026-09-29T00:00:00Z');
+  it('is false the day the goal was set', () => {
+    expect(aWeekHasPassedSinceNotTold({ awareness: 'NOT_TOLD', authoredBy: 'lead', createdAt: new Date('2026-09-29T00:00:00Z') }, now)).toBe(false);
+  });
+  it('is false just short of a week', () => {
+    expect(aWeekHasPassedSinceNotTold({ awareness: 'NOT_TOLD', authoredBy: 'lead', createdAt: new Date('2026-09-23T00:00:01Z') }, now)).toBe(false);
+  });
+  it('is true at exactly a week', () => {
+    expect(aWeekHasPassedSinceNotTold({ awareness: 'NOT_TOLD', authoredBy: 'lead', createdAt: new Date('2026-09-22T00:00:00Z') }, now)).toBe(true);
+  });
+  it('is false once the lead has told them', () => {
+    expect(aWeekHasPassedSinceNotTold({ awareness: 'TOLD', authoredBy: 'lead', createdAt: new Date('2026-09-01T00:00:00Z') }, now)).toBe(false);
+  });
+  it('is false for a goal the person wrote themselves', () => {
+    expect(aWeekHasPassedSinceNotTold({ awareness: 'NOT_TOLD', authoredBy: 'self', createdAt: new Date('2026-09-01T00:00:00Z') }, now)).toBe(false);
+  });
+});
+
+describe('theLeadIsNudgedToTell (decision 56, item 1)', () => {
+  it('names the person, never a pronoun, and says the lead has not told them yet', () => {
+    const nudge = theLeadIsNudgedToTell('Tobi', 'Take over the scheduling');
+    expect(nudge.decide).toBe('Tell Tobi about take over the scheduling.');
+    expect(nudge.why).toBe('You set this goal and have not told Tobi yet.');
+    expect(nudge.decide).not.toMatch(/\bhim\b|\bher\b/i);
+  });
+});
+
+describe('theConversationPointForTheLead (decision 56, item 3)', () => {
+  it('uses the name throughout, never "him" or "her"', () => {
+    expect(theConversationPointForTheLead('Tobi')).toBe(
+      'Tobi has not been told about this goal yet, so talk it through with Tobi before reading anything into it.',
+    );
+  });
+});
+
+describe('whatThePersonReadsAfterAWeek (decision 56, item 4)', () => {
+  it('says the lead has set a goal about the area of work, with no number', () => {
+    expect(whatThePersonReadsAfterAWeek('Wanjiru', 'Hit 40 stock counts by Friday')).toBe(
+      'Wanjiru has set a goal about hit stock counts, and will talk it through with you.',
+    );
+  });
+});
+
+/**
+ * DECISION 56, ITEM 4, ON THE CONTEXT PAGE: after a week still not told, Tobi's own check-in page
+ * reads it plainly - no number, no target wording, and who set it - instead of nothing at all.
+ */
+describe('a goal not told for a week (decision 56, item 4), on the Context page', () => {
+  const AN_OLD_GOAL = 'Take over the scheduling and hit 40 stock counts by Friday.';
+  const EIGHT_DAYS_AGO = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+  const oldGoals = [
+    { id: 'o-week', groundId: 'g1', participantId: 'p-tobi', text: AN_OLD_GOAL, kind: 'TODO', status: 'OPEN', authoredBy: 'lead', seenBySubject: false, awareness: 'NOT_TOLD', awarenessDetail: LEADS_NOTE, dueSaid: null, createdAt: EIGHT_DAYS_AGO, updatedAt: EIGHT_DAYS_AGO },
+  ];
+
+  function contextForWithOldGoal(userId: string) {
+    const ground: any = {
+      id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, createdAt: new Date(), timelineDays: null,
+      restrictExternalVisibility: true, peersVisibleToEachOther: true, whoSeesTargets: 'EVERYBODY',
+      participants: people(), checkIns: [], resolution: null, patternDetections: [], objectives: [],
+      report: { id: 'r1', releasedAt: new Date(), sharedPicture: '', createdAt: new Date() },
+    };
+    const prisma: any = {
+      groundBaseline: { findFirst: jest.fn(async () => null) },
+      personObjective: { findMany: jest.fn(async () => JSON.parse(JSON.stringify(oldGoals))) },
+      ground: { findFirst: async () => ground, findUnique: async () => ground },
+      user: { findUnique: jest.fn(async () => ({ role: role(userId), organizationId: 'org1' })) },
+      groundParticipant: { findFirst: async () => null, findMany: async () => [] },
+      organization: { findUnique: async () => ({ subscriptionPlan: 'FREE', subscriptionStatus: 'ACTIVE', freeExtensionUsed: false }) },
+      leadContextNote: { findMany: async () => [] },
+    };
+    return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { respond: async () => '' } as any)
+      .get('g1', 'org1', userId) as Promise<any>;
+  }
+
+  it('Tobi reads that Wanjiru has set a goal about the work, and will talk it through with him - never the raw sentence, never a number', async () => {
+    const got = await text(contextForWithOldGoal(TOBI));
+    expect(got).toMatch(/Wanjiru has set a goal about .*and will talk it through with you/i);
+    expect(got).not.toContain(AN_OLD_GOAL);
+    expect(got).not.toContain(LEADS_NOTE);
+    expect(got).not.toMatch(/\b40\b/);
+  });
+
+  it('Wanjiru, the lead, still reads the raw goal, in full', async () => {
+    const got = await text(contextForWithOldGoal(WANJIRU));
+    expect(got).toContain(AN_OLD_GOAL);
+  });
+
+  it('Baraka, a colleague, still reads nothing about it', async () => {
+    const got = await text(contextForWithOldGoal(BARAKA));
+    expect(got).not.toMatch(/scheduling|stock counts/i);
   });
 });
