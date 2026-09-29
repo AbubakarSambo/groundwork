@@ -66,3 +66,17 @@ export function readSuggestionThresholds(stored: unknown): SuggestionThresholds 
 export function thresholdFor(thresholds: SuggestionThresholds | null | undefined, verdict: Verdict): AThreshold | null {
   return thresholds?.[verdict] ?? null;
 }
+
+/**
+ * Strict validation for the admin write path. `readSuggestionThresholds` is deliberately forgiving
+ * (a bad row is read as "nothing set", never a guess); a write is not - an admin who sends the
+ * wrong shape should be told so in a plain sentence, not have it silently dropped.
+ */
+export function isValidSuggestionThresholds(v: unknown): v is SuggestionThresholds {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+  for (const key of Object.keys(v as Record<string, unknown>)) {
+    if (!(VERDICTS as readonly string[]).includes(key)) return false;
+    if (!isAThreshold((v as Record<string, unknown>)[key])) return false;
+  }
+  return true;
+}
