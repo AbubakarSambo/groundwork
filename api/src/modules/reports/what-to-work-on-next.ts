@@ -358,7 +358,7 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
       aboutYou,
       /* Says where it comes from: the same shape came up in N of their own sessions. "Read across 3 sessions"
          read as a verdict handed down rather than a count of their own record (20 Sep 2026). */
-      showingUp: `${plain.name}. This came up in ${recurring.periodsObserved} of your sessions, not once.`,
+      showingUp: `${plain.name}. This came up in ${recurring.periodsObserved} of your check-ins, not just once.`,
       /* The map is CONTEXT for how this is said, not a sentence in it. See the service, which hands
          the map to the wording pass as context; the engine's claim is the stage and the recurrence. */
       whyItMatters: `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,
