@@ -16,8 +16,8 @@ describe('each line, and how it is known', () => {
       { type: 'OUTCOME', text: 'The budget sheet is signed', recallBased: false, anchoredDocumentId: 'd2', anchoredOrigin: null },
     ])!;
     expect(card.inYourRecord).toEqual([
-      { says: 'Green Mart has a quote', how: HOW.photo, mark: 'proven' },
-      { says: 'The budget sheet is signed', how: HOW.document, mark: 'proven' },
+      { says: 'Green Mart has a quote.', how: HOW.photo, mark: 'proven' },
+      { says: 'The budget sheet is signed.', how: HOW.document, mark: 'proven' },
     ]);
     expect(card.next).toBeUndefined();
   });
@@ -34,7 +34,7 @@ describe('each line, and how it is known', () => {
 
   it('a commitment is their word, and says it will be asked about', () => {
     const card = theEndCard([{ type: 'COMMITMENT', text: "I'll visit Westgate Deli on Friday", recallBased: true }])!;
-    expect(card.inYourRecord).toEqual([{ says: "I'll visit Westgate Deli on Friday", how: 'You said you will do this. I will ask you how it went.', mark: 'said' }]);
+    expect(card.inYourRecord).toEqual([{ says: "I'll visit Westgate Deli on Friday.", how: 'You said you will do this. I will ask you how it went.', mark: 'said' }]);
     /* A commitment is not proven by a document today; it is asked about next time. */
     expect(card.next).toBeUndefined();
   });
@@ -56,13 +56,34 @@ describe('each line, and how it is known', () => {
 
   it('anything else is their word, and says what would prove it', () => {
     const card = theEndCard([{ type: 'OUTCOME', text: 'Green Mart will buy in January', recallBased: true }])!;
-    expect(card.inYourRecord).toEqual([{ says: 'Green Mart will buy in January', how: 'You said this.', mark: 'said' }]);
+    expect(card.inYourRecord).toEqual([{ says: 'Green Mart will buy in January.', how: 'You said this.', mark: 'said' }]);
     expect(card.next).toEqual([WHAT_WOULD_MAKE_IT_PROVEN]);
   });
 
-  it('keeps their words exactly as recorded', () => {
+  /* Changed with the reviewer's read (task 2.7): a line now ends as a sentence, so the one change to
+     their words is the full stop at the end. */
+  it('keeps their words exactly as recorded, ending as a sentence', () => {
     const text = 'Harbor Foods paid on the 3rd, "finally", after two reminders';
-    expect(theEndCard([{ type: 'OUTCOME', text, recallBased: true }])!.inYourRecord![0].says).toBe(text);
+    expect(theEndCard([{ type: 'OUTCOME', text, recallBased: true }])!.inYourRecord![0].says).toBe(`${text}.`);
+    expect(theEndCard([{ type: 'OUTCOME', text: `${text}.`, recallBased: true }])!.inYourRecord![0].says).toBe(`${text}.`);
+  });
+
+  it("never carries the engine's own notes, and starts with a capital letter (the reviewer's strings)", () => {
+    const card = theEndCard([
+      { type: 'TENSION', text: "I haven't had that conversation with Tobi yet. [INFERRED: about him taking over the scheduling]", recallBased: true },
+      { type: 'OUTCOME', text: 'six facilities approved', recallBased: true },
+      { type: 'OUTCOME', text: 'Nobody has said [what I am supposed to have learned by when]', recallBased: true },
+      /* A line that is only a note is not a line at all. */
+      { type: 'OUTCOME', text: '[INFERRED: only a note]', recallBased: true },
+    ])!;
+    const says = card.inYourRecord!.map((l) => l.says);
+    expect(says).toEqual([
+      "I haven't had that conversation with Tobi yet.",
+      'Six facilities approved.',
+      'Nobody has said.',
+    ]);
+    for (const s of says) expect(s).not.toMatch(/\[INFERRED/);
+    for (const s of says) expect(s).toMatch(/^[A-Z].*[.!?]$/);
   });
 });
 
@@ -131,7 +152,7 @@ describe('at the closing reply', () => {
     const service = aService(prisma, anthropic);
     service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
     const card = await service.theEndCardFor({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9');
-    expect(card.inYourRecord[0]).toEqual({ says: 'Green Mart will buy in January', how: HOW.photo, mark: 'proven' });
+    expect(card.inYourRecord[0]).toEqual({ says: 'Green Mart will buy in January.', how: HOW.photo, mark: 'proven' });
     const kept = prisma.conversationTurn.update.mock.calls[0][0].data.recordDraft;
     expect(kept[0]).toMatchObject({ recallBased: false, anchoredDocumentId: 'doc-1' });
   });
@@ -244,7 +265,7 @@ describe('when they finish', () => {
     expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: reread });
     const replaced = prisma.conversationTurn.update.mock.calls[0][0];
     expect(replaced.where).toEqual({ id: 'turn-9' });
-    expect(replaced.data.endCard.inYourRecord.map((l: any) => l.says)).toEqual(["I'll visit Westgate Deli on Friday"]);
+    expect(replaced.data.endCard.inYourRecord.map((l: any) => l.says)).toEqual(["I'll visit Westgate Deli on Friday."]);
     expect(card).toEqual(replaced.data.endCard);
   });
 

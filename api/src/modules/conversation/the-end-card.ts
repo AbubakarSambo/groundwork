@@ -1,4 +1,5 @@
 import { howALineIsKnown } from '../reports/how-a-line-is-known';
+import { cleanText } from '../reports/what-the-record-actually-holds';
 
 /**
  * THE END OF A CHECK-IN: WHAT IS NOW IN YOUR RECORD, AND WHAT WOULD CHANGE IT (task 2.7, screens
@@ -70,11 +71,24 @@ function markFor(line: ALineForTheCard): { mark: EndCardMark; how: string } {
   return { mark, how: line.type === 'COMMITMENT' ? HOW.commitment : HOW.said };
 }
 
+/**
+ * THE LINE AS A PERSON READS IT. The engine's own notes come off, the way every report takes them
+ * off (cleanText): the reviewer read "I haven't had that conversation with Tobi yet. [INFERRED: about
+ * him taking over the scheduling]" on a card. Then it starts with a capital letter and ends as a
+ * sentence. Their words are otherwise left exactly as recorded.
+ */
+export function asTheyReadIt(text: string): string {
+  const clean = cleanText(String(text ?? '')).replace(/\s+/g, ' ').trim();
+  if (!clean) return '';
+  const capital = clean.charAt(0).toUpperCase() + clean.slice(1);
+  return /[.!?…]["'”’)]*$/.test(capital) ? capital : `${capital}.`;
+}
+
 export function theEndCard(lines: readonly ALineForTheCard[]): EndCard | null {
   const shown = (lines ?? [])
-    .filter((l) => !l.disputedAt && (l.text ?? '').trim())
+    .filter((l) => !l.disputedAt && asTheyReadIt(l.text))
     .slice(0, AT_MOST)
-    .map((l) => ({ says: l.text.trim(), ...markFor(l), type: l.type }));
+    .map((l) => ({ says: asTheyReadIt(l.text), ...markFor(l), type: l.type }));
   if (!shown.length) return null;
   /* What would change a line: something written, for a line that is only their word or memory. A
      commitment is not proven by a document now; it is asked about next time. */
