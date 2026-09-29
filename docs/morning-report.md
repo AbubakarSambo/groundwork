@@ -42,7 +42,15 @@ Nothing reaches the record before the person presses finish. When they do, exact
 
 **Run-17** is running on this build, to check that no engine-value number drops now that the record is written from the card.
 
-**Next:** week 6b, the same four marks on the lines of the reports.
+**Week 6b, the marks on the reports** (`dafcfea1`, `1dbb26b6`). Every line in the session report's sections now carries its mark. So does each line of "what each person said they did", as a list beside the lines. The end card and the reports use one rule, so a line reads the same on both.
+
+Reading a real report found one thing, which I fixed. The lead's workplan had made a participant's "The build is on track for the 14th" and "I am waiting on legal" read as proven, because the plan mentions the 14th. A plan is not proof, so a line is now proven only by a document the person added themselves.
+
+Tests: 2,222 in reports and board, and 4,677 across reports, board and conversation, all pass.
+
+**Needs Hafsah: the stages of a deal.** The prototype's team report shows, under "What moved", each deal with its stages marked: Contacted, Need, Pitched, Qualified, Quoted ("Ringed is someone's word; filled is proven"). The engine has no idea of stages or deals anywhere. Nothing says where an organisation's stage names come from: the lead's rules in Context, a template, or something the lead sets. Until you decide, I have left `stages` out (screens requests 2 and 7c). The screens draw nothing when it is missing.
+
+**Next:** week 9, commitments kept and missed. There are three places commitments live, and some of this is already built. I am mapping what exists before building anything.
 
 ## 28 SEPTEMBER, NIGHT: BACK ON THE WEEKLY PLAN
 
