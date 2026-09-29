@@ -21,7 +21,7 @@ import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { ScenariosService } from '../detectors/scenarios.service';
 import { DraftsService } from '../drafts/drafts.service';
 import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
-import { readToDo, toDoProposal, whichToDo, listToDos } from './a-to-do-is-yours';
+import { readToDo, toDoProposal, whichToDo, listToDos, addedToYourToDos } from './a-to-do-is-yours';
 import { whatItTakesToStart } from './what-it-takes-to-start';
 import {
   whichSituation,
@@ -1631,7 +1631,7 @@ export class AssistantService {
     await this.prisma.todo.create({
       data: { organizationId, personExternalId: who, text: payload.text, dueSaid: payload.dueSaid, dueAt: null, source: 'chat' },
     });
-    return rules('add_a_to_do', text(`On your list: ${payload.text}. Say "what is on my list" any time; "done: ${payload.text}" closes it.`));
+    return rules('add_a_to_do', text(addedToYourToDos(payload)));
   }
 
   private async myToDos(organizationId: string, who: string | null): Promise<Reply> {
