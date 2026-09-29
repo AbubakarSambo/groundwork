@@ -10,7 +10,6 @@ import { groundsApi } from '@/api/grounds'
 import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
-import { GroundChat } from '@/components/gw/GroundChat'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Tabs } from '@/components/gw/ui/Tabs'
 import { cadenceLabel } from '@/lib/cadence'
@@ -22,6 +21,7 @@ import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
+import { Composer } from '@/components/gw/GroundChat'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
 import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
@@ -263,6 +263,27 @@ export function GroundParticipantPage() {
     autoOpenFired.current = true
     probeSession.mutate(myOpenForAutoOpen)
   }, [myOpenForAutoOpen, probeSession])
+
+  /**
+   * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION.
+   *
+   * `GroundChat`'s reading-and-hand-off experience is retired from this tab now that its two other
+   * jobs (the session history, "who is in this") have somewhere to live (My work, People and
+   * setup). This page is always somebody's own account (unlike the lead's page, there is no
+   * non-party reader here to say something different to), so opening the Check-in tab with a
+   * session ready goes straight through the unchanged `probeSession` - the paywall flow exactly as
+   * before, just fired by opening the tab rather than by a button inside it.
+   *
+   * No `?open=1` needed here: that flag exists for the HAND-OFF from the other page, which already
+   * lands here with the flag set; opening the tab directly on this page is the same action without
+   * a round trip through the address bar.
+   */
+  useEffect(() => {
+    if (tab !== 'checkin') return
+    if (!myOpenForAutoOpen) return
+    if (probeSession.isPending) return
+    probeSession.mutate(myOpenForAutoOpen)
+  }, [tab, myOpenForAutoOpen, probeSession])
 
   if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-page)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
   /*
@@ -624,30 +645,39 @@ export function GroundParticipantPage() {
         Only the chat. The card views keep the narrow column, because a column is
         what makes a stack of cards readable.
       */}
+      {/**
+        * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION.
+        *
+        * `GroundChat`'s reading-and-hand-off experience is retired from this tab now that its two
+        * other jobs (the session history, "who is in this") have somewhere to live (My work,
+        * People and setup). The effect above (near `myOpenForAutoOpen`) has already sent a party
+        * with a session ready to `/checkin/:id` (through the unchanged paywall-aware
+        * `probeSession`) by the time anybody would see this render; this is only ever seen for the
+        * instant before that navigation lands, or for resting between sessions.
+        *
+        * BETWEEN SESSIONS, THE COMPOSER STAYS - NOT REBUILT. It is not only a status line: it is
+        * where a private note for next time is taken (api/src/modules/conversation/
+        * between-session-notes.ts) and, for whoever runs the check-in, the "Change how often this
+        * runs" link. Losing either while retiring the reading half above it would be exactly the
+        * kind of loss CLAUDE.md rules out, so `Composer` (now exported) is reused here directly,
+        * with `openCheckInId` forced to `null` - `dueNow` already means the redirect above is
+        * about to fire, so this only ever renders Composer's own "nothing to check in" branch.
+        */}
       {tab === 'checkin' && (
-        // GroundChat owns its own reading column and scroll, the same as the
-        // entry chat. Wrapping it in a second centred column fought with that.
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <GroundChat
-            groundId={id!}
-            openCheckInId={dueNow ? openCheckIn.id : null}
-            openSessionNumber={dueNow ? openCheckIn.sessionNumber : null}
-            totalSessions={totalSessions ?? null}
-            nextOpensAt={opensLater ? openAvailableFrom : null}
-            /* Only the person who runs it can change the rhythm, so only they are told they can. */
-            canChangeTheRhythm={isInitiator}
-            onGoToSetup={() => goTab('settings')}
-            onOpenSession={() => dueNow && probeSession.mutate(openCheckIn)}
-            openPending={probeSession.isPending}
-            brief={(ground as any).brief}
-            signals={((ground.signals ?? []) as any[])
-              .filter((sig: any) => sig.observationText)
-              .map((sig: any) => ({
-                label: sig.code?.startsWith('D') ? 'Divergence' : 'Convergence',
-                text: sig.observationText,
-                session: sig.lastPeriodNumber ?? 1,
-              }))}
-          />
+        <div style={{ padding: '4px 2px' }}>
+          {dueNow ? (
+            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening your check-in…</div>
+          ) : (
+            <Composer
+              groundId={id!}
+              openCheckInId={null}
+              openSessionNumber={null}
+              totalSessions={totalSessions ?? null}
+              nextOpensAt={opensLater ? openAvailableFrom : null}
+              canChangeTheRhythm={isInitiator}
+              onGoToSetup={() => goTab('settings')}
+            />
+          )}
         </div>
       )}
 

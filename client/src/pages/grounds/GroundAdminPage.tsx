@@ -10,7 +10,6 @@ import { railAttention } from '@/lib/rail-attention'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
-import { GroundChat } from '@/components/gw/GroundChat'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
@@ -483,6 +482,13 @@ export function GroundAdminPage() {
     : null
   const myOpenAvailableFrom = (myOpenCheckIn as any)?.availableFrom ?? null
   const myOpenOpensLater = !!myOpenAvailableFrom && new Date(myOpenAvailableFrom).getTime() > Date.now()
+  /**
+   * THE SAME TWO VALUES THE COMPOSER (AND, BEFORE ROUND 4, GroundChat) READ FOR "OPENS ON" - see
+   * nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check,
+   * and the Check-in tab's own redirect below, which uses `myOpenCheckInId` the same way.
+   */
+  const myOpenCheckInId = myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.id : null
+  const myNextOpensAt = myOpenOpensLater ? myOpenAvailableFrom : null
 
   /**
    * "HAFSAH · WAITING", LOWERCASE, IN THE ROSTER. W-UX-4.
@@ -538,6 +544,25 @@ export function GroundAdminPage() {
    * further down for the roster; named here because the tab row asks it too.
    */
   const viewerIsAParty = (ground?.participants ?? []).some((p: any) => p.userId === user?.id)
+
+  /**
+   * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION, FOR A PARTY.
+   *
+   * `GroundChat`'s reading-and-hand-off experience is retired from this tab now that its two other
+   * jobs (the session history, "who is in this") have somewhere to live (My work, People and
+   * setup). A lead who is also a party is a real participant with her own check-in to answer - the
+   * commonest case - so her Check-in tab goes straight to it: `/checkin/:id` when today's session
+   * is already open, or the unchanged `?open=1` hand-off when it needs `probeSession`'s paywall
+   * check first (GroundParticipantPage.tsx owns that flow; this does not duplicate it).
+   *
+   * A `useEffect`, not a render-time `<Navigate>`, so this follows the same pattern the other
+   * effect in this file (below) uses, and placed here - before every early return - so the hook
+   * count cannot change between renders (rules of hooks), the same reason `showAsk` moved up top.
+   */
+  useEffect(() => {
+    if (tab !== 'chat' || !viewerIsAParty) return
+    navigate(myOpenCheckInId ? `/checkin/${myOpenCheckInId}` : `/grounds/${id}/p?open=1`, { replace: true })
+  }, [tab, viewerIsAParty, myOpenCheckInId, id, navigate])
 
   /**
    * A LEAD'S OWN RECORD, FETCHED ONLY WHEN THEY ARE IN THE CHECK-IN.
@@ -1314,14 +1339,9 @@ export function GroundAdminPage() {
     check-in, so it is not one of them.
   */
   const whoIsInThisPeersHidden = (ground as any).peersVisibleEffective === false && !canRunThisGround
-  /*
-    NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12.
-
-    The same two values the composer (and GroundChat, before this moved) reads for "opens on" -
-    see nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check.
-  */
-  const myOpenCheckInId = myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.id : null
-  const myNextOpensAt = myOpenOpensLater ? myOpenAvailableFrom : null
+  /* NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12. `myOpenCheckInId`/`myNextOpensAt`
+     computed once, above, near myOpenCheckIn/myOpenOpensLater - see
+     nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check. */
   const whoIsInThisNotOpenYet = !myOpenCheckInId && !!myNextOpensAt
   const whoIsInThisLeadName = (() => {
     const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
@@ -1679,86 +1699,34 @@ export function GroundAdminPage() {
         )}
 
         {/* CHECK-INS */}
+        {/**
+          * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION, FOR A PARTY.
+          *
+          * For a party the `useEffect` above (right after `viewerIsAParty`) has already sent her
+          * to `/checkin/:id` or the `?open=1` hand-off by the time anybody would see this render -
+          * this is only ever seen for the instant before that navigation lands. For a lead or org
+          * admin who is NOT a party, there is no check-in of theirs to answer: `GroundChat`'s
+          * read-only history used to stand in for that; it is retired now that the history it drew
+          * lives on My work and the roster it drew lives on People and setup, so this says plainly
+          * that this reader does not answer the check-in, and links to the board instead.
+          */}
         {tab === 'chat' && (
-          // The same component the participant view mounts, so there is one chat in the
-          // product rather than a lead's version of one. A lead is not checking in here -
-          // this is the ground's history, which is what they came to read.
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <GroundChat
-              groundId={id!}
-              /**
-               * THE WAY TO CHECK IN CAME OFF THE PAGE, AND THE GATE CAUGHT IT. W8-76.
-               *
-               * I made Chat the landing tab and passed `openCheckInId={null}`, so a lead who
-               * is also a party - the commonest kind - opened their ground and had no way to
-               * start their own check-in from the tab they land on. suite_m failed on exactly
-               * that: "the next-check-in affordance EXISTS on the ground page (hard - absence
-               * is a failure, not a shrug)". It was right.
-               *
-               * WHY THE BUTTON HANDS OFF INSTEAD OF OPENING. Starting a check-in goes through
-               * `probeSession`, which carries the paywall: a 403 becomes the free-extension /
-               * access-code / subscribe modal. That lives on the participant page, and
-               * copying it here would be a second copy of the payment path - the thing this
-               * plan already records nearly losing once. So the button hands off with
-               * `?open=1` and that page fires its own probe immediately: one click, one
-               * implementation of the paywall.
-               */
-              openCheckInId={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.id : null}
-              openSessionNumber={myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.sessionNumber : null}
-              totalSessions={plannedSessions ?? null}
-              nextOpensAt={myOpenOpensLater ? myOpenAvailableFrom : null}
-              /* Only the person who runs it can change the rhythm, so only they are told they can. */
-              canChangeTheRhythm={true}
-              onGoToSetup={() => goTab('settings' as Tab)}
-              onOpenSession={() => navigate(`/grounds/${id}/p?open=1`)}
-              openPending={false}
-              /**
-                * HER POINT, AND IT IS THE COMMON CASE: "what if sets themselves as
-                * checkin in too, they need a chat".
-                *
-                * Step 6 of setup offers "I am a party. Let's begin." A lead who takes it
-                * is a participant with their own check-ins, and they must get the real
-                * conversation - not a read-only history of a ground they are in. So this
-                * keys on whether they are actually a party, not on whether they are the
-                * lead. Lead who is a party: the chat. Lead or org admin who is not: the
-                * ground's history, because there is no transcript of theirs to show and
-                * somebody else's is not theirs to read.
-                */
-              viewerIsParty={(ground.participants ?? []).some((p: any) => p.userId === user?.id)}
-              history={[...(ground.checkIns ?? [])]
-                .reduce((acc: any[], ci: any) => {
-                  const n = ci.sessionNumber ?? 1
-                  const row = acc.find(r => r.sessionNumber === n)
-                  const who = nameOfParticipant(ci.participantId)
-                  const done = ci.status === 'COMPLETED'
-                  if (row) {
-                    if (done && who && !row.people.includes(who)) row.people.push(who)
-                    if (ci.completedAt && ci.completedAt > row.date) row.date = ci.completedAt
-                  } else {
-                    acc.push({ sessionNumber: n, date: ci.completedAt ?? ci.createdAt ?? '', people: done && who ? [who] : [] })
-                  }
-                  return acc
-                }, [])
-                .sort((a: any, b: any) => a.sessionNumber - b.sessionNumber)}
-              /*
-                U.10 PICTURE-CHECK ROUND 7, ITEM 4: WHAT EVERYONE READS, NOT THE LEAD'S OWN
-                COMPOSED WORDS. This passed the raw setup brief ("When asked who is part of this,
-                the answer was taken to mean this. Me, Baraka, and Neema. …") - the lead's own
-                working text - which ContextPage.tsx already stopped showing for exactly this
-                reason (U.7 review): it is not what the check-in actually tells people. `briefAsEveryoneReadsIt`
-                is the short read Groundwork writes from it, the same text ContextPage's
-                `whatEveryoneReads` prefers; falling back to the raw brief only when there is no
-                such read yet, same as there.
-              */
-              brief={(ground as any).briefAsEveryoneReadsIt ?? (ground as any).brief}
-              signals={((ground as any).signals ?? [])
-                .filter((sig: any) => sig.observationText)
-                .map((sig: any) => ({
-                  label: sig.code?.startsWith('D') ? 'Divergence' : 'Convergence',
-                  text: sig.observationText,
-                  session: sig.lastPeriodNumber ?? 1,
-                }))}
-            />
+          <div style={{ padding: '4px 2px' }}>
+            {viewerIsAParty ? (
+              <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening your check-in…</div>
+            ) : (
+              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px' }}>
+                <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 10px' }}>
+                  You do not answer this check-in yourself. The board shows what has come from it so far.
+                </p>
+                <Link
+                  to={`/grounds/${id}/board`}
+                  style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}
+                >
+                  Go to the board
+                </Link>
+              </div>
+            )}
           </div>
         )}
 

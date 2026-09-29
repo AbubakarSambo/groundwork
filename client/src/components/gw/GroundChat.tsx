@@ -249,7 +249,7 @@ export function Message({ role, content }: { role: 'AI' | 'PERSON'; content: str
  * something to be ASKED about, never as part of the record. See
  * api/src/modules/conversation/between-session-notes.ts.
  */
-function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt,
+export function Composer({ groundId, openCheckInId, openSessionNumber, totalSessions, nextOpensAt,
   canChangeTheRhythm, onGoToSetup, onOpenSession, openPending }: {
   groundId: string
   openCheckInId: string | null

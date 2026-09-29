@@ -36,7 +36,13 @@ describe('waiting for the next session', () => {
   it('and only to somebody who can actually change it', () => {
     /* A party cannot, and offering them a control that refuses is worse than saying nothing. */
     expect(CHAT).toContain('canChangeTheRhythm && onGoToSetup');
-    expect(LEAD).toContain('canChangeTheRhythm={true}');
+    /**
+     * client round 4, item A step 3: the lead's Check-in tab no longer mounts Composer directly -
+     * a party (which is who this control is ever offered to at all; see `isInitiator` on the
+     * party side below) is sent straight to /grounds/:id/p?open=1, and IT mounts Composer with
+     * `canChangeTheRhythm={isInitiator}`. Reading her own rhythm control now goes through that
+     * page, same as opening her check-in does - one implementation, not two.
+     */
     expect(PARTY).toContain('canChangeTheRhythm={isInitiator}');
   });
 

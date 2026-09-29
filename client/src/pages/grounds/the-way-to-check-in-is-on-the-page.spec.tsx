@@ -32,7 +32,12 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\
 
 describe('the lead who is a party can start their check-in', () => {
   it('the check-in page passes its own open check-in, not null', () => {
-    expect(strip(ADMIN)).toMatch(/openCheckInId=\{myOpenCheckIn && !myOpenOpensLater \? myOpenCheckIn\.id : null\}/)
+    /**
+     * ROUND 4, ITEM A STEP 3: NOW A NAMED CONST, READ BY THE REDIRECT, NOT A JSX PROP TO
+     * GroundChat. Same computation, computed once (also used by "who is in this"'s
+     * `notOpenYet`), rather than inlined three times.
+     */
+    expect(strip(ADMIN)).toMatch(/const myOpenCheckInId = myOpenCheckIn && !myOpenOpensLater \? myOpenCheckIn\.id : null/)
   })
 
   it('and it is narrowed to THEIR check-in, since a check-in is per person per session', () => {
@@ -57,7 +62,12 @@ describe('the button says what the rest of the product says', () => {
 
 describe('the handoff, and the payment path it protects', () => {
   it('the check-in page hands off rather than opening the session itself', () => {
-    expect(strip(ADMIN)).toMatch(/navigate\(`\/grounds\/\$\{id\}\/p\?open=1`\)/)
+    /**
+     * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB REDIRECTS RATHER THAN OFFERING A BUTTON.
+     * When there is no open session to go straight to, it is still the same `?open=1` hand-off
+     * as before - now the tab's own destination when landed on, rather than a button's `onClick`.
+     */
+    expect(strip(ADMIN)).toMatch(/navigate\(myOpenCheckInId \? `\/checkin\/\$\{myOpenCheckInId\}` : `\/grounds\/\$\{id\}\/p\?open=1`, \{ replace: true \}\)/)
   })
 
   it('the check-in page does not grow its own copy of the paywall', () => {

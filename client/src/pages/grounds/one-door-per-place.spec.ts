@@ -72,13 +72,16 @@ describe('but only once', () => {
    * though the header itself is now the second on-page way to reach it (tab row, and the Report
    * tab's own row) rather than the pill this test was written to keep out.
    */
-  it('nothing OUTSIDE the tab row and the Report tab links to the board', () => {
+  it('nothing OUTSIDE the tab row, the Report tab and the non-party Check-in message links to the board', () => {
     /**
      * The tripwire is now the COUNT OF a tab-row/header-unrelated forms - the pill this test was
      * written to keep out ("Team board →") - not the plain existence of the route string, which
-     * now appears once in the header's own tab list and once in the Report tab's row.
+     * now appears once in the header's own tab list, once in the Report tab's row, and (round 4,
+     * item A step 3) once more in the Check-in tab's own message to a lead who is not a party -
+     * the one reader for whom the Check-in tab would otherwise have nothing to offer, and for whom
+     * "go read the board instead" is exactly the right door, not a stray second entrance to it.
      */
-    expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(2)
+    expect((ADMIN.match(/\/board`/g) ?? [])).toHaveLength(3)
     /* The prop, its type and its one use. What matters is that the component renders ONE button. */
     expect((LIST.match(/\{EVERY_SESSION\.board\}/g) ?? [])).toHaveLength(1)
     expect(ADMIN).not.toContain('Team board →')
