@@ -5761,3 +5761,97 @@ tests across 23 files. A full client suite run has one remaining failure, the ou
 - **For U.19 (billing): the head count on the People page.** **Done in U.19** (item 30.5). "27 people, on the Growth plan…" comes
   from billing's seat count, which still counts accounts by the organisation they last looked at. The
   People list now counts real memberships, including guests, so the two numbers can differ.
+
+## Rebuilt from the parts: the check-in page and chat
+
+**Item 1, the tabs — DONE.** The lead's page had seven tabs (Check-in, Report, Sessions, My record,
+Context, Setup, plus Board) and a participant's had six; folded to the prototype's exact five —
+Board, Check-in, Context, My work, People and setup — on both `/grounds/:id` (`GroundAdminPage.tsx`)
+and `/grounds/:id/p` (`GroundParticipantPage.tsx`), drawn by `components/gw/ui/CheckInHeader.tsx`
+and `components/gw/ui/Tabs.tsx` (not the old `components/gw/TheCheckInHeader.tsx`, which stays in
+place only because `BoardPage.tsx`, `SessionReportPage.tsx` and `RoundReportPage.tsx` — out of this
+task's scope — still use it). `CheckInHeader` gained an optional `tabs`/`onSelectTab` override so a
+page can keep its own `?tab=` query-based state instead of the fixed href list, without a second
+component.
+
+Moves, exactly as asked:
+- **Report** → inside **My work**, as a sub-tab ("Report"), for both readers.
+- **Sessions** → inside **My work**, as a sub-tab ("Sessions"), lead only.
+- **What I shared** (the participant's own record; the lead's page calls the same content "My
+  record") → inside **My work**, as a sub-tab ("What I shared"), for whoever is a party.
+- **Setup** → relabelled **People and setup** (unfolded; it was already its own tab). Content
+  unchanged.
+
+The sub-tab row (a second `Tabs`) appears only while one of these three is open, built from the
+same content blocks that existed before (`tab === 'report' | 'checkins' | 'myrecord'` on the lead's
+page, `tab === 'report' | 'record'` on a participant's) — nothing inside them was rewritten, only
+re-parented under "My work". `ground-tabs.ts`'s own `groundTabs()` function is untouched, and so is
+its whole test suite (`one-name-means-one-thing.spec.ts`, `nobody-loses-and-nobody-gains.spec.ts`,
+`one-door-per-place.spec.ts`, `the-lead-sees-the-ground-not-a-blank.spec.tsx`,
+`a-tab-can-be-linked-to.spec.ts`): it still backs the `FROM_TAB_KEY`/`TO_TAB_KEY` translation each
+page uses to keep `?tab=` links working (`?tab=sessions`, `?tab=record`, `?tab=report` all still
+land inside My work on the right sub-tab), so old links do not break.
+
+The participant's beige band under the header is gone: its header used to sit in its own
+`position: sticky` wrapper on `var(--gw-paper-2)`; it now sits in the same non-sticky
+`maxWidth: 1060, margin: '0 auto'` column as the lead's page, on the page's own background.
+
+**Tests changed, and why:**
+- `a-tab-click-lands-on-that-tab.spec.tsx` — rewritten (as asked) to click `components/gw/ui/Tabs`
+  directly, the same way it used to click the now-deleted `GroundTabRow`, plus a source check that
+  both pages render `<CheckInHeader>` (never `<TheCheckInHeader>`) with the same five keys in the
+  prototype's order.
+- `GroundAdminPage.boardTab.spec.tsx`, `GroundAdminPage.checkinsLabel.spec.tsx`,
+  `GroundAdminPage.notJoinedSentence.spec.tsx`, `the-sessions-notice-says-what-is-true.spec.tsx`,
+  `no-label-is-the-leads-note.spec.tsx` — each opens "My work" before clicking "Sessions", "Report"
+  or the record sub-tab, since those are no longer top-level tabs. The behaviour each test protects
+  (BUG7's per-person rows, the not-joined sentence, the report's release notice, the lead's note
+  never appearing as a name) is unchanged; only the click path to reach the content moved.
+- `one-word-for-one-screen.spec.ts` — one assertion updated. It used to check that neither page
+  typed its own copy of `groundTabs()`'s labels; now the outer five are the prototype's own fixed
+  set, drawn by `CheckInHeader.tsx` rather than read from `groundTabs()` at all, so the check moved
+  to: both pages render `<CheckInHeader>`, the "My work" sub-tab labels (Report, Sessions, What I
+  shared) still match `groundTabs()`'s own words, and — since `{ key: 'checkin', label: 'Check-in' }`
+  is now the prototype's fixed pair rather than a private redefinition either page could drift from
+  — both pages are asserted to agree on it, not to omit it.
+
+**Removed:** `components/gw/GroundTabRow.tsx` (`git rm`; orphaned once the spec above stopped
+importing it — `nothing-is-left-behind.spec.ts` passes).
+
+`npx tsc -b` (client) is clean. 578/578 client tests pass under `src/pages/grounds/`,
+`src/components/gw/ui/` and `src/components/nothing-is-left-behind.spec.ts`; the two unrelated,
+pre-existing sidebar failures (`jump-to.spec.tsx`,
+`the-sidebar-waits-for-the-list.spec.tsx` — jsdom "Not implemented: navigation to another Document")
+reproduce identically on a clean checkout. The eight API specs that read `GroundAdminPage.tsx` /
+`GroundParticipantPage.tsx` by name (64 tests) pass unchanged.
+
+**Items 2 and 3 — NOT DONE**, and here is exactly what is already there to build from, so the next
+pass does not start from zero:
+
+- The prototype's focused conversation page (item 2) **already exists** at `/checkin/:checkInId`
+  (`pages/chat/ChatPage.tsx`), built in U.8: no tabs, `components/gw/checkin/TheCheckInHeader.tsx`
+  (the name, "About two minutes"-shaped line, Pause), `SuggestedAnswers.tsx`, `TheEndCard.tsx` and
+  `TheDonePage.tsx` are all already built and wired, with Pause's two choices, the +, the finish
+  flow, the slow-open line and the thin-record refusal already implemented per U.8's own review.
+  What is missing is (a) extracting the bubbles/composer/quick-replies out of `ChatPage.tsx`'s
+  inline styles into `components/gw/ui` parts with their own tests, matching this task's
+  instruction, and (b) making the tabbed pages' "Check-in" tab a real link to `/checkin/:id`
+  instead of rendering `GroundChat.tsx` (today's long every-transcript page) inline — which is the
+  one piece item 1 deliberately left alone, since item 1's brief was the tab bar, not what each tab
+  shows. `GroundChat.tsx`'s history-of-past-sessions view still needs to move under My work
+  (a session list, not the live conversation), and "Who is in this" still needs to move from
+  `GroundChat.tsx` to People and setup, as item 2 specifies.
+- Item 3 (Done and Between-check-ins as their own pages) has no start yet; `TheDonePage.tsx` above
+  covers much of Done's content already, but "between check-ins" has nothing built.
+- Neither `ChatPage.tsx` nor a Done/Between page is in `REBUILT_PAGES` yet — correctly: none is
+  guard-compliant (no inline size/colour/spacing) today. `GroundAdminPage.tsx`/
+  `GroundParticipantPage.tsx` are deliberately NOT added either: item 1 only changed their tab bar,
+  the rest of both files is still full of inline styles, so they fail the guard and do not belong
+  in the list until (if ever) they are rebuilt properly.
+
+Given the size of items 2 and 3 (a ~1600-line page to extract into shared parts without losing any
+of U.8's fixed behaviour, plus two new pages), and this session's scope, they were not attempted
+beyond the reconnaissance above, to avoid shipping a half-verified rewrite of a page with this many
+privacy- and behaviour-sensitive edge cases. Recommend the next pass start with (b) above (wiring
+the Check-in tab to the existing `/checkin/:id` route) before extracting parts, since that alone
+finishes the navigational half of item 2 with very low risk.
