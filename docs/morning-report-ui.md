@@ -306,6 +306,11 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **29 September, later: build the screens much faster.**
+  1. The API tests are not run for screen-only changes. They run only after merging the engine's work, or when an API file changed.
+  2. Screens are built in groups (for example all the people screens). For each screen, only my own 1440-pixel picture check against the prototype and the privacy tests. The full screen suite, the page-colour test and the reviewer run once, at the end of each group.
+  3. When a screen is rebuilt from the shared parts, tests that only checked how the old code was written may be removed, and are listed in the report. Every test of what a screen does, and every privacy test, stays.
+  4. Sonnet 5 for the builder, Opus 5.5 for the reviewer. One helper at a time, and a helper never starts helpers of its own.
 - **29 September: one chat, Ask Groundwork, for everything, and the Context module after the people screens.**
   1. There is no separate context chat. Ask Groundwork becomes the one chat for everything: questions, telling Groundwork how the team works, the lead's setup things, and adding documents. The engine workspace is moving the context chat's work into Ask Groundwork and proving every piece first. The old context chat screen keeps working until the engine says in `docs/answers-from-engine.md` that every item is proven. Only then is it removed.
   2. In Ask Groundwork, people can add documents and see what Groundwork pulled out of them (targets and context), to confirm before it is saved, the same as the context chat does today. It is built from the engine's answer and checked live before the reviewer: the same documents added through the old context chat and through Ask Groundwork must end in the same saved targets and context.
