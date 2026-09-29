@@ -87,7 +87,7 @@ import { withoutOtherPeoplesReads } from './own-reads-only';
 import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-label';
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
 import { linesBuiltAtTheRead } from './a-line-built-at-the-read-is-read-too';
-import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
+import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom, theRecordAQuoteMayComeFromByParticipant } from './a-quote-built-at-the-read';
 import { whatTodayReads } from './what-today-reads-from-the-record';
 import { theSameThingForTheLead } from '../board/the-same-thing-read-from-the-record';
 import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRewrite, THE_LINES_REWRITTEN, theRewritesById } from './every-line-is-read-before-it-is-kept';
@@ -95,7 +95,7 @@ import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-labe
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
 import { viewerIsTheSubjectOfAnEvaluationCheckIn } from './is-this-an-evaluation-check-in';
-import { whatEachPersonSaidForTheSubject } from './colleagues-exact-words-stay-with-the-manager';
+import { whatEachPersonSaidForTheSubject, deeplyWithoutColleaguesQuotesForTheSubject } from './colleagues-exact-words-stay-with-the-manager';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -6480,6 +6480,34 @@ happened, and what is in the way.`;
        */
       if ('theJudgement' in base) {
         base.theJudgement = deeplyWithoutTheLeadsDescriptionOfAnyone(base.theJudgement, theDescriptions, false, shareable);
+      }
+    }
+    /*
+     * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: a quote of a colleague's words in the TEAM
+     * report - sharedPicture, theOpening, findings[].text, agreements, and anywhere else this is
+     * served as prose - becomes a statement of the fact without the exact words, for the subject of
+     * an evaluation check-in only. Every quote here is already known to be somebody's own words
+     * (a-quote-is-what-they-said runs before this is ever stored, and a-quote-built-at-the-read for
+     * what is built now); this only decides whose, using the same matching rule
+     * (theRecordAQuoteMayComeFromByParticipant), and fails closed - a quote is left alone only
+     * where it positively matches the SUBJECT's own record. A no-op for the lead, an admin (both
+     * count as `isLead` here, same as everywhere else in this method) and a colleague giving a view.
+     */
+    if (viewerIsTheSubjectOfAnEvaluationCheckIn({
+      scenario: (ground as any).scenario,
+      isLead: isInitiator || isOrgAdmin,
+      viewerParticipantId: participant?.id ?? null,
+      participants: ground.participants as any,
+    })) {
+      const recordByParticipant = await theRecordAQuoteMayComeFromByParticipant(this.prisma as any, groundId).catch(() => new Map<string, string[]>());
+      const subjectRecord = recordByParticipant.get(participant!.id) ?? [];
+      base.sharedPicture = deeplyWithoutColleaguesQuotesForTheSubject(base.sharedPicture, subjectRecord);
+      base.theOpening = deeplyWithoutColleaguesQuotesForTheSubject(base.theOpening, subjectRecord);
+      base.agreements = deeplyWithoutColleaguesQuotesForTheSubject(base.agreements, subjectRecord);
+      if (Array.isArray(base.findings)) {
+        base.findings = base.findings.map((f: any) => (f && typeof f === 'object'
+          ? { ...f, text: deeplyWithoutColleaguesQuotesForTheSubject(f.text, subjectRecord) ?? '' }
+          : f));
       }
     }
     if (!isInitiator && !isOrgAdmin) {

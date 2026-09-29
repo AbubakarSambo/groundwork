@@ -1,5 +1,5 @@
 import { isEvaluationCheckIn, theSubjectOfAnEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from './is-this-an-evaluation-check-in';
-import { whatEachPersonSaidForTheSubject, whoOwnsWhatForTheSubject, divergenceForTheSubject } from './colleagues-exact-words-stay-with-the-manager';
+import { whatEachPersonSaidForTheSubject, whoOwnsWhatForTheSubject, divergenceForTheSubject, withoutColleaguesQuotesForTheSubject, deeplyWithoutColleaguesQuotesForTheSubject } from './colleagues-exact-words-stay-with-the-manager';
 
 /**
  * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being reviewed
@@ -173,5 +173,61 @@ describe('divergenceForTheSubject: a colleague\'s account of where they stand lo
     const items = [{ topic: 't', positions: [{ who: 'A colleague', view: 'Says something specific.' }] }];
     const out = divergenceForTheSubject(items);
     expect(out[0].positions[0].view).toContain('not shown to you here');
+  });
+});
+
+describe('withoutColleaguesQuotesForTheSubject: a quote of a colleague\'s words becomes a fact; the subject\'s own quote stays', () => {
+  const subjectRecord = ['Closed 14 support tickets this week and started the new onboarding flow.'];
+
+  it('leaves the subject\'s own quote untouched, character for character', () => {
+    const text = 'Ade says "Closed 14 support tickets this week and started the new onboarding flow."';
+    expect(withoutColleaguesQuotesForTheSubject(text, subjectRecord)).toBe(text);
+  });
+
+  it('takes the quoted passage out of a colleague\'s sentence, replacing the sentence where nothing sensible is left', () => {
+    const text = 'Chidi says "Ade has been slow to answer two escalations, and I had to step in on the Kessler account."';
+    const out = withoutColleaguesQuotesForTheSubject(text, subjectRecord);
+    expect(out).not.toContain('Kessler');
+    expect(out).not.toContain('escalations');
+    expect(out).toContain('A colleague described this differently.');
+  });
+
+  it('keeps a colleague\'s quote out and the subject\'s own quote in, in the same passage', () => {
+    const text = 'Ade says "Closed 14 support tickets this week and started the new onboarding flow." Chidi says "Ade has been slow to answer two escalations, and I had to step in on the Kessler account." Both accounts describe the same week.';
+    const out = withoutColleaguesQuotesForTheSubject(text, subjectRecord);
+    expect(out).toContain('Closed 14 support tickets this week and started the new onboarding flow.');
+    expect(out).not.toContain('Kessler');
+    expect(out).toContain('Both accounts describe the same week.');
+  });
+
+  it('is a no-op on text with no quotes at all', () => {
+    const text = 'Nothing quoted here, just a plain sentence.';
+    expect(withoutColleaguesQuotesForTheSubject(text, subjectRecord)).toBe(text);
+  });
+
+  it('fails closed: a quote that matches nobody\'s given record is still taken out, not left in', () => {
+    const text = 'Somebody says "a phrase that matches no record line at all."';
+    const out = withoutColleaguesQuotesForTheSubject(text, []);
+    expect(out).not.toContain('matches no record line');
+  });
+});
+
+describe('deeplyWithoutColleaguesQuotesForTheSubject: walks a whole report-shaped value, leaving labels alone', () => {
+  const subjectRecord = ['Closed 14 support tickets this week.'];
+
+  it('walks sharedPicture, theOpening, agreements and findings[].text, never a label field', () => {
+    const value = {
+      sharedPicture: 'Ade says "Closed 14 support tickets this week."',
+      theOpening: 'Chidi says "the Kessler account was a mess this week."',
+      agreements: ['Chidi says "the Kessler account was a mess this week."'],
+      findings: [{ participantId: 'colleague', label: 'Chidi says "the Kessler account was a mess this week."', text: 'Chidi says "the Kessler account was a mess this week."' }],
+    };
+    const out = deeplyWithoutColleaguesQuotesForTheSubject(value, subjectRecord);
+    expect(out.sharedPicture).toContain('Closed 14 support tickets this week.');
+    expect(out.theOpening).not.toContain('Kessler');
+    expect(out.agreements[0]).not.toContain('Kessler');
+    expect(out.findings[0].text).not.toContain('Kessler');
+    /* `label` is not prose - left exactly as given, quote marks and all. */
+    expect(out.findings[0].label).toContain('Kessler');
   });
 });

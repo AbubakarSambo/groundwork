@@ -42,8 +42,117 @@
  * they are for the one reader this ruling is about.
  */
 
+import { quotationsIn, theRecordsWordsFor } from './a-quote-is-what-they-said';
+
 const THE_FACTS_ONLY =
   "A colleague's own words are not shown to you here. What was found, and the decision with its reasons, are below.";
+
+/* A generic, plain sentence for the one case there is no way to keep the rest of a sentence
+   grammatical once a colleague's quoted words come out of it. */
+const A_COLLEAGUE_PUT_IT_DIFFERENTLY = 'A colleague described this differently.';
+
+/** Where a sentence in a served text starts and ends, kept together with its own trailing space. */
+function sentencesOf(text: string): { text: string; start: number; end: number }[] {
+  const out: { text: string; start: number; end: number }[] = [];
+  let at = 0;
+  for (const m of text.matchAll(/[.!?]["”’)\]]*(?:\s+|$)|\n+/g)) {
+    out.push({ text: text.slice(at, m.index! + m[0].length), start: at, end: m.index! + m[0].length });
+    at = m.index! + m[0].length;
+  }
+  if (at < text.length) out.push({ text: text.slice(at), start: at, end: text.length });
+  return out;
+}
+
+/*
+ * A SENTENCE THAT STILL ENDS MID-THOUGHT ONCE THE QUOTED WORDS ARE GONE IS NOT A FINISHED
+ * STATEMENT. Two shapes of dangling word: the reporting verb itself ("Chidi says", "as Chidi put
+ * it"), and the small connective word that usually sits right before a quoted clause ("described it
+ * as", "said that", "called it") - both leave a sentence that reads as cut off rather than replaced.
+ */
+const DANGLES_ON_A_REPORTING_WORD =
+  /\b(?:said|says|saying|stated|explained|described|wrote|added|noted|mentioned|called|put it|according to|as|that|like|whether|because|since|though|if|when)\s*[:,]?$/i;
+
+/**
+ * A QUOTE IN THE TEAM REPORT (`sharedPicture`, `theOpening`, `findings[].text`, `agreements`, and
+ * anywhere else a participant is served prose), FOR THE SUBJECT.
+ *
+ * Every quote a person is served is already the record's exact words - `a-quote-is-what-they-said`
+ * makes sure of that once, before a report is stored, and `a-quote-built-at-the-read` does the same
+ * for prose built when the report is opened. So by the time this runs, a quote still carrying marks
+ * is KNOWN to be somebody's own words, word for word; the only question left is whose.
+ *
+ * `subjectRecord` is the subject's own lines - the same list `theRecordsWordsFor` already matches a
+ * quote against to restore it, built per participant by `theRecordAQuoteMayComeFromByParticipant`.
+ * FAILS CLOSED: a quote is left alone only where it POSITIVELY matches one of the subject's own
+ * lines. Anything else - a colleague's words, or a quote this pass cannot place - has its quoted
+ * passage taken out. Where the sentence still reads as a finished statement without it, the rest of
+ * the sentence stays; where it does not, the whole sentence becomes a plain, unnamed one
+ * ("A colleague described this differently."), never a colleague's words and never blank.
+ *
+ * "STILL READS AS A FINISHED STATEMENT" IS A HEURISTIC, NOT A PARSER. It catches the shape the
+ * product's own report prose actually uses - a name or a plain word followed by a reporting verb
+ * ("Chidi says '...'", "described it as '...'") - because that IS how these sentences are written
+ * (see SAYING_PROMPT: "third person... start with the verb"). It does not catch every way a quote
+ * can be woven into a longer sentence ("Chidi flagged that things '...'" loses its predicate and
+ * still reads as cut short). The one thing that never varies with the sentence quality is the
+ * privacy property: the colleague's words are always gone, kept or replaced.
+ */
+export function withoutColleaguesQuotesForTheSubject(
+  text: string | null | undefined,
+  subjectRecord: readonly string[],
+): string {
+  if (!text) return text ?? '';
+  const quotes = quotationsIn(text);
+  if (!quotes.length) return text;
+  const notTheirs = quotes.filter((q) => theRecordsWordsFor(q.inner, [...subjectRecord]) === null);
+  if (!notTheirs.length) return text;
+
+  let out = '';
+  for (const s of sentencesOf(text)) {
+    const mine = notTheirs.filter((q) => q.start >= s.start && q.end <= s.end);
+    if (!mine.length) { out += s.text; continue; }
+    let modified = s.text;
+    for (const q of [...mine].sort((a, b) => b.start - a.start)) {
+      modified = modified.slice(0, q.start - s.start) + modified.slice(q.end - s.start);
+    }
+    modified = modified
+      .replace(/[ \t]+([.,;:!?])/g, '$1')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/([.,;:!?])\1+/g, '$1')
+      .replace(/^[ \t]+/, '');
+    const body = modified.replace(/\s+$/, '');
+    const trailingSpace = modified.slice(body.length);
+    const words = body.match(/\p{L}+/gu) ?? [];
+    const keeps = words.length >= 5 && !DANGLES_ON_A_REPORTING_WORD.test(body.replace(/[.!?]+$/, '').trim()) && !/^[.,;:!?\s]*$/.test(body);
+    out += keeps ? `${body}${trailingSpace}` : `${A_COLLEAGUE_PUT_IT_DIFFERENTLY}${trailingSpace}`;
+  }
+  return out;
+}
+
+/* The same keys `a-quote-is-what-they-said` leaves alone: a label or an identifier, never prose -
+   see NOT_PROSE there. Kept as a separate constant rather than imported, since it is not exported. */
+const NOT_PROSE_HERE = /^(label|participantLabel|who|on|from|fieldId|code|status|type|band|tone)$|Id$|Ids$/;
+
+/**
+ * THE SAME, OVER A WHOLE TEAM REPORT (or any report-shaped value) - `sharedPicture`, `theOpening`,
+ * `findings[].text`, `agreements`, and anything else the subject is served as prose. Walks every
+ * string field, however deep, the same way `everyQuoteFromTheRecord` does; a label or an identifier
+ * is left exactly as it is.
+ */
+export function deeplyWithoutColleaguesQuotesForTheSubject<T>(value: T, subjectRecord: readonly string[]): T {
+  const walk = (v: any): any => {
+    if (typeof v === 'string') return withoutColleaguesQuotesForTheSubject(v, subjectRecord);
+    if (v === null || v === undefined || v instanceof Date) return v;
+    if (Array.isArray(v)) return v.map(walk);
+    if (typeof v === 'object') {
+      const out: Record<string, any> = {};
+      for (const [k, val] of Object.entries(v)) out[k] = NOT_PROSE_HERE.test(k) ? val : walk(val);
+      return out;
+    }
+    return v;
+  };
+  return walk(value) as T;
+}
 
 /**
  * "WHAT EACH PERSON SAID" (the session report's `whatEachPersonSaid`), FOR THE SUBJECT.
