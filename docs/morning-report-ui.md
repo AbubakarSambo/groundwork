@@ -306,6 +306,7 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **29 September: patterns, role behaviour, coaching strategies and the probe structure are protected.** They are the most powerful part of the product. No screen for them is ever removed, hidden or simplified to solve a problem. If something is wrong, it is fixed in place, or shown only to the most private reader, and Hafsah is told in this report. Every place where a screen for these was removed, hidden or simplified so far is listed below, under "The protected screens: what was removed, hidden or simplified", and restored.
 - **29 September: answers to "Decided for you to confirm" and to item 11, which is now closed.**
   1. All 16 decisions in "Decided for you to confirm" are confirmed. Where two disagree, the later one wins: My work follows the prototype's single "Your work" page, with no sub-tabs.
   2. The three newer ones: the People page keeps the product's own true invitation sentences (email only, no WhatsApp or Guest); the no-seat warning keeps its buttons, drawn the prototype's way; someone declined at the door reads "Not let in", shown to admins only.
