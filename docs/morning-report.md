@@ -6,6 +6,69 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## HANDOVER, 29 SEPTEMBER 2026: WHERE THIS WORK STOPPED
+
+The work is moving to a new session on another account. Everything below was committed and pushed to `mine/wip/plain-reports`. The last commit before this note was `09fe5c0e`.
+
+### What is finished
+
+- **Week 6, the end card** (`47b4d04c`). When a check-in closes, the engine builds the prototype's "What is now in your record": each line with how it is known. It is built after the goodbye, because reading the record takes 10 to 47 seconds, and kept on the closing turn. The transcript serves it as `endCard`, only to the person themselves. Nothing reaches the record before they finish. Then exactly the card's lines are written, unless they said more after it. Migration `20260929090000_the_end_card_on_a_turn`.
+- **Week 6, confirmed by the person who received it** (`eebc48a8`). This is the new field on record lines (`confirmedAt`, `confirmedByParticipantId`), with the rule Hafsah agreed. When the colleague who was waiting says in their own check-in that it is no longer in their way, the model picks the one line that says it was delivered, and code checks that the line is about the same thing. Migration `20260929100000_a_line_confirmed_by_who_received_it`.
+- **Week 6b, the four marks on the session report** (`dafcfea1`, `1dbb26b6`). Every line in the session report's sections carries `mark` (proven, confirmed, said or memory), and each person's lines in "what each person said they did" carry `lineMarks`. One rule decides it for both the reports and the end card: `api/src/modules/reports/how-a-line-is-known.ts`. A line counts as proven only by a document the person added themselves.
+- **Week 9, first step** (`aa91a8d7`). After each check-in, what the person says about their earlier open commitments settles them as done or not done. Anything else stays open. Migration `20260929110000_when_a_commitment_was_settled`.
+- **Week 0, first step** (`55d13abb`). A colleague's hidden target is no longer given to the model that talks to a person in their own check-in.
+- **Answers to the screens workspace:** request 7b part (b), and part of request 2, in `docs/requests-to-engine.md`.
+- **The bug-fix branch** `fix/privacy-conversation-crash` (folder `groundwork-pr1`, local branch `wip/fix-privacy-conversation-crash`, up to `a89fd13f`) is saved on this computer only. This workspace may push only `wip/plain-reports`. Its last commit, the labels and the person's own session, is unfinished and untested. See `docs/pr-1.md`.
+
+All three migrations are applied to the local test database `gw_pw9_1786222102` only.
+
+### What is in progress, and exactly where it stopped
+
+- **No step is half done.** Every change above is committed with its tests.
+- **Run-17 was stopped by hand** at 29 September, early afternoon, because Hafsah asked for nothing to be left running.
+  - It had finished 1 of 24 scenarios: sales, in `api/journey/all-24/run-17/sales.json`. It was part way through loans.
+  - It ran on the build of `eebc48a8` (weeks 6 and 6-confirmed, nothing later), in one line rather than three parts, which is why it was slow.
+  - It has not been scored.
+  - The local API it used, on port 3000, was stopped too.
+- **Nothing that this session started is still running.** One older API process from 20 September is still listening on port 3101. This session did not start it, so it was left alone.
+- **Full test suite: not yet run** on the latest commit. By part, these passed: conversation, documents, people, grounds, reports and board (the last combined run was 4,677 tests across reports, board and conversation).
+
+### What comes next, in order
+
+1. Run the whole API test suite once: `cd api && npx jest --maxWorkers=3`. Before this work, three tests already failed on the base at `80beab98`, so compare against those.
+2. Start a fresh full run, run-18, on the latest commit, in three parts as run-16 was (`api/journey/chunked.sh`). Rebuild the API first (`npm run build`), then start it from `dist/main` so edits cannot restart it mid-run. Score it with `tools/score_run.py --against docs/baseline.json`. Check that no engine-value number drops. Pay most attention to anything about the record, since the record is now written from the end card's lines.
+3. Read what a person sees for the end card and the marks, as the lead, a participant and an admin. The reviewer's step has not been done for weeks 6, 6b, 9 and 0.
+4. Tick task 2.7 only after steps 1 to 3 pass. The screens also need to fetch the card from the transcript after the close (see request 7b).
+5. Then carry on with `docs/weekly-plan.md`:
+   - week 6b's remaining parts (team report lines and the board's lines), once the stages question below is answered;
+   - week 9's count, once the privacy question below is answered;
+   - week 0's next step, once option 1, 2 or 3 below is chosen;
+   - then weeks 10 onward.
+6. Merge the screens branch every few days: `git fetch mine`, then `git merge mine/wip/prototype-ui`. It was last merged on 28 September, night.
+
+### How to check on anything that runs
+
+- A run writes to `api/journey/all-24/run-N/`. Each finished scenario gets a `.json` file, and `run.log` shows the scenario it is on.
+- The API's own log shows the new steps as they happen:
+  - "end card with N line(s)"
+  - "wrote the N line(s) the end card showed"
+  - "settled N of M open commitment(s)"
+  - "confirmed-by-who-received-it"
+- Small tools that read without writing are in `api/journey/`, which git ignores: `peek-end-card.ts`, `peek-confirmed.ts`, `peek-session-marks.ts` and `peek-the-prompt-targets.ts`. The usage is at the top of each.
+
+### What needs Hafsah
+
+1. **Who may see "kept 11 of 20 in the last 4 weeks"?** Each person's load across check-ins is private under the rules, so today only that person could see it. Showing it to the lead would change a privacy rule.
+2. **Can proof settle a commitment?** For example, a document the person adds, or a colleague confirming it arrived. Today a commitment and a record line are not linked.
+3. **Who can mark a to-do as done?** The lead can mark someone else's to-do done through the Context chat (`makeTheChange` in `grounds.service.ts`), while the to-do button says only its owner may move it.
+4. **Where a deal's stages come from.** The team report's "What moved" needs the organisation's own stage names (Contacted, Need, Pitched, Qualified, Quoted). The engine has no stages anywhere.
+5. **Week 0's next step touches the must-keep list.** The shared team report and the picture's opening are written from each person's target numbers. Taking them out would weaken "notices what does not add up". The options are: (1) leave them in, with the net that removes them from what others are served; (2) give the model the gap without the number, then check with a run; (3) write a separate copy for the lead. The recommendation is option 2.
+6. **A total can give a number away.** "Yours is 21, of 270 across ten people" gives away a colleague's number when there are only two people. The fix is to show a total only when three or more people have a number. It tightens a privacy rule, so it needs a yes.
+7. **The bug-fix branch cannot be pushed from this workspace.** If it should be saved to GitHub, push it from the `groundwork-pr1` folder with `git push mine wip/fix-privacy-conversation-crash`.
+8. The earlier items further down this report are still open: the jargon bar, the ratings decisions, and the screens' requests marked Open.
+
+---
+
 ## 28 SEPTEMBER, NIGHT: THE PULL REQUEST WORK IS STOPPED, AND THE BRANCH IS SAVED LOCALLY
 
 Hafsah decided there will be no pull requests for now. The whole build is finished first and released once, at the end. I stopped both helpers: the one building the last privacy fixes on the bug-fix branch, and the one researching the second pull request.
