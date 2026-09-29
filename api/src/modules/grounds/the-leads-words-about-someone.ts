@@ -114,6 +114,44 @@ export function withoutTheLeadsDescriptionOfAnyone(
  * failed query gives an empty list here, which only means the net falls back to being stricter, not
  * that it breaks.
  */
+/**
+ * THE SAME NET, WALKED OVER A STRUCTURE RATHER THAN ONE STRING (decision 5, clarified 29 September:
+ * an admin who does not run the check-in reads no field built from the lead's private description).
+ *
+ * `theJudgement` is not a paragraph. It is the model's structured output - an object of arrays of
+ * objects of sentences - and the room judgement is handed "taken on for: <role>", where `role` is
+ * `remitAsGiven ?? roleAsDescribed`, the lead's own words about somebody, typed when they were
+ * added. Whatever the model writes back can carry those words, in any of its string fields. An
+ * admin who does not run the check-in still reads `theJudgement` in full under decision 5 - only
+ * the lead's private description is theirs to keep out - so this walks every string leaf with
+ * `withoutTheLeadsDescriptionOfAnyone` and leaves the shape, the numbers and everything else alone.
+ *
+ * A no-op for the lead, and a no-op for a genuine participant, whose `theJudgement` is already gone
+ * by the time this runs (see `whatAParticipantMayRead`).
+ */
+export function deeplyWithoutTheLeadsDescriptionOfAnyone<T>(
+  value: T,
+  descriptions: (string | null | undefined)[],
+  readerLeadsThisCheckIn: boolean,
+  shareable: (string | null | undefined)[] = [],
+): T {
+  if (readerLeadsThisCheckIn || value == null) return value;
+  if (typeof value === 'string') {
+    return (withoutTheLeadsDescriptionOfAnyone(value, descriptions, false, shareable) ?? '') as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => deeplyWithoutTheLeadsDescriptionOfAnyone(v, descriptions, false, shareable)) as unknown as T;
+  }
+  if (typeof value === 'object') {
+    const out: Record<string, any> = {};
+    for (const [k, v] of Object.entries(value as Record<string, any>)) {
+      out[k] = deeplyWithoutTheLeadsDescriptionOfAnyone(v, descriptions, false, shareable);
+    }
+    return out as T;
+  }
+  return value;
+}
+
 export async function theShareableTextFor(
   prisma: {
     recordEntry?: { findMany?: (args: any) => Promise<any[]> };

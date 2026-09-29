@@ -166,7 +166,7 @@ import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-co
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
-import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
+import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, deeplyWithoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -6176,20 +6176,33 @@ happened, and what is in the way.`;
         };
       }
 
+      const formingBase: any = whatAParticipantMayRead(withoutOtherPeoplesReads(
+        this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
+        {
+          viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
+          viewerParticipantId: participant?.id ?? null,
+          viewerIsLead: isInitiator || isOrgAdmin,
+        },
+      ), { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null });
+      /*
+       * AND THE JUDGEMENT, FOR AN ADMIN WHO DOES NOT RUN THE CHECK-IN, ON A FORMING REPORT TOO
+       * (decision 5, clarified 29 September). Same reason as the released branch below: an admin
+       * keeps `theJudgement` in full under decision 5, but not a sentence built from the lead's
+       * private description of somebody. See deeplyWithoutTheLeadsDescriptionOfAnyone.
+       */
+      if (!isInitiator && 'theJudgement' in formingBase) {
+        const theDescriptions = (ground.participants as any[]).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]);
+        const shareable = await theShareableTextFor(this.prisma as any, ground as any).catch(() => [] as string[]);
+        formingBase.theJudgement = deeplyWithoutTheLeadsDescriptionOfAnyone(formingBase.theJudgement, theDescriptions, false, shareable);
+      }
+
       return {
         /* THE LEAD'S LAYER COMES OFF HERE TOO. A forming report carries the same stored row, so a
            participant who has answered read the judgement about the room before it was released. */
         /* AND OTHER PEOPLE'S RATINGS OFF, as in the released branch below. This branch skipped
            withoutOtherPeoplesReads, so a participant who had answered read every other person's
            specificity read on a forming report (screens request 43, 28 September 2026). */
-        ...whatAParticipantMayRead(withoutOtherPeoplesReads(
-          this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
-          {
-            viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
-            viewerParticipantId: participant?.id ?? null,
-            viewerIsLead: isInitiator || isOrgAdmin,
-          },
-        ), { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }),
+        ...formingBase,
         activated: true,
         forming: true,
         /* NAMED, LIKE EVERYTHING ELSE SOMEBODY READS. overTime is assembled after the name pass,
@@ -6436,6 +6449,19 @@ happened, and what is in the way.`;
         base.findings = base.findings.map((f: any) => (f && typeof f === 'object'
           ? { ...f, text: withoutTheLeadsDescriptionOfAnyone(f.text, theDescriptions, false, shareable) ?? '' }
           : f));
+      }
+      /*
+       * AND THE JUDGEMENT, FOR AN ADMIN WHO DOES NOT RUN THE CHECK-IN (decision 5, clarified 29
+       * September). `whatAParticipantMayRead` keeps `theJudgement` here because an admin reads the
+       * room's judgement in full under decision 5 - but the room judgement is handed "taken on for:
+       * <role>", where role is `remitAsGiven ?? roleAsDescribed`, the lead's own private words. What
+       * the model writes back can carry those words in any of its sentences, so the same net that
+       * protects sharedPicture, theOpening and findings above is walked over the whole structure. A
+       * no-op for a genuine participant, whose `theJudgement` is already gone by this point. See
+       * deeplyWithoutTheLeadsDescriptionOfAnyone.
+       */
+      if ('theJudgement' in base) {
+        base.theJudgement = deeplyWithoutTheLeadsDescriptionOfAnyone(base.theJudgement, theDescriptions, false, shareable);
       }
     }
     if (!isInitiator && !isOrgAdmin) {
