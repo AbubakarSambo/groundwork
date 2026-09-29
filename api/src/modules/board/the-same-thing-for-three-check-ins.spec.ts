@@ -64,7 +64,7 @@ const COMMITMENTS = [
 
 const WRITES = ['create', 'createMany', 'update', 'updateMany', 'upsert', 'delete', 'deleteMany'];
 
-function prismaFor(viewerRole = 'MEMBER') {
+function prismaFor(viewerRole = 'MEMBER', data: { ground: any; checkIns: any[]; commitments: any[] } = { ground: GROUND, checkIns: CHECK_INS, commitments: COMMITMENTS }) {
   const writes: string[] = [];
   const reads = {
     findMany: jest.fn(async () => []),
@@ -80,10 +80,10 @@ function prismaFor(viewerRole = 'MEMBER') {
     },
   });
   const prisma: any = new Proxy({
-    ground: model('ground', { findUnique: jest.fn(async () => structuredClone(GROUND)) }),
+    ground: model('ground', { findUnique: jest.fn(async () => structuredClone(data.ground)) }),
     user: model('user', { findUnique: jest.fn(async () => ({ role: viewerRole, organizationId: 'org-1' })) }),
-    checkIn: model('checkIn', { findMany: jest.fn(async () => structuredClone(CHECK_INS)) }),
-    groundCommitment: model('groundCommitment', { findMany: jest.fn(async () => JSON.parse(JSON.stringify(COMMITMENTS))) }),
+    checkIn: model('checkIn', { findMany: jest.fn(async () => structuredClone(data.checkIns)) }),
+    groundCommitment: model('groundCommitment', { findMany: jest.fn(async () => JSON.parse(JSON.stringify(data.commitments))) }),
   }, {
     get(target: any, prop: string) {
       if (!(prop in target) && typeof prop === 'string' && !prop.startsWith('$')) target[prop] = model(prop);
@@ -93,8 +93,8 @@ function prismaFor(viewerRole = 'MEMBER') {
   return { prisma, writes };
 }
 
-function boardFor(requestingUserId: string, viewerRole = 'MEMBER') {
-  const { prisma, writes } = prismaFor(viewerRole);
+function boardFor(requestingUserId: string, viewerRole = 'MEMBER', data?: { ground: any; checkIns: any[]; commitments: any[] }) {
+  const { prisma, writes } = prismaFor(viewerRole, data);
   const respond = jest.fn(async () => null);
   const reports = Object.create(ReportsService.prototype) as ReportsService;
   const svc = new BoardService(prisma, { respond } as any, { getSessionProgress: async () => null } as any, reports);
@@ -258,5 +258,36 @@ describe('what keeps coming up, under each person on the lead’s board', () => 
       expect(b).not.toHaveProperty('eachPersonToday');
       expect(JSON.stringify(b)).not.toMatch(/same promise|same thing in the way/);
     }
+  });
+});
+
+/*
+ * AND A ROW THAT SAID "NOTHING HERE NEEDS YOU" WHILE SOMETHING KEEPS COMING UP. Aisha has checked
+ * in three times with nothing in her way, so her row on its own says nothing needs the lead; she has
+ * also made the same promise in all three, so something does.
+ */
+describe('a line that said nothing needs you, when something keeps coming up', () => {
+  const AISHA = {
+    id: 'p-aisha', userId: 'u-aisha', partyType: PartyType.PARTICIPANT, email: 'a@baridi.test',
+    roleAsDescribed: 'sales', nameGiven: null, organisationGiven: null, managingOnly: false,
+    createdAt: new Date('2026-09-01T10:00:00Z'), user: { firstName: 'Aisha', lastName: 'Mwangi' },
+  };
+  const aishasCheckIns = [1, 2, 3].map((n) => ({ id: `ca${n}`, participantId: 'p-aisha', sessionNumber: n, status: 'COMPLETED', isSetup: false, completedAt: at(String(7 * n + 1).padStart(2, '0')), specificityLevel: 'specific', specificityDimensions: { checkable: 'specific' } }));
+  const data = {
+    ground: { ...GROUND, participants: [LEAD, AISHA], checkIns: aishasCheckIns, dependencies: [] },
+    checkIns: aishasCheckIns,
+    commitments: [{ participantId: 'p-aisha', text: 'visit Green Mart with the new price list', status: 'UNKNOWN', statedInSession: 1, saidAgainIn: [2, 3], explicit: true, source: 'CHECK_IN', saidWordForWord: true }],
+  };
+
+  it('her row on its own says nothing needs the lead, and the line under what keeps coming up does not', async () => {
+    const b = await boardFor('u-wairimu', 'MEMBER', data).board;
+    const row = b.eachPerson.find((r: any) => r.participantId === 'p-aisha');
+    expect(row.says).toBe('Aisha Mwangi has checked in, and nothing here needs you this week.');
+    const today = b.eachPersonToday.find((r: any) => r.participantId === 'p-aisha');
+    expect(today.keepsComingUp).toBe('Aisha Mwangi has made the same promise for 3 check-ins.');
+    expect(today.line).toBe('Aisha Mwangi has checked in.');
+    expect(today.line).not.toMatch(/nothing here needs you/);
+    /* A whole sentence: a capital at the start, one full stop at the end, no dangling comma. */
+    expect(today.line).toMatch(/^[A-Z][^,]*[a-z]\.$/);
   });
 });
