@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import {
   Page, PageTitle, CheckInHeader, Tabs, Section, Panel, EdgeRow, EdgeList,
-  PeopleTable, PeopleTableHead, PersonRow, Avatar, FieldRows, FieldRow,
-  Choices, ChoiceCards, Toggle, FieldLabel, TextField, TextArea, Select,
+  PeopleTable, PeopleTableHead, PersonRow, Avatar, FieldRows, FieldRow, Folded,
+  Choices, ChoiceCards, Toggle, SwitchRow, FieldLabel, TextField, TextArea, Select,
   Button, Tag, Note, Empty, Toast, Modal,
 } from '@/components/gw/ui'
 
@@ -152,6 +152,29 @@ export default function PartsSamplePage() {
             <FieldRow label="How often" value="Daily on weekdays, from 4pm" action={<Button kind="quiet" size="small">Change</Button>} />
           </FieldRows>
         </Panel>
+      </Section>
+
+      <Section heading="Folded panel" note="People: &quot;Who reports to whom&quot;">
+        <Folded summary="Who reports to whom" note="Level and reporting lines describe the organisation; what someone can do still comes from their role">
+          <p className="gwui-panel-text">Amani Njoroge, Chief executive</p>
+        </Folded>
+      </Section>
+
+      <Section heading="Switch row" note="People item 15: the heading reads bigger than its sentence">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <SwitchRow
+            title="Anyone with an @baridi.co.ke email"
+            detail="They can join Baridi Appliances without an invitation, as “Takes part”. You can change their role after."
+            on={on}
+            onChange={setOn}
+          />
+          <SwitchRow
+            title="Check-ins wait for an admin"
+            detail="Each new check-in waits for an admin before invitations go out."
+            on={off}
+            onChange={setOff}
+          />
+        </div>
       </Section>
 
       <Section heading="Choices" note="prototype: .seg">

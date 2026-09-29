@@ -21,7 +21,8 @@ const EDGE_REASON: Record<EdgeKind, string> = {
 export function EdgeRow({ kind, title, detail, actions }: {
   kind: EdgeKind
   title: string
-  detail?: string
+  /** Usually one sentence; the no-seat warning also lists each person waiting under it. */
+  detail?: React.ReactNode
   /** One or two buttons. The first is the main one. */
   actions?: React.ReactNode
 }) {
