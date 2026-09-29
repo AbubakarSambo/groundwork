@@ -152,7 +152,7 @@ export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason
 /** The plain words for somebody with no name (party-labels' plainWordsByPerson), in any case. */
 const PLAIN_WORDS = /^(?:(?:a|an|one|another)\s+(?:[a-z]+\s+)?colleague|(?:your|the)\s+lead)$/i;
 
-function subjectFor(row: Pick<PersonRow, 'who' | 'nameIsTheirRole'>, atTheStart: boolean): string {
+export function subjectFor(row: Pick<PersonRow, 'who' | 'nameIsTheirRole'>, atTheStart: boolean): string {
   const who = (row.who ?? '').trim();
   if (!who) return atTheStart ? 'A colleague' : 'a colleague';
   if (PLAIN_WORDS.test(who)) {

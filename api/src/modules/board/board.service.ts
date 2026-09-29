@@ -69,6 +69,7 @@ import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
+import { whatHasStayedTheSame, theCheckInItWasFirstSaidIn, type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
 import { whichRoundIsOpen } from './which-round-is-open';
@@ -137,6 +138,71 @@ export class BoardService {
      */
     @Inject(forwardRef(() => ReportsService)) private readonly reports: ReportsService,
   ) {}
+
+  /**
+   * What has stayed open for three or more of a person's check-ins, for the lead. Read from the
+   * record: the promises said again, and what was said to be in the way in the first and the latest
+   * of their check-ins. Names as this reader resolves them, or "a colleague".
+   */
+  private async whatHasStayedTheSameFor(
+    groundId: string,
+    ground: { participants: any[] },
+    checkIns: { id: string; participantId: string; sessionNumber: number; status: string; completedAt: Date | null }[],
+    rawDependencies: any[],
+    myParticipantId: string | null,
+    nameOf: (pid: string) => string | null,
+    aColleague: (pid: string | null | undefined) => string,
+  ): Promise<ToLookAt[]> {
+    const finishedOf = (pid: string) => checkIns.filter((c) => c.participantId === pid && c.status === CheckInStatus.COMPLETED);
+    const people = ground.participants
+      .filter((p) => !p.managingOnly && p.id !== myParticipantId)
+      .map((p) => ({
+        participantId: p.id as string,
+        who: nameOf(p.id) ?? aColleague(p.id),
+        nameIsTheirRole: !([p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim()),
+        finished: finishedOf(p.id).map((c) => c.sessionNumber),
+      }))
+      .filter((p) => p.finished.length >= 3);
+    if (!people.length) return [];
+    const promises = ((await this.prisma.groundCommitment?.findMany?.({
+      where: { groundId, status: 'UNKNOWN', participantId: { in: people.map((p) => p.participantId) } },
+      select: { participantId: true, text: true, status: true, statedInSession: true, saidAgainIn: true, explicit: true, source: true, saidWordForWord: true },
+    })?.catch(() => [])) ?? []) as any[];
+    const sessionOf = new Map(checkIns.map((c) => [c.id, c.sessionNumber]));
+    const norm = (t: string) => (t ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ')
+      .replace(/\b(the|a|an|my|our|his|her|their|this|that|some|more|any|for|to)\b/g, ' ').replace(/\s+/g, ' ').trim();
+    const sameThing = (a: string, b: string) => { const x = norm(a); const y = norm(b); return !!x && !!y && (x === y || x.includes(y) || y.includes(x)); };
+    const inTheWay = ((ground as any).dependencies ?? [])
+      .filter((d: any) => people.some((p) => p.participantId === d.fromParticipantId))
+      .map((d: any) => {
+        /* Every row that is this same thing, for rows written before extraction deduped on write. */
+        const rows = rawDependencies.filter((r) => r.fromParticipantId === d.fromParticipantId && sameThing(r.what, d.what));
+        const theirs = finishedOf(d.fromParticipantId);
+        const firsts = rows.map((r) => theCheckInItWasFirstSaidIn(r.createdAt, theirs)).filter((n): n is number => n != null);
+        const lasts = rows.map((r) => (r.sourceCheckInId ? sessionOf.get(r.sourceCheckInId) : undefined)).filter((n): n is number => n != null);
+        return {
+          fromParticipantId: d.fromParticipantId,
+          what: d.what,
+          status: d.status,
+          firstSaidIn: firsts.length ? Math.min(...firsts) : null,
+          lastSaidIn: lasts.length ? Math.max(...lasts) : null,
+          tried: (d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? '')) as any,
+          onTheReader: !!myParticipantId && d.onParticipantId === myParticipantId,
+        };
+      });
+    return whatHasStayedTheSame(
+      people,
+      promises.map((c) => ({
+        participantId: c.participantId,
+        text: c.text,
+        status: c.status,
+        statedInSession: c.statedInSession,
+        saidAgainIn: c.saidAgainIn ?? [],
+        theirWords: c.saidWordForWord === true && c.explicit !== false && c.source === 'CHECK_IN',
+      })),
+      inTheWay,
+    );
+  }
 
   /*
    * THE BOARD IS BUILT WHEN THE SESSION ENDS, NOT WHEN THE LEAD OPENS IT. Every worded line the
@@ -306,6 +372,8 @@ export class BoardService {
      * of one named thing; `oneBlockerPerThingWaitedOn` joins the times somebody said they were
      * stuck without naming anything. See that file for why neither is a similarity threshold.
      */
+    /* The rows as written, for when each thing was first and last said (the-same-thing-for-three-check-ins). */
+    const rawDependencies = [...((ground as any).dependencies ?? [])] as any[];
     (ground as any).dependencies = oneBlockerPerThingWaitedOn(dedupeDependencies(ground.dependencies as any));
 
     /* What this run can actually show: a one-round read has no across-rounds sections. See sectionsForARunOf. */
@@ -1028,6 +1096,16 @@ export class BoardService {
       }
     }
 
+    /*
+     * THE SAME THING, STILL OPEN, FOR THREE CHECK-INS (week 12, screens requests 3c and 11): the
+     * prototype's "Samuel has chased the same 5 leads for 3 check-ins", from the record's own counts
+     * and never from a rating. To the lead only: it is one person's work across their check-ins, so
+     * no colleague reads it, and neither does an admin who only reads. See the-same-thing-for-three-check-ins.
+     */
+    if (isInitiator) {
+      out.toLookAt = await this.whatHasStayedTheSameFor(groundId, ground as any, checkIns as any[], rawDependencies, me?.id ?? null, nameOf, aColleague);
+    }
+
     if (has('checkInGrid')) {
       out.checkInGrid = {
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b),
@@ -1372,7 +1450,7 @@ export class BoardService {
       const requoted: string[] = [];
       const q = <T,>(v: T): T => (v == null ? v : quotesBuiltAtTheRead(v, quotable, requoted));
       if (Array.isArray(out.quickRead)) out.quickRead = (out.quickRead as any[]).map((t) => ({ ...t, sub: q(t?.sub) }));
-      for (const k of ['howItIsGoing', 'divergence', 'eachPerson', 'stillUnanswered', 'contribution', 'coverage', 'hiddenContributors', 'decisions', 'managerAlignment'] as const) {
+      for (const k of ['howItIsGoing', 'divergence', 'eachPerson', 'toLookAt', 'stillUnanswered', 'contribution', 'coverage', 'hiddenContributors', 'decisions', 'managerAlignment'] as const) {
         if (out[k] != null) out[k] = q(out[k]);
       }
       if (requoted.length) this.logger?.warn?.(`Board for ${groundId}: ${requoted.length} quote(s) built at the read were not the record's words. First: ${requoted[0].slice(0, 200)}`);
