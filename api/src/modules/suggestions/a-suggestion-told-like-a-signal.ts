@@ -85,6 +85,38 @@ export interface WhoIsWho {
 
 const iso = (d: Date | string | null | undefined): string | null => (d ? new Date(d).toISOString() : null);
 
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * HOW LONG THE PERSON HAS TO BE SEEN TO HAVE HAD THEIR TURN, BEFORE WHOEVER RUNS THE CHECK-IN READS
+ * IT ANYWAY (decision 53, "the more private way", reusing decision 39's timing for a pattern).
+ *
+ * Decision 13 requires the product to tell the person about a suggestion as soon as it is reached,
+ * not to wait for them to open a page - so unlike a pattern, which only counts as "shown" once a
+ * page that carries it is opened (who-reads-a-pattern.ts, `shownToPersonAt`), a suggestion is taken
+ * as shown the moment it exists. `createdAt` is that moment. Three days is decision 39's wait for a
+ * person who has been shown something and not yet answered; the longer, seven-day wait that pattern
+ * gives for somebody who may never have opened the page does not apply here, because the product's
+ * own rule is that they were already told.
+ */
+export const DAYS_THE_PERSON_HAS_TO_BE_SEEN_TO_HAVE_HAD_THEIR_TURN = 3;
+
+/**
+ * WHETHER WHOEVER RUNS THE CHECK-IN MAY READ THIS SUGGESTION YET (decision 53). The person it is
+ * about reads it, and only them, until they have said something about it - their side, or an
+ * appeal, either of which only exists once they have read it - or three days have passed since it
+ * was reached. Without that, a row is not served to whoever runs the check-in at all.
+ */
+export function theLeadMayReadIt(
+  row: Pick<SuggestionRow, 'theirSide' | 'appeal' | 'createdAt'>,
+  now: Date = new Date(),
+): boolean {
+  if ((row.theirSide ?? '').trim() || (row.appeal ?? '').trim()) return true;
+  const created = new Date(row.createdAt).getTime();
+  if (!Number.isFinite(created)) return false;
+  return now.getTime() - created >= DAYS_THE_PERSON_HAS_TO_BE_SEEN_TO_HAVE_HAD_THEIR_TURN * DAY;
+}
+
 export interface TheDecision { says: string; reasons: string; at: string | null }
 export interface TheAppealDecision { outcome: AppealOutcome; says: string; reasons: string; by: string; at: string | null }
 
