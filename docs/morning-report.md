@@ -6,6 +6,20 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 29 SEPTEMBER, EVENING: HAFSAH'S ANSWERS, AND WHAT FOLLOWS
+
+Hafsah answered five of the questions. They are recorded as decisions 44 to 49 in `docs/decisions-merged.md`:
+- **44:** the warm-up runs once.
+- **45:** the goodbye's commitment is saved as a commitment.
+- **46:** a field for a decision about a person.
+- **47:** "Nothing you have access to needs you this week."
+- **48:** untold goals do not count until shared.
+- **49:** her answer on week 10 came through as a placeholder ("Hafsah to fill in"), so week 10 stays held. I did not guess.
+
+Today's two full runs are used, so everything this evening is checked with short re-runs of the scenarios it affects.
+
+**First: the warm-up must run once.** Being fixed now.
+
 ## SUMMARY, 29 SEPTEMBER, 13:35 TO 20:35 (read this first)
 
 ### What I finished
