@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { TheEndCard } from './TheEndCard'
 import { TheDonePage } from './TheDonePage'
-import { GroundChat } from '../GroundChat'
+import { WhoIsInThis } from '../WhoIsInThis'
 import { whoElseAnswers, whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 
 /**
@@ -76,25 +76,22 @@ vi.mock('@/api/conversation', () => ({
   conversationApi: { artifact: vi.fn(async () => ({ artifact: null })) },
 }))
 
-describe('the topic card names the lead on a check-in that hides everyone else', () => {
-  it('says "Rukia knows who is here", from leadFirstName alone, not from a participants row', async () => {
-    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+/**
+ * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS" MOVED FROM `GroundChat`'s Check-in tab TO `WhoIsInThis`,
+ * on People and setup. No QueryClient or Router needed any more - `WhoIsInThis` is plain props in,
+ * words out.
+ */
+describe('the roster names the lead on a check-in that hides everyone else', () => {
+  it('says "Rukia knows who is here", from leadFirstName alone, not from a participants row', () => {
     render(
-      <QueryClientProvider client={qc}>
-        <MemoryRouter>
-          <GroundChat
-            groundId="g1" openCheckInId={null} openSessionNumber={null} totalSessions={6}
-            nextOpensAt={null} onOpenSession={() => {}} openPending={false}
-            parties={[{ name: 'You', done: false, isSelf: true }]}
-            peersHidden
-            brief="A brief, so the card's heading renders."
-            leadName={whoRunsThis(AMANIS_HIDDEN_GROUND)}
-            viewerIsTheLead={AMANIS_HIDDEN_GROUND.viewerIsInitiator}
-          />
-        </MemoryRouter>
-      </QueryClientProvider>,
+      <WhoIsInThis
+        parties={[{ name: 'You', done: false, isSelf: true }]}
+        peersHidden
+        leadName={whoRunsThis(AMANIS_HIDDEN_GROUND)}
+        viewerIsTheLead={AMANIS_HIDDEN_GROUND.viewerIsInitiator}
+      />,
     )
-    expect(await screen.findByText(/Rukia knows who is here/)).toBeTruthy()
+    expect(screen.getByText(/Rukia knows who is here/)).toBeTruthy()
     expect(screen.queryByText(/Your lead knows/)).toBeNull()
   })
 })

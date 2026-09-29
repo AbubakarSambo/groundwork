@@ -21,6 +21,7 @@ import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
+import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
 import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
@@ -449,6 +450,34 @@ export function GroundParticipantPage() {
     return 'mywork'
   }
 
+  /**
+   * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", COMPUTED ONCE, FOR People and setup.
+   *
+   * Exactly the values GroundChat used to compute inline for GroundTopic - moved up here,
+   * unchanged. See the comments at each of these call sites (still there, below) for why each is
+   * built the way it is.
+   */
+  const whoIsInThisNotOpenYet = !(dueNow ? openCheckIn.id : null) && !!(opensLater ? openAvailableFrom : null)
+  const whoIsInThisParties = (ground.participants ?? [])
+    .filter((p: any) => !p.managingOnly)
+    .map((p: any) => {
+      const currentSession = whichSessionIsThisCheckInOn(
+        (ground.participants ?? [])
+          .filter((q: any) => !q.managingOnly)
+          .map((q: any) =>
+            ((q.checkIns ?? []) as any[])
+              .filter((c) => c.status === 'COMPLETED')
+              .map((c) => c.sessionNumber ?? 0),
+          ),
+        totalSessions,
+      )
+      return {
+        name: atTheStart(participantLabel(p)),
+        done: hasDoneThisSession((p.checkIns ?? []) as any[], currentSession),
+        isSelf: p.userId === user?.id,
+      }
+    })
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', flexDirection: 'column' }}>
 
@@ -611,55 +640,6 @@ export function GroundParticipantPage() {
             onOpenSession={() => dueNow && probeSession.mutate(openCheckIn)}
             openPending={probeSession.isPending}
             brief={(ground as any).brief}
-            /**
-             * WHO IS IN THIS, for the person who could not see it. W13-5.
-             *
-             * `ground.participants` already carries only the people this reader is allowed
-             * to know about - the service filters the others out when peers are hidden - and
-             * each one carries their own check-ins. So this is a read of the payload, not a
-             * new permission.
-             *
-             * "Done" means done for the session number this person is on, so a roster on
-             * session 3 answers "is anybody else doing session 3", which is the question.
-             */
-            peersHidden={(ground as any).peersVisibleEffective === false}
-            /*
-              NAMES, NOT ROLES, AND NEVER SAID TO THE LEAD ABOUT HERSELF (U.8 third review).
-              This is "Rukia knows who is here" - true whenever there is a lead, whether or not she
-              also answers a check-in - so it reads `whoRunsThis`, not `whoElseAnswers` (U.8 fourth
-              review). `GroundTopic` shows the lead her own true sentence instead when
-              `viewerIsTheLead` is set, which is exactly `isInitiatorHere` computed above.
-            */
-            leadName={whoRunsThis(ground as any)}
-            viewerIsTheLead={isInitiatorHere}
-            parties={(ground.participants ?? [])
-              .filter((p: any) => !p.managingOnly)
-              .map((p: any) => {
-                /**
-                 * THE SESSION THE CHECK-IN IS ON, NOT THE ONE I AM ON.
-                 *
-                 * `openCheckIn` and `completedCheckIns` are MY check-ins, so this judged everybody
-                 * else's chip against my own progress: having finished session 2 before anyone else
-                 * made the whole roster answer for session 1, and every chip read "checked in"
-                 * beside a counter that said nobody had. Same defect as the other view, from the
-                 * same cause. See lib/which-session-are-we-on.ts.
-                 */
-                const currentSession = whichSessionIsThisCheckInOn(
-                  (ground.participants ?? [])
-                    .filter((q: any) => !q.managingOnly)
-                    .map((q: any) =>
-                      ((q.checkIns ?? []) as any[])
-                        .filter((c) => c.status === 'COMPLETED')
-                        .map((c) => c.sessionNumber ?? 0),
-                    ),
-                  totalSessions,
-                )
-                return {
-                  name: atTheStart(participantLabel(p)),
-                  done: hasDoneThisSession((p.checkIns ?? []) as any[], currentSession),
-                  isSelf: p.userId === user?.id,
-                }
-              })}
             signals={((ground.signals ?? []) as any[])
               .filter((sig: any) => sig.observationText)
               .map((sig: any) => ({
@@ -881,6 +861,27 @@ export function GroundParticipantPage() {
         {/* SETTINGS TAB */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/*
+              ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", MOVED HERE FROM THE CHECK-IN TAB.
+              GroundChat.tsx's GroundTopic used to hold this beside "About this check-in" - which
+              duplicates Context and so is not re-added here, per the prototype's own placement
+              (People and setup).
+
+              WHO IS IN THIS, for the person who could not see it before. W13-5. `ground.participants`
+              already carries only the people this reader is allowed to know about - the service
+              filters the others out when peers are hidden - so this is a read of the payload, not a
+              new permission. NAMES, NOT ROLES (U.8 third review): `whoRunsThis` reads "Rukia knows
+              who is here", true whenever there is a lead; `WhoIsInThis` shows the lead her own true
+              sentence instead when `viewerIsTheLead` is set - exactly `isInitiatorHere`.
+            */}
+            <WhoIsInThis
+              parties={whoIsInThisParties}
+              peersHidden={(ground as any).peersVisibleEffective === false}
+              notOpenYet={whoIsInThisNotOpenYet}
+              viewerIsParty
+              leadName={whoRunsThis(ground as any)}
+              viewerIsTheLead={isInitiatorHere}
+            />
             {/*
               THE SETUP TAB IS WHAT IS TRUE ABOUT YOU, AND NOTHING ELSE.
 

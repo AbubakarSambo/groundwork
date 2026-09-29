@@ -13,6 +13,7 @@ import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
+import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -1291,6 +1292,53 @@ export function GroundAdminPage() {
     return 'mywork'
   }
 
+  /**
+   * ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", COMPUTED ONCE, FOR People and setup.
+   *
+   * Exactly the values GroundChat used to compute inline for GroundTopic - moved up here,
+   * unchanged, so WhoIsInThis (in the Setup tab, below) reads the same roster GroundChat's Check-in
+   * tab used to show. See the comments at each of these call sites, kept there rather than
+   * repeated here.
+   */
+  /*
+    PEERS ARE NOT HIDDEN FROM WHOEVER RUNS THE CHECK-IN.
+
+    `peersVisibleEffective` is the rule between the PARTIES - on an evaluation-family ground they
+    check in without seeing each other. Passed straight through, this view showed a lead or an org
+    admin the party sentence: "Your lead knows who is here; you will not see the others or what
+    they wrote, and they will not see you." Said to an admin, on a page that lists both parties by
+    name and email on the very next tab, and whose own banner reads "You can see everything here,
+    which is the point of being an admin". Found walking a second admin of a real organisation.
+
+    The rule has not changed for anybody it applies to. This view is the one that runs the
+    check-in, so it is not one of them.
+  */
+  const whoIsInThisPeersHidden = (ground as any).peersVisibleEffective === false && !canRunThisGround
+  /*
+    NOBODY IS LATE FOR A SESSION THAT HAS NOT OPENED. W14-12.
+
+    The same two values the composer (and GroundChat, before this moved) reads for "opens on" -
+    see nobody-is-late-before-it-opens.spec.tsx, which pins this exact derivation as a source check.
+  */
+  const myOpenCheckInId = myOpenCheckIn && !myOpenOpensLater ? myOpenCheckIn.id : null
+  const myNextOpensAt = myOpenOpensLater ? myOpenAvailableFrom : null
+  const whoIsInThisNotOpenYet = !myOpenCheckInId && !!myNextOpensAt
+  const whoIsInThisLeadName = (() => {
+    const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+    return lead ? personLabel(lead) : null
+  })()
+  const whoIsInThisParties = (ground.participants ?? [])
+    .filter((p: any) => !p.managingOnly)
+    .map((p: any) => {
+      const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
+      const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
+      return {
+        name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
+        done: hasDoneThisSession(theirs, current),
+        isSelf: p.userId === user?.id,
+      }
+    })
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       {/*
@@ -1677,57 +1725,6 @@ export function GroundAdminPage() {
                 * somebody else's is not theirs to read.
                 */
               viewerIsParty={(ground.participants ?? []).some((p: any) => p.userId === user?.id)}
-              /* The same roster the participant view now shows. W13-5. */
-              /*
-                PEERS ARE NOT HIDDEN FROM WHOEVER RUNS THE CHECK-IN.
-
-                `peersVisibleEffective` is the rule between the PARTIES - on an evaluation-family
-                ground they check in without seeing each other. Passed straight through, this view
-                showed a lead or an org admin the party sentence: "Your lead knows who is here; you
-                will not see the others or what they wrote, and they will not see you." Said to an
-                admin, on a page that lists both parties by name and email on the very next tab, and
-                whose own banner reads "You can see everything here, which is the point of being an
-                admin". Found walking a second admin of a real organisation.
-
-                The rule has not changed for anybody it applies to. This view is the one that runs
-                the check-in, so it is not one of them.
-              */
-              peersHidden={(ground as any).peersVisibleEffective === false && !canRunThisGround}
-              /* Names, not roles (U.8 third review): whoever runs the check-in, by their own name. */
-              leadName={(() => {
-                const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-                return lead ? personLabel(lead) : null
-              })()}
-              viewerIsTheLead={isInitiator}
-              parties={(ground.participants ?? [])
-                .filter((p: any) => !p.managingOnly)
-                .map((p: any) => {
-                  /**
-                   * `plannedSessions` used to be the fallback here, which is the total rather than
-                   * the position - on a six-session ground that made every roster read "waiting"
-                   * forever. One answer for both pages now.
-                   */
-                  /**
-                   * THE SESSION THE CHECK-IN IS ON, NOT THE ONE THIS READER IS ON.
-                   *
-                   * This passed `myOpenCheckIn` - the VIEWER's own open check-in - and then judged
-                   * everybody's chip against it. A lead who had finished session 2 while nobody
-                   * else had made the whole roster answer for session 1, so every chip read
-                   * "checked in" directly above "0 of 2 checked in for session 2". Both were right
-                   * and together they read as the product losing the record.
-                   *
-                   * `openRound` is the counter's own number. One session, named once.
-                   */
-                  /* And there is no session after the last: when everybody has finished a one-session check-in,
-                     the roster is judged against that session, not against a second that does not exist. */
-                  const current = plannedSessions && plannedSessions > 0 ? Math.min(openRound, plannedSessions) : openRound
-                  const theirs = ((ground.checkIns ?? []) as any[]).filter((c) => c.participantId === p.id)
-                  return {
-                    name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
-                    done: hasDoneThisSession(theirs, current),
-                    isSelf: p.userId === user?.id,
-                  }
-                })}
               history={[...(ground.checkIns ?? [])]
                 .reduce((acc: any[], ci: any) => {
                   const n = ci.sessionNumber ?? 1
@@ -2571,6 +2568,20 @@ export function GroundAdminPage() {
         {/* SETTINGS */}
         {tab === 'settings' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/*
+            ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", MOVED HERE FROM THE CHECK-IN TAB.
+            GroundChat.tsx's GroundTopic used to hold this beside "About this check-in" - which
+            duplicates Context and so is not re-added here, per the prototype's own placement
+            (People and setup).
+          */}
+          <WhoIsInThis
+            parties={whoIsInThisParties}
+            peersHidden={whoIsInThisPeersHidden}
+            notOpenYet={whoIsInThisNotOpenYet}
+            viewerIsParty={viewerIsAParty}
+            leadName={whoIsInThisLeadName}
+            viewerIsTheLead={isInitiator}
+          />
           {/*
             * ADDING SOMEBODY TO THE CHECK-IN, ON THE SCREEN CALLED SETUP.
             *
