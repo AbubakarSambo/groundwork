@@ -105,6 +105,14 @@ describe('and it does not hide too much', () => {
     const row = { participantId: 'p-kwame', id: 'cm17xq', checkInId: 'ab-17cd', at: '2026-09-17', ref: 'cm17xq', says: 'He met a buyer.' };
     expect(withoutHiddenTargetsIn(row, kwame(17))).toEqual(row);
   });
+  it('a list of sentences loses the emptied line, it does not keep an empty one', () => {
+    expect(withoutHiddenTargetsIn({ agreements: ['Kwame Mensah met four customers.', 'His target is 17.', 'Both want the bank to move.'] }, kwame(17)))
+      .toEqual({ agreements: ['Kwame Mensah met four customers.', 'Both want the bank to move.'] });
+    expect(withoutHiddenTargetsIn({ agreements: [{ text: 'Kwame Mensah is behind.' }, { text: 'Kwame needs 17.' }] }, kwame(17)))
+      .toEqual({ agreements: [{ text: 'Kwame Mensah is behind.' }] });
+    /* A line that was empty before stays: only what this read emptied goes. */
+    expect(withoutHiddenTargetsIn({ lines: ['Kwame is behind.', ''] }, kwame(17))).toEqual({ lines: ['Kwame is behind.', ''] });
+  });
   it('a table row keeps its shape', () => {
     expect(withoutHiddenTargetsIn({ cells: ['Kwame', '17'] }, kwame(17))).toEqual({ cells: ['Kwame', ''] });
   });
@@ -293,9 +301,31 @@ describe('a person\'s own check-in is not given a colleague\'s hidden target, in
     expect(svc.theBriefThisPersonMayBeGiven({ ...ground, whoSeesTargets: 'EVERYBODY' }, as('p-ngozi'))).toBe(ground.brief);
   });
 
+  it('the lead\'s note to everyone: Ngozi\'s prompt holds no 17 or seventeen from it, and keeps her own 14', () => {
+    const withNote = { ...ground, leadContextNotes: [{ audience: 'EVERYONE', participantId: null, text: 'We are behind the bank. Kwame should land seventeen approved facilities, and 17 is the floor. Ngozi should land 14.' }] };
+    const note = svc.theSharedNoteThisPersonMayBeGiven(withNote, as('p-ngozi'));
+    const prompt = buildIntakeBlock({ scenario: ground.scenario, partyType: PartyType.PARTICIPANT, sessionNumber: 1, sharedNote: note, objectives: svc.theTargetsThisPersonMaySee(withNote, as('p-ngozi')) } as any);
+    expect(prompt).toMatch(/SHARED_NOTE/);
+    expect(prompt).not.toMatch(/\bseventeen\b|(?<![\d.,-])17(?![\d])/i);
+    expect(prompt).toMatch(/Ngozi should land 14\./);
+    expect(prompt).toMatch(/We are behind the bank\./);
+    /* Kwame keeps his own, and not Ngozi's. */
+    const his = svc.theSharedNoteThisPersonMayBeGiven(withNote, as('p-kwame'));
+    expect(his).toMatch(/seventeen/);
+    expect(his).not.toMatch(/\b14\b/);
+    /* The lead's own prompt: the note as written. */
+    const leads = svc.theSharedNoteThisPersonMayBeGiven(withNote, as('p-lead', PartyType.INITIATOR));
+    expect(leads).toBe(withNote.leadContextNotes[0].text);
+    expect(buildIntakeBlock({ scenario: ground.scenario, partyType: PartyType.INITIATOR, sessionNumber: 1, sharedNote: leads } as any)).toContain(withNote.leadContextNotes[0].text);
+    /* And shared with everybody: as written. */
+    expect(svc.theSharedNoteThisPersonMayBeGiven({ ...withNote, whoSeesTargets: 'EVERYBODY' }, as('p-ngozi'))).toBe(withNote.leadContextNotes[0].text);
+  });
+
   it('the prompt is built from it', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     expect(src).toContain('adminBrief: this.theBriefThisPersonMayBeGiven(ground as any, checkIn as any),');
     expect(src).not.toContain('adminBrief: (ground as any).brief ?? null,');
+    expect(src).toContain('sharedNote: this.theSharedNoteThisPersonMayBeGiven(ground as any, checkIn as any),');
+    expect(src).toContain("...(ground.leadContextNotes ?? []).map((n) => this.theLeadsWordsThisPersonMayBeGiven(ground as any, checkIn as any, n.text) ?? ''),");
   });
 });

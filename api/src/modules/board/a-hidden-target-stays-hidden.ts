@@ -134,6 +134,12 @@ export function withoutHiddenTargets(text: string, hidden: readonly AHiddenTarge
 }
 
 const NOT_WORDS = /^(?:id|.*Id|.*Ids|.*[Tt]oken|.*[Uu]rl|href|slug|email|.*At)$/;
+/* Lists whose places mean something: a table's cells, columns or headers. */
+const CELLS = /^(?:cells|columns|cols|headers|row|values)$/i;
+/* Whether an entry has anything a person reads: a non-empty string, or a row with one in a field that is not an id. */
+const hasWords = (x: any): boolean => (typeof x === 'string'
+  ? !!x.trim()
+  : !!x && typeof x === 'object' && !(x instanceof Date) && Object.entries(x).some(([k, y]) => !NOT_WORDS.test(k) && (typeof y === 'string' ? !!y.trim() : Array.isArray(y) || (!!y && typeof y === 'object' && !(y instanceof Date)) ? hasWords(y) : false)));
 
 /** Each person's names as the words about them would use them: full name, first name, a name given. */
 export function namesOnTheRoster(participants: readonly { id: string; nameGiven?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null }[]) {
@@ -154,22 +160,30 @@ export function withoutHiddenTargetsIn<T>(value: T, hidden: readonly AHiddenTarg
     const here = hidden.filter((h) => own.some((x) => (h.participantId && x === h.participantId) || (x.length <= 80 && namesIn(h, x))));
     return [...new Set([...inherited, ...here])];
   };
-  const walk = (v: any, about: readonly AHiddenTarget[]): any => {
+  const walk = (v: any, about: readonly AHiddenTarget[], key?: string): any => {
     if (typeof v === 'string') return withoutHiddenTargets(v, hidden, { about });
     if (v instanceof Date || v === null || typeof v !== 'object') return v;
     /* Only plain rows and lists are read; anything else (a Decimal, a Buffer) goes out as it came. */
     if (!Array.isArray(v) && ![Object.prototype, null].includes(Object.getPrototypeOf(v))) return v;
     /* A list is one text: a name in one of its strings and the number in another is still his number
-       (['Kwame Mensah', 'Target: 17']). The list keeps its length, so a row of cells keeps its columns. */
+       (['Kwame Mensah', 'Target: 17']). */
     if (Array.isArray(v)) {
       const strings = v.filter((x) => typeof x === 'string') as string[];
       const scope = strings.length ? [...new Set([...about, ...hidden.filter((h) => strings.some((x) => namesIn(h, x)))])] : about;
-      return v.map((x) => walk(x, scope));
+      const walked = v.map((x) => walk(x, scope));
+      /*
+       * A ROW OF CELLS KEEPS ITS COLUMNS; A LIST OF SENTENCES LOSES THE LINE. An agreement taken out
+       * whole left an empty entry, and the report drew it as an empty bordered line and still counted
+       * it ("3 things you already see the same way" over two). So in a list of sentences, an entry
+       * this read emptied is dropped; in cells or columns it stays as an empty cell.
+       */
+      if (key && CELLS.test(key)) return walked;
+      return walked.filter((x, i) => !(hasWords(v[i]) && !hasWords(x)));
     }
     const scope = aboutWhom(v, about);
     const out: Record<string, any> = {};
     /* An id, a link, an address or a time is not a sentence anybody reads: "cm17x" is not seventeen. */
-    for (const [k, x] of Object.entries(v)) out[k] = typeof x === 'string' && NOT_WORDS.test(k) ? x : walk(x, scope);
+    for (const [k, x] of Object.entries(v)) out[k] = typeof x === 'string' && NOT_WORDS.test(k) ? x : walk(x, scope, k);
     return out;
   };
   return walk(value, []);

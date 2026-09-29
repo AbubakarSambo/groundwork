@@ -494,15 +494,36 @@ export class ConversationService {
     ground: { brief?: string | null; whoSeesTargets?: string | null; objectives?: { target: number | null; ownerParticipantId?: string | null }[]; participants?: any[] },
     checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
   ): string | null {
-    const brief = ground.brief ?? null;
-    if (!brief) return brief;
+    return this.theLeadsWordsThisPersonMayBeGiven(ground, checkIn, ground.brief);
+  }
+
+  /**
+   * THE SAME FOR THE LEAD'S NOTE TO EVERYONE (29 September 2026, the more private option). The note
+   * reaches every person's own check-in as the situation, and can carry a colleague's hidden target
+   * as much as the brief can. Same rule, same exceptions: the lead, and targets shared with everybody.
+   */
+  private theSharedNoteThisPersonMayBeGiven(
+    ground: { leadContextNotes?: { text?: string | null; audience?: string | null; participantId?: string | null }[]; whoSeesTargets?: string | null; objectives?: { target: number | null; ownerParticipantId?: string | null }[]; participants?: any[] },
+    checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
+  ): string | undefined {
+    const note = (ground.leadContextNotes ?? []).find((n) => n.audience === 'EVERYONE' && !n.participantId)?.text?.trim();
+    return this.theLeadsWordsThisPersonMayBeGiven(ground, checkIn, note)?.trim() || undefined;
+  }
+
+  /** Words the lead wrote for everyone, without a sentence giving a target this person may not see. */
+  private theLeadsWordsThisPersonMayBeGiven(
+    ground: { whoSeesTargets?: string | null; objectives?: { target: number | null; ownerParticipantId?: string | null }[]; participants?: any[] },
+    checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
+    text: string | null | undefined,
+  ): string | null {
+    if (!text) return text ?? null;
     const hidden = targetsHiddenFrom(
       { participantId: checkIn.participantId ?? null, isTheLead: checkIn.participant?.partyType === PartyType.INITIATOR },
       ground.whoSeesTargets,
       (ground.objectives ?? []).map((o) => ({ ownerParticipantId: o.ownerParticipantId ?? null, target: o.target })),
       namesOnTheRoster(ground.participants ?? []),
     );
-    return withoutHiddenTargets(brief, hidden) || null;
+    return withoutHiddenTargets(text, hidden) || null;
   }
 
   async getTranscript(checkInId: string, requestingUserId: string) {
@@ -3558,10 +3579,8 @@ export class ConversationService {
        * situation. So it steers what gets asked and can never be quoted, attributed, or stated as
        * fact - the same rule the private note follows, with a different readership.
        */
-      sharedNote:
-        (ground as any).leadContextNotes
-          ?.find((n: any) => n.audience === 'EVERYONE' && !n.participantId)
-          ?.text?.trim() || undefined,
+      /* Without a sentence giving a colleague's hidden target, as the brief (29 September 2026). */
+      sharedNote: this.theSharedNoteThisPersonMayBeGiven(ground as any, checkIn as any),
       /**
        * GW-EXP-4. So the interview can tell a revision from a restatement, and ask what changed. Only
        * for the lead's own conversation: a party has no expectations of anybody to revise.
@@ -4563,7 +4582,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* What the invention gate may treat as already said. See knownForThisTurn. */
     this.knownForThisTurn.set(checkIn.id, [
       ...(ground.participants ?? []).flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '', p.roleAsDescribed ?? '']),
-      ...(ground.leadContextNotes ?? []).map((n) => n.text ?? ''),
+      /* The lead's note as this person was given it: a colleague's hidden number in it is not "already said" to them. */
+      ...(ground.leadContextNotes ?? []).map((n) => this.theLeadsWordsThisPersonMayBeGiven(ground as any, checkIn as any, n.text) ?? ''),
       ...uploadedDocs.map((d: any) => `${d.fileName ?? ''} ${d.content ?? ''} ${d.uploaderNote ?? ''}`),
       /* Only the targets this person may see: a colleague's hidden number is not "already said" to them (week 0). */
       ...this.theTargetsThisPersonMaySee(ground as any, checkIn as any).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
