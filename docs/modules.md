@@ -480,12 +480,9 @@ The prototype has 11 example check-ins, under “Examples” in the sidebar. The
 | Kasarani Foods v Pwani Mills | #/c/matter/board | A law firm matter |
 | Extension Access Programme | #/c/gov/board | A government programme across three counties |
 
-**Decision needed:** in the real product, these could either:
+**Decided by Hafsah, 29 September 2026:** all eleven kinds of board stay fully in the product. Whenever a real check-in fits one of them, its board shows the sections the switchboard gives its situation, filled the way that kind of work needs, and it must match the prototype's example for that kind. Nothing about the boards is removed or hidden.
 
-- **become sample check-ins,** which a new organisation can open to see what good looks like, filled with made-up data; or
-- **stay in the prototype only,** as the blueprint.
-
-My suggestion: keep three as samples (a sales team, a professional firm and a programme), and keep the rest in the prototype.
+What is not added is made-up sample check-ins for new organisations to open. A new organisation starts empty, with the welcome card and checklist, as in the prototype.
 
 ### G2. The switchboard: which sections each situation uses
 
