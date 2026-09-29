@@ -386,6 +386,13 @@ const THE_END_CARD_WAITS_MS = 90_000;
 
 @Injectable()
 export class ConversationService {
+  /** Answers being worked on right now, so the same answer arriving twice is answered once. See sendMessage. */
+  private inFlight?: Map<string, Promise<any>>;
+  /* Made on first use, so a service built without its constructor (as some specs build it) still has one. */
+  private get answersInFlight(): Map<string, Promise<any>> {
+    return (this.inFlight ??= new Map());
+  }
+
   private readonly logger = new Logger(ConversationService.name);
 
   constructor(
@@ -1434,15 +1441,42 @@ export class ConversationService {
    * through `streamDraft`. Everything after the draft is the same code, and the final text, which is
    * what is saved, replaces the draft on the screen. See sendMessageStream.
    */
-  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void } = {}) {
+  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean } = {}): Promise<any> {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
+    /*
+     * ONE ANSWER, ONE REPLY, HOWEVER MANY TIMES IT ARRIVES (request 48). The closing reply was read
+     * twice. The second-press check below reads the turns already saved, but the person's turn is
+     * saved only after the prompt is built, which takes seconds, so the same answer arriving twice
+     * in that window (a retry after a dropped stream, two tabs) passed the check both times and
+     * wrote two replies. While an answer is being worked on, the same answer from the same person
+     * on the same check-in waits for it and gets the same reply, and nothing is written twice.
+     */
+    if (!how.alreadyJoined) {
+      const key = `${checkInId}\u0000${JSON.stringify(requestingUserId)}\u0000${withoutBankDetails(message).trim()}`;
+      const running = this.answersInFlight.get(key);
+      if (running) {
+        this.logger.log(`Check-in ${checkInId}: the same answer arrived while it was still being answered; it gets the same reply.`);
+        return running;
+      }
+      const mine = this.sendMessage(checkInId, requestingUserId, message, { ...how, alreadyJoined: true })
+        .finally(() => this.answersInFlight.delete(key));
+      this.answersInFlight.set(key, mine);
+      return mine;
+    }
+
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model.
        Straight after the door, before anything reads the message. See documents/bank-details-are-never-kept. */
     message = withoutBankDetails(message);
 
     const again = await this.theSameAnswerAgain(checkIn.id, message);
     if (again.kind === 'the same answer, already answered') {
-      return { reply: again.reply, sessionComplete: false };
+      /*
+       * AND THE SAME FLAG IT WAS SENT WITH (request 47). This said `sessionComplete: false` under a
+       * closing reply, so "Please finish my check-in" pressed again got the goodbye back and no end
+       * card. A goodbye is only ever left on a turn that closed (see the goodbye rule below), so the
+       * reply itself says whether it closed.
+       */
+      return { reply: again.reply, sessionComplete: hasAGoodbye(again.reply) && !stillAsking(again.reply) };
     }
     if (again.kind === 'the same answer, still working') {
       return { reply: STILL_ON_YOUR_LAST_ANSWER, sessionComplete: false };
