@@ -2747,6 +2747,13 @@ from finishing at all.`;
           update: {},
         });
       }
+      /* pending.roleAsDescribed is what THIS PERSON typed about THEMSELVES on the join page
+         ("Your part in this" - JoinPage.tsx) - their own words about their own role, never the
+         lead's private description of somebody (that is GroundParticipant.roleAsDescribed,
+         decision 30; PendingJoin's own comment says "what they told us about themselves"). Own
+         words about one's own role go to the person's own profile field, User.jobTitle - the same
+         distinction and the same field participants.service.ts#updateRole and
+         conversation.service.ts's role-correction write to, and never into roleAsDescribed. */
       if (!user) {
         user = await tx.user.create({
           data: {
@@ -2760,8 +2767,13 @@ from finishing at all.`;
             passwordHash: null,
             /* Holds no seat and cannot check in until somebody says yes. */
             awaitingOrgApproval: wait,
+            jobTitle: pending.roleAsDescribed ?? null,
           },
         });
+      } else if (pending.roleAsDescribed) {
+        /* An existing account, joining a further check-in, just typed their own words again - the
+           same statement updateRole writes whenever the person themselves gives it. */
+        user = await tx.user.update({ where: { id: user.id }, data: { jobTitle: pending.roleAsDescribed } });
       }
 
       /* THE QUEUE. One row per (organisation, person); a second link joins the request already waiting. */
@@ -2808,7 +2820,9 @@ from finishing at all.`;
             email,
             userId: user.id,
             partyType: PartyType.PARTICIPANT,
-            roleAsDescribed: pending.roleAsDescribed ?? null,
+            /* NEVER pending.roleAsDescribed here - see the note above the user create/update: that is
+               this person's own words about themselves, not the lead's private description this
+               column holds (decision 30). It went to User.jobTitle instead. */
             department: pending.department ?? null,
             invitedAt: new Date(),
             notifiedAt: new Date(),
