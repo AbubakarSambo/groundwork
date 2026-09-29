@@ -40,7 +40,15 @@ describe('destinations', () => {
      to attach to. A label cannot be disabled: styled as disabled it still opens the picker. */
   it('the upload control is hidden rather than styled as disabled', () => {
     const chat = read('chat/ChatPage.tsx')
-    expect(chat).toMatch(/\{groundId && attachOpen && \(/)
+    /**
+     * ROUND 5, ITEM B: the attach menu moved into Composer's own `plusMenu` slot
+     * (components/gw/ui/Composer.tsx), which only renders it while `plusOpen` - the same
+     * "hidden rather than disabled" rule, now split across two props: whether there is a
+     * ground to attach to (`plusMenu={groundId ? (...) : undefined}`) and whether the menu is
+     * currently open (`plusOpen={attachOpen}`).
+     */
+    expect(chat).toMatch(/plusMenu=\{groundId \? \(/)
+    expect(chat).toMatch(/plusOpen=\{attachOpen\}/)
     expect(chat).toMatch(/<label htmlFor="doc-upload"/)
   })
   it('no permanently disabled primary control remains on the ending fold', () => {

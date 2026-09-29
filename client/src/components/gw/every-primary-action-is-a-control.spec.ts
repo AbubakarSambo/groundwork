@@ -54,7 +54,7 @@ describe('no span or div is a control', () => {
 
 describe('a glyph carries a name', () => {
   it('every send arrow is labelled', () => {
-    for (const rel of ['pages/enter/EntryChatPage.tsx', 'pages/chat/ChatPage.tsx']) {
+    for (const rel of ['pages/enter/EntryChatPage.tsx']) {
       const src = read(rel)
       /* A tag can hold `=>` inside a style object, so the tag is walked back from the glyph rather than matched with [^>]*. */
       let at = src.indexOf('↑'); let seen = 0
@@ -66,6 +66,17 @@ describe('a glyph carries a name', () => {
       }
       expect(seen).toBeGreaterThan(0)
     }
+    /**
+     * ROUND 5, ITEM B: ChatPage.tsx's send arrow moved into components/gw/ui/Composer.tsx, whose
+     * own `aria-label` comes from a `sendLabel` prop rather than a literal string - so the
+     * guarantee splits in two: Composer's own button really does carry whatever name it is given
+     * (checked once, in general, here), and ChatPage really does give it a real one.
+     */
+    const composer = read('components/gw/ui/Composer.tsx')
+    const at = composer.indexOf('↑')
+    const open = composer.lastIndexOf('<button', at)
+    expect(composer.slice(open, at)).toContain('aria-label={sendLabel}')
+    expect(read('pages/chat/ChatPage.tsx')).toMatch(/sendLabel="Send message"/)
   })
   it('the board counts and the download buttons are named for their target', () => {
     const board = read('pages/board/BoardPage.tsx')

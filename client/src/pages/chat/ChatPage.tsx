@@ -16,6 +16,8 @@ import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
 import { Bubble } from '@/components/gw/ui/Bubble'
+import { ConversationCard } from '@/components/gw/ui/ConversationCard'
+import { Composer } from '@/components/gw/ui/Composer'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
@@ -766,11 +768,6 @@ export function ChatPage() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
-  function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value)
-    e.target.style.height = '38px'
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -915,64 +912,191 @@ export function ChatPage() {
       {/* Not in the bare frame: somebody answering one question from their mail has no use for
           a ground page, and the only control on the screen should not lead out of the thing
           they came to do. See the-link-opens-on-the-question. */}
-      {!bareFrame && (
-        <div style={{ padding: '8px 12px 10px' }}>
-          <button
-            className="gw-back"
-            onClick={leave}
-            title="Leave this session. Everything you have said is already saved."
-            style={{ fontWeight: 700, color: 'var(--gw-navy)' }}
-          >
-            ← {checkInName || 'Back'}
-          </button>
-        </div>
-      )}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: 'white', border: '1px solid var(--gw-border)', borderRadius: 14, overflow: 'hidden' }}>
-      <TheCheckInHeader
-        title="Your check-in"
-        underTitle={
-          done && !completed && !declined
-            ? 'That’s everything for today'
-            : correctingSession != null
-              ? `Correcting session ${correctingSession}`
-              : isFinalSession
-                ? `Closing session ${sessionNumber}. This is your final account.`
-                : null
-        }
-        mayPause={opened && !completed && !declined}
-        /* Not in the bare frame: the only control on that screen should not lead out of the thing
-           they came to do. See the-link-opens-on-the-question. Skipping is still offered. */
-        onStopForNow={bareFrame ? undefined : leave}
-        onSkip={() => setConfirmingDecline(true)}
-      />
-      {/* Clarification session banner */}
-      {isClarificationSession && (
-        <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 16px', fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.55 }}>
-          <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell us what was actually happening and we'll update the record.
-        </div>
-      )}
-
-      {/* Session open failure - shown at top of chat area so it's always visible */}
-      {openFailed && (
-        <div style={{ padding: '12px 16px', background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.4 }}>Could not open your session. This is usually a temporary issue.</span>
-          <button
-            onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
-            disabled={openSession.isPending}
-            style={{ padding: '6px 14px', borderRadius: 6, background: 'var(--gw-amber-t)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: openSession.isPending ? 0.6 : 1 }}
-          >
-            {openSession.isPending ? 'Opening…' : 'Try again'}
-          </button>
-        </div>
-      )}
-
-      {/* Chat area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <div
-          ref={msgsRef}
-          aria-live="polite"
-          style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}
-        >
+      <ConversationCard
+        backLabel={!bareFrame ? (checkInName || 'Back') : undefined}
+        onBack={leave}
+        backTitle="Leave this session. Everything you have said is already saved."
+        header={(
+                <TheCheckInHeader
+                  title="Your check-in"
+                  underTitle={
+                    done && !completed && !declined
+                      ? 'That’s everything for today'
+                      : correctingSession != null
+                        ? `Correcting session ${correctingSession}`
+                        : isFinalSession
+                          ? `Closing session ${sessionNumber}. This is your final account.`
+                          : null
+                  }
+                  mayPause={opened && !completed && !declined}
+                  /* Not in the bare frame: the only control on that screen should not lead out of the thing
+                     they came to do. See the-link-opens-on-the-question. Skipping is still offered. */
+                  onStopForNow={bareFrame ? undefined : leave}
+                  onSkip={() => setConfirmingDecline(true)}
+                />
+        )}
+        banners={(
+          <>
+                {/* Clarification session banner */}
+                {isClarificationSession && (
+                  <div style={{ background: 'var(--gw-blue-bg)', borderBottom: '1px solid var(--gw-blue-b)', padding: '10px 16px', fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.55 }}>
+                    <strong>Clarification session.</strong> Something in your report was inferred, not quoted directly. Tell us what was actually happening and we'll update the record.
+                  </div>
+                )}
+          
+                {/* Session open failure - shown at top of chat area so it's always visible */}
+                {openFailed && (
+                  <div style={{ padding: '12px 16px', background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
+                    <span style={{ fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.4 }}>Could not open your session. This is usually a temporary issue.</span>
+                    <button
+                      onClick={() => { setOpenFailed(false); openedRef.current = false; openSession.mutate() }}
+                      disabled={openSession.isPending}
+                      style={{ padding: '6px 14px', borderRadius: 6, background: 'var(--gw-amber-t)', color: 'white', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: openSession.isPending ? 0.6 : 1 }}
+                    >
+                      {openSession.isPending ? 'Opening…' : 'Try again'}
+                    </button>
+                  </div>
+                )}
+          </>
+        )}
+        bodyRef={msgsRef}
+        footer={(
+                  <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
+                    <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* Always the spacer, whether or not there is a sentence to put in it: the buttons after
+                          it are laid out against this flex item, not against whether it has words in it. */}
+                      <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
+                      {/*
+                        * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
+                        *
+                        * Reported twice, the second time with "I told you to fix this": "the chat didn't ask
+                        * me who is involved or tell me i can set context or add people later", and "if someone
+                        * else is checking in and then others check in against it, the place to set context is
+                        * not very good and you are not told you can set context on a tab".
+                        *
+                        * Both exist. The check-in has a Context tab and a Setup tab, and neither is mentioned
+                        * anywhere in the conversation - so somebody sitting in the chat, realising the context
+                        * is thin or that the people who should answer are missing, has no idea either is a
+                        * click away. A tab nobody is told about is a tab nobody uses.
+                        *
+                        * Put in the privacy strip rather than in the model's mouth: an instruction to mention
+                        * it would fire whenever the model felt like it, and this is true on every turn of
+                        * every session. Quiet, always there, and it goes to the tab rather than describing it.
+                        */}
+                      {/*
+                        BOTH OF THESE ARE THE LEAD'S, AND EVERYBODY WAS OFFERED THEM.
+          
+                        Walked as a participant: her chat carries "Set the context" and "Add people". The
+                        first goes to a Context page that tells her "you cannot change this here"; the second
+                        goes to Setup, which opens with "Nothing on this page is yours to change". Two
+                        controls offered to somebody, both leading to a page that refuses them - which is
+                        worse than not offering, because she has to go and find out.
+          
+                        A participant is not short of things to do here: the one thing that IS hers is her
+                        own record, and it is already a tab.
+                      */}
+                      {groundId && isInitiator && (
+                        <span style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+                          <button
+                            onClick={() => navigate(`/grounds/${groundId}?tab=context`)}
+                            style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                          >
+                            Set the context
+                          </button>
+                          <button
+                            onClick={() => navigate(`/grounds/${groundId}?tab=settings`)}
+                            style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                          >
+                            Add people
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                    {/*
+                      THE COMPOSER, THE SHAPE EVERY PERSON ALREADY KNOWS. 18 September 2026, her words: "the
+                      chat box is small and hard to engage, we need to make it look like you are on whatsapp."
+                      Measured on a 375px phone before this: the typing box was 89 pixels wide, because Upload
+                      doc and Paste text sat in the same row and took it. On the card whose whole promise is
+                      two minutes on a phone, that is the thing that breaks it.
+          
+                      So: one round attach button holding both ways of adding something, a full-width pill to
+                      type in, and a round send. Nothing was removed - the two controls moved inside the clip.
+                    */}
+                    <div style={{ padding: '10px 12px' }}>
+                      <input type="file" id="doc-upload" accept={ACCEPTED_UPLOADS.join(',')} style={{ display: 'none' }} onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (f) {
+                          const allowed = ACCEPTED_UPLOADS
+                          const ext = '.' + f.name.split('.').pop()?.toLowerCase()
+                          if (!allowed.includes(ext)) { toast.error(`File type not supported. Accepted: ${allowed.join(', ')}`); e.target.value = ''; return }
+                        }
+                        handleFileChange(e)
+                      }} />
+                      <Composer
+                        inputRef={taRef}
+                        value={input}
+                        onChange={(v) => {
+                          setInput(v)
+                          const el = taRef.current
+                          if (el) { el.style.height = '38px'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
+                        }}
+                        onKeyDown={handleKeyDown}
+                        onSend={send}
+                        sendLabel="Send message"
+                        disabled={loading || completed || declined || !opened}
+                        onPlus={groundId ? () => setAttachOpen(o => !o) : undefined}
+                        plusOpen={attachOpen}
+                        plusDisabled={completed || declined}
+                        plusMenu={groundId ? (
+                          <>
+                            {/* A photo first, because that is what the check-in asks for: "A photo of it is
+                                enough." (check-in-end-card.txt). It is a real upload, and the server keeps it
+                                private to whoever added it until they choose otherwise. */}
+                            <label htmlFor="doc-upload"
+                              title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
+                              onClick={() => setAttachOpen(false)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)' }}
+                            >
+                              Add a photo or a document
+                            </label>
+                            <button
+                              onClick={() => { setAttachOpen(false); if (groundId) setPasteMode(true) }}
+                              disabled={completed || declined}
+                              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)', background: 'none', border: 'none', width: '100%', textAlign: 'left', fontFamily: 'inherit' }}
+                            >
+                              Paste text
+                            </button>
+                            {/* The prototype's own sentence for a new document (U.7, Add a document), and the
+                                server's rule: a document starts private to its uploader (who-can-see-a-document). */}
+                            <div style={{ padding: '6px 12px 8px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.45, borderTop: '1px solid var(--gw-border)', marginTop: 4 }}>
+                              It starts private to you. You choose who can read it.
+                            </div>
+                          </>
+                        ) : undefined}
+                      />
+                    </div>
+                    {/*
+                      AND A WAY BACK, WHICH THE BARE FRAME OTHERWISE HAS NONE OF.
+                      "What a person now needs to login, is there a place to proceed to sign-in?" - there was
+                      not. Accepting the link signed them in, and the page said nothing about it: no name, no
+                      way to return on another device, no sign-in anywhere on screen. One line, under the
+                      thing they are typing into, says all three.
+                    */}
+                    {bareFrame && (
+                      <div style={{ padding: '0 14px 10px', fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>
+                        {user?.email ? `Signed in as ${user.email}. ` : ''}
+                        Your link reopens this any time, or{' '}
+                        <button
+                          onClick={() => navigate('/auth')}
+                          style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
+                        >
+                          sign in with your email
+                        </button>.
+                      </div>
+                    )}
+                  </div>
+        )}
+      >
           {/* From mount, not from the mutation: the transcript fetch sits behind a deliberate jitter of up to
               two seconds, and openSession.isPending cannot be true until after it, so every arrival opened on
               a blank screen. The jitter stays; the sentence starts earlier. */}
@@ -1387,160 +1511,8 @@ export function ChatPage() {
               </div>
             </div>
           )}
-        </div>
+      </ConversationCard>
 
-        {/*
-          THE THREE FIXED CHIPS ARE GONE ("What am I missing?", "Is there a document?", "What do I
-          carry forward?"). They sent the same three questions into every check-in whatever was
-          asked, and the prototype puts the engine's own suggested answers in that place, under the
-          question they answer. "What am I missing?" belongs between check-ins (between-check-ins.txt).
-        */}
-
-        {/* Bottom bar */}
-        <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-          <div style={{ padding: '4px 14px', borderBottom: '1px solid var(--gw-border)', fontSize: 11, color: 'var(--gw-sub)', background: 'var(--gw-bg)', lineHeight: 1.4, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Always the spacer, whether or not there is a sentence to put in it: the buttons after
-                it are laid out against this flex item, not against whether it has words in it. */}
-            <span style={{ flex: 1, minWidth: 200 }}>{privacyLabel}</span>
-            {/*
-              * THE TWO THINGS A PERSON KEEPS ASKING FOR, WHERE THEY ARE ASKING FOR THEM.
-              *
-              * Reported twice, the second time with "I told you to fix this": "the chat didn't ask
-              * me who is involved or tell me i can set context or add people later", and "if someone
-              * else is checking in and then others check in against it, the place to set context is
-              * not very good and you are not told you can set context on a tab".
-              *
-              * Both exist. The check-in has a Context tab and a Setup tab, and neither is mentioned
-              * anywhere in the conversation - so somebody sitting in the chat, realising the context
-              * is thin or that the people who should answer are missing, has no idea either is a
-              * click away. A tab nobody is told about is a tab nobody uses.
-              *
-              * Put in the privacy strip rather than in the model's mouth: an instruction to mention
-              * it would fire whenever the model felt like it, and this is true on every turn of
-              * every session. Quiet, always there, and it goes to the tab rather than describing it.
-              */}
-            {/*
-              BOTH OF THESE ARE THE LEAD'S, AND EVERYBODY WAS OFFERED THEM.
-
-              Walked as a participant: her chat carries "Set the context" and "Add people". The
-              first goes to a Context page that tells her "you cannot change this here"; the second
-              goes to Setup, which opens with "Nothing on this page is yours to change". Two
-              controls offered to somebody, both leading to a page that refuses them - which is
-              worse than not offering, because she has to go and find out.
-
-              A participant is not short of things to do here: the one thing that IS hers is her
-              own record, and it is already a tab.
-            */}
-            {groundId && isInitiator && (
-              <span style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
-                <button
-                  onClick={() => navigate(`/grounds/${groundId}?tab=context`)}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                >
-                  Set the context
-                </button>
-                <button
-                  onClick={() => navigate(`/grounds/${groundId}?tab=settings`)}
-                  style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                >
-                  Add people
-                </button>
-              </span>
-            )}
-          </div>
-          {/*
-            THE COMPOSER, THE SHAPE EVERY PERSON ALREADY KNOWS. 18 September 2026, her words: "the
-            chat box is small and hard to engage, we need to make it look like you are on whatsapp."
-            Measured on a 375px phone before this: the typing box was 89 pixels wide, because Upload
-            doc and Paste text sat in the same row and took it. On the card whose whole promise is
-            two minutes on a phone, that is the thing that breaks it.
-
-            So: one round attach button holding both ways of adding something, a full-width pill to
-            type in, and a round send. Nothing was removed - the two controls moved inside the clip.
-          */}
-          <div style={{ padding: '10px 12px', display: 'flex', gap: 8, alignItems: 'flex-end', position: 'relative' }}>
-            {groundId && attachOpen && (
-              <div style={{ position: 'absolute', bottom: 58, left: 12, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: 6, zIndex: 20, width: 260, maxWidth: 'calc(100vw - 40px)' }}>
-                {/* A photo first, because that is what the check-in asks for: "A photo of it is
-                    enough." (check-in-end-card.txt). It is a real upload, and the server keeps it
-                    private to whoever added it until they choose otherwise. */}
-                <label htmlFor="doc-upload"
-                  title={`Accepted: ${ACCEPTED_UPLOADS.map(e => e.slice(1).toUpperCase()).join(', ')}`}
-                  onClick={() => setAttachOpen(false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)' }}
-                >
-                  Add a photo or a document
-                </label>
-                <button
-                  onClick={() => { setAttachOpen(false); if (groundId) setPasteMode(true) }}
-                  disabled={completed || declined}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--gw-text)', background: 'none', border: 'none', width: '100%', textAlign: 'left', fontFamily: 'inherit' }}
-                >
-                  Paste text
-                </button>
-                {/* The prototype's own sentence for a new document (U.7, Add a document), and the
-                    server's rule: a document starts private to its uploader (who-can-see-a-document). */}
-                <div style={{ padding: '6px 12px 8px', fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.45, borderTop: '1px solid var(--gw-border)', marginTop: 4 }}>
-                  It starts private to you. You choose who can read it.
-                </div>
-              </div>
-            )}
-            {groundId && (
-              <button
-                onClick={() => setAttachOpen(o => !o)}
-                aria-label="Add a photo, a document or some text"
-                aria-expanded={attachOpen}
-                disabled={completed || declined}
-                style={{ width: 42, height: 42, borderRadius: 10, flexShrink: 0, background: 'white', border: '1.5px solid var(--gw-border)', color: 'var(--gw-text)', cursor: 'pointer', fontSize: 22, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit' }}
-              >
-                +
-              </button>
-            )}
-            <input type="file" id="doc-upload" accept={ACCEPTED_UPLOADS.join(',')} style={{ display: 'none' }} onChange={e => {
-              const f = e.target.files?.[0]
-              if (f) {
-                const allowed = ACCEPTED_UPLOADS
-                const ext = '.' + f.name.split('.').pop()?.toLowerCase()
-                if (!allowed.includes(ext)) { toast.error(`File type not supported. Accepted: ${allowed.join(', ')}`); e.target.value = ''; return }
-              }
-              handleFileChange(e)
-            }} />
-
-            <textarea ref={taRef} placeholder="Type your answer"
-              value={input} onChange={autoResize} onKeyDown={handleKeyDown}
-              disabled={loading || completed || declined || !opened}
-              rows={1}
-              style={{ flex: 1, minWidth: 0, resize: 'none', height: 42, maxHeight: 140, padding: '11px 16px', fontSize: 15, lineHeight: 1.35, border: '1px solid var(--gw-border)', borderRadius: 21, background: opened ? 'white' : 'var(--gw-bg)', fontFamily: 'inherit', outline: 'none' }}
-            />
-            <button onClick={send} disabled={loading || completed || declined || !opened} aria-label="Send message"
-              style={{ width: 42, height: 42, borderRadius: '50%', background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!opened || completed || declined) ? 0.5 : 1 }}
-            >
-              ↑
-            </button>
-          </div>
-          {/*
-            AND A WAY BACK, WHICH THE BARE FRAME OTHERWISE HAS NONE OF.
-            "What a person now needs to login, is there a place to proceed to sign-in?" - there was
-            not. Accepting the link signed them in, and the page said nothing about it: no name, no
-            way to return on another device, no sign-in anywhere on screen. One line, under the
-            thing they are typing into, says all three.
-          */}
-          {bareFrame && (
-            <div style={{ padding: '0 14px 10px', fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center' }}>
-              {user?.email ? `Signed in as ${user.email}. ` : ''}
-              Your link reopens this any time, or{' '}
-              <button
-                onClick={() => navigate('/auth')}
-                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer' }}
-              >
-                sign in with your email
-              </button>.
-            </div>
-          )}
-        </div>
-      </div>
-
-      </div>
       </div>
 
       {/* Paste text overlay */}
