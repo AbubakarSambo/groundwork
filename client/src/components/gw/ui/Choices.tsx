@@ -16,7 +16,7 @@ export function Choices({ options, value, onChange, stacked, label }: {
   label: string
 }) {
   return (
-    <div className="gwui-choices" role="radiogroup" aria-label={label}>
+    <div className={`gwui-choices${stacked ? ' gwui-choices-stacked' : ''}`} role="radiogroup" aria-label={label}>
       {options.map(o => {
         const on = o.key === value
         const className = ['gwui-choice', stacked && 'gwui-choice-stacked', on && 'gwui-choice-on'].filter(Boolean).join(' ')

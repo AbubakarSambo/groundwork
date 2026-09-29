@@ -42,7 +42,7 @@ export function WhoCanOpenACheckIn({ orgName }: { orgName: string }) {
   return (
     <Section heading="Who can open a check-in">
       <Stack gap={18}>
-        <FieldRows>
+        <FieldRows flush>
           <FieldRow
             label="Opening check-ins"
             value={how.whoMayOpen === 'EVERYONE'
