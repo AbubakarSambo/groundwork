@@ -57,7 +57,10 @@ describe('the quick read', () => {
     expect(SERVICE).toContain('still open, as the written report reads it');
     expect(SERVICE).toContain('no target moved this session');
     expect(SERVICE).toContain('nobody named anything holding work up');
-    expect(SERVICE).toContain('of what was said is anchored to a document');
+    /* Request 67: the last tile's sub is now a whole sentence of its own, "15 of every 100 things
+       people said have a document behind them.", so the old fragment is gone. */
+    expect(SERVICE).toContain('of every 100 things people said');
+    expect(SERVICE).not.toContain('of what was said is anchored to a document');
   });
 
   it('and none of them reads as a verdict on a person', () => {

@@ -3260,7 +3260,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const wordedShape = await (async () => {
       const drafts: Drafted[] = [];
       shape.sections.forEach((sec, i) => { if (sec.saying) drafts.push({ key: `say${i}`, text: sec.saying }); });
-      shape.atAGlance.forEach((t, i) => drafts.push({ key: `sub${i}`, text: `${t.label}: ${t.value}, ${t.sub}.`, mustKeep: [t.value] }));
+      shape.atAGlance.forEach((t, i) => drafts.push({ key: `sub${i}`, text: `${t.label}: ${t.value}, ${t.sub.replace(/\.$/, '')}.`, mustKeep: [t.value] }));
       shape.confidence.reasons.forEach((r, i) => drafts.push({ key: `why${i}`, text: r }));
       drafts.push({ key: 'conf', text: shape.confidence.saying });
       drafts.push({ key: 'stand', text: shape.whereThingsStand.saying });
@@ -3272,8 +3272,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
       const subOf = (i: number, t: { label: string; value: string; sub: string }) => {
         const w = said[`sub${i}`];
         /* The tile keeps label and value as its own fields; only the sub-line takes the wording. */
-        const m = w ? w.match(new RegExp(`^${t.label}: ${t.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},\s*(.*)\.?$`)) : null;
-        return m ? m[1].replace(/\.$/, '') : t.sub;
+        /* `\\s` in the pattern, not `\s`: in a template string `\s` is a plain "s", so every worded
+           sub-line came out with a space in front of it. */
+        const m = w ? w.match(new RegExp(`^${t.label}: ${t.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},\\s*(.*)\\.?$`)) : null;
+        if (!m) return t.sub;
+        const worded = m[1].trim().replace(/\.$/, '');
+        /* A sub-line that is a sentence of its own keeps its full stop (request 67). */
+        return /\.$/.test(t.sub) && worded ? `${worded.charAt(0).toUpperCase()}${worded.slice(1)}.` : worded;
       };
       return {
         ...shape,
