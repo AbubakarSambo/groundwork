@@ -24,6 +24,8 @@ export interface OrgMember {
   checkInsNotOpened?: number
   arrivedThroughACheckIn?: boolean
   awaitingOrgApproval?: boolean
+  /** This organisation's own admin said no to their latest request to join it. */
+  notLetIn?: boolean
   /** A guest added when the plan had no seat for them: holds none, and is not offered the check-in yet. */
   heldForASeat?: boolean
   /** Where they sit here. Describes the organisation; grants nothing. */
@@ -79,9 +81,12 @@ export function roleWord(m: Pick<OrgMember, 'id' | 'role'>, ownerId: string | nu
 /**
  * Where they got to. "Checking in", "Signed in, not on a check-in", "Invited, not opened" and
  * "Waiting to be let in" are the prototype's. "Not answered yet" is ours: somebody on a check-in who
- * has not answered one, which the prototype has no word for and an admin rolling out needs.
+ * has not answered one, which the prototype has no word for and an admin rolling out needs. "Not let
+ * in" is Hafsah's decision of 29 September: once this organisation's own admin has said no, "waiting"
+ * is no longer true.
  */
 export function statusWord(m: OrgMember): string {
+  if (m.notLetIn) return 'Not let in'
   if (m.awaitingOrgApproval) return 'Waiting to be let in'
   if (m.heldForASeat) return 'No seat on your plan'
   if (m.state === 'invited') return 'Invited, not opened'
@@ -93,7 +98,7 @@ export function statusWord(m: OrgMember): string {
 }
 
 export function needsSomething(m: OrgMember): boolean {
-  return ['Waiting to be let in', 'No seat on your plan', 'Invited, not opened', 'Not answered yet'].includes(statusWord(m))
+  return ['Waiting to be let in', 'Not let in', 'No seat on your plan', 'Invited, not opened', 'Not answered yet'].includes(statusWord(m))
 }
 
 /** "Sales rep, reports to Wairimu Kamau", or either half on its own, or nothing. */

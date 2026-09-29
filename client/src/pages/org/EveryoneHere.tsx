@@ -65,7 +65,7 @@ export function roleTagTone(role: string): TagTone {
 
 export function statusTagTone(status: string): TagTone {
   if (status === 'Checking in') return 'proven'
-  if (status === 'No seat on your plan') return 'concern'
+  if (status === 'No seat on your plan' || status === 'Not let in') return 'concern'
   if (status === 'Waiting to be let in') return 'attention'
   return 'plain'
 }

@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { PaginationDto } from '../../common';
-import { TokenType, CompanyStage } from '@prisma/client';
+import { TokenType, CompanyStage, MembershipRequestStatus } from '@prisma/client';
 import { setRole, RoleWrite } from './a-role-is-stored-twice';
 import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
@@ -448,6 +448,31 @@ export class UsersService {
       if (!list.some((c) => c.id === m.ground.id)) list.push({ id: m.ground.id, label: m.ground.label, runsIt: m.partyType === 'INITIATOR' });
       theirCheckIns.set(who, list);
     }
+    /*
+     * "WAITING TO BE LET IN" READS UNTRUE ONCE AN ADMIN HAS SAID NO.
+     *
+     * decline() (who-is-waiting-at-the-door.service.ts) deliberately leaves `awaitingOrgApproval`
+     * set - the account keeps working for a company that did let them in, so the flag cannot simply
+     * be cleared. What changed is this organisation's own answer, so it is read here, from this
+     * organisation's own requests, not from the flag alone. Their latest request to THIS
+     * organisation decides it: declined reads "Not let in"; anything else still reads "waiting".
+     */
+    const awaitingIds = users.filter((u) => u.awaitingOrgApproval).map((u) => u.id);
+    const notLetInIds = new Set<string>();
+    if (awaitingIds.length) {
+      const requests = await this.prisma.membershipRequest.findMany({
+        where: { organizationId, userId: { in: awaitingIds } },
+        orderBy: { createdAt: 'desc' },
+        select: { userId: true, status: true },
+      });
+      const decided = new Set<string>();
+      for (const r of requests) {
+        if (decided.has(r.userId)) continue;
+        decided.add(r.userId);
+        if (r.status === MembershipRequestStatus.DECLINED) notLetInIds.add(r.userId);
+      }
+    }
+
     const sits = await this.whereTheySit(organizationId, ids);
     const hasFinished = new Set([...answeredCount.keys()]);
     /*
@@ -493,6 +518,8 @@ export class UsersService {
         /** How many of those they were added to and have not opened the invitation for yet. */
         checkInsNotOpened: notOpenedCount.get(u.id) ?? 0,
         arrivedThroughACheckIn: arrivedThroughACheckIn(u),
+        /** This organisation said no; the account still exists but stays out of this one. */
+        notLetIn: notLetInIds.has(u.id),
         /* Where they sit here (U.4). Describes the organisation; grants nothing. */
         ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),
         /* Which of this organisation's check-ins they are on, and whether they run it. */

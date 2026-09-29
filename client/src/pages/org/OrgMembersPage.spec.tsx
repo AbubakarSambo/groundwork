@@ -186,6 +186,29 @@ describe('everyone at Baridi', () => {
     expect(lenaRow.getByText(/Sales team, Q3, MarketView, where next, test, Kasarani Foods v Pwani Mills, test/)).toBeTruthy()
   })
 
+  it('someone declined at the door reads "Not let in", not "Waiting to be let in" (Hafsah, 29 September)', async () => {
+    const withADecline = [
+      ...people,
+      { id: 'grace-declined', email: 'grace@outside.co.ke', firstName: 'Grace', lastName: 'Outside', role: 'MEMBER', isEmailVerified: false, awaitingOrgApproval: true, notLetIn: true, state: 'signed in', checkInsOn: 0, checkInsAnswered: 0, level: null, team: null, reportsTo: null, checkIns: [] },
+    ]
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: withADecline, meta: { total: withADecline.length } } } as any
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+      if (url === '/billing/status') return { data: { people: { count: 8, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+      return { data: [] } as any
+    })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { EveryoneHere } = await import('./EveryoneHere')
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter><EveryoneHere orgName="Baridi Appliances" ownerId={null} /></MemoryRouter>
+      </QueryClientProvider>,
+    )
+    const row = within((await screen.findByText('Grace Outside', { selector: '.gwui-person-name' })).closest('[role="row"]') as HTMLElement)
+    expect(row.getByText('Not let in')).toBeTruthy()
+    expect(row.getByText('Not let in').className).toMatch(/gwui-tag-concern/)
+  })
+
   it('"Open" goes to that person\'s own page', async () => {
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Open Miriam Wanjiku' }))
