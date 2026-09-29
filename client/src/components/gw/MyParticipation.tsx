@@ -30,6 +30,21 @@ export function statusSentence(label: string): string {
   return `This check-in is ${joined.charAt(0).toLowerCase()}${joined.slice(1)}.`
 }
 
+/**
+ * "SESSIONS COMPLETED" READ AS A LABEL AND A BARE NUMBER, NOT A SENTENCE (U.4 people-group review,
+ * item 3): "Sessions completed" over "1 of 12" is a stat tile, the wording rule this page keeps to
+ * everywhere else rules out. It is also easy to misread next to the header's "This is session 2 of
+ * 12" as though the two disagreed, when they are simply two different counts (how many are done, and
+ * which one is open now) - saying both in one sentence, with the words "completed" and "open", keeps
+ * them from reading as a contradiction.
+ */
+export function sessionsCompletedSentence(completedCount: number, totalSessions: number | null): string {
+  const done = completedCount === 1 ? '1 session' : `${completedCount} sessions`
+  /* No total means no total: "3 of" with nothing after it is not a count. */
+  if (totalSessions == null) return `You have completed ${done}.`
+  return `You have completed ${done}, out of ${totalSessions}.`
+}
+
 export interface MyParticipationProps {
   /** Who is reading: their name, initial and email. */
   viewer: { firstName?: string | null; lastName?: string | null; email?: string | null } | null | undefined
@@ -101,8 +116,7 @@ export function MyParticipation({
             </div>
             <div style={{ padding: '13px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Sessions completed</div>
-              {/* No total means no total: "3 of" with nothing after it is not a count. */}
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{completedCount}{totalSessions != null ? ` of ${totalSessions}` : ''}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{sessionsCompletedSentence(completedCount, totalSessions)}</div>
             </div>
           </div>
 
