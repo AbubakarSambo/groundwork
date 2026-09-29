@@ -75,16 +75,25 @@ export class ParticipantsService {
      * THE RULE THAT OWNS WHO SEES A SHARE (whose-number-is-whose-business.ts, board.service.ts's own
      * caller - the fix for ten people each seeing all ten targets). Nothing new is decided here about
      * visibility: `targetsFor` is asked for exactly what this one participant, not yet the lead, may
-     * see, the same as the board asks it; a number is shown only when the participant's own share
-     * turns up in what it hands back, never anyone else's, and never when the row has no target set
-     * (a qualitative objective) or nobody owns one at all.
+     * see, the same as the board asks it.
+     *
+     * THE VALUE NEVER LEAVES THIS FUNCTION (Hafsah's last check). This preview is read with the
+     * link's token, before any sign-in - the one person who must not be handed a number here is the
+     * one this token is for, over a channel that proves nothing about who is holding it yet. So this
+     * sends only WHO would see it, never the number itself: `'you-and-lead'`, `'everybody'` (the
+     * check-in's own `whoSeesTargets` setting), or `null` (no share of their own to speak of, or the
+     * settled case - they have already joined, and the page does not show this block to them again).
      */
-    const myShare = targetsFor(
+    const alreadyAccepted = !!participant.userId;
+    const whoSeesTargets: 'their own' | 'everybody' = (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own';
+    const ownsAShare = !!targetsFor(
       (ground as any).objectives ?? [],
       participant.id,
-      (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
+      whoSeesTargets,
       { isLead: false },
-    ).shown.find((o: any) => o.ownerParticipantId === participant.id && o.target != null)?.target ?? null;
+    ).shown.find((o: any) => o.ownerParticipantId === participant.id && o.target != null);
+    const yourNumberIsSeenBy: 'you-and-lead' | 'everybody' | null =
+      alreadyAccepted || !ownsAShare ? null : (whoSeesTargets === 'everybody' ? 'everybody' : 'you-and-lead');
 
     return {
       /* For "Wairimu invited you to the sales team's check-in" and "Baridi Appliances, until 30 September." */
@@ -110,16 +119,13 @@ export class ParticipantsService {
       /* U.6 review: no "Your part in this". What is stored there is the lead's sentence about this
          person (the-leads-words-about-someone.ts), and this page is read by that person. */
       email: participant.email,
-      alreadyAccepted: !!participant.userId,
+      alreadyAccepted,
       /* Somebody who answered through an open link has no sign-in yet, and has already done the thing
          the arrival screen describes. A link that brings them to their report should not read "wants
          to hear your version" - see InvitePage, which goes straight through on this. */
       hasAnswered: await this.prisma.checkIn.count({ where: { participantId: participant.id, status: CheckInStatus.COMPLETED } }).then((n) => n > 0).catch(() => false),
       nameGiven: (participant as any).nameGiven ?? null,
-      /* Null when there is nothing to say: no target is owned by this person, or the check-in has
-         no numeric target for them, or targetsFor withheld it (it never will, for their own share,
-         but the field says nothing rather than guessing when the rule changes). */
-      yourShareOfTarget: myShare,
+      yourNumberIsSeenBy,
     };
   }
 

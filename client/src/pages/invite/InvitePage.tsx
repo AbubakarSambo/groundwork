@@ -337,14 +337,17 @@ export function InvitePage() {
                     with everyone in it.
                   </p>
                 </div>
-                {/* "Your number" (U.20 eighth round): shown only when the server sends this
-                    person's own share of a target, through the engine's own visibility rule
-                    (targetsFor, participants.service.ts's preview). Never anyone else's share. */}
-                {preview.yourShareOfTarget != null && (
+                {/* "Your number" (U.20 ninth round): shown only when the server says WHO would see
+                    this person's own share of a target, through the engine's own visibility rule
+                    (targetsFor, participants.service.ts's preview) - never the number itself, since
+                    this page is read with the link's token, before any sign-in. */}
+                {preview.yourNumberIsSeenBy && (
                   <div>
                     <SubHeading>Your number</SubHeading>
                     <p className="gwui-panel-text">
-                      {`Only you and ${preview.leadFirstName ?? 'the person who runs it'} see your share of the target.`}
+                      {preview.yourNumberIsSeenBy === 'everybody'
+                        ? 'Everybody in this check-in sees every number, including yours.'
+                        : `Only you and ${preview.leadFirstName ?? 'the person who runs it'} see your share of the target.`}
                     </p>
                   </div>
                 )}

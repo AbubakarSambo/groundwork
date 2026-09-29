@@ -86,14 +86,20 @@ describe('the invitation a participant reads', () => {
     expect(screen.queryByText('Your number')).toBeNull()
   })
 
-  /* U.20 eighth round: the server sends this person's own share (through the engine's own
-     visibility rule, participants.service.ts's preview), and the block reads the prototype's
-     own sentence, naming the lead. */
-  it('shows "Your number" when the server sends this person\'s own share of a target', async () => {
-    open({ ...PREVIEW, yourShareOfTarget: 13 })
+  /* U.20 ninth round (Hafsah's last check): the preview is read with the link's token, before any
+     sign-in, so it must never carry the number itself - only WHO would see it, through the
+     engine's own visibility rule (participants.service.ts's preview). */
+  it('shows "Your number" the prototype\'s way when it is you and the lead', async () => {
+    open({ ...PREVIEW, yourNumberIsSeenBy: 'you-and-lead' })
     await screen.findByText('Who sees your answers')
     expect(screen.getByText('Your number')).toBeTruthy()
     expect(screen.getByText('Only you and Wairimu see your share of the target.')).toBeTruthy()
+  })
+
+  it('says so when the check-in shows everybody every number', async () => {
+    open({ ...PREVIEW, yourNumberIsSeenBy: 'everybody' })
+    await screen.findByText('Who sees your answers')
+    expect(screen.getByText('Everybody in this check-in sees every number, including yours.')).toBeTruthy()
   })
 })
 
