@@ -51,7 +51,7 @@ import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-i
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { endingOnTheClose, endsOnTheClose, type Door } from './the-close-says-what-comes-next';
-import { theEndCard, theCardStillStanding, theCommitmentTheCloseStates, type EndCard, type ALineForTheCard } from './the-end-card';
+import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
 import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
@@ -7448,22 +7448,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       if (!draft) {
         this.logger.warn(`Check-in ${checkIn.id}: the end card took longer than ${THE_END_CARD_WAITS_MS}ms, so it was left out; the record is read when they finish.`);
         return null;
-      }
-      /*
-       * THE COMMITMENT THE GOODBYE STATED, WHEN THE RECORD READER WROTE NONE (run-19: 13 of 20 closes).
-       * It goes first, as the reply said it, and into the draft, so finishing writes it as a
-       * COMMITMENT row for this person like every other line on the card.
-       */
-      let goodbye = '';
-      try {
-        const closingTurn = await this.prisma.conversationTurn.findUnique({ where: { id: closingTurnId }, select: { content: true } });
-        goodbye = String(closingTurn?.content ?? '');
-      } catch (err: any) {
-        this.logger.warn(`Check-in ${checkIn.id}: could not read the goodbye for its commitment (${err?.message ?? err}); the card is built without it.`);
-      }
-      const stated = theCommitmentTheCloseStates(goodbye, draft.rows.map((r) => ({ type: String(r.type), text: String(r.text ?? '') })));
-      if (stated) {
-        draft.rows.unshift({ participantId: checkIn.participantId, checkInId: checkIn.id, type: 'COMMITMENT' as any, text: stated, recallBased: true } as Prisma.RecordEntryCreateManyInput);
       }
       const lines: ALineForTheCard[] = draft.rows.map((r) => ({
         type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true,
