@@ -35,6 +35,12 @@ import { Page, Mark, PageTitle, Panel, SubHeading, Button, Tag, Note, Stack } fr
  * direct child of `<body>` (the app's own root, and anything else already there) is marked
  * `inert`, restored the moment this unmounts. Nothing behind the cover can be reached at all,
  * by mouse, keyboard or a screen reader, while it is up.
+ *
+ * Hafsah's last check (U.20 ninth round): `inert` stopped the floating feedback button doing
+ * anything, but it still SHOWED, on top of the cover - it is `zIndex: 100` (AppShell.tsx), the
+ * cover is 40. The prototype's bare page has no such button, so it is hidden outright, not merely
+ * made unusable: `<body>` carries `.gwui-cover-open` for exactly as long as this is mounted, and
+ * gw-ui.css hides `.gw-feedback-btn` while that class is on.
  */
 export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpenMyWork: () => void }) {
   const qc = useQueryClient()
@@ -100,10 +106,12 @@ function useOwnBodyContainer(): HTMLDivElement {
   const [el] = useState(() => document.createElement('div'))
   useEffect(() => {
     document.body.appendChild(el)
+    document.body.classList.add('gwui-cover-open')
     const others = Array.from(document.body.children).filter((c) => c !== el)
     others.forEach((c) => c.setAttribute('inert', ''))
     return () => {
       others.forEach((c) => c.removeAttribute('inert'))
+      document.body.classList.remove('gwui-cover-open')
       document.body.removeChild(el)
     }
   }, [el])

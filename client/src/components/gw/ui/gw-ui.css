@@ -31,6 +31,12 @@
    the route it is met on always keeps AppShell's sidebar. This covers it, rather than reworking
    which routes get a sidebar for one state inside one of them.) ─────────────────────────────── */
 .gwui-full-page-cover { position: fixed; inset: 0; z-index: 40; background: var(--gw-page); overflow: auto; }
+/* THE FLOATING FEEDBACK BUTTON SITS ABOVE THIS COVER (Hafsah's last check): `.gw-feedback-btn`
+   (index.css) is `zIndex: 100`, above the cover's 40, so it showed on top of a bare screen that is
+   already `inert` underneath - visible, and doing nothing when pressed. The prototype's own bare
+   page has no such button, so it is hidden outright while a cover is open, not just made unusable.
+   `.gwui-cover-open` is set on <body> for exactly as long as a full-page cover is mounted. */
+body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 
 /* ── PAGE (prototype: .main, .wrap) ──────────────────────────────────────── */
 .gwui-page-main { padding: 32px 48px 72px; min-width: 0; }

@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { OutOfTime } from './OutOfTime'
 import { groundsApi } from '@/api/grounds'
 
@@ -88,5 +90,37 @@ describe('the app frame behind the cover', () => {
     expect(sidebarLink.hasAttribute('inert')).toBe(false)
 
     document.body.removeChild(sidebarLink)
+  })
+})
+
+/*
+ * THE FLOATING FEEDBACK BUTTON DOES NOT JUST STOP WORKING, IT GOES AWAY (Hafsah's last check).
+ * `inert` alone left it visible, sitting on top of the cover (its zIndex is 100, the cover's is
+ * 40) and doing nothing when pressed - worse than gone, since it looked like a live control. The
+ * prototype's bare page has none, so `<body>` carries `.gwui-cover-open` for exactly as long as
+ * the cover is mounted, and gw-ui.css hides `.gw-feedback-btn` (the button's own class, AppShell.tsx)
+ * while that is on.
+ */
+describe('the floating feedback button', () => {
+  it('body carries .gwui-cover-open only while the cover is mounted', async () => {
+    ;(groundsApi.moreTime as any).mockResolvedValue(STANDING)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    expect(document.body.classList.contains('gwui-cover-open')).toBe(false)
+
+    const view = render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter><OutOfTime groundId="g1" onOpenMyWork={vi.fn()} /></MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await screen.findByRole('heading', { name: 'This check-in reached its end date' })
+    expect(document.body.classList.contains('gwui-cover-open')).toBe(true)
+
+    view.unmount()
+    expect(document.body.classList.contains('gwui-cover-open')).toBe(false)
+  })
+
+  it('gw-ui.css hides the feedback button while the cover is open', () => {
+    const css = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'ui', 'gw-ui.css'), 'utf8')
+    expect(css).toMatch(/body\.gwui-cover-open \.gw-feedback-btn \{[^}]*display: none/)
   })
 })
