@@ -101,8 +101,8 @@ describe('the same thing for three check-ins, as each reader reads the board', (
     const b = await board;
     const lines = (b.toLookAt ?? []).map((t: any) => `${t.says} ${t.detail}`);
     expect(lines).toEqual([
-      'Samuel Kariuki has had the same thing in the way for 3 check-ins. Samuel Kariuki first said in check-in 1 that the signed order from Lakeside was in the way, and said so again in check-in 3. So far it has only been asked about. Chasing it, or asking someone else, would move it.',
-      'Samuel Kariuki has made the same promise for 3 check-ins. Samuel Kariuki promised to follow up the same 5 leads in check-ins 1, 2 and 3. Nobody has said yet whether it happened. Asking Samuel Kariuki what is stopping it, or agreeing to drop it, would settle it.',
+      'Samuel Kariuki has had the same thing in the way for 3 check-ins. Samuel first said in check-in 1 that the signed order from Lakeside was in the way, and said so again in check-in 3. So far it has only been asked about. Chasing it, or asking someone else, would move it.',
+      'Samuel Kariuki has made the same promise for 3 check-ins. Samuel promised to follow up the same 5 leads in check-ins 1, 2 and 3. Nobody has said yet whether it happened. Asking Samuel what is stopping it, or agreeing to drop it, would settle it.',
       'A colleague has made the same promise for 3 check-ins. In check-ins 1, 2 and 3, this colleague said, "I will send the new prices to every shop." Nobody has said yet whether it happened. Asking this colleague what is stopping it, or agreeing to drop it, would settle it.',
     ]);
     expect(b.toLookAt[0].participantId).toBe('p-samuel');
@@ -158,6 +158,22 @@ describe('what counts as the same thing for three check-ins', () => {
     const [t] = whatHasStayedTheSame([samuel], [{ participantId: 'p1', text: 'I will call Lakeside', status: 'UNKNOWN', statedInSession: 1, saidAgainIn: [2, 3], theirWords: false }], []);
     expect(t.detail).toBe('Samuel made it in check-ins 1, 2 and 3. Nobody has said yet whether it happened. Asking Samuel what is stopping it, or agreeing to drop it, would settle it.');
     expect(t.detail).not.toContain('"');
+  });
+
+  it('uses the whole name once and the first name after it, unless two people share a first name', () => {
+    const promise = (id: string) => ({ participantId: id, text: 'call Lakeside', status: 'UNKNOWN', statedInSession: 1, saidAgainIn: [2, 3], theirWords: true });
+    const [one] = whatHasStayedTheSame([{ participantId: 'p1', who: 'Samuel Kariuki', finished: [1, 2, 3] }], [promise('p1')], []);
+    expect(`${one.says} ${one.detail}`).toBe('Samuel Kariuki has made the same promise for 3 check-ins. Samuel promised to call Lakeside in check-ins 1, 2 and 3. Nobody has said yet whether it happened. Asking Samuel what is stopping it, or agreeing to drop it, would settle it.');
+    const two = whatHasStayedTheSame([
+      { participantId: 'p1', who: 'Samuel Kariuki', finished: [1, 2, 3] },
+      { participantId: 'p2', who: 'Samuel Otieno', finished: [1, 2, 3] },
+    ], [promise('p1'), promise('p2')], []);
+    expect(two.map((t) => t.detail)).toEqual([
+      'Samuel Kariuki promised to call Lakeside in check-ins 1, 2 and 3. Nobody has said yet whether it happened. Asking Samuel Kariuki what is stopping it, or agreeing to drop it, would settle it.',
+      'Samuel Otieno promised to call Lakeside in check-ins 1, 2 and 3. Nobody has said yet whether it happened. Asking Samuel Otieno what is stopping it, or agreeing to drop it, would settle it.',
+    ]);
+    const [eze] = whatHasStayedTheSame([{ participantId: 'p1', who: 'Mr Eze Okafor', finished: [1, 2, 3] }], [promise('p1')], []);
+    expect(eze.detail).toMatch(/^Mr Eze promised/);
   });
 
   it('reads the check-in something was first said in from when its row was written', () => {

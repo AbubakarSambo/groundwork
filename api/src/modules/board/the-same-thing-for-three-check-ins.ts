@@ -31,6 +31,8 @@ export interface ThePerson {
   /** The name as resolved for this reader, or "A colleague". Never an email address. */
   who: string;
   nameIsTheirRole?: boolean;
+  /** The first name, for every sentence after the first. Set by `whatHasStayedTheSame`. */
+  short?: string;
   /** The sessions of the check-ins they have finished. */
   finished: number[];
 }
@@ -70,8 +72,30 @@ export interface ToLookAt {
 
 const listed = (ns: number[]) => (ns.length <= 1 ? ns.join('') : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`);
 
+/**
+ * AFTER THE FIRST SENTENCE, THE FIRST NAME. "Samuel Kariuki has made the same promise for 3
+ * check-ins. Samuel promised to…", as the prototype says "Samuel has chased the same 5 leads". A
+ * title keeps the name after it ("Mr Eze"), and where two people share a first name each keeps the
+ * whole name, so the lead is never left guessing which one. Never a pronoun.
+ */
+function firstNames(people: ThePerson[]): Map<string, string> {
+  const out = new Map<string, string>();
+  const firstOf = (p: ThePerson): string | null => {
+    const who = (p.who ?? '').trim();
+    if (!who || p.nameIsTheirRole || /colleague$|^(?:your|the) lead$/i.test(who)) return null;
+    const m = who.match(/^((?:(?:Mr|Mrs|Ms|Dr|Prof)\.?\s+)?\S+)/);
+    return m ? m[1] : null;
+  };
+  const firsts = people.map((p) => [p.participantId, firstOf(p)] as const);
+  for (const [id, f] of firsts) {
+    if (f && firsts.filter(([, g]) => g === f).length === 1) out.set(id, f);
+  }
+  return out;
+}
+
 /** "this colleague" where the row has no name: the line is about one person, not anybody. */
 function them(p: ThePerson, atTheStart: boolean): string {
+  if (p.short) return p.short;
   const s = subjectFor(p, atTheStart);
   return /^(?:a|an|one|another)\s+(?:[a-z]+\s+)?colleague$/i.test(s) ? (atTheStart ? 'This colleague' : 'this colleague') : s;
 }
@@ -146,7 +170,9 @@ export function whatHasStayedTheSame(
   most = 5,
 ): ToLookAt[] {
   const out: ToLookAt[] = [];
-  for (const p of people) {
+  const short = firstNames(people);
+  for (const person of people) {
+    const p = { ...person, short: short.get(person.participantId) };
     if (!p.finished.length) continue;
     const promise = promises
       .filter((c) => c.participantId === p.participantId)
