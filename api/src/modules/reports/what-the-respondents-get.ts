@@ -120,6 +120,8 @@ export function withoutWhoSaidIt(text: string, identities: Identity[]): string {
 /** The same, over every string in a report-shaped object, however deep. */
 export function nothingIdentifyingIn<T>(value: T, identities: Identity[]): T {
   if (typeof value === 'string') return withoutWhoSaidIt(value, identities) as unknown as T;
+  /* A Date is an object with no entries: walked like one, it arrived at the reader as {} (request 53). */
+  if (value instanceof Date) return value;
   if (Array.isArray(value)) return value.map((v) => nothingIdentifyingIn(v, identities)) as unknown as T;
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
