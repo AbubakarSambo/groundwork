@@ -54,6 +54,26 @@ Tests: 83 new ones, all passing. The board, reports, check-ins, invitations and 
 
 Left as it is, on purpose: the notes colleagues write "for whoever hits this next". Those are people's own words, written for others to read.
 
+**Seven privacy requests from the screens workspace are answered** in `docs/requests-to-engine.md`, one commit each.
+- **49, fixed** (`f9367164`). Faraji joined through an open link while no seat was free. Until an admin lets him in, he cannot open any report, the board, or the report's other routes. He reads "You can read this check-in's report once an admin at the organisation that invited you approves you joining it." Once he is let in, everything opens as before.
+- **57, fixed** (`dc5bf17c`). Only the person who runs the check-in can share its report. Another admin reads "Only the person who runs this check-in can share its report. Ask them to share it when they are ready." Nothing is written.
+- **41, fixed** (`12e57ef5`). A person's own session could be given the lead's setup answers, for example "Aisha is often late with stock counts." Now it is given only the situation: "Aisha joined the stock team in July and is on probation until the end of October." The lead still reads everything they wrote.
+- **42, fixed** (`40f25316`). "Decide whether to confirm Aisha in her role" was a team target, so Aisha and her colleagues could read it. Now only the lead sees it.
+- **19 and 36 were already fixed.** Their tests prove it. Where people do not see each other, the board says "one colleague", never a name. A person with no name is "a colleague", never the lead's description of them.
+- **34, answered, nothing built.** The prototype's invitation has no "Your part in this". The only sentence stored about a person's part is the lead's own words about them, so none is written.
+
+Tests: 816 files and 7,485 tests pass in the parts these touch. The new tests for 41 and 42 fail on the old code, so they test something real.
+
+### Decided for Hafsah to confirm
+
+1. **The lead's note to everyone is filtered too.** A sentence in it that gives a colleague's hidden target is taken out of the copy that reaches another person's check-in. The lead's own copy is unchanged. This is the more private option.
+2. **Request 49: someone held for a seat cannot read the check-in's report.** This covers every report and every name in it, until an admin lets them into the organisation. This is the more private option.
+3. **Request 57: only the lead of a check-in can release its report.** Another admin is told plainly that it is the lead's to share. This matches the prototype, where sharing the report is the lead's to decide.
+4. **Request 42: a target that is really a decision about one person is the lead's alone.** An example is "Decide whether to confirm Aisha in her role". It is not served to Aisha, or to anyone else in the check-in. The target table has no field for this, and I did not change the database while run-18 was going. So a target is treated as a decision about a person from its wording: a word for deciding ("Decide", "determine whether") together with a word about someone's place (role, probation, confirm, contract, promotion, pay, keep or let go). It errs on the private side. "Decide whether to renew the software contract" is also hidden from the team. "Decide on the new supplier" stays a team target. A field set when the target is made would be sturdier later.
+5. **Request 49 also covers the board and the two activation routes,** because they carry the report's story and names. If the check for a held seat fails, the report is refused, never served.
+6. **Request 57 has no fallback.** If the lead has left, nobody else can share that report. The route also still needs the admin role, so a lead who is not an admin shares through "send to everyone", which already allowed only the lead.
+7. **Request 41 applies to briefs already stored.** A short brief written before this change may still reword the lead's setup answers, until the brief is saved again.
+
 ---
 
 ## HANDOVER, 29 SEPTEMBER 2026: WHERE THIS WORK STOPPED
