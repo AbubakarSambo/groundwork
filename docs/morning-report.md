@@ -272,6 +272,7 @@ The same build asked twice as often in both re-checks as it did in run-18. With 
 25. **A goal the lead has not told the person about yet is not shown to that person.** It appears once the lead has told them. This is the more private option.
 26. **On a check-in where each person sees only their own target, the product's own sentences never give a colleague's target,** even when that colleague said it out loud in their check-in. Their own words, shown word for word to the people in the check-in, stay as they are. This is the more private option.
 27. **A goal the lead marked "not told" is hidden from the person,** reversing an older note in the code that said to show "you were never told". **Not done yet, and recommended next:** the model that talks to the person in their own check-in is still given that goal, so it could raise it. Taking it out is the more private option. It changes the conversation, so it needs two re-runs of the scenarios it affects, and there was no room for them today.
+28. **Week 10, the first suggestion, is held, not built.** It would give the manager a suggestion about a person, built on counts like "kept 11 of 20 in the last four weeks". Each person's load across check-ins is private, and today that count goes only to the person. The two rules pull against each other. The more private option is to show a suggestion to the person first, and to the manager only as a plain line with no count behind it, but that is a product decision. Weeks 11 and 12b rest on it too. I moved on to week 12.
 
 ---
 
