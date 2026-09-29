@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppShell } from './AppShell'
 import { useAuthStore } from '@/stores/auth'
 import { groundsApi } from '@/api/grounds'
+import { todayApi } from '@/api/today'
 
 /**
  * THE SIDEBAR DOES NOT SAY "NOTHING IN PROGRESS YET" BEFORE IT KNOWS.
@@ -23,6 +24,24 @@ function mount() {
   )
 }
 
+/**
+ * WHY THIS FILE WAS ORDER-DEPENDENT (round 2, item G).
+ *
+ * `AppShell` fires a second query while it is mounted - `['today']`, from `todayApi.get` - that
+ * this file never mocked. With the local API actually running (as it is on this machine), that was
+ * a REAL network call for a fake token ('t'), landing on the real 401 handler in `api/client.ts`:
+ * it calls `useAuthStore.getState().logout()` and does `window.location.href = '/auth?...'` (the
+ * jsdom "Not implemented: navigation to another Document" warning is that assignment). `logout()`
+ * flips the SAME store `mount()` had just set `isAuthenticated: true` on - a real, asynchronous,
+ * cross-test race: whichever test happened to be running when that response finally arrived lost
+ * its own signed-in state partway through, and `AppShell` fell back to its signed-out, chromeless
+ * render (`<main id="main">{children}</main>`, no rail) - which is why the failures looked like they
+ * came from nowhere and did not reproduce on a fixed schedule.
+ *
+ * Mocked here now, the same way `groundsApi.list` already is, so nothing this file does reaches the
+ * real network.
+ */
+beforeEach(() => { vi.spyOn(todayApi, 'get').mockResolvedValue({ needs: [], count: 0, line: null, comingUp: [] } as any) })
 afterEach(() => vi.restoreAllMocks())
 
 describe('the sidebar waits for the list', () => {

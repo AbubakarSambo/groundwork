@@ -40,7 +40,7 @@ export function JumpTo({ items }: { items: JumpItem[] }) {
   useEffect(() => {
     if (!open) return
     cameFrom.current = document.activeElement
-    setTimeout(() => inputRef.current?.focus(), 0)
+    inputRef.current?.focus()
     return () => { (cameFrom.current as HTMLElement | null)?.focus?.() }
   }, [open])
 
