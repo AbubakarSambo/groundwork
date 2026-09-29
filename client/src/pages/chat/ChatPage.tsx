@@ -735,6 +735,32 @@ export function ChatPage() {
     sendStreaming(msg)
   }
 
+  /**
+   * A SUGGESTED ANSWER CONTAINING "..." IS A SHAPE TO FINISH, NOT A THING TO SEND.
+   *
+   * docs/conversation-standard.md, point 6: the engine's suggestions are "a help, never a limit".
+   * Most of them are a real answer someone might give as it stands - "Sent it. They liked it but
+   * want to wait until after December." - and pressing one sends it, same as typing it and hitting
+   * Enter. But the engine sometimes sends a shape with a gap in it, marked "...", for something it
+   * cannot fill in for the person (a name, a number, a date): sending that literally would put an
+   * ellipsis in their record. So this puts it in the box instead, with the "..." itself selected -
+   * typing immediately replaces it, rather than the person having to find and delete it first.
+   */
+  function pickSuggestion(a: string) {
+    if (loading || completed || declined || !opened) return
+    const gap = a.indexOf('...')
+    if (gap === -1) { quickSend(a); return }
+    setInput(a)
+    requestAnimationFrame(() => {
+      const el = taRef.current
+      if (!el) return
+      el.style.height = '38px'
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+      el.focus()
+      try { el.setSelectionRange(gap, gap + 3) } catch { /* not focusable yet */ }
+    })
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
@@ -1177,7 +1203,7 @@ export function ChatPage() {
             const last = displayedMsgs[displayedMsgs.length - 1]
             if (!last || last.role !== 'AI' || isWaiting(last) || streamingId !== null) return null
             if (loading || done || completed || declined || !opened) return null
-            return <SuggestedAnswers answers={last.suggestedAnswers} onPick={quickSend} />
+            return <SuggestedAnswers answers={last.suggestedAnswers} onPick={pickSuggestion} />
           })()}
           {/*
             THE END CARD (check-in-end-card.txt). Finishing never happens on its own: the engine
