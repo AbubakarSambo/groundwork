@@ -386,6 +386,9 @@ export type WhoIsAsking = string | { theParticipant: string };
 /** How long the end card is given, after the goodbye, before it is left out and finishing reads the record as before. */
 const THE_END_CARD_WAITS_MS = 90_000;
 
+/** How long finishing, or the screen asking for the card, waits for the card still being built. The live reads took 10 to 47 seconds. */
+const FINISHING_WAITS_FOR_THE_CARD_MS = 50_000;
+
 @Injectable()
 export class ConversationService {
   /** Answers being worked on right now, so the same answer arriving twice is answered once. See sendMessage. */
@@ -5584,7 +5587,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    *   Read live, 22 Sep 2026: three answers on an open-link discovery, "I am done", and "a few more
    *   exchanges are needed" - the pop-up Hafsah had reported that morning, on the other path.
    */
-  async complete(checkInId: string, requestingUserId: WhoIsAsking, how: { theyAskedToFinish?: boolean } = {}) {
+  async complete(checkInId: string, requestingUserId: WhoIsAsking, how: { theyAskedToFinish?: boolean; waitForTheCard?: boolean } = {}) {
     const checkIn = await this.openTheDoor(checkInId, requestingUserId);
 
     // Completion-readiness gate (B4): a check-in only closes once the person has
@@ -5681,7 +5684,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       });
     }
 
-    return this.finishTheSession(checkIn, 'the person');
+    return this.finishTheSession(checkIn, 'the person', { waitForTheCard: how.waitForTheCard !== false });
   }
 
   /**
@@ -5705,7 +5708,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       include: { participant: { include: { user: { select: { awaitingOrgApproval: true, firstName: true, lastName: true } } } } },
     });
     if (!checkIn) throw new NotFoundException('Check-in not found');
-    return this.finishTheSession(checkIn, 'the clock');
+    return this.finishTheSession(checkIn, 'the clock', { waitForTheCard: false });
   }
 
   /**
@@ -5734,7 +5737,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   private async finishTheSession(
     checkIn: any,
     by: 'the person' | 'the clock',
-  ): Promise<{ status: 'completed'; groundId: string; whatYouGave?: WhatTheyGave }> {
+    how: { waitForTheCard?: boolean } = {},
+  ): Promise<{ status: 'completed'; groundId: string; endCard?: EndCard | null; whatYouGave?: WhatTheyGave }> {
     // Score session specificity from person's turns before marking complete
     /* A scorer that fails is logged by check-in, and the row says it was TRIED: specificityScoredAt set
        with no level is "scoring failed", which is not "not scored yet" and not a fact about the ground. */
@@ -5756,10 +5760,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * They do not read each other, so they run together.
      */
     const closingStartedAt = Date.now();
+    /* The card still being built is waited for, so what is written is what the card says. */
+    /* Not for the clock, or a door that cannot hold a reply that long (WhatsApp's webhook). */
+    if (how.waitForTheCard) await this.waitForTheCardBeingBuilt(checkIn.id);
     /* The lines the end card showed, if nothing was said after it (task 2.7). See writeTheRecordAtTheEnd. */
-    await this.writeTheRecordAtTheEnd(checkIn).catch((err) =>
-      this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`),
-    );
+    const endCard: EndCard | null = await this.writeTheRecordAtTheEnd(checkIn).catch((err) => {
+      this.logger.error(`Record extraction failed for check-in ${checkIn.id}: ${err.message}`);
+      return null;
+    });
     this.logger.log(`Check-in ${checkIn.id}: took the record out of it in ${Date.now() - closingStartedAt}ms.`);
 
     // Handoffs are a board object, so this only runs on SHARED-mode grounds.
@@ -5869,7 +5877,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     if (won.count === 0) {
       this.logger.warn(`Check-in ${checkIn.id} was completed by another call first; nothing emitted twice.`);
-      return { status: 'completed', groundId: checkIn.groundId };
+      return { status: 'completed', groundId: checkIn.groundId, endCard };
     }
 
     /*
@@ -5977,7 +5985,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* Only where there is something true to say. An empty block on the screen after somebody has
        just finished is worse than no block, and a session with nothing in its notes has nothing to
        tell anybody about their own answers. */
-    return { status: 'completed', groundId: checkIn.groundId, ...(whatYouGave.saying ? { whatYouGave } : {}) };
+    /* The card, with exactly the lines just written, so the screen shows it even if it never saw it arrive. */
+    return { status: 'completed', groundId: checkIn.groundId, endCard, ...(whatYouGave.saying ? { whatYouGave } : {}) };
   }
 
   /**
@@ -7303,8 +7312,53 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * reply has already gone, and finishing reads the record as before.
    */
   private startTheEndCard(checkIn: { id: string; participantId: string; groundId: string }, closingTurnId: string): void {
-    this.theEndCardFor(checkIn, closingTurnId).catch((err: any) =>
-      this.logger.warn(`Check-in ${checkIn.id}: no end card (${err?.message ?? err}); the record is read when they finish.`));
+    const building: Promise<EndCard | null> = this.theEndCardFor(checkIn, closingTurnId).catch((err: any) => {
+      this.logger.warn(`Check-in ${checkIn.id}: no end card (${err?.message ?? err}); the record is read when they finish.`);
+      return null;
+    });
+    /* Kept while it is being built, so finishing and the screen can wait for it instead of missing it. */
+    const cards = this.endCardsBeingBuilt();
+    cards.set(checkIn.id, building);
+    building.finally(() => { if (cards.get(checkIn.id) === building) cards.delete(checkIn.id); }).catch(() => undefined);
+  }
+
+  /** End cards still being built, by check-in. See startTheEndCard. */
+  private endCardsBeingBuilt(): Map<string, Promise<EndCard | null>> {
+    return ((this as any).endCardsInFlight ??= new Map());
+  }
+
+  /**
+   * WAIT FOR THE CARD THAT IS BEING BUILT, IF ONE IS, FOR AT MOST FINISHING_WAITS_FOR_THE_CARD_MS.
+   *
+   * The card arrives 10 to 47 seconds after the goodbye, and the screen read it only when the
+   * transcript loaded, so nobody saw it; and finishing before it was ready read the record again, so
+   * the card was not what was written. Both now wait for it here. Nothing fails if it never comes.
+   */
+  private async waitForTheCardBeingBuilt(checkInId: string): Promise<void> {
+    const building = this.endCardsBeingBuilt().get(checkInId);
+    if (!building) return;
+    let timer: NodeJS.Timeout | undefined;
+    await Promise.race([
+      building.catch(() => null),
+      new Promise<null>((resolve) => { timer = setTimeout(() => resolve(null), FINISHING_WAITS_FOR_THE_CARD_MS); timer.unref?.(); }),
+    ]);
+    if (timer) clearTimeout(timer);
+  }
+
+  /**
+   * THE END CARD FOR THE SCREEN TO WAIT ON (GET /check-ins/:id/end-card). The card if it is ready,
+   * or the one being built once it is, for the person themselves only: the same owner check as the
+   * transcript. Null when there is no card standing.
+   */
+  async theEndCardWhenReady(checkInId: string, requestingUserId: WhoIsAsking): Promise<{ endCard: EndCard | null }> {
+    const checkIn = await this.loadOwnedCheckIn(checkInId, requestingUserId);
+    await this.waitForTheCardBeingBuilt(checkIn.id);
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId: checkIn.id },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, endCard: true },
+    });
+    return { endCard: theCardStillStanding(turns as any) };
   }
 
   /**
@@ -7366,11 +7420,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * WHAT FINISHING WRITES. The lines the end card showed, when nothing was said after it; otherwise
    * the record is read again, as it always was.
    */
-  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string }) {
+  private async writeTheRecordAtTheEnd(checkIn: { id: string; participantId: string }): Promise<EndCard | null> {
     const closing = await this.prisma.conversationTurn.findFirst({
       where: { checkInId: checkIn.id, role: TurnRole.AI },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, createdAt: true, recordDraft: true },
+      select: { id: true, createdAt: true, recordDraft: true, endCard: true },
     });
     const draft = Array.isArray(closing?.recordDraft) ? (closing!.recordDraft as unknown as Prisma.RecordEntryCreateManyInput[]) : null;
     const saidSince = draft
@@ -7379,10 +7433,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     if (draft && saidSince === 0) {
       if (draft.length) await this.prisma.recordEntry.createMany({ data: draft.map((r) => ({ ...r, checkInId: checkIn.id, participantId: checkIn.participantId })) });
       this.logger.log(`Check-in ${checkIn.id}: wrote the ${draft.length} line(s) the end card showed.`);
-      return;
+      return ((closing as any).endCard as EndCard | null) ?? null;
     }
     if (draft) this.logger.log(`Check-in ${checkIn.id}: they said more after the end card, so the record is read again.`);
     await this.extractRecordEntries(checkIn.id, checkIn.participantId);
+    return null;
   }
 
   /**

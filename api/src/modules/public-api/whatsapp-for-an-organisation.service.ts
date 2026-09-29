@@ -232,7 +232,8 @@ export class WhatsAppForAnOrganisationService {
     }
     if (A_FINISH_WORD.test(text) && current.status === 'IN_PROGRESS') {
       try {
-        await this.conversation.complete(current.id, userId!);
+        /* Not waiting for the end card: Meta's webhook will not hold a reply for fifty seconds. */
+        await this.conversation.complete(current.id, userId!, { waitForTheCard: false });
         await this.prisma.whatsAppThread.deleteMany({ where: { organizationId, checkInId: current.id } }).catch(() => undefined);
         /* The report comes from the completion listener below, off this request: four polls at four
            seconds each and a translation held Meta's webhook past its patience, and the redelivery
