@@ -1,3 +1,4 @@
+import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 
@@ -284,6 +285,7 @@ export function yourBoard(
 
   /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere. */
   const said: (SomethingYouSaid & { t: number })[] = [];
+  const saidKey = new Map<string, number>();
   const mineCommitments: GroundCommitmentRow[] = [];
   for (const c of rows.commitments) {
     if (!isMine(c.groundId, c.participantId)) continue;
@@ -293,7 +295,17 @@ export function yourBoard(
     const text = (c.text ?? '').trim();
     if (!state || !text) continue;
     const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
-    said.push({ id: c.id, text, when: c.whenSaid?.trim() || null, checkIn: labelOf.get(c.groundId)!, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt) });
+    const item = { id: c.id, text, when: c.whenSaid?.trim() || null, checkIn: labelOf.get(c.groundId)!, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt) };
+    /* The same promise written twice ("...again" and "...again by tomorrow.") is listed once; where
+       one copy is settled, that one is shown. See aCommitmentKey. */
+    const key = `${c.groundId}\u0000${aCommitmentKey(text, c.whenSaid)}`;
+    const at = saidKey.get(key);
+    if (at !== undefined) {
+      if (said[at].state === 'open' && state !== 'open') said[at] = item;
+      continue;
+    }
+    saidKey.set(key, said.length);
+    said.push(item);
   }
   for (const o of rows.objectives) {
     if (!isMine(o.groundId, o.participantId)) continue;

@@ -51,7 +51,7 @@ import { Prisma } from '@prisma/client';
 import { endingOnTheClose, endsOnTheClose, type Door } from './the-close-says-what-comes-next';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
-import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
+import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt, aCommitmentKey, oneOfEach, type AnAnswer } from './what-happened-to-what-they-said';
 import { theProofSettlements, thePrompt as theProofPrompt, WHICH_COMMITMENT_A_LINE_KEEPS_PROMPT, WHICH_COMMITMENT_A_LINE_KEEPS_SCHEMA, whatThisLineProves, mayBeSettledByProof } from './settled-by-proof';
 import { whoAddedEachBackingDocument } from '../reports/how-a-line-is-known';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
@@ -6741,11 +6741,21 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: checkInId },
       select: {
         groundId: true, participantId: true, startedAt: true,
-        turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'asc' }, select: { content: true } },
+        /* Both sides, so each answer carries the question it answered. "I haven't done anything further.
+           He didn't reply." means nothing on its own; after "What have you done to get an answer from
+           Mr. Adebayo?" it plainly says the follow-up was not done (review, 29 September). */
+        turns: { orderBy: { createdAt: 'asc' }, select: { role: true, content: true } },
       },
     });
     if (!row?.participantId) return 0;
-    const said = row.turns.map((t) => (t.content ?? '').trim()).filter(Boolean);
+    const said: AnAnswer[] = [];
+    let asked: string | null = null;
+    for (const t of row.turns as any[]) {
+      const text = String(t.content ?? '').trim();
+      if (!text) continue;
+      if (t.role === TurnRole.PERSON || t.role === undefined) { said.push(asked ? { asked, said: text } : text); asked = null; }
+      else asked = text.length > 300 ? `${text.slice(0, 300)}...` : text;
+    }
     if (!said.length) return 0;
     const open = await this.prisma.groundCommitment.findMany({
       /* Open before they started this one: those are what it put to them. Not the check-in row's own
@@ -6756,13 +6766,18 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       take: 20,
     });
     if (!open.length) return 0;
+    /* The same promise written twice is put once, and what they said about it settles both rows. */
+    const once = oneOfEach(open);
     const read = await this.anthropic.extract<{ outcomes: { item: number; happened: string }[] }>(
       READ_WHAT_HAPPENED,
-      [{ role: 'user', content: theHappenedPrompt(open, said) }],
+      [{ role: 'user', content: theHappenedPrompt(once, said) }],
       WHAT_HAPPENED_SCHEMA as any,
       { fast: true, thinkingBudget: 0 },
     );
-    const settled = theSettlements(open, read?.outcomes);
+    const settled = theSettlements(once, read?.outcomes).flatMap((s) => {
+      const key = aCommitmentKey(once.find((o) => o.id === s.id)?.text ?? '', once.find((o) => o.id === s.id)?.whenSaid);
+      return open.filter((o) => o.id === s.id || (key && aCommitmentKey(o.text, o.whenSaid) === key)).map((o) => ({ id: o.id, status: s.status }));
+    });
     const now = new Date();
     for (const s of settled) {
       /* Still open at the moment of writing: somebody who pressed it by hand meanwhile wins. */
@@ -6803,7 +6818,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const theirs = await this.prisma.groundCommitment.findMany({
       where: { groundId: row.groundId, participantId: row.participantId },
-      select: { id: true, text: true, status: true, saidAgainIn: true, statedInSession: true },
+      select: { id: true, text: true, whenSaid: true, status: true, saidAgainIn: true, statedInSession: true },
     }).catch(() => [] as any[]);
 
     let written = 0;
@@ -6811,7 +6826,9 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     for (const kept of keep) {
       /* Their quotation marks, as in the record. See their-quotation-marks-are-theirs. */
       const c = { ...kept, action: theirQuotationMarksBack(kept.action, said), when: kept.when ? theirQuotationMarksBack(kept.when, said) : kept.when };
-      const same = (theirs as any[]).find((h) => theSameMeasure(h.text ?? '', c.action));
+      /* The same promise said twice in one breath, once with its time on the end, is one promise. */
+      const same = (theirs as any[]).find((h) => theSameMeasure(h.text ?? '', c.action)
+        || (!!aCommitmentKey(c.action, c.when) && aCommitmentKey(h.text ?? '', h.whenSaid) === aCommitmentKey(c.action, c.when)));
       if (same) {
         /* Already settled by a person: saying it again does not reopen it and is not counted. */
         if (same.status !== 'UNKNOWN') continue;
@@ -6840,7 +6857,11 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           saidWordForWord: saidWordForWord(c.action.slice(0, 400), said),
           whenSaidWordForWord: c.when ? saidWordForWord(c.when, said) : false,
         },
-      }).then(() => { written += 1; })
+      }).then((made: any) => {
+        written += 1;
+        /* Known from now on, so a second copy later in this same list is not written again. */
+        (theirs as any[]).push({ id: made?.id, text: c.action, whenSaid: c.when ?? null, status: 'UNKNOWN', saidAgainIn: [], statedInSession: row.sessionNumber });
+      })
         .catch((err: any) => this.logger.warn(`Could not write a commitment from ${checkInId}: ${err?.message}`));
     }
     if (written || again) {
