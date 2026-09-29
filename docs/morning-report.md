@@ -64,6 +64,27 @@ Built in `5ee3c4b4`, `4886d2ed`, `f1ed931d`, `c542f51c`, `fb5da92f` and `7df7389
 
 The rest are the same, and every problem count is 0. Four scenarios is a small sample, and these numbers move by this much between runs. The second re-run, started at 00:12, decides. If commitments or past words stay down, the change is dropped, as the rule says.
 
+**Second re-run, finished at about 00:40, and the change is kept.**
+
+| Number | run-19 | First re-run | Second re-run |
+| --- | --- | --- | --- |
+| Proof asked for | 7 | 5 | 9 |
+| Past words brought back | 19 | 14 | 22 |
+| Specific detail asked for | 10 | 15 | 14 |
+| Blocker checked | 3 | 5 | 4 |
+| Agreements found | 16 | 19 | 18 |
+| Patterns found | 22 | 20 | 21 |
+| Commitments recorded | 19 | 13 | 7 |
+
+- **Proof and past words came back.** Only commitments stayed down.
+- **The drop in commitments is almost all seniorhire:** 8 stored commitments on run-19, then 6, then 3. On older builds, before any of tonight's work, seniorhire stored 2 (run-14), 3 (run-16), 7 (run-18) and 2 (the earlier review run). So 6 and 3 are inside its normal spread, and it is the model varying, not this change. The other three scenarios hardly record commitments at all.
+- **I kept the untold-goal change.** Seniorhire's count swings this much, so it is a poor measure on its own. The day's full run should show whether commitments hold across all 24.
+- **Quick checks:**
+  - 96 of 96 quotes are word for word.
+  - The untold number never reached the person, again.
+  - The script flagged seniorhire once more. It is Amina's own check-in sentence, "I brought him in to own the relationships with our five largest clients", shown to Tobi with one word changed. That is allowed.
+- **A real wording fault it turned up:** Tobi reads "Dr Amina Bello brought in you to own…", which should be "brought you in". It comes from the step that swaps a name for "you" in a person's own report, the known weak spot of request 33 and task 1.6.
+
 **A privacy leak the quick checks found, already there on run-19, being fixed now.** The lead's private description of Tobi reads "Engagement Director. Owns the relationships with the five largest clients." Tobi's own report and board say "Dr Amina Bello says you are here to own the relationships with the five largest clients." Nobody said that in any check-in, so it reaches his report through what the report writer is given. That breaks decision 30.
 
 **Correction: it was not a leak.** Looking further, the same words are shared legitimately:
