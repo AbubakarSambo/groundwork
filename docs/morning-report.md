@@ -77,6 +77,22 @@ Tests: 816 files and 7,485 tests pass in the parts these touch. The new tests fo
 
 Tests: 626 files and 5,981 tests pass in reports, board, check-ins and conversation. Each new test for a fix fails on the old code.
 
+**Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
+- **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
+- **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
+- **Most engine-value numbers are up:**
+  - proof asked for: 46 (baseline 42)
+  - past words brought back: 30 (25)
+  - differences found: 38 (29)
+  - agreements found: 67 (56)
+  - commitments recorded: 51 (33)
+  - judgement present: 29 (21)
+- **Two are down:**
+  - "specific detail asked for" is 74, against 88 at the baseline and 87 on run-16;
+  - "blocker checked" is 34, against 37.
+
+I looked at where the drop is. It is spread thinly over many scenarios, one or two turns each, and most of it is in the lead's own check-ins: 18 there, against 27 on run-16 and 23 on run-14. Nothing that changed since run-16 touches the lead's questions. The hidden-target filter only changes what a participant's check-in is given. So it looks like the model varying from run to run. To be sure, I am running the eight scenarios that dropped most again, twice, on the same build. Task 2.7 is not ticked until this is settled.
+
 ### Decided for Hafsah to confirm
 
 1. **The lead's note to everyone is filtered too.** A sentence in it that gives a colleague's hidden target is taken out of the copy that reaches another person's check-in. The lead's own copy is unchanged. This is the more private option.
