@@ -282,6 +282,69 @@ describe('the head count', () => {
     expect(howManyHere(3, null, 5)).toBe('3 people, on the free plan, which is for up to 5.')
     expect(howManyHere(1, 'ENTERPRISE', null)).toBe('1 person.')
   })
+
+  /*
+   * "5 people, on the free plan..." and "6 people shown" used to sit on the page together with no
+   * word for why they differed (U.4 people-group review, item 1): the seat count leaves out somebody
+   * waiting to be let in, or on a check-in with no seat for them, who the table shows anyway so an
+   * admin can act on them. Named here, not just counted, when there are few enough to name.
+   */
+  it('names who the seat count leaves out, so it never just disagrees with the table', () => {
+    expect(howManyHere(5, null, 5, ['Faraji'])).toBe('5 people, on the free plan, which is for up to 5. Faraji is waiting to be let in.')
+    expect(howManyHere(5, null, 5, ['Faraji', 'Zawadi'])).toBe('5 people, on the free plan, which is for up to 5. Faraji and Zawadi are waiting to be let in.')
+    expect(howManyHere(5, null, 5, [], ['Zawadi'])).toBe('5 people, on the free plan, which is for up to 5. Zawadi is on a check-in with no seat for them.')
+    expect(howManyHere(5, null, 5, ['Faraji'], ['Zawadi']))
+      .toBe('5 people, on the free plan, which is for up to 5. Faraji is waiting to be let in. Zawadi is on a check-in with no seat for them.')
+    expect(howManyHere(5, null, 5, ['A', 'B', 'C', 'D'])).toBe('5 people, on the free plan, which is for up to 5. 4 more are waiting to be let in.')
+  })
+
+  it('says nothing extra when the count and the table already agree', async () => {
+    open({ people: { count: 7, cap: 100 }, subscription: { plan: 'GROWTH' } })
+    await screen.findByText('7 people, on the Growth plan, which is for up to 100.')
+  })
+})
+
+describe('somebody held for a seat, with no account of their own', () => {
+  /*
+   * Zawadi (on "Sales team, Q3", no seat for her) was not a row on "Everyone at Baridi Appliances"
+   * at all (U.4 people-group review, item 2), though the prototype lists such people with the status
+   * "No seat on your plan". `findAll` (the server, users.service.ts) now sends one such row per held
+   * email; this checks the page draws it with nothing beyond what the warning already says about her
+   * (her email and the check-in), and no "Open" link, since there is no account to open.
+   */
+  it('is a row, named only by email, with no "Open" and no place in the reporting tree', async () => {
+    const zawadi = {
+      id: 'held:gp-1', email: 'zawadi.u8@example.test', firstName: null, lastName: null,
+      role: null, isEmailVerified: false, state: 'invited', checkInsOn: 1, checkInsAnswered: 0,
+      heldForASeat: true, noAccountYet: true, level: null, team: null, reportsTo: null,
+      checkIns: [{ id: 'sales', label: 'Sales team, Q3', runsIt: false }],
+    }
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: [...people, zawadi], meta: { total: people.length + 1 } } } as any
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+      if (url === '/billing/status') return { data: { people: { count: 7, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+      if (url === '/users/organization/check-ins') return { data: { whoMayOpen: 'NAMED_LEADS', needsApproval: false } } as any
+      if (url === '/users/organization/joining') return { data: { on: false, domain: 'baridi.co.ke', whyNot: null } } as any
+      if (url === '/users/organization/invite-link') return { data: { on: false, code: null } } as any
+      return { data: [] } as any
+    })
+    vi.spyOn(authApi, 'whoIsWaiting').mockResolvedValue([] as any)
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/org/members']}>
+          <Routes>
+            <Route path="/org/members" element={<OrgMembersPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect((await screen.findAllByText('zawadi.u8@example.test')).length).toBeGreaterThan(0)
+    expect(screen.getByText('No seat on your plan')).toBeTruthy()
+    expect(screen.getByText('7 people, on the Growth plan, which is for up to 100. zawadi.u8@example.test is on a check-in with no seat for them.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Open zawadi/i })).toBeNull()
+  })
 })
 
 describe('the head count keeps up', () => {

@@ -9,7 +9,7 @@ import {
   type TagTone,
 } from '@/components/gw/ui'
 import {
-  type OrgMember, fetchMembers, nameOf, initialsOf, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsWord,
+  type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, roleWord, statusWord, needsSomething, whereTheySitLine, checkInsWord,
 } from './people-here'
 
 /**
@@ -48,12 +48,40 @@ function matches(filter: RoleFilter, m: OrgMember, ownerId: string | null): bool
   }
 }
 
-/** "27 people, on the Growth plan, which is for up to 100." The prototype's colon, as a sentence. */
-export function howManyHere(count: number, plan: string | null | undefined, cap: number | null | undefined): string {
+/** "Faraji", or "Faraji and Zawadi", or "Faraji, Zawadi and Baraka" - never an Oxford-less list. */
+function namesAnd(names: string[]): string {
+  if (names.length === 1) return names[0]
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/**
+ * "27 people, on the Growth plan, which is for up to 100." The prototype's colon, as a sentence.
+ *
+ * THE TWO COUNTS ON THIS PAGE DISAGREED (U.4 people-group review, item 1). `count` is the seat count
+ * billing charges for; the table below can show more rows than that, because somebody waiting to be
+ * let in, or on a check-in with no seat for them, is shown here too (so an admin can act on them)
+ * without holding a seat. Rather than leave the two numbers to contradict each other, this names the
+ * difference, when there are few enough people to name.
+ */
+export function howManyHere(
+  count: number, plan: string | null | undefined, cap: number | null | undefined,
+  waitingToBeLetIn: string[] = [], heldForASeat: string[] = [],
+): string {
   const people = count === 1 ? '1 person' : `${count} people`
-  if (cap == null) return `${people}.`
-  const name = plan ? `the ${PLAN_LABELS[plan as SubscriptionPlan] ?? plan} plan` : 'the free plan'
-  return `${people}, on ${name}, which is for up to ${cap}.`
+  const first = cap == null ? `${people}.` : (() => {
+    const name = plan ? `the ${PLAN_LABELS[plan as SubscriptionPlan] ?? plan} plan` : 'the free plan'
+    return `${people}, on ${name}, which is for up to ${cap}.`
+  })()
+  const sentence = (names: string[], few: string, many: string): string | null => {
+    if (names.length === 0) return null
+    if (names.length <= 3) return `${namesAnd(names)} ${names.length === 1 ? 'is' : 'are'} ${few}.`
+    return `${names.length} ${many}.`
+  }
+  const extra = [
+    sentence(waitingToBeLetIn, 'waiting to be let in', 'more are waiting to be let in'),
+    sentence(heldForASeat, 'on a check-in with no seat for them', 'more are on a check-in with no seat for them'),
+  ].filter((s): s is string => !!s)
+  return [first, ...extra].join(' ')
 }
 
 /** Blue for who runs the place, amber for a guest, green for checking in, red for a problem (design-audit.md item 9 and 16). */
@@ -123,16 +151,30 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
   }
   if (isLoading) return <Note>Loading…</Note>
 
+  /* Who the head count leaves out, and why (U.4 people-group review, item 1): named, so "N people"
+     and the number of rows below it never quietly disagree. */
+  const waitingToBeLetIn = everybody.filter((m) => m.awaitingOrgApproval).map(firstNameOf)
+  const heldForASeat = everybody.filter((m) => m.heldForASeat).map(firstNameOf)
+
   return (
     <>
       <Folded
         summary="Who reports to whom"
         note="Level and reporting lines describe the organisation; what someone can do still comes from their role"
       >
-        <TheTree people={everybody.filter((m) => m.role !== 'GUEST')} />
+        <TheTree people={everybody.filter((m) => m.role !== 'GUEST' && !m.noAccountYet)} />
       </Folded>
 
-      <Section heading={`Everyone at ${orgName}`} note={howManyHere(status.data?.people?.count ?? everybody.length, status.data?.subscription?.plan ?? status.data?.onTheHouse?.plan, status.data?.people?.cap)}>
+      <Section
+        heading={`Everyone at ${orgName}`}
+        note={howManyHere(
+          status.data?.people?.count ?? everybody.length,
+          status.data?.subscription?.plan ?? status.data?.onTheHouse?.plan,
+          status.data?.people?.cap,
+          waitingToBeLetIn,
+          heldForASeat,
+        )}
+      >
         <Stack gap={18}>
           {/*
             THE SAME NUMBER AS PLAN AND BILLING (U.19): billing's seat count. Everybody with an account
@@ -192,7 +234,11 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
                       <Tag tone={roleTagTone(role)}>{role}</Tag>
                       <Tag tone={statusTagTone(st)}>{st}</Tag>
                       <span>{checkInsWord(m)}</span>
-                      <button type="button" className="gwui-open-link" aria-label={`Open ${name}`} onClick={() => navigate(`/org/members/${m.id}`)}>Open</button>
+                      {/* Nothing has been written for them yet, so there is no page to open (U.4
+                          people-group review, item 2: Zawadi's row, held for a seat). */}
+                      {m.noAccountYet
+                        ? <span />
+                        : <button type="button" className="gwui-open-link" aria-label={`Open ${name}`} onClick={() => navigate(`/org/members/${m.id}`)}>Open</button>}
                     </PersonRow>
                   )
                 }}
