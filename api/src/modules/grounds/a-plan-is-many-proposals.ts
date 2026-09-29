@@ -169,7 +169,9 @@ export function proposalsFromAPlan(
   planText: string,
   read: PlanRead[] | null | undefined,
   people: SomebodyNamed[],
-  opts: { from?: string; whoIs?: (name: string) => SomebodyNamed | null } = {},
+  /* `nameMustBeInThePlan: false` is for a proposal already read and stored, checked again against its
+     own quote alone: "He should be finding new people" names Samuel only in the plan around it. */
+  opts: { from?: string; whoIs?: (name: string) => SomebodyNamed | null; nameMustBeInThePlan?: boolean } = {},
 ): PlanProposal[] {
   const plan = flatten(planText);
   const from = (opts.from ?? '').trim() || 'the plan you pasted';
@@ -205,7 +207,7 @@ export function proposalsFromAPlan(
     let note: string | undefined;
     const name = (r?.personName ?? '').trim();
     if (name) {
-      if (!plan.includes(flatten(name))) continue;
+      if (opts.nameMustBeInThePlan !== false && !plan.includes(flatten(name))) continue;
       const who = whoIs(name);
       fields.personName = name;
       if (who) { fields.participantId = who.id; fields.personOnTheCheckIn = who.name; }

@@ -91,84 +91,156 @@ describe('reading a plan into proposals (pure)', () => {
   });
 });
 
-function aService(opts: { initiatorId?: string; read?: PlanRead[] } = {}) {
+function aService(opts: { read?: PlanRead[] } = {}) {
   const writes: string[] = [];
   const write = (name: string) => jest.fn(async () => { writes.push(name); return { id: `${name}-1` }; });
+  const stored: any[] = [];
+  let n = 0;
+  const planProposal = {
+    create: jest.fn(async ({ data }: any) => { const row = { id: `pp-${++n}`, editedAt: null, decidedAt: null, decidedByUserId: null, becameId: null, createdAt: new Date(n), ...data }; stored.push(row); return row; }),
+    findMany: jest.fn(async ({ where }: any) => stored.filter((r) => r.groundId === where.groundId && r.status === where.status)),
+    findFirst: jest.fn(async ({ where }: any) => stored.find((r) => r.id === where.id && r.groundId === where.groundId) ?? null),
+    update: jest.fn(async ({ where, data }: any) => { const r = stored.find((x) => x.id === where.id); Object.assign(r, data); return r; }),
+    updateMany: jest.fn(async ({ where, data }: any) => { const r = stored.find((x) => x.id === where.id && x.status === where.status); if (!r) return { count: 0 }; Object.assign(r, data); return { count: 1 }; }),
+  };
   const prisma: any = {
-    ground: { findUnique: jest.fn(async () => ({ id: 'g1', initiatorId: opts.initiatorId ?? 'u-lead', status: 'OPEN', endState: null, participants: ROSTER })) },
+    ground: { findUnique: jest.fn(async () => ({ id: 'g1', initiatorId: 'u-lead', status: 'OPEN', endState: null, participants: ROSTER })) },
     groundDocument: { findFirst: jest.fn(async () => ({ content: PLAN, fileName: 'Q4 plan.pdf', participantId: null, visibility: 'CLOSED' })) },
     groundParticipant: { update: write('GroundParticipant') },
     groundCommitment: { create: write('GroundCommitment') },
     groundContextItem: { create: write('GroundContextItem') },
-    groundObjective: { create: write('GroundObjective'), createMany: write('GroundObjective') },
+    planProposal,
   };
-  const board = { createObjective: jest.fn(async () => { writes.push('GroundObjective'); return { id: 'obj-1' }; }) };
+  const board = { createObjective: jest.fn(async () => { writes.push('GroundObjective'); return { id: 'GroundObjective-1' }; }) };
   const moduleRef: any = { get: jest.fn((t: any) => (t === BoardService ? board : null)) };
   const anthropic: any = { extract: jest.fn(async () => ({ proposals: opts.read ?? READ })) };
   const config: any = { get: jest.fn(() => true) };
-  return { svc: new APlanIsManyProposalsService(prisma, anthropic, config, moduleRef), writes, prisma, board };
+  return { svc: new APlanIsManyProposalsService(prisma, anthropic, config, moduleRef), writes, stored, prisma, board };
 }
 
 describe('the plan routes', () => {
-  it('serve the proposals to the lead and write nothing', async () => {
-    const { svc, writes } = aService();
+  it('keep each proposal as waiting, serve it with its stored id, and write nothing else', async () => {
+    const { svc, writes, stored } = aService();
     const got = await svc.read('g1', 'u-lead', { text: PLAN });
     expect(got.proposals).toHaveLength(5);
     expect(got.says).toBe("That's 5 things to confirm. Nothing goes into Context until you do.");
+    expect(got.proposals.map((p) => p.id)).toEqual(['pp-1', 'pp-2', 'pp-3', 'pp-4', 'pp-5']);
+    expect(stored.map((r) => [r.kind, r.status])).toEqual([['GOAL', 'PENDING'], ['ROLE', 'PENDING'], ['COMMITMENT', 'PENDING'], ['COMMITMENT', 'PENDING'], ['RULE', 'PENDING']]);
     expect(got.proposals[0].from).toBe('the plan you pasted');
+    expect(stored[0].fromDocument).toBeNull();
     expect(writes).toEqual([]);
   });
 
-  it('read an uploaded document the same way', async () => {
-    const { svc, writes } = aService();
+  it('read an uploaded document the same way, and remember its name', async () => {
+    const { svc, writes, stored } = aService();
     const got = await svc.read('g1', 'u-lead', { documentId: 'd1' });
     expect(got.proposals[0].heading).toBe('A goal, from Q4 plan.pdf. It would go in targets.');
+    expect(stored[0].fromDocument).toBe('Q4 plan.pdf');
     expect(writes).toEqual([]);
   });
 
-  it('refuse anybody who does not run the check-in, on both routes', async () => {
-    const { svc, writes } = aService();
-    await expect(svc.read('g1', 'u-samuel', { text: PLAN })).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(svc.confirm('g1', 'u-samuel', { text: PLAN, proposal: { kind: 'rule', fromThePlan: READ[4].fromThePlan!, says: READ[4].says!, fields: { what: READ[4].what! } } }))
-      .rejects.toBeInstanceOf(ForbiddenException);
-    expect(writes).toEqual([]);
-  });
-
-  it('confirm writes exactly one row, in the table each kind belongs in', async () => {
+  it('list what is waiting, as the lead reads it', async () => {
     const { svc } = aService();
-    const read = await svc.read('g1', 'u-lead', { text: PLAN });
+    await svc.read('g1', 'u-lead', { documentId: 'd1' });
+    const { proposals } = await svc.waiting('g1', 'u-lead');
+    expect(proposals).toHaveLength(5);
+    expect(proposals[4]).toMatchObject({
+      id: 'pp-5', kind: 'rule', status: 'PENDING',
+      heading: 'A rule, from Q4 plan.pdf. It would go in how we work.',
+      says: 'Drop a lead after three calls with no reply.',
+      saidAs: "If they haven't replied after three calls, drop it and move on.",
+    });
+    expect(proposals[3].note).toBe('One name in it, Musa Bello, is not on this check-in. Add them, and this will go on too.');
+  });
+
+  it('refuse a participant and an admin who only reads, on every route', async () => {
+    const { svc, writes } = aService();
+    await svc.read('g1', 'u-lead', { text: PLAN });
+    for (const who of ['u-samuel', 'u-admin']) {
+      await expect(svc.read('g1', who, { text: PLAN })).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(svc.waiting('g1', who)).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(svc.confirm('g1', who, 'pp-5')).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(svc.notNow('g1', who, 'pp-5')).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(svc.edit('g1', who, 'pp-5', { says: 'Anything.' })).rejects.toBeInstanceOf(ForbiddenException);
+    }
+    expect(writes).toEqual([]);
+  });
+
+  it('confirm writes exactly one row, in the table each kind belongs in, and marks the proposal', async () => {
     const tables: string[] = [];
-    for (const p of read.proposals.filter((p) => !p.note)) {
-      const { svc: fresh, writes } = aService();
-      const got = await fresh.confirm('g1', 'u-lead', { text: PLAN, proposal: p });
+    for (const pid of ['pp-1', 'pp-2', 'pp-3', 'pp-5']) {
+      const { svc, writes, stored } = aService();
+      await svc.read('g1', 'u-lead', { text: PLAN });
+      const got = await svc.confirm('g1', 'u-lead', pid);
       expect(writes).toHaveLength(1);
+      const row = stored.find((r) => r.id === pid);
+      expect(row).toMatchObject({ status: 'CONFIRMED', decidedByUserId: 'u-lead', becameId: got.wrote.id });
+      expect(row.decidedAt).toBeInstanceOf(Date);
       tables.push(got.wrote.table);
     }
     expect(tables).toEqual(['GroundObjective', 'GroundParticipant', 'GroundCommitment', 'GroundContextItem']);
   });
 
+  it('a second confirm is refused and writes nothing more', async () => {
+    const { svc, writes } = aService();
+    await svc.read('g1', 'u-lead', { text: PLAN });
+    await svc.confirm('g1', 'u-lead', 'pp-5');
+    await expect(svc.confirm('g1', 'u-lead', 'pp-5')).rejects.toThrow('That one is already confirmed.');
+    expect(writes).toEqual(['GroundContextItem']);
+  });
+
   it('writes the goal through the board with its number, and the commitment with its date as written', async () => {
     const { svc, board, prisma } = aService();
-    const read = await svc.read('g1', 'u-lead', { text: PLAN });
-    await svc.confirm('g1', 'u-lead', { text: PLAN, proposal: read.proposals[0] });
+    await svc.read('g1', 'u-lead', { text: PLAN });
+    await svc.confirm('g1', 'u-lead', 'pp-1');
     expect(board.createObjective).toHaveBeenCalledWith('g1', 'u-lead', { name: 'freezer sales', target: 25, ownerParticipantId: null });
-    await svc.confirm('g1', 'u-lead', { text: PLAN, proposal: read.proposals[2] });
+    await svc.confirm('g1', 'u-lead', 'pp-3');
     expect(prisma.groundCommitment.create.mock.calls[0][0].data).toMatchObject({ participantId: 'p-samuel', text: 'call every butchery in Ikeja', whenSaid: 'Friday 10 October', explicit: false });
   });
 
-  it('refuses a confirm the plan does not say, and writes nothing', async () => {
-    const { svc, writes } = aService();
-    const read = await svc.read('g1', 'u-lead', { text: PLAN });
-    const changed = { ...read.proposals[0], fields: { ...read.proposals[0].fields, number: 50 } };
-    await expect(svc.confirm('g1', 'u-lead', { text: PLAN, proposal: changed })).rejects.toThrow('That is not in the plan as written, so nothing was added.');
+  it('not now takes it off the waiting list, writes nothing, and it cannot then be confirmed', async () => {
+    const { svc, writes, stored } = aService();
+    await svc.read('g1', 'u-lead', { text: PLAN });
+    const got = await svc.notNow('g1', 'u-lead', 'pp-2');
+    expect(got.status).toBe('NOT_NOW');
+    expect(stored[1]).toMatchObject({ status: 'NOT_NOW', decidedByUserId: 'u-lead' });
+    expect((await svc.waiting('g1', 'u-lead')).proposals.map((p) => p.id)).toEqual(['pp-1', 'pp-3', 'pp-4', 'pp-5']);
+    await expect(svc.confirm('g1', 'u-lead', 'pp-2')).rejects.toBeInstanceOf(BadRequestException);
     expect(writes).toEqual([]);
+  });
+
+  it('an edit is checked again against the plan\'s own words, and stays waiting', async () => {
+    const { svc, writes, stored } = aService();
+    await svc.read('g1', 'u-lead', { text: PLAN });
+    const edited = await svc.edit('g1', 'u-lead', 'pp-5', { says: 'Drop a lead after three calls that get no reply.' });
+    expect(edited).toMatchObject({ status: 'PENDING', says: 'Drop a lead after three calls that get no reply.' });
+    expect(stored[4].editedAt).toBeInstanceOf(Date);
+    await expect(svc.edit('g1', 'u-lead', 'pp-1', { fields: { number: 30 } })).rejects.toThrow("The number or the date is not in the plan's own words, so it was not changed.");
+    await expect(svc.edit('g1', 'u-lead', 'pp-1', { fields: { date: '30 November' } })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.edit('g1', 'u-lead', 'pp-1', { says: 'The team is to make 40 freezer sales by 31 December.' })).rejects.toThrow('Write it as one full sentence, with only the numbers the plan says, and try again.');
+    expect(stored[0].says).toBe('The team is to make 25 freezer sales by 31 December.');
+    /* An edited proposal is confirmed as edited. */
+    await svc.confirm('g1', 'u-lead', 'pp-5');
+    expect(writes).toEqual(['GroundContextItem']);
   });
 
   it('will not put somebody who is not on the check-in onto anybody else', async () => {
     const { svc, writes } = aService();
-    const read = await svc.read('g1', 'u-lead', { text: PLAN });
-    await expect(svc.confirm('g1', 'u-lead', { text: PLAN, proposal: read.proposals[3] })).rejects.toBeInstanceOf(BadRequestException);
-    await expect(svc.confirm('g1', 'u-lead', { text: PLAN, proposal: read.proposals[3] })).rejects.toThrow('Musa Bello is not on this check-in yet. Add them first, then confirm this.');
+    await svc.read('g1', 'u-lead', { text: PLAN });
+    await expect(svc.confirm('g1', 'u-lead', 'pp-4')).rejects.toThrow('Musa Bello is not on this check-in yet. Add them first, then confirm this.');
     expect(writes).toEqual([]);
+  });
+});
+
+describe('the sentences the code writes when the model\'s cannot be trusted', () => {
+  it('for a role and a commitment, as the lead reads them', () => {
+    const [role, mine, nobodys] = proposalsFromAPlan(PLAN, [
+      { ...READ[1], says: 'Aisha: Lagos supermarkets' },
+      { ...READ[2], says: '' },
+      { kind: 'commitment', says: '', fromThePlan: 'Samuel will call every butchery in Ikeja', what: 'call every butchery in Ikeja' },
+    ], PEOPLE);
+    expect(role.says).toBe('Aisha is responsible for the Lagos supermarkets.');
+    expect(mine.says).toBe('Samuel will call every butchery in Ikeja by Friday 10 October.');
+    expect(nobodys.says).toBe('Somebody will call every butchery in Ikeja.');
   });
 });
