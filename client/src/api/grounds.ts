@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { Ground } from '@/types'
+import type { ServedPattern } from './patterns'
 
 export interface Delivery {
   id: string
@@ -282,7 +283,8 @@ export const groundsApi = {
       sessions: { sessionNumber: number; completedAt: string | null; status: string }[]
       specificity: { scores: number[]; avg: number; label: string } | null
       confidence: { score: number; label: string; description: string } | null
-      patterns: { observation: string; sessionNumber: number | null }[] | null
+      /** Your own patterns, and nobody else's. See api/src/modules/patterns/who-reads-a-pattern.ts. */
+      patterns: ServedPattern[] | null
       insightsLocked: boolean
     }>(`/grounds/${groundId}/my-record`).then(r => r.data),
 
