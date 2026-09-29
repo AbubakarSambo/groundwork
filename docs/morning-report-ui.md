@@ -546,6 +546,19 @@ is actually true and which sentence is wrong (or how both are true at once, if a
 not the same thing as seeing "what you say"). Flagging it, not fixing it. Neither sentence has been
 changed.
 
+### 0i. A fourth refused command, and one line for Needs Hafsah on "Your number"
+
+**A fourth refused command, 29 September.** During the last check on "Your number", the reviewer
+ran a read-only history check - `git log -S… && git merge-base --is-ancestor …`, to see whether a
+change was already on the other workspace's branch - and the safety check refused it, because it
+matched the word "merge" (`git merge-base`, not an actual merge). The reviewer stopped there and did
+not retry it another way; `git log -S` and `git blame` alone, without `merge-base`, are fine and were
+used instead.
+
+**Needs Hafsah, one line:** on a performance-plan or new-hire check-in, "your share of the target"
+is a personal objective, not a sales number - is "Only you and Wairimu see your share" true and the
+right wording there too, or does that scenario need its own sentence?
+
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
 **Fixed on 26 September** by the engine workspace, in the way suggested below (`theResendClient()` in
@@ -5632,6 +5645,69 @@ Tests: `an-error-says-which-one.spec.tsx`'s `gw-er` pin now expects `Note tone="
 "Your email" and the new sentence; `Mark.spec.tsx`'s `SubHeading` size test is 14.5px now.
 `npx tsc -b` is clean (client and api); 208 client tests across 23 files pass, plus the 2 new api
 tests (jest).
+
+#### The invitation, seventh to ninth rounds: a Stack bug, a way out, a working "Your number"
+
+**Seventh round.** Found the actual cause of a gap reading as zero on two screens at once: a
+`Stack`'s own gap rule and a child's single-class margin reset (e.g. `.gwui-steps { margin: 0 }`)
+have identical specificity, and the child's rule sits later in `gw-ui.css`, so it won - live on
+"Almost in" (the steps panel touching the line above it) and the invitation ("About two minutes…"
+touching the button). Fixed generally, not per screen, by doubling the class in every `Stack` rule
+(`.gwui-stack-18.gwui-stack-18 > * + *`), which always outranks a plain single-class reset. Also:
+`whenItWasAsked` read "yesterday at 22:21" (24-hour); now the prototype's "yesterday at 4:12pm",
+using the same trick `what-the-end-of-a-check-in-can-say.ts`'s `aTime()` already does. And the dev
+proxy's default target said `localhost`, which can resolve to `::1` where nothing listens now that
+the API binds `127.0.0.1` in development - changed to `127.0.0.1` directly.
+
+**Eighth round.** The same specificity bug reached `Page`'s own 30px stack too (the expired-link
+page's foot line touched its button) - the same doubled-class fix. `Stack` gained a `gap={0}`
+(two things flush against each other - the invitation's title now sits directly against its tinted
+box, not 18px under it, matching the prototype). Already-joined's two buttons are 10px apart now,
+not 30. `LinkProblem`'s default invite sentence is two full sentences now: "Ask the person who
+invited you to send a new one. They can do that from the check-in."
+
+"Almost in" left a waiting person with no way out at all - this route has no sidebar while waiting
+(`AppShell`'s `CHROMELESS` list), so nothing on the screen could reach `/signout`. **Your decision:**
+a quiet "Not you? Sign out." link under the note - a small, deliberate difference from the
+prototype, for safety on a shared computer, recorded as such in the code.
+
+Out of time's cover hid the app frame but did not stop it taking keyboard focus (Tab still reached
+eight invisible sidebar links). Fixed properly: `OutOfTime` now renders through a `Portal` into its
+own container appended to `<body>`, outside `AppShell`'s tree entirely, and marks every other direct
+child of `<body>` `inert` while it is mounted, restored on unmount. New test proves a sibling link
+cannot be reached while the cover is up.
+
+**Ninth round, your last check on "Your number".** The number itself must never reach the invitation
+preview - it is read with the link's token, before any sign-in, so the one person a number must
+never be handed to is whoever is holding this particular link. `yourShareOfTarget: number` is now
+`yourNumberIsSeenBy: 'you-and-lead' | 'everybody' | null` - never the value, only who would see it,
+still through the engine's own rule (`targetsFor`). Sent as `null` once the person has already
+joined, since the page does not show the block again. Words: `'you-and-lead'` → "Only you and
+Wairimu see your share of the target."; `'everybody'` → "Everybody in this check-in sees every
+number, including yours."; `null` → no block. The privacy test now asserts the preview never
+carries a number in any shape (`JSON.stringify` scan included), and adds the joined and
+shared-with-everybody cases.
+
+Also from the ninth round: the floating feedback button was `inert` (did nothing when pressed) but
+still visible on top of Out of time's cover, since its `zIndex` (100) is above the cover's (40) -
+worse than gone, since it looked live. `<body>` now carries `.gwui-cover-open` for exactly as long
+as a full-page cover is mounted, and `.gw-feedback-btn` is hidden outright while that class is on,
+matching the prototype's bare page, which has no such button.
+
+**Found while running the full test suite for the first time this round (worth remembering):**
+running only the files I had touched had missed a stale test in `api/src` that reads a client file
+by path - `waiting-to-be-let-in-is-a-screen-not-a-retry.spec.ts` had pinned `WaitingForAnAdminPage.tsx`'s
+pre-rebuild `<AuthCard>` markup since the invitation's very first round. Fixed to the current
+`<PageTitle>` markup, same behaviour proven. Also found, out of scope for this task and left
+untouched: `nothing-is-left-behind.spec.ts` fails on `components/gw/GroundTabRow.tsx`, orphaned by
+some other change - not a file this task touches.
+
+Also checked, twice, in isolation and in two full-suite runs: `the-sidebar-waits-for-the-list.spec.ts`
+passed every time. I could not reproduce the failure named in the last check; no change made there.
+
+`npx tsc -b` clean, both projects. Client: 215 tests across 25 files. Api participants module: 158
+tests across 23 files. A full client suite run has one remaining failure, the out-of-scope
+`nothing-is-left-behind.spec.ts` above.
 
 ## Found on the way, for later tasks
 
