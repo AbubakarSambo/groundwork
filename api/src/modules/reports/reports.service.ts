@@ -1,4 +1,5 @@
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
+import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
@@ -5837,14 +5838,12 @@ happened, and what is in the way.`;
       const requestingUserIsMissing = !!(
         sessionProgress && participant && sessionProgress.missingParticipantIds.includes(participant.id)
       );
-      // This party's own solo artifact ("What you shared:") is generated
+      // This party's own solo artifact ("Here is what you shared.") is generated
       // as soon as their own check-in completes, but was only ever attached to the
       // response after the FINAL release - so a participant who finished before the
       // other party had no way to see their own private record at all in the
       // meantime. Surface it here too, same as the released branch below.
-      const soloArtifact = participant?.soloArtifact
-        ? (() => { try { return JSON.parse(participant.soloArtifact!); } catch { return null; } })()
-        : null;
+      const soloArtifact = thePrivateSummaryAsRead(participant?.soloArtifact);
       /**
        * A PARTY WHO HAS NOT ANSWERED YET DOES NOT READ THE FORMING PICTURE.
        *
@@ -6007,9 +6006,7 @@ happened, and what is in the way.`;
         })
       : Promise.resolve(null);
 
-    const soloArtifact = participant?.soloArtifact
-      ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
-      : null;
+    const soloArtifact = thePrivateSummaryAsRead(participant?.soloArtifact);
 
     // The arc ADVISORY is a reviewer flag, never part of the shared report:
     // only the initiator / org admin sees it, and only when the negative tier

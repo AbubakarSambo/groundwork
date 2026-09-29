@@ -49,6 +49,7 @@ import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-i
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
+import { openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
@@ -357,7 +358,7 @@ WHAT YOU DO NOT KNOW, AND MUST THEREFORE NEVER STATE. You have not been told how
 
 A live report opened with "Two of the three parties on this ground, Hafsah Jumare and the 2nd lead, have not yet contributed a record. The picture below is therefore drawn from Hafsah Jumare's account alone." Every fact in that sentence was invented - the count, the second name, and the claim about who had contributed - because none of it was in the input. It also contradicted itself, naming the same person as both absent and the sole source.
 
-Write only about what this person told you. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "What you shared:" then summarise it in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.
+Write only about what this person told you. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the sentence "Here is what you shared." on its own, then summarise it in their own framing in full sentences. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.
 
 ${PLAIN_WORDS}
 
@@ -9068,7 +9069,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
       data: {
-        soloArtifact: JSON.stringify(theirs.value),
+        soloArtifact: JSON.stringify({ ...theirs.value, summary: openingWithASentence(theirs.value.summary) }),
         soloArtifactAt: new Date(),
       },
     });
@@ -9155,7 +9156,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           : 'Your summary is being written from what you said. It takes up to a minute - this page will show it as soon as it is there.';
       return { artifact: null, saying, finished: checkIn.status === CheckInStatus.COMPLETED };
     }
-    return { artifact: JSON.parse(p.soloArtifact) as { summary: string; whatToCarry: string }, generatedAt: p.soloArtifactAt };
+    return { artifact: thePrivateSummaryAsRead<{ summary: string; whatToCarry: string }>(p.soloArtifact), generatedAt: p.soloArtifactAt };
   }
 
   /**

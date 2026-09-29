@@ -1,4 +1,5 @@
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
+import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
@@ -1963,7 +1964,7 @@ export class GroundsService {
         soloArtifactShared: p.soloArtifactShared ?? false,
         // Only expose the content when the participant explicitly shared it
         sharedSoloReport: raw
-          ? (() => { try { return JSON.parse(raw); } catch { return null; } })()
+          ? thePrivateSummaryAsRead(raw)
           : null,
         checkIns: checkInsByParticipant.get(p.id) ?? [],
         objective: (() => {
@@ -6856,9 +6857,7 @@ export class GroundsService {
       select: { soloArtifact: true, soloArtifactShared: true },
     });
     if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
-    const report = participant.soloArtifact
-      ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
-      : null;
+    const report = thePrivateSummaryAsRead(participant.soloArtifact);
     return { report, shared: participant.soloArtifactShared };
   }
 
