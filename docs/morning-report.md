@@ -25,7 +25,7 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 None of the three failures noted on the base before this work are failing now.
 
-Next: run-18, in three parts.
+**Run-18 started at 12:54, in three parts** as run-16 was, on the build of `7f806500`. The API runs from `dist/main` on port 3000, so no edit can restart it mid-run. It writes to `api/journey/all-24/run-18/`. This is the first of today's two full runs.
 
 ---
 
