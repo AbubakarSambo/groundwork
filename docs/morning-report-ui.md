@@ -4,6 +4,42 @@ This is the report from the screens workspace, on the branch `wip/prototype-ui`.
 workspace writes its own report in `docs/morning-report.md`, so the two computers never edit the
 same file.
 
+## At the end of the seven-hour run, 29 September (13:36 to 20:36)
+
+**What I finished.** The check-in page is rebuilt from the prototype's shared parts, and it has passed its review and re-review. It has the prototype's five tabs: Board, Check-in, Context, My work, and People and setup. The Check-in tab opens your conversation straight away, and the lead's own check-in is on the same page, so one check-in has one page. Your past sessions are under My work, which now follows the prototype's "Your work" page. "Who is in this" moved to People and setup. The conversation, the Done page and the page between check-ins are rebuilt from the same parts. An admin who doesn't run a check-in sees the prototype's read-only view with three tabs. The re-review found eight things, and all eight are fixed. One of them was a privacy fix: "What success looks like" no longer names someone on a check-in where people can't see each other. I merged the engine workspace's work twice, and the second merge brought 64 of its commits.
+
+**One correction.** In the re-review I wrongly made "What this check-in is for" something only the lead may rewrite. That reversed your own decision of 8 September, that an admin may rewrite it. I have undone it.
+
+**What is in progress.** The board and reports rebuild for every kind of work has not started as code. The pictures of all eleven prototype examples, as the lead and as a participant, are taken, and so are their section headings. Ten local test check-ins are made. The engine does not yet store the kind of work (sales, engineering, a law firm matter and so on), and there are no records of deals, releases or tickets. So I asked the engine workspace for these in request 76. Until then, each kind shows its family's board, with the missing sections left out. After that, the people screens, settings and the other old screens are still to be rebuilt, in that order.
+
+**The test results.** At the end of the check-in module, the page-colour test passed for the participant, the lead and the admin, on every page it opens. The full suites before the merge had 10,897 of 10,898 API tests and 3,514 of 3,515 screen tests passing, and both type checks were clean. The two failures were in our own tests and I fixed both. One read a source file without first removing its comments. The other still named the old counting rule, which the engine replaced with the one you chose on 28 September; the test still checks that a lead who only manages is never counted. After the second merge, every test passes: 11,097 API tests and 3,515 screen tests, and both type checks are clean. The engine's merge added a new field to the database's shape (`settledBy`, on a commitment), so the tester regenerated the database client locally before the API tests would run. The local database has not been migrated for that field yet, so the local API needs its migration run and a restart before the next picture check.
+
+**Found and fixed in the last hour.** After the merge I applied the engine's two new database changes to the local database only (groundwork_dev on this Mac), rebuilt the local API and restarted it, still listening on 127.0.0.1 only. Then I read Sales team, Q3's board as Juma, an admin who only reads it. Two things were wrong, and both are fixed and pictured:
+
+- The engine's fix that stops a board naming a file the reader may not open was not running before the restart. Once it ran, the board still drew three of Rukia's lines as a label with no words. The board now leaves out a line with no words. I asked the engine workspace, in request 77, to leave such lines out itself. I also asked it to check two of her lines that may have been removed for the wrong reason.
+- The board still offered Juma "Your check-in" and a Check-in tab, though he is not in this check-in. It now shows him the prototype's three tabs. Amani and Rukia still see their own buttons. After both fixes the whole screen suite passes again: 3,520 tests in 508 files.
+
+**One refusal.** The safety check refused a command of mine because it contained the words "merge-base". I was only asking git whether a commit had arrived in an earlier merge. I did not retry it or ask the same question in another way. Instead I restarted the API and read the board again, which showed the fix running.
+
+**Decided for you to confirm.** I took each of these as the option closest to the prototype and to your own decisions:
+
+- The check-in's "Board" tab is back on every check-in page, as in the prototype's five tabs. An earlier decision had said the board is never a tab (`one-door-per-place.spec.ts`); the prototype and the instruction to put the header on every page point the other way.
+- Report, Sessions and What I shared are sub-tabs under My work, and Setup is "People and setup", following the prototype's five tabs.
+- The Check-in tab opens the focused conversation. A person's past sessions are listed under My work, each opening its transcript; "Who is in this" is under People and setup.
+- An admin who doesn't run the check-in reads the prototype's own sentence, "You can read this check-in's board and reports. <lead> runs it.", once, and is not offered "Your check-in".
+- The conversation's two opening cards ("What this check-in is about", "What you said last time") are folded behind one quiet link, since the prototype opens straight with Groundwork's first turn; nothing they held is lost.
+- The eleven local test check-ins: ten made (two organisations, each capped at 10 check-ins by the free plan); "MarketView, Q4" is stood in for by "Sales team, Q3", the same situation. Not a product decision, but noted.
+- "Not you? Sign out." on "Almost in" (agreed with you already; listed for completeness).
+- An admin who doesn't run a check-in sees the prototype's read-only view: three tabs (Board, Context, People and setup), not Check-in or My work.
+- The lead's Check-in tab opens her own conversation directly, so one check-in has one page; the separate participant page is never shown to the lead.
+- "Add a note for tomorrow" reads "Add a note for next time", because the next session can be days away.
+- My work follows the prototype's "Your work" page (no sub-tabs); the lead's list of every session stays reachable from it.
+- Two sessions were opened early during the review (Rukia's and Amani's session 2 on "Sales team, Q3"); they are local test data and were left as they are.
+- Not decided by me after all: whether an admin may rewrite "What this check-in is for". You decided it on 8 September (an admin who runs the place may: "she should rewrite"). I first took the more private option by mistake and have reverted it; item 31.2 in the report was already answered by you.
+- My work's "What success looks like" shows each person's own words about success to the people in the check-in, as check-in words may be shown; on a check-in that hides its people, nobody is named.
+- The setup sign-off's code and its two tests were removed with the step itself, following your decision to remove it; no test was weakened.
+- The builder started a research helper of its own twice more in the check-in rebuild (reported by it each time; it checked the findings itself). The rule is repeated to every helper.
+
 ## At a glance, 28 September
 
 **Reviewed and passed:** 8 of the 20 modules are reviewed, passed and ticked (U.1 to U.8). U.8, the
@@ -6348,3 +6384,79 @@ moved it to `useOpenSession.ts` - caught and fixed by this round's own full-suit
 regression.
 
 **Commit:** `8edca611` - "Rebuild My work as the prototype's "Your work" page, no sub-tabs"
+
+## Re-review of the rebuilt check-in page: eight items (30 September 2026)
+
+All eight items from the re-review are done. Commits: `00b9a4e0` (items 1-2), `2e0071ea` (item 3),
+`3f515f64` (item 4), `8a9f20a1` (request 75, part of item 4), `f5ef2d8d` (item 5), `7337d478`
+(item 6), `4083ceb1` (item 7, privacy), `e729a789` (item 8).
+
+**1. DONE, a real bug.** `GroundAdminPage.tsx`'s read-only redirect (an admin who neither runs a
+check-in nor takes part in it, sent from Check-in/My work to Context) read `isInitiator`/
+`viewerIsAParty` - both correctly false for that reader, but ALSO both false for everybody while
+`ground` is still loading, since they default to false until it arrives. So the effect could not
+tell "this reader genuinely has none of this" from "nobody knows who this reader is yet" - every
+reader, including the lead and a party arriving on `?tab=chat`, was bounced to Context for the
+instant before the ground loaded, and nothing ever bounces a reader back once `goTab('docs')` has
+run. Fixed by waiting for `isLoading`/`ground` before asking who the reader is. New test:
+`GroundAdminPage.tabRedirectRace.spec.tsx`, a loading-then-loaded sequence as the lead, an org
+admin who is also a party, and a genuinely read-only admin - each confirmed to actually catch the
+old bug by reverting the fix locally and re-running.
+
+**2. DONE.** "Your check-in" in the header linked to the bare `/grounds/:id` - this very page,
+so clicking it did nothing visible. It now opens the reader's own open session directly
+(`/checkin/:id`) when there is one, or the Check-in tab otherwise; still shown only to somebody who
+answers this check-in themselves. `GroundAdminPage.yourCheckInLink.spec.tsx`.
+
+**3. DONE.** The Done page's `whenTheNextOneOpens` read only `availableFrom`, so a session already
+IN_PROGRESS with a future `availableFrom` (started early, or clock skew) still said "opens on
+Sunday 4 October" instead of that it is open now - same rule `myOpenOpensLater` already applies to
+a viewer's own session on the ground pages. Added `theNextOpenCheckInId`, the id to link to
+whenever the sentence says "open now"; the Done page now shows "Go to it" under the subtitle.
+`what-the-end-of-a-check-in-can-say.spec.ts`, `TheDonePage.nextSessionAlreadyOpen.spec.tsx`.
+
+**4. DONE**, one item flagged rather than fixed. My work's clipped fragments and colon-joined
+lines are now plain sentences: the dropped "the line the next session opens from" caption; "1 of
+12" over "check-ins so far" (not "check-ins of 12", which repeated the number above it); a
+commitment no longer repeats a date its own text already states, and gets its timing as its own
+capitalised sentence when it does not; the five bars' own captions are capitalised, not left
+lower-case; "Rukia Otieno: Twelve signed..." is now "Rukia Otieno said twelve signed..."; "Something
+nobody asked for" -> "Something you did that nobody asked for"; the evidence field's dash-joined
+placeholder -> a plain "for example" sentence; the footer's "This is not yours..." -> "This goes to
+your next check-in, which will ask you about it." "They can set it on the Setup tab." is the
+engine's own text (`where-you-are-against-what-you-named.ts`, report synthesis) - flagged as
+**request 75** rather than edited here, since it names a tab this branch renamed to "People and
+setup".
+
+**5. DONE.** Between check-ins' "Add a note for next time" opened a second box (GroundChat's own
+note composer) above the card's own footer composer, so two input boxes showed at once. There is
+one composer now: the chip switches it into note mode (placeholder "Note something for your next
+check-in...", button reads "Save"), saving through the same private-note endpoint rather than Ask
+Groundwork. `BetweenCheckIns.spec.tsx`.
+
+**6. DONE.** The about pop-up's own title ("What this check-in is about, and what you said last
+time") was repeated word for word as a heading inside it. That block is now a plain section with
+no heading of its own. `ChatPage.aboutPanelWording.spec.tsx`.
+
+**7. DONE, a privacy bug, fixed in the backend.** `whereAgainstSuccessAsBuilt`
+(`api/src/modules/reports/reports.service.ts`) never selected `scenario`/`peersVisibleToEachOther`
+on its own `ground.findUnique` - the two fields `peersAreNamedOn` needs to tell a hidden check-in
+(an evaluation or a cohort, by default) from an open one. Both came back `undefined`, which
+`peersAreNamedOn` reads as "not evaluative" and "nobody has said", defaulting to **true** - so a
+participant on a hidden check-in was served every colleague's real name on "What success looks
+like", word for word. Fixed by selecting the two fields; the rule itself (shared with the board,
+the grounds page and the interview) needed no change. New spec:
+`what-success-looks-like-never-names-a-hidden-peer.spec.ts`, whose mock actually enforces Prisma's
+`select` (so it would have caught this) - verified by reverting the fix locally and watching two of
+its four tests fail with the leaked name.
+
+**8. Reverted, to your own decision.** The review asked whether an admin should be offered "Rewrite" on "What this check-in is for". I told the builder to take the more private option (only the lead), and it did. But you had already decided this on 8 September, in commit `072e6250`: an admin who runs the place may rewrite the brief ("she should rewrite"). So I reverted it in `76b472eb`: the lead and such an admin may rewrite it, as before. My earlier note that this was an open question (item 31.2) was wrong; your answer was already in the code.
+
+**Verification.** `npx tsc -b` clean (client). `npx tsc --noEmit` clean (api). Targeted client
+suite (23 spec files touched by this round, including three newly-written regression specs and all
+their pre-existing neighbours in the same files): 131/131. Targeted API suite (the new privacy
+spec, `whose-words-the-brief-is.spec.ts`, and every other spec in `grounds.service.ts`'s
+`updateTimeline`/brief neighbourhood, plus `reports.service.ts`'s privacy/label specs): all green.
+Full scorer/scenario run not re-run this pass (no engine-owned code changed by these fixes; the one
+backend change with scoring relevance, item 7, is a privacy fix with its own dedicated spec, not a
+change to what any report says).

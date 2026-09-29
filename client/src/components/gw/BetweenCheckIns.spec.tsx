@@ -84,6 +84,34 @@ describe('between check-ins', () => {
     expect(await screen.findByText(/Notes are yours alone/)).toBeTruthy()
   })
 
+  /*
+   * RE-REVIEW BUG: "Add a note for next time" opened a SECOND box (GroundChat's own note
+   * composer) above the card's own footer composer, so "Ask, or add a note" and the note's own
+   * textarea were both on screen at once. There is only one composer now: the chip switches it
+   * into note mode.
+   */
+  it('does not show a second box - the one composer switches into note mode', async () => {
+    mount()
+    await userEvent.click(screen.getByRole('button', { name: 'Add a note for next time' }))
+    /* Only one textbox on the whole card, and it is the note one - not two. */
+    expect(await screen.findAllByRole('textbox')).toHaveLength(1)
+    expect(screen.queryByPlaceholderText('Ask, or add a note')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Send' })).toBeNull()
+  })
+
+  it('saving a note calls the private note endpoint, not Ask Groundwork, and returns to ask mode', async () => {
+    const { groundsApi } = await import('@/api/grounds')
+    mount()
+    await userEvent.click(screen.getByRole('button', { name: 'Add a note for next time' }))
+    const field = screen.getByPlaceholderText('Note something for your next check-in…')
+    await userEvent.type(field, 'Ask about the Westgate visit')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(groundsApi.addMyNote).toHaveBeenCalledWith('g1', 'Ask about the Westgate visit')
+    expect(askApi.ask).not.toHaveBeenCalled()
+    expect(await screen.findByPlaceholderText('Ask, or add a note')).toBeTruthy()
+  })
+
   it('"Change how often this runs" is reachable directly, under the card - not only from inside the note box', async () => {
     const onGoToSetup = vi.fn()
     mount({ canChangeTheRhythm: true, onGoToSetup })

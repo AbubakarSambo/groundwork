@@ -37,6 +37,14 @@ export function whenTheNextOneOpens(
    * claiming "Your next check-in is open now." on a check-in that was not open, and might not be
    * for weeks. Nothing is known yet, so nothing is said, same as when there is no next row at all.
    */
+  /*
+   * AN IN_PROGRESS SESSION IS OPEN, WHATEVER ITS availableFrom SAYS - the same rule
+   * `myOpenOpensLater` uses on the ground pages (see GroundAdminPage.tsx/GroundParticipantPage.tsx):
+   * that date gates a session that has not started, not one already running. Without this, a lead
+   * whose next session had already been opened (for example by starting it early, or a clock
+   * skew) was told it "opens on Sunday" while it sat there, started, waiting for her.
+   */
+  if (next.status === 'IN_PROGRESS') return 'Your next check-in is open now.'
   if (!next.availableFrom) return null
   const opens = new Date(next.availableFrom)
   if (Number.isNaN(opens.getTime()) || opens.getTime() <= now.getTime()) {
@@ -47,6 +55,31 @@ export function whenTheNextOneOpens(
   if (day(opens) === day(now)) return `Your next check-in opens today at ${aTime(opens)}.`
   if (day(opens) === day(tomorrow)) return `Your next check-in opens tomorrow at ${aTime(opens)}.`
   return `Your next check-in opens on ${whenItWas(opens, 'weekdayAndDay')} at ${aTime(opens)}.`
+}
+
+/**
+ * THE ID TO LINK TO, WHEN whenTheNextOneOpens SAYS IT IS ALREADY OPEN.
+ *
+ * `whenTheNextOneOpens` only has words to give; a reader told "Your next check-in is open now."
+ * with nowhere to click on it is being told about a door with no handle. Same rule, so the two
+ * can never disagree about whether there is a next check-in to open.
+ */
+export function theNextOpenCheckInId(
+  checkIns: { id: string; sessionNumber: number; status: string; availableFrom?: string | null }[] | null | undefined,
+  thisCheckInId: string | null | undefined,
+  now: Date = new Date(),
+): string | null {
+  if (!checkIns) return null
+  const later = checkIns
+    .filter(c => c.id !== thisCheckInId && c.status !== 'COMPLETED' && c.status !== 'DECLINED')
+    .sort((a, b) => a.sessionNumber - b.sessionNumber)
+  const next = later[0]
+  if (!next) return null
+  if (next.status === 'IN_PROGRESS') return next.id
+  if (!next.availableFrom) return null
+  const opens = new Date(next.availableFrom)
+  if (!Number.isNaN(opens.getTime()) && opens.getTime() <= now.getTime()) return next.id
+  return null
 }
 
 /**

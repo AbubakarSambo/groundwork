@@ -108,6 +108,20 @@ describe('the about pop-up', () => {
     expect(screen.getByText('Ship the release')).toBeTruthy()
   })
 
+  /*
+   * RE-REVIEW BUG: the pop-up's own heading ("What this check-in is about, and what you said
+   * last time") was repeated, word for word, as the first section's own heading inside it
+   * ("What this check-in is about") - the same sentence, twice, one line apart.
+   */
+  it('does not repeat "What this check-in is about" as a heading inside the pop-up', async () => {
+    renderChat()
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'What this check-in is about, and what you said last time' }))
+    await settle()
+    expect(screen.getByRole('heading', { name: 'What this check-in is about, and what you said last time' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'What this check-in is about' })).toBeNull()
+  })
+
   it('has a visible "Close" button, not only Escape or a click on the scrim', async () => {
     renderChat()
     await settle()

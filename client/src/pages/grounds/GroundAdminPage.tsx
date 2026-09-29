@@ -555,13 +555,21 @@ export function GroundAdminPage() {
    * this reader (see the header below); this catches the default landing tab (`chat`) and a link
    * carrying `?tab=checkins`/`report`/`record`, and sends them to Context instead - one of the
    * three tabs they do have.
+   *
+   * BUG FOUND ON RE-REVIEW: this ran the moment the page mounted, before the check-in had
+   * loaded. While `ground` is still undefined, `isInitiator` and `viewerIsAParty` are both
+   * their unloaded default of false - indistinguishable from a real read-only admin - so
+   * every reader, including the lead and a party arriving on `?tab=chat`, was sent to
+   * Context for an instant. Waiting for the check-in to load before asking who the reader
+   * is fixes that: by the time this can fire, the two flags are the server's real answer.
    */
   useEffect(() => {
+    if (isLoading || !ground) return
     if (isInitiator || viewerIsAParty) return
     const inMyWorkGroup = (['report', 'checkins', 'myrecord'] as Tab[]).includes(tab)
     if (tab !== 'chat' && !inMyWorkGroup) return
     goTab('docs')
-  }, [isInitiator, viewerIsAParty, tab])
+  }, [isLoading, ground, isInitiator, viewerIsAParty, tab])
 
   /**
    * A LEAD'S OWN RECORD, FETCHED ONLY WHEN THEY ARE IN THE CHECK-IN.
@@ -1377,12 +1385,23 @@ export function GroundAdminPage() {
                 button anyway would promise a check-in that tab does not have for her.
               */}
               {viewerIsAParty && (
-                <Link
-                  to={`/grounds/${id}`}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
+                /*
+                 * RE-REVIEW: THIS LINKED TO THE BARE GROUND PAGE, NOT TO A CHECK-IN.
+                 * `/grounds/:id` is this very page - clicking it while already here did
+                 * nothing a reader could see. It should open the reader's own open session
+                 * directly (`/checkin/:id`), the same place the Check-in tab's effect above
+                 * sends her, or land on the Check-in tab when she has none open right now.
+                 */
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (myOpenCheckInId) navigate(`/checkin/${myOpenCheckInId}`)
+                    else goTab('chat')
+                  }}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   Your check-in
-                </Link>
+                </button>
               )}
               <button
                 type="button"
@@ -2357,8 +2376,9 @@ export function GroundAdminPage() {
           This passed 'lead' for both, so an org admin got the lead's private steers - the band
           headed "Only you see this", notes promised never to be quoted - along with the lead's
           running log, standing note and context conversation. See the note on ContextPage's
-          `role`. The brief stays rewritable for both, because that is the shared description of
-          the work rather than one person's framing.
+          `role`. RE-REVIEW, HAFSAH'S ITEM 31.2: the brief itself is no longer rewritable by an
+          admin either - only the check-in's own lead may change what it says it is for; an admin
+          still reads it, like everybody else in the check-in.
         */}
         {tab === 'docs' && (
           <ContextPage

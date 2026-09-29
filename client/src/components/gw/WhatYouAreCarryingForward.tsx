@@ -56,7 +56,11 @@ export function WhatYouAreCarryingForward({
             the others - a sentence, deliberately, because sharing your whole account with the
             people you are being compared against is a different act.
           */}
-          <Sec title="What you are carrying forward" src="the line the next session opens from" />
+          {/* RE-REVIEW: "the line the next session opens from" was a clipped fragment, not a
+              sentence, sitting beside the heading. The line under it already says what this is
+              ("From your own check-in only..."), so the fragment is dropped rather than forced
+              into a sentence that would only repeat that line. */}
+          <Sec title="What you are carrying forward" />
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 4 }}>
             From your own check-in only. Only you can see it unless you choose to share it.
           </div>

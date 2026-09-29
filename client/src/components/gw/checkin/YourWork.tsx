@@ -199,7 +199,10 @@ export function YourWork({
               {totalSessions != null && (
                 <div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{completedCount} of {totalSessions}</div>
-                  <div className="gwui-panel-text-muted">check-ins of {totalSessions}</div>
+                  {/* RE-REVIEW: "check-ins of 12" repeated the number already above it and read as
+                      a clipped fragment rather than a caption. "Check-ins so far" says what the
+                      number is without saying it twice. */}
+                  <div className="gwui-panel-text-muted">check-ins so far</div>
                 </div>
               )}
               {keptThisMonth && (
@@ -233,15 +236,31 @@ export function YourWork({
       {myCommitments.length > 0 && (
         <Section heading="What you said you’d do">
           <Panel pad={false}>
-            {myCommitments.map((c, i) => (
-              <div key={c.id} style={{ padding: '11px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                <CommitmentMark done={c.status === 'DONE'} />
-                <span className="gwui-panel-text">
-                  {c.text}
-                  {c.whenSaid ? ` (${c.whenSaid})` : ''}
-                </span>
-              </div>
-            ))}
+            {/*
+              RE-REVIEW BUG: THE TIMING WAS ADDED EVEN WHEN THE LINE ALREADY SAID IT.
+              "…on Wednesday 30 September to show them the fridges (on Wednesday 30 September)"
+              repeated the same date twice because `c.whenSaid` was always appended in brackets,
+              whatever `c.text` already contained. Now it is added only when the line does not
+              already say it, and it reads as its own capitalised sentence rather than a bracket -
+              "send them the price list (the same day)" becomes "Send them the price list. The
+              same day."
+            */}
+            {myCommitments.map((c, i) => {
+              const capitalize = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+              const text = capitalize(c.text)
+              const alreadySaysWhen = !!c.whenSaid && text.toLowerCase().includes(c.whenSaid.toLowerCase())
+              return (
+                <div key={c.id} style={{ padding: '11px 16px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                  <CommitmentMark done={c.status === 'DONE'} />
+                  <span className="gwui-panel-text">
+                    {text}
+                    {c.whenSaid && !alreadySaysWhen && (
+                      <span style={{ display: 'block', color: 'var(--gw-sub)', marginTop: 2 }}>{capitalize(c.whenSaid)}.</span>
+                    )}
+                  </span>
+                </div>
+              )
+            })}
           </Panel>
         </Section>
       )}

@@ -100,7 +100,9 @@ export function TheCheckInHeader({
   const myWorkTab = canRunThisCheckIn ? 'sessions' : 'record'
   const tabs: { key: string; label: string; to?: string }[] = tabsOverride ?? [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
-    { key: 'chat', label: 'Check-in', to: `/grounds/${id}` },
+    /* Someone who neither runs this check-in nor is in it (an admin who only reads) has no
+       conversation here: the prototype's read-only view (read-only-view.txt) has three tabs. */
+    ...(canRunThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
     { key: 'context', label: 'Context', to: `/grounds/${id}?tab=context` },
     ...(canRunThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
@@ -132,9 +134,11 @@ export function TheCheckInHeader({
             (board-as-lead.txt); a party's says "Start my check-in" (board-as-participant.txt). Both
             go to the same place - the same the "Check-in" tab opens.
           */}
-          <Link to={`/grounds/${id}`} style={{ ...linkAsBtn }}>
-            {isAParty && !canRunThisCheckIn ? 'Start my check-in' : 'Your check-in'}
-          </Link>
+          {(canRunThisCheckIn || isAParty) && (
+            <Link to={`/grounds/${id}`} style={{ ...linkAsBtn }}>
+              {isAParty && !canRunThisCheckIn ? 'Start my check-in' : 'Your check-in'}
+            </Link>
+          )}
           <button
             type="button"
             onClick={showAsk}

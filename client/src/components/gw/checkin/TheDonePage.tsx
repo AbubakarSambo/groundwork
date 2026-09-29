@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { StageLadder } from '@/components/gw/kit'
 import { PageTitle } from '@/components/gw/ui/PageTitle'
@@ -13,7 +13,7 @@ import { groundsApi } from '@/api/grounds'
 import { reportsApi } from '@/api/reports'
 import { THE_FIVE, wasItThere } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
-import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { whenTheNextOneOpens, theNextOpenCheckInId, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
 
 /**
  * THE DONE PAGE (B3, docs/prototype/screens/B3-the-check-in/done.txt).
@@ -161,6 +161,14 @@ export function TheDonePage({
   const leadName = whoElseAnswers(g)
   const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId)
   /*
+   * RE-REVIEW: "YOUR NEXT CHECK-IN IS OPEN NOW." NEEDS A DOOR TO WALK THROUGH.
+   * This showed with no link at all - and, before `whenTheNextOneOpens` learned to treat an
+   * IN_PROGRESS session as open whatever its availableFrom says, could even say "opens on
+   * Sunday" about a session already running. Both are fixed together: the sentence and the
+   * link agree on the same rule, in what-the-end-of-a-check-in-can-say.ts.
+   */
+  const nextOpenId = theNextOpenCheckInId(mine.data?.checkIns, checkInId)
+  /*
    * A PLAIN YES/NO FROM THE SERVER, NOT A COUNT OF `g.participants` (U.8 fifth review). That array
    * is reduced to this reader's own row alone on a check-in that hides peers from each other, so
    * counting it always read as a check-in of one there - "Two reports come from this" and the
@@ -192,6 +200,13 @@ export function TheDonePage({
         title={firstName ? `Done. Thanks, ${firstName}.` : 'Done. Thank you.'}
         subtitle={`Your check-in is saved.${next ? ` ${next}` : ''}`}
       />
+      {nextOpenId && (
+        <p style={{ margin: '-16px 0 0', fontSize: 13.5 }}>
+          <Link to={`/checkin/${nextOpenId}`} style={{ color: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'underline' }}>
+            Go to it
+          </Link>
+        </p>
+      )}
 
       {/**
         * THE HEADING IS THE TEAM'S NEWS, NOT A LABEL ON A LONE CARD.

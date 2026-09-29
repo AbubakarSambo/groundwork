@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { askApi, type AskBlock, type AskReply } from '@/api/ask'
-import { Composer as NoteComposer } from './GroundChat'
+import { groundsApi } from '@/api/grounds'
 import { ConversationCard } from './ui/ConversationCard'
 import { TheCheckInHeader } from './checkin/TheCheckInHeader'
 import { Bubble } from './ui/Bubble'
@@ -24,11 +25,18 @@ import { Button } from './ui/Button'
  * this is the prototype's own conversation, in its own card, and the panel is a different surface
  * for a different moment (asking about anything, from anywhere). The fourth chip, "Add a note for
  * next time" (the screen's old "for tomorrow" assumed the next session is tomorrow's, when the
- * cadence may be days or weeks out), still opens GroundChat's private note box - a note is not an
- * answer, so it is not a bubble.
+ * cadence may be days or weeks out), switches the same footer composer into note mode - a note is
+ * not an answer, so it does not arrive as a bubble.
  *
  * "Change how often this runs" no longer waits behind the note box: it is its own quiet link under
  * the card, reachable directly, the same as the note itself.
+ *
+ * RE-REVIEW BUG: "Add a note for next time" opened GroundChat's own note box ABOVE this card's own
+ * footer composer, so two input boxes were on screen together - "Ask, or add a note" at the foot,
+ * and a second textarea with its own "Note it" button sitting in the messages above it. There is
+ * only one composer now. The chip switches it into note mode: the placeholder becomes "Note
+ * something for your next check-in…", the send button reads "Save", and what is typed goes to the
+ * same private note endpoint GroundChat's own composer used, rather than to Ask Groundwork.
  */
 
 /** The reply's blocks, reduced to plain lines. Nothing this card cannot show (a proposal's yes/no,
@@ -58,10 +66,13 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
   canChangeTheRhythm?: boolean
   onGoToSetup?: () => void
 }) {
-  const [addingNote, setAddingNote] = useState(false)
+  /** 'ask' talks to Groundwork; 'note' writes a private note for the next check-in. One composer,
+      one mode at a time - never both boxes at once. */
+  const [mode, setMode] = useState<'ask' | 'note'>('ask')
   const [exchanges, setExchanges] = useState<Exchange[]>([])
   const [draft, setDraft] = useState('')
   const [asking, setAsking] = useState(false)
+  const qc = useQueryClient()
 
   const ask = async (message: string) => {
     const m = message.trim()
@@ -79,9 +90,24 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
     }
   }
 
+  const addNote = useMutation({
+    mutationFn: (t: string) => groundsApi.addMyNote(groundId, t),
+    onSuccess: () => {
+      setDraft('')
+      setMode('ask')
+      qc.invalidateQueries({ queryKey: ['my-notes', groundId] })
+      toast.success('Noted. Your next check-in will ask you about it.')
+    },
+    onError: () => toast.error('The note did not save. What you typed is still here - try again.'),
+  })
+
   const send = () => {
     const m = draft.trim()
     if (!m) return
+    if (mode === 'note') {
+      addNote.mutate(m)
+      return
+    }
     setDraft('')
     void ask(m)
   }
@@ -97,9 +123,10 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
               onChange={setDraft}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
               onSend={send}
-              disabled={asking}
-              sendDisabled={!draft.trim() || asking}
-              placeholder="Ask, or add a note"
+              disabled={mode === 'note' ? addNote.isPending : asking}
+              sendDisabled={!draft.trim() || (mode === 'note' ? addNote.isPending : asking)}
+              placeholder={mode === 'note' ? 'Note something for your next check-in…' : 'Ask, or add a note'}
+              sendLabel={mode === 'note' ? 'Save' : 'Send'}
             />
           }
         >
@@ -112,23 +139,18 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
             disabled={asking}
             items={['What am I missing?', 'Review my goals', 'What did I say I’d do?', 'Add a note for next time']}
             onPick={(item) => {
-              if (item === 'Add a note for next time') { setAddingNote(true); return }
+              if (item === 'Add a note for next time') { setMode('note'); return }
               void ask(item)
             }}
           />
+          {mode === 'note' && (
+            <Bubble mine={false}>
+              Notes are yours alone. They are not part of the record, and your next check-in will ask you about them.
+            </Bubble>
+          )}
           {exchanges.map((ex, i) => (
             <Bubble key={i} mine={ex.mine}>{ex.text}</Bubble>
           ))}
-          {addingNote && (
-            <NoteComposer
-              groundId={groundId}
-              openCheckInId={null}
-              openSessionNumber={null}
-              totalSessions={null}
-              nextOpensAt={null}
-              canChangeTheRhythm={false}
-            />
-          )}
         </ConversationCard>
       </div>
       {/* REVIEW ROUND 3, ITEM 4: REACHABLE DIRECTLY, NOT ONLY FROM INSIDE THE NOTE BOX - which

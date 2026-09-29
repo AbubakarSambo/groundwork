@@ -1194,8 +1194,16 @@ export function ChatPage() {
           )}
           {showAboutPanel && (
             <Modal title="What this check-in is about, and what you said last time" onClose={() => setShowAboutPanel(false)}>
+              {/*
+                RE-REVIEW: THE FIRST HEADING REPEATED THE POP-UP'S OWN TITLE. "What this check-in
+                is about" said, word for word, the first half of the title right above it
+                ("What this check-in is about, and what you said last time"). This block is now a
+                plain section with no heading of its own; "What you said last time" below keeps
+                its heading, since that is genuinely the title's other half and there is content
+                between the two.
+              */}
               {hasAboutContent && (
-                <Section heading="What this check-in is about">
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {brief!.subject && (
                     <p className="gwui-panel-text" style={{ fontWeight: 600 }}>{brief!.subject}</p>
                   )}
@@ -1231,7 +1239,7 @@ export function ChatPage() {
                     <p className="gwui-panel-text-muted">{brief!.alsoSay}</p>
                   )}
                   <p className="gwui-panel-text-muted">Answer in your own words. You are not expected to agree with any of it.</p>
-                </Section>
+                </div>
               )}
               {priorRecordLines.length > 0 && (
                 <Section heading="What you said last time">

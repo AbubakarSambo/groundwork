@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { whenTheNextOneOpens, whoElseAnswers, whoRunsThis } from './what-the-end-of-a-check-in-can-say'
+import { whenTheNextOneOpens, theNextOpenCheckInId, whoElseAnswers, whoRunsThis } from './what-the-end-of-a-check-in-can-say'
 
 /* The sentence the end card and the Done page say about the next check-in (check-in-end-card.txt:
    "Your next check-in opens tomorrow at 4pm."). Dates are read in the test machine's time zone. */
@@ -38,6 +38,42 @@ describe('when the next check-in opens, in one sentence', () => {
     expect(whenTheNextOneOpens([{ id: 'next', sessionNumber: 39, status: 'NOT_STARTED', availableFrom: null }], 'this', now))
       .toBeNull()
     expect(whenTheNextOneOpens([{ id: 'next', sessionNumber: 39, status: 'NOT_STARTED' }], 'this', now))
+      .toBeNull()
+  })
+  /*
+   * RE-REVIEW BUG: an IN_PROGRESS session is open whatever its availableFrom says - the same
+   * rule the ground pages use for "is my own session open right now" (myOpenOpensLater). Before
+   * this, a session started early (or one caught by clock skew) still had a future
+   * `availableFrom`, and the Done page said "opens on Sunday" about a check-in already running.
+   */
+  it('is open now when the next row is already in progress, whatever its availableFrom says', () => {
+    expect(whenTheNextOneOpens([{ id: 'next', sessionNumber: 39, status: 'IN_PROGRESS', availableFrom: at(28, 9) }], 'this', now))
+      .toBe('Your next check-in is open now.')
+    expect(whenTheNextOneOpens([{ id: 'next', sessionNumber: 39, status: 'IN_PROGRESS', availableFrom: null }], 'this', now))
+      .toBe('Your next check-in is open now.')
+  })
+})
+
+/* The id to link to whenever whenTheNextOneOpens says "open now" - so the sentence never appears
+   with nowhere for a reader to click through to. */
+describe('the id to open when the next check-in is already open', () => {
+  const now = new Date(2026, 8, 23, 17, 0)
+  const at = (d: number, h: number, m = 0) => new Date(2026, 8, d, h, m).toISOString()
+
+  it('is the next row\'s id when it is in progress', () => {
+    expect(theNextOpenCheckInId([{ id: 'next', sessionNumber: 39, status: 'IN_PROGRESS', availableFrom: at(28, 9) }], 'this', now))
+      .toBe('next')
+  })
+  it('is the next row\'s id when its availableFrom has already passed', () => {
+    expect(theNextOpenCheckInId([{ id: 'next', sessionNumber: 39, status: 'NOT_STARTED', availableFrom: at(22, 9) }], 'this', now))
+      .toBe('next')
+  })
+  it('is null when the next row opens later, or there is none, or nothing is known yet', () => {
+    expect(theNextOpenCheckInId([{ id: 'next', sessionNumber: 39, status: 'NOT_STARTED', availableFrom: at(24, 9) }], 'this', now))
+      .toBeNull()
+    expect(theNextOpenCheckInId([{ id: 'this', sessionNumber: 38, status: 'IN_PROGRESS' }], 'this', now)).toBeNull()
+    expect(theNextOpenCheckInId(undefined, 'this', now)).toBeNull()
+    expect(theNextOpenCheckInId([{ id: 'next', sessionNumber: 39, status: 'NOT_STARTED', availableFrom: null }], 'this', now))
       .toBeNull()
   })
 })
