@@ -1,4 +1,4 @@
-import { RoleFunction, UniversalMode, priorFunctionFromRole } from './role-maps';
+import { RoleFunction, UniversalMode, priorFunctionFromRole, MIN_COACHING_CONFIDENCE } from './role-maps';
 
 /**
  * Continuous function detection.
@@ -256,4 +256,46 @@ export function detectFunction(
     confidence: Math.max(0, Math.min(0.95, Number(confidence.toFixed(2)))),
     basis: basisParts.join(' '),
   };
+}
+
+/**
+ * A ROLE GUESSED WITH LOW CONFIDENCE IS CONFIRMED BEFORE IT IS USED (decision 57, item 5).
+ *
+ * Reuses `MIN_COACHING_CONFIDENCE` rather than a new number: it is already the one line in this
+ * codebase between "confident enough to coach from" and "not" (see role-maps.ts, reads.ts,
+ * conversation.service.ts, what-to-work-on-next.ts, the-picture-is-drafted-from-the-reads.ts) - a
+ * read below it already never reaches a role-tuned probe or coaching strategy, so a guess this
+ * unconfident is exactly the case decision 57 means by "low confidence". Introducing a second,
+ * different threshold just for asking would mean the product could ask about a read it was already
+ * confident enough to act on, or act on one it had not thought sure enough to even ask about.
+ */
+export const LOW_CONFIDENCE_CONFIRM_THRESHOLD = MIN_COACHING_CONFIDENCE;
+
+/** The plain, everyday name for a function, the same way the "basis" sentences above say it. */
+function plainFunctionName(fn: RoleFunction): string {
+  return fn.toLowerCase().replace(/_/g, ' ');
+}
+
+/**
+ * Whether Groundwork should ask, this once, before a guessed function is used for a role-tuned probe
+ * or coaching strategy. Only when there is a guess to confirm, it is below the threshold, and nobody
+ * has confirmed or corrected it yet - once confirmed it stands, so this never asks twice.
+ */
+export function needsRoleConfirmation(
+  detection: Pick<DetectionResult, 'fn' | 'confidence'>,
+  confirmedAt: Date | null | undefined,
+): boolean {
+  if (!detection.fn || confirmedAt) return false;
+  return (detection.confidence ?? 0) < LOW_CONFIDENCE_CONFIRM_THRESHOLD;
+}
+
+/**
+ * The plain-words question a person is asked, once, in their own check-in, to confirm a low-
+ * confidence read of their function - decision 57's own example: "It sounds like most of your work
+ * is sales. Is that right, or would you describe it differently?" The lead may instead confirm it
+ * for them on the Context page (a screens-workspace surface; this is the question's wording, used
+ * wherever it is asked).
+ */
+export function roleConfirmationQuestion(fn: RoleFunction): string {
+  return `It sounds like most of your work is ${plainFunctionName(fn)}. Is that right, or would you describe it differently?`;
 }
