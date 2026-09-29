@@ -16,12 +16,12 @@ import { cadenceLabel } from '@/lib/cadence'
 import { useAskStore } from '@/stores/ask'
 import { apiClient } from '@/api/client'
 import { peopleLabels, atTheStart } from '@/lib/utils'
-import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
+import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
-import { Composer } from '@/components/gw/GroundChat'
+import { BetweenCheckIns } from '@/components/gw/BetweenCheckIns'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
 import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
@@ -655,25 +655,24 @@ export function GroundParticipantPage() {
         * `probeSession`) by the time anybody would see this render; this is only ever seen for the
         * instant before that navigation lands, or for resting between sessions.
         *
-        * BETWEEN SESSIONS, THE COMPOSER STAYS - NOT REBUILT. It is not only a status line: it is
-        * where a private note for next time is taken (api/src/modules/conversation/
-        * between-session-notes.ts) and, for whoever runs the check-in, the "Change how often this
-        * runs" link. Losing either while retiring the reading half above it would be exactly the
-        * kind of loss CLAUDE.md rules out, so `Composer` (now exported) is reused here directly,
-        * with `openCheckInId` forced to `null` - `dueNow` already means the redirect above is
-        * about to fire, so this only ever renders Composer's own "nothing to check in" branch.
+        * BETWEEN SESSIONS, THE PROTOTYPE'S OWN PAGE (round 5, item E1): "<check-in name>" / "No
+        * check-in open right now" / "Your next check-in opens <when>. Anything I can help with in
+        * the meantime?" / the four chips / the note box. `BetweenCheckIns.tsx` builds it from the
+        * parts, inside the page's own column - not GroundChat's bare Composer, flush against the
+        * sidebar, which is what stood in for this before. The note box (`Composer`, still GroundChat's
+        * own, exported) is reached from "Add a note for tomorrow" now, not shown unconditionally -
+        * notes are yours alone, not part of the record, and the next check-in asks about them; "+
+        * Document" and "Change how often this runs" stay reachable from it, unchanged.
         */}
       {tab === 'checkin' && (
         <div style={{ padding: '4px 2px' }}>
           {dueNow ? (
             <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening your check-in…</div>
           ) : (
-            <Composer
+            <BetweenCheckIns
+              groundLabel={ground.label}
+              nextOpensSaying={whenTheNextOneOpens(myCheckIns, null)}
               groundId={id!}
-              openCheckInId={null}
-              openSessionNumber={null}
-              totalSessions={totalSessions ?? null}
-              nextOpensAt={opensLater ? openAvailableFrom : null}
               canChangeTheRhythm={isInitiator}
               onGoToSetup={() => goTab('settings')}
             />
