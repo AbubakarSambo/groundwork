@@ -20,6 +20,7 @@ import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { toast } from 'sonner'
 import { MyRecord } from '@/components/gw/MyRecord'
+import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { WhatToWalkInWith } from '@/components/gw/WhatToWalkInWith'
 import { WhatYourRecordCanSupport } from '@/components/gw/WhatYourRecordCanSupport'
 import { WhatYouAreCarryingForward } from '@/components/gw/WhatYouAreCarryingForward'
@@ -793,6 +794,18 @@ export function GroundParticipantPage() {
             totalSessions={totalSessions ?? null}
             completedCount={completedCheckIns.length}
             />
+
+            {/*
+              ROUND 4, ITEM A STEP 1: THE SESSION HISTORY, MOVED HERE FROM THE CHECK-IN TAB.
+              `GroundChat.tsx`'s Check-in tab used to show every past session's full transcript
+              inline - the reason that tab could not be only the live conversation. `MyRecord`'s own
+              session rows (above) are about how specific and checkable each one was; this is the
+              words themselves, which is a different question and was not answered anywhere once
+              the transcript left the Check-in tab.
+            */}
+            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>Your check-ins</div>
+            <MyCheckInSessions groundId={id!} />
 
             {/*
               LAST, WHICH IS WHERE SHE PUT IT.

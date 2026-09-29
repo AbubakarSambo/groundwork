@@ -224,7 +224,7 @@ function GroundTopic({ brief, parties, peersHidden, notOpenYet, viewerIsParty, l
   )
 }
 
-function SessionSummary({ checkInId, groundId, sessionNumber }: {
+export function SessionSummary({ checkInId, groundId, sessionNumber }: {
   checkInId: string; groundId: string; sessionNumber: number
 }) {
   const [open, setOpen] = useState(false)
@@ -289,7 +289,7 @@ function SessionSummary({ checkInId, groundId, sessionNumber }: {
   )
 }
 
-function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
+export function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
   sessionNumber: number
   date: string
   isCorrection: boolean
@@ -317,7 +317,7 @@ function SessionDivider({ sessionNumber, date, isCorrection, correctionOf }: {
   )
 }
 
-function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) {
+export function Message({ role, content }: { role: 'AI' | 'PERSON'; content: string }) {
   /**
    * THE SAME BUBBLE AS THE CHECK-IN, TO THE PIXEL.
    *

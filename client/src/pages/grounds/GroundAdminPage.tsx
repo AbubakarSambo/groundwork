@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { GroundChat } from '@/components/gw/GroundChat'
 import { MyRecord } from '@/components/gw/MyRecord'
+import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -1868,6 +1869,17 @@ export function GroundAdminPage() {
             totalSessions={plannedSessions ?? null}
             completedCount={mySessionsDone}
             />
+            {/*
+              ROUND 4, ITEM A STEP 1: THE SESSION HISTORY, MOVED HERE FROM THE CHECK-IN TAB.
+              `GroundChat.tsx`'s Check-in tab used to show every past session's full transcript
+              inline - the reason that tab could not be only the live conversation. `MyRecord`'s own
+              session rows (above) are about how specific and checkable each one was; this is the
+              words themselves, which is a different question and was not answered anywhere once
+              the transcript left the Check-in tab.
+            */}
+            <div style={{ borderTop: '1px solid var(--gw-border)', margin: '6px 0' }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 2 }}>Your check-ins</div>
+            <MyCheckInSessions groundId={id!} />
           </div>
         )}
 
