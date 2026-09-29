@@ -6211,3 +6211,88 @@ the merge). The API specs that read the touched client files by source pass unch
 **Commits this round (local only, `wip/prototype-ui`, not pushed):**
 1. `1239ba9a` - Round 6, items 1-3
 2. `121ab3e1` - Round 6, item 4
+
+## Review round 3: fixes from the first review of the check-in rebuild
+
+Item 6 (People and setup) is its own module later, per the coordinator's note - left alone.
+
+**Item 1 - DONE.** An IN_PROGRESS session with a future `availableFrom` (Aisha on 555ac67d, Amani
+on 9028f0ad) was told "No check-in open right now" instead of being carried back into it.
+`availableFrom` gates a session that has not started; it says nothing about one already running.
+Fixed in `myOpenForAutoOpen`/`opensLater` (GroundParticipantPage.tsx) and the matching
+`myOpenOpensLater` (GroundAdminPage.tsx). The header's "Start my check-in" opens the session
+directly now, or does not show when there is none - it linked to the page it was already on.
+Commit `c8091506`.
+
+**Item 2 - DONE.** The lead had two pages for one check-in: the Check-in tab sent her to
+`/grounds/:id/p?open=1` to borrow the participant page's paywall-aware opening flow. That flow
+moved to a shared hook (`useOpenSession.ts`) and a shared component (`SessionPaywallModal.tsx`),
+so the lead's Check-in tab now opens her own conversation directly, like a party's, and never
+lands on the other page. The 11-pixel dash-joined line explaining which of the two pages you were
+on is gone with the problem it existed to explain. Commit `38d8c078`.
+
+**Item 3 - DONE.** An admin who neither runs a check-in nor takes part in it got every tab and
+every one of the lead's own status lines. The read-only view now shows exactly the prototype's
+three tabs (Board, Context, People and setup) for that reader, carries the one sentence ("You can
+read this check-in's board and reports. `<lead>` runs it.") and not the lead's lines. "I have read
+this - sign it off" is removed everywhere, on her own instruction - the prototype's "Yes, set it"
+is the confirmation that matters. Deleted the module and two spec files behind the removed
+sign-off record; not weakened to pass, the capability is gone by design. Commit `38d8c078`
+(combined with item 2, same file).
+
+**Item 4 - DONE.** Between check-ins was a standalone page, not the prototype's conversation-style
+card. Rebuilt from the parts: `TheCheckInHeader`, a `Bubble` for Groundwork's sentence, stacked
+`QuickReplies` (a new `stacked` prop), and a `ConversationCard` with a `ui/Composer` footer ("Ask,
+or add a note"). The three "ask" chips (and the composer) call `askApi.ask` directly and draw the
+reply as bubbles in the same card, rather than opening the separate Ask Groundwork panel - the
+prototype's own picture. "Add a note for tomorrow" -> "Add a note for next time". "Change how
+often this runs" is its own quiet link under the card now - it was gated on `nextOpensAt`, always
+null there, so it was never actually reachable at all before. Commit `c785ec60`.
+
+**Item 5 - PARTIAL.** Not the full "Your work" page rebuild (the prototype's flat sections
+replacing today's Report/Sessions/What I shared sub-tabs) - that is a large restructuring this
+round did not reach; needs its own pass. Done: the "fix while you're there" wording list, and one
+real bug found in the same area - "Remind" no longer offered on the lead's own row (the condition
+was missing `p.userId !== user?.id`); the bare "✎" now says "Edit"; "SESSIONS" and two other
+capitals labels are sentence case; "no expectation set for them yet" and its two siblings are full
+sentences; the dash-joined pattern line is two sentences; the dark navy "Summary" card is gone
+(`SoloReportBody` takes `on: 'light' | 'dark'` now); the engine's "What you shared:" colon-opening
+is stripped there too, reusing `withoutTheColonOpening`'s fix rather than duplicating it. Commit
+`49eee4e8`. **Needs Hafsah's steer on priority**: should the full "Your work" rebuild be the next
+task, ahead of anything else on the list?
+
+**Item 7 - DONE.** The composer's field is the prototype's bordered white box now (it was
+transparent). The header no longer appends " check-in" to a name that already ends in a
+comma-joined part. The about pop-up has a visible "Close" button. The goals were listed twice in
+the pop-up (once in the engine's prose, once in the screen's own bulleted list) - the bulleted
+list, renamed to "These are the goals on record.", now draws only when there is no prose already
+naming them. "From your earlier session N, read-only" is a sentence now. At 375 wide the
+conversation card runs full width with no rounded border or side gutters, there is no app bottom
+bar on the conversation, and the Feedback trigger does not render there either (it sat on the
+composer). Commit `785ab226`.
+
+**Item 8 - DONE.** The team's report card carries a "Shared" tag once released, matching "Your own
+report"'s "Only you". "That's saved" is a soft green panel with its own heading inside, with a real
+gap between its two paragraphs. "How checkable today's check-in was" is the prototype's short
+one-line items now, tick or ring, with the found/missing sentence moved to a screen-reader-only
+span rather than shown twice over - the count stays hidden (request 45, unchanged). Space added
+above "This is about the check-in. Only you see it." Commit `d01b3898`.
+
+**Request to the engine - added.** Request 74: a session opened early asks about things that have
+not happened yet (Aisha asked about Thursday's deployment on the Tuesday before it; Rukia asked
+what went wrong at a visit that had not happened yet). Flagged, not fixed - it is the opening
+question's own prompt. Commit `39349d3f`.
+
+**Verification.** `npx tsc -b` clean throughout. Full client suite after every item:
+`src/components/gw/ src/pages/grounds/ src/pages/chat/ src/pages/report/` and a full run -
+1 pre-existing failure only (`the-reveal-row-names-who-you-are-waiting-on.spec.ts`, from the merge,
+unrelated to this round; confirmed by stashing this round's changes and re-running before starting).
+
+**Commits this round (local only, `wip/prototype-ui`, not pushed), in order:**
+1. `c8091506` - item 1
+2. `38d8c078` - items 2 and 3
+3. `c785ec60` - item 4
+4. `785ab226` - item 7
+5. `d01b3898` - item 8
+6. `39349d3f` - request 74 to the engine
+7. `49eee4e8` - item 5 (wording and the Remind bug; the page rebuild itself is not done)
