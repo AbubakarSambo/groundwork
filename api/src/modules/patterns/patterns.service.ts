@@ -924,7 +924,7 @@ export class PatternsService {
       select: PATTERN_ROW_SELECT,
     });
     const ground = row.participant.ground;
-    const lead = ground?.participants?.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId);
+    const lead = ground?.participants?.find((p) => p.userId === ground.initiatorId);
     return servedPatterns([saved], reader, { now, leadName: theFirstNameFrom(lead?.user?.firstName, lead?.user?.lastName), leadParticipantId: lead?.id ?? null })[0];
   }
 
@@ -952,7 +952,7 @@ export class PatternsService {
     });
     if (!row) throw forbidden();
     const ground = row.participant.ground;
-    if (!ground.initiatorId || ground.initiatorId !== userId) throw forbidden();
+    if (ground.initiatorId !== userId) throw forbidden();
     const lead = ground.participants.find((p) => p.userId === userId);
     const reader = { participantId: lead?.id ?? null, runsIt: true };
     /* Decision 39's timing: allowed only once the lead may already read the pattern. */
