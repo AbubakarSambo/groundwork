@@ -108,3 +108,13 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     4. If the lead has not told them after a week, the person is told plainly that their lead has set a goal about this work and will talk it through with them, and the lead is reminded.
 
     It is checked by re-running the scenarios it affects, and live, that the person is never told the number before the lead has told them.
+57. **How patterns, coaching and probes work from now on** (decided 29 September, after reading how they work today). Built after the answers already sent. Patterns and coaching stay switched on.
+    1. **A period is at least a week.** For a weekly check-in, each session is a period. For a daily check-in, each week is a period. The three-period rule counts periods, not sessions, everywhere, including in later check-ins.
+    2. **After talking a pattern through, the lead marks it "right", "wrong" or "not sure".** The person's answer counts as evidence too. Both are stored with the pattern.
+    3. **After a pattern reaches the lead, they are nudged once to have the conversation,** and can mark "we talked about it". Later check-ins record whether things changed.
+    4. **The number-based rules are a second source of evidence** wherever they exist, alongside the model's reading. The scenario runs check that the same scenario gives the same patterns each time, and report how steady they are.
+    5. **When a person's role is guessed with low confidence,** Groundwork asks them or the lead to confirm it before using it.
+    6. **Coaching is on by default on every database,** including new ones.
+    7. **The "setup never said" reading is restored,** so it can show under the period rule.
+    8. **A pattern not yet confirmed may shape a sharper question in later check-ins,** never named, counting periods the same way as everywhere else.
+    9. **Self-learning** (in `docs/weekly-plan.md`, early): three signals for every pattern, coaching step and probe — was it right, did the conversation happen, did things change — give more weight to what works and flag what is often wrong. People's words are never changed, privacy rules never bend, changes are proven on the scenario runs first, and big ones go to Hafsah.
