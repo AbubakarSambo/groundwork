@@ -49,7 +49,7 @@ import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-i
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
-import { openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
+import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
@@ -9059,7 +9059,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * the run of 26 September two of the seven quotes in these summaries were in nobody's record.
      */
     const theirs = everyQuoteFromTheRecord(
-      { summary: result.summary, whatToCarry: result.whatToCarry ?? '' },
+      { summary: result.summary, whatToCarry: aThingToCarry(result.whatToCarry) },
       theLinesAQuoteMayComeFrom(entries),
     );
     if (theirs.unquoted.length || theirs.dropped.length) {

@@ -27,18 +27,23 @@ describe('what a document holds', () => {
     unmatched: ['Musa Bello'],
   };
 
-  it('says what we have, whose each number is, and which are the whole check-in’s', () => {
+  it('says what we have, whose each number is, and which are the whole check-in’s, each as a plain sentence', () => {
     const said = theContextWeHave(held)!;
-    expect(said.startsWith('Here is the context we have from Sales team Q3 2026.xlsx - A quarterly sales target sheet, by rep.')).toBe(true);
-    expect(said).toContain('For the whole check-in:');
-    expect(said).toContain('- Team sales: 153m');
-    expect(said).toContain('- Credit ceiling: 35, not to be passed');
-    expect(said).toContain('Against the person who holds it:');
-    expect(said).toContain('- Dayo Adebayo: Q3 sales, 45m');
-    expect(said).toContain('- Chika Nwosu: new dealers signed, 12, by end of Q3');
-    expect(said).toContain('Dates it sets:');
-    expect(said).toContain('- Quarter ends: 30 September');
-    expect(said).toContain('One name in it is not on this check-in: Musa Bello.');
+    expect(said.startsWith('Here is the context we have from Sales team Q3 2026.xlsx. A quarterly sales target sheet, by rep.')).toBe(true);
+    expect(said).toContain('For everyone in this check-in, the target for Team sales is 153m.');
+    expect(said).toContain('For everyone in this check-in, Credit ceiling must stay at or under 35.');
+    expect(said).toContain("Dayo Adebayo's target for Q3 sales is 45m.");
+    expect(said).toContain("Chika Nwosu's target for new dealers signed is 12 by end of Q3.");
+    expect(said).toContain('The date it sets for Quarter ends is 30 September.');
+    expect(said).toContain('One name in it, Musa Bello, is not on this check-in. Add them, and their numbers will go on too.');
+  });
+
+  it('never a heading with a colon, a line that starts with a dash, or "by" said twice (request 40)', () => {
+    const said = theContextWeHave({ ...held, forOnePerson: [{ who: 'Amani Wekesa', what: 'cookers delivered', target: 3, by: 'by 9 October' }], unmatched: ['Musa Bello', 'Ada Obi'] })!;
+    expect(said).toContain("Amani Wekesa's target for cookers delivered is 3 by 9 October.");
+    expect(said).not.toMatch(/by by/);
+    expect(said).not.toMatch(/:\s*$|:\n|^- /m);
+    expect(said).toContain('2 names in it are not on this check-in. They are Musa Bello and Ada Obi.');
   });
 
   it('asks whether that is right in the chat, and states it on a page', () => {
