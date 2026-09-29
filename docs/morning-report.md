@@ -24,6 +24,20 @@ Today's two full runs are used, so everything this evening is checked with short
 - **Request 77.** Two of Rukia's own lines disappeared from Juma's board: "Four shops for me" and "Baraka has four shops in Westlands and Neema has four in Karen". Hafsah's ruling: a person's own words from their check-in are never removed because they look like a private file, and the private-file rule hides only the file's name. My first guess is that the cause is not the file rule. Today's hidden-target filter may have taken the lines out, because "Four shops for me" gives Rukia's own target, and Juma is an admin who cannot see it. Either way, a person's own words must stay. The builder will confirm the real cause.
 - **Request 76.** Store the kind of work of each check-in (sales, engineering, support, a law firm matter, a programme, and so on), set during setup. Serve the records each kind's board needs. Tell the screens workspace exactly what they will receive.
 
+**The warm-up now runs once** (`1a481c32`, `48b6e107`). There were two causes:
+- **The board ran twice per check-in.** Its service was set up twice, because the developer API built its own copy, so two copies each warmed the board. That is where 18 came from: nine check-ins, twice each.
+- **The reports repeated each other's work.** Overlapping check-ins, and the release straight after the last one, each started their own warm-up of the same report. Two warm-ups that met the same new line both asked the model.
+
+Now only one warm-up runs at a time for each check-in and round. A trigger that arrives meanwhile joins it, a report that has not changed is not warmed again, and each line is asked for once. Opening a page still never asks the model. 28 new tests cover it, and each fails when the fix is switched off. A short live run on loans and sales is proving it now.
+
+**Request 77 is fixed** (`7eb0aed1`). The cause was not the private-file rule. It was today's hidden-target filter. It went through every string on Rukia's row, including her own lines, and emptied each one with "four" in it, because Juma cannot see her target of 4. The report had the same fault: her lines came back empty for Juma and for a colleague. Now:
+- A person's own words from their check-in are held aside while the hidden-target filter runs. This goes by field: the board's own-lines field, and the report's "what each person said".
+- A private file's name is still replaced ("As a document says, four shops each by Friday.").
+- Juma reads "Four shops for me." and "Baraka has four shops in Westlands and Neema has four in Karen." again.
+- Groundwork's own sentence giving her 4 is still taken out for him.
+- An item with no words is never served.
+- A test has a person saying the same words as a private file: their words stay, and only the file's name is hidden.
+
 **After those:** the rest of Hafsah's answers (the goodbye's commitment, the decision field, the admin sentence, untold goals), then the weekly plan.
 
 ## SUMMARY, 29 SEPTEMBER, 13:35 TO 20:35 (read this first)
@@ -477,6 +491,7 @@ The same build asked twice as often in both re-checks as it did in run-18. With 
 26. **On a check-in where each person sees only their own target, the product's own sentences never give a colleague's target,** even when that colleague said it out loud in their check-in. Their own words, shown word for word to the people in the check-in, stay as they are. This is the more private option.
 27. **A goal the lead marked "not told" is hidden from the person,** reversing an older note in the code that said to show "you were never told". **Not done yet, and recommended next:** the model that talks to the person in their own check-in is still given that goal, so it could raise it. Taking it out is the more private option. It changes the conversation, so it needs two re-runs of the scenarios it affects, and there was no room for them today.
 28. **Week 10, the first suggestion, is held, not built.** It would give the manager a suggestion about a person, built on counts like "kept 11 of 20 in the last four weeks". Each person's load across check-ins is private, and today that count goes only to the person. The two rules pull against each other. The more private option is to show a suggestion to the person first, and to the manager only as a plain line with no count behind it, but that is a product decision. Weeks 11 and 12b rest on it too. I moved on to week 12.
+29. **Request 77: a person's own words are served in full, even when they give someone else's hidden target.** For example, if a lead who also takes part said "Aisha needs 40 shops" in their own check-in, an admin or a colleague would read that line under the lead's row. This follows decisions 4 and 5 and Hafsah's ruling, but it widens what people read, so please confirm it. The rule for a goal the lead has not told the person about still applies to people's own words.
 
 ---
 

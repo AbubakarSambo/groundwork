@@ -69,3 +69,12 @@ These are settled. Do not change them. If one seems to block the work, stop and 
 47. **An admin is never told "nothing here needs you this week" when there are things they cannot see** (decided 29 September). In that case they read "Nothing you have access to needs you this week."
 48. **A goal the lead has not told the person about stays hidden from that person, and it does not count** (decided 29 September). It is not used in that person's report, or in any judgement about them, until the lead shares it.
 49. **Week 10, the first suggestion to a manager: not decided yet.** Hafsah's answer to this item was left as a placeholder on 29 September, so week 10 stays held until she fills it in.
+50. **There is no separate context chat. Ask Groundwork is the one chat for everything** (decided 29 September). Nothing the context chat does today may be lost. Everything it does is listed first in `docs/context-chat-inventory.md`, then moved into Ask Groundwork with the same rules:
+    - what is pulled out is said back and confirmed before it is saved;
+    - a target set for one person stays hidden from everyone else;
+    - a document private to the lead stays private;
+    - only the people who can add context today can add it through Ask Groundwork;
+    - questions someone asks Ask Groundwork stay private, as always.
+
+    Each item is proven by putting the same documents and messages through both and comparing what is saved. The old context chat keeps working until every item is proven, and only then is it switched off.
+51. **The Context tab and page are called "Context and resources"** (decided 29 September), because documents are there too.
