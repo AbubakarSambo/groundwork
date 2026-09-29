@@ -81,7 +81,7 @@ import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-q
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
-import { theLeadsWordsAbout } from '../grounds/the-leads-words-about-someone';
+import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
 import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
@@ -253,7 +253,7 @@ export class BoardService {
       include: {
         participants: {
           select: {
-            id: true, email: true, userId: true, partyType: true, createdAt: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true,
+            id: true, email: true, userId: true, partyType: true, createdAt: true, roleAsDescribed: true, remitAsGiven: true, nameGiven: true, organisationGiven: true,
             managingOnly: true, signedOffAt: true,
             /* What the population rule reads: still holding a live invitation counts as expected. */
             invitedAt: true, inviteTokenExpiresAt: true,
@@ -614,9 +614,23 @@ export class BoardService {
         timelineDays: (ground as any).timelineDays ?? null,
         cadence: (ground as any).cadence ?? null,
         scenario: (ground as any).scenario ?? null,
-        sharedPicture: ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+        /*
+         * NEVER A RUN OF THE LEAD'S PRIVATE DESCRIPTION OF ANYONE, FOR A READER WHO IS NOT THE LEAD
+         * (decision 30). The read-side net: see withoutTheLeadsDescriptionOfAnyone and the same
+         * guard on the report. Both fields are shared with everybody on the ground by design; what
+         * is stripped is only a sentence built from a description nobody but the lead wrote.
+         */
+        sharedPicture: withoutTheLeadsDescriptionOfAnyone(
+          ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+          (ground.participants as any[] ?? []).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]),
+          isInitiator,
+        ),
         /* The opening the report wrote, preferred over slicing the picture. See how-a-check-in-is-going. */
-        theOpening: ((ground as any).report?.theOpening as string | null) ?? null,
+        theOpening: withoutTheLeadsDescriptionOfAnyone(
+          ((ground as any).report?.theOpening as string | null) ?? null,
+          (ground.participants as any[] ?? []).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]),
+          isInitiator,
+        ),
       }),
       /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */
       groundStatus: ground.status,

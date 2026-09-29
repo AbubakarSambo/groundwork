@@ -166,7 +166,7 @@ import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-co
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
-import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
+import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone } from '../grounds/the-leads-words-about-someone';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -5353,7 +5353,7 @@ happened, and what is in the way.`;
   private async coachingNoteFor(
     groundId: string,
     ground: any,
-    participant: { id: string; roleAsDescribed?: string | null },
+    participant: { id: string; roleAsDescribed?: string | null; partyType?: string | null },
     nameOf: (participantId: string | null, fallback: string | null) => string | null,
   ) {
     /* No coaching note for a discovery participant: they were asked as experts, not people being developed. */
@@ -5388,7 +5388,15 @@ happened, and what is in the way.`;
       /* Their own, after three periods, and nobody else's. See patterns/who-reads-a-pattern. */
       patterns: patternRowsThisReaderMayRead(held.detections, { participantId: participant.id, runsIt: false })
         .map((d) => ({ code: d.code, periodsObserved: periodsSeen(d) })),
-      role: participant.roleAsDescribed ?? null,
+      /*
+       * NEVER THE LEAD'S SENTENCE ABOUT THIS PERSON, EVEN HERE (decision 30). This note is served
+       * to the very person `roleAsDescribed` is about, and it used to hand that field to
+       * `whatToWorkOnNext` unguarded - safe today only because `roleToSay` below happens to also be
+       * passed and preferred, which is an accident of two fields agreeing, not a rule. Both fields
+       * now carry the same guarded value: their own words at setup for a lead, nothing for anyone
+       * else. See aRoleInTheirOwnWords.
+       */
+      role: aRoleInTheirOwnWords(participant as any),
       /* Said to this person only in their own words, never the lead's sentence about them (request 36). */
       roleToSay: aRoleInTheirOwnWords(participant as any),
       /*
@@ -6408,6 +6416,25 @@ happened, and what is in the way.`;
         ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin, { isTheLead: isInitiator, participantId: participant?.id ?? null })
         : {}),
     };
+    /*
+     * THE READ-SIDE NET (decision 30). `sharedPicture`, `findings` and `theOpening` are the shared
+     * picture everybody in the check-in reads - by design (see the-judgement-is-the-leads) - so
+     * they are never stripped wholesale. But nothing here may carry a run of a lead's private
+     * description of anyone in their own words, however it got in: run 19 and goals-1 of the
+     * seniorhire scenario both served a participant a sentence built from it. The structural fixes
+     * are the ones in coachingNoteFor and the-leads-words-about-someone; this is the second guard,
+     * for a reader who did not write any of these descriptions - which is everybody but the lead.
+     */
+    if (!isInitiator) {
+      const theDescriptions = (ground.participants as any[]).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]);
+      base.sharedPicture = withoutTheLeadsDescriptionOfAnyone(base.sharedPicture, theDescriptions, false);
+      base.theOpening = withoutTheLeadsDescriptionOfAnyone(base.theOpening, theDescriptions, false);
+      if (Array.isArray(base.findings)) {
+        base.findings = base.findings.map((f: any) => (f && typeof f === 'object'
+          ? { ...f, text: withoutTheLeadsDescriptionOfAnyone(f.text, theDescriptions, false) ?? '' }
+          : f));
+      }
+    }
     if (!isInitiator && !isOrgAdmin) {
       delete base.arcSignals;
     } else if (base.arcSignals && typeof base.arcSignals === 'object') {
