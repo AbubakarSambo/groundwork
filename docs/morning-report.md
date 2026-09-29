@@ -269,6 +269,19 @@ Tests: 1,201 pass in the check-ins part, including 19 for this. The conversation
 
 Tests: 693 files and 6,544 tests pass in the parts touched.
 
+**Week 16: what Today says, built from the record** (`5e826ae2`, `30e398df`).
+- **"Since last time"** (`sinceLast`) goes to every reader, each only about what they may see. The lead reads "The count for Freezers sold went from 18 to 21, of the 25 aimed for. Miriam's count for Quotes sent went from 4 to 6, of the 10 aimed for." Miriam reads "…Your count for Quotes sent went from 4 to 6." She never gets a colleague's share or the number aimed for.
+- **"For you to decide"** (`forTheLead`) goes only to the person who runs the check-in. For example: "Decide whether a price range counts as a budget. Brian and Miriam are both waiting on you for it. Once it is settled, it changes how 4 deals are counted."
+- **The board and Today now agree.** Someone waiting on the lead used to read "has checked in, and nothing here needs you this week." That row now reads "Brian Otieno has checked in, and is waiting on you for a decision on whether a price range counts as a budget."
+- Opening the page asks no model and writes nothing. Hidden targets, private file names and untold goals are still taken out for each reader.
+- **Not done yet:**
+  - the report's disagreements are not in "for you to decide", because their board wording uses a banned word and needs rewriting first;
+  - there is no way yet to answer a decision straight from Today.
+
+**The screens workspace is merged a second time** (`1c3a5d14`), cleanly. Their new request 74 is answered as next: an early check-in asks whether something happened when its date has not come yet. The fix changes what the check-in asks, so it needs two scenario re-runs, and there was no room for them today.
+
+**The whole API test suite passes on the latest code: 1,195 files and 11,088 tests.**
+
 **The whole API test suite passes at the end of week 14: 1,191 files and 11,068 tests.** One guard failed first: the week 13 proposals code names whose number a goal is, and every such file must use the one rule or be listed with a reason. It only writes a goal the lead confirmed, and only the lead reads proposals, so it is now listed as a writer (`277b2225`).
 
 **Week 12c:** an unnamed person in the lead's list of what to ask was headed "Somebody", and is now "A colleague" (`0b6736d1`). The rest was already done.
