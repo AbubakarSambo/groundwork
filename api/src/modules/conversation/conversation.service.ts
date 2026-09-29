@@ -149,6 +149,7 @@ import { whatThisSessionHasCovered, sayWhatHasBeenCovered, whereTheSpineIs, they
 import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
+import { periodOf } from '../patterns/period-of';
 import { withoutTheClaimsTheNumbersDoNotSupport, numbersIn as numbersInAClaim } from './a-claim-the-numbers-do-not-support';
 import { recordAndMoveOn, NOTHING_HERE_HAS_A_NUMBER, NO_DECISION_YET } from './a-refusal-is-an-answer';
 import { nothingSaidYetCannotBeQuoted } from './nothing-said-yet-cannot-be-quoted';
@@ -5363,8 +5364,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const prior = await this.prisma.coachingState.findUnique({ where: { participantId }, select: { observations: true } }).catch(() => null);
     const observations: Observation[] = Array.isArray((prior as any)?.observations) ? ((prior as any).observations as Observation[]) : [];
-    if (read?.noticed && read.reason?.trim() && !observations.some((o) => o.sessionNumber === sessionNumber && o.noticed === read.noticed)) {
-      observations.push({ sessionNumber, noticed: read.noticed, reason: read.reason.trim() });
+    /* Two DISTINCT PERIODS, not two sessions (decision 57, item 1). On a weekly-or-slower ground
+       these are the same thing, as they always were; on a daily ground several sessions in one
+       calendar week must not look like recurrence on their own. Observation.sessionNumber is read
+       by seenInEnoughSessions as the period number, so what is stored here already is one. */
+    const checkInForPeriod = await (this.prisma.checkIn?.findUnique?.({
+      where: { id: checkInId },
+      select: { completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true } } },
+    }) ?? Promise.resolve(null)).catch(() => null);
+    const period = checkInForPeriod
+      ? periodOf(
+        { sessionNumber, when: checkInForPeriod.completedAt ?? checkInForPeriod.startedAt ?? checkInForPeriod.createdAt },
+        checkInForPeriod.ground,
+      )
+      : sessionNumber;
+    if (read?.noticed && read.reason?.trim() && !observations.some((o) => o.sessionNumber === period && o.noticed === read.noticed)) {
+      observations.push({ sessionNumber: period, noticed: read.noticed, reason: read.reason.trim() });
     }
     const recurring = seenInEnoughSessions(observations, read?.noticed ?? null);
     /* The word check decides. The model's own field said "they asked for it" on six cases the word
