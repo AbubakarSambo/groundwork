@@ -2771,6 +2771,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
         brief: true,
         /* A one-time listening session is drafted differently from a run of work. See PictureInput.oneTime. */
         cadence: true, scenario: true, id: true,
+        /* The run's length, for "session N of M": with the rhythm it gives plannedSessions below.
+           Left out of this select, plannedSessions was null on every read (request 55). */
+        timelineDays: true,
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
