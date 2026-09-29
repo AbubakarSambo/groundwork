@@ -220,6 +220,12 @@ The name is being shortened to "Samuel" after its first use, as the prototype do
 - the alert on the latest report and on Today;
 - the prototype's "the same 5 leads", because the record has no rows per lead to count.
 
+**Week 12, finished** (`babb064f`, `5f87a98b`):
+- The same "stayed the same for three check-ins" sentences are now on the latest report the lead reads, as well as the board.
+- The board has one short line per person for Today, `eachPersonToday`, whose `keepsComingUp` is, for example, "Samuel Kariuki has had the same thing in the way for 3 check-ins."
+- Both reach only the person who runs the check-in. Opening the page asks no model and writes nothing.
+- The prototype's line about each person's day ("Visited John Butchery…") is still week 26.
+
 **Week 12c:** an unnamed person in the lead's list of what to ask was headed "Somebody", and is now "A colleague" (`0b6736d1`). The rest was already done.
 
 **Run-19, the day's second full run, started at 17:37** on `c645570c`, in three parts. The two privacy items from the live check are being built alongside it. They filter what is served, so their tests prove them, not the run. Both are now done:
