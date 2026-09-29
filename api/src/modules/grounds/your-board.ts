@@ -175,6 +175,9 @@ export function keptLatelySays(kept: number, of: number): string {
   const n = (x: number) => (inWords ? INWORDS[x] : String(x));
   const weeks = inWords ? 'four' : '4';
   if (of === 1) return kept === 1 ? `In the last ${weeks} weeks, you kept your one commitment.` : `In the last ${weeks} weeks, you did not keep your one commitment.`;
+  /* Two is "both" and "either", never "all two" or "none of your two" (the reviewer's read). */
+  if (of === 2 && kept === 2) return `In the last ${weeks} weeks, you kept both of your commitments.`;
+  if (of === 2 && kept === 0) return `In the last ${weeks} weeks, you did not keep either of your two commitments.`;
   if (kept === 0) return `In the last ${weeks} weeks, you kept none of your ${n(of)} commitments.`;
   if (kept === of) return `In the last ${weeks} weeks, you kept all ${n(of)} of your commitments.`;
   return `In the last ${weeks} weeks, you kept ${n(kept)} of your ${n(of)} commitments.`;

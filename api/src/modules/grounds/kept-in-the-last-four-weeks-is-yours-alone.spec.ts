@@ -51,8 +51,19 @@ describe('the sentence, in the prototype’s words, all in words or all in figur
     [14, 14, 'In the last 4 weeks, you kept all 14 of your commitments.'],
     [1, 1, 'In the last four weeks, you kept your one commitment.'],
     [0, 1, 'In the last four weeks, you did not keep your one commitment.'],
+    /* The reviewer read "you kept all two of your commitments". */
+    [2, 2, 'In the last four weeks, you kept both of your commitments.'],
+    [1, 2, 'In the last four weeks, you kept one of your two commitments.'],
+    [0, 2, 'In the last four weeks, you did not keep either of your two commitments.'],
   ])('%i of %i', (kept, of, says) => {
     expect(keptLatelySays(kept, of)).toBe(says);
+  });
+  it('never "all two", and every small number reads as English', () => {
+    for (let of = 1; of <= 10; of++) for (let kept = 0; kept <= of; kept++) {
+      const says = keptLatelySays(kept, of);
+      expect(says).not.toMatch(/all (one|two)\b|none of your (one|two)\b/);
+      expect(says).toMatch(/^In the last four weeks, you .*commitments?\.$/);
+    }
   });
   it('never a score, a percentage or a label', () => {
     for (const [k, o] of [[11, 20], [0, 3], [1, 1]]) expect(keptLatelySays(k, o)).not.toMatch(/%|score|rating|\bPIP\b|at risk|\bexit\b|below|poor|good/i);
