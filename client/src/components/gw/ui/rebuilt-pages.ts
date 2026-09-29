@@ -17,8 +17,10 @@
  * list at `/org/members`, `OrgMembersPage.tsx` plus every section it is built from - the no-seat
  * warning, "Waiting to be let in", "Everyone at <organisation>" with its folded "Who reports to
  * whom", "Invite people", "Who can join" with the invite link, "Who can open a check-in", and "Help
- * your team get started". One person's own page (`OnePersonPage.tsx`) is the next piece, not this
- * one, so it stays off this list for now.
+ * your team get started".
+ *
+ * ONE PERSON (design-audit.md section 3, "One person (the admin's view)") is the third entry:
+ * `OnePersonPage.tsx`, at `/org/members/:id`.
  */
 export const REBUILT_PAGES: string[] = [
   'pages/invite/InvitePage.tsx',
@@ -32,4 +34,5 @@ export const REBUILT_PAGES: string[] = [
   'pages/org/WhoCanJoin.tsx',
   'pages/org/TheInviteLink.tsx',
   'pages/org/WhoCanOpenACheckIn.tsx',
+  'pages/org/OnePersonPage.tsx',
 ]

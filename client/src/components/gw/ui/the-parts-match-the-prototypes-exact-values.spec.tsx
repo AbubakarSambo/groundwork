@@ -288,6 +288,26 @@ describe('ChoiceCards', () => {
     expect(CSS).toMatch(/\.gwui-choice-card \{[^}]*background: var\(--gw-card\)/)
     expect(CSS).toMatch(/\.gwui-choice-card-on \{[^}]*box-shadow: inset 0 0 0 2px var\(--gw-text\)/)
   })
+
+  it('a locked group still shows the chosen card as chosen, but nothing in it can be clicked away from it (one person\'s own role)', () => {
+    const onChange = vi.fn()
+    render(
+      <ChoiceCards
+        label="Role"
+        value="admin"
+        onChange={onChange}
+        disabled
+        options={[{ key: 'member', title: 'Member' }, { key: 'admin', title: 'Admin' }]}
+      />,
+    )
+    const admin = screen.getByRole('radio', { name: 'Admin' })
+    const member = screen.getByRole('radio', { name: 'Member' })
+    expect(admin).toHaveClass('gwui-choice-card-on')
+    expect(admin).not.toBeDisabled()
+    expect(member).toBeDisabled()
+    fireEvent.click(member)
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })
 
 describe('FieldRow', () => {

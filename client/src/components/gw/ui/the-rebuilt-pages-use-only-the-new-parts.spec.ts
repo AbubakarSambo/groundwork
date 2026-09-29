@@ -127,6 +127,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/org/WhoCanJoin.tsx',
       'pages/org/TheInviteLink.tsx',
       'pages/org/WhoCanOpenACheckIn.tsx',
+      'pages/org/OnePersonPage.tsx',
     ])
   })
 

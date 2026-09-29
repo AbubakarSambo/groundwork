@@ -315,6 +315,7 @@ to find.
   6. The rest of item 11: no DNS proof for domain joining for now. The invite link is random, not guessable; someone whose email doesn't match the domain waits for an admin. Before being let in, name one admin, as in the prototype; remove "27 people there" and "and text". Leave out your own web address and logo entirely until they're built. "All 38 of your check-ins" counts real check-ins, not sessions.
   7. A person can create more than one organisation, each with its own plan, as already decided on 26 September: lift the one-organisation limit.
   8. On helpers: every builder brief starts with "You may not start any helper or sub-agent. If you need research, stop and ask." If a builder starts one again, that builder is stopped and a fresh one started.
+  (The safety check refused my attempt to also save these rules in Claude's own memory folder, outside the project. I did not retry it; the rules live here, in this report, which every session reads.)
 - **29 September, later: build the screens much faster.**
   1. The API tests are not run for screen-only changes. They run only after merging the engine's work, or when an API file changed.
   2. Screens are built in groups (for example all the people screens). For each screen, only my own 1440-pixel picture check against the prototype and the privacy tests. The full screen suite, the page-colour test and the reviewer run once, at the end of each group.

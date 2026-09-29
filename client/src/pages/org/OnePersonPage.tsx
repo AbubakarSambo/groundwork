@@ -1,64 +1,97 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWord, A_FAILURE } from './people-here'
+import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note } from '@/components/gw/ui'
 
 /**
  * ONE PERSON, AS AN ADMIN READS THEM (U.4, A4 one-person.txt, #/settings/people/miriam).
  *
  * Where they sit, their role here, their team, their status and seat, their WhatsApp number when
- * WhatsApp is on, their check-ins here, and what an admin can see.
+ * WhatsApp is on, their check-ins here, what an admin can see, and removing them from the
+ * organisation.
  *
  * "Across check-ins" (D3, U.16) says only how many check-ins they are in, which is all an admin
  * reads of someone's load: what is asked of them is on their own You page, served to them alone. It
  * stops before "they choose who else sees it", because nothing lets anybody share it yet.
  *
- * Left out, each for a reason in the morning report: "Region" (no such field), "Free this seat" and "Remove from Baridi" (today's removal
- * erases the whole account in every organisation, and cannot be undone), and the clause "and what
- * someone writes in their own check-in stays theirs", which decisions.md rule 5 contradicts.
+ * "What an admin can see" stops after "You don't see anyone's private notes.": the prototype's next
+ * clause, "and what someone writes in their own check-in stays theirs", is untrue here - rule 5 in
+ * decisions.md has an admin reading every board and report, including what people said in them.
+ *
+ * The role note stops at "Changes apply straight away.": nothing records or shows who made a change,
+ * so "and are noted with your name" would also be untrue.
+ *
+ * Left out, each for a reason: "Region" (no such field exists) and "Free this seat" (only a
+ * plan-wide release exists - POST /users/waiting/seats/release - nothing frees one person's seat).
+ *
+ * REBUILT FROM THE SHARED PARTS (design-audit.md section 3, "One person (the admin's view)",
+ * items 1 to 11; components/gw/ui only, no inline styles for size, colour or spacing).
+ *
+ * GUEST IS OFFERED (item 6, all four roles). Reading users.service.ts's `update()`: `UpdateUserDto`
+ * validates `role` against the full `Role` enum, which includes GUEST; `mayChange` only ever blocks
+ * a change to the account that holds the organisation, never a particular target role; and `setRole`
+ * writes whatever it is given to both `User.role` and the membership row with no check that it is
+ * one of the three `RoleWrite` values its own type promises. So `PATCH /users/:id { role: 'GUEST' }`
+ * on an existing member is accepted today - unlike inviting somebody new as a guest, which
+ * `aRoleToInviteAs` refuses on purpose. This reads as a gap nobody decided on rather than a choice,
+ * and is worth Hafsah's eyes; until she says otherwise, this page follows what the server actually
+ * does.
  */
-type RoleWrite = 'MEMBER' | 'LEAD' | 'ADMIN'
-const ROLE_CHOICES: { value: RoleWrite | 'GUEST'; title: string; says: string }[] = [
+type RoleWrite = 'ADMIN' | 'LEAD' | 'MEMBER' | 'GUEST'
+const ROLE_CHOICES: { value: RoleWrite; title: string; says: string }[] = [
   { value: 'ADMIN', title: 'Admin', says: 'Manages people and billing, and can read every check-in.' },
   { value: 'LEAD', title: 'Can open check-ins', says: 'Can start check-ins and run them. Takes part in others.' },
   { value: 'MEMBER', title: 'Takes part', says: 'Answers the check-ins they’re invited to.' },
   { value: 'GUEST', title: 'Guest', says: 'From another organisation. Sees only the check-ins they’re invited to.' },
 ]
 
-function AChange({ label, value, empty, onSave, choices }: {
-  label: string; value: string; empty: string; onSave: (v: string) => void
+/** A label/value row that becomes a small form when "Change" is pressed (Level, Reports to, WhatsApp). */
+function EditableField({ label, value, empty, onSave, choices, saving, inputLabel }: {
+  label: string
+  value: string
+  empty: string
+  onSave: (v: string) => void
   choices?: { value: string; label: string }[]
+  saving?: boolean
+  /** The field's own accessible name, when it differs from the row label - e.g. "WhatsApp number for Miriam". */
+  inputLabel?: string
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const shown = choices ? choices.find((c) => c.value === value)?.label ?? '' : value
+
+  if (editing) {
+    return (
+      <FieldRow
+        label={label}
+        value={choices ? (
+          <Select aria-label={inputLabel ?? label} value={draft} onChange={(e) => setDraft(e.target.value)}>
+            <option value="">{empty}</option>
+            {choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </Select>
+        ) : (
+          <TextField aria-label={inputLabel ?? label} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={120} />
+        )}
+        action={(
+          <span className="gwui-edge-acts">
+            <Button kind="quiet" size="small" disabled={saving} aria-label={`Save ${label.toLowerCase()}`} onClick={() => { onSave(draft); setEditing(false) }}>Save</Button>
+            <Button kind="quiet" size="small" onClick={() => setEditing(false)}>Cancel</Button>
+          </span>
+        )}
+      />
+    )
+  }
   return (
-    <div className="gw-one-field">
-      <span className="gw-one-label">{label}</span>
-      {editing ? (
-        <span className="gw-one-edit">
-          {choices ? (
-            <select aria-label={label} value={draft} onChange={(e) => setDraft(e.target.value)}>
-              <option value="">{empty}</option>
-              {choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
-          ) : (
-            <input aria-label={label} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={120} />
-          )}
-          <button type="button" className="gw-btn-sm" aria-label={`Save ${label.toLowerCase()}`} onClick={() => { onSave(draft); setEditing(false) }}>Save</button>
-          <button type="button" className="gw-link-btn" onClick={() => setEditing(false)}>Cancel</button>
-        </span>
-      ) : (
-        <>
-          <span className="gw-one-value">{shown || empty}</span>
-          <button type="button" className="gw-link-btn" aria-label={`Change ${label.toLowerCase()}`} onClick={() => { setDraft(value); setEditing(true) }}>Change</button>
-        </>
-      )}
-    </div>
+    <FieldRow
+      label={label}
+      value={shown || empty}
+      action={<Button kind="quiet" size="small" aria-label={`Change ${label.toLowerCase()}`} onClick={() => { setDraft(value); setEditing(true) }}>Change</Button>}
+    />
   )
 }
 
@@ -100,17 +133,38 @@ export function OnePersonPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['org-owner'] }); toast.success('Handed over. They now own this organisation.') },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? A_FAILURE),
   })
+  const removeThem = useMutation({
+    mutationFn: (removedName: string) => apiClient.delete(`/users/${id}`).then(() => removedName),
+    onSuccess: (removedName) => {
+      qc.invalidateQueries({ queryKey: ['org-members'] })
+      toast.success(`${removedName} no longer has access to ${orgName}.`)
+      navigate('/org/members')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? A_FAILURE),
+  })
 
-  if (isError) return <p className="gw-people-problem" role="alert" style={{ margin: 32 }}>We could not load this person just now. Reload the page, and if it keeps happening, tell us.</p>
-  if (isLoading) return <p className="gw-people-note" style={{ margin: 32 }}>Loading…</p>
+  if (isError) {
+    return (
+      <Page>
+        <Note>We could not load this person just now. Reload the page, and if it keeps happening, tell us.</Note>
+      </Page>
+    )
+  }
+  if (isLoading) {
+    return (
+      <Page>
+        <Note>Loading…</Note>
+      </Page>
+    )
+  }
   const everybody = data?.data ?? []
   const m: OrgMember | undefined = everybody.find((p) => p.id === id)
   if (!m) {
     return (
-      <div className="gw-people-page" style={{ padding: '28px 20px', maxWidth: 860, margin: '0 auto' }}>
-        <p className="gw-people-note">This person is not in {orgName}.</p>
-        <Link to="/org/members">People</Link>
-      </div>
+      <Page>
+        <Note>{`This person is not in ${orgName}.`}</Note>
+        <Button kind="quiet" to="/org/members">People</Button>
+      </Page>
     )
   }
 
@@ -118,119 +172,127 @@ export function OnePersonPage() {
   const first = firstNameOf(m)
   const isOwner = !!ownerId && m.id === ownerId
   const isMe = m.id === user?.id
-  const guest = m.role === 'GUEST'
   const managers = everybody.filter((p) => p.id !== m.id && p.role !== 'GUEST').map((p) => ({ value: p.id, label: nameOf(p) }))
   const checkIns = m.checkIns ?? []
+  const status = statusWord(m)
 
   return (
-    <div className="gw-people-page" style={{ padding: '28px 20px 80px', maxWidth: 860, margin: '0 auto' }}>
-      <nav className="gw-people-crumb" aria-label="Breadcrumb"><Link to="/org/members">People</Link> / {name}</nav>
-      <div className="gw-one-head">
-        <span className="gw-people-av big" aria-hidden>{initialsOf(name)}</span>
-        <div>
-          <h1 className="gw-people-h1">{name}</h1>
-          {name !== m.email && <p className="gw-people-note">{m.email}</p>}
-        </div>
-      </div>
+    <Page>
+      <PageTitle eyebrow={orgName} title="People" />
+      <PageTitle
+        crumbs={[{ label: 'People', to: '/org/members' }, { label: name }]}
+        title={name}
+        avatarInitials={initialsOf(name)}
+        subtitle={name !== m.email ? m.email : undefined}
+      />
 
-      <section className="gw-people-sec" aria-labelledby="sit-h">
-        <h2 id="sit-h">Where they sit</h2>
-        <AChange label="Level" value={m.level ?? ''} empty="Not set" onSave={(v) => sit.mutate({ level: v })} />
-        <AChange label="Reports to" value={m.reportsTo?.id ?? ''} empty="Nobody" choices={managers} onSave={(v) => sit.mutate({ reportsToUserId: v })} />
-        <p className="gw-people-note">{`This describes the organisation. What ${first} can do still comes only from their role and their access to each check-in.`}</p>
-      </section>
+      <Section heading="Where they sit" foot={`This describes the organisation. What ${first} can do still comes only from their role and their access to each check-in.`}>
+        <Panel pad={false}>
+          <FieldRows>
+            <EditableField label="Level" value={m.level ?? ''} empty="Not set" saving={sit.isPending} onSave={(v) => sit.mutate({ level: v })} />
+            <EditableField label="Reports to" value={m.reportsTo?.id ?? ''} empty="Nobody" choices={managers} saving={sit.isPending} onSave={(v) => sit.mutate({ reportsToUserId: v })} />
+          </FieldRows>
+        </Panel>
+      </Section>
 
-      <section className="gw-people-sec" aria-labelledby="across-h">
-        <h2 id="across-h">Across check-ins</h2>
-        <p className="gw-people-note">{`${checkIns.length === 1 ? '1 check-in' : `${checkIns.length} check-ins`}. What’s asked of them is on their own You page.`}</p>
-      </section>
+      <Section heading="Across check-ins">
+        <Panel>
+          <p className="gwui-panel-text-muted">{`${checkIns.length === 1 ? '1 check-in' : `${checkIns.length} check-ins`}. What’s asked of them is on their own You page.`}</p>
+        </Panel>
+      </Section>
 
-      <section className="gw-people-sec" aria-labelledby="role-h">
-        <div className="gw-people-sec-head">
-          <h2 id="role-h">{`Role at ${orgName}`}</h2>
-          <span>Changes apply straight away.</span>
-        </div>
-        {isOwner && <p className="gw-people-note">{isMe ? 'You own this organisation, so your role cannot be changed here.' : `${first} owns this organisation, so their role cannot be changed here.`}</p>}
-        <div role="radiogroup" aria-label={`Role at ${orgName}`} className="gw-people-choices">
-          {ROLE_CHOICES.filter((c) => c.value !== 'GUEST' || guest).map((c) => {
-            const on = m.role === c.value
-            const locked = isOwner || isMe || c.value === 'GUEST' || role.isPending
-            return (
-              <button
-                key={c.value}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                className={on ? 'on' : ''}
-                disabled={locked && !on}
-                onClick={() => { if (!on && !locked) role.mutate({ what: c.value as RoleWrite, first }) }}
-              >
-                <b>{c.title}</b>
-                <span>{c.says}</span>
-              </button>
-            )
-          })}
-        </div>
+      <Section heading={`Role at ${orgName}`} note="Changes apply straight away.">
+        {isOwner && <Note>{isMe ? 'You own this organisation, so your role cannot be changed here.' : `${first} owns this organisation, so their role cannot be changed here.`}</Note>}
+        <ChoiceCards
+          label={`Role at ${orgName}`}
+          value={m.role}
+          disabled={isOwner || isMe || role.isPending}
+          onChange={(next) => role.mutate({ what: next as RoleWrite, first })}
+          options={ROLE_CHOICES.map((c) => ({ key: c.value, title: c.title, description: c.says }))}
+        />
         {ownerId === user?.id && !isMe && m.role === 'ADMIN' && (
-          <button
-            type="button"
-            className="gw-link-btn"
+          <Button
+            kind="quiet"
             onClick={() => {
               if (window.confirm(`Hand this organisation to ${name}?\n\nThey become the person who cannot be removed by other admins, and you stop being that person. You stay an admin.`)) handOver.mutate()
             }}
-          >Hand over</button>
+          >Hand over</Button>
         )}
-      </section>
+      </Section>
 
-      <section className="gw-people-sec" aria-labelledby="team-h">
-        <div className="gw-people-sec-head">
-          <h2 id="team-h">Team</h2>
-          <span>Used to add whole teams to a check-in</span>
-        </div>
-        <div className="gw-people-actions">
-          <input aria-label="Team" value={team ?? m.team ?? ''} onChange={(e) => setTeam(e.target.value)} maxLength={120} />
-          <button type="button" className="gw-btn-sm" aria-label="Save team" disabled={team === null || sit.isPending} onClick={() => { sit.mutate({ team: team ?? '' }); setTeam(null) }}>Save</button>
-        </div>
-      </section>
-
-      <section className="gw-people-sec" aria-labelledby="status-h">
-        <h2 id="status-h">Status</h2>
-        <div className="gw-one-field"><span className="gw-one-label">Now</span><span className="gw-one-value">{statusWord(m)}</span></div>
-        {/* A guest with an account takes a seat too (U.4 re-review); one held for a seat does not yet. */}
-        {!m.awaitingOrgApproval && <div className="gw-one-field"><span className="gw-one-label">Seat</span><span className="gw-one-value">{m.heldForASeat ? 'No seat on your plan' : 'Holds a seat'}</span></div>}
-        {m.arrivedThroughACheckIn && <p className="gw-people-note">They came in by accepting an invitation to a check-in.</p>}
-        {whatsappOn && (
-          <div className="gw-one-field">
-            <span className="gw-one-label">WhatsApp</span>
-            <input
-              aria-label={`WhatsApp number for ${first}`}
-              defaultValue={m.phoneNumber ?? ''}
-              disabled={phone.isPending}
-              onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-              onBlur={(e) => { const next = e.target.value.trim(); if (next !== (m.phoneNumber ?? '')) phone.mutate(next) }}
-            />
+      <Section heading="Team" note="Used to add whole teams to a check-in">
+        <Panel>
+          <div className="gwui-invite-actions">
+            <TextField aria-label="Team" value={team ?? m.team ?? ''} onChange={(e) => setTeam(e.target.value)} maxLength={120} />
+            <Button kind="secondary" disabled={team === null || sit.isPending} onClick={() => { sit.mutate({ team: team ?? '' }); setTeam(null) }}>Save</Button>
           </div>
+        </Panel>
+      </Section>
+
+      <Section heading="Status">
+        <Panel pad={false}>
+          <FieldRows>
+            <FieldRow label="Now" value={status === 'Checking in' ? <Tag tone="proven">Checking in</Tag> : status} />
+            {/* A guest with an account takes a seat too (U.4 re-review); one held for a seat does not yet. */}
+            {!m.awaitingOrgApproval && <FieldRow label="Seat" value={m.heldForASeat ? 'No seat on your plan' : 'Holds a seat'} />}
+            {whatsappOn && (
+              <EditableField
+                label="WhatsApp"
+                inputLabel={`WhatsApp number for ${first}`}
+                value={m.phoneNumber ?? ''}
+                empty="Not set"
+                saving={phone.isPending}
+                onSave={(v) => phone.mutate(v)}
+              />
+            )}
+          </FieldRows>
+        </Panel>
+        {m.arrivedThroughACheckIn && <Note>They came in by accepting an invitation to a check-in.</Note>}
+      </Section>
+
+      <Section heading="Check-ins" note={checkIns.length === 1 ? '1 check-in' : `${checkIns.length} check-ins`}>
+        {checkIns.length === 0 ? (
+          <Panel><p className="gwui-panel-text-muted">{`${first} is not on a check-in here yet.`}</p></Panel>
+        ) : (
+          <Panel pad={false}>
+            <FieldRows>
+              {checkIns.map((c) => (
+                <FieldRow
+                  key={c.id}
+                  label={c.label ?? 'A check-in with no name yet'}
+                  value={c.runsIt ? 'Runs it' : 'Checks in'}
+                  action={<Button kind="quiet" size="small" aria-label={`Open ${c.label ?? 'this check-in'}`} onClick={() => navigate(`/grounds/${c.id}`)}>Open</Button>}
+                />
+              ))}
+            </FieldRows>
+          </Panel>
         )}
-      </section>
+      </Section>
 
-      <section className="gw-people-sec" aria-labelledby="checkins-h">
-        <div className="gw-people-sec-head">
-          <h2 id="checkins-h">Check-ins</h2>
-          <span>{checkIns.length === 1 ? '1 check-in' : `${checkIns.length} check-ins`}</span>
-        </div>
-        {checkIns.length === 0 ? <p className="gw-people-note">{`${first} is not on a check-in here yet.`}</p> : checkIns.map((c) => (
-          <div key={c.id} className="gw-one-field">
-            <span className="gw-one-value">{c.label ?? 'A check-in with no name yet'}</span>
-            <span className="gw-one-label">{c.runsIt ? 'Runs it' : 'Checks in'}</span>
-            <button type="button" className="gw-link-btn" aria-label={`Open ${c.label ?? 'this check-in'}`} onClick={() => navigate(`/grounds/${c.id}`)}>Open</button>
-          </div>
-        ))}
-      </section>
+      <Section heading="What an admin can see">
+        <Panel>
+          <p className="gwui-panel-text-muted">{`As an admin you can read every check-in at ${orgName}, change its setup and end it. You don’t see anyone’s private notes.`}</p>
+        </Panel>
+      </Section>
 
-      <section className="gw-people-sec" aria-labelledby="admin-sees-h">
-        <h2 id="admin-sees-h">What an admin can see</h2>
-        <p className="gw-people-note">{`As an admin you can read every check-in at ${orgName}, change its setup and end it. You don’t see anyone’s private notes.`}</p>
-      </section>
-    </div>
+      {!isMe && (
+        <Section heading={`Remove from ${orgName}`}>
+          <Panel>
+            <Stack gap={10}>
+              <p className="gwui-panel-text-muted">They lose access and their seat is freed. What they shared stays in the check-ins they were part of.</p>
+              <Button
+                kind="danger"
+                disabled={removeThem.isPending}
+                onClick={() => {
+                  if (window.confirm(`Remove ${name} from ${orgName}?\n\nThey lose access and their seat is freed. What they shared stays in the check-ins they were part of.`)) {
+                    removeThem.mutate(name)
+                  }
+                }}
+              >Remove</Button>
+            </Stack>
+          </Panel>
+        </Section>
+      )}
+    </Page>
   )
 }
