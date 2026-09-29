@@ -3680,15 +3680,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
       says: typeof m.says === 'string' ? notTheWordParty(m.says) : m.says,
     }));
     /*
-     * WHAT EACH ROUND LED WITH, WORDED. `moved[].says` came out of howThisHasMoved and whyNot as
-     * template sentences, the same on every ground. One call for the list, the round's own count of
-     * differences held as a number the model may not touch.
+     * WHAT EACH ROUND LED WITH, AS THAT ROUND'S PICTURE SAID IT, FOR EVERY READER. Screens request 66.
+     *
+     * `moved[].says` went through the assistant's wording pass, which speaks to one person as "you".
+     * The line it was given is the opening of a picture written once for several readers, in labels,
+     * so it came back addressed to whoever the model took the reader to be - "You have received
+     * answers from all three people." - and was served to everybody, so Amani and Juma read a
+     * sentence about what the lead had received. It is now the round's own opening sentence, the one
+     * every reader of this check-in already reads in `rounds[].sharedPicture`, and its labels are
+     * turned into a name, or into "you", for each reader on the way out (whatTheLeadHasNotShared).
      */
-    const saidMoved = await this.phrase(
-      'how this has moved',
-      moved.map((m: any, i: number) => ({ key: `m${i}`, text: String(m.says ?? '') })),
-    );
-    return { rounds: cleaned, moved: moved.map((m: any, i: number) => ({ ...m, says: saidMoved[`m${i}`] ?? m.says })) };
+    return { rounds: cleaned, moved };
   }
 
   /**
