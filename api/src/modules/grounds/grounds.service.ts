@@ -1,3 +1,4 @@
+import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn } from './a-goal-not-told-stays-with-the-lead';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
@@ -1841,7 +1842,8 @@ export class GroundsService {
      * with the text, always, because "your objective is X" and "your manager has suggested X and you
      * have not replied" are different statements and the difference is the whole point.
      */
-    const objectiveRows = await this.prisma.personObjective.findMany({
+    /* A goal the lead has not told the person about reaches the lead alone. See a-goal-not-told-stays-with-the-lead. */
+    const objectiveRowsAsStored = await this.prisma.personObjective.findMany({
       where: { groundId: id },
       select: {
         id: true, participantId: true, text: true, authoredBy: true, seenBySubject: true, updatedAt: true,
@@ -1869,6 +1871,8 @@ export class GroundsService {
         dueDate: true, status: true,
       },
     });
+    const objectiveRows = goalsThisReaderMaySee(objectiveRowsAsStored, viewerIsInitiator);
+    const goalsNotToldHere = viewerIsInitiator ? [] : objectiveRowsAsStored.filter(notToldYet).map((o) => o.text ?? '');
     /**
      * ALL OF THEM, PER PERSON. A person can be held to a commitment and a standing role expectation
      * at once, and the map used to keep whichever row happened to come back last - so the page showed
@@ -2205,7 +2209,8 @@ export class GroundsService {
     /* AND NO SENTENCE WITH A COLLEAGUE'S HIDDEN TARGET, in any text on this page: the brief, the
        report's words, a note. The same rule the report and the board apply, over the whole read, so a
        field added later is covered by being served. See board/a-hidden-target-stays-hidden. */
-    return this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
+    /* And no sentence carrying a goal the lead has not told its person about (a-goal-not-told-stays-with-the-lead). */
+    return withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
       ...rest,
       /* Everyone on the check-in may see what is to be done; only the lead's private notes are walled. */
       commitments,
@@ -2426,7 +2431,7 @@ export class GroundsService {
       guestIn: ground.organizationId !== organizationId
         ? ((ground as any).organization?.name ?? 'another organisation')
         : null,
-    });
+    }), goalsNotToldHere);
   }
 
   /**

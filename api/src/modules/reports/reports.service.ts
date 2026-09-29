@@ -1,3 +1,4 @@
+import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
@@ -5862,6 +5863,15 @@ happened, and what is in the way.`;
     });
     /* Labels become names FIRST: the hidden-target read looks for a person's name, and a line still
        saying "Participant B" hid nothing (read live, 28 Sep 2026). */
+    /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
+       grounds/a-goal-not-told-stays-with-the-lead. Its words carry no label, so this can go first. */
+    if (!isInitiator) {
+      const notTold = await ((this.prisma as any).personObjective?.findMany?.({
+        where: { groundId, awareness: 'NOT_TOLD' },
+        select: { text: true, awareness: true, authoredBy: true },
+      }) ?? Promise.resolve([])).catch(() => []);
+      served = withoutGoalsNotToldIn(served, (notTold as any[]).filter(notToldYet).map((r) => String(r.text ?? '')));
+    }
     return withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames), hiddenTargets);
   }
 

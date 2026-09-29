@@ -1,3 +1,4 @@
+import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { targetsHiddenFrom, withoutHiddenTargets, withoutHiddenTargetsIn } from './a-hidden-target-stays-hidden';
@@ -1458,6 +1459,9 @@ export class BoardService {
       const called = whatEachLabelIsCalled(ground.participants as any[], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsThisGround, peersAreNamed: !!peersVisible });
       /* Labels become names first, so the hidden-target read can find the person (see reports.service). */
       let walled = withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(out, called), privateNames), hiddenTargets) as any;
+      /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
+         grounds/a-goal-not-told-stays-with-the-lead. */
+      if (!isInitiator) walled = withoutGoalsNotToldIn(walled, await this.goalsNotToldYet(groundId));
       /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
       return walled;
@@ -1607,6 +1611,15 @@ export class BoardService {
    * This method only shapes what synthesis produced for display. It adds no
    * detection of its own.
    */
+  /** The words of every lead-written goal on this check-in the lead has not told its person about. */
+  private async goalsNotToldYet(groundId: string): Promise<string[]> {
+    const rows = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { text: true, awareness: true, authoredBy: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    return (rows as any[]).filter(notToldYet).map((r) => String(r.text ?? '')).filter(Boolean);
+  }
+
   private buildManagerAlignment(
     reportSafe: Record<string, any> | null,
     names: ForbiddenName[],
