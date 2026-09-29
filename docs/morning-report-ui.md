@@ -5856,3 +5856,99 @@ beyond the reconnaissance above, to avoid shipping a half-verified rewrite of a 
 privacy- and behaviour-sensitive edge cases. Recommend the next pass start with (b) above (wiring
 the Check-in tab to the existing `/checkin/:id` route) before extracting parts, since that alone
 finishes the navigational half of item 2 with very low risk.
+
+## Round 2: the sidebar test fix, the page colour, and the withheld session report
+
+**D — DONE.** The session report now shows the engine's withheld-until-you-answer sentence.
+`TheSessionsReport.tsx` (embedded in `SessionReportPage.tsx`, `RoundReportPage.tsx` and
+`BoardPage.tsx`) checks `data.withheldUntilYouAnswer` before reading anything else, and shows
+`data.saying` styled the same way `SharedReportForAParty.tsx` already shows the round-level version
+of this withholding ("There is a picture forming, and you have not answered yet"). Added
+`WithheldSessionReport` to `client/src/api/reports.ts` for documentation; `sessionReport()`'s
+declared return type stays the full shape, since every other existing caller
+(`SessionReportPage.tsx`, `EveryReportSideBySide.tsx`) reads dozens of its fields unconditionally
+and widening the type would fail them for a case they don't handle. New test:
+`TheSessionsReport.withheld.spec.tsx` (2 tests: the withheld sentence, and an ordinary report still
+renders as before).
+
+**F — DONE.** The participant's check-in page used `var(--gw-paper-2)` for its whole background
+(loading, not-found, out-of-time and the page itself) - a darker beige than the lead's
+`var(--gw-page)`. Checked the prototype at 1440 myself before this: My work, the board and Context
+all sit on #FDFBF6 for a participant exactly as they do for a lead. All four switched to
+`var(--gw-page)`. The paywall modal's small notice box and its input field keep `--gw-paper-2` (a
+real fill inside a panel, not the page) - now moot anyway, see H.
+
+**G — DONE.** Both sidebar tests fixed for good, not just made to pass once:
+- `jump-to.spec.tsx`, "Ctrl K opens it...": `JumpTo.tsx`'s focus-the-input effect used
+  `setTimeout(fn, 0)`, which in this environment deferred past `waitFor`'s check and failed
+  deterministically (not actually flaky - it failed every single run, alone or in the suite).
+  Focusing synchronously in the effect fixes it; nothing there is a portal needing a later tick.
+- `the-sidebar-waits-for-the-list.spec.tsx`: genuinely order-dependent (passed alone in isolation
+  sometimes, always failed the last one or two tests when run as the full file). Root cause:
+  `AppShell` also fires a `['today']` query (`todayApi.get`) that this file never mocked. With the
+  local API actually running, that was a REAL network call for a fake token - it hit the real 401
+  handler in `api/client.ts`, which calls `logout()` and does `window.location.href = ...` (the
+  "Not implemented: navigation to another Document" warning), asynchronously, whenever that real
+  response happened to land. That flipped `isAuthenticated` back to false out from under whichever
+  test was running, so `AppShell` fell back to its signed-out render. Mocked `todayApi.get` in both
+  files now (the same way `groundsApi.list` already was). Verified 5 clean runs of each file alone,
+  and the full client suite (124 files, 980 tests, then all 486 files, 3436 tests) twice - no
+  failures from either file.
+
+**H (added mid-round) — DONE.** The darker beige Hafsah saw on many pages traced to
+`--gw-paper-2` (#FAF5EA) being used as a full-page or sticky-band background in ~28 files, though
+the prototype (`docs/prototype/source/app.css`) uses that colour as `--band`, only on its marketing
+sections and the Enterprise panel, never as a page or band colour in the product. Fixed at the one
+source: `--gw-paper-2` is now #FDFBF6 (same as `--gw-page`), and a new `--gw-band: #FAF5EA` carries
+the prototype's real darker cream, used only by the Enterprise panel on `PricingPage.tsx`
+(`var(--gw-card)` -> `var(--gw-band)`) - a discrepancy worth flagging: the prototype's OWN source
+for that panel (`docs/prototype/source/s16.js`, the in-product pricing screen) actually uses
+`var(--chat)` (our `--gw-bg`, #F7F1E5) for the Enterprise panel, not `--band`; I followed the
+explicit instruction over my own reading of the source, since it was specific, but flagging it here
+in case a live picture check disagrees. The two hover rules that read `--gw-paper-2` for a visible
+darker fill (`.gwui-person-row:hover`, `.gw-b-secondary:hover`) would have gone invisible once it
+became the page colour; switched to `var(--gw-page)`, matching the prototype's own hover pattern for
+a white surface (`app.css`: `.orgmenu/.usermenu a:hover{background:var(--paper)}`).
+
+Guard tests added to `the-page-is-cream-and-opens-light.spec.ts`: index.css defines `--gw-page` and
+`--gw-paper-2` as the same #FDFBF6; `--gw-band` is used only by `PricingPage.tsx`; no full-page or
+sticky-band wrapper paints itself with `--gw-band`. One existing test updated and why: "the fills
+inside cards ... are warm and darker than the page" `it.each`'d `--gw-paper-2` as a fill - true when
+it was a distinct darker colour, false now that it IS the page colour by design; replaced with
+`--gw-band`, which is the real distinct fill now.
+
+Full client suite (486 files, 3436 tests) run twice after H: one unrelated pre-existing failure both
+times, `src/lib/copy-does-not-sound-like-yoda.spec.ts` (an `api/src` prompt-wording count, now 61
+against a baseline of 60) - this is the engine workspace's prompt text, arrived with the merge
+(`8641f3cf`), and out of this workspace's scope to touch (CLAUDE.md: "The screens workspace never
+changes the engine's code"). Left for the engine workspace to notice.
+
+**A, B, C, E — NOT DONE this round**, for the same reason as last time: real size versus the risk of
+shipping a half-verified change to privacy- and paywall-sensitive flows. What I found, so the next
+pass does not re-investigate:
+
+- **A** (wire the Check-in tab to `/checkin/:checkInId`, move session history and "Who is in this"):
+  `GroundChat.tsx`, currently rendered inline on the lead's Check-in tab, does three jobs at once -
+  the live conversation for a party, a read-only history for a lead who is not a party, AND "Who is
+  in this"/paywall-opening plumbing (`openCheckInId`, `onOpenSession` handing off to the participant
+  page's own probe, `viewerIsParty` branching between a real transcript and someone else's). Wiring
+  the tab to a real link needs a `checkInId` to link to (today's open one) BEFORE the click, and a
+  sensible page for a lead who is not a party (no transcript of their own to show) - neither is a
+  one-line change once GroundChat's three jobs are considered together.
+- **B** (rebuild `ChatPage.tsx`'s bubbles/quick-replies/composer into `ui` parts): unchanged from
+  last time - `ChatPage.tsx` and `components/gw/checkin/*` already implement the prototype's shape
+  (U.8); what's missing is the extraction into shared, tested parts.
+- **C** (draw the engine's `suggestedAnswers`, with a `"..."` suggestion filling the box rather than
+  sending): not started. `SuggestedAnswers.tsx` already exists and is wired to `last.suggestedAnswers`
+  in `ChatPage.tsx` (see the round 1 report); the `"..."` branch is the new piece.
+- **E** (Done and Between-check-ins as their own pages): `TheDonePage.tsx` still covers much of
+  Done's content; Between-check-ins has nothing built.
+
+Recommend the next pass do C first (small, concrete, the engine now genuinely sends the field) and
+A second (now that the tab-fold and page-colour work is settled, A is the next real unblocking step
+for B), before attempting B or E.
+
+**Commits this round:** tab-fold work aside (previous section), this round added: the two sidebar
+test fixes, the participant page-colour fix, the session-report withheld state, and the
+`--gw-paper-2`/`--gw-band` source fix with its guard tests - four commits, each on its own, none
+pushed or merged.
