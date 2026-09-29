@@ -5962,3 +5962,71 @@ for B), before attempting B or E.
 test fixes, the participant page-colour fix, the session-report withheld state, and the
 `--gw-paper-2`/`--gw-band` source fix with its guard tests - four commits, each on its own, none
 pushed or merged.
+
+## Round 3: suggested answers finish a shape; the Check-in tab untangling scoped
+
+**C — DONE.** A suggested answer containing "..." now fills the composer instead of sending: the
+engine's suggestions are "a help, never a limit" (docs/conversation-standard.md, point 6), and some
+of them are a shape with a gap the engine cannot fill in (a name, a date). `pickSuggestion()` in
+`ChatPage.tsx` checks for "..." first; if present it sets the box to the suggestion's text and
+selects the "..." itself (so typing immediately replaces it) instead of calling send. Two new tests
+in `the-check-in-as-a-person-reads-it.spec.tsx`: a suggestion with a gap fills the box (gap selected,
+nothing sent); an ordinary suggestion still sends immediately, as before. 25/25 tests in that file
+pass; tsc clean; the API specs that read `ChatPage.tsx` by source (5 files, 33 tests) pass unchanged.
+
+**A — NOT DONE, and here is exactly why, and what is needed.**
+
+I read `GroundChat.tsx` in full (766 lines) before touching anything. It is not what its three-job
+description suggested at first: there is no live composer in it at all - "the session itself still
+happens on its own page" is the component's own stated design. What it actually does, for BOTH a
+party and a non-party lead, is render the check-in's whole history (session by session, every turn,
+via `myTranscript` for a party or a `history` summary for a lead) plus `GroundTopic` (which holds
+BOTH "About this check-in" and "Who is in this" in one component) plus a card at the bottom that
+hands off to the paywall-aware "open today's session" flow (`onOpenSession` → `probeSession` on
+`GroundParticipantPage.tsx`, which calls `POST /check-ins/:id/open` and either shows the paywall or
+navigates to `/checkin/:id`).
+
+So "untangle the three jobs" means: (1) redirect a party straight past this whole reading
+experience to `/checkin/:id` (using the already-open check-in when there is one, or the exact same
+`?open=1` hand-off otherwise) - (2) show a non-party lead a plain message and a link to the board
+instead - and (3) relocate what GroundChat currently shows (the session-by-session history, and the
+roster) to My work and People and setup respectively, so redirecting a party away from this tab does
+not remove the only place they could read their own past sessions.
+
+**(3) is the blocker, and it is real, not a formality.** `GroundTopic`'s roster block and
+`GroundChat`'s per-session transcript rendering are not separable without moving code, and until
+they are, doing (1) - the redirect - would delete a party's only way to read their own check-in
+history, which CLAUDE.md rules out ("Nothing valuable is lost") regardless of how clean the redirect
+itself would be. I looked for a shortcut (an existing page that already shows "a list of past
+sessions, each opening its transcript") and did not find one: `RoundReportPage.tsx` shows that
+session's extracted REPORT, not its raw turn-by-turn transcript, and the "Sessions" sub-tab I built
+under My work in round 1 shows per-person-per-session status rows, not a transcript either. Building
+the actual replacement (a session list under My work, each row opening that session's real
+transcript) is new work, not a relocation of five lines.
+
+Given the size of that replacement, and this round's remaining time, I did not start moving any code
+for A - starting the redirect without also landing its replacement would have been the wrong order
+to commit in, and a half-done extraction (roster moved, transcript-list not built) is worse than
+none, because it leaves the tab showing neither the old nor the new correctly for some readers.
+
+**What is needed, concretely, for the next pass:**
+1. A new, small component for "the session list under My work, each opening its transcript" -
+   `GroundChat`'s existing `Message`/`SessionDivider` rendering can very likely be reused for what
+   opens when a row is clicked, but the LIST itself (session number, date, who) does not exist yet
+   as its own view; `GroundChat`'s own `history` prop (already computed in both pages) is the right
+   shape to start from.
+2. Move the roster half of `GroundTopic` into that My work / People-and-setup relocation (the brief
+   half, "About this check-in", is already gone from here in the sense that it duplicates Context -
+   item A's note that it should not show twice is about not re-adding it, not about removing
+   something still there twice today).
+3. Only once 1 and 2 exist: add the redirect (party → `/checkin/:id`, existing-open-session id when
+   there is one, else the unchanged `?open=1` hand-off) and the non-party plain message + board link,
+   and retire `GroundChat`'s use from both pages' Check-in tab.
+
+**B, E — NOT DONE**, unchanged from before: B needs the parts extraction from `ChatPage.tsx`
+(bubbles/quick-replies/composer/card frame into `components/gw/ui`); E needs Done and
+Between-check-ins as their own pages. Both are still blocked behind A settling what the Check-in tab
+itself shows, so I did not start either rather than build on ground that is about to move.
+
+**Commit this round:** `c1cde225` - "A suggested answer with "..." fills the box instead of
+sending" (item C). Nothing pushed or merged.
