@@ -65,6 +65,8 @@ describe('every surface that hands out whose number it is', () => {
    */
   const NOT_HANDING_IT_TO_A_READER: Record<string, string> = {
     'modules/board/board.listener.ts': 'writes owners onto targets read out of a sheet',
+    /* Request 76: the owner of a deal, a release or a deadline (WorkItem), never of a target. The board serves those rows behind its own walls. */
+    'modules/board/the-kind-of-work.ts': 'the owner of a record of the kind of work, such as a deal or a deadline, not of a target',
     'modules/documents/documents.service.ts': 'writes owners when a document of targets is read',
     'modules/documents/what-a-document-holds.ts': 'the shape a document is read into, before anybody reads it',
     /* Week 13: the one place it names an owner is the goal it writes when the lead confirms a

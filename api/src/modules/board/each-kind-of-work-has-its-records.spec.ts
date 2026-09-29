@@ -66,7 +66,7 @@ function boardAs(setup: Setup, userId: string, role: string) {
     recordEntry: model({
       findMany: jest.fn(async (args: any) => {
         const ids: string[] | undefined = args?.where?.id?.in;
-        return ids ? setup.lines.filter((l) => ids.includes(l.id)).map((l) => ({ disputedAt: null, ...l })) : [];
+        return ids ? setup.lines.filter((l) => ids.includes(l.id) && (args?.where?.disputedAt !== null || !l.disputedAt)).map((l) => ({ disputedAt: null, ...l })) : [];
       }),
     }),
     workItem: model({ findMany: jest.fn(async () => setup.items.map((i) => ({ ...i }))) }),

@@ -1506,7 +1506,7 @@ export class BoardService {
         : [];
       const sourceIds = (items as any[]).map((i) => i.sourceEntryId).filter(Boolean);
       const sources = sourceIds.length
-        ? await (this.prisma.recordEntry.findMany({ where: { id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true } }) as Promise<any[]>).catch(() => [] as any[])
+        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true } }) as Promise<any[]>).catch(() => [] as any[])
         : [];
       const lineOf = new Map((sources as any[]).map((l) => [l.id, l]));
       const rows: AServedRecord[] = [];
