@@ -525,8 +525,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* "The team today", with what keeps coming up under each person's own line, where the record has
      found something (board-as-lead.txt). `eachPersonToday` carries the same rows as `eachPerson`
      with that one sentence added; merged here rather than in two places the row could drift apart. */
+  const visiblePatterns = (b.patterns ?? []).filter((p) => viewerRunsThisCheckIn || p.yours)
   const keepsComingUpByParticipant = new Map((b.eachPersonToday ?? []).map((r) => [r.participantId, r.keepsComingUp ?? null]))
-  const eachPersonRows = (b.eachPerson ?? []).map((r) => ({ ...r, keepsComingUp: keepsComingUpByParticipant.get(r.participantId) ?? null }))
+  /* PROTECTED (Hafsah, 29 September): "The team today" promises "what keeps coming up" on each
+     person's line. The board's own line needs three finished sessions of rows; a pattern the
+     server has served, and this reader may read, says it too, so the line never sits empty while
+     the section below shows that person's pattern. */
+  const patternHeadingByParticipant = new Map<string, string>()
+  for (const p of visiblePatterns) if (p.participantId && p.heading && !patternHeadingByParticipant.has(p.participantId)) patternHeadingByParticipant.set(p.participantId, p.heading)
+  const eachPersonRows = (b.eachPerson ?? []).map((r) => ({ ...r, keepsComingUp: keepsComingUpByParticipant.get(r.participantId) ?? patternHeadingByParticipant.get(r.participantId) ?? null }))
 
   /*
    * WHAT KEEPS COMING UP, THE SECTION (board-as-lead.txt). The server already serves only what this
@@ -546,7 +553,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    * another person's pattern even if this page is ever handed one by mistake - the rule this file
    * must never be the one to weaken.
    */
-  const visiblePatterns = (b.patterns ?? []).filter((p) => viewerRunsThisCheckIn || p.yours)
   const nameByParticipantId = new Map((b.participants ?? []).map((p) => [p.id, p.name]))
   const patternPersonName = (participantId: string, yours: boolean) =>
     (participantId === b.myParticipantId ? 'You' : nameByParticipantId.get(participantId)) || (yours ? 'You' : 'A colleague')

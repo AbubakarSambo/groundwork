@@ -303,4 +303,18 @@ describe('what keeps coming up', () => {
     expect(screen.getByText('Qualified deals often lack a date')).toBeTruthy()
     expect(screen.getByText('Leads the team on buying dates')).toBeTruthy()
   })
+
+  /* PROTECTED (Hafsah, 29 September). Found by the review: after Amani answered her pattern, her
+     line under "The team today" said nothing, because the board's own line needs three finished
+     sessions of rows. A pattern the lead may read now says it on the person's line too. */
+  it('a person’s line carries their served pattern when the board’s own line has nothing yet', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({
+      ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [miriamsPattern],
+      eachPersonToday: [{ participantId: 'p-miriam', who: 'Miriam Wanjiku', line: 'Deals moving', keepsComingUp: null }],
+    })
+    await screen.findByText('The team today')
+    const card = cardAfter('The team today')
+    expect(within(card).getByText(miriamsPattern.heading)).toBeTruthy()
+  })
 })
