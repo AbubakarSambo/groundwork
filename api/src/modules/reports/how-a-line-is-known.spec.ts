@@ -85,8 +85,10 @@ describe('the session report marks each line the same way', () => {
   });
 
   it('both reads that build it fetch when a line was confirmed', () => {
-    const reports = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
-    const board = readFileSync(join(__dirname, '..', 'board', 'board.service.ts'), 'utf8');
+    /* Code only: a comment quoting these lines must not be able to satisfy the check. */
+    const code = (path: string) => readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const reports = code(join(__dirname, 'reports.service.ts'));
+    const board = code(join(__dirname, '..', 'board', 'board.service.ts'));
     expect(reports).toContain('confirmedAt: (e as any).confirmedAt ?? null,');
     expect(board).toContain('confirmedAt: (e as any).confirmedAt ?? null,');
     /* And whose document backs each line. */
