@@ -20,6 +20,12 @@ Today's two full runs are used, so everything this evening is checked with short
 
 **First: the warm-up must run once.** Being fixed now.
 
+**Then two requests from the screens workspace, before the weekly plan, as Hafsah asked:**
+- **Request 77.** Two of Rukia's own lines disappeared from Juma's board: "Four shops for me" and "Baraka has four shops in Westlands and Neema has four in Karen". Hafsah's ruling: a person's own words from their check-in are never removed because they look like a private file, and the private-file rule hides only the file's name. My first guess is that the cause is not the file rule. Today's hidden-target filter may have taken the lines out, because "Four shops for me" gives Rukia's own target, and Juma is an admin who cannot see it. Either way, a person's own words must stay. The builder will confirm the real cause.
+- **Request 76.** Store the kind of work of each check-in (sales, engineering, support, a law firm matter, a programme, and so on), set during setup. Serve the records each kind's board needs. Tell the screens workspace exactly what they will receive.
+
+**After those:** the rest of Hafsah's answers (the goodbye's commitment, the decision field, the admin sentence, untold goals), then the weekly plan.
+
 ## SUMMARY, 29 SEPTEMBER, 13:35 TO 20:35 (read this first)
 
 ### What I finished
