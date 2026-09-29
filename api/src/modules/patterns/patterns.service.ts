@@ -28,6 +28,8 @@ import {
   DetectionInput,
   PATTERN_DETECTORS,
   detectPattern,
+  mergedEvidenceSource,
+  AnEvidenceSource,
   collusionRuleGate,
   COLLUSION_COMPLETION_WORDS,
   COLLUSION_CONFIRM_PROMPT,
@@ -112,12 +114,14 @@ export class PatternsService {
     const allPriorText = records.map((r) => r.text);
     const r3Input: DetectionInput = { submissions: allPriorText };
     if (detectR3(r3Input)) {
+      // R3 is never read by the model at all - a rule-only finding, not a lesser one.
       await this.observePositive(
         checkIn.groundId,
         checkIn.participantId,
         'R3',
         'The record names another person positively with specific evidence of their contribution.',
         period,
+        'rule',
       );
     }
 
@@ -170,14 +174,15 @@ export class PatternsService {
       if (!detectionInputCache) detectionInputCache = await this.buildDetectionInputForParticipant(checkIn.participantId);
       return detectionInputCache;
     };
-    const logWhatBackedIt = async (code: string) => {
-      if (!PATTERN_DETECTORS[code]) return;
+    const evidenceSourceFor = async (code: string): Promise<AnEvidenceSource | undefined> => {
+      if (!PATTERN_DETECTORS[code]) return undefined;
       const ruleAgrees = detectPattern(code, await getDetectionInput());
       this.logger.log(
         ruleAgrees
           ? `Check-in ${checkInId}: ${code} backed by two separate reads of the record - the model's reading and the number-based rule.`
           : `Check-in ${checkInId}: ${code} backed by the model's reading only; the number-based rule did not confirm it on this person's per-period scores.`,
       );
+      return ruleAgrees ? 'both' : 'model';
     };
 
     try {
@@ -224,9 +229,9 @@ export class PatternsService {
             this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; the observation carries nothing anybody could check.`);
             continue;
           }
-          await logWhatBackedIt(d.code);
           await this.observePositive(
             checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period,
+            await evidenceSourceFor(d.code),
           );
           continue;
         }
@@ -239,9 +244,9 @@ export class PatternsService {
          * too much is not an accusation of them.
          */
         if (isCarryingCode(d.code)) {
-          await logWhatBackedIt(d.code);
           await this.observe(
             checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period,
+            await evidenceSourceFor(d.code),
           );
           continue;
         }
@@ -279,8 +284,7 @@ export class PatternsService {
           }
         }
 
-        await logWhatBackedIt(d.code);
-        await this.observe(checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period);
+        await this.observe(checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period, await evidenceSourceFor(d.code));
       }
     } catch (err: any) {
       this.logger.error(`Pattern extraction failed for check-in ${checkInId}: ${err.message}`);
@@ -318,7 +322,14 @@ export class PatternsService {
    * periods is not one data point that might be nothing, which is the only thing the rule was ever
    * protecting against. Two periods still surfaces nothing, consecutive or not.
    */
-  async observe(groundId: string, participantId: string, code: string, rawObservation: string, periodNumber: number) {
+  async observe(
+    groundId: string,
+    participantId: string,
+    code: string,
+    rawObservation: string,
+    periodNumber: number,
+    evidenceSource?: AnEvidenceSource,
+  ) {
     /**
      * Strip the courtroom opener before it is stored, not on the way out.
      *
@@ -341,6 +352,7 @@ export class PatternsService {
         lastPeriodNumber: periodNumber,
         seenInSessions: [periodNumber],
         status: PatternStatus.CANDIDATE,
+        evidenceSource: evidenceSource ?? null,
       });
     }
 
@@ -368,6 +380,7 @@ export class PatternsService {
         lastSeenAt: new Date(),
         observationText,
         status: enough || existing.status === PatternStatus.SURFACED ? PatternStatus.SURFACED : PatternStatus.CANDIDATE,
+        evidenceSource: mergedEvidenceSource(existing.evidenceSource as AnEvidenceSource | null, evidenceSource),
         /* The moment the person it is about may first read it. Set once, never moved. See who-reads-a-pattern. */
         ...(!existing.readyAt && seenInSessions.length >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
       },
@@ -384,6 +397,7 @@ export class PatternsService {
     code: string,
     observationText: string,
     periodNumber: number,
+    evidenceSource?: AnEvidenceSource,
   ) {
     const existing = await this.prisma.patternDetection.findUnique({
       where: { participantId_code: { participantId, code } },
@@ -401,6 +415,7 @@ export class PatternsService {
           seenInSessions: [periodNumber],
           // Positive signals surface immediately.
           status: PatternStatus.SURFACED,
+          evidenceSource: evidenceSource ?? null,
         },
       });
     }
@@ -423,6 +438,7 @@ export class PatternsService {
         lastSeenAt: new Date(),
         observationText,
         status: PatternStatus.SURFACED,
+        evidenceSource: mergedEvidenceSource(existing.evidenceSource as AnEvidenceSource | null, evidenceSource),
         ...(!existing.readyAt && Math.max(seenInSessions.length, periodsObserved) >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN ? { readyAt: new Date() } : {}),
       },
     });
@@ -706,7 +722,8 @@ export class PatternsService {
         const observationText =
           `Two accounts corroborate the same claims across periods with no independent evidence - ` +
           `each is supported only by the other. Worth an admin look. Pair (participants): ${anchorId} & ${partnerId}.`;
-        await this.observe(groundId, anchorId, 'COLLUSION_RISK', observationText, period);
+        // The cheap rule gate and the model's own confirmation both had to agree to reach here.
+        await this.observe(groundId, anchorId, 'COLLUSION_RISK', observationText, period, 'both');
         this.logger.warn(`COLLUSION_RISK candidate flagged for review on ground ${groundId} (pair ${anchorId} & ${partnerId})`);
       }
     }

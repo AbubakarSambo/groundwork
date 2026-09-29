@@ -71,13 +71,15 @@ export interface APatternRow {
   leadMark?: ALeadPatternMark | null;
   talkedAboutAt?: Date | string | null;
   talkedAboutAtPeriod?: number | null;
+  /** What backed it: the model's reading, the number-based rule, or both (decision 57, item 4). */
+  evidenceSource?: string | null;
 }
 
 /** The columns every road selects, so none of them can forget the ones rule 5 reads. */
 export const PATTERN_ROW_SELECT = {
   id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true,
   readyAt: true, shownToPersonAt: true, personAnswer: true, personAnsweredAt: true,
-  leadMark: true, talkedAboutAt: true, talkedAboutAtPeriod: true,
+  leadMark: true, talkedAboutAt: true, talkedAboutAtPeriod: true, evidenceSource: true,
 } as const;
 
 export interface APatternReader {
@@ -126,7 +128,17 @@ export interface AServedPattern {
    * their lead has talked it through, not a verdict on them.
    */
   talkedAbout: boolean;
+  /**
+   * "Two separate reads of the record found this." Served only when the model's own reading and the
+   * matching number-based rule both agree (decision 57, item 4), and only to whoever runs the
+   * check-in — always null for the person it is about, so it never reads as a score or a rating of
+   * them, and null for a colleague, who never reaches this row at all.
+   */
+  secondReadNote: string | null;
 }
+
+/** The one place this sentence is written, so it is never paraphrased from one surface to the next. */
+export const TWO_SEPARATE_READS_NOTE = 'Two separate reads of the record found this.';
 
 /** The names a sentence needs: the lead's, for the person, and the person's first name, for the lead. */
 export interface WhoIsWho {
@@ -307,6 +319,7 @@ export function servedPatterns(
         whoSeesIt: whoSeesIt(row, yours, opts, now),
         leadMark: yours ? null : (row.leadMark ?? null),
         talkedAbout: !!row.talkedAboutAt,
+        secondReadNote: !yours && row.evidenceSource === 'both' ? TWO_SEPARATE_READS_NOTE : null,
       };
     })
     .sort((a, b) => Number(b.yours) - Number(a.yours));

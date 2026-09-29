@@ -15,7 +15,7 @@ const EVERY_INTERNAL_NAME = [...POSITIVE_CODES, ...CARRYING_CODES, ...BAD_FAITH_
 
 const ROWS: APatternRow[] = [
   { id: 'pd1', participantId: 'p-ngozi', code: 'B11', observationText: 'The failure to secure approvals is attributed entirely to the credit committee not clearing submitted files.', seenInSessions: [1, 2, 4], periodsObserved: 1, readyAt: daysAgo(2), shownToPersonAt: daysAgo(1), personAnswer: 'The committee only meets on the last Friday of the month.', personAnsweredAt: daysAgo(1) },
-  { id: 'pd2', participantId: 'p-femi', code: 'B3', observationText: 'Femi described the Harbor Foods deal as his own although Ngozi prepared the pricing.', seenInSessions: [1, 2, 3], periodsObserved: 3, readyAt: daysAgo(5), shownToPersonAt: daysAgo(4) },
+  { id: 'pd2', participantId: 'p-femi', code: 'B3', observationText: 'Femi described the Harbor Foods deal as his own although Ngozi prepared the pricing.', seenInSessions: [1, 2, 3], periodsObserved: 3, readyAt: daysAgo(5), shownToPersonAt: daysAgo(4), evidenceSource: 'both' },
   { id: 'pd3', participantId: 'p-femi', code: 'R3', observationText: 'Femi credited Ngozi by name for the pricing sheet.', seenInSessions: [2], periodsObserved: 1 },
   { id: 'pd4', participantId: 'p-ngozi', code: 'E1', observationText: 'Named the new analyst as the reason the forecast was late.', seenInSessions: [2], periodsObserved: 1 },
   { id: 'pd5', participantId: 'p-ngozi', code: 'E4', observationText: 'Absorbs operational load relative to the other founder.', seenInSessions: [1, 2, 3], periodsObserved: 3 },
@@ -71,6 +71,8 @@ describe('who reads a pattern', () => {
       /* Decision 57, item 2: never shown to the person it is about, however the lead marked it. */
       leadMark: null,
       talkedAbout: false,
+      /* Decision 57, item 4: never shown to the person it is about, only whoever runs the check-in. */
+      secondReadNote: null,
     });
     const served = JSON.stringify(servedPatterns(ROWS, LEAD, on));
     for (const name of EVERY_INTERNAL_NAME) expect(served).not.toContain(name);
@@ -192,5 +194,22 @@ describe('a session report shows only what had reached three periods by that ses
     /* The id and everything else about the row is unchanged - only what "as of" trims. */
     expect(asOf1.id).toBe('x');
     expect(asOf1.observationText).toBe(row.observationText);
+  });
+});
+
+describe('the second-read note (decision 57, item 4): only whoever runs the check-in, and only when both agree', () => {
+  it('is told to the lead when the model and the rule both backed the pattern', () => {
+    const lead = servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd2');
+    expect(lead?.secondReadNote).toBe('Two separate reads of the record found this.');
+  });
+
+  it('is never told to the person it is about, whatever backed it', () => {
+    const femi = servedPatterns(ROWS, FEMI, on).find((p) => p.id === 'pd2');
+    expect(femi?.secondReadNote).toBeNull();
+  });
+
+  it('says nothing when only the model backed it, or nobody said', () => {
+    const lead = servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd1');
+    expect(lead?.secondReadNote).toBeNull();
   });
 });
