@@ -17,8 +17,9 @@ import { howSolid } from '../reports/a-figure-nobody-can-check-says-so';
  * person, and nothing here says how anybody's answers were rated.
  *
  * The four marks follow docs/backend-map.md: a document means proven, memory means memory only, the
- * rest means their word. "Confirmed by the person who received it" needs a field that a later step
- * adds; a line said a minute ago cannot have been confirmed yet anyway.
+ * rest means their word. "Confirmed by the person who received it" is the colleague who was waiting
+ * on the work saying it arrived (confirmed-by-who-received-it.ts); a line said a minute ago has
+ * rarely been confirmed yet, so on this card it is rare.
  *
  * The screens add when the next check-in opens and "If you don't want to talk about something yet,
  * that's fine" themselves, so neither is here.
@@ -38,13 +39,16 @@ export interface ALineForTheCard {
   anchoredDocumentId?: string | null;
   anchoredOrigin?: string | null;
   disputedAt?: Date | string | null;
+  /** Set when the colleague who received the work said it arrived. See confirmed-by-who-received-it. */
+  confirmedAt?: Date | string | null;
   /** Whether the document that backs it is a photo, so the card can say so. */
   backedByAPhoto?: boolean;
 }
 
-export const HOW: Record<'photo' | 'document' | 'commitment' | 'memory' | 'said', string> = {
+export const HOW: Record<'photo' | 'document' | 'confirmed' | 'commitment' | 'memory' | 'said', string> = {
   photo: 'From the photo you added.',
   document: 'From the document you added.',
+  confirmed: 'The person who received it confirmed it.',
   commitment: 'You said you will do this. I will ask you how it went.',
   memory: 'You gave this from memory. Nothing written backs it yet.',
   said: 'You said this.',
@@ -63,6 +67,7 @@ function markFor(line: ALineForTheCard): { mark: EndCardMark; how: string } {
     recallBased: line.recallBased !== false,
   });
   if (backed) return { mark: 'proven', how: line.backedByAPhoto ? HOW.photo : HOW.document };
+  if (line.confirmedAt) return { mark: 'confirmed', how: HOW.confirmed };
   if (line.type === 'COMMITMENT') return { mark: 'said', how: HOW.commitment };
   /* Memory is for a line about what happened, with a figure and nothing attached. A target, a plan or
      a definition with a number in it is not remembered; it is said. */

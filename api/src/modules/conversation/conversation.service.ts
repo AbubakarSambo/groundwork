@@ -49,6 +49,7 @@ import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-i
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
+import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
 import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel } from './how-checkable-a-session-was';
 
@@ -8708,6 +8709,31 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * name is kept as a free-text label rather than dropped, so "waiting on the
    * client's legal team" survives.
    */
+  /**
+   * THE LINE A COLLEAGUE'S CLEARED WAIT CONFIRMS. See confirmed-by-who-received-it.ts. Reads the
+   * colleague's own record lines on this check-in, asks which one says they delivered what was waited
+   * for, and marks that one line, once.
+   */
+  private async confirmWhatArrived(onParticipantId: string, what: string, receivedByParticipantId: string) {
+    const lines = await this.prisma.recordEntry.findMany({
+      where: { participantId: onParticipantId, disputedAt: null, confirmedAt: null },
+      select: { id: true, text: true, confirmedAt: true, disputedAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 40,
+    });
+    if (!lines.length) return;
+    const answer = await this.anthropic.extract<{ line: number | null }>(
+      WHICH_LINE_WAS_DELIVERED_PROMPT,
+      [{ role: 'user', content: theDeliveredPrompt(what, lines) }],
+      WHICH_LINE_WAS_DELIVERED_SCHEMA,
+    );
+    const line = theLineToConfirm(lines, answer?.line, what);
+    if (!line) return;
+    await this.prisma.recordEntry.update({ where: { id: line.id }, data: { confirmedAt: new Date(), confirmedByParticipantId: receivedByParticipantId } });
+    /* Ids, not content: see the anchoring-decision log line. */
+    this.logger.log(`confirmed-by-who-received-it entry=${line.id} about=${onParticipantId} by=${receivedByParticipantId}`);
+  }
+
   async extractDependencies(checkInId: string, participantId: string, groundId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -8801,6 +8827,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
           },
         });
+        /* The colleague they were waiting on delivered it, in the waiter's own words: that colleague's
+           line saying so is confirmed by the person who received it (week 6). */
+        if (aWaitThatConfirms({ status, previousStatus: existing.status, fromParticipantId: participantId, onParticipantId: existing.onParticipantId })) {
+          await this.confirmWhatArrived(existing.onParticipantId as string, existing.what, participantId).catch((err: any) =>
+            this.logger.warn(`Could not read which line of ${existing.onParticipantId} was delivered: ${err?.message ?? err}`));
+        }
         continue;
       }
 

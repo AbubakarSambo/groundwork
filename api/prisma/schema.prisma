@@ -1711,6 +1711,12 @@ model RecordEntry {
   /// or straight marks). A line the record reader tidied, joined or bracketed stays false. A report
   /// may only quote a line that is true. See reports/a-quote-is-what-they-said.
   saidWordForWord      Boolean        @default(false) @map("said_word_for_word")
+  /// CONFIRMED BY THE PERSON WHO RECEIVED IT (week 6, the prototype's mark in B4 one-session.txt and
+  /// team-report.txt). Set when the colleague who was waiting on this work says, in their own check-in,
+  /// that it is no longer in their way, and this is the line that says it was delivered. Never set by
+  /// the person themselves, and never by a departure. See conversation/confirmed-by-who-received-it.ts.
+  confirmedAt              DateTime? @map("confirmed_at")
+  confirmedByParticipantId String?   @map("confirmed_by_participant_id")
 
   participant GroundParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
   checkIn     CheckIn?          @relation(fields: [checkInId], references: [id], onDelete: SetNull)
