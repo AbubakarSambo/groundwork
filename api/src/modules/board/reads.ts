@@ -476,6 +476,9 @@ export type ContributionRead = {
   isBlocked?: boolean;
   ownVoice?: null;
   guard?: string;
+  /** Nothing they have said so far could be checked by somebody else. The one form of the rating a
+      lead may read, as "Nothing checkable" beside the name (decisions 40 and 43). */
+  nothingCheckable?: boolean;
 } & Partial<Confidence>;
 
 /**
@@ -751,6 +754,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         fnConfident,
         isBlocked,
         ownVoice: null,
+        nothingCheckable: onlyReportsAbsence,
         ...conf,
         shown: onlyReportsAbsence ? true : conf.shown,
         guard:

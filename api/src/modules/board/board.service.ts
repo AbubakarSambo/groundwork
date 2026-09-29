@@ -1,4 +1,5 @@
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
+import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { targetsHiddenFrom, withoutHiddenTargets, withoutHiddenTargetsIn } from './a-hidden-target-stays-hidden';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
@@ -1205,7 +1206,10 @@ export class BoardService {
        * `remitDefined` stays, because it says only that a role was given, not what it says.
        */
       if (has('contribution')) {
-        out.contribution = buildContribution(readInput, nameOf)
+        /* Only the person reads their own rating; everybody else, the lead and an admin included,
+           reads "Nothing checkable" or nothing (decisions 38, 40, 43). Done before the wording, so
+           no rating is ever handed to the model to word either. */
+        out.contribution = contributionAsThisReaderMayRead(buildContribution(readInput, nameOf), me?.id ?? null)!
           .map((r) => ({ ...r, remit: theLeadsWordsAbout({ roleAsDescribed: r.remit }, isInitiator) }));
       }
       if (has('coverage')) out.coverage = buildCoverage(readInput, nameOf);
