@@ -31,6 +31,16 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Decision 57, part A: periods, coaching on, "setup never said", and later check-ins
+
+Built in `4ae4ace8`, `277844d4`, `4baa50d1`, `b2d6395f` and `eea057c8`.
+- **A period is at least a week.** One function, `periodOf`, decides it. For a weekly or slower check-in each session is a period; for a daily check-in each calendar week is one. Everything that counts periods uses it: storing a pattern, what each reader is shown, the session report's cut-off, and coaching's "seen in two periods". For a daily check-in the person reads "This came up in 3 of your weeks.", where it used to list session numbers.
+- **Coaching is on by default on every database.** A missing setting now reads as on. An admin can still pause it by setting it off.
+- **"Setup never said" is restored.** One check already let it through, but the board then applied the three-period rule again and threw it out, so it had never once reached a board. It now reaches the lead, as a reading about the setup.
+- **Later check-ins count periods too.** A pattern shapes a sharper question only once it has three real periods, gaps included. Before, good news steered a question after one session, and the "one question worth asking" after two.
+  - **This changes what the model is given.** It goes into the day's one full run, together with parts B and C.
+- **Left, and noted:** the rare check for two people covering for each other counts its periods its own way. It matters only on a daily check-in.
+
 ### Part 3: evaluation check-ins (decisions 4 and 17, as clarified)
 
 Built in `fc2550a8`, `26f5e5a0`, `396459f7` and `20e7ef99`. **In an evaluation check-in, the person being reviewed reads the facts, and the decision with its reasons, never a colleague's exact words.**
