@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Param, Query, Body } from '@nestj
 import { IsString, IsInt, IsOptional, IsArray, MaxLength, Min, ArrayMaxSize, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { BoardService } from './board.service';
+import { BoardService, type WorkItemInput } from './board.service';
 import { CurrentUser } from '../../common';
 import { CoverageVariant, DEFAULT_COVERAGE_VARIANT } from './coverage';
 
@@ -130,6 +130,24 @@ export class BoardController {
     @CurrentUser('id') userId: string,
   ) {
     return this.board.deleteObjective(id, objectiveId, userId);
+  }
+
+  @Post('work-items')
+  @ApiOperation({ summary: 'Lead only: add a record of the kind of work (a deal, a release, a deadline).' })
+  async addWorkItem(@Param('id') id: string, @CurrentUser('id') userId: string, @Body() dto: WorkItemInput) {
+    return this.board.addWorkItem(id, userId, dto ?? {});
+  }
+
+  @Patch('work-items/:itemId')
+  @ApiOperation({ summary: 'Lead only: change a record of the kind of work, or move its stage on.' })
+  async updateWorkItem(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string, @Body() dto: WorkItemInput) {
+    return this.board.updateWorkItem(id, itemId, userId, dto ?? {});
+  }
+
+  @Delete('work-items/:itemId')
+  @ApiOperation({ summary: 'Lead only: remove a record of the kind of work.' })
+  async deleteWorkItem(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('id') userId: string) {
+    return this.board.deleteWorkItem(id, itemId, userId);
   }
 
   @Post('poll')

@@ -25,6 +25,8 @@ export type APath = readonly string[];
 /** The fields of the board that are a person's own words: each record line under "Who owns what". */
 export const THEIR_OWN_WORDS_ON_THE_BOARD: readonly APath[] = [
   ['whoOwnsWhat', '*', 'items', '*', 'text'],
+  /* The line a record of the kind of work came from (request 76), word for word. */
+  ['workRecords', '*', 'rows', '*', 'said'],
 ];
 
 /**

@@ -3,7 +3,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AnthropicService } from '../conversation/anthropic.service';
-import { GroundworkEvents, type RoundCompletedEvent } from '../../common/events';
+import { GroundworkEvents, type RoundCompletedEvent, type CheckInCompletedEvent } from '../../common/events';
+import { oneOfTheKinds, theRecordsPrompt, THE_RECORDS_SCHEMA, onlyRecordsTheLinesSay, type AnOfferedRecord } from './the-kind-of-work';
 import {
   WHAT_THE_RECORD_SAYS_PROMPT,
   WHAT_THE_RECORD_SAYS_SCHEMA,
@@ -40,6 +41,58 @@ export class BoardListener {
     private readonly prisma: PrismaService,
     private readonly anthropic: AnthropicService,
   ) {}
+
+  /**
+   * THE RECORDS THE KIND OF WORK NEEDS, READ FROM WHAT SOMEBODY JUST SAID (request 76).
+   *
+   * Once per check-in, when it completes, over that check-in's own lines only: a sales rep's deals,
+   * an engineer's releases, a lawyer's deadlines. The model offers records; `onlyRecordsTheLinesSay`
+   * keeps a record only when its name is in the words of the line it points at, so nothing is
+   * invented. A record already on the board under the same name is moved on (its stage, date and
+   * details), never written twice. Best effort: if this fails the check-in is still complete.
+   */
+  @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
+  async onCheckInCompleted(e: CheckInCompletedEvent) {
+    try {
+      const ground = await this.prisma.ground.findUnique({ where: { id: e.groundId }, select: { kindOfWork: true, workStages: true } });
+      const kind = oneOfTheKinds(ground?.kindOfWork);
+      if (!kind) return;
+      const said = await this.prisma.recordEntry.findMany({
+        where: { checkInId: e.checkInId, disputedAt: null },
+        select: { id: true, text: true, participantId: true },
+      });
+      const lines = said.map((l: any) => ({ id: l.id, text: cleanText(l.text), participantId: l.participantId })).filter((l: any) => l.text);
+      if (!lines.length) return;
+      const answer = await this.anthropic.extract<{ records?: AnOfferedRecord[] }>(
+        theRecordsPrompt(kind),
+        [{ role: 'user', content: lines.map((l: any) => `[${l.id}] ${l.text}`).join('\n') }],
+        THE_RECORDS_SCHEMA,
+      );
+      const kept = onlyRecordsTheLinesSay(kind, answer?.records ?? [], lines, ground?.workStages);
+      if (!kept.length) return;
+      const already = await (this.prisma as any).workItem.findMany({ where: { groundId: e.groundId }, select: { id: true, kind: true, name: true, fields: true } });
+      for (const r of kept) {
+        const same = (already as any[]).find((a) => a.kind === r.kind && a.name.trim().toLowerCase() === r.name.trim().toLowerCase());
+        if (same) {
+          await (this.prisma as any).workItem.update({
+            where: { id: same.id },
+            data: {
+              ...(r.stage ? { stage: r.stage } : {}),
+              ...(r.dueAt ? { dueAt: r.dueAt } : {}),
+              fields: { ...((same.fields as any) ?? {}), ...r.fields },
+              sourceEntryId: r.sourceEntryId,
+            },
+          });
+        } else {
+          const made = await (this.prisma as any).workItem.create({ data: { groundId: e.groundId, ...r } });
+          (already as any[]).push({ id: made?.id, kind: r.kind, name: r.name, fields: r.fields });
+        }
+      }
+      this.logger.log(`Kept ${kept.length} record(s) of ${kind} from check-in ${e.checkInId}.`);
+    } catch (err: any) {
+      this.logger.warn(`Reading the records for check-in ${e.checkInId} failed: ${err?.message}`);
+    }
+  }
 
   @OnEvent(GroundworkEvents.ROUND_COMPLETED)
   async onRoundCompleted(e: RoundCompletedEvent) {
