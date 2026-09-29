@@ -16,6 +16,12 @@ import { TextArea } from './FormFields'
  * `POST /patterns/:id/answer` and then shows their own words back next to the pattern, so nobody
  * has to reload the page to see that it was saved.
  */
+/** Whose words these are, as a full sentence (no label joined to the words with a colon). */
+export function theWordsLine(yours: boolean | undefined, name?: string): string {
+  if (yours) return 'You said this about it.'
+  return `${name?.trim() || 'They'} said this about it.`
+}
+
 export function PatternPanel({
   pattern,
   invalidateKey,
@@ -53,15 +59,15 @@ export function PatternPanel({
 
       {pattern.askThem && (
         <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 8, paddingLeft: 11, borderLeft: '2px solid var(--gw-border)' }}>
-          <span style={{ color: 'var(--gw-muted)' }}>Ask them: </span>
-          {pattern.askThem}
+          <div style={{ color: 'var(--gw-muted)' }}>{`A question you could ask ${name ?? 'them'}, to hear their side.`}</div>
+          <div>{pattern.askThem}</div>
         </div>
       )}
 
       {pattern.theirWords && !open && (
         <div style={{ fontSize: 13, color: 'var(--gw-text)', marginTop: 8 }}>
-          <span style={{ color: 'var(--gw-muted)' }}>{pattern.yours ? 'In your own words: ' : 'In their own words: '}</span>
-          {pattern.theirWords}
+          <div style={{ color: 'var(--gw-muted)' }}>{theWordsLine(pattern.yours, name)}</div>
+          <div>“{pattern.theirWords}”</div>
         </div>
       )}
 

@@ -1859,7 +1859,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Sec size="board" title="What keeps coming up" src="Named after three check-ins in a row, never after one. Each describes the work." />
             <Card>
               {visiblePatterns.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No patterns have repeated often enough to show yet. A pattern needs three check-ins before it appears here.</div></Row>
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></Row>
               ) : (
                 <>
                   <Row first>
