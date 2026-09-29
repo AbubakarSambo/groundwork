@@ -489,8 +489,21 @@ export class ParticipantsService {
 
 
   /**
-   * Update a participant's roleAsDescribed. Only the participant themselves or the ground initiator
-   * (the lead) may call this.
+   * Update a participant's role. Only the participant themselves or the ground initiator (the lead)
+   * may call this.
+   *
+   * NEVER THE PERSON'S OWN WORDS INTO roleAsDescribed (decision 30; `aRoleInTheirOwnWords`;
+   * tightened 30 September 2026). That column is the LEAD's private description of somebody, read
+   * only by the lead and never by the person it is about or a colleague (`theLeadsWordsAbout`,
+   * `a75b13ac`, `7586775d`). The one exception is a lead's own INITIATOR row, which is already their
+   * own words about themselves (the remit they gave when creating the ground -
+   * `grounds.service.ts`'s `leadRemit`), and `aRoleInTheirOwnWords` already trusts exactly that row.
+   * Anywhere else, a caller editing their OWN row is not the lead describing them - it is the person
+   * giving their own statement of their role, and that goes where the person's own role is kept:
+   * their account's `jobTitle` (`User.jobTitle`), the same field Setup already reads to greet a
+   * returning lead by "what they do" and the field only ever written through the person's own
+   * profile (`PATCH /auth/profile`) - never by anybody else. A lead editing somebody ELSE's row is
+   * unchanged: that write is exactly what `roleAsDescribed` is for.
    *
    * DECISION 57, ITEM 5: giving a role, in either of their own words, is itself how a person or their
    * lead confirms or corrects the guessed function - so this also stamps
@@ -509,9 +522,26 @@ export class ParticipantsService {
     const isInitiator = participant.ground.participants.some((p) => p.userId === userId);
     if (!isOwner && !isInitiator) throw new NotFoundException('Participant not found');
 
+    const now = new Date();
+
+    /* The person, giving their own statement of their own role - never the lead's private
+       description, whether or not they also happen to lead some other check-in. */
+    if (isOwner && participant.partyType !== 'INITIATOR') {
+      await Promise.all([
+        this.prisma.user.update({ where: { id: userId }, data: { jobTitle: roleAsDescribed } }),
+        this.prisma.groundParticipant.update({
+          where: { id: participantId },
+          data: { detectedFunctionConfirmedAt: now, detectedFunctionConfirmedBy: userId },
+        }),
+      ]);
+      return { id: participantId, ownRoleAsGiven: roleAsDescribed };
+    }
+
+    /* The lead: describing somebody else (roleAsDescribed, private to the lead), or their own
+       INITIATOR row, which `aRoleInTheirOwnWords` already reads as their own words about themselves. */
     const updated = await this.prisma.groundParticipant.update({
       where: { id: participantId },
-      data: { roleAsDescribed, detectedFunctionConfirmedAt: new Date(), detectedFunctionConfirmedBy: userId },
+      data: { roleAsDescribed, detectedFunctionConfirmedAt: now, detectedFunctionConfirmedBy: userId },
     });
     return { id: updated.id, roleAsDescribed: updated.roleAsDescribed };
   }
