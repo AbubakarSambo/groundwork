@@ -882,6 +882,18 @@ export class ConversationService {
     if (existingAiTurn) {
       return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
     }
+    /*
+     * THE BRIEF IS READ WHILE EVERYTHING ELSE IS GATHERED, NOT AFTER IT (request 44). The opener's
+     * prompt needs the subjects the brief asks about and the frame of a complete answer. On the first
+     * open of a check-in neither is kept yet, and each is a model call; they were asked for one after
+     * the other, at the end of a long run of reads, before the opener could be asked for at all. Both
+     * start here, side by side, and the prompt below picks up the same reads. Once kept on the
+     * ground, each is one quick read and this costs nothing.
+     */
+    if (!alreadyWritten && checkIn.groundId) {
+      this.theSubjectsToCover(checkIn.groundId).catch(() => undefined);
+      this.theFrameFor(checkIn.groundId).catch(() => undefined);
+    }
     await this.provisionalFunctionFromTheStatedRole(checkIn.participant as any).catch((err) =>
       this.logger.warn(`Provisional function read failed for participant ${checkIn.participantId}: ${err.message}`),
     );
@@ -6790,7 +6802,36 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     this.logger.log(`Fitted ${checkInId}: ${values.filter((v) => !v.couldNotSay).length} of ${frame.length} fields, ${values.filter((v) => v.couldNotSay).length} ruled out. (${notes.answers ?? 0} answers read.)`);
   }
 
+  /**
+   * THE TWO READS OF THE BRIEF, ONE AT A TIME PER GROUND AND NEVER TWICE AT ONCE (request 44).
+   *
+   * Both are model calls, both are kept on the ground after the first, and both used to run one
+   * after the other inside the opener's prompt, so the first person to open a check-in waited for
+   * two reads of the brief before the opener itself was even asked for. `open` now starts both at
+   * the door, side by side, while the rest of the prompt is gathered; a second caller for the same
+   * ground while a read is running is given the same read, not a new one. Nothing about what is
+   * read changes, only when.
+   */
+  private briefReadsInFlight = new Map<string, Promise<unknown>>();
+
+  private readTheBriefOnce<T>(key: string, read: () => Promise<T>): Promise<T> {
+    /* Optional for the same reason as notesInFlight: some guards build the service off its prototype. */
+    if (!this.briefReadsInFlight) return read();
+    const running = this.briefReadsInFlight.get(key) as Promise<T> | undefined;
+    if (running) return running;
+    const started = read();
+    this.briefReadsInFlight.set(key, started);
+    started.catch(() => undefined).finally(() => {
+      if (this.briefReadsInFlight.get(key) === started) this.briefReadsInFlight.delete(key);
+    });
+    return started;
+  }
+
   async theFrameFor(groundId: string): Promise<AField[]> {
+    return this.readTheBriefOnce(`frame:${groundId}`, () => this.theFrameForNow(groundId));
+  }
+
+  private async theFrameForNow(groundId: string): Promise<AField[]> {
     const ground = await this.prisma.ground
       .findUnique({ where: { id: groundId }, select: { whatACompleteAnswerHolds: true, brief: true } })
       .catch(() => null);
@@ -6869,6 +6910,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   async theSubjectsToCover(groundId: string): Promise<ASubject[]> {
+    return this.readTheBriefOnce(`subjects:${groundId}`, () => this.theSubjectsToCoverNow(groundId));
+  }
+
+  private async theSubjectsToCoverNow(groundId: string): Promise<ASubject[]> {
     const ground = await this.prisma.ground
       .findUnique({ where: { id: groundId }, select: { subjectsToCover: true, brief: true } })
       .catch(() => null);
