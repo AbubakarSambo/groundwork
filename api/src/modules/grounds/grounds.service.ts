@@ -7,6 +7,8 @@ import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-g
 import { theColleaguePickedById, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
+import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
+import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
@@ -1680,11 +1682,22 @@ export class GroundsService {
      * at all while patterns are not served, and then not even the reader lookup is made.
      */
     const signals = PATTERNS_ARE_SERVED
-      ? servedPatterns(
-          ground.patternDetections as any,
-          await this.patternReaderOf(ground as any, requestingUserId),
-          whoIsWhoIn(ground.participants as any, ground.initiatorId),
-        ).map((p) => ({ ...p, groundId: id }))
+      ? await (async () => {
+          const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId);
+          const served = servedPatterns(
+            ground.patternDetections as any,
+            await this.patternReaderOf(ground as any, requestingUserId),
+            namesForPatterns,
+          );
+          /* Opening a page never asks the model (decision 7): kept wording only, from the same
+             cache the warm-up (ReportsService.wordTheReadsFor, BoardService.get) fills. */
+          const worded = await wordPatternEvidence(
+            served,
+            namesForPatterns.firstNameOf ?? (() => null),
+            rememberedCompose(this.prisma, async () => null, false),
+          ).catch(() => served);
+          return worded.map((p) => ({ ...p, groundId: id }));
+        })()
       : [];
     /* The person reading their own for the first time starts the clock on when the lead may read it. */
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(ground.patternDetections as any, signals));
@@ -6910,11 +6923,18 @@ export class GroundsService {
      * sessions shows something worth noticing", served every SURFACED row including good news seen
      * once, and gave no way to answer. None at all while patterns are not served.
      */
-    const patterns = servedPatterns(
+    const namesForOwnPatterns = whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId);
+    const servedOwn = servedPatterns(
       participant.patternDetections as any,
       { participantId: participant.id, runsIt: false },
-      whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId),
+      namesForOwnPatterns,
     );
+    /* Opening a page never asks the model (decision 7): kept wording only. */
+    const patterns = await wordPatternEvidence(
+      servedOwn,
+      namesForOwnPatterns.firstNameOf ?? (() => null),
+      rememberedCompose(this.prisma, async () => null, false),
+    ).catch(() => servedOwn);
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(participant.patternDetections as any, patterns));
 
     return {

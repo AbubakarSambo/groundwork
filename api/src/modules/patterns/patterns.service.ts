@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
-import { whatWasSeenLastPeriod, lastPeriodBlockFor, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
+import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherCode, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
@@ -152,6 +152,14 @@ export class PatternsService {
 
       for (const d of result?.detections ?? []) {
         if (!d.observation?.trim()) continue;
+
+        /* The steer recognised something and wrote it up under the wrong code. See
+           the-detector-has-no-memory-of-last-period.evidenceBorrowedFromAnotherCode. */
+        const borrowedFrom = evidenceBorrowedFromAnotherCode(d.observation, d.code, lastPeriod);
+        if (borrowedFrom) {
+          this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; its evidence is ${borrowedFrom}'s own words from a recent period, not a fresh reading of this one.`);
+          continue;
+        }
 
         /*
          * THE GOOD ONES TAKE THE SHORT ROAD, WHICH IS THE PRODUCT'S OWN RULE.

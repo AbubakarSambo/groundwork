@@ -63,6 +63,7 @@ import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-boa
 import { whatThisDocumentIs } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
+import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { OneAtATime } from '../reports/one-warm-up-at-a-time';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import { oneBlockerPerThingWaitedOn } from './a-blocker-with-nothing-in-it-is-the-same-blocker';
@@ -1428,7 +1429,16 @@ export class BoardService {
         take: 60,
       });
       const patternReader = { participantId: me?.id ?? null, runsIt: runsThisGround };
-      out.patterns = servedPatterns(detections as any, patternReader, whoIsWhoIn(ground.participants as any, ground.initiatorId));
+      const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId);
+      const served = servedPatterns(detections as any, patternReader, namesForPatterns);
+      out.patterns = await wordPatternEvidence(
+        served,
+        namesForPatterns.firstNameOf ?? (() => null),
+        rememberedCompose(this.prisma, opts.mayWordNewLines
+          ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
+          /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
+          : async () => null, !!opts.mayWordNewLines),
+      ).catch(() => served);
       /* The person reading their own for the first time starts the clock on when the lead may read it. */
       await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(detections as any, out.patterns as any));
     }

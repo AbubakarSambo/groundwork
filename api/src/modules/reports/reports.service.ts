@@ -30,8 +30,9 @@ import { isThisACascade } from '../board/is-this-a-cascade';
 import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
-import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
+import { wordedByTheModel, type Drafted, type Compose } from './the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from './a-line-worded-once-is-kept';
+import { wordPatternEvidence } from './pattern-evidence-in-plain-words';
 import { OneAtATime } from './one-warm-up-at-a-time';
 import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
@@ -3273,11 +3274,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const patternRowsForPage = PATTERNS_ARE_SERVED
       ? await this.prisma.patternDetection.findMany({ where: { groundId }, orderBy: [{ lastSeenAt: 'desc' }], select: PATTERN_ROW_SELECT })
       : [];
-    const patternsForPage = servedPatterns(
-      patternRowsForPage as any,
-      { participantId: me?.id ?? null, runsIt: viewerIsLead },
-      whoIsWhoIn(ground.participants as any, ground.initiatorId),
-    );
+    const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId);
+    const patternsForPage = await wordPatternEvidence(
+      servedPatterns(
+        patternRowsForPage as any,
+        { participantId: me?.id ?? null, runsIt: viewerIsLead },
+        namesForPatterns,
+      ),
+      namesForPatterns.firstNameOf ?? (() => null),
+      this.patternEvidenceCompose(),
+    ).catch(() => servedPatterns(patternRowsForPage as any, { participantId: me?.id ?? null, runsIt: viewerIsLead }, namesForPatterns));
     /* The person reading their own for the first time starts the clock on when the lead may read it. */
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(patternRowsForPage as any, patternsForPage));
     /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */
@@ -5130,6 +5136,15 @@ happened, and what is in the way.`;
       mayWord ? (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`) : undefined,
     ).catch(() => drafts);
     return Object.fromEntries(out.map((d) => [d.key, d.text]));
+  }
+
+  /** The same warm-up-only, kept-once wording as `phrase`, for pattern-evidence.ts's one-line-at-a-time compose. */
+  private patternEvidenceCompose(): Compose {
+    const mayWord = WORDING_NEW_LINES.getStore() === true;
+    return rememberedCompose(this.prisma, mayWord
+      ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
+      /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
+      : async () => null, mayWord);
   }
 
   /**
