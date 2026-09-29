@@ -34,13 +34,19 @@ export function aRoleInTheirOwnWords(p: { roleAsDescribed?: string | null; party
 }
 
 /**
- * THE READ-SIDE NET (decision 30, run 19 and goals-1, 30 September 2026).
+ * THE READ-SIDE NET (decision 30, run 19 and goals-1, 30 September 2026 - narrowed the same day
+ * once the seniorhire sentence turned out not to be a leak: "own the relationships with the five
+ * largest clients" is in `toldToParticipants`, an unowned `ground_objectives` row, `whatTheRoomIsAbout`'s
+ * aims and Amina's and Tobi's own record entries, so it is shareable under decision 4 however
+ * similar it reads to the lead's private `roleAsDescribed`).
  *
  * Structural fixes stop a private description being HANDED to something that writes for a wider
- * reader. This is the second guard, for whatever gets past that: if a sentence a non-lead reader is
- * about to see carries a long run of a lead's private description in its own words, the sentence is
- * dropped for that reader, never for the lead. It never touches what the person themselves said -
- * only sentences the product or a model wrote, which is everything this runs over.
+ * reader. This is the second guard, for whatever gets past that - but a private description and a
+ * legitimately shared sentence can share the same words, because both are about the same person and
+ * the same work. So this does not drop a sentence on overlap with the description alone: it drops a
+ * sentence only when that same run of words is NOT found anywhere the reader may already read -
+ * what they were told, the shared brief, the check-in's shared targets and aims, and what people
+ * said in their own check-ins (decision 4). Never for the lead.
  *
  * "Long run" is six words in a row, case- and punctuation-insensitive, because a short overlap
  * ("own the relationships") is ordinary language two independent sentences can share; six words
@@ -64,18 +70,26 @@ function theGiveawayRunsIn(description: string | null | undefined): string[] {
 
 /**
  * Takes out any sentence of `text` that carries six or more of a private description's own words in
- * a row. `descriptions` is every private description on the ground (every party's `roleAsDescribed`
- * and `remitAsGiven`) - the reader is not who is being described, so this cannot know which one a
- * given sentence might be echoing. Returns `text` unchanged for the lead who wrote them.
+ * a row, UNLESS that same run of words already appears in something this reader may read anyway.
+ *
+ * `descriptions` is every private description on the ground (every party's `roleAsDescribed` and
+ * `remitAsGiven`) - the reader is not who is being described, so this cannot know which one a given
+ * sentence might be echoing. `shareable` is everything this reader may already read regardless of
+ * the description: see `theShareableTextFor`, built once per read. Returns `text` unchanged for the
+ * lead who wrote the descriptions.
  */
 export function withoutTheLeadsDescriptionOfAnyone(
   text: string | null | undefined,
   descriptions: (string | null | undefined)[],
   readerLeadsThisCheckIn: boolean,
+  shareable: (string | null | undefined)[] = [],
 ): string | null {
   if (!text) return text ?? null;
   if (readerLeadsThisCheckIn) return text;
-  const runs = [...new Set(descriptions.flatMap(theGiveawayRunsIn))];
+  const privateRuns = new Set(descriptions.flatMap(theGiveawayRunsIn));
+  if (!privateRuns.size) return text;
+  const shareableRuns = new Set(shareable.flatMap(theGiveawayRunsIn));
+  const runs = [...privateRuns].filter((r) => !shareableRuns.has(r));
   if (!runs.length) return text;
   const sentences = text.match(/[^.!?]+[.!?]*/g) ?? [text];
   const kept = sentences.filter((s) => {
@@ -84,4 +98,41 @@ export function withoutTheLeadsDescriptionOfAnyone(
   });
   const result = kept.join(' ').replace(/\s+/g, ' ').trim();
   return result || null;
+}
+
+/**
+ * EVERYTHING A NON-LEAD READER MAY ALREADY READ, BUILT ONCE PER READ.
+ *
+ * What they were told about the check-in (`toldToParticipants`, falling back to the brief where it
+ * is null - the same fallback the product uses when serving it), the check-in's shared targets
+ * (`ground_objectives.name`) and aims (`whatTheRoomIsAbout.aims`, which is read when a round closes
+ * and served on the board to every reader - see board.service.ts), and what people said in their own
+ * check-ins (`RecordEntry.text`, decision 4). Never the lead's private descriptions themselves -
+ * this is what the net checks a private run AGAINST, so it must not include the thing being checked.
+ *
+ * Optional-chained throughout, like every other read that touches a client a test may double: a
+ * failed query gives an empty list here, which only means the net falls back to being stricter, not
+ * that it breaks.
+ */
+export async function theShareableTextFor(
+  prisma: {
+    recordEntry?: { findMany?: (args: any) => Promise<any[]> };
+    groundObjective?: { findMany?: (args: any) => Promise<any[]> };
+  },
+  ground: { id: string; brief?: string | null; toldToParticipants?: string | null; whatTheRoomIsAbout?: unknown },
+): Promise<string[]> {
+  const read = <T,>(f: () => Promise<T> | undefined, fallback: T): Promise<T> =>
+    Promise.resolve().then(() => f() ?? fallback).catch(() => fallback);
+  const [entries, objectives] = await Promise.all([
+    read(() => prisma.recordEntry?.findMany?.({ where: { participant: { groundId: ground.id } }, select: { text: true } }), [] as any[]),
+    read(() => prisma.groundObjective?.findMany?.({ where: { groundId: ground.id }, select: { name: true } }), [] as any[]),
+  ]);
+  const room = ground.whatTheRoomIsAbout as { aims?: { aim?: string }[] } | null | undefined;
+  const aims = Array.isArray(room?.aims) ? room!.aims.map((a) => a?.aim) : [];
+  return [
+    ground.toldToParticipants ?? ground.brief,
+    ...(Array.isArray(entries) ? entries : []).map((e: any) => e?.text),
+    ...(Array.isArray(objectives) ? objectives : []).map((o: any) => o?.name),
+    ...aims,
+  ].filter((s): s is string => typeof s === 'string' && !!s.trim());
 }

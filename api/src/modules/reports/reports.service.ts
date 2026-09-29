@@ -166,7 +166,7 @@ import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-co
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
-import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone } from '../grounds/the-leads-words-about-someone';
+import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -6417,21 +6417,24 @@ happened, and what is in the way.`;
         : {}),
     };
     /*
-     * THE READ-SIDE NET (decision 30). `sharedPicture`, `findings` and `theOpening` are the shared
-     * picture everybody in the check-in reads - by design (see the-judgement-is-the-leads) - so
-     * they are never stripped wholesale. But nothing here may carry a run of a lead's private
-     * description of anyone in their own words, however it got in: run 19 and goals-1 of the
-     * seniorhire scenario both served a participant a sentence built from it. The structural fixes
-     * are the ones in coachingNoteFor and the-leads-words-about-someone; this is the second guard,
-     * for a reader who did not write any of these descriptions - which is everybody but the lead.
+     * THE READ-SIDE NET (decision 30, narrowed 30 September 2026). `sharedPicture`, `findings` and
+     * `theOpening` are the shared picture everybody in the check-in reads - by design (see
+     * the-judgement-is-the-leads) - so they are never stripped wholesale. What may not reach a
+     * non-lead reader is a sentence built from a lead's private description of anyone that is not
+     * ALSO something this reader may already read some other way - what they were told, the shared
+     * targets and aims, and what people said in their own check-ins (decision 4). Checked live: the
+     * seniorhire "own the relationships with the five largest clients" sentence is shareable this
+     * way on both run 19 and goals-1, and stays for Tobi; a private phrase found nowhere shareable
+     * still comes out. See theShareableTextFor and withoutTheLeadsDescriptionOfAnyone.
      */
     if (!isInitiator) {
       const theDescriptions = (ground.participants as any[]).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]);
-      base.sharedPicture = withoutTheLeadsDescriptionOfAnyone(base.sharedPicture, theDescriptions, false);
-      base.theOpening = withoutTheLeadsDescriptionOfAnyone(base.theOpening, theDescriptions, false);
+      const shareable = await theShareableTextFor(this.prisma as any, ground as any).catch(() => [] as string[]);
+      base.sharedPicture = withoutTheLeadsDescriptionOfAnyone(base.sharedPicture, theDescriptions, false, shareable);
+      base.theOpening = withoutTheLeadsDescriptionOfAnyone(base.theOpening, theDescriptions, false, shareable);
       if (Array.isArray(base.findings)) {
         base.findings = base.findings.map((f: any) => (f && typeof f === 'object'
-          ? { ...f, text: withoutTheLeadsDescriptionOfAnyone(f.text, theDescriptions, false) ?? '' }
+          ? { ...f, text: withoutTheLeadsDescriptionOfAnyone(f.text, theDescriptions, false, shareable) ?? '' }
           : f));
       }
     }

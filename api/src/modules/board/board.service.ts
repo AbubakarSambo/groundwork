@@ -81,7 +81,7 @@ import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-q
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
-import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone } from '../grounds/the-leads-words-about-someone';
+import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
 import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
@@ -582,6 +582,14 @@ export class BoardService {
       ground.participants as any[],
     );
 
+    /*
+     * BUILT ONCE PER READ, for the read-side net below (decision 30, narrowed 30 September 2026):
+     * everything a non-lead reader may already read regardless of the lead's private descriptions,
+     * so a legitimately shared sentence - the brief, a shared target, an aim, what somebody said in
+     * their own check-in - is never taken out just because it happens to share words with one.
+     */
+    const shareableText = isInitiator ? [] : await theShareableTextFor(this.prisma as any, ground as any).catch(() => [] as string[]);
+
     const out: Record<string, any> = {
       groundId,
       renders: true,
@@ -624,12 +632,14 @@ export class BoardService {
           ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
           (ground.participants as any[] ?? []).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]),
           isInitiator,
+          shareableText,
         ),
         /* The opening the report wrote, preferred over slicing the picture. See how-a-check-in-is-going. */
         theOpening: withoutTheLeadsDescriptionOfAnyone(
           ((ground as any).report?.theOpening as string | null) ?? null,
           (ground.participants as any[] ?? []).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]),
           isInitiator,
+          shareableText,
         ),
       }),
       /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */
