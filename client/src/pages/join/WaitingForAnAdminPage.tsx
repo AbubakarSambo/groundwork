@@ -21,12 +21,14 @@ import { Page, Mark, PageTitle, Button, Note, Steps, Step, Stack } from '@/compo
  *
  * Hafsah's first review (U.20 sixth round): the title's line reads in ink, as the prototype has it
  * (`subtitleTone="ink"`); `Steps` sits 18px below it, not the page's ordinary 30; "We'll email…" is
- * the prototype's 16px ink body line, not the 13.5px muted `Note`; and the "Sign out" link is gone
- * - join-waiting.jpg has none, and it was never the only way to sign out. Once let in, the account
- * rail (`AppShell`, "Sign out is in the rail, so it is on every page") has it; while still waiting,
- * this route is chromeless (no rail - see `AppShell`'s `CHROMELESS` list), so for the few minutes
- * somebody is on this exact screen, /signout is reachable only by address - said here rather than
- * silently dropped.
+ * the prototype's 16px ink body line, not the 13.5px muted `Note`.
+ *
+ * "SIGN OUT" WAS DROPPED, THEN PUT BACK (Hafsah's re-review, U.20 eighth round). It was removed
+ * because join-waiting.jpg has none, but that left a waiting person with no way out at all: this
+ * route has no sidebar while somebody waits (`AppShell`'s `CHROMELESS` list), so nothing on the
+ * screen could take them to `/signout`, and it is only reachable by typing the address - a real gap
+ * on a shared computer. Hafsah's decision: keep a quiet "Not you? Sign out." link, a small,
+ * deliberate difference from the prototype, for safety, not a fidelity gap.
  */
 export function WaitingForAnAdminPage() {
   const qc = useQueryClient()
@@ -78,11 +80,10 @@ export function WaitingForAnAdminPage() {
           <Step done>{`${who ?? 'An admin'} was asked, ${whenItWasAsked(w.askedAt)}`}</Step>
           <Step>{`${who ?? 'An admin'} lets you in`}</Step>
         </Steps>
+        <p className="gwui-pt-sub gwui-pt-sub-ink">
+          {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first check-in will be waiting.`}
+        </p>
       </Stack>
-
-      <p className="gwui-pt-sub gwui-pt-sub-ink">
-        {`We’ll email you the moment ${who ?? 'they do'}${who ? ' does' : ''}, and your first check-in will be waiting.`}
-      </p>
 
       {problem && <Note tone="error">{problem}</Note>}
       {reminded && <Note>{`We reminded ${who}.`}</Note>}
@@ -97,6 +98,17 @@ export function WaitingForAnAdminPage() {
           </p>
         </Stack>
       )}
+
+      {/*
+        A WAY OUT (Hafsah's decision, re-review: not the prototype's - this route has no sidebar
+        while somebody waits (AppShell's CHROMELESS list), so without this a person on a shared
+        computer who is not who this waiting request is for has no way to leave the account
+        signed in. Recorded here as a deliberate, small difference from join-waiting.jpg, for
+        safety, not a fidelity gap.
+      */}
+      <p style={{ textAlign: 'center' }}>
+        <Button kind="quiet" to="/signout">Not you? Sign out.</Button>
+      </p>
     </Page>
   )
 }

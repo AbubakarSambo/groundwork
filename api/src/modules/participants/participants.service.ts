@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { AuthService } from '../auth/auth.service';
 import { CheckInStatus, TokenType, Cadence, PartyType, GroundScenario } from '@prisma/client';
+import { targetsFor } from '../board/whose-number-is-whose-business';
 
 /**
  * Participant magic-link entry. A participant is added to a ground by email and
@@ -64,9 +65,35 @@ export class ParticipantsService {
       include: {
         initiator: { select: { firstName: true, lastName: true } },
         organization: { select: { name: true } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true } },
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+
+    /*
+     * "YOUR NUMBER" (join-invite.txt: "Only you and Wairimu see your share of the target."), THROUGH
+     * THE RULE THAT OWNS WHO SEES A SHARE (whose-number-is-whose-business.ts, board.service.ts's own
+     * caller - the fix for ten people each seeing all ten targets). Nothing new is decided here about
+     * visibility: `targetsFor` is asked for exactly what this one participant, not yet the lead, may
+     * see, the same as the board asks it.
+     *
+     * THE VALUE NEVER LEAVES THIS FUNCTION (Hafsah's last check). This preview is read with the
+     * link's token, before any sign-in - the one person who must not be handed a number here is the
+     * one this token is for, over a channel that proves nothing about who is holding it yet. So this
+     * sends only WHO would see it, never the number itself: `'you-and-lead'`, `'everybody'` (the
+     * check-in's own `whoSeesTargets` setting), or `null` (no share of their own to speak of, or the
+     * settled case - they have already joined, and the page does not show this block to them again).
+     */
+    const alreadyAccepted = !!participant.userId;
+    const whoSeesTargets: 'their own' | 'everybody' = (ground as any).whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own';
+    const ownsAShare = !!targetsFor(
+      (ground as any).objectives ?? [],
+      participant.id,
+      whoSeesTargets,
+      { isLead: false },
+    ).shown.find((o: any) => o.ownerParticipantId === participant.id && o.target != null);
+    const yourNumberIsSeenBy: 'you-and-lead' | 'everybody' | null =
+      alreadyAccepted || !ownsAShare ? null : (whoSeesTargets === 'everybody' ? 'everybody' : 'you-and-lead');
 
     return {
       /* For "Wairimu invited you to the sales team's check-in" and "Baridi Appliances, until 30 September." */
@@ -92,12 +119,13 @@ export class ParticipantsService {
       /* U.6 review: no "Your part in this". What is stored there is the lead's sentence about this
          person (the-leads-words-about-someone.ts), and this page is read by that person. */
       email: participant.email,
-      alreadyAccepted: !!participant.userId,
+      alreadyAccepted,
       /* Somebody who answered through an open link has no sign-in yet, and has already done the thing
          the arrival screen describes. A link that brings them to their report should not read "wants
          to hear your version" - see InvitePage, which goes straight through on this. */
       hasAnswered: await this.prisma.checkIn.count({ where: { participantId: participant.id, status: CheckInStatus.COMPLETED } }).then((n) => n > 0).catch(() => false),
       nameGiven: (participant as any).nameGiven ?? null,
+      yourNumberIsSeenBy,
     };
   }
 

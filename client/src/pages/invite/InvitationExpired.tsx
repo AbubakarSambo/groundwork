@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { participantsApi } from '@/api/participants'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
-import { Page, Mark, PageTitle, Button, Note, FieldLabel, TextField } from '@/components/gw/ui'
+import { Page, Mark, PageTitle, Button, Note, FieldLabel, TextField, Stack } from '@/components/gw/ui'
 
 /**
  * "THIS LINK HAS EXPIRED", FOR AN INVITATION (A3, #/join/expired). The words are join-expired.txt's,
@@ -47,23 +47,25 @@ export function InvitationExpired({ token, leadFirstName }: { token: string; lea
     <Page narrow>
       <Mark />
       <PageTitle title="This link has expired" subtitle="Invitation links last 14 days. You don’t need a new invitation, just a fresh link." subtitleTone="ink" />
-      {says ? (
-        <Note>{says}</Note>
-      ) : (
-        <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
-          <FieldLabel htmlFor="fresh-link-email">
-            Your email
-            <TextField id="fresh-link-email" type="email" value={email} onChange={e => { setEmail(e.target.value); setProblem('') }} autoComplete="email" autoFocus />
-          </FieldLabel>
-          {problem && <Note tone="error">{problem}</Note>}
-          <div className="gwui-form-actions">
-            <Button type="submit" size="big" wide disabled={send.isPending}>
-              {send.isPending ? 'Sending…' : 'Send me a fresh link'}
-            </Button>
-          </div>
-        </form>
-      )}
-      <p className="gwui-panel-text-muted">{foot}</p>
+      <Stack gap={18}>
+        {says ? (
+          <Note>{says}</Note>
+        ) : (
+          <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
+            <FieldLabel htmlFor="fresh-link-email">
+              Your email
+              <TextField id="fresh-link-email" type="email" value={email} onChange={e => { setEmail(e.target.value); setProblem('') }} autoComplete="email" autoFocus />
+            </FieldLabel>
+            {problem && <Note tone="error">{problem}</Note>}
+            <div className="gwui-form-actions">
+              <Button type="submit" size="big" wide disabled={send.isPending}>
+                {send.isPending ? 'Sending…' : 'Send me a fresh link'}
+              </Button>
+            </div>
+          </form>
+        )}
+        <p className="gwui-panel-text-muted">{foot}</p>
+      </Stack>
     </Page>
   )
 }

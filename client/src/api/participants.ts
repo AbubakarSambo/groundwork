@@ -18,6 +18,12 @@ export interface InvitePreview {
   /** When their first check-in opens, only when that is later than now (U.6 review). */
   opensOn?: string | null
   schedule?: string
+  /** "Your number" (U.20 ninth round): WHO would see this person's own share of a target, through
+      the engine's own visibility rule (targetsFor, board/whose-number-is-whose-business.ts) - never
+      the number itself. This is read with the link's token, before any sign-in, so the value can
+      never be handed to whoever is holding the link. Null when they own no numeric target, or once
+      they have already joined (the page no longer shows this block to them). */
+  yourNumberIsSeenBy?: 'you-and-lead' | 'everybody' | null
   /** An expired invitation carries only this and the lead's first name. */
   expired?: false
 }

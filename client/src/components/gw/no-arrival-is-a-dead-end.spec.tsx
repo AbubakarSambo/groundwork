@@ -46,7 +46,9 @@ describe('the shared failed-link state', () => {
      * names who can actually help.
      */
     renderProblem('invite')
-    expect(screen.getByText(/Ask whoever invited you to send a new one/)).toBeTruthy()
+    /* U.20 eighth round (Hafsah's re-review): "Ask whoever invited you…" is now two full
+       sentences, "Ask the person who invited you to send a new one. They can do that…" */
+    expect(screen.getByText(/Ask the person who invited you to send a new one/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Sign in instead/ })).toBeTruthy()
   })
 

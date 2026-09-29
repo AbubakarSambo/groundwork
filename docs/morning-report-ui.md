@@ -107,6 +107,12 @@ and that is when the first entry goes in.
 setup", the invitation and the check-in header used by every check-in page are all still built
 from the old parts, waiting for their own sessions as the audit's order sets out.
 
+## The invitation, rebuilt from the prototype's parts (29 September)
+
+The invitation and every state it hands over to (the fresh invitation, already joined, held for a seat, "Almost in", out of time, an expired link, and a link that did not work) are rebuilt from the shared parts and passed their review. Each was pictured at 1440 pixels against the prototype. The privacy rules held throughout: the invitation carries none of the lead's words, the two held sentences stay held, and "Your number" now sends only who can see the person's share, never the number. Two small differences from the prototype are on purpose: "Not you? Sign out." on "Almost in", so nobody is stuck on a shared computer, and the name fields, which the flow needs.
+
+**The full run at the end, 29 September:** 10,475 of 10,477 API tests and 3,430 of 3,433 screen tests passed, and both type checks are clean. None of the five failures comes from the invitation. One waits on the engine's heading label (request 62). One is two of the engine's own new specs reading source without stripping comments (request 72). Two are the sidebar's "Jump to" focus and its failed-list message, which the engine workspace also saw failing without any code change on 27 September; they look order- or time-dependent and are still to be pinned down. One is a leftover file, `GroundTabRow.tsx`, which the check-in rebuild removes after moving its test to the new tabs.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
@@ -252,6 +258,7 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **29 September: to go faster.** While a helper works, I prepare the next piece myself (read the prototype's source, take its 1440-pixel pictures, write down what the rebuilt screen needs), only reading and taking pictures, never editing a file the helper might edit. The local servers stay running for the whole of a module and stop at its end. Every picture a check needs is taken in one script run, every state, as every reader. While working, only the tests for changed files run; the full suites run once at the end of each module. The builder and tester run on Sonnet 5, the reviewer on Opus 5.5. One helper at a time, and a helper never starts helpers of its own.
 - **28 September: yes to rebuilding from the prototype's own parts.** The shared parts are built first, from the prototype's exact values, then each screen is rebuilt from those parts, never by restyling an old page. A test stops rebuilt pages from using the old parts. Every privacy rule the design audit lists is kept, and board and report text that comes from the engine is never changed. The order after the shared parts: the invitation, then the check-in page and chat, then the board and reports, then the people and one-person screens, then the check-in's People and setup, then everything else. Each screen gets my own 1440-pixel picture check against the prototype, for every situation the switchboard covers where it applies, before the reviewer sees it.
 - **28 September: the setup's "I have read this, sign it off" step is removed.** The prototype's own confirmation ("Yes, set it") is enough.
 - **28 September, a rule for every helper:** if the safety check refuses anything, stop and write it in the report. Never split, rephrase or retry a refused command in another way. Every helper I start is told this.
@@ -502,6 +509,10 @@ this kind of read about somebody else (if one ever should). That is a change to 
 *serves*, which is shared ground with the engine workspace - not something to make unilaterally.
 Flagging it here rather than deciding it.
 
+**Two breaks of the one-helper rule, 28 September.** During the invitation's rebuild the builder started a research helper of its own twice (once for the organisation switcher earlier, once for "Your number"). It reported both itself, did not act on anything unchecked, and read the files directly to confirm what the helper said.
+
+**Your rules, 29 September.** A helper never starts helpers of its own; every helper is told this. And when the safety check's own message says how a command is allowed (for example, a push run on its own), doing it that way is following the check, not getting around it. What is never allowed is changing a refused command in some other way to get it through.
+
 ### 0h. Where the API listens, and three refused commands (28 September)
 
 **What happened.** To keep your rule that nothing is exposed beyond this Mac, commit `2b63de36` made the API listen on this machine only (127.0.0.1) unless `NODE_ENV` was exactly `production`. The reviewer saw the risk: a deployed server with `NODE_ENV` unset, or set to any other value, would have listened only on itself, and nobody could have reached it.
@@ -541,6 +552,19 @@ that check-in words may be shown to the people in the check-in, so this needs yo
 is actually true and which sentence is wrong (or how both are true at once, if a "team report" is
 not the same thing as seeing "what you say"). Flagging it, not fixing it. Neither sentence has been
 changed.
+
+### 0i. A fourth refused command, and one line for Needs Hafsah on "Your number"
+
+**A fourth refused command, 29 September.** During the last check on "Your number", the reviewer
+ran a read-only history check - `git log -S… && git merge-base --is-ancestor …`, to see whether a
+change was already on the other workspace's branch - and the safety check refused it, because it
+matched the word "merge" (`git merge-base`, not an actual merge). The reviewer stopped there and did
+not retry it another way; `git log -S` and `git blame` alone, without `merge-base`, are fine and were
+used instead.
+
+**Needs Hafsah, one line:** on a performance-plan or new-hire check-in, "your share of the target"
+is a personal objective, not a sales number - is "Only you and Wairimu see your share" true and the
+right wording there too, or does that scenario need its own sentence?
 
 ### 1. The API will not start when the email key is empty: fixed by the engine workspace
 
@@ -5628,6 +5652,69 @@ Tests: `an-error-says-which-one.spec.tsx`'s `gw-er` pin now expects `Note tone="
 "Your email" and the new sentence; `Mark.spec.tsx`'s `SubHeading` size test is 14.5px now.
 `npx tsc -b` is clean (client and api); 208 client tests across 23 files pass, plus the 2 new api
 tests (jest).
+
+#### The invitation, seventh to ninth rounds: a Stack bug, a way out, a working "Your number"
+
+**Seventh round.** Found the actual cause of a gap reading as zero on two screens at once: a
+`Stack`'s own gap rule and a child's single-class margin reset (e.g. `.gwui-steps { margin: 0 }`)
+have identical specificity, and the child's rule sits later in `gw-ui.css`, so it won - live on
+"Almost in" (the steps panel touching the line above it) and the invitation ("About two minutes…"
+touching the button). Fixed generally, not per screen, by doubling the class in every `Stack` rule
+(`.gwui-stack-18.gwui-stack-18 > * + *`), which always outranks a plain single-class reset. Also:
+`whenItWasAsked` read "yesterday at 22:21" (24-hour); now the prototype's "yesterday at 4:12pm",
+using the same trick `what-the-end-of-a-check-in-can-say.ts`'s `aTime()` already does. And the dev
+proxy's default target said `localhost`, which can resolve to `::1` where nothing listens now that
+the API binds `127.0.0.1` in development - changed to `127.0.0.1` directly.
+
+**Eighth round.** The same specificity bug reached `Page`'s own 30px stack too (the expired-link
+page's foot line touched its button) - the same doubled-class fix. `Stack` gained a `gap={0}`
+(two things flush against each other - the invitation's title now sits directly against its tinted
+box, not 18px under it, matching the prototype). Already-joined's two buttons are 10px apart now,
+not 30. `LinkProblem`'s default invite sentence is two full sentences now: "Ask the person who
+invited you to send a new one. They can do that from the check-in."
+
+"Almost in" left a waiting person with no way out at all - this route has no sidebar while waiting
+(`AppShell`'s `CHROMELESS` list), so nothing on the screen could reach `/signout`. **Your decision:**
+a quiet "Not you? Sign out." link under the note - a small, deliberate difference from the
+prototype, for safety on a shared computer, recorded as such in the code.
+
+Out of time's cover hid the app frame but did not stop it taking keyboard focus (Tab still reached
+eight invisible sidebar links). Fixed properly: `OutOfTime` now renders through a `Portal` into its
+own container appended to `<body>`, outside `AppShell`'s tree entirely, and marks every other direct
+child of `<body>` `inert` while it is mounted, restored on unmount. New test proves a sibling link
+cannot be reached while the cover is up.
+
+**Ninth round, your last check on "Your number".** The number itself must never reach the invitation
+preview - it is read with the link's token, before any sign-in, so the one person a number must
+never be handed to is whoever is holding this particular link. `yourShareOfTarget: number` is now
+`yourNumberIsSeenBy: 'you-and-lead' | 'everybody' | null` - never the value, only who would see it,
+still through the engine's own rule (`targetsFor`). Sent as `null` once the person has already
+joined, since the page does not show the block again. Words: `'you-and-lead'` → "Only you and
+Wairimu see your share of the target."; `'everybody'` → "Everybody in this check-in sees every
+number, including yours."; `null` → no block. The privacy test now asserts the preview never
+carries a number in any shape (`JSON.stringify` scan included), and adds the joined and
+shared-with-everybody cases.
+
+Also from the ninth round: the floating feedback button was `inert` (did nothing when pressed) but
+still visible on top of Out of time's cover, since its `zIndex` (100) is above the cover's (40) -
+worse than gone, since it looked live. `<body>` now carries `.gwui-cover-open` for exactly as long
+as a full-page cover is mounted, and `.gw-feedback-btn` is hidden outright while that class is on,
+matching the prototype's bare page, which has no such button.
+
+**Found while running the full test suite for the first time this round (worth remembering):**
+running only the files I had touched had missed a stale test in `api/src` that reads a client file
+by path - `waiting-to-be-let-in-is-a-screen-not-a-retry.spec.ts` had pinned `WaitingForAnAdminPage.tsx`'s
+pre-rebuild `<AuthCard>` markup since the invitation's very first round. Fixed to the current
+`<PageTitle>` markup, same behaviour proven. Also found, out of scope for this task and left
+untouched: `nothing-is-left-behind.spec.ts` fails on `components/gw/GroundTabRow.tsx`, orphaned by
+some other change - not a file this task touches.
+
+Also checked, twice, in isolation and in two full-suite runs: `the-sidebar-waits-for-the-list.spec.ts`
+passed every time. I could not reproduce the failure named in the last check; no change made there.
+
+`npx tsc -b` clean, both projects. Client: 215 tests across 25 files. Api participants module: 158
+tests across 23 files. A full client suite run has one remaining failure, the out-of-scope
+`nothing-is-left-behind.spec.ts` above.
 
 ## Found on the way, for later tasks
 

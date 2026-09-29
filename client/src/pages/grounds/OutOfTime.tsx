@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -26,6 +27,20 @@ import { Page, Mark, PageTitle, Panel, SubHeading, Button, Tag, Note, Stack } fr
  * for one state inside one of them. Also from that review: the tag sits 12px above the title, the
  * facts panel 18px below the line under it, the button 18px below the panel, and 10px between the
  * two buttons and the note under them - the prototype's own gaps, not the page's flat 30.
+ *
+ * Hafsah's re-review (U.20 eighth round): the cover hid the app frame but did not stop it taking
+ * keyboard focus - Tab still walked through the sidebar's links, which were invisible under the
+ * cover. Fixed properly rather than patched: this now renders through a `Portal`, a body-level
+ * container of its own, outside `AppShell`'s tree entirely, and while it is mounted every OTHER
+ * direct child of `<body>` (the app's own root, and anything else already there) is marked
+ * `inert`, restored the moment this unmounts. Nothing behind the cover can be reached at all,
+ * by mouse, keyboard or a screen reader, while it is up.
+ *
+ * Hafsah's last check (U.20 ninth round): `inert` stopped the floating feedback button doing
+ * anything, but it still SHOWED, on top of the cover - it is `zIndex: 100` (AppShell.tsx), the
+ * cover is 40. The prototype's bare page has no such button, so it is hidden outright, not merely
+ * made unusable: `<body>` carries `.gwui-cover-open` for exactly as long as this is mounted, and
+ * gw-ui.css hides `.gw-feedback-btn` while that class is on.
  */
 export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpenMyWork: () => void }) {
   const qc = useQueryClient()
@@ -36,6 +51,7 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
     onSuccess: () => { setProblem(''); void qc.invalidateQueries({ queryKey: ['more-time', groundId] }) },
     onError: (e: any) => setProblem(e?.response?.data?.message ?? 'Your request did not send. Try again.'),
   })
+  const container = useOwnBodyContainer()
 
   const lead = data?.leadFirstName ?? null
   const until = data?.ranUntil
@@ -44,7 +60,7 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
   const sub = `${until ? `It ran until ${until}. ` : ''}Nothing new can be added until ${lead ?? 'the person who runs it'} gives it more time.`
   const asked = !!data?.askedAt || ask.isSuccess
 
-  return (
+  return createPortal(
     <div className="gwui-full-page-cover">
       <Page narrow>
         <Mark />
@@ -72,6 +88,32 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
           </Stack>
         </Stack>
       </Page>
-    </div>
+    </div>,
+    container,
   )
+}
+
+/**
+ * A CONTAINER OF OUR OWN, APPENDED TO `<body>`, AND EVERYTHING ELSE MADE `inert` WHILE IT EXISTS.
+ *
+ * Not `document.body` itself (a `createPortal` target) - a fresh element we own, so we can tell it
+ * apart from whatever else is already a child of `<body>` (the app's own root div, and anything
+ * else's portal) and leave that alone, marking only the OTHERS `inert`. Restored in the cleanup, so
+ * a person who reaches "Open my work" and leaves this screen gets their sidebar back exactly as it
+ * was.
+ */
+function useOwnBodyContainer(): HTMLDivElement {
+  const [el] = useState(() => document.createElement('div'))
+  useEffect(() => {
+    document.body.appendChild(el)
+    document.body.classList.add('gwui-cover-open')
+    const others = Array.from(document.body.children).filter((c) => c !== el)
+    others.forEach((c) => c.setAttribute('inert', ''))
+    return () => {
+      others.forEach((c) => c.removeAttribute('inert'))
+      document.body.classList.remove('gwui-cover-open')
+      document.body.removeChild(el)
+    }
+  }, [el])
+  return el
 }

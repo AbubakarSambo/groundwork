@@ -27,6 +27,9 @@ describe('Stack', () => {
     for (const gap of [10, 12, 18, 19]) {
       expect(CSS).toMatch(new RegExp(`\\.gwui-stack-${gap}[^{]*> \\* \\+ \\* \\{ margin-top: ${gap}px`))
     }
+    /* gap={0}: two things with no space at all, e.g. the invitation's heading flush against the
+       tinted line under it (Hafsah's re-review, U.20 eighth round). */
+    expect(CSS).toMatch(/\.gwui-stack-0[^{]*> \* \+ \* \{ margin-top: 0/)
   })
 
   it('the gap rule outranks a plain single-class reset written later in the file (the regression)', () => {
@@ -36,8 +39,8 @@ describe('Stack', () => {
      * (".gwui-stack-18.gwui-stack-18") is one class-selector higher than any single-class rule,
      * so it wins regardless of source order.
      */
-    for (const gap of [10, 12, 18, 19]) {
-      expect(CSS).toMatch(new RegExp(`\\.gwui-stack-${gap}\\.gwui-stack-${gap} > \\* \\+ \\* \\{ margin-top: ${gap}px`))
+    for (const gap of [0, 10, 12, 18, 19]) {
+      expect(CSS).toMatch(new RegExp(`\\.gwui-stack-${gap}\\.gwui-stack-${gap} > \\* \\+ \\* \\{ margin-top: ${gap}`))
     }
     /* And the specific collision that was found live: Steps' own margin reset. */
     expect(CSS).toMatch(/\.gwui-steps \{[^}]*margin: 0/)

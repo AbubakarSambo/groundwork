@@ -85,6 +85,22 @@ describe('the invitation a participant reads', () => {
     await screen.findByText('Who sees your answers')
     expect(screen.queryByText('Your number')).toBeNull()
   })
+
+  /* U.20 ninth round (Hafsah's last check): the preview is read with the link's token, before any
+     sign-in, so it must never carry the number itself - only WHO would see it, through the
+     engine's own visibility rule (participants.service.ts's preview). */
+  it('shows "Your number" the prototype\'s way when it is you and the lead', async () => {
+    open({ ...PREVIEW, yourNumberIsSeenBy: 'you-and-lead' })
+    await screen.findByText('Who sees your answers')
+    expect(screen.getByText('Your number')).toBeTruthy()
+    expect(screen.getByText('Only you and Wairimu see your share of the target.')).toBeTruthy()
+  })
+
+  it('says so when the check-in shows everybody every number', async () => {
+    open({ ...PREVIEW, yourNumberIsSeenBy: 'everybody' })
+    await screen.findByText('Who sees your answers')
+    expect(screen.getByText('Everybody in this check-in sees every number, including yours.')).toBeTruthy()
+  })
 })
 
 describe('the two lines built from the record', () => {
