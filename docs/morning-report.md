@@ -31,6 +31,15 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Decision 57, part B: the lead's marks on a pattern, and "we talked about it"
+
+Built in `beffb44f` and `6aa62f9b`, migration `20260930010000_what_the_lead_made_of_a_pattern`, applied to the local test database only.
+- **The lead marks a pattern "right", "wrong" or "not sure"** after talking it through (`POST /patterns/:id/mark`). The person's own answer is stored beside it, as evidence too. Only the lead can mark, and only once they may already read the pattern. The mark goes to the lead alone: the person the pattern is about never gets it, because it must not read as a verdict on them, and a colleague never gets the pattern at all.
+- **The lead is nudged once**, in their Today list: "Talk with Brian about “Others describe doing work they described as theirs”." If Brian has not answered, it says so plainly. The nudge goes away when the lead marks "we talked about it" (`POST /patterns/:id/talked-about`). Both the lead and the person then see that they talked it through.
+- **Whether things changed** is worked out from the record: how many later periods the same pattern was seen in after the talk. Nothing is decided from it.
+- The screens workspace has the exact routes and fields in `docs/answers-from-engine.md`.
+- **One sentence is being fixed in part C.** "Brian has seen it and said: “…”." joins with a colon and doubles the full stop.
+
 ### Decision 57, part A: periods, coaching on, "setup never said", and later check-ins
 
 Built in `4ae4ace8`, `277844d4`, `4baa50d1`, `b2d6395f` and `eea057c8`.
