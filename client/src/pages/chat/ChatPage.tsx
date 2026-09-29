@@ -15,6 +15,7 @@ import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { SlowStep, CLOSING_STEPS } from '@/components/gw/SlowStep'
 import { useAfterAWhile, GETTING_YOUR_FIRST_QUESTION_READY } from '@/lib/opening-is-slow'
 import { TheCheckInHeader } from '@/components/gw/checkin/TheCheckInHeader'
+import { Bubble } from '@/components/gw/ui/Bubble'
 import { SuggestedAnswers } from '@/components/gw/checkin/SuggestedAnswers'
 import { TheEndCard } from '@/components/gw/checkin/TheEndCard'
 import { TheDonePage, type WhatChanged } from '@/components/gw/checkin/TheDonePage'
@@ -1144,22 +1145,10 @@ export function ChatPage() {
                 onCorrected={(a) => setMsgs(v => v.map(msg => msg.id === m.id ? { ...msg, docAssessment: { ...msg.docAssessment!, assessment: a } } : msg))}
               />
             ) : (
-            <div
+            <Bubble
               key={m.id}
-              style={{
-                maxWidth: '80%',
-                alignSelf: m.role === 'PERSON' ? 'flex-end' : 'flex-start',
-                /* The prototype's cream for Groundwork's words (check-in-start.jpg). */
-                background: m.role === 'PERSON' ? 'var(--gw-navy)' : 'var(--gw-paper-2)',
-                color: m.role === 'PERSON' ? 'white' : 'var(--gw-text)',
-                border: 'none',
-                borderRadius: m.role === 'PERSON' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                padding: '10px 14px',
-                fontSize: 14,
-                lineHeight: 1.6,
-                whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-                opacity: isWaiting(m) ? 0.5 : 1,
-              }}
+              mine={m.role === 'PERSON'}
+              opacity={isWaiting(m) ? 0.5 : 1}
             >
               {isWaiting(m) ? (
                 /*
@@ -1191,7 +1180,7 @@ export function ChatPage() {
               {streamingId === m.id && (
                 <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />
               )}
-            </div>
+            </Bubble>
             )
           ))}
           {/*

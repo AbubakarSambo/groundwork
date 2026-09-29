@@ -1,10 +1,18 @@
+import { QuickReplies } from '../ui/QuickReplies'
+
 /**
  * SUGGESTED ANSWERS UNDER THE QUESTION (B3, check-in-start.txt): "Sent it. They liked it but want to
- * wait until after December." and "Not yet", as buttons under Groundwork's question.
+ * wait until after December." and "Not yet", as outlined pills under Groundwork's question.
  *
  * The engine writes them (docs/conversation-standard.md, point 6: "two to four short ones the person
  * might give. They are a help, never a limit."), and they arrive with its reply. Until the engine
  * sends them this draws nothing, and the box to type in is always there beside them.
+ *
+ * ROUND 4, ITEM B: draws through `components/gw/ui/QuickReplies`, the prototype's own pill
+ * (`.chip`: `flex-wrap:wrap`, not a stacked column - a real fix, not only a move, since a fourth or
+ * fifth suggestion used to run off a phone's width in a single column). This file keeps the
+ * filtering (`theSuggestedAnswers`: real sentences only, no repeats, at most four) - the engine's
+ * own rule, not the pill's.
  */
 
 /** What the server sent, cleaned: real sentences only, no repeats, at most four. */
@@ -30,24 +38,5 @@ export function SuggestedAnswers({ answers, onPick, disabled }: {
 }) {
   const shown = theSuggestedAnswers(answers)
   if (shown.length === 0) return null
-  return (
-    <div role="group" aria-label="Suggested answers" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 }}>
-      {shown.map(a => (
-        <button
-          key={a}
-          type="button"
-          onClick={() => onPick(a)}
-          disabled={disabled}
-          style={{
-            maxWidth: '85%', textAlign: 'left', padding: '8px 14px', borderRadius: 18,
-            border: '1.5px solid var(--gw-border)', background: 'white', color: 'var(--gw-text)',
-            fontSize: 14, lineHeight: 1.4, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-            opacity: disabled ? 0.55 : 1,
-          }}
-        >
-          {a}
-        </button>
-      ))}
-    </div>
-  )
+  return <QuickReplies items={shown} onPick={onPick} disabled={disabled} label="Suggested answers" />
 }
