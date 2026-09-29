@@ -66,6 +66,19 @@ The rest are the same, and every problem count is 0. Four scenarios is a small s
 
 **A privacy leak the quick checks found, already there on run-19, being fixed now.** The lead's private description of Tobi reads "Engagement Director. Owns the relationships with the five largest clients." Tobi's own report and board say "Dr Amina Bello says you are here to own the relationships with the five largest clients." Nobody said that in any check-in, so it reaches his report through what the report writer is given. That breaks decision 30.
 
+**Correction: it was not a leak.** Looking further, the same words are shared legitimately:
+- in what Tobi was told when he was invited ("…owning relationships with the five largest clients");
+- in the check-in page's aims;
+- in a team target;
+- in what Amina said in her own check-in ("He's here to own the relationships with our five largest clients.");
+- and in what Tobi said himself.
+
+My check script counted any match with the lead's private description as a leak. It now leaves out words that are also in something the reader may already read. With that, run-19 and the first re-run have no private words reaching anyone.
+
+The builder's work on it keeps one real fix (`233041e1`). The coaching note about a person was given the lead's private description as that person's role. It was harmless only by accident, and it is now never given it. The builder had also added a read-side net that took out any sentence sharing six words with the description. That would have removed Tobi's legitimately shared sentences, so it is being narrowed to the same rule as the script.
+
+**Queued, from the same builder:** an admin reading the team report gets the judgement, and its "role" line is built from the lead's private description. That goes against the clarification of decision 5. The board already gets this right.
+
 
 ### Part 2A: sharing when the lead has left, the admin's line, and the decision field
 
