@@ -66,6 +66,19 @@ Checked live twice with the real model. Five commitments came back as done, not 
 
 **Run-17** is running in one line rather than three, at about 12 minutes per scenario, so it will take about five hours. One card has already been built in it: 6 lines, on a real close.
 
+**Week 0, first step: a colleague's hidden target is not given to the model that talks to you** (`55d13abb`). I mapped every place a target reaches the model. The worst was the check-in conversation itself. On a check-in where people see only their own targets, each person's model was still given everybody's numbers, so it could say a colleague's number to them. Now it gets exactly the targets their screen shows, and the lead gets all of them.
+
+Checked on a real sales check-in's prompt: the colleague's 5,200,000 and 4,000,000 are not in it, in any spelling, and the person's own 3,400,000 and 3,000,000 are. The stored engine rule already says the person "has been shown these on screen". That is now true, so no prompt text changed.
+
+**Needs Hafsah, week 0's next step, because it touches the must-keep list.** The team report and the picture's opening are written once and read by everybody. Their text is written from each person's own targets, for example "set 21, has said 14". Taking the numbers out, as week 0 says, would weaken "notices what does not add up: their number against the lead's", which is on the must-keep list (`docs/engine-value.md`). Three ways to go:
+1. Leave the numbers in, and keep relying on the net that takes them out of what other people are served. This is what happens today, and nothing is lost.
+2. Give the model each gap without the number, for example "has said less than the target set for them". The report still notices the difference, and the lead still sees the numbers on the board. It needs a run to show the number of differences found does not drop.
+3. Write the lead's copy separately, with the numbers. Nothing is lost, but it costs one more model call per report.
+
+My recommendation is 2, measured by a run.
+
+**Needs Hafsah: a total can give a number away.** A person is told "Yours is 21, of 270 across ten people". With only two people, the total minus your own number is your colleague's number. The same sum goes into the check-in in one place. The fix is to give the total only when three or more people have a number. That changes a privacy rule, even though it tightens it, so I have not made it.
+
 ## 28 SEPTEMBER, NIGHT: BACK ON THE WEEKLY PLAN
 
 **The hidden-target tests are already done.** They are the twelve cases in `d8fa3648`: a pronoun, the number two and three sentences after the name, the number before the name, a list, the target in words, and a row whose name and number are in different fields. All of them are now taken out.
