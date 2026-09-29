@@ -67,6 +67,9 @@ describe('every surface that hands out whose number it is', () => {
     'modules/board/board.listener.ts': 'writes owners onto targets read out of a sheet',
     'modules/documents/documents.service.ts': 'writes owners when a document of targets is read',
     'modules/documents/what-a-document-holds.ts': 'the shape a document is read into, before anybody reads it',
+    /* Week 13: the one place it names an owner is the goal it writes when the lead confirms a
+       proposal from their own plan. Every proposal route is the lead's alone (403 for everyone else). */
+    'modules/grounds/a-plan-is-many-proposals.service.ts': 'writes an owner onto a goal the lead confirmed from their own plan; only the lead reads proposals',
     /*
      * Arithmetic, not a field: the report selects the column to add per-person figures up for the
      * synthesis. What the report RENDERS goes through its own reader wall - own-reads-only and
