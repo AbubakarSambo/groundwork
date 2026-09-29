@@ -19,6 +19,14 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **The old process on port 3101 is stopped.** Hafsah approved it. It was the API built on 20 September, started from `api/dist/main` with no parent left, writing to `/tmp/api-dev.log`. It made no calls to the model. It was still running the scheduled jobs against the local test database: reminder nudges, "your check-in is waiting" emails (written to the log only, never sent), and webhook retries. I checked afterwards: the process is gone, and nothing listens on port 3101.
 
+**The whole API test suite passes: 1,142 suites and 10,628 tests.** The first full run had two failures, both from this week's work:
+- **A fault that could crash the API** (`296136f4`). When a check-in finished, the close read the person's documents and their record at the same time. If the second read failed at once, the first was left with nothing waiting for it, and its failure could stop the whole API. A coaching test crashed on exactly this. Both reads now report their failure to the close, which logs it. The end card is also started in a way that logs any failure. If it fails, there is simply no card, and the check-in still closes. One test that looked for the old way of starting the card now looks for the new one, because the old way was the fault.
+- **A test that read comments as if they were code** (`6bd95393`). The test for how a line is known now removes the comments first, like the other tests. Request 72 from the screens workspace is answered: the two tests it named already did this.
+
+None of the three failures noted on the base before this work are failing now.
+
+Next: run-18, in three parts.
+
 ---
 
 ## HANDOVER, 29 SEPTEMBER 2026: WHERE THIS WORK STOPPED
