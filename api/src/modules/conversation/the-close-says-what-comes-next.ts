@@ -15,6 +15,22 @@
 
 export const THE_CLOSE = 'That’s all for today. Below is what I wrote down from your answers. Is anything wrong?';
 
+/**
+ * AND ONLY WHERE THERE IS A CARD BELOW IT.
+ *
+ * WhatsApp and the developer API show no end card, so "Below is what I wrote down" was false there.
+ * Each door ends on "That’s all for today." and the next thing that really happens on it:
+ *  - WhatsApp: the check-in closes when the person replies "finish" (whatsapp-for-an-organisation),
+ *    and the report is then sent to the same chat.
+ *  - The developer API: the customer's system closes the check-in, and the report is written from it.
+ */
+export type Door = 'web' | 'whatsapp' | 'api';
+export const THE_CLOSE_ON: Record<Door, string> = {
+  web: THE_CLOSE,
+  whatsapp: 'That’s all for today. Reply "finish" to close this check-in, and your report will come here.',
+  api: 'That’s all for today. Thank you for your answers. When this check-in is closed, they go into the report.',
+};
+
 const NOT_BEFORE_THE_CARD = [
   /\b(?:your|the)\s+(?:session\s+)?report\s+is\s+(?:ready|done|finished|complete)(?:\s+now)?\b[^.!?\n]*[.!?]?/gi,
   /\b(?:speak|talk|chat)\s+(?:to you\s+)?(?:soon|again|next time)\b[.!]?/gi,
@@ -24,9 +40,10 @@ const NOT_BEFORE_THE_CARD = [
 ];
 
 /** The closing turn, ending on the prototype's sentences. Said once, however often it is run. */
-export function endingOnTheClose(text: string): string {
+export function endingOnTheClose(text: string, door: Door = 'web'): string {
+  const close = THE_CLOSE_ON[door] ?? THE_CLOSE;
   let out = String(text ?? '');
-  if (out.includes(THE_CLOSE)) out = out.split(THE_CLOSE).join(' ');
+  for (const c of Object.values(THE_CLOSE_ON)) if (out.includes(c)) out = out.split(c).join(' ');
   for (const rx of NOT_BEFORE_THE_CARD) out = out.replace(rx, ' ');
   out = out
     .replace(/[ \t]{2,}/g, ' ')
@@ -35,10 +52,11 @@ export function endingOnTheClose(text: string): string {
     .replace(/^[\s,;.]+|[\s,;]+$/g, '')
     .replace(/,\s*$/, '.')
     .trim();
-  return out ? `${out}\n\n${THE_CLOSE}` : THE_CLOSE;
+  return out ? `${out}\n\n${close}` : close;
 }
 
-/** Whether a stored turn is the one that closed: it ends on the prototype's sentences. */
+/** Whether a stored turn is the one that closed: it ends on the close of any door. */
 export function endsOnTheClose(text: string): boolean {
-  return String(text ?? '').trim().endsWith(THE_CLOSE);
+  const t = String(text ?? '').trim();
+  return Object.values(THE_CLOSE_ON).some((c) => t.endsWith(c));
 }

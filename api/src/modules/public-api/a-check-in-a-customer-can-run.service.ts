@@ -253,7 +253,8 @@ export class ACheckInACustomerCanRunService {
   }
 
   async say(organizationId: string, personId: string, checkInId: string, content: string) {
-    return this.conversation.sendMessage(checkInId, await this.actingAs(organizationId, personId), content);
+    /* The API shows no end card, so the close says what comes next there (the-close-says-what-comes-next). */
+    return this.conversation.sendMessage(checkInId, await this.actingAs(organizationId, personId), content, { door: 'api' });
   }
 
   async complete(organizationId: string, personId: string, checkInId: string) {

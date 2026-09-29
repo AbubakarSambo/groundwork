@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { endingOnTheClose, endsOnTheClose, THE_CLOSE } from './the-close-says-what-comes-next';
+import { endingOnTheClose, endsOnTheClose, THE_CLOSE, THE_CLOSE_ON } from './the-close-says-what-comes-next';
 
 /* What a person reads at the end of a check-in (task 2.7). The prototype: check-in-end-card.txt. */
 
@@ -33,9 +33,36 @@ describe('the close, as a person reads it', () => {
   it('is put on the turn that closed, after it is known to be closed', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const decided = src.indexOf("const sessionComplete = close.ready && !stillAsking(aiTurn.content ?? '');");
-    const closed = src.indexOf("const closed = endingOnTheClose(aiTurn.content ?? '');");
+    const closed = src.indexOf("const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web');");
     expect(decided).toBeGreaterThan(0);
     expect(closed).toBeGreaterThan(decided);
     expect(src.slice(closed - 200, closed)).toContain('if (sessionComplete) {');
+  });
+});
+
+describe('on a door that shows no end card, the close never says "Below"', () => {
+  it('WhatsApp ends on replying "finish", which is what closes it there, and the report coming to the chat', () => {
+    expect(endingOnTheClose('Thank you, Femi. Your report is ready now. Speak soon.', 'whatsapp'))
+      .toBe('Thank you, Femi.\n\nThat’s all for today. Reply "finish" to close this check-in, and your report will come here.');
+  });
+
+  it('the developer API ends on what happens when the check-in is closed', () => {
+    expect(endingOnTheClose('Thank you, Femi.', 'api'))
+      .toBe('Thank you, Femi.\n\nThat’s all for today. Thank you for your answers. When this check-in is closed, they go into the report.');
+  });
+
+  it('neither says "Below", and the web keeps the prototype sentence', () => {
+    expect(THE_CLOSE_ON.whatsapp).not.toMatch(/below/i);
+    expect(THE_CLOSE_ON.api).not.toMatch(/below/i);
+    expect(endingOnTheClose('Thank you.')).toBe(`Thank you.\n\n${THE_CLOSE}`);
+    for (const c of Object.values(THE_CLOSE_ON)) expect(endsOnTheClose(`Thank you.\n\n${c}`)).toBe(true);
+  });
+
+  it('each door says which door it is, and WhatsApp does not say "finish" twice', () => {
+    const wa = readFileSync(join(__dirname, '../public-api/whatsapp-for-an-organisation.service.ts'), 'utf8');
+    const api = readFileSync(join(__dirname, '../public-api/a-check-in-a-customer-can-run.service.ts'), 'utf8');
+    expect(wa).toContain("this.conversation.sendMessage(current.id, userId!, text, { door: 'whatsapp' })");
+    expect(wa).toContain('if (r.sessionComplete && !endsOnTheClose(r.reply))');
+    expect(api).toContain("content, { door: 'api' })");
   });
 });

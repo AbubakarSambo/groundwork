@@ -48,7 +48,7 @@ import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../com
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
-import { endingOnTheClose, endsOnTheClose } from './the-close-says-what-comes-next';
+import { endingOnTheClose, endsOnTheClose, type Door } from './the-close-says-what-comes-next';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
@@ -1465,7 +1465,7 @@ export class ConversationService {
    * through `streamDraft`. Everything after the draft is the same code, and the final text, which is
    * what is saved, replaces the draft on the screen. See sendMessageStream.
    */
-  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean } = {}): Promise<any> {
+  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean; door?: Door } = {}): Promise<any> {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
     /*
      * ONE ANSWER, ONE REPLY, HOWEVER MANY TIMES IT ARRIVES (request 48). The closing reply was read
@@ -2551,7 +2551,8 @@ export class ConversationService {
      */
     /* AND THE CLOSE ENDS AS THE PROTOTYPE'S DOES, with the card below it. See the-close-says-what-comes-next. */
     if (sessionComplete) {
-      const closed = endingOnTheClose(aiTurn.content ?? '');
+      /* WhatsApp and the API show no card, so they end on their own next step, never on "Below is". */
+      const closed = endingOnTheClose(aiTurn.content ?? '', how.door ?? 'web');
       if (closed !== (aiTurn.content ?? '')) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: closed } });
     }
     const room = sessionComplete ? null : howMuchRoomIsLeft(personTurnCount + 1);
