@@ -637,6 +637,14 @@ export class BoardService {
         managingOnly: p.managingOnly,
         signedOffAt: p.signedOffAt,
       })),
+      /*
+       * WHETHER MORE THAN ONE PERSON ANSWERS, AS A YES OR NO. Screens request 50. The board's "only
+       * one person here" notice counted `participants`, and on a check-in that hides people from each
+       * other that list is now the reader's own row and the lead's (below), so it cannot say whether
+       * anybody else answers. The same rule and the same name as the check-in read's
+       * `aTeamReportComes` (grounds.service): a yes or no, never how many.
+       */
+      aTeamReportComes: ground.participants.filter((p) => !p.managingOnly).length > 1,
     };
 
     if (has('phaseSpine')) {
@@ -1369,6 +1377,15 @@ export class BoardService {
           rows: onlyWhatThisReaderMaySee((out.checkInGrid as any).rows, whoMaySee),
         };
       }
+      /*
+       * THE LIST OF PEOPLE, TOO. Screens request 50: every other row stayed on this list as "a
+       * colleague", "another colleague", with whether each had signed off, so a participant on a
+       * check-in that hides people from each other could count their colleagues and follow each
+       * one's progress, which the check-in read (grounds.service) already refuses. They keep their
+       * own row and the lead's, whose name they may read; `aTeamReportComes` says whether anybody
+       * else answers.
+       */
+      out.participants = ((out.participants ?? []) as any[]).filter((p) => p.id === me?.id || p.id === theLeadsRow);
       /* Said, rather than left as a board that has quietly lost most of itself. */
       out.whyYouOnlySeeYourself = WHY_YOU_ONLY_SEE_YOURSELF;
     }
