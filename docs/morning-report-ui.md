@@ -401,6 +401,10 @@ Then the reviews run one module at a time, oldest first, and U.20 starts after t
 
 ## Needs Hafsah
 
+### 0-pat. URGENT: the engine switched patterns on tonight, though you said the switch stays off
+
+At 21:50 on 29 September the engine workspace switched patterns on (`19cdf9b0`, "Switch patterns on now that the plain names are approved"), taking your approval of the 49 names as the go-ahead ("decision 52"). Your later message to this workspace says the switch stays off until you understand how patterns work. The switch is the engine's code, so I have not touched it. It is on in both `wip/` branches and on this Mac's local product only; nothing has been deployed anywhere. **Please tell the engine workspace whether to switch it back off.** Until you do, the screens built tonight show patterns wherever the engine serves them, under the engine's rules (below).
+
 ### 0. The lead's private description of a person could reach that person's invitation, in the live product
 
 **Asked by you on 27 September. My plain answer: yes, at the start of this work.** Our branch started
@@ -6546,3 +6550,23 @@ After the merge I applied the engine's one new database change (the kind of work
 **"Not let in" is built.** The server now works out, for each person waiting at the door, whether their latest request to this organisation was declined, and the People page says "Not let in" for them, in a red tag, admins only (the list is served only to admins). Tests on the server and the screen.
 
 **The check-in's People and setup was started and then put back**, when you moved the pattern screens to the front. Nothing half-done was left. The builder's notes are kept, so it can be picked up quickly. One thing found on the way: on the old tab, a few settings looked changeable to anyone who could reach it. I checked the server: every one of them is refused unless you run the check-in (or, for two of them, are an admin), so nothing leaked. The rebuilt tab will show each setting as changeable only to the people the server allows.
+
+
+## The pattern screens, built and tested live (29 September, night)
+
+The builder built the pattern screens to the engine's new shape, from the shared parts: one shared pattern panel, used on "Your work" ("Something that keeps coming up"), on the board ("What keeps coming up", with each person's pattern under their name, and each person's line under "The team today"), and on the You page. The "Say what's behind it" box appears only when the person may answer, and after they answer it shows their own words back.
+
+**Tested live on this Mac.** The switch was already on after the merge (see "Needs Hafsah", item 0-pat), so I did not need to change it, and I did not. I added one test pattern for Amani on "Sales team, Q3" to the local database, then read every page as each person:
+- **Amani, the person:** saw it first, on Your work, the board and her You page, with "You are seeing this first. Rukia Otieno will see it too, with anything you say about it. Nothing is decided from it." She answered, on the test pattern only, and saw her own words back.
+- **Rukia, the lead:** did not see it at all before Amani answered. After, she saw it with "Amani saw this first and said what is behind it." and Amani's words.
+- **Neema, a colleague:** never saw it, on the board or her You page, before or after.
+- **Juma, an admin who only reads:** saw it after Amani answered, like the lead. The engine's rule counts an organisation's admin among the people who run a check-in, which matches rule 5.
+
+Then I deleted the test pattern. The switch file was never changed by me.
+
+**Found by the live test, being fixed:**
+1. Before Amani answered, Rukia's board said "No patterns have repeated often enough to show yet." That is untrue while someone is having their turn. It must become a sentence that is true and still does not tell the lead a pattern exists.
+2. "In your own words:", "In their own words:" and "Ask them:" are labels joined to text with colons. They become full sentences.
+3. The prototype's second part of "What keeps coming up", "How what people say can run ahead of what happened", has no data from the engine, so nothing is drawn for it. Under your rule that these screens are never simplified, I asked the engine to serve it (request 82).
+
+Tests the builder changed, and why: the switchboard's and the You board's tests carried the old pattern shape, which the engine no longer sends; they now carry the new one. One engine test reads the board's source for the old wording; the builder asked the engine to update it (request 81) and did not touch it.
