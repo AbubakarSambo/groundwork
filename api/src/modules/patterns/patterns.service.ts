@@ -7,6 +7,7 @@ import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
 import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN, PATTERN_ROW_SELECT, patternRowsThisReaderMayRead, servedPatterns, type AServedPattern } from './who-reads-a-pattern';
+import { periodOf } from './period-of';
 import { PATTERNS_ARE_SERVED } from './patterns-are-served';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
@@ -69,9 +70,19 @@ export class PatternsService {
       select: {
         id: true, groundId: true, participantId: true, sessionNumber: true,
         patternsAnalyzedAt: true, specificityDimensions: true,
+        completedAt: true, startedAt: true, createdAt: true,
+        ground: { select: { cadence: true } },
       },
     });
     if (!checkIn || checkIn.patternsAnalyzedAt) return;
+
+    /* The period this check-in belongs to, honestly (decision 57, item 1). A session on a weekly-or-
+       slower ground is its own period; a session on a daily ground belongs to the calendar week it
+       fell in, so several sessions in one week are the one period the three-period rule means. */
+    const period = periodOf(
+      { sessionNumber: checkIn.sessionNumber, when: checkIn.completedAt ?? checkIn.startedAt ?? checkIn.createdAt },
+      checkIn.ground,
+    );
 
     const [turns, records, statedGoalRows] = await Promise.all([
       this.prisma.conversationTurn.findMany({ where: { checkInId }, orderBy: { createdAt: 'asc' } }),
@@ -93,7 +104,7 @@ export class PatternsService {
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const recordText = records.map((r) => `(${r.type}) ${r.text}`).join('\n');
-    const content = `PERIOD ${checkIn.sessionNumber}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}`;
+    const content = `PERIOD ${period}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}`;
 
     // --- R3 positive signal (rule-based, no AI extraction needed) ---
     const allPriorText = records.map((r) => r.text);
@@ -104,7 +115,7 @@ export class PatternsService {
         checkIn.participantId,
         'R3',
         'The record names another person positively with specific evidence of their contribution.',
-        checkIn.sessionNumber,
+        period,
       );
     }
 
@@ -125,12 +136,12 @@ export class PatternsService {
       .findMany({
         where: {
           participantId: checkIn.participantId,
-          lastPeriodNumber: { gte: checkIn.sessionNumber - HOW_FAR_BACK, lte: checkIn.sessionNumber - 1 },
+          lastPeriodNumber: { gte: period - HOW_FAR_BACK, lte: period - 1 },
         },
         select: { code: true, observationText: true, lastPeriodNumber: true },
       })
       .catch(() => [] as { code: string; observationText: string | null; lastPeriodNumber: number | null }[]);
-    const recogniseBlock = lastPeriodBlockFor(whatWasSeenLastPeriod(lastPeriod, checkIn.sessionNumber), checkIn.sessionNumber);
+    const recogniseBlock = lastPeriodBlockFor(whatWasSeenLastPeriod(lastPeriod, period), period);
 
     /*
      * WHO THIS PERSON IS WAITING ON, BY NAME, INSIDE THIS CHECK-IN.
@@ -188,7 +199,7 @@ export class PatternsService {
             continue;
           }
           await this.observePositive(
-            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber,
+            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period,
           );
           continue;
         }
@@ -202,7 +213,7 @@ export class PatternsService {
          */
         if (isCarryingCode(d.code)) {
           await this.observe(
-            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber,
+            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period,
           );
           continue;
         }
@@ -240,7 +251,7 @@ export class PatternsService {
           }
         }
 
-        await this.observe(checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), checkIn.sessionNumber);
+        await this.observe(checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period);
       }
     } catch (err: any) {
       this.logger.error(`Pattern extraction failed for check-in ${checkInId}: ${err.message}`);
@@ -429,9 +440,11 @@ export class PatternsService {
     const latest = await this.prisma.checkIn.findFirst({
       where: { groundId },
       orderBy: { sessionNumber: 'desc' },
-      select: { sessionNumber: true },
+      select: { sessionNumber: true, completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true } } },
     });
-    const currentPeriod = latest?.sessionNumber ?? 0;
+    const currentPeriod = latest
+      ? periodOf({ sessionNumber: latest.sessionNumber, when: latest.completedAt ?? latest.startedAt ?? latest.createdAt }, latest.ground)
+      : 0;
 
     // 1. Tag CANDIDATE detections with their period number if not yet tagged.
     const candidates = await this.prisma.patternDetection.findMany({

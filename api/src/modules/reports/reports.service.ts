@@ -142,6 +142,7 @@ import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCH
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternRow } from '../patterns/who-reads-a-pattern';
+import { periodOf } from '../patterns/period-of';
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
@@ -3294,9 +3295,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
       ? await this.prisma.patternDetection.findMany({ where: { groundId }, orderBy: [{ lastSeenAt: 'desc' }], select: PATTERN_ROW_SELECT })
       : [];
     /* A report for session N shows only what had reached three periods BY session N - not the
-       ground's current state, which may have reached it later. See patternRowAsOfSession. */
-    const patternRowsAsOfThisSession = (patternRowsForPage as APatternRow[]).map((r) => patternRowAsOfSession(r, sessionNumber));
-    const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId);
+       ground's current state, which may have reached it later. See patternRowAsOfSession. On a
+       daily ground `seenInSessions` holds calendar-week period numbers, not session numbers (see
+       period-of.ts), so "as of this session" has to ask in the same units: the period this
+       session's own report was taken in, not its raw session number. */
+    const periodOfThisSession = periodOf({ sessionNumber, when: snapshot?.takenAt }, ground as any);
+    const patternRowsAsOfThisSession = (patternRowsForPage as APatternRow[]).map((r) => patternRowAsOfSession(r, periodOfThisSession));
+    const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
     const patternsForPage = await wordPatternEvidence(
       servedPatterns(
         patternRowsAsOfThisSession as any,

@@ -1468,7 +1468,7 @@ export class BoardService {
         take: 60,
       });
       const patternReader = { participantId: me?.id ?? null, runsIt: runsThisGround };
-      const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId);
+      const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
       const served = servedPatterns(detections as any, patternReader, namesForPatterns);
       out.patterns = await wordPatternEvidence(
         served,

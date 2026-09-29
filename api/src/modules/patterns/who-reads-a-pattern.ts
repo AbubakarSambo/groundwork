@@ -114,6 +114,8 @@ export interface WhoIsWho {
   /** The lead's own participant id in this check-in, so a pattern about the lead can be told apart from one about somebody else. */
   leadParticipantId?: string | null;
   firstNameOf?: (participantId: string) => string | null;
+  /** Whether this ground's periods are calendar weeks, not sessions (decision 57, item 1). */
+  isDaily?: boolean;
 }
 
 /** The headings the page puts over the list, from the prototype's screens. */
@@ -177,8 +179,21 @@ function andList(xs: string[]): string {
   return `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 }
 
-export function howOftenItCameUp(row: Pick<APatternRow, 'seenInSessions' | 'periodsObserved'>, yours: boolean): string {
+/**
+ * "IN 3 OF YOUR WEEKS", NOT "IN 3 CHECK-INS", ON A DAILY GROUND (decision 57, item 1).
+ *
+ * `seenInSessions` holds period numbers now, not session numbers, for a daily ground (see
+ * `period-of.ts`), so naming them as "sessions" would be wrong twice over: the numbers are
+ * calendar weeks, and several sessions already collapsed into each one. `isDaily` says which
+ * wording this ground needs; the sentence never lists the raw period numbers for a daily ground,
+ * because a calendar-week number ("202540") means nothing to a person reading their own report.
+ */
+export function howOftenItCameUp(row: Pick<APatternRow, 'seenInSessions' | 'periodsObserved'>, yours: boolean, isDaily: boolean = false): string {
   const n = periodsSeen(row);
+  if (isDaily) {
+    const whose = yours ? `${n} of your weeks` : `${n} weeks`;
+    return `This came up in ${whose}.`;
+  }
   const sessions = [...new Set(row.seenInSessions ?? [])].sort((a, b) => a - b).map(String);
   const whose = yours ? `${n} of your check-ins` : `${n} check-ins`;
   return sessions.length >= n
@@ -262,8 +277,10 @@ export function servedPatterns(
         kind: plain.kind,
         heading: plain.name,
         whatHappened: whatHappenedIn(row.observationText),
-        sessions: [...new Set(row.seenInSessions ?? [])].sort((a, b) => a - b),
-        howOften: howOftenItCameUp(row, yours),
+        /* Raw session numbers on a weekly-or-slower ground; a daily ground's numbers are calendar
+           weeks, which nobody reading their own report should have to decode, so none are listed. */
+        sessions: opts.isDaily ? [] : [...new Set(row.seenInSessions ?? [])].sort((a, b) => a - b),
+        howOften: howOftenItCameUp(row, yours, !!opts.isDaily),
         askThem: yours ? null : whatToAskAbout(row.code),
         theirWords: (row.personAnswer ?? '').trim() || null,
         canAnswer: yours,
@@ -305,6 +322,7 @@ export async function markShownToThePerson(
 export function whoIsWhoIn(
   participants: readonly { id: string; userId?: string | null; nameGiven?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null }[] | null | undefined,
   initiatorId: string | null | undefined,
+  cadence?: string | null,
 ): WhoIsWho {
   /* A title is not a first name ("Dr" is not who anybody is called): skip it and use the next
      name, through the one helper that knows every title people here really carry. */
@@ -322,5 +340,6 @@ export function whoIsWhoIn(
     leadName: first(lead),
     leadParticipantId: lead?.id ?? null,
     firstNameOf: (pid: string) => first(rows.find((p) => p.id === pid)),
+    isDaily: cadence === 'DAILY',
   };
 }

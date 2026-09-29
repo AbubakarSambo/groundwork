@@ -1684,7 +1684,7 @@ export class GroundsService {
      */
     const signals = PATTERNS_ARE_SERVED
       ? await (async () => {
-          const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId);
+          const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
           const served = servedPatterns(
             ground.patternDetections as any,
             await this.patternReaderOf(ground as any, requestingUserId),
@@ -6925,7 +6925,7 @@ export class GroundsService {
           orderBy: { lastSeenAt: 'desc' },
         },
         /* For the one sentence that says who else reads it: the lead's first name. */
-        ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } },
+        ground: { select: { initiatorId: true, cadence: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } },
         checkIns: {
           select: { sessionNumber: true, completedAt: true, status: true },
           orderBy: { sessionNumber: 'asc' },
@@ -6969,7 +6969,7 @@ export class GroundsService {
      * sessions shows something worth noticing", served every SURFACED row including good news seen
      * once, and gave no way to answer. None at all while patterns are not served.
      */
-    const namesForOwnPatterns = whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId);
+    const namesForOwnPatterns = whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId, (participant as any).ground?.cadence);
     const servedOwn = servedPatterns(
       participant.patternDetections as any,
       { participantId: participant.id, runsIt: false },
