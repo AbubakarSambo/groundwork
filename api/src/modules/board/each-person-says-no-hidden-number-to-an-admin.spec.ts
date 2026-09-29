@@ -65,7 +65,13 @@ describe("each person's row, where each target is seen only by its owner and the
     const board = await boardAs('u-grace', 'ADMIN', 'THEIR_OWN');
     const row = aishasRow(board);
     expect(row).toBeDefined();
-    expect(row.says).toBe('Aisha Otieno has checked in, and nothing here needs you this week.');
+    /*
+     * Decision 53, item 11 (29 September): an admin who cannot see Aisha's target is never told
+     * "nothing here needs you this week" - that is a claim about a number this reader cannot see,
+     * so it may not be true. They read only that she has checked in. Was
+     * 'Aisha Otieno has checked in, and nothing here needs you this week.' before the decision.
+     */
+    expect(row.says).toBe('Aisha Otieno has checked in.');
     expect(row.target).toBeNull();
     expect(JSON.stringify(board.eachPerson)).not.toMatch(FORTY);
     expect(JSON.stringify(board)).not.toMatch(/\b40\b|\bforty\b/i);
@@ -76,5 +82,12 @@ describe('where targets are shared with everybody', () => {
   it('the admin reads the number too', async () => {
     const row = aishasRow(await boardAs('u-grace', 'ADMIN', 'EVERYBODY'));
     expect(row.says).toMatch(/is at 1 of 40/);
+  });
+});
+
+describe('a participant', () => {
+  it('gets no per-person row at all, so no "nothing here needs you" sentence reaches them either', async () => {
+    const board = await boardAs('u-aisha', 'MEMBER', 'THEIR_OWN');
+    expect(board.eachPerson).toBeUndefined();
   });
 });

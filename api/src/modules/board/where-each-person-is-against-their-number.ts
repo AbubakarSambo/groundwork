@@ -66,6 +66,17 @@ export interface PersonRow {
   noProof?: boolean;
   /** "week" on a weekly check-in, so the row can say "the second week in a row". */
   roundIsA?: 'week' | 'fortnight' | 'month' | 'check-in';
+  /**
+   * WHETHER THIS READER MAY SEE THIS PERSON'S TARGET AT ALL (decision 53, item 11; decision 47).
+   *
+   * The lead, and the person themselves, always see it; another admin does only where the ground's
+   * `whoSeesTargets` shares it with everybody. Where it is hidden, `target` on this row is already
+   * null, so nothing here can tell the difference between "hit the number" and "cannot see the
+   * number" - and "has checked in, and nothing here needs you this week" was being said in both
+   * cases, which is a claim about the second case this reader has no way to know is true. Such a
+   * reader reads only that the person has checked in.
+   */
+  targetHiddenFromReader?: boolean;
 }
 
 /**
@@ -199,6 +210,9 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
         const forWhat = /^(whether|what|how|which|who|when|if)\b/.test(what) ? `a decision on ${what}` : what;
         return `${start} has checked in, and is waiting on you for ${forWhat}.`;
       }
+      /* Decision 53, item 11: never told "nothing here needs you" when this reader cannot see
+         whether that is true. */
+      if (row.targetHiddenFromReader) return `${start} has checked in.`;
       return `${start} has checked in, and nothing here needs you this week.`;
     }
   }

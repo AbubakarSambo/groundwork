@@ -1083,6 +1083,9 @@ export class BoardService {
             noProof: !!thisRound && ((thisRound as any).specificityDimensions as any)?.evidence != null
               && (thisRound as any).specificityDimensions.evidence !== 'specific',
             roundIsA: (ground as any).cadence === 'WEEKLY' ? 'week' : (ground as any).cadence === 'FORTNIGHTLY' ? 'fortnight' : (ground as any).cadence === 'MONTHLY' ? 'month' : 'check-in',
+            /* Decision 53, item 11: an admin standing in, who cannot see this person's target, is
+               never told "nothing here needs you this week" as if that were known to be true. */
+            targetHiddenFromReader: sharesStayWithTheirOwner,
           };
         }),
         /* The planned length, for the only honest read of pace. Without one it says nothing
