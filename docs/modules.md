@@ -122,7 +122,7 @@ The prototype has 7 people you can switch between at the top. The modules name t
 - Inviting people, and seeing who has not joined yet.
 - Each person’s own settings.
 
-**Rules:** nobody is special because of their title. Access comes from their role plus their access to each check-in. Admins see boards and reports, never exact words and never performance plans, unless given access to that check-in.
+**Rules:** nobody is special because of their title. Access comes from their role plus their access to each check-in. Admins can read every board and report, including people's exact words, but never a performance plan, promotion or renewal unless given access to that check-in (docs/decisions.md rule 5; Hafsah, 29 September).
 
 **Backend:** Partly. Admin, lead and member roles, and access for each check-in, exist. **Different:** “owner” is one field, not a role. **Missing:** levels and reporting lines are only on imported staff records, not on the main user.
 

@@ -21,7 +21,7 @@ same file.
 
 **One refusal.** The safety check refused a command of mine because it contained the words "merge-base". I was only asking git whether a commit had arrived in an earlier merge. I did not retry it or ask the same question in another way. Instead I restarted the API and read the board again, which showed the fix running.
 
-**Decided for you to confirm.** I took each of these as the option closest to the prototype and to your own decisions:
+**Decided for you to confirm.** All 16 below were confirmed by you on 29 September (see "Hafsah's decisions"). I took each of these as the option closest to the prototype and to your own decisions:
 
 - The check-in's "Board" tab is back on every check-in page, as in the prototype's five tabs. An earlier decision had said the board is never a tab (`one-door-per-place.spec.ts`); the prototype and the instruction to put the header on every page point the other way.
 - Report, Sessions and What I shared are sub-tabs under My work, and Setup is "People and setup", following the prototype's five tabs.
@@ -243,9 +243,9 @@ whoever holds the organisation's developer key. The developer API must keep work
 that one is yours to decide (item 27.4).
 
 **What needs you most, in order:**
-1. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
+1. ~~Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.~~ Answered by you on 29 September, and closed.
 2. Item 20.1: should the lead hold the team's report until they share it? (a privacy question)
-3. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
+3. ~~Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?~~ Answered by you on 29 September: yes, and promotions and renewals too.
 4. Item 17.5: in a new check-in, do invitations go before or after the lead's own first check-in?
 5. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
 6. Item 22.1: the handover page, because the prototype's page and the product's handover are two
@@ -306,6 +306,15 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **29 September: answers to "Decided for you to confirm" and to item 11, which is now closed.**
+  1. All 16 decisions in "Decided for you to confirm" are confirmed. Where two disagree, the later one wins: My work follows the prototype's single "Your work" page, with no sub-tabs.
+  2. The three newer ones: the People page keeps the product's own true invitation sentences (email only, no WhatsApp or Guest); the no-seat warning keeps its buttons, drawn the prototype's way; someone declined at the door reads "Not let in", shown to admins only.
+  3. Conflict A, the invitation: keep the prototype's first line. Drop "Nobody else reads your answers." and "Wairimu reads the report, not your words." Build the rest from the check-in's real settings, so it is always true. On an ordinary check-in: "The people in this check-in, including your manager, can see what you say in it. Admins in your organisation can read every check-in. Your own report and your questions to Ask Groundwork stay private." On a performance plan, promotion or renewal, leave out the line about admins. Replace today's "Nobody you work with reads it" panel.
+  4. Admins: `docs/decisions.md` rule 5 is the rule. Admins can read every board and report, including people's exact words, but never a performance plan, promotion or renewal unless given access to that check-in. The older A4 line in `docs/modules.md` is corrected to match, and the engine workspace is told (request 78) that promotions and renewals are now protected from admins like performance plans. This also answers item 15.1.
+  5. Conflict B, the welcome card: "You can see every board and report, including what people said in them. You never see anyone's questions to Ask Groundwork, anyone's own report, or a lead's private notes, and never a performance plan, promotion or renewal unless given access to that check-in."
+  6. The rest of item 11: no DNS proof for domain joining for now. The invite link is random, not guessable; someone whose email doesn't match the domain waits for an admin. Before being let in, name one admin, as in the prototype; remove "27 people there" and "and text". Leave out your own web address and logo entirely until they're built. "All 38 of your check-ins" counts real check-ins, not sessions.
+  7. A person can create more than one organisation, each with its own plan, as already decided on 26 September: lift the one-organisation limit.
+  8. On helpers: every builder brief starts with "You may not start any helper or sub-agent. If you need research, stop and ask." If a builder starts one again, that builder is stopped and a fresh one started.
 - **29 September, later: build the screens much faster.**
   1. The API tests are not run for screen-only changes. They run only after merging the engine's work, or when an API file changed.
   2. Screens are built in groups (for example all the people screens). For each screen, only my own 1440-pixel picture check against the prototype and the privacy tests. The full screen suite, the page-colour test and the reviewer run once, at the end of each group.
@@ -858,7 +867,7 @@ it. The page shows the address if the server ever sends it, and leaves it out ot
 **My suggestion:** leave the address out. The person already knows which account they asked to reset,
 and the link could be forwarded to someone else.
 
-### 11. Organisations and joining (U.3): nine decisions (answered, two parts held)
+### 11. Organisations and joining (U.3): nine decisions (CLOSED: answered in full by you on 29 September; see "Hafsah's decisions")
 
 **Answered by you on 26 September, with the prototype's exact wording wherever it has it:**
 1. The invitation uses the prototype's wording, says what the person will see, and never says or
