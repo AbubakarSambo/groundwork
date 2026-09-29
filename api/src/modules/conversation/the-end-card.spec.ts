@@ -22,6 +22,11 @@ describe('each line, and how it is known', () => {
     expect(card.next).toBeUndefined();
   });
 
+  it('a line backed by somebody else\'s document is not proven', () => {
+    const card = theEndCard([{ type: 'PROGRESS', text: 'The build is on track for the 14th', recallBased: false, anchoredDocumentId: 'plan', anchoredOrigin: 'typed', documentIsTheirOwn: false }])!;
+    expect(card.inYourRecord![0].mark).toBe('said');
+  });
+
   it('a line backed only by notes we generated is not proven', () => {
     const card = theEndCard([{ type: 'OUTCOME', text: 'Green Mart has a quote', recallBased: false, anchoredDocumentId: 'd1', anchoredOrigin: 'generated' }])!;
     expect(card.inYourRecord![0].mark).not.toBe('proven');
@@ -120,7 +125,7 @@ describe('at the closing reply', () => {
     const prisma: any = {
       conversationTurn: { update: jest.fn(async () => ({})) },
       recordEntry: { createMany: jest.fn() },
-      groundDocument: { findMany: jest.fn(async () => [{ id: 'doc-1', fileName: 'quote.jpg', content: 'Quote for Green Mart, January delivery', origin: null, descriptionCheck: null, mimeType: 'image/jpeg' }]) },
+      groundDocument: { findMany: jest.fn(async () => [{ id: 'doc-1', fileName: 'quote.jpg', content: 'Quote for Green Mart, January delivery', origin: null, descriptionCheck: null, mimeType: 'image/jpeg', participantId: 'p1' }]) },
     };
     const anthropic = { extract: jest.fn(async () => ({ backed: [{ line: 0, document: 0, where: 'January delivery' }] })) };
     const service = aService(prisma, anthropic);

@@ -24,9 +24,10 @@ const read = (p: string) => strip(readFileSync(join(SRC, p), 'utf8'));
 describe('the marker is a column, not a prefix', () => {
   it('the write stores the column and leaves the text alone', () => {
     const SERVICE = read('conversation/conversation.service.ts');
-    const at = SERVICE.indexOf('await this.prisma.recordEntry.createMany');
+    /* The rows are built in readTheRecord since the end card (task 2.7), and written as built. */
+    const at = SERVICE.indexOf('return valid.map((e) =>');
     expect(at).toBeGreaterThan(-1);
-    const block = SERVICE.slice(at, at + 900);
+    const block = SERVICE.slice(at, at + 1400);
     expect(block).toContain('verifiability: v');
     /*
      * The text goes in as the person said it, with no marker built onto the front of it - which is

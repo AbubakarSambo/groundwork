@@ -2817,7 +2817,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const [entries, previousEntries, baseline, startingPoint, checkIn] = await Promise.all([
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participantId: { in: readableParticipantIds }, checkIn: { sessionNumber } },
-        select: { type: true, text: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true, participantId: true },
+        select: { type: true, text: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true, participantId: true, confirmedAt: true, anchoredDocumentId: true },
       }),
       sessionNumber > 1
         ? this.prisma.recordEntry.findMany({
@@ -2925,6 +2925,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
       howManyHaveAnswered(this.prisma, groundId, sessionNumber),
     ]);
 
+    /* Whose document backs each line: somebody else's proves nothing of theirs (how-a-line-is-known). */
+    const backingIds = [...new Set(entries.map((e: any) => e.anchoredDocumentId).filter(Boolean))] as string[];
+    const whoseDocument = new Map(
+      backingIds.length
+        ? ((await this.prisma.groundDocument.findMany({ where: { id: { in: backingIds } }, select: { id: true, participantId: true } }).catch(() => [])) as any[]).map((d) => [d.id, d.participantId])
+        : [],
+    );
     const shape = theSessionReport({
       sessionNumber,
       /* The same arithmetic the chat composer does when it says "session 3 of 6": the length over
@@ -2970,6 +2977,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         who: whoOf(e.participantId),
         recallBased: e.recallBased,
         backedBy: (e as any).anchoredOrigin ?? null,
+        confirmedAt: (e as any).confirmedAt ?? null,
+        ...((e as any).anchoredDocumentId && whoseDocument.has((e as any).anchoredDocumentId) ? { documentIsTheirOwn: whoseDocument.get((e as any).anchoredDocumentId) === e.participantId } : {}),
         threadKey: e.dimensionThreadKey ?? null,
       })),
       previousEntries: previousEntries.map((e) => ({

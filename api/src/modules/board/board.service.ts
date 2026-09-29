@@ -2072,7 +2072,7 @@ export class BoardService {
     const [entries, docs, baseline, deps] = await Promise.all([
       this.prisma.recordEntry.findMany({
         where: { disputedAt: null, checkInId: { in: completed.map((c) => c.id) } },
-        select: { type: true, text: true, participantId: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true },
+        select: { type: true, text: true, participantId: true, recallBased: true, anchoredOrigin: true, dimensionThreadKey: true, confirmedAt: true, anchoredDocumentId: true },
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.groundDocument.findMany({ where: { groundId, visibility: 'OPEN' as any }, select: { fileName: true, participantId: true, origin: true } }),
@@ -2087,12 +2087,19 @@ export class BoardService {
     const waiting = new Set(whoAnswered.waitingOn);
     const answered = ground.participants.filter((p: any) => !waiting.has(p.id) && completed.some((c) => c.participantId === p.id && c.sessionNumber === openRound));
     const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
+    /* Whose document backs each line: somebody else's proves nothing of theirs (how-a-line-is-known). */
+    const backingIds = [...new Set(entries.map((e: any) => e.anchoredDocumentId).filter(Boolean))] as string[];
+    const whoseDocument = new Map(
+      backingIds.length
+        ? ((await this.prisma.groundDocument.findMany({ where: { id: { in: backingIds } }, select: { id: true, participantId: true } }).catch(() => [])) as any[]).map((d) => [d.id, d.participantId])
+        : [],
+    );
     const shape = theSessionReport({
       sessionNumber: openRound,
       closed: !!report.releasedAt,
       agreements: (report.agreements ?? []) as unknown[],
       divergences: (report.divergences ?? []) as unknown[],
-      entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: nameOf(e.participantId), recallBased: e.recallBased, backedBy: (e as any).anchoredOrigin ?? null, threadKey: e.dimensionThreadKey ?? null })),
+      entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: nameOf(e.participantId), recallBased: e.recallBased, backedBy: (e as any).anchoredOrigin ?? null, confirmedAt: (e as any).confirmedAt ?? null, ...((e as any).anchoredDocumentId && whoseDocument.has((e as any).anchoredDocumentId) ? { documentIsTheirOwn: whoseDocument.get((e as any).anchoredDocumentId) === e.participantId } : {}), threadKey: e.dimensionThreadKey ?? null })),
       previousEntries: [],
       baselineSuccess: baseline?.successLooksLike ?? null,
       startingPoint: null,

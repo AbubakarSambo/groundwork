@@ -1,5 +1,4 @@
-import { isBackedByADocument } from '../reports/backed-by-a-document';
-import { howSolid } from '../reports/a-figure-nobody-can-check-says-so';
+import { howALineIsKnown } from '../reports/how-a-line-is-known';
 
 /**
  * THE END OF A CHECK-IN: WHAT IS NOW IN YOUR RECORD, AND WHAT WOULD CHANGE IT (task 2.7, screens
@@ -43,6 +42,8 @@ export interface ALineForTheCard {
   confirmedAt?: Date | string | null;
   /** Whether the document that backs it is a photo, so the card can say so. */
   backedByAPhoto?: boolean;
+  /** False when the document that backs it was added by somebody else, which proves nothing of theirs. */
+  documentIsTheirOwn?: boolean;
 }
 
 export const HOW: Record<'photo' | 'document' | 'confirmed' | 'commitment' | 'memory' | 'said', string> = {
@@ -60,19 +61,13 @@ export const WHAT_WOULD_MAKE_IT_PROVEN =
 /** At most this many lines: the card is read in the moment before finishing, on a phone. */
 export const AT_MOST = 6;
 
+/* The mark is the reports' rule (reports/how-a-line-is-known.ts), so a line reads the same on both. */
 function markFor(line: ALineForTheCard): { mark: EndCardMark; how: string } {
-  const backed = isBackedByADocument({
-    anchoredDocumentId: line.anchoredDocumentId ?? null,
-    anchoredOrigin: line.anchoredOrigin ?? null,
-    recallBased: line.recallBased !== false,
-  });
-  if (backed) return { mark: 'proven', how: line.backedByAPhoto ? HOW.photo : HOW.document };
-  if (line.confirmedAt) return { mark: 'confirmed', how: HOW.confirmed };
-  if (line.type === 'COMMITMENT') return { mark: 'said', how: HOW.commitment };
-  /* Memory is for a line about what happened, with a figure and nothing attached. A target, a plan or
-     a definition with a number in it is not remembered; it is said. */
-  if (line.type === 'PROGRESS' && howSolid({ text: line.text, recallBased: line.recallBased !== false }) === 'from-memory') return { mark: 'memory', how: HOW.memory };
-  return { mark: 'said', how: HOW.said };
+  const mark = howALineIsKnown(line);
+  if (mark === 'proven') return { mark, how: line.backedByAPhoto ? HOW.photo : HOW.document };
+  if (mark === 'confirmed') return { mark, how: HOW.confirmed };
+  if (mark === 'memory') return { mark, how: HOW.memory };
+  return { mark, how: line.type === 'COMMITMENT' ? HOW.commitment : HOW.said };
 }
 
 export function theEndCard(lines: readonly ALineForTheCard[]): EndCard | null {

@@ -7031,10 +7031,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     try {
       const draft = await inTime((async () => {
         const rows = await this.readTheRecord(checkIn.id, checkIn.participantId);
-        if (!rows.length) return { rows, photos: new Set<string>() };
+        if (!rows.length) return { rows, photos: new Set<string>(), theirs: new Set<string>() };
         /* A line a document backs is proven. Only asked when there is a document to ask about. */
         const readable = await this.documentsThatMayBack(checkIn.participantId, checkIn.groundId);
         const photos = new Set(readable.filter((d: any) => String(d.mimeType ?? '').startsWith('image/')).map((d) => d.id));
+        /* Only their own document proves their line; somebody else's plan is not proof. */
+        const theirs = new Set(readable.filter((d: any) => d.participantId === checkIn.participantId).map((d) => d.id));
         if (readable.length) {
           const result = await this.whatTheDocumentsBack(readable, rows.map((r) => String(r.text ?? '')));
           for (const b of result?.backed ?? []) {
@@ -7044,7 +7046,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             Object.assign(row, { recallBased: false, anchoredDocumentId: doc.id, anchoredPassage: (b.where ?? '').slice(0, 400) || null, anchoredOrigin: (doc as any).origin ?? null });
           }
         }
-        return { rows, photos };
+        return { rows, photos, theirs };
       })());
       if (!draft) {
         this.logger.warn(`Check-in ${checkIn.id}: the end card took longer than ${THE_END_CARD_WAITS_MS}ms, so it was left out; the record is read when they finish.`);
@@ -7054,6 +7056,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true,
         anchoredDocumentId: (r as any).anchoredDocumentId ?? null, anchoredOrigin: (r as any).anchoredOrigin ?? null,
         backedByAPhoto: !!(r as any).anchoredDocumentId && draft.photos.has((r as any).anchoredDocumentId),
+        ...((r as any).anchoredDocumentId ? { documentIsTheirOwn: draft.theirs.has((r as any).anchoredDocumentId) } : {}),
       }));
       const card = theEndCard(lines);
       await this.prisma.conversationTurn.update({
@@ -7381,7 +7384,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   private async documentsThatMayBack(participantId: string, groundId: string) {
     const docs = await this.prisma.groundDocument.findMany({
       where: { groundId, OR: [{ participantId }, { visibility: 'OPEN' as any }] },
-      select: { id: true, fileName: true, content: true, origin: true, descriptionCheck: true, mimeType: true },
+      select: { id: true, fileName: true, content: true, origin: true, descriptionCheck: true, mimeType: true, participantId: true },
       orderBy: { createdAt: 'desc' },
       take: 12,
     }).then((all) => all.filter((d) => {

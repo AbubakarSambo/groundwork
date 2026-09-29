@@ -1,3 +1,4 @@
+import { howALineIsKnown, type HowALineIsKnown } from './how-a-line-is-known';
 import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-was';
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
 import { RecordEntryType } from '@prisma/client';
@@ -54,6 +55,11 @@ export interface SaidThing {
    * never removes the line. Absent where the line holds no figure, so it does not become wallpaper.
    */
   figureIs?: 'their estimate' | 'from memory';
+  /**
+   * HOW THE LINE IS KNOWN: proven, confirmed by the person who received it, their word, or memory
+   * (week 6b, decision 43, screens request 2). The prototype's four marks; see how-a-line-is-known.
+   */
+  mark?: HowALineIsKnown;
 }
 
 export interface SessionReportSection {
@@ -164,7 +170,7 @@ export interface SessionReportInputs {
   agreements: unknown[];
   divergences: unknown[];
   /** This session's entries, already typed at extraction. */
-  entries: { type: RecordEntryType; text: string; who: string | null; recallBased: boolean; threadKey: string | null; /** the origin of the document that backs it, when one does */ backedBy?: string | null }[];
+  entries: { type: RecordEntryType; text: string; who: string | null; recallBased: boolean; threadKey: string | null; /** the origin of the document that backs it, when one does */ backedBy?: string | null; /** when the colleague who received it confirmed it */ confirmedAt?: Date | null; /** false when the backing document is somebody else's */ documentIsTheirOwn?: boolean }[];
   /** The previous session's entries, for what has changed and what was not spoken to again. */
   previousEntries: { type: RecordEntryType; text: string; who: string | null; threadKey: string | null }[];
   /** What was said at the beginning: the baseline's success statement and the starting point. */
@@ -217,13 +223,14 @@ function titleOf(x: unknown): string | null {
   return null;
 }
 
-const said = (e: { text: string; who: string | null; recallBased: boolean }): SaidThing => {
+const said = (e: { type?: string; text: string; who: string | null; recallBased: boolean; backedBy?: string | null; confirmedAt?: Date | null; documentIsTheirOwn?: boolean }): SaidThing => {
   const how = howSolid({ text: e.text, recallBased: e.recallBased });
   return {
     text: e.text,
     who: e.who,
     documented: !e.recallBased,
     ...(how === 'estimated' || how === 'from-memory' ? { figureIs: MARK[how] as 'their estimate' | 'from memory' } : {}),
+    mark: howALineIsKnown({ type: String(e.type ?? ''), text: e.text, recallBased: e.recallBased, anchoredOrigin: e.backedBy ?? null, confirmedAt: e.confirmedAt ?? null, documentIsTheirOwn: e.documentIsTheirOwn }),
   };
 };
 
