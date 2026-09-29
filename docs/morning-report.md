@@ -241,6 +241,24 @@ The name is being shortened to "Samuel" after its first use, as the prototype do
 
 Tests: 1,201 pass in the check-ins part, including 19 for this. The conversation and documents parts were not re-run for this piece.
 
+**Week 14: a document is read item by item** (`3d60bbaf`, `37467fa5`, `301e558e`).
+- **What it took, and from which page.** Each document now lists what was taken, one item at a time, with the page it came from. It also lists what was left out, and why. For example:
+  - "Otieno Ouma's target for Q3 sales is 45,000,000." (page 2)
+  - Left out: "Bank account details. Never kept, in any document." (page 4)
+  - A colleague's number in a participant's own file is left out with "Only the lead can set a number for someone else."
+
+  Pages come from the page markers in the stored text, never from the model. A scanned file says plainly that it cannot tell pages. Only people who may see the document get this, and a colleague gets nothing of a private one.
+- **"Yes, but it's 45 now" keeps 45,** and says so: "For Q3 sales, it has 45, as you said, instead of the 40 in the document." If it cannot tell which number is meant, it asks, and writes nothing.
+- **A document that disagrees with the record is asked about once.** Once a check-in has put the document's own number to the person as a question, that line is never offered again.
+- **Not done yet:**
+  - The "Add a document" page does not yet show the disagreement or take the answer there.
+  - The answer is kept only as the person's next turn.
+  - Documents read before today have no pages until they are read again.
+  - The wording "1 number against the person who holds it." is not a full sentence yet.
+  - This changes how the check-in raises a disagreement, and it has not been through a scenario run yet.
+
+**The whole API test suite passes at the end of week 14: 1,191 files and 11,068 tests.** One guard failed first: the week 13 proposals code names whose number a goal is, and every such file must use the one rule or be listed with a reason. It only writes a goal the lead confirmed, and only the lead reads proposals, so it is now listed as a writer (`277b2225`).
+
 **Week 12c:** an unnamed person in the lead's list of what to ask was headed "Somebody", and is now "A colleague" (`0b6736d1`). The rest was already done.
 
 **Run-19, the day's second full run, started at 17:37** on `c645570c`, in three parts. The two privacy items from the live check are being built alongside it. They filter what is served, so their tests prove them, not the run. Both are now done:
