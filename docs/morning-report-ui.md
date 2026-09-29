@@ -19,7 +19,7 @@ same file.
 - The engine's fix that stops a board naming a file the reader may not open was not running before the restart. Once it ran, the board still drew three of Rukia's lines as a label with no words. The board now leaves out a line with no words. I asked the engine workspace, in request 77, to leave such lines out itself. I also asked it to check two of her lines that may have been removed for the wrong reason.
 - The board still offered Juma "Your check-in" and a Check-in tab, though he is not in this check-in. It now shows him the prototype's three tabs. Amani and Rukia still see their own buttons.
 
-**One refusal.** The safety check refused a command of mine because it contained the words "merge-base". I was only asking git whether a commit had arrived in an earlier merge. I did not retry it, and found what I needed another way: when the fix was made, and when the running API was started.
+**One refusal.** The safety check refused a command of mine because it contained the words "merge-base". I was only asking git whether a commit had arrived in an earlier merge. I did not retry it or ask the same question in another way. Instead I restarted the API and read the board again, which showed the fix running.
 
 **Decided for you to confirm.** I took each of these as the option closest to the prototype and to your own decisions:
 
