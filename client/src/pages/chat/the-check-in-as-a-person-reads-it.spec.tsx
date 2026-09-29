@@ -391,7 +391,14 @@ describe('the Done page, after “That’s right, finish”', () => {
   it('she reads why answering matters and how checkable her own check-in was, which only she sees', async () => {
     await finish()
     expect(await findByRole('heading', { name: 'That’s saved' }, { timeout: 5000 })).toBeTruthy()
-    const saved = screen.getByRole('heading', { name: 'That’s saved' }).parentElement!
+    /**
+     * ROUND 5, ITEM E2: THIS BLOCK NOW DRAWS THROUGH components/gw/ui/Section, which puts the
+     * heading and the note on the right (when there is one) in their own row, above a separate
+     * body - not as DOM siblings of the paragraph below, the way the page's own ad-hoc markup
+     * used to. `Section` names its `<section>` after the heading (`aria-labelledby`), so the whole
+     * block - heading and body together - is found as one named region instead.
+     */
+    const saved = screen.getByRole('region', { name: 'That’s saved' })
     expect(saved.textContent).toBe('That’s savedWhy answering matters: Wairimu also answers a check-in. The report puts the answers side by side. It does not decide who is right.')
     const checkable = screen.getByRole('region', { name: 'How checkable today’s check-in was' })
     /**

@@ -1,5 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { Button, StageLadder, Tag } from '@/components/gw/kit'
+import { StageLadder } from '@/components/gw/kit'
+import { PageTitle } from '@/components/gw/ui/PageTitle'
+import { Section } from '@/components/gw/ui/Section'
+import { Panel } from '@/components/gw/ui/Panel'
+import { Button } from '@/components/gw/ui/Button'
+import { Tag } from '@/components/gw/ui/Tag'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
 import { THE_FIVE, wasItThere } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
@@ -23,6 +28,12 @@ import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-che
  *   (how-checkable-is-yours-alone). The five are the engine's own five, in the product's words.
  * - "One thing for next time" is the sentence the session itself wrote (`whatToCarry`), which
  *   arrives a little after the check-in closes.
+ *
+ * ROUND 5, ITEM E2: rebuilt from components/gw/ui - PageTitle for the heading (the prototype's own
+ * Literata 30px, not an ad-hoc h1), Section for each of the four blocks (the prototype's own 21px
+ * heading, not four different sizes), Panel for the two report cards, and ui's own Button/Tag
+ * (already the prototype's values - only the import path changes). `StageLadder` stays from
+ * kit.tsx: there is no ui/StageLadder yet, and it is not one of the parts this task named.
  */
 /**
  * Off until request 45 (docs/requests-to-engine.md) is answered: the "n of 5" count and its bar
@@ -30,6 +41,49 @@ import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-che
  * on once the engine workspace has looked at why.
  */
 const SHOW_THE_COUNT = false
+
+/** The two report cards - see the comment above where this is called for why the heading above
+    it is conditional while this panel is not. */
+function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, teamReportReleased }: {
+  checkInId: string
+  groundId: string
+  sessionNumber: number
+  aTeamReport: boolean
+  teamReportReleased: boolean
+}) {
+  return (
+    <Panel pad={false}>
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <h3 className="gwui-panel-text" style={{ fontWeight: 700 }}>Your own report</h3>
+          <Tag tone="plain">Only you</Tag>
+        </div>
+        <p className="gwui-panel-text">What you said today and what it shows. Ready now.</p>
+        <div style={{ marginTop: 10 }}>
+          <Button kind="secondary" wide to={`/checkin/${checkInId}/report`}>Read yours</Button>
+        </div>
+      </div>
+      {aTeamReport && (
+        <div style={{ padding: '14px 16px', borderTop: '1px solid var(--gw-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+            <h3 className="gwui-panel-text" style={{ fontWeight: 700 }}>The team’s report</h3>
+            {!teamReportReleased && <Tag tone="attention">Not shared yet</Tag>}
+          </div>
+          {teamReportReleased ? (
+            <>
+              <p className="gwui-panel-text">Everyone’s check-ins together.</p>
+              <div>
+                <Button kind="secondary" wide to={`/grounds/${groundId}/session/${sessionNumber}`}>Read it</Button>
+              </div>
+            </>
+          ) : (
+            <p className="gwui-panel-text">Everyone’s check-ins together. You’ll get it once everyone has answered.</p>
+          )}
+        </div>
+      )}
+    </Panel>
+  )
+}
 
 export interface WhatChanged {
   title?: string | null
@@ -99,82 +153,59 @@ export function TheDonePage({
   const changed = (whatChanged?.items ?? []).filter(i => i?.name && Array.isArray(i.stages))
 
   return (
-    <div style={{ maxWidth: 440, margin: '0 auto', padding: '28px 16px 40px', display: 'grid', gap: 18 }}>
-      <div>
-        <h1 style={{ margin: 0, fontFamily: 'var(--gw-serif, Georgia, serif)', fontWeight: 400, fontSize: 30, lineHeight: 1.2, color: 'var(--gw-text)' }}>
-          {firstName ? `Done. Thanks, ${firstName}.` : 'Done. Thank you.'}
-        </h1>
-        <p style={{ margin: '6px 0 0', fontSize: 15, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
-          Your check-in is saved.{next ? ` ${next}` : ''}
-        </p>
-      </div>
+    <div style={{ maxWidth: 440, margin: '0 auto', padding: '28px 16px 40px', display: 'grid', gap: 24 }}>
+      <PageTitle
+        title={firstName ? `Done. Thanks, ${firstName}.` : 'Done. Thank you.'}
+        subtitle={`Your check-in is saved.${next ? ` ${next}` : ''}`}
+      />
 
-      <section>
-        {aTeamReport && <h2 style={h2}>Two reports come from this</h2>}
-        <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, background: 'white' }}>
-          <div style={{ padding: '14px 16px' }}>
-            <div style={rowHead}>
-              <h3 style={h3}>Your own report</h3>
-              <Tag tone="plain">Only you</Tag>
-            </div>
-            <p style={p}>What you said today and what it shows. Ready now.</p>
-            <div style={{ marginTop: 10 }}>
-              <Button kind="secondary" wide to={`/checkin/${checkInId}/report`}>Read yours</Button>
-            </div>
-          </div>
-          {aTeamReport && (
-            <div style={{ padding: '14px 16px', borderTop: '1px solid var(--gw-border)' }}>
-              <div style={rowHead}>
-                <h3 style={h3}>The team’s report</h3>
-                {!teamReportReleased && <Tag tone="attention">Not shared yet</Tag>}
-              </div>
-              {teamReportReleased ? (
-                <>
-                  <p style={p}>Everyone’s check-ins together.</p>
-                  <div style={{ marginTop: 10 }}>
-                    <Button kind="secondary" wide to={`/grounds/${groundId}/session/${sessionNumber}`}>Read it</Button>
-                  </div>
-                </>
-              ) : (
-                <p style={p}>Everyone’s check-ins together. You’ll get it once everyone has answered.</p>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
+      {/**
+        * THE HEADING IS THE TEAM'S NEWS, NOT A LABEL ON A LONE CARD.
+        *
+        * "Two reports come from this" is only true when there are two - a check-in of one still
+        * gets "Your own report", with no heading claiming a second report that does not exist.
+        * `Section` always draws a heading, so the solo case renders the same panel without it,
+        * rather than the component inventing an empty one.
+        */}
+      {aTeamReport ? (
+        <Section heading="Two reports come from this">
+          <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport teamReportReleased={teamReportReleased} />
+        </Section>
+      ) : (
+        <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport={false} teamReportReleased={teamReportReleased} />
+      )}
 
       {changed.length > 0 && (
-        <section style={card}>
-          <h2 style={{ ...h3, marginBottom: 10 }}>{whatChanged?.title?.trim() || 'What changed'}</h2>
+        <Section heading={whatChanged?.title?.trim() || 'What changed'}>
           <div style={{ display: 'grid', gap: 14 }}>
             {changed.map((c, i) => (
               <div key={c.name + i}>
-                <div style={rowHead}>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-text)' }}>{c.name}</span>
-                  {c.says && <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>{c.says}</span>}
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                  <span className="gwui-panel-text" style={{ fontWeight: 700 }}>{c.name}</span>
+                  {c.says && <span className="gwui-panel-text-muted">{c.says}</span>}
                 </div>
                 <StageLadder stages={c.stages} label={c.name} says={(c as any).stagesSays ?? undefined} />
               </div>
             ))}
           </div>
-        </section>
+        </Section>
       )}
 
       {(leadName || carry) && (
-        <section style={{ borderRadius: 12, padding: '16px 18px', background: 'var(--gw-green-bg)' }}>
-          <h2 style={{ ...h3, fontSize: 17, marginBottom: 8 }}>That’s saved</h2>
-          {leadName && (
-            <p style={p}>
-              <strong>Why answering matters:</strong> {leadName} also answers a check-in. The report puts the answers side by side. It does not decide who is right.
-            </p>
-          )}
-          {carry && <p style={{ ...p, marginTop: leadName ? 8 : 0 }}>One thing for next time: {carry}</p>}
-        </section>
+        <Section heading="That’s saved">
+          <Panel>
+            {leadName && (
+              <p className="gwui-panel-text">
+                <strong>Why answering matters:</strong> {leadName} also answers a check-in. The report puts the answers side by side. It does not decide who is right.
+              </p>
+            )}
+            {carry && <p className="gwui-panel-text">One thing for next time: {carry}</p>}
+          </Panel>
+        </Section>
       )}
 
       {five && (
-        <section style={card} aria-label="How checkable today’s check-in was">
-          <h2 style={h3}>How checkable today’s check-in was</h2>
+        <Section heading="How checkable today’s check-in was">
           {/*
             THE COUNT AND THE BAR ARE GONE, ON PURPOSE, NOT ONLY VISUALLY.
 
@@ -186,12 +217,12 @@ export function TheDonePage({
             else about this section depends on it.
           */}
           {SHOW_THE_COUNT && (
-            <div style={rowHead}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
               <span />
-              <span style={{ fontSize: 14, color: 'var(--gw-text)' }}>{five.filter(f => f.there).length} of 5</span>
+              <span className="gwui-panel-text">{five.filter(f => f.there).length} of 5</span>
             </div>
           )}
-          <p style={{ ...p, marginTop: 8 }}>
+          <p className="gwui-panel-text">
             Groundwork looked for these five things. It may have missed some of what you said.
           </p>
           <ul style={{ listStyle: 'none', margin: '10px 0 0', padding: 0, display: 'grid', gap: 6 }}>
@@ -214,8 +245,8 @@ export function TheDonePage({
               </li>
             ))}
           </ul>
-          <p style={{ ...p, fontSize: 13, color: 'var(--gw-sub)', marginTop: 10 }}>This is about the check-in. Only you see it.</p>
-        </section>
+          <p className="gwui-panel-text-muted">This is about the check-in. Only you see it.</p>
+        </Section>
       )}
 
       {/* For whoever runs it: who the round is still waiting on. Kept from the old finished screen. */}
@@ -223,9 +254,3 @@ export function TheDonePage({
     </div>
   )
 }
-
-const h2: React.CSSProperties = { margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: 'var(--gw-text)' }
-const h3: React.CSSProperties = { margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--gw-text)' }
-const p: React.CSSProperties = { margin: '4px 0 0', fontSize: 14, lineHeight: 1.55, color: 'var(--gw-text)' }
-const rowHead: React.CSSProperties = { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }
-const card: React.CSSProperties = { border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px', background: 'white' }
