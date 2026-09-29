@@ -502,6 +502,10 @@ this kind of read about somebody else (if one ever should). That is a change to 
 *serves*, which is shared ground with the engine workspace - not something to make unilaterally.
 Flagging it here rather than deciding it.
 
+**Two breaks of the one-helper rule, 28 September.** During the invitation's rebuild the builder started a research helper of its own twice (once for the organisation switcher earlier, once for "Your number"). It reported both itself, did not act on anything unchecked, and read the files directly to confirm what the helper said.
+
+**Your rules, 29 September.** A helper never starts helpers of its own; every helper is told this. And when the safety check's own message says how a command is allowed (for example, a push run on its own), doing it that way is following the check, not getting around it. What is never allowed is changing a refused command in some other way to get it through.
+
 ### 0h. Where the API listens, and three refused commands (28 September)
 
 **What happened.** To keep your rule that nothing is exposed beyond this Mac, commit `2b63de36` made the API listen on this machine only (127.0.0.1) unless `NODE_ENV` was exactly `production`. The reviewer saw the risk: a deployed server with `NODE_ENV` unset, or set to any other value, would have listened only on itself, and nobody could have reached it.
