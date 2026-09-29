@@ -80,16 +80,11 @@ export function ContextPage({
    * a lead does on the context page."
    *
    * So the two questions are asked separately, because their answers differ for an admin:
-   *   - WHO RUNS THIS CHECK-IN decides who may READ the brief, the shared description of the work.
-   *   - WHOSE CHECK-IN IT IS decides who may REWRITE it, the private steers, the running log, the
-   *     standing note and the context conversation. Those are one person's own framing and one
-   *     person's own private notes, and an admin reading over them is not the same as an admin
-   *     running the place.
-   *
-   * RE-REVIEW, HAFSAH'S ITEM 31.2: THE BRIEF ITSELF MOVED TO THE SECOND LIST. An admin used to be
-   * able to rewrite it too ("she should rewrite") - the more private option, taken here instead,
-   * is that only the check-in's own lead may change what it says it is for. An admin still reads
-   * it, like everybody else in the check-in.
+   *   - WHO RUNS THIS CHECK-IN decides the brief, which is the shared description of the work. An
+   *     admin may rewrite it - "she should rewrite".
+   *   - WHOSE CHECK-IN IT IS decides the private steers, the running log, the standing note and the
+   *     context conversation. Those are one person's own framing and one person's own private
+   *     notes, and an admin reading over them is not the same as an admin running the place.
    */
   role: 'lead' | 'admin' | 'party'
   viewerUserId?: string | null
@@ -470,15 +465,7 @@ export function ContextPage({
                   <span data-gw-brief-whose style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
                     {whoseWords ? `${whoseWords} ` : ''}This is what everyone in this check-in reads before they answer.
                   </span>
-                  {/*
-                    RE-REVIEW, HAFSAH'S ITEM 31.2: ONLY THE LEAD MAY REWRITE THIS, NOT ANY ORG
-                    ADMIN READING WITH HER EYES. The brief is the shared description of the work,
-                    but the more private of the two options is the one taken here: an admin who
-                    does not run this check-in may read it (the fold below still says `isLead`)
-                    but may not change what it says it is for. Same rule on the server
-                    (grounds.service.ts's `updateTimeline`, the `dto.brief` branch).
-                  */}
-                  {isTheLead && briefDraft === null && (
+                  {isLead && briefDraft === null && (
                     <button
                       onClick={() => setBriefDraft(theBriefIsSetups ? whatEveryoneReads : (theBrief || whatEveryoneReads))}
                       style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
@@ -516,14 +503,11 @@ export function ContextPage({
             {!whatEveryoneReads && briefDraft === null && (
               <div style={{ background: 'white', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
                 <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                  {/* Its lead alone writes it (Hafsah's item 31.2) - "whoever runs it" used to
-                      include an org admin, who cannot. */}
-                  Nobody has said what this check-in is for yet. Its lead can write a few lines
-                  about what it is for and what they want from it. Everyone in this check-in
+                  Nobody has said what this check-in is for yet. Whoever runs it can write a few
+                  lines about what it is for and what they want from it. Everyone in this check-in
                   reads it before they answer.
                 </div>
-                {/* Same rule as "Rewrite" above: only the lead writes it. */}
-                {isTheLead && (
+                {isLead && (
                   <button
                     onClick={() => setBriefDraft('')}
                     style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
@@ -533,7 +517,7 @@ export function ContextPage({
                 )}
               </div>
             )}
-            {isTheLead && briefDraft !== null && (
+            {isLead && briefDraft !== null && (
               <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
                 <textarea
                   className="gw-ta"

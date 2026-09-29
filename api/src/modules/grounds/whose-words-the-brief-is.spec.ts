@@ -95,25 +95,11 @@ describe('rewriting it records who did', () => {
     return { service: new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { respond: async () => '' } as any), updated };
   }
 
-  /*
-   * CHANGED, RE-REVIEW, HAFSAH'S ITEM 31.2: an admin used to be able to rewrite the brief and be
-   * recorded as having changed it, same as the lead. The decision is now the more private option
-   * - only the check-in's own lead may change what it says it is for, even though an admin of the
-   * organisation may still read it and may still change the schedule, the name and other settings.
-   * This is now a refusal, not a recorded change.
-   */
-  it('an admin cannot rewrite it - only the lead may', async () => {
+  it('an admin who rewrites it is recorded as having changed it', async () => {
     const { service, updated } = makeService({ role: 'ADMIN', organizationId: 'org1' });
-    await expect(service.updateTimeline('g1', OTIENO, { brief: 'Sell 25 water pumps this quarter.' }))
-      .rejects.toThrow('Only the lead of this check-in can change what it says it is for.');
-    expect(updated).not.toHaveBeenCalled();
-  });
-
-  it('the lead rewriting it to new words is recorded as having changed it', async () => {
-    const { service, updated } = makeService({ role: 'MEMBER', organizationId: 'org1' });
-    await service.updateTimeline('g1', WANJIRU, { brief: 'Sell 25 water pumps this quarter.' });
+    await service.updateTimeline('g1', OTIENO, { brief: 'Sell 25 water pumps this quarter.' });
     const log = updated.mock.calls[0][0].data.groundAuditLog;
-    expect(log.briefChangedBy.userId).toBe(WANJIRU);
+    expect(log.briefChangedBy.userId).toBe(OTIENO);
   });
 
   it('saving the same words again records nothing', async () => {

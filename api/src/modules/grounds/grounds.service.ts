@@ -5547,18 +5547,16 @@ export class GroundsService {
     }
 
     /*
-     * THE BRIEF, THE LEAD'S ALONE (Hafsah's item 31.2, re-review). It is the words everybody reads
-     * before they answer, so it carries the more private of the two options this check-in already
-     * offers for other settings: unlike renaming or the schedule, an org admin who does not run
-     * this check-in may read it but may not rewrite it - only the person who actually runs the
-     * check-in decides what it says it is for. Blank clears it, deliberately: a lead who wants the
-     * wrong brief GONE - every entry-chat check-in before today had one written by the report
-     * rather than by them - should not have to replace it with something they do not mean.
+     * THE BRIEF. Whoever runs the check-in writes it and can rewrite it; it is the words everybody
+     * reads before they answer, so it carries the same permission as renaming and the same audit
+     * entry. Blank clears it, deliberately: a lead who wants the wrong brief GONE - every entry-chat
+     * check-in before today had one written by the report rather than by them - should not have to
+     * replace it with something they do not mean.
      */
     if (dto.brief !== undefined) {
-      if (ground.initiatorId !== requestingUserId) {
+      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
         throw new ForbiddenException(
-          'Only the lead of this check-in can change what it says it is for.',
+          'Only the lead of this check-in, or an admin in your organisation, can change what it says it is for.',
         );
       }
     }

@@ -156,17 +156,11 @@ describe('Aisha, who takes part', () => {
 })
 
 describe('an admin reading a check-in somebody else leads', () => {
-  /*
-   * CHANGED, RE-REVIEW, HAFSAH'S ITEM 31.2: this used to expect "Rewrite" for an admin too. The
-   * decision is now the more private option - only the check-in's own lead may change what it
-   * says it is for; an admin still reads the brief, as this test still checks, but no longer
-   * gets the button. Same rule enforced on the server (grounds.service.ts's `updateTimeline`).
-   */
-  it('reads the brief as the lead’s words, but is not offered "Rewrite" - only the lead changes it', async () => {
+  it('reads the brief as the lead’s words, and may rewrite it', async () => {
     ;(documentsApi.list as any).mockResolvedValue([])
     draw('admin', 'u-admin', { briefAsEveryoneReadsIt: ground.brief, briefIsTheLeadsOwnWords: true, briefChangedBy: null })
     expect(whose()).toEqual(['Wairimu’s words, from setup. This is what everyone in this check-in reads before they answer.'])
-    expect(screen.queryByText('Rewrite')).toBeNull()
+    expect(screen.getByText('Rewrite')).toBeTruthy()
   })
 
   it('and reads "You changed this." once he has', async () => {
@@ -335,26 +329,16 @@ describe('Juma’s check-in: what the lead wrote, and what Groundwork put togeth
     expect(document.body.textContent).not.toMatch(/taken to mean|put together/)
   })
 
-  /*
-   * CHANGED, RE-REVIEW, HAFSAH'S ITEM 31.2: an admin used to be offered "Rewrite" and could open
-   * the editor from here. Only the check-in's own lead may now change what it says it is for, so
-   * this checks the button is gone instead of clicking it.
-   */
-  it('an admin reads what everyone reads, no setup words of hers and no put-together text, and is not offered "Rewrite"', async () => {
+  it('an admin reads what everyone reads, no setup words of hers and no put-together text, and rewrites from what everyone reads', async () => {
     draw('admin', 'u-otieno', juma)
     expect(folds()).toEqual([])
     expect(whose()).toEqual(['Groundwork wrote this from Wairimu’s words. This is what everyone in this check-in reads before they answer.'])
     expect(document.body.textContent).not.toMatch(/taken to mean|put together|Juma joined our warehouse/)
-    expect(screen.queryByText('Rewrite')).toBeNull()
+    fireEvent.click(screen.getByText('Rewrite'))
+    expect((document.querySelector('textarea') as HTMLTextAreaElement).value).toBe(TOLD)
   })
 
-  /*
-   * KEPT AS A READ OF PAST DATA, NOT A CURRENT ACTION: this pins how a check-in already carrying
-   * an admin's past rewrite (from before this rule tightened) is still displayed correctly - "who
-   * changed it" is a plain read of `briefChangedBy`, not gated on the reader's role. It does not
-   * exercise clicking "Rewrite" as an admin, which the test above now confirms is not offered.
-   */
-  it('an admin who rewrote it in the past, where Groundwork wrote what everyone reads from his words, is told so', async () => {
+  it('an admin who rewrote it, where Groundwork wrote what everyone reads from his words, is told so', async () => {
     draw('admin', 'u-otieno', { ...juma, brief: 'Decide by March whether Juma is confirmed.', briefChangedBy: { firstName: 'Otieno', isYou: true, isTheLead: false } })
     expect(whose()).toEqual(['Groundwork wrote this from your words. This is what everyone in this check-in reads before they answer.'])
     expect(folds()).toEqual([{ title: 'What you wrote', text: 'Decide by March whether Juma is confirmed.' }])
