@@ -67,7 +67,7 @@ These are settled. Do not change them. If one seems to block the work, stop and 
 45. **The goodbye's commitment is saved as a commitment, in full sentences** (decided 29 September). The step that reads a check-in into the record saves the commitment the closing reply states as a commitment, written as a full sentence. It is checked with two re-runs of the scenarios it affects, and kept only if nothing drops.
 46. **The lead says plainly when a target is a decision about a person** (decided 29 September). There is a field for it, set by the lead. It is never inferred from the target's wording. Such a target is the lead's alone.
 47. **An admin is never told "nothing here needs you this week" when there are things they cannot see** (decided 29 September). In that case they read "Nothing you have access to needs you this week."
-48. **A goal the lead has not told the person about stays hidden from that person, and it does not count** (decided 29 September). It is not used in that person's report, or in any judgement about them, until the lead shares it.
+48. **A goal the lead has not told the person about stays hidden from that person, and it does not count** (decided 29 September). It is not used in that person's report, or in any judgement about them, until the lead shares it. *Replaced later the same day by decision 56.*
 49. **Week 10, the first suggestion to a manager:** decided later the same day, in decision 53. The person sees the suggestion first, and the manager gets a plain line with no count behind it.
 50. **There is no separate context chat. Ask Groundwork is the one chat for everything** (decided 29 September). Nothing the context chat does today may be lost. Everything it does is listed first in `docs/context-chat-inventory.md`, then moved into Ask Groundwork with the same rules:
     - what is pulled out is said back and confirmed before it is saved;
@@ -94,10 +94,17 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     - **An admin who cannot see a target reads only "has checked in".** "Nothing here needs you this week" is never said when it is not true. (This changes item 11, and goes with decision 47.)
     - **A decision about a person is a field the lead sets when the target is made,** never guessed from the wording. (This changes item 4, and is decision 46.)
     - **Week 10 is built the more private way:** the person sees the suggestion first, and the manager gets a plain line with no count behind it. (This changes item 28, and answers decision 49.)
-    - **The model in a person's own check-in is no longer given a goal the lead has not told them about** (item 27's "recommended next"), checked by re-running the scenarios it affects.
+    - **The model in a person's own check-in is no longer given a goal the lead has not told them about** (item 27's "recommended next"), checked by re-running the scenarios it affects. *Replaced later the same day by decision 56: the model is given the goal, but never states its number or target.*
 54. **Existing check-ins are not reopened by a migration** (decided 29 September). The data change is taken out of `20260923200000_reopen_every_check_in_that_ran_out_of_time`. The new rule applies from now on, and a lead can reopen a check-in themselves.
 55. **Patterns, role behaviour, coaching strategies and the probe structure are protected** (decided 29 September). They are the most powerful part of the product. They are never switched off, hidden, simplified or removed to solve a problem.
     - If one breaks a rule, it is fixed in place.
     - If it cannot be fixed quickly, it is narrowed to the most private view, for example only the person it is about, rather than switched off, and Hafsah is told in the report.
     - Every place where any of them has been switched off, hidden, simplified or removed so far is listed in the report, and each is restored, fixed properly.
     - They also learn: what happens after each pattern, coaching strategy and probe is recorded, and used to improve them over time. Learning never changes people's own words and never breaks a privacy rule. Any change to how patterns are judged is proven on the scenario runs before it is adopted, and big changes go to Hafsah first.
+56. **A goal the lead has not told the person about follows the prototype** (decided 29 September). This replaces items 25 and 27 of the list confirmed in decision 53, and decision 48.
+    1. The lead sees the goal marked "Not told yet", flagged as needing their attention, and is nudged to tell the person.
+    2. The model in the person's own check-in is given the goal, so it can ask about that work (the prototype's "Their check-in asks:"). It never states the number or the target until the lead has told them.
+    3. An untold goal still counts. Wherever it counts against the person, in a judgement, a board line or a suggestion, the lead is also shown it as a conversation point: this person has not been told about this goal yet, so talk it through with them.
+    4. If the lead has not told them after a week, the person is told plainly that their lead has set a goal about this work and will talk it through with them, and the lead is reminded.
+
+    It is checked by re-running the scenarios it affects, and live, that the person is never told the number before the lead has told them.
