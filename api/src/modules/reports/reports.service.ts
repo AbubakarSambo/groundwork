@@ -5,6 +5,7 @@ import { whoIsInTheRound } from './how-many-have-answered';
 import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
+import { THEIR_OWN_WORDS_IN_A_REPORT, withTheirOwnWordsKept } from '../board/their-own-words-stay';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
@@ -5972,7 +5973,13 @@ happened, and what is in the way.`;
       }) ?? Promise.resolve([])).catch(() => []);
       served = withoutGoalsNotToldIn(served, (notTold as any[]).filter(notToldYet).map((r) => String(r.text ?? '')));
     }
-    return withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames), hiddenTargets);
+    /* What people said stays as they said it: the hidden-target rule is for the report's own words.
+       See board/their-own-words-stay (screens request 77). */
+    return withTheirOwnWordsKept(
+      withoutPrivateFileNamesIn(withoutInternalLabelsIn(served, called), privateNames),
+      THEIR_OWN_WORDS_IN_A_REPORT,
+      (v) => withoutHiddenTargetsIn(v, hiddenTargets),
+    );
   }
 
   private async getAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {

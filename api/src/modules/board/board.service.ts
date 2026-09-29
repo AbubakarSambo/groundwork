@@ -3,6 +3,7 @@ import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-in
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { targetsHiddenFrom, withoutHiddenTargets, withoutHiddenTargetsIn } from './a-hidden-target-stays-hidden';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
+import { THEIR_OWN_WORDS_ON_THE_BOARD, withTheirOwnWordsKept, withoutLinesWithNoWords } from './their-own-words-stay';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { anAimIsOwedHere } from '../entry/a-check-in-with-no-aim-has-nothing-to-read-against';
 import { Injectable, ForbiddenException, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
@@ -1559,12 +1560,24 @@ export class BoardService {
       /* And no internal label reaches anyone, whichever section it sits in. See reports/no-internal-label-reaches-anyone. */
       const called = whatEachLabelIsCalled(ground.participants as any[], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsThisGround, peersAreNamed: !!peersVisible });
       /* Labels become names first, so the hidden-target read can find the person (see reports.service). */
-      let walled = withoutHiddenTargetsIn(withoutPrivateFileNamesIn(withoutInternalLabelsIn(out, called), privateNames), hiddenTargets) as any;
+      /*
+       * WHAT PEOPLE SAID STAYS AS THEY SAID IT (screens request 77). Names and a private file's name
+       * are swapped in every field, the lines people said included; the hidden-target rule is for
+       * Groundwork's own sentences, so each line a person said is held aside while it runs. See
+       * their-own-words-stay.
+       */
+      let walled = withTheirOwnWordsKept(
+        withoutPrivateFileNamesIn(withoutInternalLabelsIn(out, called), privateNames),
+        THEIR_OWN_WORDS_ON_THE_BOARD,
+        (v) => withoutHiddenTargetsIn(v, hiddenTargets),
+      ) as any;
       /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
          grounds/a-goal-not-told-stays-with-the-lead. */
       if (!isInitiator) walled = withoutGoalsNotToldIn(walled, await this.goalsNotToldYet(groundId));
       /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
+      /* And a line with no words is left out here, never served for the page to draw as an empty line. */
+      walled = withoutLinesWithNoWords(walled, ['whoOwnsWhat', '*', 'items'], 'text');
       return walled;
     }
   }
