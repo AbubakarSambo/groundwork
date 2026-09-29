@@ -401,6 +401,10 @@ Then the reviews run one module at a time, oldest first, and U.20 starts after t
 
 ## Needs Hafsah
 
+### 0-pat2. Privacy: should an admin who does not run a check-in read a person's pattern?
+
+The review found that Amani is told "Rukia Otieno will see it too, with anything you say about it", but Juma, an admin of the organisation who does not run the check-in, is also served her pattern once she has answered. The engine's rule counts an admin among the people who run a check-in; rule 5 lets admins read every board and report, including what people said. But the person is not told, and the server even gives Juma her words on one route and withholds them on another. **Please decide:** may an admin who does not run a check-in read a person's pattern and their answer? If yes, the person's sentence must name the admins too. If no, the server must stop sending it to them. Until you decide I took the more private option: the screens show another person's pattern only to the person who runs the check-in, and I asked the engine for one rule on the server (request 84).
+
 ### 0-pat. URGENT: the engine switched patterns on tonight, though you said the switch stays off
 
 At 21:50 on 29 September the engine workspace switched patterns on (`19cdf9b0`, "Switch patterns on now that the plain names are approved"), taking your approval of the 49 names as the go-ahead ("decision 52"). Your later message to this workspace says the switch stays off until you understand how patterns work. The switch is the engine's code, so I have not touched it. It is on in both `wip/` branches and on this Mac's local product only; nothing has been deployed anywhere. **Please tell the engine workspace whether to switch it back off.** Until you do, the screens built tonight show patterns wherever the engine serves them, under the engine's rules (below).
@@ -6592,3 +6596,23 @@ The old tab's eleven numbered folds are now the prototype's named sections, in t
 **A privacy problem found by the full screen suite, being fixed.** The new "Roles in this check-in" table showed each person's "role, as described" to everyone who could open the tab, including Juma, an admin who does not run the check-in. That field is mostly the lead's own private sentence about the person, and a lead's private notes are never shown to admins. Taking the more private option, the column is now shown only to the person who runs the check-in, with a test as the lead, an admin and a participant. The server itself also sends that field to an admin who does not run the check-in; privacy must hold on the server, so I asked the engine workspace to stop that (request 83).
 
 **The people group is built, and its end-of-group checks pass (30 September).** The privacy fix holds on the running product: only Rukia, who runs "Sales team, Q3", reads each person's role as described; Juma, an admin, and Amani, a participant, do not. The whole screen suite passes (3,548 tests in 510 files), the type check is clean, and the page-colour test passes for the participant, the lead and the admin. Four source-reading tests were pointed at the new file, keeping what each proves; one of them had always checked the same file twice instead of the second screen its name promised, and now checks both. Next: the reviewer reads the whole group, and the pattern screens, as each person.
+
+
+## Review of the people group and the pattern screens (30 September)
+
+The reviewer read every screen as Juma, Rukia, Amani and Neema, at 1440 and 375 pixels, and sent the group back. **What passes:** privacy on the server (each person's role as described reaches only the lead; colleagues' emails and goals are withheld from participants; People refuses a participant); the pattern rules (before Amani answered, nothing about her pattern reached anyone else; she saw it first and could answer; the lead then saw it with her words; Neema never saw it); the People and one-person pages match the prototype closely; every page works at phone width; and nothing the old People and setup did is lost, apart from one setting's "not answered yet" state (below). Both temporary database changes the reviewer made were put back and checked.
+
+**Sent back, most important first:**
+1. Privacy: an admin reads a person's pattern, but the person is told only the lead will (Needs Hafsah, item 0-pat2, and request 84). For now the screens show another person's pattern only to the person who runs the check-in.
+2. "Not let in" shows on the People page and the one-person page, but People and setup still says "Waiting for an admin", and the board still says "Ask Faraji to check in".
+3. "What an admin can see" says an admin can end a check-in, which nobody can yet.
+4. The strips under a person in "Who's in it" talk to an admin as if an admin were someone else, and "View plans" goes to People.
+5. "Joined 27 September" for someone never let in, and "Invited" for someone whose invitation was never sent.
+6. Every avatar reads "?" for Juma on People and setup, and one row is headed "a colleague" in lowercase.
+7. The change log says "Changed by the lead" or "Changed by the party", never a name, and logs only two of the settings, while the page promises every change is noted with your name.
+8. Several clipped or untrue sentences on People and setup, among them "Nobody ever sees what anybody wrote", which is untrue for the lead and admins.
+9. "The team today" shows no pattern line under each person, though its own subtitle promises one. This is a protected screen, so it must be drawn, not left out.
+10. "Situation" offers Change though it never saves; and "Who can corroborate whom" lost its "not answered yet" state when it became an on/off switch.
+11. Smaller points on the People page, and one on the participant's old view.
+
+**The reviewer's view on the items for you to confirm:** it agrees with Guest, the invitation wording, the shortened sentences (apart from "end it"), "Not let in" (once it reaches every page), keeping four sections the prototype has no place for, and keeping "Ending it" in the product's words. It disagrees with keeping "You in this check-in" on the lead's view, because it repeats "What it is" and "How it runs" as label pieces. I will fold it into the sections it repeats, since that is closer to the prototype, and list it.
