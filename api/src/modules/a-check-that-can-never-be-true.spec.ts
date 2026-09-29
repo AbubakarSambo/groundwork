@@ -159,6 +159,13 @@ const CHECKED_AND_FINE = new Set([
    */
   'modules/knowledge/knowledge.service.ts:key',
   'modules/knowledge/knowledge.service.ts:title',
+  /*
+   * Request 76's work-item code. `if (!dto.kind || ...)` in `theWorkItemFields` checks
+   * `WorkItemInput.kind`, an OPTIONAL field on the lead's own request body for adding or changing a
+   * record (`kind?: string`), before anything is written - not a row read back. It matched
+   * `WorkMention.kind`, a non-nullable enum column this file also reads, purely on the field name.
+   */
+  'modules/board/board.service.ts:kind',
 ]);
 
 function findHits() {
