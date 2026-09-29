@@ -1158,6 +1158,7 @@ model Ground {
   leadSetupWords    LeadSetupWords?
   commitments       GroundCommitment[]
   contextItems      GroundContextItem[]
+  planProposals     PlanProposal[]
   pastesTaken       GroundPaste[]
   reportActivations ReportActivation[]
   roundCompletions  RoundCompletion[]
@@ -5156,6 +5157,41 @@ model GroundContextItem {
   @@index([groundId])
   @@index([aboutParticipantId])
   @@map("ground_context_items")
+}
+
+/// A PLAN, READ INTO PROPOSALS, WAITING FOR THE LEAD (week 13, screens request 6a).
+///
+/// The lead pastes a plan or picks a document, and each goal, role, commitment and rule in it is
+/// kept here as one proposal. Nothing reaches the targets, roles, commitments or rules until the
+/// lead confirms that one proposal (decision 12): then exactly one row is written, and its id is
+/// kept here. Only the person who runs the check-in reads these; a participant never does.
+model PlanProposal {
+  id              String    @id @default(uuid())
+  groundId        String    @map("ground_id")
+  createdByUserId String    @map("created_by_user_id")
+  /// GOAL, ROLE, COMMITMENT or RULE.
+  kind            String
+  /// The one plain sentence the lead reads.
+  says            String    @db.Text
+  /// The structured values: the person, the number, the date exactly as written, and so on.
+  fields          Json
+  /// The plan's own words it came from, exactly.
+  fromThePlan     String    @map("from_the_plan") @db.Text
+  /// Where the plan came from: the file's name, or null for pasted text.
+  fromDocument    String?   @map("from_document")
+  /// PENDING, CONFIRMED or NOT_NOW. An edit keeps it PENDING and sets `editedAt`.
+  status          String    @default("PENDING")
+  editedAt        DateTime? @map("edited_at")
+  decidedAt       DateTime? @map("decided_at")
+  decidedByUserId String?   @map("decided_by_user_id")
+  /// The row it became when confirmed, in the table its kind lands in.
+  becameId        String?   @map("became_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@index([groundId, status])
+  @@map("plan_proposals")
 }
 
 /// A PASTE IS TAKEN ONCE.
