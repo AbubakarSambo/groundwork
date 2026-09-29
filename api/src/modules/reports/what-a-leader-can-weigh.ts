@@ -115,7 +115,7 @@ export function whatALeaderCanWeigh(input: WeighInput): WeighSection | null {
     whatTheRecordHolds: input.entries.filter((e) => WEIGHABLE.includes(e.kind)),
     whatNobodyHasEvidenceFor: untouched,
     note: untouched.length
-      ? `${untouched.length === 1 ? 'One thing' : `${untouched.length} things`} you said mattered ${untouched.length === 1 ? 'was' : 'were'} never reached by anybody's account. That is not evidence against anyone; it means the record cannot answer that part, and a decision that rests on it is resting on something else.`
+      ? `${untouched.length === 1 ? 'One thing' : `${untouched.length} things`} you said mattered ${untouched.length === 1 ? 'was' : 'were'} never reached by anything anybody said. That is not evidence against anyone; it means the record cannot answer that part, and a decision that rests on it is resting on something else.`
       : 'Everything you said mattered has something in the record bearing on it. Read the entries, not this summary of them.',
   };
 }

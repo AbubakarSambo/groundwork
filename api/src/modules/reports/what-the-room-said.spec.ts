@@ -56,7 +56,7 @@ describe('what the room said', () => {
 
   it('says whether this is a direction or a room that agreed on nothing', () => {
     expect(isItADirection(d).enough).toBe(true);
-    expect(isItADirection(d).saying).toContain('out of 3 accounts');
+    expect(isItADirection(d).saying).toContain('out of 3 people who answered');
     const nobodyAgrees = tidy({ regions: [{ name: 'Kano', namedBy: ['Participant A'] }] }, room, 3);
     expect(isItADirection(nobodyAgrees).enough).toBe(false);
     expect(isItADirection(nobodyAgrees).saying).toContain('no shared priority');

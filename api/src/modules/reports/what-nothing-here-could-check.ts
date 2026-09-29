@@ -64,9 +64,9 @@ export function wasChecked(c: AClaim): boolean {
  * second will read the whole thing differently - correctly.
  */
 export const NOBODY_TO_CHECK_AGAINST =
-  'Nobody else has given their own account yet, so nothing in this report has been checked against'
-  + ' another person. It is one account of the work, which is a real thing to read and not the same'
-  + ' as an agreed one.';
+  'Nobody else has answered yet, so nothing in this report has been checked against what'
+  + ' another person said. It is what one person said about the work, which is a real thing to read and not the same'
+  + ' as something people agree on.';
 
 /**
  * WHEN THE WORKING-OUT ITSELF FAILED, WHICH MUST NOT BE SILENT.
@@ -78,8 +78,8 @@ export const NOBODY_TO_CHECK_AGAINST =
  * silence.
  */
 export const COULD_NOT_WORK_IT_OUT =
-  'It was not possible to work out which parts of this report line up with anything outside the'
-  + ' account they came from. Read all of it as one account until you can check it yourself.';
+  'It was not possible to work out which parts of this report line up with anything other than what'
+  + ' one person said. Read all of it as what one person said until you can check it yourself.';
 
 export const UNCHECKED_IS_NOT_DOUBTED =
   'Not being checked does not make something wrong. Most of what people do leaves no record, and'
@@ -99,13 +99,13 @@ export function whatCouldBeChecked(claims: AClaim[], othersWhoGaveAnAccount: num
 
   if (checked === 0) {
     says.push(
-      `None of the ${total} things described here could be checked against another account, a`
+      `None of the ${total} things described here could be checked against what another person said, a`
       + ' document, or a record from a system. They are in this report because somebody said them.',
     );
   } else if (checked === total) {
     says.push(
-      `All ${total} of the things described here line up with something outside the account they`
-      + ' came from - another person, a document, or a record.',
+      `All ${total} of the things described here line up with something other than what the person`
+      + ' said - what another person said, a document, or a record.',
     );
   } else {
     /*
@@ -114,8 +114,8 @@ export function whatCouldBeChecked(claims: AClaim[], othersWhoGaveAnAccount: num
      * it is here because it was said.
      */
     says.push(
-      `${checked} of the ${total} things described here line up with something outside the account`
-      + ` they came from. The other ${total - checked} are in this report because somebody said`
+      `${checked} of the ${total} things described here line up with something other than what the person`
+      + ` said. The other ${total - checked} are in this report because somebody said`
       + ' them, and nothing else in the record speaks to them either way.',
     );
   }

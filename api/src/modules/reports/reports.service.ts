@@ -506,7 +506,7 @@ ${WRITTEN_ONCE_FOR_SEVERAL_READERS}`;
 
 /** What a participant who has not answered yet is told, on the report and on a session's report alike. */
 export const A_PICTURE_IS_FORMING =
-  'A picture is forming from the accounts that are in. You can read it as soon as you have given yours. Reading somebody else\'s first would turn yours into an answer to theirs, and the point is that they are separate.';
+  'A picture is forming from what people have said so far. You can read it as soon as you have answered. Reading somebody else\'s first would turn yours into an answer to theirs, and the point is that they are separate.';
 
 /* Set only while the warm-up words what each reader will read (ReportsService.wordTheReadsFor). At
    module scope so a service made without its constructor still reads "not warming". */

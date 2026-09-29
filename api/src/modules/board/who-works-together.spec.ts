@@ -191,7 +191,7 @@ describe('the service passes the lead\'s answer through', () => {
     const svc = serviceFor(GroundScenario.COHORT_CHECK, false);
     const board = await svc.get('g1', 'u1');
     const read = board.contribution.find((r: any) => r.participantId === 'quiet');
-    expect(read.reason).toMatch(/no second account to check any of this against/i);
+    expect(read.reason).toMatch(/nobody else has said anything to check this against/i);
   });
 
   it('does not add that caveat when people can in fact corroborate each other', async () => {

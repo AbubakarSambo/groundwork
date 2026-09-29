@@ -284,11 +284,11 @@ export function whereYouAreAgainstWhatYouNamed(
       sides === 'nobody'
         ? input.counting === 'only-yours'
           ? 'Nothing has been said yet about what success looks like - not by the person running this, and not by you. It appears here as soon as either of you does.'
-          : 'Nobody has said what success looks like yet - not the person running this, and not anyone answering it. Until somebody does, the report can say where the accounts differ but not whether things are going well.'
+          : 'Nobody has said what success looks like yet - not the person running this, and not anyone answering it. Until somebody does, the report can say where people said different things, but not whether things are going well.'
         : sides === 'only-the-lead' && !conditions.length
           ? input.counting === 'only-yours'
-            ? 'What success looks like is stated. Your own account of it appears here once you have checked in; everybody else\'s arrives with the report.'
-            : 'What success looks like is stated, but nobody has given their own account of it yet. It fills in as people check in.'
+            ? 'What success looks like is stated. What you say about it appears here once you have checked in; everybody else\'s arrives with the report.'
+            : 'What success looks like is stated, but nobody has said anything about it in a check-in yet. It fills in as people check in.'
           : sides === 'only-the-parties'
             ? input.leadHasSaidIt
               /* Said in a check-in but never set as the yardstick. Naming that difference is the

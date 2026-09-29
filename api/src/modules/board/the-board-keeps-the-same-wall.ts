@@ -74,6 +74,6 @@ export function onlyHandoffsTheyAreIn<T extends { fromParticipantId?: string | n
  * of itself does not read as broken or as though nobody else is in the check-in.
  */
 export const WHY_YOU_ONLY_SEE_YOURSELF =
-  'On this check-in people give their accounts without seeing each other, so the person-by-person '
-  + 'part of this board shows only you. Everything above it - what the accounts agree on, where they '
-  + 'differ, and the question it turns on - is built from everybody and is the same for all of you.';
+  'On this check-in people answer without seeing what each other said, so the person-by-person '
+  + 'part of this board shows only you. Everything above it - where people said the same thing, where they '
+  + 'said different things, and the question it turns on - is built from everybody and is the same for all of you.';

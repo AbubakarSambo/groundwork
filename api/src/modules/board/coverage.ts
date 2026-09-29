@@ -70,7 +70,7 @@ export const COVERAGE_SECTION_TITLE = 'Where work is landing';
 export const COVERAGE_SECTION_SUBTITLE = 'whose work is landing where';
 
 export const COVERAGE_LEAD_IN =
-  'A drop in ownership shows up as your responsibilities landing more and more in other people\'s accounts. Rising is the early warning, often before targets are missed, because the work still gets done, by someone else.';
+  'A drop in ownership shows up as your responsibilities coming up more and more in what other people say about their own work. Rising is the early warning, often before targets are missed, because the work still gets done, by someone else.';
 
 export const COVERAGE_GUARD_LINE =
   'Other people doing your work can mean four different things: an ownership drop (others covering a gap), healthy shared work by design, you being blocked or overloaded, or someone else over-reaching into your role. This shows the signal and the reason it cannot tell which on its own, two-sided (leaking out vs absorbing in), coupled to the dependency and role-clarity views, with your own voice. It never concludes you stopped contributing. It surfaces a question the team should discuss, not a verdict about a person. Only shown where the role is defined, an undefined boundary has no coverage to measure.';
@@ -114,7 +114,7 @@ export function classifyCoverageReason(input: {
     return {
       reason: CoverageReason.SHARED_BY_DESIGN,
       reasonText:
-        'They have said this was handed over deliberately, so it is delegation, not a gap. Their own account settles this one.',
+        'They have said this was handed over deliberately, so it is delegation, not a gap. What they said settles this one.',
     };
   }
   // STABLE means nothing is moving either way, so there is nothing to explain.
@@ -332,4 +332,4 @@ export interface ManagerAlignmentRead {
 }
 
 export const MANAGER_ALIGNMENT_GUARD =
-  'Neither account is called wrong. A manager can set something out clearly and have it not land, and both people can be describing their own experience honestly. This says the two accounts differ. It never says who said what, and it is a reason to talk rather than a finding about anybody.';
+  'Neither person is called wrong. A manager can set something out clearly and have it not land, and both people can be describing their own experience honestly. This says the two people said different things. It never says who said what, and it is a reason to talk rather than a finding about anybody.';

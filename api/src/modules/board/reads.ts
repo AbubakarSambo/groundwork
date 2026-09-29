@@ -650,7 +650,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         );
         if (thatOneIsWaiting) {
           reasonParts.push(
-            `That person is also waiting on them for ${waitingOnThem.length} ${waitingOnThem.length === 1 ? 'thing' : 'things'}, so read it as one account rather than as confirmation that the work arrived.`,
+            `That person is also waiting on them for ${waitingOnThem.length} ${waitingOnThem.length === 1 ? 'thing' : 'things'}, so read it as what one person said rather than as confirmation that the work arrived.`,
           );
         } else if (!allFromOne) {
           reasonParts.push('Separate people naming the same work is worth more than the count of what anybody said.');
@@ -701,7 +701,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         // describes it flatly looks identical to someone who did not do it, and
         // on this kind of ground there is no colleague who could tell them apart.
         reasonParts.push(
-          'Nobody else on this ground sees this person\'s work, so there is no second account to check any of this against. Read it as one account, not as confirmed.',
+          'Nobody else on this ground sees this person\'s work, so nobody else has said anything to check this against. Read it as what one person said, not as confirmed.',
         );
       } else if (!peopleWorkTogether && completed >= 3) {
         /* The setting says they work separately and somebody named their work anyway. That is worth
@@ -923,8 +923,8 @@ export function buildCoverage(input: ReadInput, nameOf: NameOf): CoverageResult 
         : kind === CoverageKind.LEAKING
           ? `${longestQuietRun} check-ins in a row added nothing specific to the record, and nothing is blocking them. The work has not stopped existing, so it is worth asking where it is going.`
           : kind === CoverageKind.ABSORBING
-            ? `This account describes picking up work outside this remit ${absorbingIn.length} time${absorbingIn.length === 1 ? '' : 's'}.`
-            : "Nothing in anyone's account describes this person's work moving elsewhere.";
+            ? `This person described picking up work outside this remit ${absorbingIn.length} time${absorbingIn.length === 1 ? '' : 's'}.`
+            : "Nobody has said anything about this person's work moving elsewhere.";
 
     // Credit is surfaced WHATEVER the coverage reading is. The person absorbing
     // other people's work is very often the same quiet load-bearer others keep

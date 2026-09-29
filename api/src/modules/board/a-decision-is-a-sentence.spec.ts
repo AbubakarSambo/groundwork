@@ -15,9 +15,31 @@ describe('a decision on the board is a sentence', () => {
     expect(d.owner).toBe('Juma Otieno');
   });
 
-  it('a difference between accounts', () => {
-    const [d] = derive([{ topic: 'The main obstacle to signing new shops' }], []);
-    expect(d.question).toBe('The accounts differ on the main obstacle to signing new shops, so it needs settling.');
+  it('a difference, said as what each person said, with names this reader may see', () => {
+    const names: Record<string, string> = { 'Participant A': 'Brian Mwangi', 'Participant B': 'Miriam Achieng' };
+    const [d] = (BoardService.prototype as any).deriveDecisions.call(
+      {},
+      [{ topic: 'Whether the order is signed', positions: [{ participantLabel: 'Participant A' }, { participantLabel: 'Participant B' }] }],
+      [], () => null, [], (l: string) => names[l],
+    );
+    expect(d.question).toBe('Brian Mwangi and Miriam Achieng said different things about whether the order is signed, so it needs settling.');
+    expect(d.why).toBe('What people said about this does not match, so nobody can assume it is agreed.');
+  });
+
+  it('a difference where one name is hidden from this reader names nobody', () => {
+    const [d] = (BoardService.prototype as any).deriveDecisions.call(
+      {},
+      [{ topic: 'The main obstacle to signing new shops', positions: [{ participantLabel: 'Participant A' }, { participantLabel: 'Participant B' }] }],
+      [], () => null, [], (l: string) => (l === 'Participant A' ? 'Brian Mwangi' : undefined),
+    );
+    expect(d.question).toBe('People in this check-in said different things about the main obstacle to signing new shops, so it needs settling.');
+    expect(d.question).not.toContain('Brian');
+  });
+
+  it('never says "account"', () => {
+    for (const d of derive([{ topic: 'Pricing' }, {}], [])) {
+      expect(`${d.question} ${d.why}`).not.toMatch(/\baccounts?\b/i);
+    }
   });
 
   it('never a label and a colon', () => {

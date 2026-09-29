@@ -113,6 +113,22 @@ import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../re
  * blocking is no longer blocking.
  */
 /** A phrase put inside a sentence: "Whether a range counts" becomes "whether a range counts"; "Kwame's target" stays. */
+/**
+ * WHO SAID DIFFERENT THINGS, BY NAME WHERE THIS READER MAY SEE THE NAMES.
+ *
+ * "The accounts differ" is how the engine talks, not how a person does. Every side of the
+ * difference is named only when every side resolves to a name this reader may see; one missing
+ * name and nobody is named, so a hidden person is never left out of a list that names the others.
+ */
+export function whoSaidDifferentThings(d: any, nameForLabel: (label: string) => string | undefined): string {
+  const sides: any[] = Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : [];
+  const names = [...new Set(sides.map((s) => nameForLabel(String(s?.participantLabel ?? ''))?.trim() ?? ''))];
+  if (sides.length >= 2 && names.length >= 2 && names.every(Boolean)) {
+    return names.length === 2 ? `${names[0]} and ${names[1]}` : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  }
+  return 'People in this check-in';
+}
+
 export const inASentence = (phrase: string): string => {
   const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
   return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
@@ -258,7 +274,7 @@ export class BoardService {
          * so it says so.
          */
         reason:
-          'There is no board for this check-in yet. Read the report instead - it has everything the accounts produced.',
+          'There is no board for this check-in yet. Read the report instead. It has everything people said in their check-ins.',
       };
     }
 
@@ -1152,6 +1168,7 @@ export class BoardService {
          * section is - so they belong here the moment the lead shares the note.
          */
         await this.whatTheLeadSaysIsStillToDecide(groundId),
+        (label: string) => visibleNames.get(label),
       );
     }
 
@@ -1549,11 +1566,14 @@ export class BoardService {
     dependencies: { what: string; status: DependencyStatus; onParticipantId: string | null; onLabel: string | null }[],
     nameOf: (id: string) => string | null,
     stillToDecide: string[] = [],
+    /** The name this reader may see for a report label, or undefined. Nothing else is printed. */
+    nameForLabel: (label: string) => string | undefined = () => undefined,
   ) {
     const fromDivergence = divergences.map((d) => ({
-      /* Full sentences, never a label and a colon (screens request 68, 28 Sep 2026). */
-      question: d.topic ? `The accounts differ on ${inASentence(d.topic)}, so it needs settling.` : 'The accounts differ here, so it needs settling.',
-      why: 'The accounts do not match on this, so it cannot be assumed agreed.',
+      /* Full sentences, never a label and a colon (screens request 68, 28 Sep 2026). Said as what
+         each person said, never as "the accounts differ" (29 Sep 2026). */
+      question: `${whoSaidDifferentThings(d, nameForLabel)} said different things about ${d.topic ? inASentence(d.topic) : 'this'}, so it needs settling.`,
+      why: 'What people said about this does not match, so nobody can assume it is agreed.',
       owner: 'Lead and team',
       source: 'divergence' as const,
     }));

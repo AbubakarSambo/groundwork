@@ -156,12 +156,12 @@ export function isItADirection(d: TheDirection): { enough: boolean; saying: stri
   if (!shared) {
     return {
       enough: false,
-      saying: `Everybody named something different. ${anything} things were named across ${d.outOf} accounts and no two of them agreed, which is itself the finding: there is no shared priority here yet.`,
+      saying: `Everybody named something different. ${d.outOf} people named ${anything} things between them, and no two of them named the same thing, which is itself the finding: there is no shared priority here yet.`,
     };
   }
   return {
     enough: true,
-    saying: `${shared} of the ${anything} things named were named by more than one person, out of ${d.outOf} accounts.`,
+    saying: `${shared} of the ${anything} things named were named by more than one person, out of ${d.outOf} people who answered.`,
   };
 }
 
@@ -177,10 +177,10 @@ export function whatYouNamed(d: TheDirection, yourLabel: string): { line: string
     .filter((x) => x.namedBy.some((l) => theSameLabel(l) === theSameLabel(yourLabel)))
     .map((x) => ({ name: x.name, alsoNamedBy: x.namedBy.length - 1 }))
     .sort((a, b) => b.alsoNamedBy - a.alsoNamedBy);
-  if (!yours.length) return { line: 'Nothing you named has come back in anybody else\'s account yet.', yours: [] };
+  if (!yours.length) return { line: 'Nobody else has named any of the things you named yet.', yours: [] };
   const shared = yours.filter((y) => y.alsoNamedBy > 0);
   const line = shared.length
-    ? `${shared.length} of the ${yours.length} things you named came up in other accounts too, out of ${d.outOf}.`
+    ? `${shared.length} of the ${yours.length} things you named were named by somebody else too, out of ${d.outOf} people who answered.`
     : `You named ${yours.length} things, and so far nobody else has named any of them. That is worth knowing on its own.`;
   return { line, yours };
 }

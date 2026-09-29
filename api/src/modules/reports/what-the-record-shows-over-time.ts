@@ -485,7 +485,7 @@ export function whatThisCannotTellYou(o: {
     out.push('Nothing here is backed by a document. Every line is what somebody said, and none of it has been checked against anything outside this check-in.');
   }
   if (o.peopleWhoAnswered < o.peopleInvited) {
-    out.push(`${o.peopleInvited - o.peopleWhoAnswered} of ${o.peopleInvited} people have not given their account, so anything about them is missing rather than absent.`);
+    out.push(`${o.peopleInvited - o.peopleWhoAnswered} of ${o.peopleInvited} people have not answered yet, so anything about them is missing rather than absent.`);
   }
   if (!o.anybodyAskedWhoArrangedThings) {
     out.push('Nobody on record has said who arranged the meetings that happened, so this cannot tell you who secured them.');

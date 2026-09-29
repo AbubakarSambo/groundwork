@@ -167,7 +167,7 @@ export function withoutWhatOnlyTheLeadSaid<T>(
  * coverage, not about them.
  */
 export const ONLY_THE_LEAD_HAS_SAID_THIS =
-  'Only the person running this check-in has raised this. Nobody else\'s account has touched it yet, '
+  'Only the person running this check-in has raised this. Nobody else has said anything about it yet, '
   + 'so read it as something to ask about rather than as something established.';
 
 /**
