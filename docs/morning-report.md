@@ -64,6 +64,19 @@ Left as it is, on purpose: the notes colleagues write "for whoever hits this nex
 
 Tests: 816 files and 7,485 tests pass in the parts these touch. The new tests for 41 and 42 fail on the old code, so they test something real.
 
+**Eight more privacy requests are answered, and one new leak is closed.**
+- **New, found today** (`4265b4ee`). The list of who has shown their report could be read by any signed-in person, even from another organisation. It held participant ids, not names. Now only people in the check-in and admins of its organisation can read it. On a check-in where people do not see each other, a participant sees only their own row.
+- **50, fixed** (`8f1f2eac`). On a check-in where people do not see each other, the board still sent every person's row to every reader, as "another colleague", with whether each had signed off. Now a participant gets only their own row and the lead's. The screens need to read a new yes-or-no, `aTeamReportComes`, instead of counting the rows.
+- **64, fixed** (`3e179165`). A pattern about how the check-in is led was sent while patterns are off, even to participants. Now nobody gets it while patterns are off. When they are on, only the lead gets it, after three periods.
+- **66, fixed** (`04858df0`). "You have accounts from Amani Kariuki and Juma Otieno this round" was written to the lead and shown to everyone, so Amani read it too. Every reader now gets the round's own sentence with names: "Rukia Mwangi has accounts from Amani Kariuki and Juma Otieno this round."
+- **43, 46, 51, 52 and 63 were already fixed,** and new tests now prove each on what is served:
+  - Nobody gets another person's rating or confidence.
+  - A lead's file name reaches only the lead.
+  - A participant who has not answered cannot read the forming report.
+  - An admin who cannot see a target reads nothing about it.
+
+Tests: 626 files and 5,981 tests pass in reports, board, check-ins and conversation. Each new test for a fix fails on the old code.
+
 ### Decided for Hafsah to confirm
 
 1. **The lead's note to everyone is filtered too.** A sentence in it that gives a colleague's hidden target is taken out of the copy that reaches another person's check-in. The lead's own copy is unchanged. This is the more private option.
@@ -73,6 +86,11 @@ Tests: 816 files and 7,485 tests pass in the parts these touch. The new tests fo
 5. **Request 49 also covers the board and the two activation routes,** because they carry the report's story and names. If the check for a held seat fails, the report is refused, never served.
 6. **Request 57 has no fallback.** If the lead has left, nobody else can share that report. The route also still needs the admin role, so a lead who is not an admin shares through "send to everyone", which already allowed only the lead.
 7. **Request 41 applies to briefs already stored.** A short brief written before this change may still reword the lead's setup answers, until the brief is saved again.
+8. **Who has shown their report is read only inside the check-in.** Groundwork staff who are not admins of that organisation are refused too.
+9. **Request 50 keeps the lead's row** on a participant's board, because participants may already read the lead's name.
+10. **Request 64 is for the lead only, even when patterns are on.** It has no place for the person to answer first, so decision 39 could not be kept for anyone else. The "setup never said" reading only ever has one period, so under the three-period rule it now never shows.
+11. **Request 63: an admin who cannot see a target is told "has checked in, and nothing here needs you this week", even when the person is behind.** The request suggested saying they are behind, but "behind" is worked out from the hidden number, so I held it back.
+12. **Request 66: the lead reads their own name on that one line,** not "you". That is the same as the round's report text beside it. The alternative is a second copy of the line for each reader.
 
 ---
 
