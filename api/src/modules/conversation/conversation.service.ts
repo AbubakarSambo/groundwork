@@ -1,4 +1,5 @@
 import { suggestAnswers } from './suggested-answers';
+import { whatTheYesSays, startsWithAYes } from './yes-but-a-new-number';
 import { aClaimNothingShowsYet, askForProofKindly } from './asking-for-proof-kindly';
 import { managementWordsIn, sayItInPlainWords } from './management-words';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
@@ -1223,7 +1224,8 @@ export class ConversationService {
     said: string | null | undefined,
   ): Promise<string | null> {
     const answer = (said ?? '').trim();
-    if (!answer || !/^(yes|yep|yeah|yup|ok|okay|sure|correct|that is right|thats right|that's right|right|confirmed?|take (it|them|those)|record (it|them|those))\b[\s\S]{0,40}$/i.test(answer)) return null;
+    /* A bare yes, or a "yes, but" with the new number in it. See yes-but-a-new-number. */
+    if (!answer || !startsWithAYes(answer)) return null;
     try {
       const docs = await this.prisma.groundDocument.findMany({
         where: { groundId: checkIn.groundId, participantId: checkIn.participantId, NOT: { holds: { equals: null as any } } },
@@ -1238,7 +1240,14 @@ export class ConversationService {
         /* Nothing already on the record twice: the same measure for the same owner is one target. */
         const already = await this.prisma.groundObjective.findMany({ where: { groundId: checkIn.groundId }, select: { name: true, ownerParticipantId: true } });
         const held = new Set(already.map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
-        const rows = waiting.filter((w) => !held.has(`${w.ownerParticipantId ?? 'team'}::${(w.name ?? '').trim().toLowerCase()}`));
+        const yes = whatTheYesSays(answer, waiting);
+        if (yes.kind === 'not a yes') return null;
+        if (yes.kind === 'yes, but which one') {
+          return `Which number should be ${yes.target.toLocaleString('en-GB')}? Tell me what it is for, and I will write that one down with the new number and the rest as ${d.fileName} has them.`;
+        }
+        /* The person's number wins over the document's, on the one line their answer is about. */
+        const corrected = yes.kind === 'yes, with a new number' ? waiting.map((w, i) => (i === yes.row ? { ...w, target: yes.target } : w)) : waiting;
+        const rows = corrected.filter((w) => !held.has(`${w.ownerParticipantId ?? 'team'}::${(w.name ?? '').trim().toLowerCase()}`));
         if (rows.length) {
           await this.prisma.groundObjective.createMany({
             data: rows.map((w, i) => ({
@@ -1261,6 +1270,9 @@ export class ConversationService {
         if (!rows.length) return `Those are already on the record, so nothing was written twice.`;
         return [
           `Recorded from ${d.fileName}.`,
+          yes.kind === 'yes, with a new number'
+            ? `For ${waiting[yes.row].name}, it has ${yes.target.toLocaleString('en-GB')}, as you said, instead of the ${waiting[yes.row].target.toLocaleString('en-GB')} in the document.`
+            : '',
           mine ? `${mine} ${mine === 1 ? 'number' : 'numbers'} against the person who holds ${mine === 1 ? 'it' : 'them'}.` : '',
           team ? `${team} for the whole check-in, which everybody here sees.` : '',
           'Nobody is measured against any of it until they have seen it.',

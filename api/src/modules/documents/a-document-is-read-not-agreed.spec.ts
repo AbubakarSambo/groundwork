@@ -42,7 +42,11 @@ describe('a document is read, not agreed', () => {
 
   it('the yes is a yes, not any answer', () => {
     const waits = CONVO.slice(CONVO.indexOf('private async whatTheDocumentWaitsFor('), CONVO.indexOf('private async composeSystemPrompt('));
-    expect(waits).toMatch(/\^\(yes\|yep\|yeah/);
+    /* Changed 29 Sep 2026 (week 14): the yes is read in yes-but-a-new-number, so a "yes, but it's 45 now" keeps its number. */
+    expect(waits).toContain('startsWithAYes(answer)');
+    expect(waits).toContain('whatTheYesSays(answer, waiting)');
+    const YES = fs.readFileSync(path.join(__dirname, '..', 'conversation', 'yes-but-a-new-number.ts'), 'utf8');
+    expect(YES).toMatch(/\^\(yes\|yep\|yeah/);
   });
 
   it('and the receipt says whose numbers went where, and what nobody is measured against yet', () => {
