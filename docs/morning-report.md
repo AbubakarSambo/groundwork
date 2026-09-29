@@ -155,6 +155,35 @@ Tests: 647 files and 6,079 tests pass in reports, board, check-ins and conversat
 
 Tests: 649 files and 6,119 tests pass in reports, board, check-ins and conversation.
 
+**The live check of the end card and the marks sent task 2.7 back.** The reviewer ran sales and seniorhire fresh on today's build, then read everything as each person through the live API.
+
+What held:
+- A transcript and its end card reach only their owner. Every attempt to read someone else's was refused.
+- The "you kept" count reaches only the person.
+- The lead's remit is taken out for participants, and no colleague's target is in anyone's own check-in.
+- Participants get no judgement.
+
+What was wrong, and is being fixed now:
+1. **Nobody sees their end card.** It is built 10 to 47 seconds after the goodbye, and nothing fetches it again. This is the heart of 2.7.
+2. **A card could say something different from what was recorded,** when the person finished before the card was ready.
+3. **The engine's own notes reached the person,** for example "I haven't had that conversation with Tobi yet. [INFERRED: about him taking over the scheduling]".
+4. **The card showed six lines and dropped the commitment,** the line that matters most.
+5. **The marks were not consistent.** "N19 million disbursed." read as their word, but "Six facilities approved." read as from memory.
+6. **The closing reply said "Your report is ready now"** before the person had seen the card. The prototype says "That's all for today. Below is what I wrote down from your answers. Is anything wrong?"
+7. **"You kept all two of your commitments."**
+8. **The lead's board showed how a person's answers were rated:** "37 lines taken from what they said, 10 with a name, a number or a date in them, 5 of those specific enough…". This breaks decision 38. It was there before today.
+9. **Opening a session report still asked the model,** in one part today's fix missed. It took 20 to 68 seconds, and gave a different sentence each time.
+10. **Other faults:**
+    - A person's own row said "nothing specific enough to record came out of it" when they had given seven lines.
+    - "somebody marked it done" was untrue.
+    - A clear "I haven't done anything further" left the commitment open, and one commitment was listed twice.
+    - Promises such as "I'll talk to Tobi tomorrow" were never recorded as commitments.
+11. **Two privacy questions,** decided below:
+    - A goal the lead has not told the person yet showed on that person's You board.
+    - On a check-in where each person sees only their own target, people say their target out loud, and the product then repeats it to colleagues in its own sentences.
+
+Not tested live: an admin who only reads (the run creates none), and documents (neither scenario has any), so "proven" was not seen.
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
@@ -207,6 +236,8 @@ The same build asked twice as often in both re-checks as it did in run-18. With 
 22. **What the lead weighs at the close is read only by the lead and the person it is about.** On a team check-in, that is the lead alone.
 23. **Week 9: proof can settle a commitment as done** (a document the person added, or the colleague confirming it arrived), but never as missed.
 24. **Week 9: "you kept 11 of your 20 commitments" is the person's alone.** Each person's load across check-ins is private, so the lead does not see this count.
+25. **A goal the lead has not told the person about yet is not shown to that person.** It appears once the lead has told them. This is the more private option.
+26. **On a check-in where each person sees only their own target, the product's own sentences never give a colleague's target,** even when that colleague said it out loud in their check-in. Their own words, shown word for word to the people in the check-in, stay as they are. This is the more private option.
 
 ---
 
