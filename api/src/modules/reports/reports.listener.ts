@@ -119,17 +119,12 @@ export class ReportsListener {
   }
 
   private async warmTheReads(groundId: string, sessionNumber: number) {
-    const ground = await this.prisma.ground.findUnique({
-      where: { id: groundId },
-      select: { organizationId: true, initiatorId: true, participants: { select: { userId: true } } },
-    });
-    if (!ground) return;
-    const readers = [...new Set([ground.initiatorId, ...ground.participants.map((p) => p.userId)].filter(Boolean))] as string[];
+    /* Every reader's report and session report, worded now with the model allowed. Opening them
+       later asks no model (decision 7): see ReportsService.wordTheReadsFor. */
+    const read = await this.reports.wordTheReadsFor(groundId, sessionNumber);
+    const readers = read.map((r) => r.userId);
     let kept = false;
-    for (const userId of readers) {
-      const said = await this.reports.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
-      await this.reports.get(groundId, userId, ground.organizationId).catch(() => undefined);
-
+    for (const { sessionReport: said } of read) {
       /*
        * AND THE ROUND KEEPS WHAT IT FOUND, once, while it is in hand.
        *

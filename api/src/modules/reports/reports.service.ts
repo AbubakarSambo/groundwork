@@ -1,6 +1,7 @@
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
+import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { namesThisReaderMayNotOpen, withoutPrivateFileNamesIn } from '../documents/a-private-file-is-not-named';
@@ -503,6 +504,10 @@ ${WRITTEN_ONCE_FOR_SEVERAL_READERS}`;
 /** What a participant who has not answered yet is told, on the report and on a session's report alike. */
 export const A_PICTURE_IS_FORMING =
   'A picture is forming from the accounts that are in. You can read it as soon as you have given yours. Reading somebody else\'s first would turn yours into an answer to theirs, and the point is that they are separate.';
+
+/* Set only while the warm-up words what each reader will read (ReportsService.wordTheReadsFor). At
+   module scope so a service made without its constructor still reads "not warming". */
+const WORDING_NEW_LINES = new AsyncLocalStorage<true>();
 
 @Injectable()
 export class ReportsService {
@@ -4531,6 +4536,10 @@ happened, and what is in the way.`;
       this.logger.error(`Post-report guide generation failed for ground ${groundId}: ${err.message}`),
     );
 
+    /* Released is something new: word what each reader will now read, off the critical path, so the
+       first open serves kept wording rather than asking a model (decision 7). */
+    void this.wordTheReadsFor(groundId, roundNow).catch((err: any) => this.logger.warn(`Wording the reads after release failed for ${groundId}: ${err?.message}`));
+
     return released;
   }
 
@@ -5065,13 +5074,63 @@ happened, and what is in the way.`;
     }
   }
 
+  /**
+   * OPENING A REPORT NEVER ASKS A MODEL (decision 7).
+   *
+   * Every worded line is kept by its hash (a-line-worded-once-is-kept). Only the warm-up that runs
+   * when something new comes in (`wordTheReadsFor`, after a synthesis or a release) may ask the model
+   * to word a line that is not kept yet. Every other read - the lead opening the report, a
+   * participant, an admin, the API - serves the kept wording, and the engine's own words where a
+   * line has not been worded yet. Found 29 September 2026: the probe list and the coaching note were
+   * worded by the model on the first open after every change.
+   */
+
   private async phrase(what: string, drafts: Drafted[]): Promise<Record<string, string>> {
+    const mayWord = WORDING_NEW_LINES.getStore() === true;
     const out = await wordedByTheModel(
       drafts,
-      rememberedCompose(this.prisma, (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])),
-      (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`),
+      rememberedCompose(this.prisma, mayWord
+        ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
+        /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
+        : async () => null),
+      mayWord ? (why) => this.logger.warn(`Wording refused for ${what}, shipping the engine's own words: ${why}`) : undefined,
     ).catch(() => drafts);
     return Object.fromEntries(out.map((d) => [d.key, d.text]));
+  }
+
+  /**
+   * WORD EVERY READ NOW, FOR EVERYBODY WHO WILL OPEN IT, WHILE SOMETHING NEW HAS COME IN.
+   *
+   * Runs each reader's report and session report once with the model allowed, so the lines they
+   * will read are kept before anybody opens the page: the lead, each person in the check-in, and one
+   * admin of the organisation (every admin reads the same drafts). A discovery session's direction
+   * is read and kept here too, if it is not kept yet. Returns each reader's session report, so the
+   * caller can keep what the round found. Best effort: a reader that fails is skipped.
+   */
+  async wordTheReadsFor(groundId: string, sessionNumber: number): Promise<{ userId: string; sessionReport: any }[]> {
+    return WORDING_NEW_LINES.run(true, async () => {
+      const ground = await this.prisma.ground.findUnique({
+        where: { id: groundId },
+        select: { organizationId: true, initiatorId: true, scenario: true, participants: { select: { userId: true } }, report: { select: { direction: true } } },
+      } as any).catch(() => null) as any;
+      if (!ground) return [];
+      if (ground.scenario === 'DISCOVERY' && !ground.report?.direction) {
+        await this.readAndKeepTheDirection(groundId).catch((err: any) => this.logger.warn(`Direction for ${groundId} failed: ${err?.message}`));
+      }
+      const inTheCheckIn = [...new Set([ground.initiatorId, ...(ground.participants ?? []).map((p: any) => p.userId)].filter(Boolean))] as string[];
+      const anAdmin = await (this.prisma.user?.findFirst?.({
+        where: { organizationId: ground.organizationId, role: 'ADMIN', id: { notIn: inTheCheckIn } } as any,
+        select: { id: true },
+      }) ?? Promise.resolve(null)).catch(() => null);
+      const readers = [...inTheCheckIn, ...(anAdmin?.id ? [anAdmin.id] : [])];
+      const out: { userId: string; sessionReport: any }[] = [];
+      for (const userId of readers) {
+        const sessionReport = await this.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
+        await this.get(groundId, userId, ground.organizationId).catch(() => undefined);
+        out.push({ userId, sessionReport });
+      }
+      return out;
+    });
   }
 
   /**
@@ -5599,19 +5658,15 @@ happened, and what is in the way.`;
     /*
      * READ ONCE, SERVED FROM THE ROW. Computed on every read, a twenty-four-account direction timed out
      * on every read and the page took two minutes (adversarial run, 20 Sep 2026). The stored read is
-     * what the release wrote; a report read before release, or whose release read failed, gets it
-     * computed in the background and null now - the page never waits on the model.
+     * what the release or the warm-up after a new check-in wrote; until one of them has run, the read
+     * gets null - the page never waits on the model, and opening it never starts one.
      */
     const stored = ground.report?.direction as TheDirection | null | undefined;
     if (stored) return this.presentTheDirection(stored, viewerLabel);
-    if (!this.directionInFlight.has(ground.id)) {
-      this.directionInFlight.add(ground.id);
-      void this.readAndKeepTheDirection(ground.id).finally(() => this.directionInFlight.delete(ground.id));
-    }
+    /* Opening the report never asks a model, not even in the background (decision 7): the direction
+       is read when something new comes in (wordTheReadsFor) and at release. Until then, nothing. */
     return null;
   }
-
-  private readonly directionInFlight = new Set<string>();
 
   /**
    * THE DIRECTION AS SENTENCES, for the picture of a one-time session: each list the room answered,

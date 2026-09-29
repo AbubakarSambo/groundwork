@@ -127,7 +127,10 @@ describe('a direction read in chunks', () => {
     const svc = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     expect(svc).toContain("if (ground.scenario === 'DISCOVERY') {\n      await this.readAndKeepTheDirection(groundId)");
     expect(svc).toContain('const stored = ground.report?.direction as TheDirection | null | undefined;');
-    expect(svc).toMatch(/void this\.readAndKeepTheDirection\(ground\.id\)/);
+    /* Opening the report no longer starts the read in the background (decision 7): the warm-up that
+       runs when something new comes in reads it instead, if it is not kept yet. */
+    expect(svc).not.toMatch(/void this\.readAndKeepTheDirection\(ground\.id\)/);
+    expect(svc).toMatch(/async wordTheReadsFor[\s\S]{0,900}ground\.scenario === 'DISCOVERY' && !ground\.report\?\.direction[\s\S]{0,80}this\.readAndKeepTheDirection\(groundId\)/);
   });
 });
 
