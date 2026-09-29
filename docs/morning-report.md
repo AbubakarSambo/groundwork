@@ -31,6 +31,19 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Decision 57, part C: steadiness, a second source of evidence, and confirming a role
+
+**How steady patterns are: not steady.** This is the most important finding tonight. A new read-only script, `api/journey/pattern-steadiness.ts` (`e9e6edae`), compares which person got which pattern across two runs of the same scenarios:
+- goals-1 against goals-2 (cofounder, drift, pip, seniorhire): 1 of 24 findings appeared in both runs, **3%**. Seniorhire 11%, the other three 0%.
+- card3-1 against card3-2 (drift, handover, sales): 9 of 31 findings appeared in both, **23%**. Sales 39%, handover 17%, drift 14%.
+
+So if the same check-ins were run again, a lead would mostly be shown different patterns. The three-period rule, the person-first rule and the lead's marks all hold, but what they are applied to changes from run to run. This is what self-learning (week 8b) and the lead's marks are for. It also argues for looking at the detector itself, and at what the scenario personas say, before patterns reach anyone live. I have changed nothing in how patterns are judged, because decision 55 says such a change is proven on the runs first and big ones go to Hafsah.
+
+**What else is built:**
+- **The lead's nudge** now reads in two sentences: "Brian has seen it. Brian said, “I ran the call, Miriam built the numbers.”" (`2f1e1125`)
+- **The number-based rules now run beside the model** for every code that has one, over each person's scores by period (`e04260cd`). The model still decides what is written, and a rule alone never surfaces a pattern. Storing which source found each one, and telling the lead "Two separate reads of the record found this.", is being finished now.
+- **A role guessed with low confidence** (below 0.5, the product's existing line for "confident enough to coach from") will be confirmed before it is used (`26c8765c`). Until then, only the general rules that do not depend on role apply, as today. The person's check-in will ask "It sounds like most of your work is sales. Is that right, or would you describe it differently?", and the lead can confirm or change it. Being finished now.
+
 ### Decision 57, part B: the lead's marks on a pattern, and "we talked about it"
 
 Built in `beffb44f` and `6aa62f9b`, migration `20260930010000_what_the_lead_made_of_a_pattern`, applied to the local test database only.
