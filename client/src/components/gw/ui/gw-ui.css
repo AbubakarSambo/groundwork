@@ -252,7 +252,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 /* ── SWITCH ROW (a heading and its sentence, sized so the heading reads bigger; a Toggle
    on the right - "Anyone with an @domain email", "Baridi's invite link", "Check-ins wait for an
    admin") ─────────────────────────────────────────────────────────────── */
-.gwui-switch-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.gwui-switch-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .gwui-switch-row-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
 .gwui-switch-row-detail { font-size: 14.5px; color: var(--gw-sub); margin-top: 4px; }
 
@@ -307,6 +307,10 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    the panel's own inside space itself (22px at the sides, matching `.pad`), so it never sits flush
    against the panel's border the way an un-padded row would. */
 .gwui-field-rows { border-top: 1px solid var(--gw-border); }
+/* A SwitchRow standing in a list of FieldRows (People and setup's "Who sees what": several toggles
+   and a plain fact, read as one list) takes the same row line and inset the FieldRows around it
+   carry, rather than sitting with no line between one row and the next. */
+.gwui-field-rows > .gwui-switch-row { padding: 14px 22px; border-bottom: 1px solid var(--gw-border); }
 .gwui-field-row {
   display: grid; grid-template-columns: var(--gwui-field-label-w, 200px) minmax(0, 1fr) auto;
   gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--gw-border); align-items: center;
