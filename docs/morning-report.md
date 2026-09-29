@@ -42,7 +42,17 @@ So if the same check-ins were run again, a lead would mostly be shown different 
 **What else is built:**
 - **The lead's nudge** now reads in two sentences: "Brian has seen it. Brian said, “I ran the call, Miriam built the numbers.”" (`2f1e1125`)
 - **The number-based rules now run beside the model** for every code that has one, over each person's scores by period (`e04260cd`). The model still decides what is written, and a rule alone never surfaces a pattern. Storing which source found each one, and telling the lead "Two separate reads of the record found this.", is being finished now.
-- **A role guessed with low confidence** (below 0.5, the product's existing line for "confident enough to coach from") will be confirmed before it is used (`26c8765c`). Until then, only the general rules that do not depend on role apply, as today. The person's check-in will ask "It sounds like most of your work is sales. Is that right, or would you describe it differently?", and the lead can confirm or change it. Being finished now.
+- **A role guessed with low confidence** (below 0.5, the product's existing line for "confident enough to coach from") will be confirmed before it is used (`26c8765c`). Until then, only the general rules that do not depend on role apply, as today. The person's check-in will ask "It sounds like most of your work is sales. Is that right, or would you describe it differently?", and the lead can confirm or change it.
+
+**Finished** (`cf0dd804`, `87092298`, `25c2761a`, `daa83475`, `f39940dc`; migration `20260930020000_evidence_and_a_confirmed_role`, applied to the local test database only):
+- **Where each pattern came from is stored:** the model, the rule, or both. Only the lead is told "Two separate reads of the record found this."
+- **The role question is asked once.** After the check-in, the person's answer is read: a clear yes confirms the guessed role, and a different description sets their own role. With no clear answer, the question is not asked again for two periods.
+- **The person's own words about their role go into their own job title,** never into the field that holds the lead's private description of them (decision 30). The same mix-up was found on the open-link join and is being fixed now.
+- A guard caught two checks for a missing lead that could never be true, and they are removed (`d1f7fa74`).
+
+**The whole API suite passes: 1,229 files and 11,426 tests.**
+
+**Run-20, today's one full run, started at 02:50** on `d1f7fa74`, in three parts. It covers every change since run-19 to what the model is given: the untold goal, the pattern label rewrite, periods in later check-ins, the role question, and the evidence notes.
 
 ### Decision 57, part B: the lead's marks on a pattern, and "we talked about it"
 
