@@ -96,3 +96,8 @@ These are settled. Do not change them. If one seems to block the work, stop and 
     - **Week 10 is built the more private way:** the person sees the suggestion first, and the manager gets a plain line with no count behind it. (This changes item 28, and answers decision 49.)
     - **The model in a person's own check-in is no longer given a goal the lead has not told them about** (item 27's "recommended next"), checked by re-running the scenarios it affects.
 54. **Existing check-ins are not reopened by a migration** (decided 29 September). The data change is taken out of `20260923200000_reopen_every_check_in_that_ran_out_of_time`. The new rule applies from now on, and a lead can reopen a check-in themselves.
+55. **Patterns, role behaviour, coaching strategies and the probe structure are protected** (decided 29 September). They are the most powerful part of the product. They are never switched off, hidden, simplified or removed to solve a problem.
+    - If one breaks a rule, it is fixed in place.
+    - If it cannot be fixed quickly, it is narrowed to the most private view, for example only the person it is about, rather than switched off, and Hafsah is told in the report.
+    - Every place where any of them has been switched off, hidden, simplified or removed so far is listed in the report, and each is restored, fixed properly.
+    - They also learn: what happens after each pattern, coaching strategy and probe is recorded, and used to improve them over time. Learning never changes people's own words and never breaks a privacy rule. Any change to how patterns are judged is proven on the scenario runs before it is adopted, and big changes go to Hafsah first.
