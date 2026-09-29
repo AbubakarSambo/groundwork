@@ -299,3 +299,57 @@ export function needsRoleConfirmation(
 export function roleConfirmationQuestion(fn: RoleFunction): string {
   return `It sounds like most of your work is ${plainFunctionName(fn)}. Is that right, or would you describe it differently?`;
 }
+
+/**
+ * ASKED ONCE, NOT EVERY CHECK-IN (decision 57, item 5, tightened 30 September 2026).
+ *
+ * Nothing recorded the person's answer, so a low-confidence, unconfirmed role was put to them again
+ * in every check-in until it was confirmed - which for anyone who never gave a clear answer was
+ * every check-in forever. The stamp reuses `ConversationTurn.askedFor`, the field a document read
+ * differently from a check-in's record already uses the same way (commit 301e558e): the turn that
+ * asked is stamped, and a stamp within the cooldown means it is not asked again yet. Unlike that
+ * stamp, this one is set from OUTSIDE the turn that carries it - after the check-in closes, once the
+ * record is read and the person's answer turns out not to be a clear confirmation or correction - so
+ * the value itself, not when it is written, is what a caller checks.
+ */
+export const ROLE_CONFIRM_ASKED = 'role-confirm-asked';
+
+/** How many periods to wait before asking again after an unclear answer. Not indefinite: a person
+ *  who was distracted, not refusing, should still get asked again in time. */
+export const ROLE_CONFIRM_COOLDOWN_PERIODS = 2;
+
+/**
+ * READING WHAT THEY SAID BACK (decision 57, item 5). Code checks the result: the model classifies
+ * the reply as a plain confirmation, a correction (with their own words for the corrected role), or
+ * neither - never a role name it invents on its own reading of unrelated text.
+ */
+export const ROLE_CONFIRMATION_READ_PROMPT = `You are reading how somebody answered a plain, single question about their own role at work. The question they were asked and their reply follow.
+
+Decide only one of these:
+- "confirmed": they agreed - "yes", "that's right", "pretty much", or anything else that agrees with no different description of their role.
+- "corrected": they described their role differently from how it was put to them. Give their own words for what they said their role is, as close to verbatim as you can, never invented, expanded, or guessed beyond what they actually said.
+- "unclear": anything else - they did not really answer, changed the subject, asked a question back, or you cannot tell which of the above it is.
+
+Never invent a role they did not say. "unclear" is a correct and common answer - it is not a failure to give it.`;
+
+export const ROLE_CONFIRMATION_READ_SCHEMA = {
+  name: 'role_confirmation_read',
+  description: 'Whether a person confirmed or corrected a plain question about their own role, from their reply alone.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      verdict: { type: 'string', enum: ['confirmed', 'corrected', 'unclear'] },
+      correctedRole: { type: 'string', description: 'Their own words for their role. Only when verdict is "corrected".' },
+    },
+    required: ['verdict'],
+  },
+} as const;
+
+export type ARoleConfirmationVerdict = { verdict: 'confirmed' } | { verdict: 'corrected'; correctedRole: string } | { verdict: 'unclear' };
+
+/** Turns the model's raw answer into one of the three outcomes, never trusting a "corrected" with nothing said. */
+export function theRoleConfirmationVerdict(said: { verdict?: string; correctedRole?: string } | null | undefined): ARoleConfirmationVerdict {
+  if (said?.verdict === 'confirmed') return { verdict: 'confirmed' };
+  if (said?.verdict === 'corrected' && said.correctedRole?.trim()) return { verdict: 'corrected', correctedRole: said.correctedRole.trim() };
+  return { verdict: 'unclear' };
+}

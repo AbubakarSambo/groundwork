@@ -79,7 +79,11 @@ import {
   nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
   type CoachingStateShape, type StepOutcome,
 } from '../coaching/one-step-at-a-time';
-import { detectFunction, detectUniversalModes, needsRoleConfirmation, roleConfirmationQuestion } from '../board/function-detection';
+import {
+  detectFunction, detectUniversalModes, needsRoleConfirmation, roleConfirmationQuestion,
+  ROLE_CONFIRM_ASKED, ROLE_CONFIRM_COOLDOWN_PERIODS, ROLE_CONFIRMATION_READ_PROMPT, ROLE_CONFIRMATION_READ_SCHEMA,
+  theRoleConfirmationVerdict, LOW_CONFIDENCE_CONFIRM_THRESHOLD,
+} from '../board/function-detection';
 import { RoleFunction } from '../board/role-maps';
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
@@ -4389,7 +4393,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const roleRead = await this.roleReadForThisTurn(checkIn as any, latestMessage);
     const roleProbeBlock = buildRoleProbeBlock(roleRead.fn, roleRead.confidence, roleRead.modes);
     /* A role guessed with low confidence is confirmed before it is used (decision 57, item 5). */
-    const roleConfirmationBlock = await this.roleConfirmationBlockFor(checkIn.participantId, roleRead.fn, roleRead.confidence);
+    const roleConfirmationBlock = await this.roleConfirmationBlockFor(checkIn.participantId, roleRead.fn, roleRead.confidence, checkIn.sessionNumber);
 
     /**
      * G42. THE COACHING STEP, AND THE FIRST TIME ANYTHING HAS READ THESE ROWS.
@@ -5955,6 +5959,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     this.reviseDetectedFunction(checkIn.participantId).catch((err) =>
       this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`),
+    );
+
+    this.extractRoleConfirmation({ id: checkIn.id, participantId: checkIn.participantId }).catch((err) =>
+      this.logger.warn(`Role-confirmation read failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
     /**
@@ -7829,12 +7837,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * here is a role-tuned probe: buildRoleProbeBlock already stays silent below the same threshold,
    * so the universal floor is all that is asked from otherwise.
    */
-  private async roleConfirmationBlockFor(participantId: string, fn: string | null, confidence: number | null): Promise<string> {
+  private async roleConfirmationBlockFor(participantId: string, fn: string | null, confidence: number | null, sessionNumber: number): Promise<string> {
     if (!fn) return '';
     const participant = await this.prisma.groundParticipant
       .findUnique({ where: { id: participantId }, select: { detectedFunctionConfirmedAt: true } })
       .catch(() => null);
     if (!needsRoleConfirmation({ fn: fn as RoleFunction, confidence: confidence ?? 0 }, participant?.detectedFunctionConfirmedAt ?? null)) return '';
+
+    /*
+     * ASKED ONCE, NOT EVERY CHECK-IN. An unclear earlier answer is stamped ROLE_CONFIRM_ASKED (see
+     * extractRoleConfirmation, run after the check-in that carries the stamp closes) - a clear
+     * confirmation or correction instead sets detectedFunctionConfirmedAt, which the check above
+     * already catches. Skip asking again until the cooldown has passed.
+     */
+    const recentlyAsked = await this.prisma.conversationTurn
+      .findFirst({
+        where: { role: TurnRole.AI, askedFor: ROLE_CONFIRM_ASKED, checkIn: { participantId } },
+        orderBy: { createdAt: 'desc' },
+        select: { checkIn: { select: { sessionNumber: true } } },
+      })
+      .catch(() => null);
+    if (recentlyAsked && sessionNumber - (recentlyAsked.checkIn?.sessionNumber ?? 0) < ROLE_CONFIRM_COOLDOWN_PERIODS) return '';
+
     return `CONFIRM THE ROLE, ONCE (decision 57, item 5): somewhere natural in this turn, ask plainly - "${roleConfirmationQuestion(fn as RoleFunction)}" Their answer is their own statement of their role, not a score. If they have already answered a version of this earlier in this check-in, do not ask again.`;
   }
 
@@ -8111,6 +8135,84 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           `Role-tuned probes and coaching are OFF for them, which is correct and not a failure: ${result.basis} ` +
           `If this holds for a whole ground, either the work is not covered by the nine role maps or nobody described the role at setup.`,
       );
+    }
+  }
+
+  /**
+   * READING WHAT THEY SAID, AFTER THE CHECK-IN CLOSES (decision 57, item 5, tightened 30 September
+   * 2026). Fire-and-forget beside the other post-close reads: a failure here must never be why a
+   * completed session does not complete.
+   *
+   * Runs only when this check-in actually carried the confirmation question - found by the
+   * question's own literal text on one of this check-in's AI turns, never assumed from the prompt
+   * block having been built (a model can leave an offered line unused). A clear "yes" stamps
+   * detectedFunctionConfirmedAt/By; a different description does too, AND is written to the
+   * person's OWN role (their account's jobTitle - see PATCH /participants/:id for why this is never
+   * GroundParticipant.roleAsDescribed, the lead's private description, decision 30). Anything else
+   * stamps nothing about the person - only the turn that asked, with ROLE_CONFIRM_ASKED, so the
+   * cooldown in roleConfirmationBlockFor holds off asking again for a couple of periods rather than
+   * every remaining check-in.
+   */
+  async extractRoleConfirmation(checkIn: { id: string; participantId: string }): Promise<void> {
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: checkIn.participantId },
+      select: { userId: true, detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true },
+    });
+    if (!participant?.userId || !participant.detectedFunction || participant.detectedFunctionConfirmedAt) return;
+    if ((participant.detectedFunctionConfidence ?? 0) >= LOW_CONFIDENCE_CONFIRM_THRESHOLD) return;
+
+    const question = roleConfirmationQuestion(participant.detectedFunction as RoleFunction);
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId: checkIn.id },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, role: true, content: true, askedFor: true },
+    });
+    const askedAt = turns.findIndex((t) => t.role === TurnRole.AI && (t.content ?? '').includes(question));
+    if (askedAt === -1) return; // Never put to them this check-in; nothing to read, nothing to stamp.
+
+    const stampAskedIfUnstamped = () => {
+      const turn = turns[askedAt];
+      if (turn.askedFor) return Promise.resolve(); // Already carries a stamp from something else - never overwritten.
+      return this.prisma.conversationTurn.update({ where: { id: turn.id }, data: { askedFor: ROLE_CONFIRM_ASKED } }).catch(() => {});
+    };
+
+    const reply = (turns.slice(askedAt + 1).find((t) => t.role === TurnRole.PERSON)?.content ?? '').trim();
+    if (!reply) {
+      await stampAskedIfUnstamped();
+      return;
+    }
+
+    let said: { verdict?: string; correctedRole?: string } | null = null;
+    try {
+      said = await this.anthropic.extract<{ verdict?: string; correctedRole?: string }>(
+        ROLE_CONFIRMATION_READ_PROMPT,
+        [{ role: 'user', content: `QUESTION THEY WERE ASKED: ${question}\nTHEIR REPLY: ${reply}` }],
+        ROLE_CONFIRMATION_READ_SCHEMA,
+        { fast: true },
+      );
+    } catch (err) {
+      this.logger.warn(`Role-confirmation read failed for check-in ${checkIn.id}: ${(err as Error)?.message}`);
+    }
+    const verdict = theRoleConfirmationVerdict(said);
+    const now = new Date();
+
+    if (verdict.verdict === 'confirmed') {
+      await this.prisma.groundParticipant.update({
+        where: { id: checkIn.participantId },
+        data: { detectedFunctionConfirmedAt: now, detectedFunctionConfirmedBy: participant.userId },
+      });
+      this.logger.log(`Check-in ${checkIn.id}: the person confirmed their guessed function as it stands.`);
+    } else if (verdict.verdict === 'corrected') {
+      await Promise.all([
+        this.prisma.user.update({ where: { id: participant.userId }, data: { jobTitle: verdict.correctedRole } }),
+        this.prisma.groundParticipant.update({
+          where: { id: checkIn.participantId },
+          data: { detectedFunctionConfirmedAt: now, detectedFunctionConfirmedBy: participant.userId },
+        }),
+      ]);
+      this.logger.log(`Check-in ${checkIn.id}: the person described their role differently ("${verdict.correctedRole}") - written to their own job title, never the lead's roleAsDescribed.`);
+    } else {
+      await stampAskedIfUnstamped();
     }
   }
 
