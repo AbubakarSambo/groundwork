@@ -204,6 +204,7 @@ import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } fro
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
+import { whatWasRecordedFromADocument } from '../documents/what-was-recorded-from-a-document';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -1270,16 +1271,15 @@ export class ConversationService {
         this.logger.log(`Check-in ${checkIn.id}: took ${rows.length} number(s) from ${d.fileName} on a yes.`);
         const mine = rows.filter((r) => r.ownerParticipantId).length;
         const team = rows.length - mine;
-        if (!rows.length) return `Those are already on the record, so nothing was written twice.`;
-        return [
-          `Recorded from ${d.fileName}.`,
-          yes.kind === 'yes, with a new number'
-            ? `For ${waiting[yes.row].name}, it has ${yes.target.toLocaleString('en-GB')}, as you said, instead of the ${waiting[yes.row].target.toLocaleString('en-GB')} in the document.`
-            : '',
-          mine ? `${mine} ${mine === 1 ? 'number' : 'numbers'} against the person who holds ${mine === 1 ? 'it' : 'them'}.` : '',
-          team ? `${team} for the whole check-in, which everybody here sees.` : '',
-          'Nobody is measured against any of it until they have seen it.',
-        ].filter(Boolean).join(' ');
+        return whatWasRecordedFromADocument({
+          fileName: d.fileName,
+          forAPerson: mine,
+          forEveryone: team,
+          corrected: yes.kind === 'yes, with a new number' && rows.length
+            ? { name: waiting[yes.row].name, theirs: yes.target, documents: waiting[yes.row].target }
+            : null,
+          reader: 'check-in',
+        });
       }
       return null;
     } catch (err: any) {

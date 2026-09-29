@@ -79,6 +79,7 @@ import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExa
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
+import { whatWasRecordedFromADocument } from '../documents/what-was-recorded-from-a-document';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -2911,13 +2912,7 @@ export class GroundsService {
       await this.prisma.groundDocument.update({ where: { id: d.id }, data: { holds: { ...holds, takenAt: new Date().toISOString() } as any } }).catch(() => undefined);
       const mine = rows.filter((r) => r.ownerParticipantId).length;
       const team = rows.length - mine;
-      if (!rows.length) return 'Those are already on the record, so nothing was written twice.';
-      return [
-        `Recorded from ${d.fileName}.`,
-        mine ? `${mine} ${mine === 1 ? 'number' : 'numbers'} against the person who holds ${mine === 1 ? 'it' : 'them'}, marked as yours and not yet seen by them.` : '',
-        team ? `${team} for the whole check-in, which everybody here sees.` : '',
-        'They are on the Context page now, and every check-in asks against them.',
-      ].filter(Boolean).join(' ');
+      return whatWasRecordedFromADocument({ fileName: d.fileName, forAPerson: mine, forEveryone: team, reader: 'setup' });
     }
     return null;
   }
