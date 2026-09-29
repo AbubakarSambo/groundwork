@@ -69,7 +69,8 @@ import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
-import { whatHasStayedTheSame, theCheckInItWasFirstSaidIn, type ToLookAt } from './the-same-thing-for-three-check-ins';
+import { type ToLookAt } from './the-same-thing-for-three-check-ins';
+import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
 import { whatTheLeadShouldKnow, targetsFor } from './whose-number-is-whose-business';
 import { whichRoundIsOpen } from './which-round-is-open';
@@ -146,62 +147,18 @@ export class BoardService {
    */
   private async whatHasStayedTheSameFor(
     groundId: string,
-    ground: { participants: any[] },
+    ground: { participants: any[]; dependencies?: any[] },
     checkIns: { id: string; participantId: string; sessionNumber: number; status: string; completedAt: Date | null }[],
     rawDependencies: any[],
     myParticipantId: string | null,
     nameOf: (pid: string) => string | null,
     aColleague: (pid: string | null | undefined) => string,
   ): Promise<ToLookAt[]> {
-    const finishedOf = (pid: string) => checkIns.filter((c) => c.participantId === pid && c.status === CheckInStatus.COMPLETED);
-    const people = ground.participants
-      .filter((p) => !p.managingOnly && p.id !== myParticipantId)
-      .map((p) => ({
-        participantId: p.id as string,
-        who: nameOf(p.id) ?? aColleague(p.id),
-        nameIsTheirRole: !([p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || (p.nameGiven ?? '').trim()),
-        finished: finishedOf(p.id).map((c) => c.sessionNumber),
-      }))
-      .filter((p) => p.finished.length >= 3);
-    if (!people.length) return [];
-    const promises = ((await this.prisma.groundCommitment?.findMany?.({
-      where: { groundId, status: 'UNKNOWN', participantId: { in: people.map((p) => p.participantId) } },
-      select: { participantId: true, text: true, status: true, statedInSession: true, saidAgainIn: true, explicit: true, source: true, saidWordForWord: true },
-    })?.catch(() => [])) ?? []) as any[];
-    const sessionOf = new Map(checkIns.map((c) => [c.id, c.sessionNumber]));
-    const norm = (t: string) => (t ?? '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ')
-      .replace(/\b(the|a|an|my|our|his|her|their|this|that|some|more|any|for|to)\b/g, ' ').replace(/\s+/g, ' ').trim();
-    const sameThing = (a: string, b: string) => { const x = norm(a); const y = norm(b); return !!x && !!y && (x === y || x.includes(y) || y.includes(x)); };
-    const inTheWay = ((ground as any).dependencies ?? [])
-      .filter((d: any) => people.some((p) => p.participantId === d.fromParticipantId))
-      .map((d: any) => {
-        /* Every row that is this same thing, for rows written before extraction deduped on write. */
-        const rows = rawDependencies.filter((r) => r.fromParticipantId === d.fromParticipantId && sameThing(r.what, d.what));
-        const theirs = finishedOf(d.fromParticipantId);
-        const firsts = rows.map((r) => theCheckInItWasFirstSaidIn(r.createdAt, theirs)).filter((n): n is number => n != null);
-        const lasts = rows.map((r) => (r.sourceCheckInId ? sessionOf.get(r.sourceCheckInId) : undefined)).filter((n): n is number => n != null);
-        return {
-          fromParticipantId: d.fromParticipantId,
-          what: d.what,
-          status: d.status,
-          firstSaidIn: firsts.length ? Math.min(...firsts) : null,
-          lastSaidIn: lasts.length ? Math.max(...lasts) : null,
-          tried: (d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? '')) as any,
-          onTheReader: !!myParticipantId && d.onParticipantId === myParticipantId,
-        };
-      });
-    return whatHasStayedTheSame(
-      people,
-      promises.map((c) => ({
-        participantId: c.participantId,
-        text: c.text,
-        status: c.status,
-        statedInSession: c.statedInSession,
-        saidAgainIn: c.saidAgainIn ?? [],
-        theirWords: c.saidWordForWord === true && c.explicit !== false && c.source === 'CHECK_IN',
-      })),
-      inTheWay,
-    );
+    /* One read with the report's, so both say the same sentences. See the-same-thing-read-from-the-record. */
+    return theSameThingFromTheRows(this.prisma, {
+      groundId, participants: ground.participants, checkIns, rawDependencies,
+      dependencies: (ground as any).dependencies ?? [], myParticipantId, nameOf, aColleague,
+    });
   }
 
   /*

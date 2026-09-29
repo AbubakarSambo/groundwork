@@ -2,6 +2,7 @@ import { BoardService } from './board.service';
 import { ReportsService } from '../reports/reports.service';
 import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
 import { whatHasStayedTheSame, theCheckInItWasFirstSaidIn } from './the-same-thing-for-three-check-ins';
+import { Logger } from '@nestjs/common';
 
 /**
  * WEEK 12: THE PROTOTYPE'S ALERT, "Samuel has chased the same 5 leads for 3 check-ins", SERVED FROM
@@ -63,7 +64,7 @@ const COMMITMENTS = [
 
 const WRITES = ['create', 'createMany', 'update', 'updateMany', 'upsert', 'delete', 'deleteMany'];
 
-function boardFor(requestingUserId: string, viewerRole = 'MEMBER') {
+function prismaFor(viewerRole = 'MEMBER') {
   const writes: string[] = [];
   const reads = {
     findMany: jest.fn(async () => []),
@@ -89,6 +90,11 @@ function boardFor(requestingUserId: string, viewerRole = 'MEMBER') {
       return target[prop];
     },
   });
+  return { prisma, writes };
+}
+
+function boardFor(requestingUserId: string, viewerRole = 'MEMBER') {
+  const { prisma, writes } = prismaFor(viewerRole);
   const respond = jest.fn(async () => null);
   const reports = Object.create(ReportsService.prototype) as ReportsService;
   const svc = new BoardService(prisma, { respond } as any, { getSessionProgress: async () => null } as any, reports);
@@ -180,5 +186,49 @@ describe('what counts as the same thing for three check-ins', () => {
     const theirs = [1, 2, 3].map((n) => ({ sessionNumber: n, completedAt: at(String(7 * n + 1).padStart(2, '0')) }));
     expect(theCheckInItWasFirstSaidIn(new Date('2026-09-08T16:05:00Z'), theirs)).toBe(1);
     expect(theCheckInItWasFirstSaidIn(new Date('2026-09-15T15:00:00Z'), theirs)).toBe(2);
+  });
+});
+
+/**
+ * SCREENS REQUEST 3c: THE SAME LINES ON THE LATEST REPORT, AS THE LEAD READS IT (GET /grounds/:id/report).
+ * Built from the stored rows at the read, with no model asked and nothing written; a participant and
+ * an admin who only reads get no field at all.
+ */
+function reportFor(requestingUserId: string, viewerRole = 'MEMBER') {
+  const { prisma, writes } = prismaFor(viewerRole);
+  const svc = Object.create(ReportsService.prototype) as any;
+  svc.prisma = prisma;
+  svc.logger = new Logger('test');
+  /* The report as it was stored and served before this read: what this test checks is the field added to it. */
+  svc.getAsBuilt = jest.fn(async () => ({ groundId: 'g-sales', report: { findings: [] } }));
+  return { report: (svc as ReportsService).get('g-sales', requestingUserId, 'org-1') as Promise<any>, writes };
+}
+
+describe('the same thing for three check-ins, as each reader reads the latest report', () => {
+  it('the lead reads the same sentences as on the board', async () => {
+    const { report, writes } = reportFor('u-wairimu');
+    const r = await report;
+    const board = await boardFor('u-wairimu').board;
+    expect(r.toLookAt).toEqual(board.toLookAt);
+    expect((r.toLookAt ?? []).map((t: any) => `${t.says} ${t.detail}`)).toEqual([
+      'Samuel Kariuki has had the same thing in the way for 3 check-ins. Samuel first said in check-in 1 that the signed order from Lakeside was in the way, and said so again in check-in 3. So far it has only been asked about. Chasing it, or asking someone else, would move it.',
+      'Samuel Kariuki has made the same promise for 3 check-ins. Samuel promised to follow up the same 5 leads in check-ins 1, 2 and 3. Nobody has said yet whether it happened. Asking Samuel what is stopping it, or agreeing to drop it, would settle it.',
+      'A colleague has made the same promise for 3 check-ins. In check-ins 1, 2 and 3, this colleague said, "I will send the new prices to every shop." Nobody has said yet whether it happened. Asking this colleague what is stopping it, or agreeing to drop it, would settle it.',
+    ]);
+    expect(JSON.stringify(r.toLookAt)).not.toMatch(/@|example\.test|at risk|PIP|score|rating/i);
+    /* Opening the report rebuilds nothing: this read writes nothing (and has no model to ask). */
+    expect(writes).toEqual([]);
+  });
+
+  it('a participant reads none of it, not even their own', async () => {
+    const r = await reportFor('u-samuel').report;
+    expect(r).not.toHaveProperty('toLookAt');
+    expect(JSON.stringify(r)).not.toMatch(/same promise|same thing in the way/);
+  });
+
+  it('an admin who only reads reads none of it', async () => {
+    const r = await reportFor('u-grace', 'ADMIN').report;
+    expect(r).not.toHaveProperty('toLookAt');
+    expect(JSON.stringify(r)).not.toMatch(/same promise|same thing in the way/);
   });
 });

@@ -85,6 +85,7 @@ import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-la
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
 import { linesBuiltAtTheRead } from './a-line-built-at-the-read-is-read-too';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
+import { theSameThingForTheLead } from '../board/the-same-thing-read-from-the-record';
 import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRewrite, THE_LINES_REWRITTEN, theRewritesById } from './every-line-is-read-before-it-is-kept';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
@@ -5816,7 +5817,23 @@ happened, and what is in the way.`;
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const served = await this.getAsBuilt(groundId, requestingUserId, requestingUserOrgId);
-    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served));
+  }
+
+  /**
+   * WHAT HAS STAYED THE SAME FOR THREE CHECK-INS, ON THE LATEST REPORT AS THE LEAD READS IT (week
+   * 12, screens request 3c). The board's `toLookAt`, the same sentences from the same read, built
+   * from the stored rows at the read: no model is asked and nothing is written. Only the person
+   * who runs the check-in: it is one person's work across their check-ins, so a colleague never
+   * reads it, and neither does an admin who only reads. `theSameThingForTheLead` checks that
+   * itself, so a caller cannot hand it to anybody else by mistake.
+   */
+  private async withWhatHasStayedTheSame<T>(groundId: string, requestingUserId: string, served: T): Promise<T> {
+    if (!served || typeof served !== 'object') return served;
+    const toLookAt = await theSameThingForTheLead(this.prisma as any, groundId, requestingUserId).catch(() => []);
+    if (!toLookAt.length) return served;
+    const quotable = await theRecordAQuoteMayComeFrom(this.prisma as any, groundId);
+    return { ...(served as any), toLookAt: this.quotesAsTheRecordHasThem(toLookAt, groundId, 'what has stayed the same', quotable) };
   }
 
   /** The same for the report of one session. */
