@@ -170,15 +170,29 @@ const real = () => ({
   ReportsService: require('../reports/reports.service').ReportsService,
 });
 
+/*
+ * Decision 52 (29 September 2026) approved the plain names and turned PATTERNS_ARE_SERVED on for
+ * real, so the "off" behaviour below is no longer what the live constant reads. It is still a rule
+ * worth keeping - the same code must serve no pattern at all when the switch is off - so this block
+ * now mocks the constant to false instead of relying on it being false for real. This is the same
+ * reason and the same mocking style the "switch on" block below already used the other way round.
+ */
 describe('no board carries a pattern while patterns are not served', () => {
-  it('the switch is off', () => {
-    expect(PATTERNS_ARE_SERVED).toBe(false);
-  });
+  function realWithSwitchOff() {
+    let mods: any;
+    jest.isolateModules(() => {
+      jest.doMock('../patterns/patterns-are-served', () => ({ PATTERNS_ARE_SERVED: false }));
+      mods = real();
+    });
+    return mods;
+  }
+
+  afterEach(() => jest.dontMock('../patterns/patterns-are-served'));
 
   for (const [groundIs, shape] of GROUNDS) {
     for (const [reader, userId, role] of READERS) {
       it(`as ${reader}, when ${groundIs}`, async () => {
-        const board = await boardFor(real(), userId, role, groundWith(shape));
+        const board = await boardFor(realWithSwitchOff(), userId, role, groundWith(shape));
         expect(board.renders).toBe(true);
         expect(whatOfAPatternIsIn(board)).toEqual([]);
       });
@@ -186,9 +200,15 @@ describe('no board carries a pattern while patterns are not served', () => {
   }
 
   it('and the lead still reads the rest of the record over time', async () => {
-    const board = await boardFor(real(), 'u-tunde', 'MEMBER', groundWith(GROUNDS[0][1]));
+    const board = await boardFor(realWithSwitchOff(), 'u-tunde', 'MEMBER', groundWith(GROUNDS[0][1]));
     expect(board.overTime.toSettleFirst).toEqual(['Nothing here is backed by a document. Ask for one thing in writing that you could check yourself.']);
     expect(board.overTime.cannotTellYou).toEqual(STORED_OVER_TIME.cannotTellYou);
+  });
+});
+
+describe('the live switch, since decision 52', () => {
+  it('is on: patterns are served under the rules', () => {
+    expect(PATTERNS_ARE_SERVED).toBe(true);
   });
 });
 
@@ -201,19 +221,14 @@ describe('no board carries a pattern while patterns are not served', () => {
  */
 describe('and the fixture is not empty: with the switch on, the board serves them under the rules', () => {
   it('the lead’s board carries the pattern section in plain words, and no internal name', async () => {
-    let mods: any;
-    jest.isolateModules(() => {
-      jest.doMock('../patterns/patterns-are-served', () => ({ PATTERNS_ARE_SERVED: true }));
-      mods = real();
-    });
-    const board = await boardFor(mods, 'u-tunde', 'MEMBER', groundWith(GROUNDS[0][1]));
+    /* The switch is on for real since decision 52, so this reads the live constant, not a mock. */
+    const board = await boardFor(real(), 'u-tunde', 'MEMBER', groundWith(GROUNDS[0][1]));
     const found = whatOfAPatternIsIn(board);
     expect(found).toContain('a "patterns" section');
-    expect(board.patterns.map((p: any) => p.heading)).toContain('Problems are always put down to something outside');
+    expect(board.patterns.map((p: any) => p.heading)).toContain('Problems are mostly put down to things outside the team');
     expect(found.filter((f) => f.startsWith('the internal name') || f.startsWith('the code'))).toEqual([]);
     expect(found).not.toContain('patterns in the record over time');
     expect(found).not.toContain('a question built from a pattern');
-    jest.dontMock('../patterns/patterns-are-served');
   });
 });
 

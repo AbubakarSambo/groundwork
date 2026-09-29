@@ -1,11 +1,11 @@
 /**
- * THE ONE SWITCH FOR WHETHER ANYBODY READS A PATTERN. IT IS OFF, AND STAYS OFF UNTIL HAFSAH HAS
- * APPROVED THE PLAIN NAMES.
+ * THE ONE SWITCH FOR WHETHER ANYBODY READS A PATTERN. IT IS ON: HAFSAH APPROVED THE PLAIN NAMES
+ * (DECISION 52, 29 SEPTEMBER 2026), B5 INCLUDED, WITH EIGHT NAMES REWORDED.
  *
- * What it means now. Hafsah, 27 September 2026: "Patterns are built, so they are not hidden at
- * release. They stay switched off only until they follow Hafsah's rules." Every rule is now built
- * and kept in one place, patterns/who-reads-a-pattern, so turning this on means "serve patterns
- * under these rules", and nothing else:
+ * What it means. Hafsah, 27 September 2026: "Patterns are built, so they are not hidden at
+ * release. They stay switched off only until they follow Hafsah's rules." Every rule is built
+ * and kept in one place, patterns/who-reads-a-pattern, so this constant being true means "serve
+ * patterns under these rules", and nothing else:
  *
  *   1. PLAIN NAMES. Every page uses the plain names in plain-pattern-names.ts, copied from
  *      docs/pattern-names.md, never an internal name or a code. E4 and F5 are never named to anyone.
@@ -18,18 +18,21 @@
  *      after the person has answered, or three days after they were shown it, or a week after it
  *      was ready if they never opened it, with the person's own words beside it.
  *
- * WHY IT IS STILL OFF. The plain names are Hafsah's to approve (decision 19), and she has not yet
- * approved docs/pattern-names.md, B5's name included. Turn it on only after she has, and after the
- * screens can show the new shape and the "Say what's behind it" answer box.
+ * WHY IT WAS OFF, AND WHY IT IS NOW ON. The plain names were Hafsah's to approve (decision 19). She
+ * has now approved docs/pattern-names.md (decision 52, 29 September 2026), B5's name included, with
+ * B3, B8, B11, E1, E3, E5, F3 and F4 reworded from the 26 September draft. plain-pattern-names.ts was
+ * updated to match, word for word, and this switch turned on the same day.
  *
  * WHAT RUNS EITHER WAY. Detection, the three-period rule and every `pattern_detections` row, and the
  * live conversation's use of a surfaced pattern to sharpen a question, which a person never reads as
  * a pattern. The developer API's findings never carry a pattern, on or off, and neither does the
  * record over time stored on a report, which was written before any of these rules held.
  *
- * Turning it on is changing `false` to `true` here and nowhere else.
+ * This is a code constant, not a database row: nothing in `platform_settings` or any other table
+ * gates it, so no row needs setting anywhere for this change to take effect once deployed.
  * the-board-serves-patterns-under-the-rules.spec.ts reads the board, the check-in's own page and the
  * person's own record as every kind of reader with it on and with it off, and
- * the-board-serves-no-pattern.spec.ts checks every board while it is off.
+ * the-board-serves-no-pattern.spec.ts checks every board while it is off (kept as a test of the `on:
+ * false` path, via the `opts.on` override, now that the real constant is true).
  */
-export const PATTERNS_ARE_SERVED = false;
+export const PATTERNS_ARE_SERVED = true;

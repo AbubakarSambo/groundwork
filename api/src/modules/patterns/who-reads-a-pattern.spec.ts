@@ -30,7 +30,9 @@ const STRANGER = { participantId: null, runsIt: false };
 
 describe('who reads a pattern', () => {
   it('nobody reads one while the switch is off, whoever they are', () => {
-    for (const r of [LEAD, NGOZI, FEMI, ADMIN, STRANGER]) expect(servedPatterns(ROWS, r)).toEqual([]);
+    /* PATTERNS_ARE_SERVED is true since decision 52, so `on: false` here stands in for the switch
+       being off, the same way the rest of this file passes `on` to stand in for it being on. */
+    for (const r of [LEAD, NGOZI, FEMI, ADMIN, STRANGER]) expect(servedPatterns(ROWS, r, { on: false })).toEqual([]);
   });
 
   it('a participant reads their own and never a colleague’s', () => {
@@ -58,7 +60,7 @@ describe('who reads a pattern', () => {
       participantId: 'p-ngozi',
       yours: true,
       kind: 'attention',
-      heading: 'Problems are always put down to something outside',
+      heading: 'Problems are mostly put down to things outside the team',
       whatHappened: 'The failure to secure approvals is attributed entirely to the credit committee not clearing submitted files.',
       sessions: [1, 2, 4],
       howOften: 'This came up in 3 of your check-ins, in sessions 1, 2 and 4.',
