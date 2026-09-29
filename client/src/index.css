@@ -164,7 +164,26 @@
    * the site can finally be read against each other. W14-8.
    */
   --gw-paper: #FDFBF6; /* the same as --gw-page: the design system calls the page "Paper" */
-  --gw-paper-2: #FAF5EA; /* the prototype's lighter cream, for a band above the page */
+  /**
+   * ROUND 2, ITEM H: THIS WAS THE DARKER BEIGE HAFSAH SAW EVERYWHERE.
+   *
+   * `--gw-paper-2` was #FAF5EA, "the prototype's lighter cream, for a band above the page" - but
+   * the prototype (docs/prototype/source/app.css, the check-in root: `--paper:#FDFBF6;--band:
+   * #FAF5EA`) uses #FAF5EA as `--band`, on its public marketing sections and the Enterprise panel
+   * on the pricing page ONLY, never as a page or band colour anywhere in the product itself. About
+   * 28 files here used `--gw-paper-2` as a full page or sticky-band background (a loading screen,
+   * a paywall, the participant's check-in page, and others), each one rendering a visibly darker
+   * cream than the prototype's, everywhere at once.
+   *
+   * Fixed at this one source rather than in each of those files: `--gw-paper-2` IS the page cream
+   * now, the same value as `--gw-page`/`--gw-paper`. Every file that used it for a page or band
+   * background now renders correctly without being touched. `--gw-band` is the new, separate name
+   * for the prototype's real #FAF5EA, used only where the prototype uses it.
+   */
+  --gw-paper-2: #FDFBF6;
+  /** The prototype's real #FAF5EA (`--band`). Used only by the Enterprise panel on /pricing - see
+      the-page-is-cream-and-opens-light.spec.ts, "the darker cream is the enterprise panel's alone". */
+  --gw-band: #FAF5EA;
 
   /**
    * THE FOUR THAT WERE REAL, out of what I had called one-off accents without looking.
@@ -1359,7 +1378,11 @@ details[open] > summary.gw-fold-summary > span:first-child::before { content: 'â
 .gw-b-primary { background: var(--gw-navy); color: #fff; }
 .gw-b-primary:hover:not(:disabled) { background: var(--gw-navy-d); }
 .gw-b-secondary { background: #fff; color: var(--gw-text); box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); }
-.gw-b-secondary:hover:not(:disabled) { background: var(--gw-paper-2); }
+/* ROUND 2, ITEM H: was --gw-paper-2, which is now the page colour and would no longer show a
+   hover at all against this button's white base. The prototype hovers a white surface to the page
+   cream (app.css: .orgmenu/.usermenu/.viewsmenu a:hover{background:var(--paper)}), which is
+   var(--gw-page) here. */
+.gw-b-secondary:hover:not(:disabled) { background: var(--gw-page); }
 .gw-b-quiet { background: transparent; color: var(--gw-navy); padding: 0 8px; }
 .gw-b-quiet:hover:not(:disabled) { text-decoration: underline; }
 .gw-b-big { min-height: 54px; font-size: 17px; padding: 0 22px; }

@@ -213,8 +213,9 @@ export function PricingPage() {
           ))}
         </div>
 
-        {/* Enterprise */}
-        <div style={{ background: 'var(--gw-card)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 28px', marginBottom: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+        {/* Enterprise. Round 2, item H: the prototype's --band (var(--gw-band), #FAF5EA) - the one
+            panel in the product that uses it, matching docs/prototype/source/app.css's root palette. */}
+        <div style={{ background: 'var(--gw-band)', border: '1.5px solid var(--gw-border)', borderRadius: 14, padding: '24px 28px', marginBottom: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>Enterprise</div>
             <p style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 0 }}>
