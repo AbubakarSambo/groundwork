@@ -55,6 +55,37 @@ Now only one warm-up runs at a time for each check-in and round. A trigger that 
 - An item with no words is never served.
 - A test has a person saying the same words as a private file: their words stay, and only the file's name is hidden.
 
+**The warm-up fix is proven live** (loans and sales on `ea6e87cb`).
+
+| Loans, nine people, one session | run-19 | Now |
+| --- | --- | --- |
+| Board warm-ups | 18 | 9, once per check-in |
+| Report warm-ups | 9 | 3, once per new report version |
+
+- In sales, every check-in warmed the board once, where it used to be twice.
+- The model hit its rate limit 14 times on this short run, and 2 calls failed after every retry. The day's full run-19 had 204.
+- **Quick checks** (a new read-only script, `api/journey/quick-checks.py`): none of the lead's private words reached anyone else in loans, and its report matches the database. Sales is checked when it finishes.
+
+**Request 76 is built** (`343cf214`, `46eff9f0`, `643a245a`, migration `20260929140000_the_kind_of_work`, applied to the local test database only). It still needs its one live try.
+- Each check-in stores its kind of work, one of the prototype's eleven, read from the lead's words at setup. The lead can change it.
+- The board serves `kindOfWork`, and each kind's records under the switchboard's names:
+  - deals with stages for sales;
+  - releases for engineering;
+  - tickets for a support desk;
+  - deadlines and parties for a law firm matter;
+  - counties and projects for a programme;
+  - and so on for the other kinds.
+- Records come from what people said, or from the lead, and are never invented. Code checks that a record's name is in the words it came from.
+- A section Groundwork does not keep is served as "not known", which is different from "none yet".
+- The screens workspace has exactly what they will receive, in `docs/answers-from-engine.md`.
+- The asset loans stages (Disbursed, Repaying, Late, Repaid) and MarketView Q4's (Said, Paid) were read from the prototype's screens, because SEED2 gives none for them.
+
+**One chat: the inventory is written** (`b8afadd9`, `docs/context-chat-inventory.md`). There are 21 items, each with where its code is, the rule it keeps, its tests, and whether Ask Groundwork already does it. Most are not in Ask Groundwork yet. The findings that matter most:
+- **A live privacy gap:** Ask Groundwork never checks who may see which target. It is being fixed now, before anything moves.
+- **An uneven permission:** an admin may start the context chat's proposal, but only the lead may confirm it. No test pins this.
+- **A rule kept only by the prompt:** "if a lead says somebody is struggling, coach them, do not deflect". A rewrite of the prompt could lose it unnoticed.
+- **The helper broke a rule.** The helper that wrote the inventory started a research helper of its own, which the rules forbid. The next brief says so plainly.
+
 **After those:** the rest of Hafsah's answers (the goodbye's commitment, the decision field, the admin sentence, untold goals), then the weekly plan.
 
 ## SUMMARY, 29 SEPTEMBER, 13:35 TO 20:35 (read this first)
