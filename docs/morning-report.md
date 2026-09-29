@@ -93,6 +93,18 @@ Tests: 626 files and 5,981 tests pass in reports, board, check-ins and conversat
 
 Tests: 663 files and 6,302 tests pass in reports, board, check-ins, conversation and documents. Four tests were changed, because they expected the old wording or a lower-case start, which were the faults. No prompt stored in the database is affected.
 
+**Ten more requests are worked through** (65, 45 and 44 are not started yet).
+- **47** (`f654a870`). A person who said "ok", "fine" or "Please finish my check-in" was told "Your report is ready now", and then the finish button failed. The close and the finish now use one rule, so they get a question instead.
+- **48** (`72d45d31`). The same answer sent twice while it was still being answered wrote two replies. Now it gets one.
+- **56 and 69** (`ab775f86`, `7eb62b88`). The session report said "4 of 5" and the check-in's header "4 of 6". Everything now counts the same people: everybody on the check-in, including someone invited who has not joined, who is "a colleague". A count in one sentence is all words or all figures.
+- **40, in part** (`2963a3bc`). What a document holds is said in sentences. "Amani Wekesa: cookers delivered, 3, by by 9 October" is now "Amani Wekesa's target for cookers delivered is 3 by 9 October." Bank details are listed as left out: "Never kept, in any document." Two lines the model writes still need a prompt change.
+- **35, in part** (`4c28663f`). A situation the lead picked is never switched by the model. The screens need to send what she picked.
+- **38** (`12b2e660`). Each person on the board says whether they run the check-in.
+- **54** was already fixed. "You is aiming" reads "You are aiming".
+- **39** is answered: the screens workspace adds the unit and currency fields, and the engine writes the values. **58** is answered item by item.
+
+Tests: 728 files and 6,704 tests pass in the parts touched. Two tests were changed, because they checked the old colon-and-dash wording.
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
@@ -123,6 +135,10 @@ I looked at where the drop is. It is spread thinly over many scenarios, one or t
 10. **Request 64 is for the lead only, even when patterns are on.** It has no place for the person to answer first, so decision 39 could not be kept for anyone else. The "setup never said" reading only ever has one period, so under the three-period rule it now never shows.
 11. **Request 63: an admin who cannot see a target is told "has checked in, and nothing here needs you this week", even when the person is behind.** The request suggested saying they are behind, but "behind" is worked out from the hidden number, so I held it back.
 12. **Request 66: the lead reads their own name on that one line,** not "you". That is the same as the round's report text beside it. The alternative is a second copy of the line for each reader.
+13. **Request 35: a situation the lead picked always stands.** The only way to change it is pressing "It's something else".
+14. **Requests 56 and 69: "N of M" counts everybody on the check-in,** including someone invited who never joined. The stricter rule, which leaves out a lapsed invitation, only decides when a round's report is written, and never prints a count.
+15. **Request 58: a person's own private summary, and the lead's own setup report, may keep names the person typed.** Only that person reads them. The "stored without names" rule is for shared reports.
+16. **Request 39: the screens workspace adds the unit and currency fields** to targets, so two workspaces do not write clashing database changes.
 
 ---
 
