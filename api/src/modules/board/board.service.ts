@@ -636,6 +636,11 @@ export class BoardService {
         role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
         managingOnly: p.managingOnly,
         signedOffAt: p.signedOffAt,
+        /*
+         * WHO RUNS THE CHECK-IN, SO A LEAD WITH NO NAME IS "THE LEAD" AND NOT A COLLEAGUE (request 38).
+         * Only that one fact: the lead, or everybody else.
+         */
+        partyType: p.partyType === 'INITIATOR' ? 'INITIATOR' : 'PARTICIPANT',
       })),
       /*
        * WHETHER MORE THAN ONE PERSON ANSWERS, AS A YES OR NO. Screens request 50. The board's "only
