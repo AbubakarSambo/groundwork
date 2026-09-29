@@ -6570,3 +6570,21 @@ Then I deleted the test pattern. The switch file was never changed by me.
 3. The prototype's second part of "What keeps coming up", "How what people say can run ahead of what happened", has no data from the engine, so nothing is drawn for it. Under your rule that these screens are never simplified, I asked the engine to serve it (request 82).
 
 Tests the builder changed, and why: the switchboard's and the You board's tests carried the old pattern shape, which the engine no longer sends; they now carry the new one. One engine test reads the board's source for the old wording; the builder asked the engine to update it (request 81) and did not touch it.
+
+## The check-in's People and setup, rebuilt from the parts (29 September, night)
+
+The old tab's eleven numbered folds are now the prototype's named sections, in their own file (`CheckInPeopleAndSetup.tsx`), with "Who's in it" and "Roles in this check-in" as parts of their own. Every old fold has a place, and nothing it did was dropped: the add-people form, the seat warning, the invite link and QR code, the access code, the change log, and every setting. "Roles in this check-in" is new, from the prototype, with each person's role as described, which the lead or the person can edit. Reminders are new on this tab too: the server could already set them, but no screen did.
+
+**Who sees what, checked as each person.** Rukia, the lead, sees every section, with Change on the settings she may change. Juma, an admin who does not run it, sees it too, and may change only the settings the server lets an admin change. Amani, a participant, still gets her own short view (who is in it, and her own part), with no settings and no roles table. The server refuses every setting change from anyone it does not allow, so nothing depends on the screen.
+
+**Kept in the product's own words, because the prototype's would be untrue:**
+- "Ending it": no one can end a check-in themselves yet, so the page keeps asking us to end it, and keeps "Delete this check-in" for one that was only a test.
+- "Who else can see it" (giving one person access): nothing in the product does this yet, so it is left out.
+- "Remind Grace": a lead cannot remind someone else's admin, so the strip says what is true and links to People.
+- "The team's report": this tab cannot share it, so it says whether it has been shared, and when.
+
+**Kept, though the prototype has no place for them here, for you to confirm:** "You in this check-in", "What it is" (the name and the situation), "What good looks like" (with where it stood at the start), and "Who can corroborate whom".
+
+**My picture check found eleven things**, now with the builder. The most important: the tab is a narrow centred column instead of the full width; the roles table's status column is cut off; the spacing between sections is broken; "How long" says "Not started yet" though the first session has happened; and "You in this check-in" shows an internal name, "Okr alignment".
+
+**Found on the way, not fixed (was already broken):** the "Save situation" button sends a situation the server does not take, so choosing a different situation here has never saved. Listed for the review.
