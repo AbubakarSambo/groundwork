@@ -39,14 +39,17 @@ describe('the Check-in tab', () => {
 
   it('opening a session goes through the paywall-aware probe, because it can cost money', () => {
     /**
-     * `probeSession` POSTs `:id/open` and handles a 403 by offering the free
-     * extension, the access code or a subscription. `ChatPage`'s own open handler
-     * shows "Could not open session" and stops. So opening the tab must call back
-     * into this page's own mutation rather than navigate to /checkin/:id directly -
-     * otherwise the paid path is silently bypassed.
+     * The probe POSTs `:id/open` and handles a 403 by offering the free extension, the access
+     * code or a subscription. `ChatPage`'s own open handler shows "Could not open session" and
+     * stops. So opening the tab must call back into the shared opening hook rather than navigate
+     * to /checkin/:id directly - otherwise the paid path is silently bypassed.
+     *
+     * REVIEW ROUND 3, ITEM 2: `probeSession.mutate(` RENAMED `openSession(` (now `useOpenSession`,
+     * shared with GroundAdminPage.tsx so the lead's own Check-in tab can open a session the same
+     * way, without a trip through this page).
      */
     expect(SRC).toMatch(/if \(tab !== 'checkin'\) return/)
-    expect(SRC).toContain('probeSession.mutate(myOpenForAutoOpen)')
+    expect(SRC).toContain('openSession(myOpenForAutoOpen')
   })
 })
 

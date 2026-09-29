@@ -4,20 +4,19 @@ import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { whichSessionIsThisCheckInOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
-import { billingApi } from '@/api/billing'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Tabs } from '@/components/gw/ui/Tabs'
 import { cadenceLabel } from '@/lib/cadence'
 import { useAskStore } from '@/stores/ask'
-import { apiClient } from '@/api/client'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
-import { toast } from 'sonner'
+import { useOpenSession } from '@/hooks/useOpenSession'
+import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
@@ -54,7 +53,6 @@ const TO_TAB_KEY: Partial<Record<Tab, string>> = {
 export function GroundParticipantPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const qc = useQueryClient()
   /**
    * THIS PAGE IGNORED ?tab= ALTOGETHER.
    *
@@ -74,17 +72,10 @@ export function GroundParticipantPage() {
     if (key) next.set('tab', key); else next.delete('tab')
     setSearchParams(next, { replace: true })
   }
-  const [showPaywall, setShowPaywall] = useState(false)
   const [seenOutOfTime, setSeenOutOfTime] = useState(false)
-  /* Focus goes back to whatever opened it when it closes. */
-  const paywallOpener = useRef<HTMLElement | null>(null)
-  useEffect(() => {
-    if (showPaywall) paywallOpener.current = document.activeElement as HTMLElement | null
-    else paywallOpener.current?.focus?.()
-  }, [showPaywall])
-  const [paywallFreeExtensionAvailable, setPaywallFreeExtensionAvailable] = useState(false)
-  const [paywallCode, setPaywallCode] = useState('')
-  const [paywallCodeMsg, setPaywallCodeMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  /* REVIEW ROUND 3, ITEM 2: THE OPENING FLOW (probe + paywall) MOVED TO A SHARED HOOK, so
+     GroundAdminPage.tsx can open a session the same way without landing on this page. */
+  const { open: openSession, opening: sessionOpening, paywall } = useOpenSession(id)
 
   const user = useAuthStore(s => s.user)
   /* Called here, before any early return below, so the hook count cannot change between renders
@@ -143,72 +134,8 @@ export function GroundParticipantPage() {
     retry: false,
   })
 
-  // The checkout mutation behind the deleted subscription CTA is gone with it.
-  // `purchaseSessionMut` below is the initiator's, and stays.
-
-  const probeSession = useMutation({
-    mutationFn: async (checkIn: any) => {
-      const res = await apiClient.post(
-        `/check-ins/${checkIn.id}/open`,
-        {},
-        { validateStatus: () => true }
-      )
-      if (res.status === 403) return { blocked: true, checkIn, reason: res.data?.message as string | undefined, freeExtensionAvailable: res.data?.freeExtensionAvailable as boolean | undefined }
-      if (res.status !== 200 && res.status !== 201) throw new Error(res.data?.message ?? 'Could not start session.')
-      return { blocked: false, checkIn, reason: undefined, freeExtensionAvailable: undefined }
-    },
-    onSuccess: ({ blocked, checkIn, freeExtensionAvailable }) => {
-      // Free-tier grounds have unlimited sessions and are never paywalled. Guard
-      // explicitly so a stray 403 can never surface the payment modal for them -
-      // intent, not reliance on the backend never 403-ing a free ground.
-      if (blocked && !ground?.isFreeGround) {
-        setPaywallFreeExtensionAvailable(freeExtensionAvailable ?? false)
-        setShowPaywall(true)
-      } else {
-        navigate(`/checkin/${checkIn.id}`, {
-          state: { sessionNumber: checkIn.sessionNumber, isFinal: (checkIn as any).isFinal ?? false, groundLabel: ground?.label, groundId: id, isInitiator: (ground?.participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR' }
-        })
-      }
-    },
-    /* mutationFn extracts the server's sentence into the Error; this used to throw it away for four fixed words. */
-    onError: (e: any) => toast.error(e?.message ?? 'Could not start session. Try again.'),
-  })
-
-  const redeemPaywallCode = useMutation({
-    mutationFn: () => billingApi.redeemContributorCode(paywallCode.trim().toUpperCase(), id!),
-    onSuccess: r => {
-      qc.invalidateQueries({ queryKey: ['ground', id] })
-      setPaywallCodeMsg({ ok: r.ok, text: r.message })
-      if (r.ok) {
-        setShowPaywall(false)
-        setPaywallCode('')
-      }
-    },
-    onError: () => setPaywallCodeMsg({ ok: false, text: 'Something went wrong. Try again.' }),
-  })
-
-  // purchaseSessionMut removed with the buy-a-session tier.
-
-  const claimFreeExtensionMut = useMutation({
-    mutationFn: () => billingApi.claimFreeExtension(id!),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['ground', id] })
-      setShowPaywall(false)
-      setPaywallFreeExtensionAvailable(false)
-      toast.success('Free session added. You can now start your session.')
-    },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not add the free session. Try again.'),
-  })
-
-  const createSubscriptionMut = useMutation({
-    mutationFn: (plan: string) => billingApi.createSubscription(plan as any),
-    onSuccess: r => {
-      if (r.checkoutUrl) window.location.href = r.checkoutUrl
-      else toast.error('Checkout did not open. Try again, or email hello@myground.work.')
-    },
-    onError: () => toast.error('Could not start checkout. Try again.'),
-  })
-
+  // REVIEW ROUND 3, ITEM 2: probeSession/redeemPaywallCode/claimFreeExtensionMut/createSubscriptionMut
+  // all moved into useOpenSession (above), so GroundAdminPage.tsx can share them.
 
 
   /**
@@ -272,8 +199,12 @@ export function GroundParticipantPage() {
     if (new URLSearchParams(window.location.search).get('open') !== '1') return
     if (!myOpenForAutoOpen) return
     autoOpenFired.current = true
-    probeSession.mutate(myOpenForAutoOpen)
-  }, [myOpenForAutoOpen, probeSession])
+    openSession(myOpenForAutoOpen, {
+      isFreeGround: ground?.isFreeGround,
+      groundLabel: ground?.label,
+      isInitiator: ((ground as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR',
+    })
+  }, [myOpenForAutoOpen, openSession])
 
   /**
    * ROUND 4, ITEM A STEP 3: THE CHECK-IN TAB IS THE FOCUSED CONVERSATION.
@@ -292,9 +223,13 @@ export function GroundParticipantPage() {
   useEffect(() => {
     if (tab !== 'checkin') return
     if (!myOpenForAutoOpen) return
-    if (probeSession.isPending) return
-    probeSession.mutate(myOpenForAutoOpen)
-  }, [tab, myOpenForAutoOpen, probeSession])
+    if (sessionOpening) return
+    openSession(myOpenForAutoOpen, {
+      isFreeGround: ground?.isFreeGround,
+      groundLabel: ground?.label,
+      isInitiator: ((ground as any)?.participants ?? []).find((p: any) => p.userId === user?.id)?.partyType === 'INITIATOR',
+    })
+  }, [tab, myOpenForAutoOpen, sessionOpening, openSession])
 
   if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-page)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
   /*
@@ -439,7 +374,7 @@ export function GroundParticipantPage() {
      OPEN, WHATEVER ITS `availableFrom` SAYS. Without this, "No check-in open right now" and a
      later "opens on such-and-such date" were both shown for a session the person had already
      started answering. */
-  const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now() && !probeSession.isPending && (openCheckIn as any)?.status !== 'IN_PROGRESS'
+  const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now() && !sessionOpening && (openCheckIn as any)?.status !== 'IN_PROGRESS'
   const dueNow = !!openCheckIn && !opensLater
 
 
@@ -550,11 +485,11 @@ export function GroundParticipantPage() {
               {myOpenForAutoOpen && (
                 <button
                   type="button"
-                  onClick={() => probeSession.mutate(myOpenForAutoOpen)}
-                  disabled={probeSession.isPending}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: probeSession.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+                  onClick={() => openSession(myOpenForAutoOpen, { isFreeGround: ground?.isFreeGround, groundLabel: ground?.label, isInitiator })}
+                  disabled={sessionOpening}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: sessionOpening ? 'wait' : 'pointer', fontFamily: 'inherit' }}
                 >
-                  {probeSession.isPending ? 'Opening…' : 'Start my check-in'}
+                  {sessionOpening ? 'Opening…' : 'Start my check-in'}
                 </button>
               )}
               <button
@@ -594,24 +529,15 @@ export function GroundParticipantPage() {
 
         <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 0 12px' }}>
           {/*
-            WHICH OF THE TWO VIEWS YOU ARE ON, SAID OUTRIGHT.
-
-            "I think there may be some chaos happening based on lead, participant or admin",
-            after landing here and reporting that the Sessions page had gone and the Context
-            page had vanished. Neither had: this is the party view, which has never had a
-            Sessions tab, and its Context tab is right there. But a lead who runs the check-in
-            AND gives their own account has two pages with the same name at the top, one tab
-            row that differs by two entries, and a line about privacy to tell them apart.
-
-            So the line says which page this is. For somebody who only takes part it reads the
-            same as it always did; for whoever runs it, it names the other page in the same
-            breath as the button that goes there.
+            REVIEW ROUND 3, ITEM 2: ONE PAGE PER CHECK-IN NOW, NOT TWO.
+            This used to say which of two pages you were on, for whoever runs the check-in AND
+            gives their own account - a dash-joined fragment ("Everything about running it - the
+            sessions, who has answered, the setup - is on the whole check-in.") that the wording
+            rule rules out anywhere a person reads. It explained a problem that no longer exists:
+            the lead's Check-in tab opens her own conversation directly now (GroundAdminPage.tsx),
+            so she does not land here to be told apart from it. One sentence, for everyone.
           */}
-          <span>
-            {canRunThisCheckIn
-              ? 'Your own account of this check-in. Everything about running it - the sessions, who has answered, the setup - is on the whole check-in.'
-              : 'Your own check-in. The report shows where you and the others agree, differ, and what to do next.'}
-          </span>
+          <span>Your own check-in. The report shows where you and the others agree, differ, and what to do next.</span>
           {/*
             WHOSE WORKSPACE THIS IS, WHEN IT IS NOT YOURS.
 
@@ -965,116 +891,9 @@ export function GroundParticipantPage() {
         )}
       </div>
 
-      {/* Paywall overlay */}
-      {showPaywall && (
-        <div
-          role="dialog" aria-modal="true" aria-label="Your session is complete"
-          onKeyDown={e => { if (e.key === 'Escape') setShowPaywall(false) }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(10,22,40,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}
-        >
-          {/* Opened programmatically, so focus was left behind the scrim: a keyboard or screen-reader user was
-              dropped into a modal they were never told about and could tab out of into an inert page. */}
-          <div tabIndex={-1} ref={el => el?.focus()} style={{ background: 'white', borderRadius: 12, padding: 24, maxWidth: 400, width: '100%', maxHeight: '90vh', overflowY: 'auto', outline: 'none' }}>
+      {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL, PULLED OUT INTO A SHARED COMPONENT (see useOpenSession.ts) */}
+      <SessionPaywallModal paywall={paywall} canPayHere={canPayHere} />
 
-            {canPayHere ? (
-              <>
-                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 4 }}>Your session is complete.</div>
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 20, lineHeight: 1.6 }}>
-                  Did Groundwork help your team move forward? Choose what works best for you.
-                </div>
-
-                {/* Tier 1: Free extension. */}
-                {paywallFreeExtensionAvailable && (
-                  <div style={{ border: '1px solid var(--gw-green-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 12, background: 'var(--gw-green-bg)' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-green-t)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Add one more free session</div>
-                    <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-                      Not ready to pay yet? Keep using Groundwork until you are confident it is delivering value. Add another free session and continue your Check-in.
-                    </div>
-                    <button
-                      onClick={() => claimFreeExtensionMut.mutate()}
-                      disabled={claimFreeExtensionMut.isPending}
-                      style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-green-t)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: claimFreeExtensionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: claimFreeExtensionMut.isPending ? 0.7 : 1 }}
-                    >
-                      {claimFreeExtensionMut.isPending ? 'Adding...' : 'Continue for free'}
-                    </button>
-                  </div>
-                )}
-
-                {/* Tier 2 was "Buy a session ($5)". Removed: there is no
-                    per-session billing. What remains is the free extension
-                    above and the org subscription below. */}
-
-                {/* Tier 3: Upgrade org */}
-                <div style={{ border: '1px solid var(--gw-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 6 }}>Upgrade organisation</div>
-                  <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6, marginBottom: 12 }}>
-                    Your team is getting value from Groundwork. Unlock unlimited check-ins and unlimited sessions for everyone in your organisation with one simple monthly subscription.
-                  </div>
-                  <button
-                    onClick={() => createSubscriptionMut.mutate('STARTER')}
-                    disabled={createSubscriptionMut.isPending}
-                    style={{ width: '100%', padding: '10px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: createSubscriptionMut.isPending ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: createSubscriptionMut.isPending ? 0.7 : 1, marginBottom: 8 }}
-                  >
-                    {createSubscriptionMut.isPending ? 'Redirecting...' : 'Upgrade organisation'}
-                  </button>
-                  <button
-                    onClick={() => navigate('/pricing')}
-                    style={{ width: '100%', padding: '8px', borderRadius: 7, background: 'none', color: 'var(--gw-navy)', fontSize: 12, fontWeight: 600, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    View all plans
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* THE TRUE FACT AND NOTHING MORE. This said "Your initiator has been notified" - and nothing
-                    notified the initiator; the sentence was the only occurrence of the idea in the repository.
-                    The server does tell the organisation's admins when the gate refuses (tellAnAdminToAddACard),
-                    and they are the people who can act, so that is what is said. */}
-                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gw-dark)', marginBottom: 8 }}>Session needed to continue</div>
-                <div style={{ background: 'var(--gw-paper-2)', borderRadius: 8, padding: '12px 14px', marginBottom: 14, fontSize: 13, color: 'var(--gw-sub-d)', lineHeight: 1.6 }}>
-                  Only an organisation admin can add sessions. We have told them you are waiting.
-                </div>
-              </>
-            )}
-
-            {/* Access code: an admin/lead instrument for bypassing a
-                payment block. It used to render for everyone, sending plain
-                participants hunting for a code they were never issued. */}
-            {canPayHere && (
-            <div style={{ borderTop: '1px solid var(--gw-border)', paddingTop: 14 }}>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginBottom: 8 }}>Have an access code?</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="text"
-                  value={paywallCode}
-                  onChange={e => { setPaywallCode(e.target.value); setPaywallCodeMsg(null) }}
-                  placeholder="Enter code"
-                  style={{ flex: 1, padding: '9px 11px', fontSize: 13, fontFamily: 'inherit', border: `1px solid ${paywallCodeMsg && !paywallCodeMsg.ok ? 'var(--gw-danger)' : 'var(--gw-border)'}`, borderRadius: 7, background: 'var(--gw-paper-2)', color: 'var(--gw-dark)', outline: 'none' }}
-                />
-                <button
-                  onClick={() => redeemPaywallCode.mutate()}
-                  disabled={!paywallCode.trim() || redeemPaywallCode.isPending}
-                  style={{ padding: '9px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 600, border: 'none', cursor: !paywallCode.trim() ? 'not-allowed' : 'pointer', opacity: !paywallCode.trim() ? 0.45 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                >
-                  {redeemPaywallCode.isPending ? 'Checking...' : 'Apply'}
-                </button>
-              </div>
-              {paywallCodeMsg && (
-                <div style={{ fontSize: 12, color: paywallCodeMsg.ok ? 'var(--gw-green-t)' : 'var(--gw-danger)', marginTop: 6 }}>{paywallCodeMsg.text}</div>
-              )}
-            </div>
-            )}
-
-            <button
-              onClick={() => setShowPaywall(false)}
-              style={{ marginTop: 14, background: 'none', border: 'none', fontSize: 12, color: 'var(--gw-muted)', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
-            >
-              Not now
-            </button>
-          </div>
-        </div>
-      )}
 
     </div>
   )

@@ -46,8 +46,15 @@ describe('the chat is here at all', () => {
    */
   it('a party is sent to the focused conversation, not shown a mount of GroundChat', () => {
     expect(CODE).not.toContain('<GroundChat')
+    /**
+     * REVIEW ROUND 3, ITEM 2: NO MORE HAND-OFF TO THE PARTICIPANT PAGE. A lead who is a party
+     * used to be sent to `/grounds/:id/p?open=1` to open her own session - a second page, for
+     * what should be one check-in. She opens it from here now, through the same shared hook the
+     * participant page uses (useOpenSession.ts), and never lands on the other page for it.
+     */
     expect(CODE).toMatch(/if \(tab !== 'chat' \|\| !viewerIsAParty\) return/)
-    expect(CODE).toMatch(/navigate\(myOpenCheckInId \? `\/checkin\/\$\{myOpenCheckInId\}` : `\/grounds\/\$\{id\}\/p\?open=1`, \{ replace: true \}\)/)
+    expect(CODE).toContain('openMySession(myOpenCheckIn')
+    expect(CODE).not.toMatch(/\/grounds\/\$\{id\}\/p\?open=1/)
   })
 
   it('and it is the first tab, so it is what you land on', () => {
