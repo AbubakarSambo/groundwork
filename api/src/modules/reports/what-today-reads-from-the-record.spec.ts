@@ -70,3 +70,57 @@ describe('week 16: what Today reads from the latest report', () => {
     expect(JSON.stringify(r.sinceLast)).not.toMatch(NO_LABELS);
   });
 });
+
+/**
+ * AND WHERE PEOPLE SAID DIFFERENT THINGS (29 Sep 2026). Each open difference on the stored report is
+ * one item for the lead, built from the stored `divergences` with names put in at the read. A
+ * participant and an admin who only reads get no `forTheLead` at all.
+ */
+describe('week 16: the report’s open differences reach the lead’s list, and nobody else’s', () => {
+  const DIVERGENCES = [{
+    topic: 'Participant A counts a price range as a budget, and Participant B counts only a written figure.',
+    positions: [
+      { participantLabel: 'Participant A', view: 'A range is enough to count the deal.' },
+      { participantLabel: 'Participant B', view: 'Only a written figure counts.' },
+    ],
+    settledBy: 'Agree what counts as a budget and tell both of them.',
+    atStake: 'Four deals are counted differently until this is agreed.',
+  }];
+  function withDifferences(requestingUserId: string, viewerRole = 'MEMBER') {
+    const { prisma, writes } = prismaFor(viewerRole);
+    prisma.report = { findUnique: jest.fn(async () => ({ divergences: structuredClone(DIVERGENCES) })) };
+    const svc = Object.create(ReportsService.prototype) as any;
+    svc.prisma = prisma;
+    svc.logger = new Logger('test');
+    svc.getAsBuilt = jest.fn(async () => ({ groundId: 'g-sales', report: { findings: [] } }));
+    return { report: (svc as ReportsService).get('g-sales', requestingUserId, 'org-1') as Promise<any>, writes };
+  }
+
+  it('the lead reads one item per open difference, in plain sentences with names', async () => {
+    const { report, writes } = withDifferences('u-wairimu');
+    const r = await report;
+    const item = (r.forTheLead as any[]).find((x) => x.id === 'difference-1');
+    expect(item).toEqual({
+      id: 'difference-1',
+      decide: 'Agree what counts as a budget and tell both of them.',
+      why: 'Brian Otieno counts a price range as a budget, and Miriam Wanjiku counts only a written figure. Brian Otieno and Miriam Wanjiku said different things about this, so nobody can assume it is agreed.',
+      changes: 'Four deals are counted differently until this is agreed.',
+    });
+    const text = JSON.stringify(r.forTheLead);
+    expect(text).not.toMatch(/Sales [AB]|Participant [A-Z]|\baccounts?\b/);
+    expect(text).not.toMatch(NO_LABELS);
+    expect(writes).toEqual([]);
+  });
+
+  it('a participant never reads it', async () => {
+    const r = await withDifferences('u-brian').report;
+    expect(r).not.toHaveProperty('forTheLead');
+    expect(JSON.stringify(r)).not.toMatch(/Agree what counts as a budget|Four deals are counted/);
+  });
+
+  it('an admin who only reads never reads it', async () => {
+    const r = await withDifferences('u-grace', 'ADMIN').report;
+    expect(r).not.toHaveProperty('forTheLead');
+    expect(JSON.stringify(r)).not.toMatch(/Agree what counts as a budget|Four deals are counted/);
+  });
+});

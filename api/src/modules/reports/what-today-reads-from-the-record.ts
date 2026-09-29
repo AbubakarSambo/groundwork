@@ -1,4 +1,4 @@
-import { plainWordsByPerson, atTheStart } from './party-labels';
+import { plainWordsByPerson, atTheStart, labelsForParties, namesVisibleTo, withNames, eachSideGetsSomebody } from './party-labels';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 
 /** A phrase put inside a sentence, as the board does it (board.service's inASentence, kept here so
@@ -25,6 +25,11 @@ const inASentence = (phrase: string): string => {
  * has them. No model is asked and nothing is written, so opening a report never rebuilds anything
  * (decision 7). Nothing here reads a rating, and nothing is a label on a person: each sentence says
  * what happened.
+ *
+ * AND WHERE PEOPLE SAID DIFFERENT THINGS. Each open difference on the stored report is one item: what
+ * would settle it, who said different things, and what happens to the work while it holds. Read from
+ * the report's stored `divergences` as they are, with names put in through `withNames`, the same
+ * wrapper every reader's report goes through. Nothing is asked of a model.
  *
  * THE BOARD'S BLOCKERS, THE SAME WAY. Everything waiting on the lead that the board shows as a
  * blocker is here too, so Today never says nothing needs the lead while their board shows
@@ -243,6 +248,9 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
     });
   }
 
+  /* Where people said different things, one item per open difference on the stored report. */
+  out.push(...(await whereWhatPeopleSaidDiffers(prisma, groundId, participants, lead)).map((x) => ({ ...x, order: 1 })));
+
   /* What the lead wrote down as still to decide. Their own note, read back only to them. */
   const notes = ((await prisma.groundContextItem?.findMany?.({
     where: { groundId, kind: 'DECISION', closedAt: null },
@@ -256,6 +264,44 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
     out.push({ id: `note-${n.id}`, decide: sentence(text), why: 'You wrote this down as still to decide.', order: 2 });
   }
   return out.sort((a, b) => a.order - b.order).slice(0, 8).map(({ order: _o, ...rest }) => rest);
+}
+
+/**
+ * THE OPEN DIFFERENCES, FOR THE LEAD. Built from the stored report's `divergences`: the report is
+ * rewritten when something new comes in, so what is on it now is what is still open. Names go in
+ * through `withNames`, as the lead's own report has them, and the lead's own side is "you".
+ */
+export async function whereWhatPeopleSaidDiffers(prisma: any, groundId: string, participants: any[], lead: any | null): Promise<ForTheLead[]> {
+  const report = await prisma.report?.findUnique?.({ where: { groundId }, select: { divergences: true } })?.catch?.(() => null);
+  const divs = (Array.isArray(report?.divergences) ? report.divergences : []) as any[];
+  if (!divs.length) return [];
+  const labels = labelsForParties(participants as any);
+  const visible = namesVisibleTo(lead?.id ?? null, participants as any);
+  const leadLabel = lead ? labels.get(lead.id) ?? null : null;
+  const named = (t: unknown) => withNames(String(t ?? '').trim(), visible, labels.values(), { viewerLabel: leadLabel });
+  const out: ForTheLead[] = [];
+  divs.slice(0, 4).forEach((d, i) => {
+    const sides = eachSideGetsSomebody((Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : []) as any[], visible.keys());
+    const who = [...new Set(sides.map((side) => {
+      const l = String(side?.participantLabel ?? '').trim();
+      if (leadLabel && l.toLowerCase() === leadLabel.toLowerCase()) return 'you';
+      return visible.get(l) ?? '';
+    }))];
+    const knowsWho = sides.length >= 2 && who.length >= 2 && who.every(Boolean);
+    const whoSaid = knowsWho ? atTheStart(andList(who)) : 'People in this check-in';
+    const topic = named(d?.topic);
+    const settledBy = named(d?.settledBy);
+    const atStake = named(d?.atStake);
+    out.push({
+      id: `difference-${i + 1}`,
+      decide: settledBy
+        ? sentence(settledBy)
+        : knowsWho ? `Settle the difference between what ${andList(who)} said.` : 'Settle the difference between what people said.',
+      why: `${topic ? `${sentence(topic)} ` : ''}${whoSaid} said different things about this, so nobody can assume it is agreed.`,
+      ...(atStake ? { changes: sentence(atStake) } : {}),
+    });
+  });
+  return out;
 }
 
 /**
