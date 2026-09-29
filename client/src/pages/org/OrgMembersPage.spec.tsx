@@ -67,7 +67,9 @@ describe('waiting to be let in', () => {
     expect(await screen.findByRole('heading', { name: 'Waiting to be let in' })).toBeTruthy()
     expect(screen.getByText('People from outside Baridi Appliances, invited to a check-in')).toBeTruthy()
     expect(screen.getByText('Peter Ouma, peter@ouma-agencies.co.ke')).toBeTruthy()
-    expect(await screen.findByText('Wairimu invited them to Sales team, Q3, yesterday. They take a seat; you have 73 free.')).toBeTruthy()
+    /* U.4 review, item 12 (30 Sept): the semicolon joined two facts as if they were one clause, and
+       "you have 0 free" would have read as a number nobody would say out loud. */
+    expect(await screen.findByText('Wairimu invited them to Sales team, Q3, yesterday. Letting them in takes a seat, and you have 73 free.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Don’t let them in' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Let them in' })).toBeTruthy()
     expect(screen.getByText('Letting someone in tells them straight away, and tells whoever invited them.')).toBeTruthy()
@@ -83,7 +85,12 @@ describe('waiting to be let in', () => {
 
   it('with no plan cap, and nobody named', () => {
     expect(whoAskedForThem({ id: 'x', email: 'a@b.co', name: null, addedBy: null, forCheckIn: null }, null))
-      .toBe('Someone who is no longer here invited them. They take a seat.')
+      .toBe('Someone who is no longer here invited them. Letting them in takes a seat.')
+  })
+
+  it('says "none free" rather than "0 free" (U.4 review, item 12)', () => {
+    expect(whoAskedForThem({ id: 'x', email: 'a@b.co', name: null, addedBy: null, forCheckIn: null }, 0))
+      .toBe('Someone who is no longer here invited them. Letting them in takes a seat, and you have none free.')
   })
 })
 
@@ -109,7 +116,9 @@ describe('everyone at Baridi', () => {
     expect(within(screen.getByText('Lucy Wairimu', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Invited, not opened')).toBeTruthy()
     const peter = within(screen.getByText('Peter Ouma', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
     expect(peter.getByText('Guest')).toBeTruthy()
-    expect(peter.getByText('None')).toBeTruthy()
+    /* U.4 review, item 12 (30 Sept): a bare "None" read as an orphaned word at phone width, where
+       the column name it belonged to had already collapsed away. The team cell now says "No team". */
+    expect(peter.getByText('No team')).toBeTruthy()
   })
 
   it('shows no label on anybody: no score, no rating, nothing but what they are and where they got to', async () => {
@@ -177,10 +186,17 @@ describe('everyone at Baridi', () => {
       expect(row.getByText(statusTag)).toBeTruthy()
       expect(row.getByRole('button', { name: `Open ${name}` })).toBeTruthy()
     }
-    /* Team: "Leadership" for Ada, "Sales" for Lena and Mona, "None" for Wanda (no team set). */
+    /* Team: "Leadership" for Ada, "Sales" for Lena and Mona, "No team" for Wanda (no team set). */
     expect(within(screen.getByText('Ada Admin', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Leadership')).toBeTruthy()
-    /* Wanda has no team and no check-ins, so "None" reads twice in her row - one for each cell. */
-    expect(within(screen.getByText('Wanda Waiting', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getAllByText('None')).toHaveLength(2)
+    /*
+     * U.4 review, item 12 (30 Sept): the team cell's bare "None" read as an orphaned word at phone
+     * width, where the column name it belonged to had already collapsed away - so it is "No team"
+     * now, and only the check-ins cell (which names what it is missing nowhere on the page) still
+     * says "None".
+     */
+    const wandaRow = within(screen.getByText('Wanda Waiting', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
+    expect(wandaRow.getByText('No team')).toBeTruthy()
+    expect(wandaRow.getByText('None')).toBeTruthy()
     /* Lena's six check-ins are all still there, not truncated or dropped because the list is long. */
     const lenaRow = within(screen.getByText('Lena Lead', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
     expect(lenaRow.getByText(/Sales team, Q3, MarketView, where next, test, Kasarani Foods v Pwani Mills, test/)).toBeTruthy()

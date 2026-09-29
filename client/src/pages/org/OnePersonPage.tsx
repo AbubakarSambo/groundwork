@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { type OrgMember, fetchMembers, nameOf, firstNameOf, initialsOf, statusWord, A_FAILURE } from './people-here'
 import { Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, ChoiceCards, Tag, Button, TextField, Select, Note } from '@/components/gw/ui'
+import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 
 /**
  * ONE PERSON, AS AN ADMIN READS THEM (U.4, A4 one-person.txt, #/settings/people/miriam).
@@ -245,6 +246,15 @@ export function OnePersonPage() {
             />
           )}
         </FieldRows>
+        {/* WHO DECIDED, AND WHEN (U.4 review, item 2). "Not let in" on its own says what happened but
+            not why the reader cannot just let them in from here - this says who decided, and when. */}
+        {m.notLetIn && (
+          <Note>
+            {m.notLetInAt
+              ? `${m.notLetInBy ?? 'An admin'} did not let ${first} in, on ${whenItWas(m.notLetInAt, 'dayAndMonthLong')}. ${first} cannot check in.`
+              : `${m.notLetInBy ?? 'An admin'} did not let ${first} in, so ${first} cannot check in.`}
+          </Note>
+        )}
         {m.arrivedThroughACheckIn && <Note>They came in by accepting an invitation to a check-in.</Note>}
       </Section>
 
@@ -267,11 +277,11 @@ export function OnePersonPage() {
 
       <Section heading="What an admin can see">
         <Panel>
-          <p className="gwui-panel-text-muted">{`As an admin you can read every check-in at ${orgName}, change its setup and end it. You don’t see anyone’s private notes.`}</p>
+          <p className="gwui-panel-text-muted">{`As an admin you can read every check-in at ${orgName}, change its setup, and ask us to end it. You don’t see anyone’s private notes.`}</p>
         </Panel>
       </Section>
 
-      {!isMe && (
+      {!isMe && !isOwner && (
         <Section heading={`Remove from ${orgName}`}>
           <Panel>
             <div className="gwui-sentence-row">

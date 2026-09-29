@@ -186,7 +186,9 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
                       extraColumns={EXTRA_COLUMNS}
                       person={{ initials: initialsOf(name), name, level: line || undefined, email: m.email }}
                     >
-                      <span>{m.team?.trim() || 'None'}</span>
+                      {/* "None" alone, at phone width where the column name has collapsed away, read
+                          as a bare word with nothing to attach to (U.4 review, item 12). */}
+                      <span>{m.team?.trim() || 'No team'}</span>
                       <Tag tone={roleTagTone(role)}>{role}</Tag>
                       <Tag tone={statusTagTone(st)}>{st}</Tag>
                       <span>{checkInsWord(m)}</span>

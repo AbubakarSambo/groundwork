@@ -29,12 +29,19 @@ function whenAsked(at: string | undefined, now = new Date()): string {
   return `on ${whenItWas(d, 'dayAndMonthLong')}`
 }
 
-/** "Wairimu invited them to Sales team, Q3, yesterday. They take a seat; you have 73 free." */
+/** "Wairimu invited them to Sales team, Q3, yesterday. Letting them in takes a seat, and you have 73 free." */
 export function whoAskedForThem(p: Waiting, seatsFree: number | null, now = new Date()): string {
   const by = p.addedBy ? p.addedBy.split(' ')[0] : 'Someone who is no longer here'
   const to = p.forCheckIn ? ` to ${p.forCheckIn}` : ''
   const when = whenAsked(p.waitingSince, now)
-  const seat = seatsFree === null ? 'They take a seat.' : `They take a seat; you have ${seatsFree} free.`
+  /*
+   * "0 FREE" READS AS A NUMBER NOBODY WOULD SAY OUT LOUD (U.4 review, item 12). And "They take a
+   * seat; you have N free." joined two facts with a semicolon as if they were the same clause, when
+   * the second is the reason letting them in matters.
+   */
+  const seat = seatsFree === null
+    ? 'Letting them in takes a seat.'
+    : `Letting them in takes a seat, and you have ${seatsFree === 0 ? 'none' : seatsFree} free.`
   return `${by} invited them${to}${when ? `, ${when}` : ''}. ${seat}`
 }
 

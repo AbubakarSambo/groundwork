@@ -73,7 +73,9 @@ describe('what Grace reads about Miriam', () => {
     expect(screen.getByText('1 check-in')).toBeTruthy()
     expect(screen.getByText('Sales team, Q3')).toBeTruthy()
     expect(screen.getByText('Checks in')).toBeTruthy()
-    expect(screen.getByText('As an admin you can read every check-in at Baridi Appliances, change its setup and end it. You don’t see anyone’s private notes.')).toBeTruthy()
+    /* U.4 review, item 3 (30 Sept): nobody can end a check-in themselves yet - only ask us to. The
+       old sentence claimed a control that does not exist. */
+    expect(screen.getByText('As an admin you can read every check-in at Baridi Appliances, change its setup, and ask us to end it. You don’t see anyone’s private notes.')).toBeTruthy()
     /* WhatsApp is off, so her number is not offered. And no label, no dash. */
     expect(screen.queryByLabelText('WhatsApp number for Miriam')).toBeNull()
     expect(container.textContent).not.toMatch(/ - |\bscore\b|at risk/i)
