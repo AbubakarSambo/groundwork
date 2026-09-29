@@ -141,7 +141,14 @@ describe('the nudge to talk it through, once, in plain words (decision 57, item 
     const [served] = servedPatterns([ROW], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) });
     const nudge = patternTalkNudge(served, 'Femi');
     expect(nudge.decide).toBe('Talk with Femi about “Others describe doing work they described as theirs”.');
-    expect(nudge.why).toBe('Femi has seen it and said: “I built the deck, Ngozi did the pricing.”.');
+    expect(nudge.why).toBe('Femi has seen it. Femi said, “I built the deck, Ngozi did the pricing.”');
+  });
+
+  it('adds a single full stop when the person’s own words did not end with one', () => {
+    const noStop = { ...ROW, personAnswer: 'I built the deck, Ngozi did the pricing' };
+    const [served] = servedPatterns([noStop], { participantId: 'p-tunde', runsIt: true }, { on: true, now: new Date(NOW) });
+    const nudge = patternTalkNudge(served, 'Femi');
+    expect(nudge.why).toBe('Femi has seen it. Femi said, “I built the deck, Ngozi did the pricing”.');
   });
 
   it('says plainly when the person has not answered, without inventing anything', () => {

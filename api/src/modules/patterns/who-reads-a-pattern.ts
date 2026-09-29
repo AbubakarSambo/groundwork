@@ -335,7 +335,7 @@ export function seenAgainAfterTalk(row: Pick<APatternRow, 'seenInSessions' | 'ta
  */
 export function patternTalkNudge(pattern: Pick<AServedPattern, 'id' | 'heading' | 'theirWords'>, name: string): { id: string; decide: string; why: string } {
   const why = pattern.theirWords
-    ? `${name} has seen it and said: “${pattern.theirWords}”.`
+    ? `${name} has seen it. ${name} said, “${pattern.theirWords}”${/[.!?]$/.test(pattern.theirWords) ? '' : '.'}`
     : `${name} has seen this and has not answered yet.`;
   return { id: `pattern-talk-${pattern.id}`, decide: `Talk with ${name} about “${pattern.heading}”.`, why };
 }
