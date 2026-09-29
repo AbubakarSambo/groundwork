@@ -51,6 +51,7 @@ import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-boa
 import { whatThisDocumentIs } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
+import { OneAtATime } from '../reports/one-warm-up-at-a-time';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import { oneBlockerPerThingWaitedOn } from './a-blocker-with-nothing-in-it-is-the-same-blocker';
 import {
@@ -137,6 +138,8 @@ export const inASentence = (phrase: string): string => {
 @Injectable()
 export class BoardService {
   private readonly logger = new Logger(BoardService.name);
+  /* One board warm-up at a time for each ground, shared by every trigger. See one-warm-up-at-a-time. */
+  private readonly boardWarming = new OneAtATime<void>();
 
   /*
    * `AnthropicService` for one job: rewording the reads' reason lines. The board decides nothing
@@ -183,16 +186,41 @@ export class BoardService {
    * few seconds after the check-in that changed it, means the lead's first open pays nothing.
    * Best-effort: a failure here is logged and the open still works, it is just slower.
    */
+  /*
+   * ONCE PER CHECK-IN THAT CHANGES IT (decision 44). Check-ins landing while a warm-up runs share
+   * one more run after it, which reads all of them; nothing starts beside a run already out. The
+   * fingerprint is what the board is built from, so a check-in event that brings nothing new (a
+   * repair of one already counted) asks nothing. And there is one instance of this service: run-19
+   * warmed every board twice because the public API module built a second one (see
+   * only-one-board-listens.spec).
+   */
   @OnEvent(GroundworkEvents.CHECK_IN_COMPLETED)
   async warmOnCheckInCompleted(event: CheckInCompletedEvent) {
     try {
-      const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
-      if (!ground?.initiatorId) return;
-      await this.get(event.groundId, ground.initiatorId, DEFAULT_COVERAGE_VARIANT, { mayWordNewLines: true });
-      this.logger.log(`Board warmed for ${event.groundId} after session ${event.sessionNumber}.`);
+      await (this.boardWarming ?? new OneAtATime<void>()).run(event.groundId, () => this.whatTheBoardIsBuiltFrom(event.groundId), async () => {
+        const ground = await this.prisma.ground.findUnique({ where: { id: event.groundId }, select: { initiatorId: true } });
+        if (!ground?.initiatorId) return;
+        await this.get(event.groundId, ground.initiatorId, DEFAULT_COVERAGE_VARIANT, { mayWordNewLines: true });
+        this.logger.log(`Board warmed for ${event.groundId} after session ${event.sessionNumber}.`);
+      });
     } catch (err: any) {
       this.logger.warn(`Board warm-up failed for ${event.groundId}: ${err?.message}`);
     }
+  }
+
+  /* The board's inputs, as one fingerprint: check-ins, the record's lines and documents, the aims and
+     numbers, what is in the way, who is in it, and the report whose story it carries. */
+  private async whatTheBoardIsBuiltFrom(groundId: string): Promise<string | null> {
+    const [checkIns, lines, docs, aims, blockers, people, report] = await Promise.all([
+      this.prisma.checkIn.aggregate({ where: { groundId }, _count: { _all: true }, _max: { completedAt: true } }),
+      this.prisma.recordEntry.aggregate({ where: { disputedAt: null, participant: { groundId } }, _count: { _all: true }, _max: { createdAt: true } }),
+      this.prisma.groundDocument.count({ where: { groundId } }),
+      this.prisma.groundObjective.aggregate({ where: { groundId }, _count: { _all: true }, _max: { updatedAt: true } }),
+      this.prisma.groundDependency.aggregate({ where: { groundId }, _count: { _all: true }, _max: { updatedAt: true } }),
+      this.prisma.groundParticipant.count({ where: { groundId } }),
+      this.prisma.report.findUnique({ where: { groundId }, select: { updatedAt: true } }),
+    ]);
+    return JSON.stringify([checkIns, lines, docs, aims, blockers, people, report?.updatedAt ?? null]);
   }
 
   /*
@@ -1281,7 +1309,7 @@ export class BoardService {
             rememberedCompose(this.prisma, opts.mayWordNewLines
               ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
               /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
-              : async () => null),
+              : async () => null, !!opts.mayWordNewLines),
           )).map((d) => [d.key, d.text]));
           out.contribution = (out.contribution ?? []).map((r: any, i: number) => ({ ...r, reason: said[`c${i}`] ?? r.reason }));
           if (out.coverage) out.coverage = { ...out.coverage, reads: out.coverage.reads.map((r: any, i: number) => ({ ...r, reasonText: said[`v${i}`] ?? r.reasonText })) };

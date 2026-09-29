@@ -18,7 +18,7 @@ import { ImportsBootstrap } from '../subjects/imports.bootstrap';
 import { EmbedService } from '../embed/embed.service';
 import { EmbedSessionGuard } from '../embed/embed-session.guard';
 import { AssistantService } from '../assistant/assistant.service';
-import { BoardService } from '../board/board.service';
+import { BoardModule } from '../board/board.module';
 import { GroundsByApiService } from './grounds-by-api.service';
 import { ReportsModule } from '../reports/reports.module';
 import { GroundsModule } from '../grounds/grounds.module';
@@ -79,13 +79,21 @@ import { AskService } from '../ask/ask.service';
     EmailModule,
     DocumentsModule,
     UsersModule,
+    /*
+     * THE BOARD IS IMPORTED, NEVER PROVIDED HERE A SECOND TIME. BoardService listens for every
+     * finished check-in and words the board ahead of the lead's open. Listed as a provider here as
+     * well, it was built twice, so every check-in warmed the board twice and asked the model twice
+     * for the same lines: 18 warm-ups for 9 check-ins on run-19 (decision 44). One instance, one
+     * listener. See only-one-board-listens.spec.
+     */
+    BoardModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({ secret: config.get<string>('jwt.secret') }),
     }),
   ],
   controllers: [PublicApiController, ConnectionsAtAGlanceController, WhatsAppForAnOrganisationController, WhatsAppController, CredentialsController, ImportsController, EmbedSetupController, EmbedAssetsController, RetentionController, KnowledgeController, DetectorsController, CheckinsController, DraftsController, WhatICanSeeController, AskController],
-  providers: [CredentialsService, ConnectionsAtAGlanceService, IdempotencyService, IdempotencyInterceptor, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, BoardService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, CommitmentsByApiService, TodosByApiService, WhatsAppForAnOrganisationService, ApiAccessService, ApiWatchCron, ApprovedOrMachineGuard, WhatIsTrueService, ReadItIfWeCanService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron, AskService],
+  providers: [CredentialsService, ConnectionsAtAGlanceService, IdempotencyService, IdempotencyInterceptor, MachineTokenGuard, SubjectsService, ScimService, BulkImportService, ImportsBootstrap, EmbedService, EmbedSessionGuard, AssistantService, HandoverService, DepartureService, GroundsByApiService, WhatHappenedWithACustomerService, OnboardingService, ScenariosService, AnthropicService, KnowledgeService, DetectorsService, RolesService, DraftsService, ACheckInACustomerCanRunService, CommitmentsByApiService, TodosByApiService, WhatsAppForAnOrganisationService, ApiAccessService, ApiWatchCron, ApprovedOrMachineGuard, WhatIsTrueService, ReadItIfWeCanService, ReportsForMyPeopleService, ReviewsComingUpService, ReviewsComingUpCron, AskService],
   exports: [CredentialsService],
 })
 export class PublicApiModule {}
