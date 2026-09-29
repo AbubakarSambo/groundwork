@@ -1,5 +1,4 @@
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
-import { howSolid } from './a-figure-nobody-can-check-says-so';
 
 /**
  * HOW A LINE IS KNOWN: THE PROTOTYPE'S FOUR MARKS, DECIDED IN ONE PLACE (weeks 6 and 6b, decision 43).
@@ -15,8 +14,9 @@ import { howSolid } from './a-figure-nobody-can-check-says-so';
  *   "The build is on track for the 14th", because the plan says the 14th. A plan is not proof.
  * - confirmed: the colleague who received the work said it arrived (conversation/confirmed-by-who-
  *   received-it.ts).
- * - memory: a line about what happened, with a figure and nothing attached. A target, a plan or a
- *   definition with a number in it is not remembered; it is said.
+ * - memory: a line about what happened, with a figure and nothing attached, whatever its type and
+ *   whether or not it was given as an estimate. A target, a plan, a promise or a definition with a
+ *   number in it is not remembered; it is said. See aboutWhatHappenedWithAFigure.
  * - said: everything else.
  *
  * The mark describes the line, never the person, and says nothing about how anybody's answers were
@@ -42,8 +42,38 @@ export function howALineIsKnown(line: ALineToMark): HowALineIsKnown {
   const aSource = line.anchoredOrigin == null || COUNTS_AS_A_SOURCE.has(line.anchoredOrigin);
   if (!recalled && aSource && line.documentIsTheirOwn !== false) return 'proven';
   if (line.confirmedAt) return 'confirmed';
-  if (line.type === 'PROGRESS' && howSolid({ text: line.text, recallBased: recalled }) === 'from-memory') return 'memory';
+  if (aboutWhatHappenedWithAFigure(line.type, line.text)) return 'memory';
   return 'said';
+}
+
+/**
+ * A LINE ABOUT WHAT HAPPENED THAT CARRIES A FIGURE (the rule for `memory`).
+ *
+ * The reviewer read, on one card, "N19 million disbursed." as their word and "Six facilities
+ * approved." as memory, and "The total disbursed is N8 million." as their word beside "N8 million has
+ * been disbursed this quarter." as memory. The old rule asked for the PROGRESS type and a figure the
+ * hedge reader found, and that reader misses "N19 million" (a number glued to a currency letter) and
+ * counts "this quarter" as a figure. So the rule is now its own, and the same everywhere:
+ *
+ * - any type, except the ones that are about what is meant to happen (a target, a plan, a promise,
+ *   a definition, a date, a limit, an ask);
+ * - and not worded as a plan either ("will", "plan to", "target", "aim");
+ * - and it carries a figure: digits, with or without a currency in front, or a number written out.
+ *   "A quarter" or "half" is not a figure, and neither is a date ("the 14th", "2026") or a time ("4pm").
+ */
+const ABOUT_WHAT_IS_MEANT_TO_HAPPEN = new Set(['COMMITMENT', 'INTENT', 'SUCCESS_DEFINITION', 'TIMEFRAME', 'TOLERANCE', 'ASK']);
+const WORDED_AS_A_PLAN = /\b(will|won't|going to|plan(?:s|ned)? to|intend|target|aim(?:s|ing)? (?:to|for)|goal|expect(?:s|ed)? to|hope to|want(?:s)? to|should|need(?:s)? to|must|might|may|could)\b/i;
+const WRITTEN_NUMBER = /\b(two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|dozen)\b/i;
+/* Digits, alone or after a currency (N19, ₦19, $19, KSh19), and not part of an identifier like OPS-902. */
+const DIGITS = /(?:^|[^\w-]|\b(?:N|NGN|KES|KSh|USD|GHS)|[₦$£€])\d/;
+const A_DATE_OR_A_TIME = /\b(?:(?:19|20)\d{2}|\d{1,2}(?:st|nd|rd|th)|\d{1,2}(?::\d{2})?\s?(?:am|pm))\b/gi;
+
+export function aboutWhatHappenedWithAFigure(type: string, text: string): boolean {
+  if (ABOUT_WHAT_IS_MEANT_TO_HAPPEN.has(String(type ?? ''))) return false;
+  const t = String(text ?? '');
+  if (WORDED_AS_A_PLAN.test(t)) return false;
+  const withoutDates = t.replace(A_DATE_OR_A_TIME, ' ');
+  return DIGITS.test(withoutDates) || WRITTEN_NUMBER.test(withoutDates);
 }
 
 /**
