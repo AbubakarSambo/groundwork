@@ -1,4 +1,3 @@
-import { whatAnAdminHereCanSee } from '@/lib/what-an-admin-here-can-see'
 import { AnAdminDecidesWhetherItStarts } from './an-admin-decides-whether-it-starts'
 import { howItEnded, hasStalled, itRanOutOfTime } from '@/lib/a-ground-that-has-ended'
 import { scrollToId } from '@/lib/scroll-to'
@@ -13,6 +12,7 @@ import { ContextPage } from '@/components/gw/ContextPage'
 import { MyRecord } from '@/components/gw/MyRecord'
 import { MyCheckInSessions } from '@/components/gw/MyCheckInSessions'
 import { WhoIsInThis } from '@/components/gw/WhoIsInThis'
+import { Note } from '@/components/gw/ui/Note'
 import { MyParticipation } from '@/components/gw/MyParticipation'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -1379,13 +1379,21 @@ export function GroundAdminPage() {
           subtitle={(ground as any).cadence ? `${cadenceLabel((ground as any).cadence)}.` : undefined}
           action={(
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-              {/* "Your check-in" (board-as-lead.txt): the same place the Check-in tab opens. */}
-              <Link
-                to={`/grounds/${id}`}
-                style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
-              >
-                Your check-in
-              </Link>
+              {/*
+                ROUND 5, ITEM H1: ONLY OFFERED TO SOMEBODY WHO ANSWERS IT.
+                "Your check-in" (board-as-lead.txt) is the same place the Check-in tab opens - which,
+                for an admin who is not a party, is now the plain line telling her she does not
+                answer this check-in (GroundAdminPage's own tab === 'chat' branch). Offering the
+                button anyway would promise a check-in that tab does not have for her.
+              */}
+              {viewerIsAParty && (
+                <Link
+                  to={`/grounds/${id}`}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
+                >
+                  Your check-in
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={showAsk}
@@ -1411,24 +1419,24 @@ export function GroundAdminPage() {
           }}
         />
         {/*
-          U.10 PICTURE-CHECK ROUND 7, ITEM 3: ONE PLAIN LINE, NOT PIECES SIDE BY SIDE.
-
-          "Everyone in it can see this, and you are an admin here, not its lead." is real signal
-          (which of the two views this is), kept as its own small sentence. The green "live" dot,
-          the old moment pill and its comments are gone with it - the moment pill was already
-          replaced by the scenario line below, and the dot duplicated what "ACTIVE" already says
-          nowhere a reader needed it twice.
-
-          THE "2 agreed, nothing still open" CORNER IS GONE. It was a clipped fragment (no subject,
-          no verb) sitting opposite the title, and duplicated the report's own headline the moment
-          the report tab existed - the same reasoning that already dropped it while `report` was
-          the active tab. Dropped everywhere now, per the instruction, rather than turned into a
-          sentence this pass cannot verify is true.
+          ROUND 5, ITEM H1: ONE NOTE, NOT TWO. This page used to say "you are not the lead" twice -
+          this small plain line, and a separate blue box further down repeating the same fact in
+          more words. The prototype's own admin sentence (read-only-view.txt, A4): "You can read
+          this check-in's board and reports. Wairimu Kamau runs it." - plain text under the tabs,
+          not a callout - so that is what says it now, once, here. The old blue box (and its own
+          history: it used to read `lead.email`, which is always null for the only people who see
+          it, and fell back to the broken fragment "its lead runs this check-in.") is gone with it.
         */}
         {!isInitiator && (
-          <p style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '10px 16px 0' }}>
-            Everyone in it can see this, and you are an admin here, not its lead.
-          </p>
+          <Note>
+            You can read this check-in’s board and reports. {(() => {
+              const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
+              const first = (lead?.user?.firstName ?? '').trim()
+              const last = (lead?.user?.lastName ?? '').trim()
+              const name = [first, last].filter(Boolean).join(' ')
+              return name || 'Its lead'
+            })()} runs it.
+          </Note>
         )}
 
         {/* Sessions are per-participant-per-session, so count DISTINCT session
@@ -1615,61 +1623,6 @@ export function GroundAdminPage() {
             </div>
           </div>
         )}
-
-        {/*
-          AN ORG ADMIN LOOKING AT SOMEBODY ELSE'S GROUND. W8-32.
-          
-          Her note: "the org admin view should differ, today it is subtraction." The
-          gate now decides WHO gets in - the lead of the ground, or an org admin - and
-          for an admin who is not the lead the view was still identical to the lead's,
-          including the two actions that cannot be undone.
-          
-          This ADDS the frame rather than removing controls. Hiding them is the
-          subtraction she was describing, and it also removes the only oversight an
-          admin has: an admin who cannot see that a report is sitting unreleased for
-          three weeks cannot do anything about it. So they see everything, and they are
-          told plainly whose ground it is and which decisions belong to that person.
-        */}
-        {isOrgAdmin && !isInitiator && (
-          <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 15px', marginBottom: 16 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
-              You are looking at this as an admin, not as its lead
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--gw-navy)', lineHeight: 1.6 }}>
-              {(() => {
-                /**
-                 * IT SAID "its lead runs this check-in." W8-66.
-                 *
-                 * Two bugs in one line, both visible the moment an org admin opened
-                 * somebody else's ground:
-                 *
-                 * 1. It read `lead.email`, and `grounds.service.ts:872` NULLS the email
-                 *    for a viewer who is neither the person nor the ground's lead - on
-                 *    purpose. So for the only people who ever see this banner, the field
-                 *    it depends on is always empty, and the fallback always fired.
-                 * 2. The fallback was the lowercase fragment "its lead", which starts a
-                 *    sentence, so the banner read "its lead runs this check-in." - a broken
-                 *    template, on an admin's first look at a colleague's ground.
-                 *
-                 * The name is in the payload the whole time: `SAFE_PARTICIPANT_SELECT`
-                 * pulls `user.firstName` precisely so somebody can be named when their
-                 * email is hidden. Using the address to make a name was the W10-2 mistake
-                 * anyway - "hafsah@meridian.test" is not what that person is called.
-                 */
-                const lead = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')
-                const first = (lead?.user?.firstName ?? '').trim()
-                /* U.7 review: it said "You can see everything here", over a page that cannot open
-                   the documents or each person's share. See what-an-admin-here-can-see. */
-                return whatAnAdminHereCanSee({
-                  leadName: [first, (lead?.user?.lastName ?? '').trim()].filter(Boolean).join(' ') || null,
-                  leadFirstName: first || null,
-                  inIt: !!myParticipantId,
-                })
-              })()}
-            </div>
-          </div>
-        )}
-
 
         {/*
           WHO WAS NOT INVITED, said on the page the admin actually lands on.
