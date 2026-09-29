@@ -24,6 +24,12 @@ describe('a title is not a first name', () => {
     expect(theShortNameOf('Dr Bello')).toBe('Dr Bello');
     expect(theShortNameOf('Mrs Okafor')).toBe('Mrs Okafor');
     expect(theShortNameOf('Ms. Adeyemi')).toBe('Ms. Adeyemi');
+    expect(theShortNameOf('Madam Okoye')).toBe('Madam Okoye');
+  });
+
+  it('Madam is a title too', () => {
+    expect(theShortNameOf('Madam Grace Okoye')).toBe('Grace');
+    expect(isATitle('Madam')).toBe(true);
   });
 
   it('a person actually named Hon, or Justice, is not broken by being alone', () => {

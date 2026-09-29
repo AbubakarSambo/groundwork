@@ -2,6 +2,7 @@ import { ALIGNMENT_FEED_ONLY_CODES, BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CO
 import { PATTERNS_ARE_SERVED } from './patterns-are-served';
 import { plainNameOf, type PlainKind } from './plain-pattern-names';
 import { plainVoice } from './plain-voice';
+import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
 
 /**
  * WHO READS A PATTERN, WHEN, AND IN WHAT WORDS. THE ONE PLACE THAT DECIDES IT.
@@ -283,11 +284,19 @@ export async function markShownToThePerson(
  * sentence about who has seen it, never joined to the pattern's name.
  */
 export function whoIsWhoIn(
-  participants: readonly { id: string; userId?: string | null; nameGiven?: string | null; user?: { firstName?: string | null } | null }[] | null | undefined,
+  participants: readonly { id: string; userId?: string | null; nameGiven?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null }[] | null | undefined,
   initiatorId: string | null | undefined,
 ): WhoIsWho {
-  const first = (p: { nameGiven?: string | null; user?: { firstName?: string | null } | null } | undefined) =>
-    (p?.user?.firstName ?? '').trim() || (p?.nameGiven ?? '').trim().split(/\s+/)[0] || null;
+  /* A title is not a first name ("Dr" is not who anybody is called): skip it and use the next
+     name, through the one helper that knows every title people here really carry. */
+  const first = (p: { nameGiven?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null } | undefined) => {
+    const viaUser = theFirstNameFrom(p?.user?.firstName, p?.user?.lastName);
+    if (viaUser) return viaUser;
+    const given = (p?.nameGiven ?? '').trim();
+    if (!given) return null;
+    const [firstWord, ...restWords] = given.split(/\s+/);
+    return theFirstNameFrom(firstWord, restWords.join(' '));
+  };
   const rows = participants ?? [];
   const lead = rows.find((p) => !!initiatorId && p.userId === initiatorId);
   return {

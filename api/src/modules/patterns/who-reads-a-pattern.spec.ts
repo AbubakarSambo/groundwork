@@ -142,6 +142,18 @@ describe('the person sees it first, and can answer, before the lead reads it', (
     expect(who.firstNameOf!('p-guest')).toBe('Amaka');
   });
 
+  it('a title is never used as a first name in who sees it', () => {
+    /* Hafsah, 29 September 2026, from a live capture: "Dr will see it too" - the lead's own first
+       name field held "Dr", with the rest of her name in the last name field. */
+    const who = whoIsWhoIn([
+      { id: 'p-lead', userId: 'u-amina', user: { firstName: 'Dr', lastName: 'Amina Bello' } },
+      { id: 'p-guest', userId: null, nameGiven: 'Madam Okoye' },
+    ], 'u-amina');
+    expect(who.leadName).toBe('Amina');
+    /* "Madam Okoye" has no first name to drop the title for, so it is left as people say it. */
+    expect(who.firstNameOf!('p-guest')).toBe('Madam Okoye');
+  });
+
   it('a lead reading a pattern about their own work is never told they will see it too', () => {
     /* Hafsah, 29 September 2026, from a live capture: whoSeesIt was telling the lead "Tunde will
        see it too" about a pattern that is Tunde's own, because leadName is always the lead's name,
