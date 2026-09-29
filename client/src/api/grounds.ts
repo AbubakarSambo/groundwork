@@ -157,6 +157,17 @@ export const groundsApi = {
   setExternalVisibility: (id: string, restrict: boolean) =>
     apiClient.patch<{ id: string; restrictExternalVisibility: boolean }>(`/grounds/${id}/external-visibility`, { restrict }).then(r => r.data),
 
+  /**
+   * REMINDERS (People and setup, "How it runs"). `PATCH /grounds/:id/chasing` has existed since the
+   * chasing cron read `chaseAfterDays`/`chasingStopped`/`tellTheLead`, and nothing on any screen ever
+   * wrote to it - so whether this check-in reminds people, on which day, and whether the lead hears
+   * who never started, could not be set from the product. Whoever set the check-in up only.
+   */
+  setChasing: (id: string, body: { days?: number[]; stopped?: boolean; tellTheLead?: boolean }) =>
+    apiClient
+      .patch<{ days: number[]; stopped: boolean; tellTheLead: boolean }>(`/grounds/${id}/chasing`, body)
+      .then(r => r.data),
+
   /*
    * `create` USED TO SIT HERE, and it went with the flow that called it.
    *
