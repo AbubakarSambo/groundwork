@@ -315,3 +315,22 @@ Built in `beffb44f` and `6aa62f9b`. **When you merge, apply the migration `20260
 When the person has answered, `why` gives their answer. The item goes away as soon as the lead presses "we talked about it".
 
 Wording note: the `why` with the person's answer is being reworded, because it joins with a colon today. Show whatever sentence arrives.
+
+## 30 September: confirming a person's role, and where a person's own role is kept (Hafsah's decision 57, item 5)
+
+**When you merge, apply the migration `20260930020000_evidence_and_a_confirmed_role`.** It adds three nullable columns and changes no data.
+
+**A person's own words about their role live in `User.jobTitle`.** `GroundParticipant.roleAsDescribed` is only ever the lead's private description of a person (decision 30), with one exception: the lead's own row, which holds the lead's own words. On the join page, "Your part in this" now goes to the person's own job title (`ae2b5a9e`). It used to be copied into the lead's private field.
+
+**Two routes, for the person themselves or the lead of the check-in:**
+
+| What happens | Route | Send | You get back |
+| --- | --- | --- | --- |
+| "Yes, that's right" | `POST /participants/:id/confirm-role` | nothing | `{ "id": "…", "detectedFunction": "SALES", "detectedFunctionConfirmedAt": "…" }` |
+| "I'd describe it differently" | `PATCH /participants/:id` | `{ "roleAsDescribed": "Mostly sales, closing deals." }` | from the person: `{ "id": "…", "ownRoleAsGiven": "…" }`; from the lead: `{ "id": "…", "roleAsDescribed": "…" }` |
+
+- When the person themselves sends `PATCH`, their words go to their own job title, never to the lead's field. When the lead sends it about someone else, it is the lead's private description, as before.
+- Anyone else gets 404, so a stranger learns nothing.
+- The person's own check-in also asks them once, in words: "It sounds like most of your work is sales. Is that right, or would you describe it differently?" Their answer is read after the check-in, so you need no screen for that part. A Context page confirm for the lead is yours to draw.
+
+**One more field on a served pattern, for the lead only:** `secondReadNote`. It is "Two separate reads of the record found this." when both the model and the number-based rule found the pattern, and otherwise `null`. The person it is about always gets `null`.
