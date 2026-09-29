@@ -226,6 +226,21 @@ The name is being shortened to "Samuel" after its first use, as the prototype do
 - Both reach only the person who runs the check-in. Opening the page asks no model and writes nothing.
 - The prototype's line about each person's day ("Visited John Butchery…") is still week 26.
 
+**Week 13: a plan becomes proposals, confirmed one by one** (`6872b3b3`, `db2bf16c`, `a1c58f7c`).
+- **Reading a plan.** The lead pastes a plan, or picks a document they may see. The model reads it into separate goals, roles, commitments and rules. Code then checks each one:
+  - its quote must be in the plan;
+  - every number and date must be in that quote, exactly as written;
+  - a person must be named in the plan.
+  Anything that fails is dropped, never invented. A name that is not on the check-in is kept, with the note "One name in it, Musa Bello, is not on this check-in. Add them, and this will go on too."
+- **Storage is the engine's,** as Hafsah decided today. A new table, `plan_proposals`, holds each proposal until the lead confirms it, puts it aside with "not now", or edits it. Its database change, `20260929130000_plan_proposals`, is applied to the local test database only. Confirming writes exactly one row, once. Only the lead can see or act on proposals.
+  - The builder was stopped by the permission system when it tried to add the table, because it had Hafsah's instruction only through me. She gave it to me directly, so I added the table myself.
+- **The screens workspace is told** in `docs/answers-from-engine.md`: what to call, what comes back, and not to add storage of their own.
+- **Not done yet:**
+  - a confirmed goal's date is not kept, because a target has no date field;
+  - the kinds "definition", "decision" and "resource" are not read from a plan.
+
+Tests: 1,201 pass in the check-ins part, including 19 for this. The conversation and documents parts were not re-run for this piece.
+
 **Week 12c:** an unnamed person in the lead's list of what to ask was headed "Somebody", and is now "A colleague" (`0b6736d1`). The rest was already done.
 
 **Run-19, the day's second full run, started at 17:37** on `c645570c`, in three parts. The two privacy items from the live check are being built alongside it. They filter what is served, so their tests prove them, not the run. Both are now done:
