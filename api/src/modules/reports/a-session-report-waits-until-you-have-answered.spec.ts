@@ -20,7 +20,7 @@ describe('a session report waits until you have answered, as the main report doe
       ground: { ...reads, findUnique: async () => ground(released) },
       checkIn: { ...reads, count: async () => (miriamAnswered ? 1 : 0) },
     } as any, { get: (t: any, k: string) => t[k] ?? reads });
-    svc.isAnAdminOf = async () => false;
+    svc.isAnAdminOf = async (userId: string) => userId === 'u-admin';
     return svc;
   };
   const read = async (userId: string, released: boolean, answered: boolean) => {
@@ -41,5 +41,15 @@ describe('a session report waits until you have answered, as the main report doe
 
   it('and the lead reads as before', async () => {
     expect((await read('u-lead', false, false) as any)?.withheldUntilYouAnswer).toBeUndefined();
+  });
+
+  it('and an admin of the organisation reads as the lead does', async () => {
+    expect((await read('u-admin', false, false) as any)?.withheldUntilYouAnswer).toBeUndefined();
+  });
+
+  it('the route itself, not only the builder, withholds it from somebody who has not answered', async () => {
+    const served = await serviceFor(false, false).sessionReport('g-1', 2, 'u-miriam', 'org-1');
+    expect(served).toEqual({ sessionNumber: 2, withheldUntilYouAnswer: true, saying: A_PICTURE_IS_FORMING });
+    expect(JSON.stringify(served)).not.toContain('Aisha sold 4');
   });
 });
