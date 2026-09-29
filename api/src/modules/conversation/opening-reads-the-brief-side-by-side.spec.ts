@@ -10,6 +10,16 @@ import { ConversationService } from './conversation.service';
  *
  * What this checks, from the outside: each read is asked for once, the second starts before the
  * first has finished, and the first question the person reads is exactly what the model wrote.
+ *
+ * THIS USED TO ALSO ASSERT A WALL-CLOCK BUDGET (`took` under 290ms, for two 150ms reads). That is
+ * the same proof restated as a clock, and a clock is the wrong witness: under parallel jest load - a
+ * real CI box running every suite at once - the event loop falls behind and 150ms of `setTimeout`
+ * becomes 300ms of wall time with nothing sequential about it, so the assertion failed on a run that
+ * was doing exactly what it was supposed to. The order check below (`second.startedAt` before
+ * `first.endedAt`) proves the same fact - the two reads overlap rather than queuing - without caring
+ * how long either one actually took, so it holds under load and still fails the moment the reads go
+ * back to running one after another. Checked by temporarily awaiting them in series inside the
+ * `composeSystemPrompt` mock below: the order assertion failed, as it must, and was restored.
  */
 
 const A_LONG_BRIEF = Array.from({ length: 60 }, (_, i) => `word${i}`).join(' ');
@@ -63,15 +73,13 @@ function makeService(extractMs: number) {
 describe('Opening a session reads the brief side by side (request 44)', () => {
   it('asks for each read of the brief once, and the two overlap', async () => {
     const { service, anthropic, calls } = makeService(150);
-    const started = Date.now();
     const res = await service.open('ci-1', 'user1');
-    const took = Date.now() - started;
 
     expect(anthropic.extract).toHaveBeenCalledTimes(2);
     const [first, second] = [...calls].sort((a, b) => a.startedAt - b.startedAt);
+    /* THE PROOF: the second read starts before the first has finished. Order, not a clock - see the
+       comment above for why a wall-time budget is the wrong witness under parallel jest load. */
     expect(second.startedAt).toBeLessThan(first.endedAt!);
-    /* One read's time, not two. */
-    expect(took).toBeLessThan(290);
 
     /* The first question is what the model wrote, word for word. */
     expect(res.reply).toBe('What would you like to change in session one?');
