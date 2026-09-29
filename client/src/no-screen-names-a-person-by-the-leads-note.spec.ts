@@ -31,6 +31,7 @@ const ALLOWED: Record<string, string> = {
   'components/gw/EachPerson.tsx': 'the lead’s own labelled note, beside the name, for the lead only',
   'pages/grounds/GroundAdminPage.tsx': 'the lead’s own labelled note, and the box to change it',
   'components/gw/MyParticipation.tsx': 'your own role, on your own row',
+  'components/gw/RolesInThisCheckIn.tsx': "the lead's own labelled note, for the person who runs the check-in only",
   'pages/admin/AdminPage.tsx': 'a role column for whoever runs the check-in',
   'pages/join/JoinPage.tsx': 'what the person types about themselves when joining',
   'pages/enter/EntryChatPage.tsx': 'the lead’s own part, sent at setup',

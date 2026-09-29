@@ -170,7 +170,7 @@ export function CheckInPeopleAndSetup(props: {
       </Section>
 
       <Section heading="Roles in this check-in" note="Who runs it, who checks in, and each person's role as described">
-        <RolesInThisCheckIn ground={ground} isInitiator={isInitiator} viewerUserId={user?.id} updateRole={props.updateRole} />
+        <RolesInThisCheckIn ground={ground} isInitiator={isInitiator} updateRole={props.updateRole} />
       </Section>
 
       {/* NOT IN THE PROTOTYPE HERE. `My work` already shows a lead their own sessions; kept for now
@@ -389,6 +389,7 @@ export function CheckInPeopleAndSetup(props: {
       <StartingPointPanel groundId={props.id} canRecord={isInitiator} />
 
       <Section heading="Who sees what">
+        <FieldRows>
         <SwitchRow
           title="Each other's check-ins"
           detail={props.peersVisible
@@ -432,6 +433,7 @@ export function CheckInPeopleAndSetup(props: {
           label="The team's report"
           value={ground.report?.releasedAt ? `Shared on ${whenItWas(ground.report.releasedAt, 'dayAndMonthLong')}.` : 'Not shared yet. Share it from the report when it is ready.'}
         />
+        </FieldRows>
         {props.settingsChangeCount > 0 && (
           <details className="gwui-folded">
             <summary className="gwui-folded-summary">
