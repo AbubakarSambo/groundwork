@@ -865,13 +865,22 @@ export class ReportsService {
         if (lines.length === 0) return;
 
         try {
-          const res = await this.anthropic.extract<{ saying: string }>(
-            SAYING_PROMPT,
-            [{ role: 'user', content: `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}` }],
-            SAYING_SCHEMA,
-          );
+          /*
+           * WRITTEN WHEN SOMETHING NEW COMES IN, KEPT, AND SERVED KEPT (decision 7). Opening a session
+           * report asked the model for this sentence on every open: 20 to 68 seconds, and a different
+           * sentence each time. Now only the warm-up (wordTheReadsFor, after a synthesis or a release)
+           * asks, and keeps what it wrote by the hash of the lines. Every open reads the kept sentence;
+           * where none is kept yet, the lines are served without one and no model is asked.
+           */
+          const mayWord = WORDING_NEW_LINES.getStore() === true;
+          const kept = await rememberedCompose(this.prisma, mayWord
+            ? async (system, draft) => {
+              const res = await this.anthropic.extract<{ saying: string }>(system, [{ role: 'user', content: draft }], SAYING_SCHEMA);
+              return res?.saying?.trim() || null;
+            }
+            : async () => null)(SAYING_PROMPT, `THEIR OWN LINES:\n${lines.map((l) => `- ${l}`).join('\n')}`);
           /* And no pronoun guessed from a name. See nobody-is-he-or-she-here. */
-          const text = withoutAGuessedPronoun(res?.saying?.trim() ?? '');
+          const text = withoutAGuessedPronoun(kept?.trim() ?? '');
           if (text) person.saying = text;
         } catch (err: any) {
           /* One person loses their sentence and keeps every line. The report is unaffected. */

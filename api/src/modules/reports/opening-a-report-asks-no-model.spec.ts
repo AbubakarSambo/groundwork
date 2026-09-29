@@ -86,12 +86,22 @@ function prismaFor(viewerRole: string, ground: any = { ...GROUND, cadence: 'WEEK
   };
   const model = (own: Record<string, any> = {}) => ({ ...reads, ...own, create: jest.fn(async () => ({})), update: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({})), createMany: jest.fn(async () => ({})), upsert: jest.fn(async () => ({})) });
   return new Proxy({
-    ground: model({ findUnique: jest.fn(async () => copy(ground)) }),
+    /* Dates stay dates: the session report reads `releasedAt.getTime()`, and a string threw, which
+       the first describe's `.catch` hid, so the session report was never really opened there. */
+    ground: model({ findUnique: jest.fn(async () => {
+      const g = copy(ground);
+      if (g.report) for (const k of ['releasedAt', 'createdAt', 'updatedAt']) if (g.report[k]) g.report[k] = new Date(g.report[k]);
+      return g;
+    }) }),
     user: model({ findUnique: jest.fn(async () => ({ role: viewerRole, organizationId: 'org-1', awaitingOrgApproval: false })), findFirst: jest.fn(async () => ({ id: 'u-grace' })) }),
     checkIn: model({ findMany: jest.fn(async () => copy(CHECK_INS)) }),
     groundDocument: model({ findMany: jest.fn(async (q: any) => copy(q?.where?.id?.in ? DOCS.filter((d) => q.where.id.in.includes(d.id)) : DOCS)) }),
     recordEntry: model({
-      findMany: jest.fn(async (q: any) => revive(copy(q?.where?.participantId ? LINES.filter((l) => l.participantId === q.where.participantId) : LINES))),
+      findMany: jest.fn(async (q: any) => {
+        const want = q?.where?.participantId;
+        const ids: string[] | null = !want ? null : typeof want === 'string' ? [want] : Array.isArray(want.in) ? want.in : null;
+        return revive(copy(ids ? LINES.filter((l) => ids.includes(l.participantId)) : LINES));
+      }),
     }),
     groundBaseline: model({ findFirst: jest.fn(async () => ({ successLooksLike: 'Five new sales a month', conditions: [] })) }),
     reportActivation: model({ findUnique: jest.fn(async () => ({ status: 'ACTIVATED' })) }),
@@ -112,7 +122,11 @@ const respond = jest.fn(async (_system: string, msgs: any[]) => {
   if (m) return m[1].split('\n').map((l) => l.replace(/\.$/, ', as worded.')).join('\n');
   return c.split('\n')[0] + ' (worded from context)';
 });
-const extract = jest.fn(async () => { throw new Error('no model here'); });
+/* The written sentence per person is the one call made through `extract`. */
+const extract = jest.fn(async (_system: string, _msgs: any[], schema: any) => {
+  if (schema?.name === 'emit_saying') return { saying: 'Has a quote from Green Mart and plans to visit Westgate Deli on Friday.' };
+  throw new Error('no model here');
+});
 const theModel: any = { respond, extract };
 const modelCalls = () => respond.mock.calls.length + extract.mock.calls.length;
 const reportsFor = (role: string) => new ReportsService(
@@ -167,5 +181,27 @@ describe('the wording is done when something new comes in, and served from then 
     expect(admin.probes?.[0]?.encourage?.[0]).toMatch(/, as worded\.$/);
     expect(aisha.coaching.whyItMatters).toMatch(/what you can point at, as worded\.$/);
     expect(aisha.probes ?? null).toBeNull();
+  });
+});
+
+describe('the written sentence per person on a session report (fillWhatEachPersonSaid)', () => {
+  const aishasRow = (r: any) => (r?.whatEachPersonSaid ?? []).find((p: any) => Array.isArray(p.lines) && p.lines.length);
+
+  it('opening the session report asks no model for it, and serves the lines without one', async () => {
+    const report: any = await reportsFor('MEMBER').sessionReport('g-sales', 1, 'u-wairimu', 'org-1');
+    expect(aishasRow(report)).toBeTruthy();
+    expect(modelCalls()).toBe(0);
+    expect(aishasRow(report).saying ?? null).toBeNull();
+  });
+
+  it('the warm-up writes it once and keeps it, and every open after serves the same sentence', async () => {
+    await reportsFor('MEMBER').wordTheReadsFor('g-sales', 1);
+    expect(extract.mock.calls.some((c: any[]) => c[2]?.name === 'emit_saying')).toBe(true);
+    respond.mockClear(); extract.mockClear();
+    const first: any = await reportsFor('MEMBER').sessionReport('g-sales', 1, 'u-wairimu', 'org-1');
+    const again: any = await reportsFor('MEMBER').sessionReport('g-sales', 1, 'u-wairimu', 'org-1');
+    expect(modelCalls()).toBe(0);
+    expect(aishasRow(first).saying).toBe('Has a quote from Green Mart and plans to visit Westgate Deli on Friday.');
+    expect(aishasRow(again).saying).toBe(aishasRow(first).saying);
   });
 });
