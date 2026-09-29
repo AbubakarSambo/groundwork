@@ -7436,8 +7436,19 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return ((closing as any).endCard as EndCard | null) ?? null;
     }
     if (draft) this.logger.log(`Check-in ${checkIn.id}: they said more after the end card, so the record is read again.`);
-    await this.extractRecordEntries(checkIn.id, checkIn.participantId);
-    return null;
+    const rows = await this.readTheRecord(checkIn.id, checkIn.participantId);
+    if (rows.length) await this.prisma.recordEntry.createMany({ data: rows });
+    /*
+     * AND THE CARD SAYS WHAT WAS WRITTEN. Read again, the record can differ from the card that was
+     * shown (the reviewer saw it), so the card on the closing turn is replaced with the lines just
+     * written. "What is now in your record" is then always true.
+     */
+    const card = theEndCard(rows.map((r) => ({ type: String(r.type), text: String(r.text ?? ''), recallBased: (r as any).recallBased ?? true, anchoredDocumentId: (r as any).anchoredDocumentId ?? null, anchoredOrigin: (r as any).anchoredOrigin ?? null })));
+    if (closing?.id) {
+      await this.prisma.conversationTurn.update({ where: { id: closing.id }, data: { endCard: (card ?? Prisma.DbNull) as any, recordDraft: rows as any } })
+        .catch((err: any) => this.logger.warn(`Check-in ${checkIn.id}: could not replace the end card with what was written (${err?.message})`));
+    }
+    return card;
   }
 
   /**

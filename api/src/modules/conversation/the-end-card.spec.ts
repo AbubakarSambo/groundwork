@@ -229,27 +229,36 @@ describe('when they finish', () => {
     expect(prisma.conversationTurn.count.mock.calls[0][0].where).toMatchObject({ checkInId: 'ci1', role: TurnRole.PERSON });
   });
 
-  it('reads the record again when they said more after the card', async () => {
+  /* Changed with the reviewer's read (task 2.7): the second read is now the same read and write that
+     extractRecordEntries did, done here so the card can be replaced with what was written. */
+  it('reads the record again when they said more after the card, and the card then says what was written', async () => {
     const prisma: any = {
-      conversationTurn: { findFirst: jest.fn(async () => closing), count: jest.fn(async () => 1) },
+      conversationTurn: { findFirst: jest.fn(async () => closing), count: jest.fn(async () => 1), update: jest.fn(async () => ({})) },
       recordEntry: { createMany: jest.fn() },
     };
     const service = aService(prisma);
-    service.extractRecordEntries = jest.fn(async () => undefined);
-    await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
-    expect(prisma.recordEntry.createMany).not.toHaveBeenCalled();
-    expect(service.extractRecordEntries).toHaveBeenCalledWith('ci1', 'p1');
+    const reread = [{ ...ROWS[1] }];
+    service.readTheRecord = jest.fn(async () => reread);
+    const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
+    expect(service.readTheRecord).toHaveBeenCalledWith('ci1', 'p1');
+    expect(prisma.recordEntry.createMany).toHaveBeenCalledWith({ data: reread });
+    const replaced = prisma.conversationTurn.update.mock.calls[0][0];
+    expect(replaced.where).toEqual({ id: 'turn-9' });
+    expect(replaced.data.endCard.inYourRecord.map((l: any) => l.says)).toEqual(["I'll visit Westgate Deli on Friday"]);
+    expect(card).toEqual(replaced.data.endCard);
   });
 
-  it('reads the record as before when there was no card', async () => {
+  it('reads the record as before when there was no card, and stores the card of what was written', async () => {
     const prisma: any = {
-      conversationTurn: { findFirst: jest.fn(async () => ({ ...closing, recordDraft: null })), count: jest.fn() },
+      conversationTurn: { findFirst: jest.fn(async () => ({ ...closing, recordDraft: null })), count: jest.fn(), update: jest.fn(async () => ({})) },
       recordEntry: { createMany: jest.fn() },
     };
     const service = aService(prisma);
-    service.extractRecordEntries = jest.fn(async () => undefined);
-    await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
-    expect(service.extractRecordEntries).toHaveBeenCalledWith('ci1', 'p1');
+    service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
+    const card = await service.writeTheRecordAtTheEnd({ id: 'ci1', participantId: 'p1' });
+    expect(prisma.recordEntry.createMany).toHaveBeenCalledTimes(1);
+    expect(card.inYourRecord).toHaveLength(2);
+    expect(prisma.conversationTurn.update.mock.calls[0][0].data.endCard).toEqual(card);
   });
 });
 
