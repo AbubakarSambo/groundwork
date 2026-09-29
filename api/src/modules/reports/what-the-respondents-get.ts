@@ -89,7 +89,10 @@ export function withoutWhoSaidIt(text: string, identities: Identity[]): string {
     let out = piece;
     for (const [what, withWhat] of Array.from(words.entries()).sort((a, b) => b[0].length - a[0].length)) {
       const escaped = what.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), withWhat);
+      /* At the start of a sentence it takes a capital: "Somebody in this check-in reports 18 sales",
+         never "somebody in this check-in reports" (request 31). */
+      out = out.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), (_m: string, offset: number, whole: string) =>
+        (/^\s*$|[.!?]["'”’)\]]?\s+$|\n\s*$/.test(whole.slice(0, offset)) ? withWhat.charAt(0).toUpperCase() + withWhat.slice(1) : withWhat));
     }
     return out;
   };
@@ -117,6 +120,8 @@ export function withoutWhoSaidIt(text: string, identities: Identity[]): string {
 /** The same, over every string in a report-shaped object, however deep. */
 export function nothingIdentifyingIn<T>(value: T, identities: Identity[]): T {
   if (typeof value === 'string') return withoutWhoSaidIt(value, identities) as unknown as T;
+  /* A Date is an object with no entries: walked like one, it arrived at the reader as {} (request 53). */
+  if (value instanceof Date) return value;
   if (Array.isArray(value)) return value.map((v) => nothingIdentifyingIn(v, identities)) as unknown as T;
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};

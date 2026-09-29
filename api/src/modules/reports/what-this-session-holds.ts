@@ -290,11 +290,13 @@ export function atAGlanceTiles(a: {
       value: a.backedPct == null
         ? 'Nothing on record yet'
         : a.backedPct > 0 ? `${a.backedPct}% documented` : 'All from memory',
+      /* One whole sentence, never a fragment that only reads once joined to the figure by eye
+         (request 67). The value stays the short figure the screens compose from. */
       sub: a.backedPct == null
-        ? 'no answers to read'
+        ? 'There are no answers to read yet.'
         : a.backedPct > 0
-          ? 'of what was said is anchored to a document'
-          : 'nothing said this session was anchored to a document',
+          ? `${a.backedPct} of every 100 things people said ${a.backedPct === 1 ? 'has' : 'have'} a document behind ${a.backedPct === 1 ? 'it' : 'them'}.`
+          : 'Nothing said this session has a document behind it.',
       tone: a.backedPct == null ? 'flat' : a.backedPct > 0 ? 'good' : 'warn',
     },
   ];

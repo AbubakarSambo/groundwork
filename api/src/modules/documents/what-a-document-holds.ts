@@ -147,7 +147,12 @@ export interface WhatLanded {
    */
   waiting?: { name: string; target: number; ownerParticipantId: string | null }[];
   takenAt?: string | null;
+  /** What the read found and did not keep, and why. Only bank details, today. */
+  leftOut?: { what: string; why: string }[];
 }
+
+/** The prototype's words, on its upload screen, under "What it left out". */
+export const BANK_DETAILS_LEFT_OUT = { what: 'Bank account details', why: 'Never kept, in any document.' } as const;
 
 /**
  * THE CONTEXT WE HAVE, IN ONE BLOCK, THE SAME WORDS EVERYWHERE.
@@ -158,30 +163,56 @@ export interface WhatLanded {
 export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean } = {}): string | null {
   const something = held.forOnePerson.length || held.forEverybody.length || held.dates.length || held.unmatched.length;
   if (!something) return null;
-  const lines: string[] = [`Here is the context we have from ${held.fileName}${held.whatItIs ? ` - ${held.whatItIs.replace(/\.$/, '')}` : ''}.`];
+  /*
+   * EACH LINE A SENTENCE, NOT A HEADING, A COLON AND A DASH (request 40). This read "For the whole
+   * check-in:", "- Lowest price for the 600L: 76,000" and "Dates it sets:", and a record line read
+   * "cookers delivered, 3, by by 9 October" because the document's own "by 9 October" was given a
+   * second "by". The document's words for what a number is of stay exactly as it wrote them.
+   */
+  const lines: string[] = [`Here is the context we have from ${held.fileName}.${held.whatItIs ? ` ${aSentence(held.whatItIs)}` : ''}`];
   if (held.forEverybody.length) {
-    lines.push('', 'For the whole check-in:');
+    lines.push('');
     for (const t of held.forEverybody) {
-      lines.push(`- ${t.what}: ${fmt(t.target)}${t.kind === 'not to exceed' ? ', not to be passed' : ''}${t.by ? `, by ${t.by}` : ''}`);
+      lines.push(t.kind === 'not to exceed'
+        ? `For everyone in this check-in, ${t.what} must stay at or under ${fmt(t.target)}${byWhen(t.by)}.`
+        : `For everyone in this check-in, the target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`);
     }
   }
   if (held.forOnePerson.length) {
-    lines.push('', 'Against the person who holds it:');
-    for (const t of held.forOnePerson) lines.push(`- ${t.who}: ${t.what}, ${fmt(t.target)}${t.by ? `, by ${t.by}` : ''}`);
+    lines.push('');
+    for (const t of held.forOnePerson) lines.push(`${t.who}'s target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`);
   }
   if (held.dates.length) {
-    lines.push('', 'Dates it sets:');
-    for (const d of held.dates) lines.push(`- ${d.what}: ${d.when}`);
+    lines.push('');
+    for (const d of held.dates) lines.push(`The date it sets for ${d.what} is ${d.when.trim().replace(/\.$/, '')}.`);
   }
   if (held.unmatched.length) {
     lines.push(
       '',
-      `${held.unmatched.length === 1 ? 'One name in it is' : `${held.unmatched.length} names in it are`} not on this check-in: ${held.unmatched.join(', ')}. Add them and their numbers go on too.`,
+      held.unmatched.length === 1
+        ? `One name in it, ${held.unmatched[0]}, is not on this check-in. Add them, and their numbers will go on too.`
+        : `${held.unmatched.length} names in it are not on this check-in. They are ${andList(held.unmatched)}. Add them, and their numbers will go on too.`,
     );
+  }
+  if (held.leftOut?.length) {
+    lines.push('', 'It also held bank account details. Those are never kept, in any document.');
   }
   if (opts.asking) lines.push('', 'Is that right?');
   return lines.join('\n');
 }
+
+/** " by 9 October", said once, whether or not the document wrote its own "by". */
+export function byWhen(by?: string | null): string {
+  const when = (by ?? '').trim().replace(/\.$/, '').replace(/^by\s+/i, '');
+  return when ? ` by ${when}` : '';
+}
+
+const aSentence = (t: string): string => {
+  const s = t.trim();
+  return /[.!?]$/.test(s) ? s : `${s}.`;
+};
+
+const andList = (xs: string[]): string => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 /* ------------------------------------------------------------------------------------------------ */
 

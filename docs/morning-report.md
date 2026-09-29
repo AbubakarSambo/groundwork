@@ -19,6 +19,168 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 **The old process on port 3101 is stopped.** Hafsah approved it. It was the API built on 20 September, started from `api/dist/main` with no parent left, writing to `/tmp/api-dev.log`. It made no calls to the model. It was still running the scheduled jobs against the local test database: reminder nudges, "your check-in is waiting" emails (written to the log only, never sent), and webhook retries. I checked afterwards: the process is gone, and nothing listens on port 3101.
 
+**The whole API test suite passes: 1,142 suites and 10,628 tests.** The first full run had two failures, both from this week's work:
+- **A fault that could crash the API** (`296136f4`). When a check-in finished, the close read the person's documents and their record at the same time. If the second read failed at once, the first was left with nothing waiting for it, and its failure could stop the whole API. A coaching test crashed on exactly this. Both reads now report their failure to the close, which logs it. The end card is also started in a way that logs any failure. If it fails, there is simply no card, and the check-in still closes. One test that looked for the old way of starting the card now looks for the new one, because the old way was the fault.
+- **A test that read comments as if they were code** (`6bd95393`). The test for how a line is known now removes the comments first, like the other tests. Request 72 from the screens workspace is answered: the two tests it named already did this.
+
+None of the three failures noted on the base before this work are failing now.
+
+**Run-18 started at 12:54, in three parts** as run-16 was, on the build of `7f806500`. The API runs from `dist/main` on port 3000, so no edit can restart it mid-run. It writes to `api/journey/all-24/run-18/`. This is the first of today's two full runs.
+
+## 29 SEPTEMBER, 13:35 TO 20:35: SEVEN HOURS ON MY OWN
+
+**The screens workspace is merged again** (`c51b77bc`). Only `docs/requests-to-engine.md` clashed. I kept both sides: my answer to 72, and their new request 73.
+
+**A colleague's hidden target: every way it could slip through is tested, and the gaps are closed** (`c1676a59`, `c8f7ed65`). This is Kwame's target of 17, set by the lead, on a check-in where each person sees only their own. The tests read everything Ngozi, a colleague, and an admin who only reads are served.
+
+What still got through before these two commits:
+- **A list.** The name was in one item and the number in another, for example `["Kwame Mensah", "Target: 17"]`, or a table row with the name in one cell and 17 in the next.
+- **Some numbers in words:** "one hundred and twenty", "twelve hundred", "17k", "17 thousand", and "5.2 million", where the text was split at the decimal point.
+- **Names** with an accent or a curly apostrophe: Zoë, N’Golo.
+- **The check-in's own page and the list of check-ins.** These are where the lead's brief is shown, and they feed the You board. They never went through the rule at all.
+- **Ngozi's own check-in.** The lead's brief ("Kwame Mensah should reach seventeen…") and the lead's note to everyone reached the model that talks to her, as written.
+
+What already held: a pronoun ("He is behind. His target is 17."), the number two or three sentences after the name, a possessive ("Kwame's"), the first name alone, and the report and the board as served.
+
+What changed:
+- The rule knows every way a number is written, in figures and in words. It reads a list as one text, and matches names with accents and apostrophes evened out.
+- The check-in page and the list now go through it.
+- The brief and the lead's note are filtered before they reach another person's check-in. Ngozi's check-in now gets "We are behind the bank. Ngozi should land 14." The sentence with Kwame's seventeen is gone.
+- It still takes out whole sentences, never a number from inside one. It never touches anything a person said.
+- It also hides less where it hid too much. "On the 17th" is a date and stays. The lead and Kwame still read 17, and Ngozi still reads her own 14.
+- A line it empties is dropped from a list, so no empty line and no wrong count ("3 things you already see the same way" over two) reaches the screen.
+
+Tests: 83 new ones, all passing. The board, reports, check-ins, invitations and conversation parts pass: 5,894 tests. The live check waits until run-18 is finished, because run-18 is using the API.
+
+Left as it is, on purpose: the notes colleagues write "for whoever hits this next". Those are people's own words, written for others to read.
+
+**Seven privacy requests from the screens workspace are answered** in `docs/requests-to-engine.md`, one commit each.
+- **49, fixed** (`f9367164`). Faraji joined through an open link while no seat was free. Until an admin lets him in, he cannot open any report, the board, or the report's other routes. He reads "You can read this check-in's report once an admin at the organisation that invited you approves you joining it." Once he is let in, everything opens as before.
+- **57, fixed** (`dc5bf17c`). Only the person who runs the check-in can share its report. Another admin reads "Only the person who runs this check-in can share its report. Ask them to share it when they are ready." Nothing is written.
+- **41, fixed** (`12e57ef5`). A person's own session could be given the lead's setup answers, for example "Aisha is often late with stock counts." Now it is given only the situation: "Aisha joined the stock team in July and is on probation until the end of October." The lead still reads everything they wrote.
+- **42, fixed** (`40f25316`). "Decide whether to confirm Aisha in her role" was a team target, so Aisha and her colleagues could read it. Now only the lead sees it.
+- **19 and 36 were already fixed.** Their tests prove it. Where people do not see each other, the board says "one colleague", never a name. A person with no name is "a colleague", never the lead's description of them.
+- **34, answered, nothing built.** The prototype's invitation has no "Your part in this". The only sentence stored about a person's part is the lead's own words about them, so none is written.
+
+Tests: 816 files and 7,485 tests pass in the parts these touch. The new tests for 41 and 42 fail on the old code, so they test something real.
+
+**Eight more privacy requests are answered, and one new leak is closed.**
+- **New, found today** (`4265b4ee`). The list of who has shown their report could be read by any signed-in person, even from another organisation. It held participant ids, not names. Now only people in the check-in and admins of its organisation can read it. On a check-in where people do not see each other, a participant sees only their own row.
+- **50, fixed** (`8f1f2eac`). On a check-in where people do not see each other, the board still sent every person's row to every reader, as "another colleague", with whether each had signed off. Now a participant gets only their own row and the lead's. The screens need to read a new yes-or-no, `aTeamReportComes`, instead of counting the rows.
+- **64, fixed** (`3e179165`). A pattern about how the check-in is led was sent while patterns are off, even to participants. Now nobody gets it while patterns are off. When they are on, only the lead gets it, after three periods.
+- **66, fixed** (`04858df0`). "You have accounts from Amani Kariuki and Juma Otieno this round" was written to the lead and shown to everyone, so Amani read it too. Every reader now gets the round's own sentence with names: "Rukia Mwangi has accounts from Amani Kariuki and Juma Otieno this round."
+- **43, 46, 51, 52 and 63 were already fixed,** and new tests now prove each on what is served:
+  - Nobody gets another person's rating or confidence.
+  - A lead's file name reaches only the lead.
+  - A participant who has not answered cannot read the forming report.
+  - An admin who cannot see a target reads nothing about it.
+
+Tests: 626 files and 5,981 tests pass in reports, board, check-ins and conversation. Each new test for a fix fails on the old code.
+
+**Eleven more requests from the screens workspace are answered, including 73.** One commit each.
+- **73** (`1fe0b9d1`). Their wording test failed on one of my new lines. It is now three short sentences, and their test passes unchanged.
+- **60** (`dc60208c`). The private summary opened "What you shared: You are aiming for six shops by December." It now opens "Here is what you shared. You are aiming for six shops by December."
+- **61** (`f5cc4c23`). "chandarana-quote.png · a photo" is now "chandarana-quote.png is a photo."
+- **67** (`e537b675`). "15% documented" with "of what was said is anchored to a document" under it now has "15 of every 100 things people said have a document behind them." A second fault was found and fixed: every line under a tile started with a space.
+- **68** (test `07493e71`). "Unblock: the discount decision" was already "Somebody is waiting on the discount decision, so it needs deciding."
+- **31** (`d5199cca`). "The initiator" already reached nobody. In a report shared without names, one sentence started in lower case, and that is fixed.
+- **33, part answered** (`59cf4b40`). "You forecasts 3 sales" is now "You forecast 3 sales". An older fault in the same rule is fixed: "finishes" had become "finishe". A second verb after "and" is left for the check in task 1.6, because a rule cannot tell whose verb it is.
+- **53, 55 and 59.**
+  - Dates in reports shared without names arrived empty, and now arrive as dates (53).
+  - A session report now knows how many sessions there are (55).
+  - "At the end of session undefined" now carries the session number (59).
+- **62** was already done.
+
+Tests: 663 files and 6,302 tests pass in reports, board, check-ins, conversation and documents. Four tests were changed, because they expected the old wording or a lower-case start, which were the faults. No prompt stored in the database is affected.
+
+**Ten more requests are worked through** (65, 45 and 44 are not started yet).
+- **47** (`f654a870`). A person who said "ok", "fine" or "Please finish my check-in" was told "Your report is ready now", and then the finish button failed. The close and the finish now use one rule, so they get a question instead.
+- **48** (`72d45d31`). The same answer sent twice while it was still being answered wrote two replies. Now it gets one.
+- **56 and 69** (`ab775f86`, `7eb62b88`). The session report said "4 of 5" and the check-in's header "4 of 6". Everything now counts the same people: everybody on the check-in, including someone invited who has not joined, who is "a colleague". A count in one sentence is all words or all figures.
+- **40, in part** (`2963a3bc`). What a document holds is said in sentences. "Amani Wekesa: cookers delivered, 3, by by 9 October" is now "Amani Wekesa's target for cookers delivered is 3 by 9 October." Bank details are listed as left out: "Never kept, in any document." Two lines the model writes still need a prompt change.
+- **35, in part** (`4c28663f`). A situation the lead picked is never switched by the model. The screens need to send what she picked.
+- **38** (`12b2e660`). Each person on the board says whether they run the check-in.
+- **54** was already fixed. "You is aiming" reads "You are aiming".
+- **39** is answered: the screens workspace adds the unit and currency fields, and the engine writes the values. **58** is answered item by item.
+
+Tests: 728 files and 6,704 tests pass in the parts touched. Two tests were changed, because they checked the old colon-and-dash wording.
+
+**The rest of the requests: three more worked through, and every large one answered.**
+- **44, in part** (`fd3a9ba0`). Opening a check-in could make five model calls, one after another, before the first question. The two reads of the lead's brief now run side by side, so the first opening waits for one read, not two. The first question is unchanged. The rest must wait for each other. The answer lists two larger changes that would help.
+- **45** (`771ec520`). The Done page's "how checkable" read missed things people said. It averaged over every turn, so one date disappeared. It also never counted "waiting on Rukia". Now one date, number or document, or who they are waiting on, counts when it is said once. The lead still gets none of this.
+- **65, in part** (`3272bf72`).
+  - Rukia read "Ask Amani Wekesa to speak to Rukia Otieno…" about herself. She now reads "Amani Wekesa has been waiting 3 days on you for the signed price list. Give Amani Wekesa an answer, or say when you will."
+  - The lead's aim, "I want us to sign 12 shops", was being read as 12 signed, so the board showed 12 of 12. It no longer does.
+  - Three items of that request are still open.
+- **27** (`51bbf042`). After a yes, Ask Groundwork says the prototype's "Added to your to-dos for Tuesday: call Lakeside's buyer."
+- **30, part a** (`4beb133b`). Someone who loses the race for the last check-in reads billing's own sentence, never "ten free check-ins".
+- **Every large request now has an answer** (`f85de201`), with the week of `docs/weekly-plan.md` it belongs to. For example: suggestions in week 10, leave through chat in week 21, the weekly report in week 12b.
+- **Seven have no week in the plan yet,** so they need scoping first:
+  - 5, renaming the situations to the prototype's names;
+  - 17, the Company page;
+  - 18, links between check-ins;
+  - 25, the role map;
+  - 28, customers;
+  - 37, a check-in with no end date;
+  - 70, the switchboard's 22 sections.
+
+**The whole API test suite passes at `cd1d1139`: 1,175 files and 10,885 tests.**
+
+**Week 6b: the four marks are on the team report and the board too** (`69ac07ed`). They use the same rule as the session report and the end card, so a line reads the same everywhere.
+- A person's own lines in the team report are marked.
+- So are the lines the lead weighs at the close, and each person's lines under "who owns what" on the board.
+- Read as Miriam, a colleague, Aisha's lines on the board are:
+  - "I sent the price list to Miriam": confirmed, because Miriam received it.
+  - "I will visit Westgate Deli on Friday": their word.
+  - "I made 8 visits this week": from memory.
+  - "Lakeside will buy on the 29th": their word, because only the lead's plan backs it, and a plan is not proof.
+- A line a document backs reads as proven, but the file is never named.
+- Model-written prose, such as the shared picture, carries no mark, because it is not one line of the record.
+- The marks are worked out from what is stored, so opening a page asks no model.
+- Deal stages are still left out, because they need your decision.
+
+Tests: 646 files and 6,068 tests pass in reports, board, check-ins and conversation. The new test reads the real board and team report as the lead, two participants and an admin.
+
+**Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
+- **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
+- **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
+- **Most engine-value numbers are up:**
+  - proof asked for: 46 (baseline 42)
+  - past words brought back: 30 (25)
+  - differences found: 38 (29)
+  - agreements found: 67 (56)
+  - commitments recorded: 51 (33)
+  - judgement present: 29 (21)
+- **Two are down:**
+  - "specific detail asked for" is 74, against 88 at the baseline and 87 on run-16;
+  - "blocker checked" is 34, against 37.
+
+I looked at where the drop is. It is spread thinly over many scenarios, one or two turns each, and most of it is in the lead's own check-ins: 18 there, against 27 on run-16 and 23 on run-14. Nothing that changed since run-16 touches the lead's questions. The hidden-target filter only changes what a participant's check-in is given. So it looks like the model varying from run to run. To be sure, I am running the eight scenarios that dropped most again, twice, on the same build. Task 2.7 is not ticked until this is settled.
+
+### Decided for Hafsah to confirm
+
+1. **The lead's note to everyone is filtered too.** A sentence in it that gives a colleague's hidden target is taken out of the copy that reaches another person's check-in. The lead's own copy is unchanged. This is the more private option.
+2. **Request 49: someone held for a seat cannot read the check-in's report.** This covers every report and every name in it, until an admin lets them into the organisation. This is the more private option.
+3. **Request 57: only the lead of a check-in can release its report.** Another admin is told plainly that it is the lead's to share. This matches the prototype, where sharing the report is the lead's to decide.
+4. **Request 42: a target that is really a decision about one person is the lead's alone.** An example is "Decide whether to confirm Aisha in her role". It is not served to Aisha, or to anyone else in the check-in. The target table has no field for this, and I did not change the database while run-18 was going. So a target is treated as a decision about a person from its wording: a word for deciding ("Decide", "determine whether") together with a word about someone's place (role, probation, confirm, contract, promotion, pay, keep or let go). It errs on the private side. "Decide whether to renew the software contract" is also hidden from the team. "Decide on the new supplier" stays a team target. A field set when the target is made would be sturdier later.
+5. **Request 49 also covers the board and the two activation routes,** because they carry the report's story and names. If the check for a held seat fails, the report is refused, never served.
+6. **Request 57 has no fallback.** If the lead has left, nobody else can share that report. The route also still needs the admin role, so a lead who is not an admin shares through "send to everyone", which already allowed only the lead.
+7. **Request 41 applies to briefs already stored.** A short brief written before this change may still reword the lead's setup answers, until the brief is saved again.
+8. **Who has shown their report is read only inside the check-in.** Groundwork staff who are not admins of that organisation are refused too.
+9. **Request 50 keeps the lead's row** on a participant's board, because participants may already read the lead's name.
+10. **Request 64 is for the lead only, even when patterns are on.** It has no place for the person to answer first, so decision 39 could not be kept for anyone else. The "setup never said" reading only ever has one period, so under the three-period rule it now never shows.
+11. **Request 63: an admin who cannot see a target is told "has checked in, and nothing here needs you this week", even when the person is behind.** The request suggested saying they are behind, but "behind" is worked out from the hidden number, so I held it back.
+12. **Request 66: the lead reads their own name on that one line,** not "you". That is the same as the round's report text beside it. The alternative is a second copy of the line for each reader.
+13. **Request 35: a situation the lead picked always stands.** The only way to change it is pressing "It's something else".
+14. **Requests 56 and 69: "N of M" counts everybody on the check-in,** including someone invited who never joined. The stricter rule, which leaves out a lapsed invitation, only decides when a round's report is written, and never prints a count.
+15. **Request 58: a person's own private summary, and the lead's own setup report, may keep names the person typed.** Only that person reads them. The "stored without names" rule is for shared reports.
+16. **Request 39: the screens workspace adds the unit and currency fields** to targets, so two workspaces do not write clashing database changes.
+17. **Requests 10 and 15: a new suggestion does not replace one nobody has decided yet.** The thresholds, such as "below 6 in 10", are still yours to set.
+18. **Request 21: leave is approved by the person's line manager** where one is set, and otherwise by the lead of their check-in.
+19. **Request 23: only a manager starts a performance review,** as today. The product does not start one by itself.
+20. **Request 71: the weekly report is written on Friday,** as in the prototype.
+21. **Request 5: the situations are renamed to the prototype's names.** The client's list has to change on the same day, so it is written up but not done.
+
 ---
 
 ## HANDOVER, 29 SEPTEMBER 2026: WHERE THIS WORK STOPPED

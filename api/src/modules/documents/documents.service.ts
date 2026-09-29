@@ -18,7 +18,7 @@ import { RecordEntryType } from '@prisma/client';
 import { slidesInOrder, textFromOneSlide, deckToText } from './slides-are-mostly-headings';
 import { looksLikeAConversation, THE_ASSUMPTION_WHEN_UPLOADING } from './a-conversation-belongs-to-the-people-in-it';
 import { weCouldNotReadIt } from './a-document-we-could-not-read-is-not-a-source';
-import { withoutBankDetails } from './bank-details-are-never-kept';
+import { withoutBankDetails, HIDDEN } from './bank-details-are-never-kept';
 import { familyFor, BoardFamily } from '../board/board-families';
 import { AgreementsService } from '../alignment/agreements.service';
 import {
@@ -27,7 +27,7 @@ import {
 import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
 import {
   WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ,
-  theContextWeHave, whoThisNameIs, theNameWeUseFor, type WhatADocumentHolds, type WhatLanded,
+  theContextWeHave, BANK_DETAILS_LEFT_OUT, whoThisNameIs, theNameWeUseFor, type WhatADocumentHolds, type WhatLanded,
 } from './what-a-document-holds';
 
 const ALLOWED_MIME = [
@@ -610,6 +610,8 @@ export class DocumentsService {
       /* What will be written when they say yes, with the owner already resolved. */
       waiting,
       takenAt: null,
+      /* Bank details the file held go under what it left out, never under what it took (request 40). */
+      ...(Object.values(HIDDEN).some((h) => content.includes(h)) ? { leftOut: [BANK_DETAILS_LEFT_OUT] } : {}),
     };
     await this.prisma.groundDocument.update({ where: { id: docId }, data: { holds: landed as any } }).catch(() => undefined);
     this.logger?.log?.(`Read ${JSON.stringify(fileName)}: ${forOnePerson.length} for one person, ${forEverybody.length} for everybody, ${landed.dates.length} date(s), ${unmatched.length} unmatched name(s).`);

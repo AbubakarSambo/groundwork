@@ -31,6 +31,19 @@ export function originLabel(origin: string | null | undefined): string | null {
   return origin && origin in ORIGIN_LABEL ? ORIGIN_LABEL[origin as DocumentOrigin] : null;
 }
 
+/**
+ * A DOCUMENT, SAID AS A SENTENCE (request 61).
+ *
+ * The session report listed each document as its file name and its kind joined with a middle dot,
+ * "chandarana-quote.png · a photo". A reader now gets one sentence: "chandarana-quote.png is a
+ * photo." With no kind known, the file name stands on its own, as it always did.
+ */
+export function whatThisDocumentIs(fileName: string, origin: string | null | undefined): string {
+  const kind = originLabel(origin);
+  if (!kind) return fileName;
+  return origin === 'generated' ? `${fileName} holds ${kind}.` : `${fileName} is ${kind}.`;
+}
+
 const IMAGE = /^image\//;
 
 /** What the file type alone can say. Null means the content has to be read to decide. */

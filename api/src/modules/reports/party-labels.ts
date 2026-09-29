@@ -983,6 +983,19 @@ export function eachSideGetsSomebody<T extends { participantLabel?: string | nul
  * initiation of commercial discussions." That text never went through `withNames`, so none of the
  * rules below reached it. Nothing in here knows who anybody is; it only makes "you" read as "you".
  */
+/**
+ * THE -S TAKEN OFF PROPERLY. Taking the last letter off made "finishes" "finishe", "wishes"
+ * "wishe" and "misses" "misse", and would make "identifies" "identifie". Case is kept.
+ */
+function theVerbForYou(verb: string): string {
+  const lower = verb.toLowerCase();
+  const base = lower === 'focuses' ? 'focus'
+    : /ies$/.test(lower) ? lower.replace(/ies$/, 'y')
+      : /(ss|sh|ch|x|zz)es$/.test(lower) ? lower.replace(/es$/, '')
+        : lower.replace(/s$/, '');
+  return verb === verb.toUpperCase() ? base.toUpperCase() : verb[0] === verb[0].toUpperCase() ? base[0].toUpperCase() + base.slice(1) : base;
+}
+
 export function theVerbAgreesWithYouIn(input: string): string {
   let text = input;
   text = text
@@ -1067,11 +1080,31 @@ export function theVerbAgreesWithYouIn(input: string): string {
             'suggests', 'argues', 'insists', 'admits', 'explains', 'hopes',
             /* Read live on the session report (screens requests 54 and 65, 28 September 2026). */
             'sends', 'assumes', 'asks', 'waits', 'works', 'leads', 'wishes', 'finishes', 'misses',
+            /*
+             * AND THE REST OF WHAT THE REPORTS ACTUALLY WRITE AFTER A LABEL (screens request 33, 29
+             * September 2026: "you forecasts that only 3 of them are realistic"). Found the same
+             * way as the four above: every "<label> <word>s" in the stored reports and rounds of
+             * the local corpus, read, and the verbs kept. Left out on purpose, because after "you"
+             * they are as likely to be a noun ("it gives you credits"): credits, questions, names,
+             * leaves, records, quotes, signs, lists, hands, sources, accounts, moves, worries.
+             */
+            'forecasts', 'estimates', 'predicts',
+            'defines', 'views', 'attributes', 'adds', 'acknowledges', 'measures', 'identifies',
+            'requires', 'manages', 'continues', 'finds', 'calls', 'counts', 'maintains', 'lacks',
+            'attends', 'handles', 'earns', 'uses', 'perceives', 'means', 'gets', 'shows', 'includes',
+            'tracks', 'receives', 'follows', 'focuses', 'claims', 'sells', 'suspects', 'retains',
+            'prepares', 'oversees', 'experiences', 'completes', 'clears', 'spends', 'runs', 'relies',
+            'provides', 'performs', 'arranges', 'anticipates', 'aims', 'specifies', 'remembers',
+            'produces', 'keeps', 'joins', 'highlights', 'depends', 'declares', 'buys', 'approves',
+            'warns', 'tells', 'submits', 'shares', 'secures', 'schedules', 'responds', 'regards',
+            'recognizes', 'recognises', 'operates', 'meets', 'hears', 'envisions', 'dismisses',
+            'directs', 'decides', 'contrasts', 'clarifies', 'cites', 'chooses', 'cares', 'begins',
+            'answers', 'acts',
           ].join('|') +
           ')\\b',
         'gi',
       ),
-      (_m, you: string, adv: string | undefined, verb: string) => `${you}${adv ?? ''}${String(verb).replace(/s$/, '')}`,
+      (_m, you: string, adv: string | undefined, verb: string) => `${you}${adv ?? ''}${theVerbForYou(String(verb))}`,
     );
 
   /**

@@ -39,9 +39,37 @@ const ABOUT_THE_INTERVIEW = /\b(the (?:goal|answer) should emerge|what they say 
 
 const sentencesOf = (text: string): string[] => (text ?? '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
 
-/** The situation as the brief describes it: declarative sentences only, at most three. */
+/*
+ * THE ANSWERS SETUP PUT TOGETHER FROM THE LEAD'S CONVERSATION (request 41, from what-someone-who-
+ * does-not-run-it-reads.ts). The brief setup writes holds the situation, then the lead's answers:
+ * "When asked what the questions should focus on, the answer was taken to mean this. Aisha is often
+ * late with stock counts." Those are what the lead wants asked, and about whom. They passed the
+ * sentence filters below, so a participant's own session could read them whenever the short version
+ * was missing. The situation is now always read with them cut off.
+ */
+const THE_SETUP_ANSWERS_BEGIN = new RegExp(
+  [
+    /* Since the U.7 third review: "When asked why this matters now, the answer was taken to mean this." */
+    String.raw`\bWhen asked (?:who|why|what)\b`,
+    /* The U.7 re-check's wording: "Asked why this matters now, Wanjiru said “...”." */
+    String.raw`\bAsked (?:who is part|why this matters|what this is aiming|what the questions)\b`,
+    /* The U.7 review's wording. */
+    String.raw`\b(?:The people in it are|It matters now because|It is aiming at|The questions should focus on)\b`,
+    /* And the labelled pieces setup wrote before that. */
+    String.raw`\b(?:Who is part of this|Why now|What it is aiming at|Focus):`,
+  ].join('|'),
+);
+
+/** The brief with the answers setup put together cut off, leaving what it says about the situation. */
+export function withoutTheSetupAnswers(brief: string | null | undefined): string {
+  const text = (brief ?? '').trim();
+  const at = text.search(THE_SETUP_ANSWERS_BEGIN);
+  return (at >= 0 ? text.slice(0, at) : text).trim();
+}
+
+/** The situation as the brief describes it: declarative sentences only, at most three, never the setup answers. */
 export function theSituationIn(brief: string | null | undefined, max = 3): string | null {
-  const kept = sentencesOf(brief ?? '').filter((s) => !AN_INSTRUCTION.test(s) && !A_RULE_ABOUT_THEM.test(s) && !ABOUT_THE_INTERVIEW.test(s) && !THE_LEAD_TO_THE_PRODUCT.test(s));
+  const kept = sentencesOf(withoutTheSetupAnswers(brief)).filter((s) => !AN_INSTRUCTION.test(s) && !A_RULE_ABOUT_THEM.test(s) && !ABOUT_THE_INTERVIEW.test(s) && !THE_LEAD_TO_THE_PRODUCT.test(s));
   if (!kept.length) return null;
   return kept.slice(0, max).join(' ');
 }

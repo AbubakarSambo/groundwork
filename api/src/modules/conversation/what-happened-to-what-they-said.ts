@@ -24,7 +24,7 @@ export const READ_WHAT_HAPPENED = [
   '',
   'For each numbered thing, say what THEY said happened to it in this check-in:',
   '  - "DONE" only when they plainly said they did it ("I sent it on Tuesday", "that is done").',
-  '  - "NOT_DONE" only when they plainly said they did not do it and gave no new time for it ("I did not get to it", "I never called her").',
+  '  - "NOT_DONE" only when they plainly said they did not do it. They also gave no new time for it. For example: "I did not get to it", "I never called her".',
   '  - "OPEN" for everything else: they did not mention it, they gave a new date or time, they said it is in progress or partly done, or you are not sure.',
   '',
   'RULES:',

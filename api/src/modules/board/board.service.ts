@@ -46,7 +46,7 @@ import { whyNothingIsCrossReferenced } from './why-nothing-is-cross-referenced';
 import { whatIsNotSettledAbout } from '../grounds/a-target-nobody-has-defined';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-board-is-not-read-before-you-answer';
-import { originLabel } from '../documents/what-kind-of-thing-a-document-is';
+import { whatThisDocumentIs } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
@@ -64,6 +64,7 @@ import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-sessi
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
@@ -75,6 +76,7 @@ import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
+import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -259,9 +261,11 @@ export class BoardService {
     const viewer = requestingUserId
       ? await this.prisma.user.findUnique({
         where: { id: requestingUserId },
-        select: { role: true, organizationId: true },
+        select: { role: true, organizationId: true, awaitingOrgApproval: true },
       })
       : null;
+    /* Nobody held for a seat reads the board, its report's story or its names (request 49). */
+    if ((viewer as any)?.awaitingOrgApproval === true) throw new ForbiddenException(CANNOT_OPEN_THE_BOARD_YET);
     const adminHere = adminsThisOrg(viewer, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       throw new ForbiddenException('You are not a participant in this check-in');
@@ -633,7 +637,20 @@ export class BoardService {
         role: theLeadsWordsAbout(p, isInitiator) ?? (p.managingOnly ? 'Managing only' : null),
         managingOnly: p.managingOnly,
         signedOffAt: p.signedOffAt,
+        /*
+         * WHO RUNS THE CHECK-IN, SO A LEAD WITH NO NAME IS "THE LEAD" AND NOT A COLLEAGUE (request 38).
+         * Only that one fact: the lead, or everybody else.
+         */
+        partyType: p.partyType === 'INITIATOR' ? 'INITIATOR' : 'PARTICIPANT',
       })),
+      /*
+       * WHETHER MORE THAN ONE PERSON ANSWERS, AS A YES OR NO. Screens request 50. The board's "only
+       * one person here" notice counted `participants`, and on a check-in that hides people from each
+       * other that list is now the reader's own row and the lead's (below), so it cannot say whether
+       * anybody else answers. The same rule and the same name as the check-in read's
+       * `aTeamReportComes` (grounds.service): a yes or no, never how many.
+       */
+      aTeamReportComes: ground.participants.filter((p) => !p.managingOnly).length > 1,
     };
 
     if (has('phaseSpine')) {
@@ -960,6 +977,8 @@ export class BoardService {
               .map((d: any) => ({
                 what: d.what,
                 owner: d.onParticipantId ? nameOf(d.onParticipantId) : (d.onLabel ?? null),
+                /* With the reader themselves: the ask is theirs, not "speak to <their own name>" (request 65). */
+                onTheReader: !!me?.id && d.onParticipantId === me.id,
                 days: Math.max(0, Math.floor((Date.now() - new Date(d.createdAt).getTime()) / 86_400_000)),
                 /* Read off their own words. Nobody has said is 'nothing', which is the truth. */
                 tried: d.escalatedAt ? 'escalated' : whatTheyTried(d.triedSaid ?? ''),
@@ -1035,9 +1054,11 @@ export class BoardService {
     if (has('whoOwnsWhat')) {
       const entries = await this.prisma.recordEntry.findMany({
         where: { disputedAt: null, participant: { groundId }, type: { in: ['COMMITMENT', 'SUCCESS_DEFINITION', 'INTENT', 'PROGRESS'] } },
-        select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true },
+        select: { id: true, participantId: true, type: true, text: true, checkInId: true, createdAt: true, ...WHAT_A_MARK_READS },
         orderBy: { createdAt: 'asc' },
       });
+      /* How each line is known, by the same rule as the reports (week 6b). Stored columns only. */
+      const whoAdded = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
       out.whoOwnsWhat = ground.participants
         .filter((p) => !p.managingOnly)
         .map((p) => ({
@@ -1054,6 +1075,7 @@ export class BoardService {
            */
           items: entries.filter((e) => e.participantId === p.id).map((e) => ({
             id: e.id, type: e.type, text: cleanText(e.text),
+            mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
           })),
         }));
@@ -1257,7 +1279,18 @@ export class BoardService {
       if (keep.length) out.hiddenContributors = { rows: keep, why: WHY_THIS_IS_HERE };
     }
 
-    if (has('contribution')) {
+    /*
+     * HOW THE LEADING IS LANDING IS A PATTERN, AND IS SERVED ONLY AS PATTERNS ARE. Screens request 64.
+     *
+     * `managerAlignment` is a pattern about how the check-in is being led ("seen across 2 sessions"),
+     * and it went on the wire outside `sections`, so it reached every reader while patterns are
+     * switched off, a participant included, although the report never gives a participant the
+     * leadership reads it is built from. Now it is served only when patterns are (PATTERNS_ARE_SERVED),
+     * and then only to the lead, whose leading it is about, and only once it has been seen in three
+     * periods (decision 8), the setup gap included. Nobody else reads it: it has no answer box and no
+     * clock of its own, so decision 39 (the person answers first) cannot be kept for anyone else.
+     */
+    if (has('contribution') && PATTERNS_ARE_SERVED && isInitiator) {
       // Only meaningful where someone actually manages someone: needs a manager
       // and at least one report, both with accounts on record.
       // The forbidden-name list is built from THIS ground's participants. See
@@ -1272,7 +1305,9 @@ export class BoardService {
           })),
         ),
       );
-      if (alignment.length) out.managerAlignment = alignment;
+      /* Three periods, whatever the pattern (decision 8). The builder's own floor is lower. */
+      const seenThreeTimes = alignment.filter((a) => Number(a.periods ?? 0) >= 3);
+      if (seenThreeTimes.length) out.managerAlignment = seenThreeTimes;
     }
 
     if (has('patterns')) {
@@ -1366,6 +1401,15 @@ export class BoardService {
           rows: onlyWhatThisReaderMaySee((out.checkInGrid as any).rows, whoMaySee),
         };
       }
+      /*
+       * THE LIST OF PEOPLE, TOO. Screens request 50: every other row stayed on this list as "a
+       * colleague", "another colleague", with whether each had signed off, so a participant on a
+       * check-in that hides people from each other could count their colleagues and follow each
+       * one's progress, which the check-in read (grounds.service) already refuses. They keep their
+       * own row and the lead's, whose name they may read; `aTeamReportComes` says whether anybody
+       * else answers.
+       */
+      out.participants = ((out.participants ?? []) as any[]).filter((p) => p.id === me?.id || p.id === theLeadsRow);
       /* Said, rather than left as a board that has quietly lost most of itself. */
       out.whyYouOnlySeeYourself = WHY_YOU_ONLY_SEE_YOURSELF;
     }
@@ -2088,12 +2132,7 @@ export class BoardService {
     const answered = ground.participants.filter((p: any) => !waiting.has(p.id) && completed.some((c) => c.participantId === p.id && c.sessionNumber === openRound));
     const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
     /* Whose document backs each line: somebody else's proves nothing of theirs (how-a-line-is-known). */
-    const backingIds = [...new Set(entries.map((e: any) => e.anchoredDocumentId).filter(Boolean))] as string[];
-    const whoseDocument = new Map(
-      backingIds.length
-        ? ((await this.prisma.groundDocument.findMany({ where: { id: { in: backingIds } }, select: { id: true, participantId: true } }).catch(() => [])) as any[]).map((d) => [d.id, d.participantId])
-        : [],
-    );
+    const whoseDocument = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
     const shape = theSessionReport({
       sessionNumber: openRound,
       closed: !!report.releasedAt,
@@ -2104,7 +2143,7 @@ export class BoardService {
       baselineSuccess: baseline?.successLooksLike ?? null,
       startingPoint: null,
       previousSharedPicture: null,
-      evidence: docs.map((d: any) => ({ text: originLabel(d.origin) ? `${d.fileName} · ${originLabel(d.origin)}` : d.fileName, who: nameOf(d.participantId) })),
+      evidence: docs.map((d: any) => ({ text: whatThisDocumentIs(d.fileName, d.origin), who: nameOf(d.participantId) })),
       specificityLevel: null,
       centralQuestion: report.centralQuestion ?? null,
       /* From the one owner, over the round in play - not a lifetime delta and not every dependency ever raised. */

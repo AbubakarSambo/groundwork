@@ -1,3 +1,4 @@
+import { isADecisionAboutAPerson } from './a-decision-about-a-person-is-the-leads';
 /**
  * TEN PEOPLE EACH SAW ALL TEN TARGETS, AND NOBODY DECIDED THAT.
  *
@@ -45,7 +46,10 @@ export function targetsFor(
   whoSees: WhoSees,
   opts: { isLead?: boolean } = {},
 ): { shown: Target[]; alsoSay: string | null } {
-  if (whoSees === 'everybody' || opts.isLead) return { shown: targets, alsoSay: null };
+  if (opts.isLead) return { shown: targets, alsoSay: null };
+  /* A decision the lead has to make about somebody is the lead's alone, whoever else reads (request 42). */
+  targets = targets.filter((t) => !isADecisionAboutAPerson((t as any)?.name));
+  if (whoSees === 'everybody') return { shown: targets, alsoSay: null };
 
   const unowned = targets.filter((t) => !t.ownerParticipantId);
   const mine = targets.filter((t) => t.ownerParticipantId && t.ownerParticipantId === readerParticipantId);

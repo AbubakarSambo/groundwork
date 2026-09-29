@@ -1,4 +1,5 @@
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
+import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
 import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
@@ -22,6 +23,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt } from './the-context-chat';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -54,7 +56,7 @@ import { truncationsOfTheirWords } from '../conversation/the-record-holds-what-w
 import { screen, ASK_AGAIN } from '../conversation/nothing-invented-reaches-them';
 import { mayOpen, HOW_A_NEW_ORG_WORKS } from './who-may-open-a-check-in';
 import { notTheWordParty } from '../reports/not-the-word-party';
-import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT } from './what-a-participant-is-told-about-this';
+import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
 import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant } from './nothing-proposed-that-nobody-said';
@@ -435,6 +437,29 @@ export class GroundsService {
   }
 
   /**
+   * A TARGET THE LEAD HAS NOT SHARED STAYS WITH ITS OWNER, ON THIS PAGE AND THE LIST TOO (29 September
+   * 2026). The report and the board took out every sentence giving a colleague's hidden target; this
+   * page and the list served the same report words, and the brief, without it. So a colleague on a
+   * check-in where people see only their own read "Kwame is aiming for seventeen approved facilities".
+   * Whoever set the targets reads everything; everybody else, an admin who only reads included, has
+   * those sentences taken out. See board/a-hidden-target-stays-hidden.
+   */
+  private withoutTheTargetsHiddenFrom<T>(
+    ground: { initiatorId?: string | null; whoSeesTargets?: string | null; participants?: any[]; objectives?: { ownerParticipantId: string | null; target: number | null }[] },
+    requestingUserId: string | null | undefined,
+    served: T,
+  ): T {
+    const me = (ground.participants ?? []).find((p: any) => !!requestingUserId && p.userId === requestingUserId);
+    const hidden = targetsHiddenFrom(
+      { participantId: me?.id ?? null, isTheLead: !!requestingUserId && ground.initiatorId === requestingUserId },
+      ground.whoSeesTargets,
+      ground.objectives ?? [],
+      namesOnTheRoster(ground.participants ?? []),
+    );
+    return withoutHiddenTargetsIn(served, hidden);
+  }
+
+  /**
    * @param creatorRole the caller's role in the organisation. A ground created by
    *   somebody who is not an ADMIN waits for one to accept it - her requirement, and
    *   the reason it is a parameter rather than a lookup is that the controller already
@@ -446,7 +471,10 @@ export class GroundsService {
    * an empty rewrite leaves the column null and the read falls back to the filtered brief.
    */
   async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined): Promise<void> {
-    const text = (brief ?? '').trim();
+    /* The model is handed the situation only, never the answers setup put together from the lead's
+       conversation: those are the lead's instructions about people, not something to retell to them
+       (request 41). A brief that is nothing but those answers leaves nothing to tell. */
+    const text = withoutTheSetupAnswers(brief);
     try {
       if (!text) {
         await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: null } as any });
@@ -1206,6 +1234,8 @@ export class GroundsService {
          * read often and a whole history here would be paid for on every load for a single line.
          */
         reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+        /* Whose target is whose, so no sentence gives a colleague's hidden one (see withoutTheTargetsHiddenFrom). */
+        objectives: { select: { ownerParticipantId: true, target: true } },
         /* For the at-a-glance read. Counted the way the board counts it - see the module. */
         dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
         reportActivations: { select: { participantId: true, status: true } },
@@ -1268,6 +1298,8 @@ export class GroundsService {
             /* Must match the sibling query above: both feed the same list, and a card fed by this
                one would fall back to the brief for ever while its twin showed the finding. */
             reportRounds: { select: { sessionNumber: true, finding: true, sharedPicture: true }, orderBy: { sessionNumber: 'desc' }, take: 1 },
+            /* Same as the sibling query. */
+            objectives: { select: { ownerParticipantId: true, target: true } },
             /* Same as the sibling query: both feed the same card. */
             dependencies: { select: { what: true, status: true, createdAt: true, fromParticipantId: true, onParticipantId: true, onLabel: true } },
             reportActivations: { select: { participantId: true, status: true } },
@@ -1435,7 +1467,8 @@ export class GroundsService {
          * the report has been released, the same as the report itself.
          */
         const mayReadTheReport = runsIt || !!fullReport?.releasedAt;
-        return {
+        /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). */
+        return this.withoutTheTargetsHiddenFrom(g as any, userId, {
           ...safe,
           /*
            * THE BRIEF, BY THE SAME RULE AS THE CHECK-IN'S OWN READ (U.7 third review). It went out
@@ -1463,7 +1496,7 @@ export class GroundsService {
           glance: hidePeers
             ? { ...glance, progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0, waitingOn: [] }, inTheWay: { count: 0, oldest: null, daysWaiting: null } }
             : glance,
-        };
+        });
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }
@@ -1931,7 +1964,7 @@ export class GroundsService {
         soloArtifactShared: p.soloArtifactShared ?? false,
         // Only expose the content when the participant explicitly shared it
         sharedSoloReport: raw
-          ? (() => { try { return JSON.parse(raw); } catch { return null; } })()
+          ? thePrivateSummaryAsRead(raw)
           : null,
         checkIns: checkInsByParticipant.get(p.id) ?? [],
         objective: (() => {
@@ -2169,7 +2202,10 @@ export class GroundsService {
     /* `viewerAdminsThisOrg` is the same test this used to run its own query for, read once above
        because the peer rule needs it too - see the note on `viewerRunsThisGround`. */
     const mayShareJoinLink = isInitiatorViewer || viewerAdminsThisOrg;
-    return {
+    /* AND NO SENTENCE WITH A COLLEAGUE'S HIDDEN TARGET, in any text on this page: the brief, the
+       report's words, a note. The same rule the report and the board apply, over the whole read, so a
+       field added later is covered by being served. See board/a-hidden-target-stays-hidden. */
+    return this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
       ...rest,
       /* Everyone on the check-in may see what is to be done; only the lead's private notes are walled. */
       commitments,
@@ -2390,7 +2426,7 @@ export class GroundsService {
       guestIn: ground.organizationId !== organizationId
         ? ((ground as any).organization?.name ?? 'another organisation')
         : null,
-    };
+    });
   }
 
   /**
@@ -6821,9 +6857,7 @@ export class GroundsService {
       select: { soloArtifact: true, soloArtifactShared: true },
     });
     if (!participant) throw new ForbiddenException('You are not a participant in this check-in');
-    const report = participant.soloArtifact
-      ? (() => { try { return JSON.parse(participant.soloArtifact); } catch { return null; } })()
-      : null;
+    const report = thePrivateSummaryAsRead(participant.soloArtifact);
     return { report, shared: participant.soloArtifactShared };
   }
 

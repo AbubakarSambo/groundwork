@@ -46,7 +46,8 @@ export interface PersonRow {
   /** How many rounds have opened for them in all. */
   roundsSoFar: number;
   /** What they have said is in their way, oldest first. */
-  inTheWay: { what: string; owner: string | null; days: number; tried: Effort }[];
+  /** `onTheReader`: what they wait on is with the person reading the board (request 65). */
+  inTheWay: { what: string; owner: string | null; days: number; tried: Effort; onTheReader?: boolean }[];
   /**
    * WHETHER ANYTHING THEY SAID THIS ROUND CAN BE CHECKED: the check-in's own read of how checkable
    * their answers were, and, for a check-in not read yet, whether the record of it holds a number, a
@@ -173,6 +174,7 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
     case 'stuck and not chasing': {
       const oldest = sittingUnchased(row)[0];
       const days = `${oldest.days} ${oldest.days === 1 ? 'day' : 'days'}`;
+      if (oldest.onTheReader) return `${start} has been waiting ${days} on you for ${oldest.what}.`;
       if (oldest.tried === 'nothing') {
         return `${start} has had something in the way for ${days}, and nobody has said yet what was tried to clear it. Finding out who could clear it, and asking them, would move it.`;
       }
@@ -254,6 +256,16 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
       : `Ask ${them} for a number or a date for what moved this round.`;
   }
   if (!worst) return null;
+  /*
+   * AND WHAT THEY WAIT ON IS WITH YOU (screens request 65). Rukia read "Ask Amani Wekesa to speak to
+   * Rukia Otieno rather than write to them." on her own board: an ask about her own reply, about her
+   * in the third person. Where the thing is with the reader, the reader is the way through.
+   */
+  if (worst.onTheReader) {
+    const waiting = worst.days === 0 ? 'is waiting' : `has been waiting ${worst.days} ${worst.days === 1 ? 'day' : 'days'}`;
+    const theAsk = `Give ${them} an answer, or say when you will.`;
+    return alreadySaid ? theAsk : `${start} ${waiting} on you for ${worst.what}. ${theAsk}`;
+  }
   if (worst.days < A_FORTNIGHT && worst.tried !== 'nothing') return null;
   /* What they said they are waiting on is often a thing, not somebody: "the handover from the current
      finance manager", "credit review". Read live on run-14, 28 Sep 2026: "Ask Jide Sanusi to speak to

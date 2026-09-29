@@ -99,6 +99,9 @@ const NOT_A_TEAM_NAME = new Set([
   'whole', 'entire', 'same', 'other', 'another', 'one', 'each', 'every', 'no', 'any', 'some',
   'for', 'with', 'on', 'in', 'to', 'of', 'at', 'by', 'from', 'and', 'or', 'but',
   'both', 'all', 'is', 'was', 'been', 'being', 'doing', 'shadowing', 'joined', 'joining',
+  /* Request 65: `teamsNamed` served ["attached"], from "the attached team plan". A word that says
+     how a team stands, not what it is called, is not a department. */
+  'attached', 'assigned', 'new', 'wider', 'own', 'current', 'previous', 'old', 'whole', 'relevant', 'right',
 ]);
 
 /**

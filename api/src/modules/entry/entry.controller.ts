@@ -146,6 +146,16 @@ class EntryClassifyDto {
   @IsString()
   @MaxLength(120)
   mode?: string;
+
+  /**
+   * The situation the lead chose from the list, as its key (for example "PIP"). When it is one, the
+   * classifier keeps it: only the lead switches a situation she chose, with "It's something else"
+   * (request 35).
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  picked?: string;
 }
 
 /**
@@ -556,7 +566,7 @@ export class EntryController {
   @Post('classify-intent')
   @Throttle({ global: { limit: 30, ttl: 60000 } })
   async classifyIntent(@Body() dto: EntryClassifyDto) {
-    return this.service.classifyIntent(dto.description, dto.mode);
+    return this.service.classifyIntent(dto.description, dto.mode, dto.picked);
   }
 
   @Public()

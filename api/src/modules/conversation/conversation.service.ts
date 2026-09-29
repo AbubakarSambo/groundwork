@@ -27,7 +27,7 @@ import { endStatesFor } from '../resolution/end-states';
 import { PromptsService } from '../prompts';
 import { AnthropicService, ChatTurn, houseStyle } from './anthropic.service';
 import { ConversationContextService } from './context.service';
-import { theFloorFor } from './how-short-a-check-in-may-be';
+import { almostNothingHereYet, theFloorFor } from './how-short-a-check-in-may-be';
 import { withoutTheLastOne } from './a-first-session-has-no-last-one';
 import { theContextWeHave, whoThisNameIs, theNameWeUseFor, WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ, type WhatADocumentHolds } from '../documents/what-a-document-holds';
 import { isAnApology, NOTHING_TO_APOLOGISE_FOR } from './an-apology-is-not-owed';
@@ -49,10 +49,11 @@ import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-i
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
+import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
 import { aWaitThatConfirms, theLineToConfirm, thePrompt as theDeliveredPrompt, WHICH_LINE_WAS_DELIVERED_PROMPT, WHICH_LINE_WAS_DELIVERED_SCHEMA } from './confirmed-by-who-received-it';
 import { theInstruction, sourceHashOf, withoutTheirWords, A_READ_IS_DERIVED, WhatItAsks } from './what-an-account-shows';
-import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel } from './how-checkable-a-session-was';
+import { mapSpecificityLevel, NOTHING_SAID, SpecificityLevel, whatWasSaidOnce, atLeastMet } from './how-checkable-a-session-was';
 
 /** `CheckIn.closedReason` when the sweep, not the person, ended the session. */
 export const CLOSED_BY_THE_CLOCK = 'auto_closed';
@@ -192,6 +193,7 @@ import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABO
 import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, whatTheyHedged, keepTheirHedge, howThisTeamWorks } from './what-the-context-already-holds';
 import { alreadyAsked, withTheQuestionAsConfirmed } from '../grounds/a-question-asked-word-for-word';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
+import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
@@ -356,7 +358,7 @@ WHAT YOU DO NOT KNOW, AND MUST THEREFORE NEVER STATE. You have not been told how
 
 A live report opened with "Two of the three parties on this ground, Hafsah Jumare and the 2nd lead, have not yet contributed a record. The picture below is therefore drawn from Hafsah Jumare's account alone." Every fact in that sentence was invented - the count, the second name, and the claim about who had contributed - because none of it was in the input. It also contradicted itself, naming the same person as both absent and the sole source.
 
-Write only about what this person told you. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the exact phrase "What you shared:" then summarise it in their own framing. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.
+Write only about what this person told you. Address them directly as "you" and "your", never by name. Do not infer the other side. Do not produce a verdict or analysis of any person. Open with the sentence "Here is what you shared." on its own, then summarise it in their own framing in full sentences. Name one specific thing to carry forward. Warm, specific, brief - under 200 words total.
 
 ${PLAIN_WORDS}
 
@@ -384,6 +386,13 @@ const THE_END_CARD_WAITS_MS = 90_000;
 
 @Injectable()
 export class ConversationService {
+  /** Answers being worked on right now, so the same answer arriving twice is answered once. See sendMessage. */
+  private inFlight?: Map<string, Promise<any>>;
+  /* Made on first use, so a service built without its constructor (as some specs build it) still has one. */
+  private get answersInFlight(): Map<string, Promise<any>> {
+    return (this.inFlight ??= new Map());
+  }
+
   private readonly logger = new Logger(ConversationService.name);
 
   constructor(
@@ -480,6 +489,49 @@ export class ConversationService {
       ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : UNLESS_SOMEBODY_SAYS,
       { isLead: checkIn.participant?.partyType === PartyType.INITIATOR },
     ).shown;
+  }
+
+  /**
+   * AND THE BRIEF, WITHOUT A COLLEAGUE'S HIDDEN TARGET (29 September 2026). The lead's setup words go
+   * to every person's check-in as the situation, and they can say "Kwame Mensah should reach
+   * seventeen approved facilities". Where people see only their own targets, that sentence is not
+   * given to Ngozi's model; the rule is the one every served text uses (a-hidden-target-stays-hidden).
+   * The lead, and a check-in where targets are shared with everybody, get the brief as written.
+   */
+  private theBriefThisPersonMayBeGiven(
+    ground: { brief?: string | null; whoSeesTargets?: string | null; objectives?: { target: number | null; ownerParticipantId?: string | null }[]; participants?: any[] },
+    checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
+  ): string | null {
+    return this.theLeadsWordsThisPersonMayBeGiven(ground, checkIn, ground.brief);
+  }
+
+  /**
+   * THE SAME FOR THE LEAD'S NOTE TO EVERYONE (29 September 2026, the more private option). The note
+   * reaches every person's own check-in as the situation, and can carry a colleague's hidden target
+   * as much as the brief can. Same rule, same exceptions: the lead, and targets shared with everybody.
+   */
+  private theSharedNoteThisPersonMayBeGiven(
+    ground: { leadContextNotes?: { text?: string | null; audience?: string | null; participantId?: string | null }[]; whoSeesTargets?: string | null; objectives?: { target: number | null; ownerParticipantId?: string | null }[]; participants?: any[] },
+    checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
+  ): string | undefined {
+    const note = (ground.leadContextNotes ?? []).find((n) => n.audience === 'EVERYONE' && !n.participantId)?.text?.trim();
+    return this.theLeadsWordsThisPersonMayBeGiven(ground, checkIn, note)?.trim() || undefined;
+  }
+
+  /** Words the lead wrote for everyone, without a sentence giving a target this person may not see. */
+  private theLeadsWordsThisPersonMayBeGiven(
+    ground: { whoSeesTargets?: string | null; objectives?: { target: number | null; ownerParticipantId?: string | null }[]; participants?: any[] },
+    checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
+    text: string | null | undefined,
+  ): string | null {
+    if (!text) return text ?? null;
+    const hidden = targetsHiddenFrom(
+      { participantId: checkIn.participantId ?? null, isTheLead: checkIn.participant?.partyType === PartyType.INITIATOR },
+      ground.whoSeesTargets,
+      (ground.objectives ?? []).map((o) => ({ ownerParticipantId: o.ownerParticipantId ?? null, target: o.target })),
+      namesOnTheRoster(ground.participants ?? []),
+    );
+    return withoutHiddenTargets(text, hidden) || null;
   }
 
   async getTranscript(checkInId: string, requestingUserId: string) {
@@ -830,6 +882,18 @@ export class ConversationService {
     if (existingAiTurn) {
       return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
     }
+    /*
+     * THE BRIEF IS READ WHILE EVERYTHING ELSE IS GATHERED, NOT AFTER IT (request 44). The opener's
+     * prompt needs the subjects the brief asks about and the frame of a complete answer. On the first
+     * open of a check-in neither is kept yet, and each is a model call; they were asked for one after
+     * the other, at the end of a long run of reads, before the opener could be asked for at all. Both
+     * start here, side by side, and the prompt below picks up the same reads. Once kept on the
+     * ground, each is one quick read and this costs nothing.
+     */
+    if (!alreadyWritten && checkIn.groundId) {
+      this.theSubjectsToCover(checkIn.groundId).catch(() => undefined);
+      this.theFrameFor(checkIn.groundId).catch(() => undefined);
+    }
     await this.provisionalFunctionFromTheStatedRole(checkIn.participant as any).catch((err) =>
       this.logger.warn(`Provisional function read failed for participant ${checkIn.participantId}: ${err.message}`),
     );
@@ -916,7 +980,13 @@ export class ConversationService {
             data: { sessionsBalance: { decrement: 1 } },
           });
           if (decremented.count === 0) {
-            throw new ForbiddenException('This check-in is beyond your ten free check-ins. Resubscribe to continue checking in - the report and board stay available either way.');
+            /* Billing's own sentence, asked again now the race is lost (request 30a): "ten free
+               check-ins" is untrue for an organisation with no free plan. */
+            const again = await this.billing.canStartSession(checkIn.groundId).catch(() => null);
+            throw new ForbiddenException({
+              message: (again && !again.allowed && again.reason) || 'This check-in cannot start until your team adds more check-ins. Only an admin can do that, and your answers so far are kept.',
+              freeExtensionAvailable: again?.freeExtensionAvailable ?? false,
+            });
           }
           /**
            * "YOU ARE ON YOUR LAST SESSION" - AT THE MOMENT IT BECOMES TRUE.
@@ -1389,15 +1459,42 @@ export class ConversationService {
    * through `streamDraft`. Everything after the draft is the same code, and the final text, which is
    * what is saved, replaces the draft on the screen. See sendMessageStream.
    */
-  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void } = {}) {
+  async sendMessage(checkInId: string, requestingUserId: WhoIsAsking, message: string, how: { streamDraft?: (text: string) => void; alreadyJoined?: boolean } = {}): Promise<any> {
     const checkIn = await this.aSessionUnderway(checkInId, requestingUserId);
+    /*
+     * ONE ANSWER, ONE REPLY, HOWEVER MANY TIMES IT ARRIVES (request 48). The closing reply was read
+     * twice. The second-press check below reads the turns already saved, but the person's turn is
+     * saved only after the prompt is built, which takes seconds, so the same answer arriving twice
+     * in that window (a retry after a dropped stream, two tabs) passed the check both times and
+     * wrote two replies. While an answer is being worked on, the same answer from the same person
+     * on the same check-in waits for it and gets the same reply, and nothing is written twice.
+     */
+    if (!how.alreadyJoined) {
+      const key = `${checkInId}\u0000${JSON.stringify(requestingUserId)}\u0000${withoutBankDetails(message).trim()}`;
+      const running = this.answersInFlight.get(key);
+      if (running) {
+        this.logger.log(`Check-in ${checkInId}: the same answer arrived while it was still being answered; it gets the same reply.`);
+        return running;
+      }
+      const mine = this.sendMessage(checkInId, requestingUserId, message, { ...how, alreadyJoined: true })
+        .finally(() => this.answersInFlight.delete(key));
+      this.answersInFlight.set(key, mine);
+      return mine;
+    }
+
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model.
        Straight after the door, before anything reads the message. See documents/bank-details-are-never-kept. */
     message = withoutBankDetails(message);
 
     const again = await this.theSameAnswerAgain(checkIn.id, message);
     if (again.kind === 'the same answer, already answered') {
-      return { reply: again.reply, sessionComplete: false };
+      /*
+       * AND THE SAME FLAG IT WAS SENT WITH (request 47). This said `sessionComplete: false` under a
+       * closing reply, so "Please finish my check-in" pressed again got the goodbye back and no end
+       * card. A goodbye is only ever left on a turn that closed (see the goodbye rule below), so the
+       * reply itself says whether it closed.
+       */
+      return { reply: again.reply, sessionComplete: hasAGoodbye(again.reply) && !stillAsking(again.reply) };
     }
     if (again.kind === 'the same answer, still working') {
       return { reply: STILL_ON_YOUR_LAST_ANSWER, sessionComplete: false };
@@ -2491,7 +2588,7 @@ export class ConversationService {
      * local corpus, and nobody should wait that long for "That's all for today". It is kept on this
      * turn and served on the transcript, where the screen picks it up.
      */
-    if (sessionComplete) void this.theEndCardFor(checkIn as any, aiTurn.id);
+    if (sessionComplete) this.startTheEndCard(checkIn as any, aiTurn.id);
     return {
       reply: [contextNotSaid, tookTheNumbers, withRoomLeft].filter(Boolean).join('\n\n'),
       sessionComplete,
@@ -2560,6 +2657,14 @@ export class ConversationService {
       }),
     ]);
     const personSaid = turns.filter((t) => t.role === TurnRole.PERSON).map((t) => t.content ?? '');
+    /*
+     * NEVER A GOODBYE FOR A RECORD THE SERVER WILL NOT WRITE (request 47). complete() refuses an
+     * empty record whatever was said, so the close refuses it by the same reading, first.
+     */
+    if (almostNothingHereYet(personSaid, isSelfCorrection)) {
+      this.logger.log(`Holding the close on ${checkInId}: almost nothing in the record yet.`);
+      return { ready: false };
+    }
     /*
      * THEIR SESSION, THEIR CALL, BEFORE ANY COUNT OR HOLD. Read live, 22 Sep 2026: "That's it from me
      * this week" was answered with "One more before this closes". closeReadiness has always let
@@ -3535,10 +3640,8 @@ export class ConversationService {
        * situation. So it steers what gets asked and can never be quoted, attributed, or stated as
        * fact - the same rule the private note follows, with a different readership.
        */
-      sharedNote:
-        (ground as any).leadContextNotes
-          ?.find((n: any) => n.audience === 'EVERYONE' && !n.participantId)
-          ?.text?.trim() || undefined,
+      /* Without a sentence giving a colleague's hidden target, as the brief (29 September 2026). */
+      sharedNote: this.theSharedNoteThisPersonMayBeGiven(ground as any, checkIn as any),
       /**
        * GW-EXP-4. So the interview can tell a revision from a restatement, and ask what changed. Only
        * for the lead's own conversation: a party has no expectations of anybody to revise.
@@ -3567,7 +3670,8 @@ export class ConversationService {
       resolutionState: (ground as any).resolutionState ?? null,
       // Never reached the model before - see the comment on PromptContext.cadence.
       cadence: (ground as any).cadence ?? null,
-      adminBrief: (ground as any).brief ?? null,
+      /* The brief without a sentence giving a colleague's hidden target, in figures or in words. */
+      adminBrief: this.theBriefThisPersonMayBeGiven(ground as any, checkIn as any),
       /* ONLY THE TARGETS THIS PERSON MAY SEE (week 0). Every target went in, so on a check-in where
          people see only their own, each person's model was given everybody's numbers and could say
          them back. The same rule the brief on their screen uses. */
@@ -4539,7 +4643,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     /* What the invention gate may treat as already said. See knownForThisTurn. */
     this.knownForThisTurn.set(checkIn.id, [
       ...(ground.participants ?? []).flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '', p.roleAsDescribed ?? '']),
-      ...(ground.leadContextNotes ?? []).map((n) => n.text ?? ''),
+      /* The lead's note as this person was given it: a colleague's hidden number in it is not "already said" to them. */
+      ...(ground.leadContextNotes ?? []).map((n) => this.theLeadsWordsThisPersonMayBeGiven(ground as any, checkIn as any, n.text) ?? ''),
       ...uploadedDocs.map((d: any) => `${d.fileName ?? ''} ${d.content ?? ''} ${d.uploaderNote ?? ''}`),
       /* Only the targets this person may see: a colleague's hidden number is not "already said" to them (week 0). */
       ...this.theTargetsThisPersonMaySee(ground as any, checkIn as any).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
@@ -5546,10 +5651,6 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // just as hard as the one avoiding.
     //
     // So: real sentences pass, even unverifiable ones. "ok / yes / fine" does not.
-    const substantiveTurns = personTurnRows.filter((t) => (t.content?.trim().length ?? 0) >= 12);
-    const totalPersonChars = personTurnRows.reduce((sum, t) => sum + (t.content?.trim().length ?? 0), 0);
-    const MIN_CHARS = checkIn.isSelfCorrection ? 20 : 50;
-    const MIN_REAL_TURNS = checkIn.isSelfCorrection ? 1 : 2;
 
     /**
      * ANSWERABLE. A REFUSAL THAT ASKS FOR SOMETHING HAS TO LEAVE A WAY TO GIVE IT.
@@ -5571,7 +5672,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * the sentence would make the copy load-bearing: somebody rewording it later would silently
      * reinstate the trap.
      */
-    if (totalPersonChars < MIN_CHARS || substantiveTurns.length < MIN_REAL_TURNS) {
+    if (almostNothingHereYet(personTurnRows.map((t) => t.content ?? ''), !!checkIn.isSelfCorrection)) {
       throw new BadRequestException({
         message: 'There is almost nothing here yet. Answer a couple of the questions properly, then complete.',
         canContinue: true,
@@ -6117,6 +6218,24 @@ The ground will close toward one of these end states: ${endStates || 'the partie
    * Measuring recall honestly (RecordEntry.recallBased) is structurally zero for any ground with no
    * documents (planaudit_b.md C7), so the column is written null and its sentence is gone.
    */
+  /** A document this person attached to this check-in's ground since the session started. Best effort. */
+  private async theyAttachedADocumentIn(checkInId: string): Promise<boolean> {
+    try {
+      const row = await this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true, participantId: true, startedAt: true } as any });
+      if (!(row as any)?.groundId || !(row as any)?.participantId || !this.prisma.groundDocument?.count) return false;
+      const n = await this.prisma.groundDocument.count({
+        where: {
+          groundId: (row as any).groundId,
+          participantId: (row as any).participantId,
+          ...((row as any).startedAt ? { createdAt: { gte: (row as any).startedAt } } : {}),
+        } as any,
+      });
+      return n > 0;
+    } catch {
+      return false;
+    }
+  }
+
   private async scoreSessionSpecificity(checkInId: string): Promise<{
     level: SpecificityLevel;
     dimensions: Record<string, SpecificityLevel>;
@@ -6154,10 +6273,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const coverageScore = Math.min(1, (intakes.filter(r => r.types.includes('absorption') || r.types.includes('rescue')).length / n) * 1.5);
     const commitScore   = intakes.filter(r => r.types.includes('movement')).length / n;
 
+    /* Two of the five read as the Done page names them: said once is there (request 45). */
+    const attachedADocument = await this.theyAttachedADocumentIn(checkInId);
+    const saidOnce = whatWasSaidOnce(personTurns.map((t) => t.content ?? ''), attachedADocument);
+
     const dimensions: Record<string, SpecificityLevel> = {
       delivery:   mapSpecificityLevel(avgDelivery),
-      evidence:   mapSpecificityLevel(avgSpecificity),
-      enablement: mapSpecificityLevel(avgEnablement),
+      evidence:   atLeastMet(mapSpecificityLevel(avgSpecificity), anyCheckable || saidOnce.aDateNumberOrDocument),
+      enablement: atLeastMet(mapSpecificityLevel(avgEnablement), saidOnce.whatTheyWereWaitingOn),
       coverage:   mapSpecificityLevel(coverageScore),
       commitment: mapSpecificityLevel(commitScore),
       /* Kept as a level so the column's type holds: 'specific' means at least one turn could be checked. */
@@ -6707,7 +6830,36 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     this.logger.log(`Fitted ${checkInId}: ${values.filter((v) => !v.couldNotSay).length} of ${frame.length} fields, ${values.filter((v) => v.couldNotSay).length} ruled out. (${notes.answers ?? 0} answers read.)`);
   }
 
+  /**
+   * THE TWO READS OF THE BRIEF, ONE AT A TIME PER GROUND AND NEVER TWICE AT ONCE (request 44).
+   *
+   * Both are model calls, both are kept on the ground after the first, and both used to run one
+   * after the other inside the opener's prompt, so the first person to open a check-in waited for
+   * two reads of the brief before the opener itself was even asked for. `open` now starts both at
+   * the door, side by side, while the rest of the prompt is gathered; a second caller for the same
+   * ground while a read is running is given the same read, not a new one. Nothing about what is
+   * read changes, only when.
+   */
+  private briefReadsInFlight = new Map<string, Promise<unknown>>();
+
+  private readTheBriefOnce<T>(key: string, read: () => Promise<T>): Promise<T> {
+    /* Optional for the same reason as notesInFlight: some guards build the service off its prototype. */
+    if (!this.briefReadsInFlight) return read();
+    const running = this.briefReadsInFlight.get(key) as Promise<T> | undefined;
+    if (running) return running;
+    const started = read();
+    this.briefReadsInFlight.set(key, started);
+    started.catch(() => undefined).finally(() => {
+      if (this.briefReadsInFlight.get(key) === started) this.briefReadsInFlight.delete(key);
+    });
+    return started;
+  }
+
   async theFrameFor(groundId: string): Promise<AField[]> {
+    return this.readTheBriefOnce(`frame:${groundId}`, () => this.theFrameForNow(groundId));
+  }
+
+  private async theFrameForNow(groundId: string): Promise<AField[]> {
     const ground = await this.prisma.ground
       .findUnique({ where: { id: groundId }, select: { whatACompleteAnswerHolds: true, brief: true } })
       .catch(() => null);
@@ -6786,6 +6938,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   async theSubjectsToCover(groundId: string): Promise<ASubject[]> {
+    return this.readTheBriefOnce(`subjects:${groundId}`, () => this.theSubjectsToCoverNow(groundId));
+  }
+
+  private async theSubjectsToCoverNow(groundId: string): Promise<ASubject[]> {
     const ground = await this.prisma.ground
       .findUnique({ where: { id: groundId }, select: { subjectsToCover: true, brief: true } })
       .catch(() => null);
@@ -7086,6 +7242,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const rows = await this.readTheRecord(checkInId, participantId);
     if (!rows.length) return;
     await this.prisma.recordEntry.createMany({ data: rows });
+  }
+
+  /**
+   * THE END CARD, STARTED AND NOT WAITED FOR. Nothing awaits this work, so nothing else would catch
+   * what goes wrong in it: a database blip or a model error would become an unhandled rejection, and
+   * that can take the whole API down. Whatever fails here is logged and means no card; the closing
+   * reply has already gone, and finishing reads the record as before.
+   */
+  private startTheEndCard(checkIn: { id: string; participantId: string; groundId: string }, closingTurnId: string): void {
+    this.theEndCardFor(checkIn, closingTurnId).catch((err: any) =>
+      this.logger.warn(`Check-in ${checkIn.id}: no end card (${err?.message ?? err}); the record is read when they finish.`));
   }
 
   /**
@@ -7486,17 +7653,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   async anchorRecordToDocuments(participantId: string, groundId: string): Promise<{ backed: number; of: number; readsDifferently?: number }> {
+    /* Both reads are started inside Promise.all's reach: a read that throws before it returns a
+       promise would otherwise leave the documents read already started with nothing waiting on it,
+       and its failure would become an unhandled rejection that can take the API down. */
     const [readable, entries] = await Promise.all([
       this.documentsThatMayBack(participantId, groundId),
       /* Every line of theirs, backed or not: a line one document backs can still be read differently
          by a newer one (the revised offer letter that moves the start date), and that is the case that
          matters most. Only an unbacked line can become backed here. */
-      this.prisma.recordEntry.findMany({
+      Promise.resolve().then(() => this.prisma.recordEntry.findMany({
         where: { participantId, disputedAt: null },
         select: { id: true, text: true, recallBased: true },
         orderBy: { createdAt: 'asc' },
         take: 120,
-      }),
+      })),
     ]);
     if (!readable.length || !entries.length) return { backed: 0, of: entries.length, readsDifferently: 0 };
     const result = await this.whatTheDocumentsBack(readable, entries.map((e) => e.text));
@@ -9000,7 +9170,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * the run of 26 September two of the seven quotes in these summaries were in nobody's record.
      */
     const theirs = everyQuoteFromTheRecord(
-      { summary: result.summary, whatToCarry: result.whatToCarry ?? '' },
+      { summary: result.summary, whatToCarry: aThingToCarry(result.whatToCarry) },
       theLinesAQuoteMayComeFrom(entries),
     );
     if (theirs.unquoted.length || theirs.dropped.length) {
@@ -9010,7 +9180,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.prisma.groundParticipant.update({
       where: { id: participantId },
       data: {
-        soloArtifact: JSON.stringify(theirs.value),
+        soloArtifact: JSON.stringify({ ...theirs.value, summary: openingWithASentence(theirs.value.summary) }),
         soloArtifactAt: new Date(),
       },
     });
@@ -9097,7 +9267,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           : 'Your summary is being written from what you said. It takes up to a minute - this page will show it as soon as it is there.';
       return { artifact: null, saying, finished: checkIn.status === CheckInStatus.COMPLETED };
     }
-    return { artifact: JSON.parse(p.soloArtifact) as { summary: string; whatToCarry: string }, generatedAt: p.soloArtifactAt };
+    return { artifact: thePrivateSummaryAsRead<{ summary: string; whatToCarry: string }>(p.soloArtifact), generatedAt: p.soloArtifactAt };
   }
 
   /**

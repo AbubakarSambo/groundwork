@@ -108,6 +108,30 @@ describe('what the lead has not shared reaches nobody, on the board', () => {
   });
 });
 
+/*
+ * REQUEST 46, ON whoOwnsWhat ITSELF. The line the screens found live sat in a person's own row of
+ * "who owns what", read from the record. Here Aisha's own record line names the lead's private file,
+ * and the panel is read as every reader: only the lead, whose file it is, reads its name there.
+ */
+describe('and in who owns what, where the line was found live', () => {
+  const LINE = { id: 'e1', participantId: 'p-aisha', type: 'COMMITMENT', text: `The attached ${FILE} document confirms the split, and I will close the Kisumu shops.`, checkInId: 'c1', createdAt: new Date('2026-09-22T16:00:00Z') };
+  const whoOwnsWhatAs = async (userId: string, role = 'MEMBER') => {
+    const prisma: any = prismaFor(role);
+    prisma.recordEntry.findMany = jest.fn(async (q: any) => (q?.where?.type ? [JSON.parse(JSON.stringify(LINE))] : []));
+    const reports = Object.create(ReportsService.prototype) as ReportsService;
+    const svc = new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports);
+    const board: any = await svc.get('g-sales', userId);
+    return JSON.stringify(board.whoOwnsWhat ?? null);
+  };
+
+  it.each(READERS)('%s', async (_who, userId, role, may) => {
+    const served = await whoOwnsWhatAs(userId, role);
+    /* The row itself is served, so the test is reading a real line. */
+    expect(served).toContain('Kisumu shops');
+    expect(served.includes(FILE)).toBe(may.file);
+  });
+});
+
 describe('and in the report', () => {
   const reportAs = async (userId: string, role = 'MEMBER') => {
     const svc = Object.create(ReportsService.prototype) as any;
