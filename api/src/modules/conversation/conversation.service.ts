@@ -980,7 +980,13 @@ export class ConversationService {
             data: { sessionsBalance: { decrement: 1 } },
           });
           if (decremented.count === 0) {
-            throw new ForbiddenException('This check-in is beyond your ten free check-ins. Resubscribe to continue checking in - the report and board stay available either way.');
+            /* Billing's own sentence, asked again now the race is lost (request 30a): "ten free
+               check-ins" is untrue for an organisation with no free plan. */
+            const again = await this.billing.canStartSession(checkIn.groundId).catch(() => null);
+            throw new ForbiddenException({
+              message: (again && !again.allowed && again.reason) || 'This check-in cannot start until your team adds more check-ins. Only an admin can do that, and your answers so far are kept.',
+              freeExtensionAvailable: again?.freeExtensionAvailable ?? false,
+            });
           }
           /**
            * "YOU ARE ON YOUR LAST SESSION" - AT THE MOMENT IT BECOMES TRUE.
