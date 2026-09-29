@@ -1,5 +1,6 @@
 import { suggestAnswers } from './suggested-answers';
 import { whatTheYesSays, startsWithAYes } from './yes-but-a-new-number';
+import { READS_DIFFERENTLY, alreadyAsked as theLinesInTheStamps, theStampForWhatItRaised } from './a-document-that-disagrees-is-asked-once';
 import { aClaimNothingShowsYet, askForProofKindly } from './asking-for-proof-kindly';
 import { managementWordsIn, sayItInPlainWords } from './management-words';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
@@ -1160,6 +1161,8 @@ export class ConversationService {
         /* Stamped as it is written, so the two-party balance can be counted without ever reading
            one person's turns while answering another - see the-same-burden-on-both-sides.ts. */
         askedFor: stampWhatItAskedFor(opening),
+          /* A turn that put a document's side to them is stamped with that line instead, so it is asked once. */
+          ...await this.theDocumentQuestionItRaised(checkIn.participantId, opening).then((raised) => (raised ? { askedFor: raised } : {})),
       },
     });
     await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { status: CheckInStatus.IN_PROGRESS, startedAt: new Date() } });
@@ -2430,6 +2433,8 @@ export class ConversationService {
         data: {
           checkInId: checkIn.id, role: TurnRole.AI, content: reply,
           askedFor: stampWhatItAskedFor(reply),
+          /* A turn that put a document's side to them is stamped with that line instead, so it is asked once. */
+          ...await this.theDocumentQuestionItRaised(checkIn.participantId, reply).then((raised) => (raised ? { askedFor: raised } : {})),
         },
       });
     } catch (err) {
@@ -4634,12 +4639,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       this.prisma.recordEntry
         .findMany({
           where: { participantId: checkIn.participantId, documentSays: { not: null }, disputedAt: null },
-          select: { text: true, documentSays: true },
+          select: { id: true, text: true, documentSays: true },
           orderBy: { createdAt: 'desc' },
-          take: 3,
+          take: 12,
+        })
+        /* ASKED ONCE, IN CODE (week 14): a line whose question a turn already raised is never put again. */
+        .then(async (all) => {
+          const asked = await this.theLinesAlreadyAskedAbout(checkIn.participantId);
+          return all.filter((r) => !asked.has(r.id)).slice(0, 1);
         })
         .then((rows) => rows.length
-          ? 'A DOCUMENT THEY CAN SEE READS DIFFERENTLY FROM SOMETHING THEY SAID. This is theirs to answer, once, as an ordinary question: put the two side by side and ask which is current. Never say the document is right. Never say they were wrong. Do not raise it twice.\n'
+          ? 'A DOCUMENT THEY CAN SEE READS DIFFERENTLY FROM SOMETHING THEY SAID. This is theirs to answer, once, as an ordinary question: put the two side by side, with the document\'s own number or words, and ask which is current. Never say the document is right. Never say they were wrong. It is asked only once, so ask it now if it fits.\n'
             + rows.map((r) => `- They said: "${r.text.replace(/^\[VERIFIABILITY:\w+\] /, '')}". The document says: "${r.documentSays}".`).join('\n')
           : '')
         .catch(() => ''),
@@ -7777,6 +7787,36 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     await this.prisma.groundDocument.update({ where: { id: docId }, data: { uploaderNote: said } }).catch(() => undefined);
     this.logger.log(`document-description doc=${docId} said=${JSON.stringify(said.slice(0, 120))}`);
     await this.documents?.checkDescription(docId).catch(() => null);
+  }
+
+  /** The record lines a document reads differently from that a turn has already put to this person. */
+  private async theLinesAlreadyAskedAbout(participantId: string): Promise<Set<string>> {
+    /* A groupBy, like the burden count: it can return the stamps and never a turn's content. */
+    const stamps = await this.prisma.conversationTurn.groupBy({
+      by: ['askedFor'],
+      where: { role: TurnRole.AI, askedFor: { startsWith: READS_DIFFERENTLY }, checkIn: { participantId } },
+    }).catch(() => [] as { askedFor: string | null }[]);
+    return theLinesInTheStamps(((stamps ?? []) as { askedFor: string | null }[]).map((t) => t.askedFor));
+  }
+
+  /**
+   * THE STAMP FOR A TURN THAT PUT A DOCUMENT'S SIDE TO THEM, so it is never asked again. Read from
+   * what the turn says, not from what the prompt offered. See a-document-that-disagrees-is-asked-once.
+   */
+  private async theDocumentQuestionItRaised(participantId: string, reply: string): Promise<string | null> {
+    try {
+      const lines = await this.prisma.recordEntry.findMany({
+        where: { participantId, documentSays: { not: null }, disputedAt: null },
+        select: { id: true, text: true, documentSays: true },
+        orderBy: { createdAt: 'desc' },
+        take: 12,
+      });
+      if (!lines?.length) return null;
+      const asked = await this.theLinesAlreadyAskedAbout(participantId);
+      return theStampForWhatItRaised(reply, lines.filter((l) => !asked.has(l.id)));
+    } catch {
+      return null;
+    }
   }
 
   /** The documents that may back this person's lines: their own and any open on the ground, readable, and as described. */
