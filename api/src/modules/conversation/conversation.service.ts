@@ -5877,7 +5877,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     });
     if (won.count === 0) {
       this.logger.warn(`Check-in ${checkIn.id} was completed by another call first; nothing emitted twice.`);
-      return { status: 'completed', groundId: checkIn.groundId, endCard };
+      return { status: 'completed', groundId: checkIn.groundId, ...(endCard ? { endCard } : {}) };
     }
 
     /*
@@ -5986,7 +5986,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        just finished is worse than no block, and a session with nothing in its notes has nothing to
        tell anybody about their own answers. */
     /* The card, with exactly the lines just written, so the screen shows it even if it never saw it arrive. */
-    return { status: 'completed', groundId: checkIn.groundId, endCard, ...(whatYouGave.saying ? { whatYouGave } : {}) };
+    return { status: 'completed', groundId: checkIn.groundId, ...(endCard ? { endCard } : {}), ...(whatYouGave.saying ? { whatYouGave } : {}) };
   }
 
   /**

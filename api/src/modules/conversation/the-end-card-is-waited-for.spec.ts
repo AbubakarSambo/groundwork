@@ -70,7 +70,7 @@ describe('finishing waits for the card, writes its lines, and returns it', () =>
     const body = src.slice(src.indexOf('  private async finishTheSession('), src.indexOf('  async ensureNextSession('));
     expect(body).toContain('if (how.waitForTheCard) await this.waitForTheCardBeingBuilt(checkIn.id);');
     expect(body.indexOf('waitForTheCardBeingBuilt')).toBeLessThan(body.indexOf('writeTheRecordAtTheEnd'));
-    expect(body).toMatch(/return \{ status: 'completed', groundId: checkIn\.groundId, endCard, /);
+    expect(body).toMatch(/return \{ status: 'completed', groundId: checkIn\.groundId, \.\.\.\(endCard \? \{ endCard \} : \{\}\), /);
   });
 
   it('a card that fails is not waited for', async () => {

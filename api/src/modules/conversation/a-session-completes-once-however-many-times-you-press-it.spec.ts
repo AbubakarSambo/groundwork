@@ -23,7 +23,8 @@ describe('the shape of finishing', () => {
   it('complete() ends by handing the session to finishTheSession as the person', () => {
     const at = CODE.indexOf('async complete(');
     const body = CODE.slice(at, CODE.indexOf('async closeByTheClock('));
-    expect(body).toMatch(/return this\.finishTheSession\(checkIn, 'the person'\);/);
+    /* Since task 2.7 it also says whether to wait for the end card being built: yes, unless the door cannot wait. */
+    expect(body).toMatch(/return this\.finishTheSession\(checkIn, 'the person', \{ waitForTheCard: how\.waitForTheCard !== false \}\);/);
     /* The gates stay on the person's path and nowhere else. */
     expect(body).toMatch(/canContinue: true/);
   });
@@ -31,7 +32,8 @@ describe('the shape of finishing', () => {
   it('closeByTheClock() loads the session and hands it over as the clock, with no gates', () => {
     const at = CODE.indexOf('async closeByTheClock(');
     const body = CODE.slice(at, CODE.indexOf('private async finishTheSession('));
-    expect(body).toMatch(/return this\.finishTheSession\(checkIn, 'the clock'\);/);
+    /* The clock never waits for an end card (task 2.7). */
+    expect(body).toMatch(/return this\.finishTheSession\(checkIn, 'the clock', \{ waitForTheCard: false \}\);/);
     expect(body).not.toMatch(/canContinue/);
   });
 
