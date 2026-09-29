@@ -603,18 +603,21 @@ export function GroundParticipantPage() {
         * `GroundChat`'s reading-and-hand-off experience is retired from this tab now that its two
         * other jobs (the session history, "who is in this") have somewhere to live (My work,
         * People and setup). The effect above (near `myOpenForAutoOpen`) has already sent a party
-        * with a session ready to `/checkin/:id` (through the unchanged paywall-aware
-        * `probeSession`) by the time anybody would see this render; this is only ever seen for the
-        * instant before that navigation lands, or for resting between sessions.
+        * with a session ready to `/checkin/:id` (through the unchanged paywall-aware opening hook,
+        * `useOpenSession`) by the time anybody would see this render; this is only ever seen for
+        * the instant before that navigation lands, or for resting between sessions.
         *
-        * BETWEEN SESSIONS, THE PROTOTYPE'S OWN PAGE (round 5, item E1): "<check-in name>" / "No
-        * check-in open right now" / "Your next check-in opens <when>. Anything I can help with in
-        * the meantime?" / the four chips / the note box. `BetweenCheckIns.tsx` builds it from the
-        * parts, inside the page's own column - not GroundChat's bare Composer, flush against the
-        * sidebar, which is what stood in for this before. The note box (`Composer`, still GroundChat's
-        * own, exported) is reached from "Add a note for tomorrow" now, not shown unconditionally -
-        * notes are yours alone, not part of the record, and the next check-in asks about them; "+
-        * Document" and "Change how often this runs" stay reachable from it, unchanged.
+        * BETWEEN SESSIONS, THE PROTOTYPE'S OWN CONVERSATION-STYLE CARD (round 5, item E1; rebuilt
+        * as the prototype's card, review round 3, item 4): "<check-in name>" / "No check-in open
+        * right now" / Groundwork's sentence in a bubble / the four chips, stacked, each answer
+        * arriving as a further bubble in the same card. `BetweenCheckIns.tsx` builds it from the
+        * parts (`ConversationCard`, `Bubble`, `QuickReplies`, `Composer`) - not GroundChat's bare
+        * Composer, flush against the sidebar, which is what stood in for this before. The note box
+        * (`Composer`, still GroundChat's own, exported) is reached from "Add a note for next time"
+        * now, not shown unconditionally - notes are yours alone, not part of the record, and the
+        * next check-in asks about them; "+ Document" stays reachable from it, and "Change how
+        * often this runs" is its own quiet link under the card, reachable without opening the note
+        * box first.
         */}
       {tab === 'checkin' && (
         <div style={{ padding: '4px 2px' }}>

@@ -1,17 +1,24 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { BetweenCheckIns } from './BetweenCheckIns'
-import { useAskStore } from '@/stores/ask'
+import { askApi } from '@/api/ask'
 
 /**
  * BETWEEN CHECK-INS (docs/prototype/screens/B3-the-check-in/between-check-ins.jpg/.txt).
+ *
+ * REVIEW ROUND 3, ITEM 4: REBUILT AS THE PROTOTYPE'S CONVERSATION CARD - see the comment at the
+ * top of BetweenCheckIns.tsx. Three of the four chips now call `askApi.ask` directly and draw the
+ * reply as bubbles IN THIS CARD, rather than opening the separate Ask Groundwork panel
+ * (`useAskStore`) - the prototype's own picture (a question and answer exchanged inline, in the
+ * same card) is what this file now pins, in place of the old "opens the panel" assertions.
  */
 vi.mock('@/api/grounds', () => ({
   groundsApi: { myNotes: vi.fn().mockResolvedValue([]), addMyNote: vi.fn(), deleteMyNote: vi.fn() },
 }))
+vi.mock('@/api/ask', () => ({ askApi: { ask: vi.fn() } }))
 
 function mount(props: Partial<Parameters<typeof BetweenCheckIns>[0]> = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -25,6 +32,11 @@ function mount(props: Partial<Parameters<typeof BetweenCheckIns>[0]> = {}) {
 }
 
 describe('between check-ins', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    ;(askApi.ask as any).mockResolvedValue({ blocks: [{ type: 'text', body: 'placeholder' }], composedBy: 'model', lane: 'test' })
+  })
+
   it('says the check-in\'s name, that nothing is open, and when the next one is, the prototype\'s own words', () => {
     mount()
     expect(screen.getByText('Sales team, Q3')).toBeTruthy()
@@ -37,35 +49,76 @@ describe('between check-ins', () => {
     expect(screen.getByText('Anything I can help with in the meantime?')).toBeTruthy()
   })
 
-  it('offers the four chips', () => {
+  it('offers the four chips, stacked, "Add a note for next time" (the next session may not be tomorrow\'s)', () => {
     mount()
-    for (const label of ['What am I missing?', 'Review my goals', 'What did I say I’d do?', 'Add a note for tomorrow']) {
+    for (const label of ['What am I missing?', 'Review my goals', 'What did I say I’d do?', 'Add a note for next time']) {
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     }
+    expect(screen.queryByRole('button', { name: 'Add a note for tomorrow' })).toBeNull()
   })
 
-  it('three chips ask Ask Groundwork that exact question', async () => {
+  it('three chips ask Ask Groundwork that exact question, and the answer arrives as a bubble in this card', async () => {
+    ;(askApi.ask as any).mockResolvedValue({
+      blocks: [{ type: 'text', body: 'Two things, from Tuesday’s check-in: visit Westgate Deli on Friday, and get Green Mart’s January date in writing.' }],
+      composedBy: 'model', lane: 'test',
+    })
     mount()
-    for (const label of ['What am I missing?', 'Review my goals', 'What did I say I’d do?']) {
-      useAskStore.setState({ open: false, pendingMessage: null })
-      await userEvent.click(screen.getByRole('button', { name: label }))
-      expect(useAskStore.getState().open).toBe(true)
-      expect(useAskStore.getState().pendingMessage).toBe(label)
-    }
+    await userEvent.click(screen.getByRole('button', { name: 'What did I say I’d do?' }))
+    expect(askApi.ask).toHaveBeenCalledWith('What did I say I’d do?', 'g1')
+    /* The question itself becomes a bubble too - the prototype's own picture shows both. */
+    expect(await screen.findByText('What did I say I’d do?', { selector: 'div' })).toBeTruthy()
+    expect(await screen.findByText(/Two things, from Tuesday.s check-in/)).toBeTruthy()
   })
 
-  it('"Add a note for tomorrow" opens the private note box, not Ask Groundwork', async () => {
-    useAskStore.setState({ open: false, pendingMessage: null })
+  it('"Add a note for next time" opens the private note box, not a question', async () => {
     mount()
     expect(screen.queryByPlaceholderText('Note something for your next check-in…')).toBeNull()
-    await userEvent.click(screen.getByRole('button', { name: 'Add a note for tomorrow' }))
-    expect(useAskStore.getState().open).toBe(false)
+    await userEvent.click(screen.getByRole('button', { name: 'Add a note for next time' }))
+    expect(askApi.ask).not.toHaveBeenCalled()
     expect(await screen.findByPlaceholderText('Note something for your next check-in…')).toBeTruthy()
   })
 
   it('the note box, once opened, still says notes are private and not part of the record', async () => {
     mount()
-    await userEvent.click(screen.getByRole('button', { name: 'Add a note for tomorrow' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add a note for next time' }))
     expect(await screen.findByText(/Notes are yours alone/)).toBeTruthy()
+  })
+
+  it('"Change how often this runs" is reachable directly, under the card - not only from inside the note box', async () => {
+    const onGoToSetup = vi.fn()
+    mount({ canChangeTheRhythm: true, onGoToSetup })
+    /* Reachable before any note has been opened. */
+    const link = screen.getByRole('button', { name: 'Change how often this runs' })
+    await userEvent.click(link)
+    expect(onGoToSetup).toHaveBeenCalled()
+  })
+
+  it('does not offer it when the viewer cannot change it', () => {
+    mount({ canChangeTheRhythm: false })
+    expect(screen.queryByRole('button', { name: 'Change how often this runs' })).toBeNull()
+  })
+
+  it('the composer says "Ask, or add a note"', () => {
+    mount()
+    expect(screen.getByPlaceholderText('Ask, or add a note')).toBeTruthy()
+  })
+
+  it('typing into the composer and sending asks Ask Groundwork, and the answer arrives as a bubble', async () => {
+    ;(askApi.ask as any).mockResolvedValue({ blocks: [{ type: 'text', body: 'Sure - here is what I have.' }], composedBy: 'model', lane: 'test' })
+    mount()
+    const field = screen.getByPlaceholderText('Ask, or add a note')
+    await userEvent.type(field, 'How is Green Mart looking?')
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(askApi.ask).toHaveBeenCalledWith('How is Green Mart looking?', 'g1')
+    expect(await screen.findByText('Sure - here is what I have.')).toBeTruthy()
+  })
+
+  it('a failed question does not lose what was typed nor crash the card', async () => {
+    ;(askApi.ask as any).mockRejectedValue(new Error('network'))
+    mount()
+    await userEvent.click(screen.getByRole('button', { name: 'What am I missing?' }))
+    await waitFor(() => expect(askApi.ask).toHaveBeenCalled())
+    /* The card is still there, still usable - no thrown error reaches the screen. */
+    expect(screen.getByText('No check-in open right now')).toBeTruthy()
   })
 })

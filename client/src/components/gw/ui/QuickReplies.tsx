@@ -9,16 +9,19 @@
  * suggested answers under the question) draws from the same values as anything else in
  * `components/gw/ui` that uses a pill, rather than a third set of numbers.
  */
-export function QuickReplies({ items, onPick, disabled, label }: {
+export function QuickReplies({ items, onPick, disabled, label, stacked }: {
   items: string[]
   onPick: (item: string) => void
   disabled?: boolean
   /** For the group's own accessible name, e.g. "Suggested answers". */
   label?: string
+  /** One per line, each its own width (between-check-ins.jpg: four chips stacked, not wrapped
+      into a row), rather than the default wrapping row. */
+  stacked?: boolean
 }) {
   if (items.length === 0) return null
   return (
-    <div role="group" aria-label={label} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+    <div role="group" aria-label={label} style={{ display: 'flex', flexDirection: stacked ? 'column' : 'row', flexWrap: stacked ? 'nowrap' : 'wrap', alignItems: stacked ? 'flex-start' : 'stretch', gap: 8 }}>
       {items.map(item => (
         <button
           key={item}

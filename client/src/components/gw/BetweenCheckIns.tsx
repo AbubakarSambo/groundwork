@@ -1,28 +1,54 @@
 import { useState } from 'react'
-import { useAskStore } from '@/stores/ask'
-import { Composer } from './GroundChat'
+import { toast } from 'sonner'
+import { askApi, type AskBlock, type AskReply } from '@/api/ask'
+import { Composer as NoteComposer } from './GroundChat'
+import { ConversationCard } from './ui/ConversationCard'
+import { TheCheckInHeader } from './checkin/TheCheckInHeader'
+import { Bubble } from './ui/Bubble'
 import { QuickReplies } from './ui/QuickReplies'
+import { Composer } from './ui/Composer'
+import { Button } from './ui/Button'
 
 /**
- * BETWEEN CHECK-INS (B3, docs/prototype/screens/B3-the-check-in/between-check-ins.jpg/.txt):
- * "<check-in name>" / "No check-in open right now" / "Your next check-in opens <when>. Anything I
- * can help with in the meantime?" / four chips / a conversation area.
+ * BETWEEN CHECK-INS (B3, docs/prototype/screens/B3-the-check-in/between-check-ins.jpg/.txt).
  *
- * ROUND 5, ITEM E1: replaces what a participant with no open session used to see - GroundChat's
- * old Composer alone (the note box, "+ Document", "Note it"), flush against the sidebar with no
- * page margin, and none of the rest of this screen. The Check-in tab (GroundParticipantPage.tsx)
- * renders this now, inside the page's own column, like every other page.
+ * REVIEW ROUND 3, ITEM 4: REBUILT AS THE PROTOTYPE'S CONVERSATION-STYLE CARD, not the standalone
+ * page this had become (a plain heading, a paragraph, a flat row of chips, and GroundChat's own
+ * note box appearing below everything once one chip was pressed). The prototype's own picture is a
+ * conversation: the small header ("<name>" / "No check-in open right now"), Groundwork's sentence
+ * in its own bubble, four chips stacked one per line, and each chip's answer arriving as a further
+ * bubble in the SAME card - "What did I say I'd do?" answered inline, not sent off to a side panel.
  *
- * THE CHIPS. Three ask Ask Groundwork the question they name, with this check-in as their
- * context - `useAskStore().showWith(question)` opens the panel already asking it, the same one
- * step the board's own Ask bar uses (BoardPage.tsx's `AskTheBoard`). No context needs wiring by
- * hand: `AskGroundwork.tsx` reads which check-in "about" means straight off the page's own
- * address, and this page's address already is this check-in's - the same reason the board's bar
- * needs nothing extra either. The fourth, "Add a note for tomorrow", opens the private note box
- * instead of asking anything - GroundChat's own `Composer`, kept exactly: notes are yours alone,
- * not part of the record, and the next check-in asks about them; "+ Document" and "Change how
- * often this runs" stay reachable from it, unchanged.
+ * So the three "ask" chips (and the composer) now call `askApi.ask` directly and draw the reply as
+ * bubbles here, rather than `useAskStore().showWith()` opening the separate Ask Groundwork panel -
+ * this is the prototype's own conversation, in its own card, and the panel is a different surface
+ * for a different moment (asking about anything, from anywhere). The fourth chip, "Add a note for
+ * next time" (the screen's old "for tomorrow" assumed the next session is tomorrow's, when the
+ * cadence may be days or weeks out), still opens GroundChat's private note box - a note is not an
+ * answer, so it is not a bubble.
+ *
+ * "Change how often this runs" no longer waits behind the note box: it is its own quiet link under
+ * the card, reachable directly, the same as the note itself.
  */
+
+/** The reply's blocks, reduced to plain lines. Nothing this card cannot show (a proposal's yes/no,
+    a picker's options) is dropped silently - it prints as a line of text instead, same as it would
+    read aloud, since this card has no room for buttons of its own. */
+function linesOf(reply: AskReply): string[] {
+  return reply.blocks.map((b: AskBlock) => {
+    if (b.type === 'text' && typeof b.body === 'string') return b.body
+    if (b.type === 'claim' && typeof b.says === 'string') return b.says
+    if (b.type === 'proposal' && typeof b.summary === 'string') return b.summary
+    if (b.type === 'picker' && Array.isArray(b.options)) {
+      return (b.options as { label: string }[]).map(o => o.label).join(' / ')
+    }
+    if (b.type === 'next_step' && typeof b.label === 'string') return b.label
+    return null
+  }).filter((s): s is string => !!s)
+}
+
+type Exchange = { mine: boolean; text: string }
+
 export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canChangeTheRhythm, onGoToSetup }: {
   groundLabel: string
   /** "Your next check-in opens tomorrow at 4pm." - from whenTheNextOneOpens(), or null when
@@ -32,40 +58,86 @@ export function BetweenCheckIns({ groundLabel, nextOpensSaying, groundId, canCha
   canChangeTheRhythm?: boolean
   onGoToSetup?: () => void
 }) {
-  const showWith = useAskStore((s) => s.showWith)
   const [addingNote, setAddingNote] = useState(false)
+  const [exchanges, setExchanges] = useState<Exchange[]>([])
+  const [draft, setDraft] = useState('')
+  const [asking, setAsking] = useState(false)
+
+  const ask = async (message: string) => {
+    const m = message.trim()
+    if (!m || asking) return
+    setAsking(true)
+    setExchanges(e => [...e, { mine: true, text: m }])
+    try {
+      const reply = await askApi.ask(m, groundId)
+      const lines = linesOf(reply)
+      setExchanges(e => [...e, ...lines.map(text => ({ mine: false, text }))])
+    } catch {
+      toast.error('That did not send. Try again.')
+    } finally {
+      setAsking(false)
+    }
+  }
+
+  const send = () => {
+    const m = draft.trim()
+    if (!m) return
+    setDraft('')
+    void ask(m)
+  }
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', width: '100%', padding: '24px 16px 48px' }}>
-      <h1 style={{ fontFamily: 'var(--gw-font-name)', fontSize: 24, fontWeight: 600, color: 'var(--gw-text)', margin: '0 0 8px' }}>
-        {groundLabel}
-      </h1>
-      <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', margin: '0 0 6px' }}>
-        No check-in open right now
-      </p>
-      <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 20px' }}>
-        {nextOpensSaying ? `${nextOpensSaying} ` : ''}Anything I can help with in the meantime?
-      </p>
-      <div style={{ marginBottom: 24 }}>
-        <QuickReplies
-          label="Anything I can help with in the meantime?"
-          items={['What am I missing?', 'Review my goals', 'What did I say I’d do?', 'Add a note for tomorrow']}
-          onPick={(item) => {
-            if (item === 'Add a note for tomorrow') { setAddingNote(true); return }
-            showWith(item)
-          }}
-        />
+    <div style={{ height: '100%', minHeight: 420, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <ConversationCard
+          header={<TheCheckInHeader title={groundLabel} underTitle="No check-in open right now" mayPause={false} />}
+          footer={
+            <Composer
+              value={draft}
+              onChange={setDraft}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+              onSend={send}
+              disabled={asking}
+              sendDisabled={!draft.trim() || asking}
+              placeholder="Ask, or add a note"
+            />
+          }
+        >
+          <Bubble mine={false}>
+            {nextOpensSaying ? `${nextOpensSaying} ` : ''}Anything I can help with in the meantime?
+          </Bubble>
+          <QuickReplies
+            label="Anything I can help with in the meantime?"
+            stacked
+            disabled={asking}
+            items={['What am I missing?', 'Review my goals', 'What did I say I’d do?', 'Add a note for next time']}
+            onPick={(item) => {
+              if (item === 'Add a note for next time') { setAddingNote(true); return }
+              void ask(item)
+            }}
+          />
+          {exchanges.map((ex, i) => (
+            <Bubble key={i} mine={ex.mine}>{ex.text}</Bubble>
+          ))}
+          {addingNote && (
+            <NoteComposer
+              groundId={groundId}
+              openCheckInId={null}
+              openSessionNumber={null}
+              totalSessions={null}
+              nextOpensAt={null}
+              canChangeTheRhythm={false}
+            />
+          )}
+        </ConversationCard>
       </div>
-      {addingNote && (
-        <Composer
-          groundId={groundId}
-          openCheckInId={null}
-          openSessionNumber={null}
-          totalSessions={null}
-          nextOpensAt={null}
-          canChangeTheRhythm={canChangeTheRhythm}
-          onGoToSetup={onGoToSetup}
-        />
+      {/* REVIEW ROUND 3, ITEM 4: REACHABLE DIRECTLY, NOT ONLY FROM INSIDE THE NOTE BOX - which
+          never actually offered it here anyway (it is gated on `nextOpensAt`, always null on this
+          screen). A quiet link under the card, the same as the note itself. */}
+      {canChangeTheRhythm && onGoToSetup && (
+        <div style={{ maxWidth: 560, margin: '0 auto', width: '100%' }}>
+          <Button kind="quiet" size="small" onClick={onGoToSetup}>Change how often this runs</Button>
+        </div>
       )}
     </div>
   )
