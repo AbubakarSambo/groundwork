@@ -59,7 +59,7 @@ export const HOW: Record<'photo' | 'document' | 'confirmed' | 'commitment' | 'me
 export const WHAT_WOULD_MAKE_IT_PROVEN =
   'If you have something written for any of these, such as a message or a photo, add it. Then that line counts as proven.';
 
-/** At most this many lines: the card is read in the moment before finishing, on a phone. */
+/** At most this many lines: the card is read in the moment before finishing, on a phone. Commitments come first, and a card that leaves lines out says how many. */
 export const AT_MOST = 6;
 
 /* The mark is the reports' rule (reports/how-a-line-is-known.ts), so a line reads the same on both. */
@@ -84,18 +84,33 @@ export function asTheyReadIt(text: string): string {
   return /[.!?…]["'”’)]*$/.test(capital) ? capital : `${capital}.`;
 }
 
+/**
+ * WHEN NOT EVERY LINE FITS, SAY SO. The reviewer read a card that had dropped the commitment, the
+ * line that matters most, because it came seventh. Commitments now come first, and a card that
+ * leaves lines out says how many, in one plain sentence.
+ */
+export function theLinesLeftOut(count: number): string | null {
+  if (count <= 0) return null;
+  return count === 1
+    ? 'There is 1 more line in your record. You can read it in your record after you finish.'
+    : `There are ${count} more lines in your record. You can read them all in your record after you finish.`;
+}
+
 export function theEndCard(lines: readonly ALineForTheCard[]): EndCard | null {
-  const shown = (lines ?? [])
-    .filter((l) => !l.disputedAt && asTheyReadIt(l.text))
+  const all = (lines ?? []).filter((l) => !l.disputedAt && asTheyReadIt(l.text));
+  /* Commitments first, then the rest in the order they were said. */
+  const ordered = [...all.filter((l) => l.type === 'COMMITMENT'), ...all.filter((l) => l.type !== 'COMMITMENT')];
+  const shown = ordered
     .slice(0, AT_MOST)
     .map((l) => ({ says: asTheyReadIt(l.text), ...markFor(l), type: l.type }));
   if (!shown.length) return null;
+  const leftOut = theLinesLeftOut(ordered.length - shown.length);
   /* What would change a line: something written, for a line that is only their word or memory. A
      commitment is not proven by a document now; it is asked about next time. */
   const couldBeProven = shown.some((l) => l.mark === 'memory' || (l.mark === 'said' && l.type !== 'COMMITMENT'));
   return {
     inYourRecord: shown.map(({ says, how, mark }) => ({ says, how, mark })),
-    ...(couldBeProven ? { next: [WHAT_WOULD_MAKE_IT_PROVEN] } : {}),
+    ...(couldBeProven || leftOut ? { next: [...(leftOut ? [leftOut] : []), ...(couldBeProven ? [WHAT_WOULD_MAKE_IT_PROVEN] : [])] } : {}),
   };
 }
 

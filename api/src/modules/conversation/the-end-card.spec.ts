@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { TurnRole } from '@prisma/client';
-import { theEndCard, theCardStillStanding, HOW, WHAT_WOULD_MAKE_IT_PROVEN, AT_MOST } from './the-end-card';
+import { theEndCard, theCardStillStanding, theLinesLeftOut, HOW, WHAT_WOULD_MAKE_IT_PROVEN, AT_MOST } from './the-end-card';
 import { ConversationService } from './conversation.service';
 
 /**
@@ -95,15 +95,33 @@ describe('what is left out', () => {
     expect(theEndCard([{ type: 'OUTCOME', text: '   ' }])).toBeNull();
     expect(theEndCard([])).toBeNull();
   });
-  it(`no more than ${AT_MOST} lines`, () => {
+  it(`no more than ${AT_MOST} lines, and it says how many more there are`, () => {
     const many = Array.from({ length: 9 }, (_, i) => ({ type: 'OUTCOME', text: `Line number ${i} about the work` }));
-    expect(theEndCard(many)!.inYourRecord).toHaveLength(AT_MOST);
+    const card = theEndCard(many)!;
+    expect(card.inYourRecord).toHaveLength(AT_MOST);
+    expect(card.next![0]).toBe('There are 3 more lines in your record. You can read them all in your record after you finish.');
+  });
+
+  it('never drops the commitment: commitments come first', () => {
+    const many = [
+      ...Array.from({ length: 7 }, (_, i) => ({ type: 'PROGRESS', text: `Line number ${i} about the work` })),
+      { type: 'COMMITMENT', text: 'I will call Tobi on Monday about the scheduling' },
+    ];
+    const card = theEndCard(many)!;
+    expect(card.inYourRecord![0]).toEqual({ says: 'I will call Tobi on Monday about the scheduling.', how: HOW.commitment, mark: 'said' });
+    expect(card.inYourRecord).toHaveLength(AT_MOST);
+    expect(card.next![0]).toBe('There are 2 more lines in your record. You can read them all in your record after you finish.');
+  });
+
+  it('says nothing about lines left out when none are', () => {
+    const card = theEndCard([{ type: 'COMMITMENT', text: 'I will call Tobi on Monday' }])!;
+    expect(card.next).toBeUndefined();
   });
 });
 
 describe('the words a person reads', () => {
   it('are whole sentences, and say nothing about the person or how they were rated', () => {
-    const all = [...Object.values(HOW), WHAT_WOULD_MAKE_IT_PROVEN];
+    const all = [...Object.values(HOW), WHAT_WOULD_MAKE_IT_PROVEN, theLinesLeftOut(1)!, theLinesLeftOut(3)!];
     for (const s of all) {
       expect(s).toMatch(/^[A-Z].*\.$/);
       expect(s).not.toMatch(/rating|score|verifiab|specific|weak|strong|reliable/i);
@@ -152,7 +170,8 @@ describe('at the closing reply', () => {
     const service = aService(prisma, anthropic);
     service.readTheRecord = jest.fn(async () => ROWS.map((r) => ({ ...r })));
     const card = await service.theEndCardFor({ id: 'ci1', participantId: 'p1', groundId: 'g1' }, 'turn-9');
-    expect(card.inYourRecord[0]).toEqual({ says: 'Green Mart will buy in January.', how: HOW.photo, mark: 'proven' });
+    /* Commitments come first, so the Green Mart line is second. */
+    expect(card.inYourRecord[1]).toEqual({ says: 'Green Mart will buy in January.', how: HOW.photo, mark: 'proven' });
     const kept = prisma.conversationTurn.update.mock.calls[0][0].data.recordDraft;
     expect(kept[0]).toMatchObject({ recallBased: false, anchoredDocumentId: 'doc-1' });
   });
