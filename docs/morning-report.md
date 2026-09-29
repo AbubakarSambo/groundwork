@@ -31,6 +31,15 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Part 1: pattern names approved, and patterns switched on
+
+- **The names** (`5595c033`) live in one place, `api/src/modules/patterns/plain-pattern-names.ts`, and every served pattern reads its name from there. Hafsah's eight rewordings are in, and B5 is as written. `docs/pattern-names.md` is marked approved, and a test keeps the two word for word the same. E4 and F5 are in a list nothing that serves a pattern reads.
+- **Switched on** (`19cdf9b0`). Patterns were off by one constant in the code, `PATTERNS_ARE_SERVED`, and it is now on. No database row holds it, so nothing needs setting on a database.
+- **Two leaks found and fixed while proving it** (`fe3f2684`). The lead's "what to probe" list and the person's own coaching note printed the detector's own internal description, for example "Ownership claimed for work others delivered.", where the plain name should be. Both now use the plain name, and each has a test that fails on the old code.
+- **What the person reads first**, for example: "Others describe doing work they described as theirs." Then what happened, how often ("This came up in 3 of your check-ins, in sessions 1, 2 and 3."), a place to answer, and "You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it."
+- A guard test failed after the evening's Ask Groundwork privacy fix, which reads a target's owner only to pass it to the one rule. It is now listed with that reason (`7c1a74f9`).
+- **A live check** as the person, the lead and a colleague is running now.
+
 ### Part 4: migrations
 
 **Existing check-ins are no longer reopened by a migration** (decision 54, `b74c5fa7`).
