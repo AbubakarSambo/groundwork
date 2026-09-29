@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
-import { Section, FieldLabel, TextArea, Select, Button, Note, Tag } from '@/components/gw/ui'
+import { Section, Panel, Stack, TextArea, Select, Button, Note, Tag } from '@/components/gw/ui'
 
 /**
  * "INVITE PEOPLE" (A4 people.txt): one per line, a name and an email, or a list from a spreadsheet,
@@ -22,7 +22,11 @@ import { Section, FieldLabel, TextArea, Select, Button, Note, Tag } from '@/comp
  * both exist.
  *
  * REBUILT FROM THE SHARED PARTS (item 11: the role choice, "Send their invitations" and "Upload a
- * list" sit on one line under the text box, which is the standard 16px `TextArea`).
+ * list" sit on one line under the text box, which is the standard 16px `TextArea`). The sentence,
+ * the text box, the role line and the sentence under it all sit inside one white `Panel`, 22px
+ * inside (item 2 - a picture check found them loose on the page, the sentence bold, and the
+ * placeholder bold grey, which happened because the text box used to be nested INSIDE the bold
+ * `FieldLabel`, inheriting its weight; the label is now a plain, regular-weight sentence beside it).
  */
 interface PastedRow { email: string; result: string }
 interface PasteAnswer { preview: boolean; seatsLeft: number | null; rows: PastedRow[]; summary: string }
@@ -82,44 +86,48 @@ export function InvitePeople() {
 
   return (
     <Section heading="Invite people">
-      <FieldLabel htmlFor="invite-list">
-        One per line: a name and an email. Or paste a list from a spreadsheet.
-        <TextArea
-          id="invite-list"
-          rows={4}
-          value={pasted}
-          onChange={(e) => { setPasted(e.target.value); setAnswer(null) }}
-          placeholder={'Faith Kerubo, faith@yourcompany.com\nJoseph Kiprono, joseph@yourcompany.com'}
-        />
-      </FieldLabel>
-      <div className="gwui-invite-actions">
-        <label className="gwui-inline-label">
-          Role{' '}
-          <Select value={role} onChange={(e) => { setRole(e.target.value); setAnswer(null) }} aria-label="Role" style={{ width: 'auto' }}>
-            {ROLES.map(([v, w]) => <option key={v} value={v}>{w}</option>)}
-          </Select>
-        </label>
-        <Button disabled={!pasted.trim() || check.isPending || send.isPending} onClick={() => check.mutate()}>
-          {check.isPending || send.isPending ? 'Sending…' : 'Send their invitations'}
-        </Button>
-        <Button kind="quiet" onClick={() => file.current?.click()}>Upload a list</Button>
-        <input
-          ref={file}
-          type="file"
-          accept=".csv,.txt,text/csv,text/plain"
-          hidden
-          aria-label="Upload a list"
-          onChange={async (e) => {
-            const f = e.target.files?.[0]
-            if (!f) return
-            const text = await f.text()
-            setPasted((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text))
-            setAnswer(null)
-            e.target.value = ''
-          }}
-        />
-      </div>
-      <Note>They’ll get an email with a link to set themselves up.</Note>
+      <Panel>
+        <Stack gap={10}>
+          <label htmlFor="invite-list" className="gwui-panel-text" style={{ display: 'block' }}>
+            One per line: a name and an email. Or paste a list from a spreadsheet.
+          </label>
+          <TextArea
+            id="invite-list"
+            rows={4}
+            value={pasted}
+            onChange={(e) => { setPasted(e.target.value); setAnswer(null) }}
+            placeholder={'Faith Kerubo, faith@yourcompany.com\nJoseph Kiprono, joseph@yourcompany.com'}
+          />
+          <div className="gwui-invite-actions">
+            <label className="gwui-inline-label">
+              Role{' '}
+              <Select value={role} onChange={(e) => { setRole(e.target.value); setAnswer(null) }} aria-label="Role" style={{ width: 'auto' }}>
+                {ROLES.map(([v, w]) => <option key={v} value={v}>{w}</option>)}
+              </Select>
+            </label>
+            <Button disabled={!pasted.trim() || check.isPending || send.isPending} onClick={() => check.mutate()}>
+              {check.isPending || send.isPending ? 'Sending…' : 'Send their invitations'}
+            </Button>
+            <Button kind="quiet" onClick={() => file.current?.click()}>Upload a list</Button>
+            <input
+              ref={file}
+              type="file"
+              accept=".csv,.txt,text/csv,text/plain"
+              hidden
+              aria-label="Upload a list"
+              onChange={async (e) => {
+                const f = e.target.files?.[0]
+                if (!f) return
+                const text = await f.text()
+                setPasted((prev) => (prev.trim() ? `${prev.trim()}\n${text}` : text))
+                setAnswer(null)
+                e.target.value = ''
+              }}
+            />
+          </div>
+          <Note>They’ll get an email with a link to set themselves up.</Note>
+        </Stack>
+      </Panel>
 
       {answer && (
         <div className="gwui-invite-answer">

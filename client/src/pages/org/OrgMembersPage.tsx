@@ -11,7 +11,7 @@ import { WaitingToBeLetIn } from './WaitingToBeLetIn'
 import { EveryoneHere } from './EveryoneHere'
 import { InvitePeople } from './InvitePeople'
 import { WhoCanOpenACheckIn } from './WhoCanOpenACheckIn'
-import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Note, Stack } from '@/components/gw/ui'
+import { Page, PageTitle, EdgeList, EdgeRow, Button, Section, Panel, Note, Stack } from '@/components/gw/ui'
 
 /**
  * THE PEOPLE PAGE (U.4, A4 people.txt), as an admin reads it, in the prototype's order:
@@ -176,16 +176,20 @@ export function OrgMembersPage() {
 
       <Section heading="Help your team get started">
         <div className="gwui-two-up">
-          <Stack gap={10}>
-            <p className="gwui-panel-text"><b>Send your team the guide</b></p>
-            <p className="gwui-panel-text-muted">How a check-in works, what happens to what people write, and what you can see as their admin.</p>
-            <Button kind="secondary" wide onClick={() => navigate('/org/guide')}>Send the guide</Button>
-          </Stack>
-          <Stack gap={10}>
-            <p className="gwui-panel-text"><b>Put your whole team on</b></p>
-            <p className="gwui-panel-text-muted">{`Everyone at ${orgName} on one plan, so nobody waits for a seat.`}</p>
-            <Button kind="secondary" wide onClick={() => navigate('/billing')}>See the plans</Button>
-          </Stack>
+          <Panel>
+            <Stack gap={10}>
+              <p className="gwui-panel-text"><b>Send your team the guide</b></p>
+              <p className="gwui-panel-text-muted">How a check-in works, what happens to what people write, and what you can see as their admin.</p>
+              <Button kind="secondary" wide onClick={() => navigate('/org/guide')}>Send the guide</Button>
+            </Stack>
+          </Panel>
+          <Panel>
+            <Stack gap={10}>
+              <p className="gwui-panel-text"><b>Put your whole team on</b></p>
+              <p className="gwui-panel-text-muted">{`Everyone at ${orgName} on one plan, so nobody waits for a seat.`}</p>
+              <Button kind="secondary" wide onClick={() => navigate('/billing')}>See the plans</Button>
+            </Stack>
+          </Panel>
         </div>
       </Section>
     </Page>

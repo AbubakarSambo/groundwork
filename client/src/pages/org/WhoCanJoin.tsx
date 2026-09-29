@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { apiClient } from '@/api/client'
-import { Section, Stack, SwitchRow, Note } from '@/components/gw/ui'
+import { Section, Panel, Stack, SwitchRow, Note } from '@/components/gw/ui'
 import { TheInviteLink } from './TheInviteLink'
 
 /**
@@ -15,7 +15,9 @@ import { TheInviteLink } from './TheInviteLink'
  * The organisation's own invite link ("Baridi's invite link") sits under it (TheInviteLink.tsx).
  *
  * REBUILT FROM THE SHARED PARTS: the heading is the standard `Section` (21px, above the panel, not
- * inside it - item 3), and the toggle row is `SwitchRow` (item 15).
+ * inside it - item 3), and the toggle row is `SwitchRow` (item 15). Both rows - the domain switch
+ * and the invite link - sit inside one white `Panel`, with a line between them, as the prototype
+ * draws it (a picture check found them loose on the page instead).
  */
 interface Joining { on: boolean; domain: string | null; whyNot: string | null }
 
@@ -36,21 +38,27 @@ export function WhoCanJoin({ orgName }: { orgName: string }) {
 
   return (
     <Section heading="Who can join">
-      <Stack gap={18}>
-        {data.domain ? (
-          <SwitchRow
-            title={`Anyone with an @${data.domain} email`}
-            detail={`They can join ${orgName} without an invitation, as “Takes part”. You can change their role after.`}
-            on={data.on}
-            onChange={() => set.mutate(!data.on)}
-            disabled={set.isPending}
-          />
-        ) : (
-          <Note>{data.whyNot}</Note>
-        )}
-        {problem && <Note tone="error">{problem}</Note>}
-        <TheInviteLink orgName={orgName} />
-      </Stack>
+      <Panel pad={false}>
+        <div className="gwui-panel-row">
+          {data.domain ? (
+            <Stack gap={10}>
+              <SwitchRow
+                title={`Anyone with an @${data.domain} email`}
+                detail={`They can join ${orgName} without an invitation, as “Takes part”. You can change their role after.`}
+                on={data.on}
+                onChange={() => set.mutate(!data.on)}
+                disabled={set.isPending}
+              />
+              {problem && <Note tone="error">{problem}</Note>}
+            </Stack>
+          ) : (
+            <Note>{data.whyNot}</Note>
+          )}
+        </div>
+        <div className="gwui-panel-row">
+          <TheInviteLink orgName={orgName} />
+        </div>
+      </Panel>
     </Section>
   )
 }
