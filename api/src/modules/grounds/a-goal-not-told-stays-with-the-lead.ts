@@ -75,13 +75,17 @@ export function aWeekHasPassedSinceNotTold(
  * THE LEAD'S OWN NUDGE, FOR A `forTheLead` ITEM ("Tell Tobi about taking over the scheduling. You
  * set this goal and have not told him yet."). Uses the person's name, never a pronoun.
  */
-export function theLeadIsNudgedToTell(personName: string, goalText: string): { decide: string; why: string } {
+/**
+ * `area` is the WORDED area (the-area-of-a-goal-is-worded-once.ts's `areaOfGoalOrFallback`), a
+ * plain noun phrase such as "the scheduling and the stock counts" or the fixed fallback "this part
+ * of the work" - never the raw goal text, which may still carry a number or a deadline.
+ */
+export function theLeadIsNudgedToTell(personName: string, area: string): { decide: string; why: string } {
   const name = (personName ?? 'them').trim() || 'them';
-  const area = theAreaOfAGoal(goalText ?? '').replace(/[.!?]+$/, '').trim();
-  const about = area ? area.charAt(0).toLowerCase() + area.slice(1) : 'this goal';
+  const about = (area ?? '').trim() || 'this part of the work';
   return {
-    decide: `Tell ${name} about ${about}.`,
-    why: `You set this goal and have not told ${name} yet.`,
+    decide: `Tell ${name} about the goal you set for ${about}.`,
+    why: `You have not told ${name} yet.`,
   };
 }
 
@@ -97,12 +101,12 @@ export function theConversationPointForTheLead(personName: string): string {
 
 /**
  * WHAT THE PERSON READS, ONCE A WEEK HAS PASSED WITHOUT BEING TOLD: that their lead has set a goal
- * about this work, and will talk it through with them. No number, no target wording - only the area.
+ * about this work, and will talk it through with them. No number, no target wording - only the
+ * worded area (see `theLeadIsNudgedToTell` above for what `area` is).
  */
-export function whatThePersonReadsAfterAWeek(leadName: string, goalText: string): string {
+export function whatThePersonReadsAfterAWeek(leadName: string, area: string): string {
   const lead = (leadName ?? 'Your lead').trim() || 'Your lead';
-  const area = theAreaOfAGoal(goalText ?? '').replace(/[.!?]+$/, '').trim();
-  const about = area ? area.charAt(0).toLowerCase() + area.slice(1) : 'this';
+  const about = (area ?? '').trim() || 'this part of the work';
   return `${lead} has set a goal about ${about}, and will talk it through with you.`;
 }
 

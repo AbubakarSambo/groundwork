@@ -198,11 +198,14 @@ describe('aWeekHasPassedSinceNotTold (decision 56, item 4)', () => {
 });
 
 describe('theLeadIsNudgedToTell (decision 56, item 1)', () => {
-  it('names the person, never a pronoun, and says the lead has not told them yet', () => {
-    const nudge = theLeadIsNudgedToTell('Tobi', 'Take over the scheduling');
-    expect(nudge.decide).toBe('Tell Tobi about take over the scheduling.');
-    expect(nudge.why).toBe('You set this goal and have not told Tobi yet.');
+  it('names the person, never a pronoun, and takes the worded area, never raw goal text', () => {
+    const nudge = theLeadIsNudgedToTell('Tobi', 'the scheduling and the stock counts');
+    expect(nudge.decide).toBe('Tell Tobi about the goal you set for the scheduling and the stock counts.');
+    expect(nudge.why).toBe('You have not told Tobi yet.');
     expect(nudge.decide).not.toMatch(/\bhim\b|\bher\b/i);
+  });
+  it('falls back to "this part of the work" when there is no area', () => {
+    expect(theLeadIsNudgedToTell('Tobi', '').decide).toBe('Tell Tobi about the goal you set for this part of the work.');
   });
 });
 
@@ -215,9 +218,14 @@ describe('theConversationPointForTheLead (decision 56, item 3)', () => {
 });
 
 describe('whatThePersonReadsAfterAWeek (decision 56, item 4)', () => {
-  it('says the lead has set a goal about the area of work, with no number', () => {
-    expect(whatThePersonReadsAfterAWeek('Wanjiru', 'Hit 40 stock counts by Friday')).toBe(
-      'Wanjiru has set a goal about hit stock counts, and will talk it through with you.',
+  it('says the lead has set a goal about the worded area, with no number', () => {
+    expect(whatThePersonReadsAfterAWeek('Wanjiru', 'the scheduling and the stock counts')).toBe(
+      'Wanjiru has set a goal about the scheduling and the stock counts, and will talk it through with you.',
+    );
+  });
+  it('falls back to "this part of the work" when there is no area', () => {
+    expect(whatThePersonReadsAfterAWeek('Wanjiru', '')).toBe(
+      'Wanjiru has set a goal about this part of the work, and will talk it through with you.',
     );
   });
 });
@@ -248,17 +256,20 @@ describe('a goal not told for a week (decision 56, item 4), on the Context page'
       groundParticipant: { findFirst: async () => null, findMany: async () => [] },
       organization: { findUnique: async () => ({ subscriptionPlan: 'FREE', subscriptionStatus: 'ACTIVE', freeExtensionUsed: false }) },
       leadContextNote: { findMany: async () => [] },
+      /* The worded area, already kept - see the-area-of-a-goal-is-worded-once.ts. */
+      wordedLine: { findUnique: jest.fn(async () => ({ text: 'the scheduling and the stock counts' })) },
     };
     return new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { respond: async () => '' } as any)
       .get('g1', 'org1', userId) as Promise<any>;
   }
 
-  it('Tobi reads that Wanjiru has set a goal about the work, and will talk it through with him - never the raw sentence, never a number', async () => {
+  it('Tobi reads the worded area, plainly, never the raw sentence, never a number', async () => {
     const got = await text(contextForWithOldGoal(TOBI));
-    expect(got).toMatch(/Wanjiru has set a goal about .*and will talk it through with you/i);
+    expect(got).toContain('Wanjiru has set a goal about the scheduling and the stock counts, and will talk it through with you.');
     expect(got).not.toContain(AN_OLD_GOAL);
     expect(got).not.toContain(LEADS_NOTE);
     expect(got).not.toMatch(/\b40\b/);
+    expect(got).not.toMatch(/\bhit\b/i);
   });
 
   it('Wanjiru, the lead, still reads the raw goal, in full', async () => {
