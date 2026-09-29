@@ -23,6 +23,25 @@ The safety check refused saving these rules to Claude's own memory folder, which
 
 ---
 
+## 29 SEPTEMBER, NIGHT: HAFSAH'S SECOND SET OF ANSWERS
+
+All recorded in `docs/decisions-merged.md` (`2dfec86f`):
+- **Decision 52:** the pattern names, approved with eight reworded.
+- **Decision 53:** the 29 provisional decisions confirmed, with four changes.
+- **Decision 54:** existing check-ins are not reopened by a migration.
+- **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
+
+### The merged decisions checked again against 31 to 54: new disagreements
+
+I changed nothing else. These are for Hafsah:
+
+1. **Decision 47 against decision 53, the admin's sentence.** Decision 47 says an admin who cannot see everything reads "Nothing you have access to needs you this week." Decision 53 says an admin who cannot see a target reads only "has checked in". An admin who cannot see a target is exactly someone who cannot see everything, so both sentences fit the same case. I will build 53's "has checked in" beside the person's name. I will use 47's sentence only where a page sums up the whole check-in for that admin. Please say if that is wrong.
+2. **Decision 43 against decision 53, counts in a suggestion.** Decision 43 lists "the suggestion with its counts" among the forms a lead may get. Decision 53 says the manager gets a plain line with no count behind it. I will follow 53, the newer and more private one.
+3. **Decision 33 against decision 53, the thresholds.** Decision 33 says the thresholds for verdicts are decided later, when that work starts. Decision 53 says to build week 10 now. Week 10 needs a threshold to reach a suggestion at all. Until Hafsah sets one, I will build week 10 so that it cannot reach a suggestion without a threshold being set, and leave the threshold empty.
+4. **Decision 4's new exception against decision 5, admins in an evaluation check-in.** Decision 4 now says colleagues' exact words in an evaluation check-in go only to the manager. Decision 5 says admins see every board and report, including what people said. It does not say whether an admin reading an evaluation check-in sees those words. I will treat an admin there like the manager, so they may read them, because decision 5 already keeps performance plans from admins without access. Please say if they should not.
+5. **Decision 45 against the new working rules, the number of re-runs.** Decision 45 says the goodbye's commitment is checked with two re-runs. The working rules of this evening say one re-run, and a second only for a prompt or judgement change. The record reader is a model step, so I will run it twice, as 45 says.
+6. **Decision 42 is out of date.** It says decision 38 stands "until Hafsah decides", and decision 43 is that decision. Nothing needs building. The line is just stale.
+
 ## 29 SEPTEMBER, EVENING: HAFSAH'S ANSWERS, AND WHAT FOLLOWS
 
 Hafsah answered five of the questions. They are recorded as decisions 44 to 49 in `docs/decisions-merged.md`:
