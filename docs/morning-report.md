@@ -98,7 +98,13 @@ My check script counted any match with the lead's private description as a leak.
 
 The builder's work on it keeps one real fix (`233041e1`). The coaching note about a person was given the lead's private description as that person's role. It was harmless only by accident, and it is now never given it. The builder had also added a read-side net that took out any sentence sharing six words with the description. That would have removed Tobi's legitimately shared sentences, so it is being narrowed to the same rule as the script.
 
-**Queued, from the same builder:** an admin reading the team report gets the judgement, and its "role" line is built from the lead's private description. That goes against the clarification of decision 5. The board already gets this right.
+**The read-side net is narrowed** (`590fbe20`). A sentence is taken out for a reader who is not the lead only when its run of the lead's private words appears nowhere that reader may already read. That means what they were told, the check-in's aims and targets, and what people said in their check-ins. So Tobi keeps his shared sentence, and a truly private phrase such as "struggles to take ownership without being chased" is still taken out.
+
+**An admin no longer reads the lead's private description inside the judgement** (`71781c87`, decision 5 as clarified). The judgement is written with the lead's description of each person, for the lead. An admin who does not run the check-in still reads the judgement, but without any sentence that carries that description. The lead reads all of it, and a participant never gets the judgement at all.
+
+**A test that failed under load now checks order, not the clock** (`c187ce59`). It proved the two reads of the lead's brief run side by side by timing them, and it failed when the machine was busy. It now checks that the second read starts before the first one finishes. It still fails if they run one after the other.
+
+Tests: 608 files and 5,537 tests pass in reports, conversation and check-ins.
 
 
 ### Part 2A: sharing when the lead has left, the admin's line, and the decision field
