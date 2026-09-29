@@ -64,6 +64,7 @@ import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-sessi
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
@@ -259,9 +260,11 @@ export class BoardService {
     const viewer = requestingUserId
       ? await this.prisma.user.findUnique({
         where: { id: requestingUserId },
-        select: { role: true, organizationId: true },
+        select: { role: true, organizationId: true, awaitingOrgApproval: true },
       })
       : null;
+    /* Nobody held for a seat reads the board, its report's story or its names (request 49). */
+    if ((viewer as any)?.awaitingOrgApproval === true) throw new ForbiddenException(CANNOT_OPEN_THE_BOARD_YET);
     const adminHere = adminsThisOrg(viewer, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       throw new ForbiddenException('You are not a participant in this check-in');

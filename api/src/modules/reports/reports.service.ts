@@ -150,6 +150,7 @@ import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
 import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, whoIsExpected } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
@@ -2633,6 +2634,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
    * resolved names, what the record rests on, what it holds, the probe list. board.service.ts asks
    * the right question; this is that question, asked once for all four.
    */
+  /**
+   * NOBODY HELD FOR A SEAT READS A REPORT (request 49). Asked before anything about the check-in is
+   * looked up, so the refusal says nothing about whether this check-in exists. A lookup that fails
+   * refuses too: the more private answer when the fact cannot be read.
+   */
+  private async refuseSomeoneNotYetLetIn(requestingUserId: string): Promise<void> {
+    const find = (this.prisma as any).user?.findUnique;
+    if (!find || !requestingUserId) return;
+    const me = await Promise.resolve(find.call((this.prisma as any).user, { where: { id: requestingUserId }, select: { awaitingOrgApproval: true } }))
+      .catch(() => ({ awaitingOrgApproval: true }));
+    if (me?.awaitingOrgApproval === true) throw new ForbiddenException(CANNOT_READ_THE_REPORT_YET);
+  }
+
   /** The one rule (grounds/who-may-read-this-check-in.ts): an admin of THIS organisation, by role, re-read from the database. */
   private async isAnAdminOf(requestingUserId: string, requestingUserOrgId: string | undefined, groundOrganizationId: string): Promise<boolean> {
     if (!requestingUserOrgId || groundOrganizationId !== requestingUserOrgId) return false;
@@ -2642,6 +2656,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
   /** Where things stand against what success was said to be, through the same last read. */
   async whereAgainstSuccess(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const served = await this.whereAgainstSuccessAsBuilt(groundId, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
@@ -3599,6 +3614,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
   /** The rounds, through the same last read as every other report read. */
   async rounds(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const served = await this.roundsAsBuilt(groundId, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
@@ -5680,12 +5696,14 @@ happened, and what is in the way.`;
    * for this reader. See whatTheLeadHasNotShared.
    */
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
+    await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const served = await this.getAsBuilt(groundId, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
 
   /** The same for the report of one session. */
   async sessionReport(groundId: string, sessionNumber: number, requestingUserId: string, requestingUserOrgId?: string) {
+    await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const served = await this.sessionReportAsBuilt(groundId, sessionNumber, requestingUserId, requestingUserOrgId);
     return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, served);
   }
@@ -6132,6 +6150,7 @@ happened, and what is in the way.`;
    * whether the other side has also revealed.
    */
   async activate(groundId: string, requestingUserId: string) {
+    await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: true, report: true },
@@ -6160,6 +6179,7 @@ happened, and what is in the way.`;
 
   /** Guard-checked version for the controller - verifies caller is a party first. */
   async getActivationStatusForUser(groundId: string, requestingUserId: string) {
+    await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: true },
