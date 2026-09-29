@@ -52,9 +52,13 @@ describe('destinations', () => {
     expect(chat).toMatch(/<label htmlFor="doc-upload"/)
   })
   it('no permanently disabled primary control remains on the ending fold', () => {
+    /* REPOINTED (People and setup rebuild, 29 Sept): "Ending it" moved out of
+       GroundAdminPage.tsx's settings tab into CheckInPeopleAndSetup.tsx. */
     const admin = read('grounds/GroundAdminPage.tsx')
+    const page = read('grounds/CheckInPeopleAndSetup.tsx')
     expect(admin).not.toMatch(/<button disabled[^>]*>\s*Close this check-in/)
-    expect(admin).toContain('Ask us to archive this check-in')
+    expect(page).not.toMatch(/<button disabled[^>]*>\s*Close this check-in/)
+    expect(page).toContain('Ask us to archive this check-in')
   })
   it('the destination a visitor arrived with is kept for the magic link', () => {
     expect(read('auth/AuthPage.tsx')).toMatch(/sessionStorage\.setItem\('gw_next', nextPath\)/)
