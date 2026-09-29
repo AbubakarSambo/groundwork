@@ -6109,3 +6109,61 @@ Between-check-ins has nothing built.
 3. `c5721ad0` - A, step 2: "Who is in this" moves to People and setup
 4. `b9244b1f` - A, step 3: the Check-in tab is the focused conversation, GroundChat retired from it
 5. `709bfbc4` - B (partial): Bubble and QuickReplies extracted to ui parts, used by ChatPage
+
+## Round 5: Between check-ins and Done rebuilt; Composer/card frame finished; the admin header fixed
+
+**H1 — DONE.** "Your check-in" only shows in the header when the reader is a party
+(`viewerIsAParty`) - an admin who is not the lead does not answer the check-in, so it no longer
+offers her a button to one. The blue admin banner and the separate small line that both said "you
+are an admin here, not its lead" are gone, replaced by one plain sentence, the prototype's own
+(read-only-view.txt, A4): "You can read this check-in's board and reports. {lead's name} runs it." -
+drawn through new `components/gw/ui/Note.tsx` (prototype: `.note`, plain muted text in the page's
+own flow, never a coloured box - a correction from the earlier blue-box treatment).
+`what-an-admin-here-can-see.ts` is now unused (left in place; not a component the orphan guard
+scans). New test: `Note.spec.tsx`. One existing test retargeted
+(`nothing-pushes-the-page-sideways.spec.ts`, which looked for the literal old phrase).
+
+**B — FINISHED.** `Composer` grew the attach menu (`plusMenu`/`plusOpen`/`plusDisabled` - the
+caller's own content, a photo or a document, paste text, private by default) and `sendLabel`/
+`plusLabel` for a page's own exact wording. `ConversationCard` grew a `banners` slot (fixed, between
+the header and the scrolling body, for the clarification and session-open-failure notices) and
+`onBack` (a callback, for when leaving must confirm first). `ChatPage.tsx`'s whole outer frame - the
+back link, the white bordered card, the header/banners/messages/composer stack - now renders through
+these two parts; nothing between the slots was rewritten, only moved into them. One real wording
+change: the field's placeholder is now the prototype's own "Type, or hold to speak", not "Type your
+answer". Four source-scanning specs retargeted to check the same guarantees where they now live (in
+the shared parts, not ChatPage.tsx's own source) - each documents its reasoning in the diff. Neither
+file added to REBUILT_PAGES: ChatPage.tsx still has inline styles outside what moved (the end card,
+the document-upload sheet).
+
+**E1 — DONE.** New `components/gw/BetweenCheckIns.tsx` replaces GroundChat's bare Composer (flush
+against the sidebar, no page margin, none of the rest of the screen) with the prototype's own page
+(between-check-ins.jpg/.txt): the check-in's name, "No check-in open right now", "Your next check-in
+opens `<when>`. Anything I can help with in the meantime?" (`whenTheNextOneOpens()`, already shared
+with the end card and the Done page, so the sentence is identical everywhere), the four chips, inside
+the page's own column like every other page. Three chips ask Ask Groundwork that exact question via
+`useAskStore().showWith()` - no context needs wiring by hand, since `AskGroundwork.tsx` already reads
+which check-in "about" means off the page's own address, the same as the board's own Ask bar. The
+fourth reveals the private note box (GroundChat's `Composer`, kept exactly) instead of asking
+anything. New test: `BetweenCheckIns.spec.tsx` (6 tests).
+
+**E2 — DONE.** `TheDonePage.tsx` (done.txt) now draws through `PageTitle`, `Section`, `Panel`, and
+ui's own `Button`/`Tag` (API-compatible with kit.tsx's - only the import path changed).
+`StageLadder` stays from kit.tsx (no `ui/StageLadder` yet). One real fix along the way: "Two reports
+come from this" is only shown when there really are two, restructured as two render paths rather
+than an unconditional heading with conditional content, since `Section` always draws its heading.
+`Section` itself gained `aria-labelledby` (pointing at its own heading via `useId`), making every
+section a named landmark - a genuine improvement to the shared part, not only this page. Not added to
+REBUILT_PAGES: several inline spacing/colour values remain (the report-card rows, the five-things
+list).
+
+Full client suite after every item this round: 3458-3465/3459-3466 depending on the step (the one
+recurring failure, `src/lib/copy-does-not-sound-like-yoda.spec.ts`, is the pre-existing, unrelated
+engine-prompt count from the merge, confirmed reproducing before any of this round's changes too).
+Every API spec that reads the touched client files by source passes.
+
+**Commits this round (local only, `wip/prototype-ui`, not pushed):**
+1. `ab81cb74` - H1: "Your check-in" only for a party; one Note instead of two admin notices
+2. `fc60c1bb` - B, finished: Composer and the card frame, used by ChatPage
+3. `73c0db55` - E1: Between check-ins, from the parts, inside the page column
+4. `de08be91` - E2: The Done page rebuilt from the ui parts
