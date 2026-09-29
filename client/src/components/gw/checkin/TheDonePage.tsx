@@ -1,4 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { StageLadder } from '@/components/gw/kit'
 import { PageTitle } from '@/components/gw/ui/PageTitle'
 import { Section } from '@/components/gw/ui/Section'
@@ -7,6 +9,7 @@ import { Button } from '@/components/gw/ui/Button'
 import { Tag } from '@/components/gw/ui/Tag'
 import { conversationApi } from '@/api/conversation'
 import { groundsApi } from '@/api/grounds'
+import { reportsApi } from '@/api/reports'
 import { THE_FIVE, wasItThere } from '@/components/gw/TheFiveThingsThatMakeItCheckable'
 import { WhoIsStillOut } from '@/components/gw/WhoIsStillOut'
 import { whenTheNextOneOpens, whoElseAnswers } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -44,12 +47,14 @@ const SHOW_THE_COUNT = false
 
 /** The two report cards - see the comment above where this is called for why the heading above
     it is conditional while this panel is not. */
-function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, teamReportReleased }: {
+function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, teamReportReleased, onCorrect, correcting }: {
   checkInId: string
   groundId: string
   sessionNumber: number
   aTeamReport: boolean
   teamReportReleased: boolean
+  onCorrect: () => void
+  correcting: boolean
 }) {
   return (
     <Panel pad={false}>
@@ -62,6 +67,13 @@ function OwnAndTeamReports({ checkInId, groundId, sessionNumber, aTeamReport, te
         <div style={{ marginTop: 10 }}>
           <Button kind="secondary" wide to={`/checkin/${checkInId}/report`}>Read yours</Button>
         </div>
+        <button
+          onClick={onCorrect}
+          disabled={correcting}
+          style={{ background: 'none', border: 'none', padding: 0, marginTop: 10, color: 'var(--gw-navy)', fontSize: 12.5, cursor: correcting ? 'wait' : 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+        >
+          {correcting ? 'Opening…' : 'Something here isn’t right'}
+        </button>
       </div>
       {aTeamReport && (
         <div style={{ padding: '14px 16px', borderTop: '1px solid var(--gw-border)' }}>
@@ -123,6 +135,20 @@ export function TheDonePage({
     refetchInterval: (q: any) => (q.state.data?.artifact?.whatToCarry ? false : 5000),
   })
 
+  /**
+   * ROUND 6, ITEM 4: "SOMETHING HERE ISN'T RIGHT", KEPT REACHABLE FROM THE DONE PAGE.
+   *
+   * The old "already complete" view this page replaces had it (TheCheckInYouJustFinished.tsx's
+   * own correction link); the Done page itself never did. Same call the report page, the ground
+   * chat and TheCheckInYouJustFinished.tsx all make - one way to open a correction, not a second.
+   */
+  const navigate = useNavigate()
+  const correct = useMutation({
+    mutationFn: () => reportsApi.startSelfCorrection(groundId, sessionNumber),
+    onSuccess: (res: { checkInId: string }) => navigate(`/checkin/${res.checkInId}`),
+    onError: () => toast.error('Could not open a correction. Try again.'),
+  })
+
   const g: any = ground.data
   const leadName = whoElseAnswers(g)
   const next = whenTheNextOneOpens(mine.data?.checkIns, checkInId)
@@ -169,10 +195,10 @@ export function TheDonePage({
         */}
       {aTeamReport ? (
         <Section heading="Two reports come from this">
-          <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport teamReportReleased={teamReportReleased} />
+          <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
         </Section>
       ) : (
-        <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport={false} teamReportReleased={teamReportReleased} />
+        <OwnAndTeamReports checkInId={checkInId} groundId={groundId} sessionNumber={sessionNumber} aTeamReport={false} teamReportReleased={teamReportReleased} onCorrect={() => correct.mutate()} correcting={correct.isPending} />
       )}
 
       {changed.length > 0 && (
