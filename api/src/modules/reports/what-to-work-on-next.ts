@@ -1,5 +1,6 @@
 import { runsTheirOwnBusiness } from '../board/function-detection';
 import { BAD_FAITH_CODES, POSITIVE_CODES, ALIGNMENT_FEED_ONLY_CODES } from '../patterns/pattern-library';
+import { plainNameOf } from '../patterns/plain-pattern-names';
 import { roleMapFor, MIN_COACHING_CONFIDENCE, type RoleMap } from '../board/role-maps';
 import { WHAT_IT_MEANS, WHO_CAN_MOVE_IT, type Kind } from '../board/what-kind-of-thing-is-in-the-way';
 
@@ -344,17 +345,20 @@ export function whatToWorkOnNext(i: CoachingInputs): WhatToWorkOnNext {
    * three-period rule and is not put to somebody as a thing they keep doing.
    */
   const recurring = i.patterns
-    .filter((p) => p.periodsObserved >= 2 && !ALIGNMENT_FEED_ONLY_CODES.has(p.code) && LIBRARY.has(p.code))
+    .filter((p) => p.periodsObserved >= 2 && !ALIGNMENT_FEED_ONLY_CODES.has(p.code) && LIBRARY.has(p.code) && plainNameOf(p.code))
     .sort((a, b) => b.periodsObserved - a.periodsObserved)[0];
   const entry = recurring ? LIBRARY.get(recurring.code)! : null;
+  /* The plain name (decision 52), never `entry.signal`, which is the detector's own terse
+     description written for whoever reads the library, not for the person it is about. */
+  const plain = recurring ? plainNameOf(recurring.code) : null;
 
-  if (entry && recurring) {
+  if (entry && recurring && plain) {
     if (entry.probe?.trim()) actions.push(entry.probe.trim());
     return {
       aboutYou,
       /* Says where it comes from: the same shape came up in N of their own sessions. "Read across 3 sessions"
          read as a verdict handed down rather than a count of their own record (20 Sep 2026). */
-      showingUp: `${entry.signal} This came up in ${recurring.periodsObserved} of your sessions, not once.`,
+      showingUp: `${plain.name}. This came up in ${recurring.periodsObserved} of your sessions, not once.`,
       /* The map is CONTEXT for how this is said, not a sentence in it. See the service, which hands
          the map to the wording pass as context; the engine's claim is the stage and the recurrence. */
       whyItMatters: `This is ${where} of ${about}. Something read once is an incident. Read across sessions it becomes what people expect of you, and it is far easier to change now than to argue with later.`,

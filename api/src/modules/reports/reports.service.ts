@@ -139,6 +139,7 @@ import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCH
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternRow } from '../patterns/who-reads-a-pattern';
+import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
 import { whyNot } from './why-it-is-not-happening';
@@ -5531,6 +5532,15 @@ happened, and what is in the way.`;
           role: p.roleAsDescribed ?? null,
           answeredThisSession: answered,
           /* What the lead may read of this person's, and nothing sooner. See patterns/who-reads-a-pattern. */
+          /*
+           * THE PLAIN NAME, NEVER THE LIBRARY'S OWN SIGNAL. `patternCatalogue().get(d.code)?.signal`
+           * is the detector's internal description ("Ownership claimed for work others delivered."),
+           * written for whoever reads the detector, not for a lead. This printed straight onto the
+           * probe list until decision 52: the same rule that keeps an internal name off a board kept
+           * it off this list, so it reads the plain name from plain-pattern-names.ts, the one place
+           * every other reader's pattern is named from. `patternRowsThisReaderMayRead` already
+           * guarantees a plain name exists for every row it returns.
+           */
           patterns: patternRowsThisReaderMayRead(held.detections, { participantId: null, runsIt: true })
             .filter((d) => d.participantId === p.id)
             .map((d) => {
@@ -5538,7 +5548,7 @@ happened, and what is in the way.`;
               return {
                 code: d.code,
                 periodsObserved: periodsSeen(d),
-                signal: lib?.signal ?? d.code,
+                signal: plainPatternNameOf(d.code)?.name ?? lib?.signal ?? d.code,
                 probe: lib?.probe,
               };
             })
