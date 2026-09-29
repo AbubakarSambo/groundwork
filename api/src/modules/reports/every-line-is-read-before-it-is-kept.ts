@@ -325,6 +325,7 @@ Each sentence is written the way the report is stored. People in it are labels: 
 - Never write he, she, him, her, they, their or them about a person. Say the label again instead.
 - Every verb has its subject in front of it. Not "Participant A expects the initiator to lead, but has not said so": write "but Participant A has not said so".
 - Keep everything inside quotation marks exactly as it is, marks included. Those are a person's own words. Never put quotation marks round anything that is not already inside them.
+- Where a sentence calls something "a pattern of" a person, or "your pattern", that is a label, not a finding. Say what happened and how often instead, keeping every fact, count and label the sentence already has. "You have a pattern of replacing a decision with a conversation about the decision" becomes something like "Three times, a decision became a conversation about the decision."
 
 For each id, write ONE plain, full sentence in everyday English that says the same thing. Add no fact, name, number or date that is not in it already. Start with a capital letter. Do not join pieces with a colon. Do not cut a word short.`;
 

@@ -46,6 +46,11 @@ describe('a line a person can read: the same tests as the scorer', () => {
     ['a verb that disagrees with the reader', 'You also believes the credit committee is the only delay.'],
     ['a verb that disagrees with the reader', 'You expect Tobi Adewale to take on the renewals, but has not communicated this.'],
     ['a verb that disagrees with the reader', 'You expect Tobi Adewale to take on the renewals, and is waiting for Tobi to do something about it.'],
+    /* Decision 11: a pattern is never a label on the reader or a named person. See decision 55. */
+    ['a pattern used as a label on a person, rather than saying what happened', 'You have a pattern of replacing a decision with a conversation about the decision.'],
+    ['a pattern used as a label on a person, rather than saying what happened', 'The record shows a pattern of you holding on to work that should have moved.'],
+    ['a pattern used as a label on a person, rather than saying what happened', 'Tobi has a pattern of saying yes in the room and no afterwards.'],
+    ['a pattern used as a label on a person, rather than saying what happened', 'This is your pattern, and it is worth naming.'],
   ])('catches %s', (what, line) => {
     expect(caught(line)).toContain(what);
   });

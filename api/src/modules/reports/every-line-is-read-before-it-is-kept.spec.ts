@@ -59,6 +59,16 @@ describe('every line is read, as each person reads it, before the report is kept
     expect(served(out.report, READERS[0]).findings[0].text).toBe("Nathan Owusu says Nathan's goal is to exceed the targets Nathan is given.");
   });
 
+  it('a pattern used as a label on the reader is rewritten to say what happened, not who they are (decision 11)', async () => {
+    const report = { sharedPicture: 'Both people have answered. Participant A has a pattern of replacing a decision with a conversation about the decision.' };
+    const out = await run(report, () => 'Three times, a decision has become a conversation about the decision.');
+    expect(out.asked[0].sentence).toBe('Participant A has a pattern of replacing a decision with a conversation about the decision.');
+    expect(out.asked[0].problems).toEqual(['a pattern used as a label on a person, rather than saying what happened']);
+    expect(out.done[0].outcome).toBe('rewritten');
+    expect(served(out.report, READERS[1]).sharedPicture).toBe('Both people have answered. Three times, a decision has become a conversation about the decision.');
+    expect(served(out.report, READERS[1]).sharedPicture).not.toMatch(/\bpattern\b/);
+  });
+
   it('a lower-case start is rewritten once, and the rewrite is kept only if it reads clean', async () => {
     /* A lower-case start is a stray full stop, so the sentence before it is part of what is rewritten. */
     const report = { sharedPicture: 'Both people have answered. The initiator counted 25 open applications. the officers\' own numbers add up to 64.' };
