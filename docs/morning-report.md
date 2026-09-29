@@ -64,7 +64,11 @@ Now only one warm-up runs at a time for each check-in and round. A trigger that 
 
 - In sales, every check-in warmed the board once, where it used to be twice.
 - The model hit its rate limit 14 times on this short run, and 2 calls failed after every retry. The day's full run-19 had 204.
-- **Quick checks** (a new read-only script, `api/journey/quick-checks.py`): none of the lead's private words reached anyone else in loans, and its report matches the database. Sales is checked when it finishes.
+- **Sales, finished:** each of its 12 check-ins warmed the board once, 4 per session for 4 people. Its report warmed 3 times, then once.
+- **The quick checks all pass on the whole proof run:**
+  - **Quotes:** 261 quotes served, and all 261 are word for word in the record.
+  - **The lead's private words:** none reached anyone else. This is a new read-only script, `api/journey/quick-checks.py`.
+  - **Reports against the database:** the loans report matches. The sales copy is older than the database, not different from it. The run took its copy at 21:24, and the round 3 report was finished and released at 21:26:46. The run's driver takes its last copy before the last report is done, and it should wait. That is a fault in the test driver, not in the product.
 
 **Request 76 is built** (`343cf214`, `46eff9f0`, `643a245a`, migration `20260929140000_the_kind_of_work`, applied to the local test database only). It still needs its one live try.
 - Each check-in stores its kind of work, one of the prototype's eleven, read from the lead's words at setup. The lead can change it.
