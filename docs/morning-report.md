@@ -195,6 +195,24 @@ Not tested live: an admin who only reads (the run creates none), and documents (
 
 Tests: 752 files and 6,907 tests pass in the parts touched.
 
+**The rest of what the live check found, fixed:**
+- **The lead's board no longer shows how a person's answers were rated** (`eac3b856`, decision 38). Only the person reads their own. Where nothing they said can be checked, the lead and an admin get the one allowed form: "Nothing checkable. Nothing Aisha Otieno has said so far can be checked by somebody else yet. A number, a date or a document for what moved would change that."
+- **Opening a session report no longer asks the model** (`5f9de1d2`). The sentence about each person is written at the warm-up, kept, and served as kept. The test meant to catch this had a hidden fault: it never really opened the session report. That is fixed, and the test now fails on the old code.
+- **The close on each door tells the truth** (`fde25a4f`).
+  - The web keeps the prototype's close.
+  - WhatsApp says "That's all for today. Reply "finish" to close this check-in, and your report will come here."
+  - The API says "That's all for today. Thank you for your answers. When this check-in is closed, they go into the report."
+- **A person's own row holds their own lines** (`0dfbfd66`). Femi read "Answered, and nothing specific enough to record came out of it" about a session where he gave seven lines. The row was looking up his lines under an empty name.
+- **Commitments say truly how they were settled** (`c6f26913`).
+  - Before: `Tobi Adewale: "I will continue to monitor client health closely." - said in session 1; by their own timing, "next"; somebody marked it done.`
+  - After: `In session 1, Tobi Adewale said, "I will continue to monitor client health closely." The time Tobi Adewale gave for it was "next". Tobi Adewale said later that it was done.`
+- **A promise not kept is now settled, and a promise is listed once** (`61eecc91`). The step that settles promises was given the person's answers without the questions. So "I haven't done anything further. He didn't reply." had nothing to be about. Each answer now goes with its question.
+- A WhatsApp test looked for the exact old line of code, and now looks for the new one (`c645570c`).
+
+**The whole API test suite passes at `c645570c`: 1,184 files and 10,986 tests.**
+
+**Run-19, the day's second full run, started at 17:37** on `c645570c`, in three parts. The two privacy items from the live check are being built alongside it. They filter what is served, so their tests prove them, not the run: a goal the lead has not told the person about, and a colleague's target said out loud.
+
 **Run-18 finished: all 24 scenarios, in 1 hour 42 minutes, with no errors.** It ran on the build of `7f806500`, before today's privacy work. The scorer says:
 - **Every problem count is 0, except 3 sentences that start in lower case** (579 at the baseline).
 - **Jargon** is down to 18 in Groundwork's turns (42 at the baseline, 24 on run-16) and 46 in reports and boards (511 at the baseline).
