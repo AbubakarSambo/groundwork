@@ -521,8 +521,58 @@ export class UsersService {
       return first != null && first < new Date(u.createdAt).getTime();
     };
 
+    /*
+     * SOMEBODY ON A CHECK-IN WITH NO SEAT FOR THEM WAS NOT A ROW HERE AT ALL (U.4 people-group
+     * review, item 2). They have no account and no membership - "added, and not yet written to" -
+     * so the query above, which reads memberships, never sees them. The prototype (people.txt) lists
+     * them anyway, as "No seat on your plan"; "Somebody is on a check-in with no seat for them"
+     * already names their email and who added them, so a row here says nothing new. Only page 1,
+     * so an admin paging through a large roster is never shown the same held email twice.
+     */
+    const held = page === 1
+      ? await this.prisma.groundParticipant.findMany({
+        where: { awaitingSeat: true, ground: { organizationId } },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, email: true, createdAt: true, ground: { select: { id: true, label: true } } },
+      })
+      : [];
+    const heldByEmail = new Map<string, { id: string; email: string; createdAt: Date; checkIns: { id: string; label: string | null; runsIt: boolean }[] }>();
+    for (const h of held) {
+      const key = (h.email ?? '').toLowerCase();
+      if (!key || idByEmail.has(key)) continue; // already a real row (an account exists after all)
+      const row = heldByEmail.get(key) ?? { id: h.id, email: h.email!, createdAt: h.createdAt, checkIns: [] };
+      if (!row.checkIns.some((c) => c.id === h.ground.id)) row.checkIns.push({ id: h.ground.id, label: h.ground.label, runsIt: false });
+      heldByEmail.set(key, row);
+    }
+    const heldRows = [...heldByEmail.values()].map((h) => ({
+      id: `held:${h.id}`,
+      email: h.email,
+      firstName: null,
+      lastName: null,
+      role: null as string | null,
+      isActive: true,
+      isEmailVerified: false,
+      createdAt: h.createdAt,
+      phoneNumber: null,
+      state: 'invited' as const,
+      checkInsOn: h.checkIns.length,
+      checkInsAnswered: 0,
+      checkInsNotOpened: h.checkIns.length,
+      arrivedThroughACheckIn: true,
+      notLetIn: false,
+      notLetInBy: null,
+      notLetInAt: null,
+      heldForASeat: true,
+      /* No account exists yet, so there is nowhere for "Open" to go. */
+      noAccountYet: true,
+      level: null,
+      team: null,
+      reportsTo: null,
+      checkIns: h.checkIns,
+    }));
+
     return {
-      data: users.map((u) => ({
+      data: [...users.map((u) => ({
         ...u,
         /*
          * Named for what is true, not for what is missing. "Never checked in" on somebody who
@@ -546,8 +596,8 @@ export class UsersService {
         ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),
         /* Which of this organisation's check-ins they are on, and whether they run it. */
         checkIns: theirCheckIns.get(u.id) ?? [],
-      })),
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      })), ...heldRows],
+      meta: { page, limit, total: total + heldRows.length, totalPages: Math.ceil((total + heldRows.length) / limit) },
     };
   }
 

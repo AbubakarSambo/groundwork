@@ -32,6 +32,8 @@ export interface OrgMember {
   notLetInAt?: string | null
   /** A guest added when the plan had no seat for them: holds none, and is not offered the check-in yet. */
   heldForASeat?: boolean
+  /** Held for a seat, and nothing has been written for them yet: there is no account to open. */
+  noAccountYet?: boolean
   /** Where they sit here. Describes the organisation; grants nothing. */
   level?: string | null
   team?: string | null
