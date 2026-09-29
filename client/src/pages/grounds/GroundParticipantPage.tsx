@@ -3,7 +3,7 @@ import { OutOfTime } from './OutOfTime'
 import { plannedSessionsFor } from '@/lib/sessionCount'
 import { useEffect, useRef, useState } from 'react'
 import { GroundGone } from '@/components/gw/GroundGone'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { whichSessionIsThisCheckInOn, hasDoneThisSession } from '@/lib/which-session-are-we-on'
 import { groundsApi } from '@/api/grounds'
@@ -252,6 +252,17 @@ export function GroundParticipantPage() {
     const rows = ((mine as any)?.checkIns ?? []) as any[]
     const next = rows.filter((c) => c.status !== 'COMPLETED').sort((a, b) => (a.sessionNumber ?? 0) - (b.sessionNumber ?? 0))[0]
     if (!next) return null
+    /*
+     * REVIEW ROUND 3, ITEM 1: AN IN_PROGRESS SESSION IS ALREADY OPEN.
+     *
+     * `availableFrom` says when a session that has not started yet may be started - it says
+     * nothing about a session that is already running. Aisha and Amani both had one open
+     * (IN_PROGRESS) with an `availableFrom` in the future (set when the session was created,
+     * before either of them had answered a single turn) and were told "No check-in open right
+     * now" instead of being carried back into the conversation they had left. A session that is
+     * IN_PROGRESS is open by definition; only a session that has not started is gated by its date.
+     */
+    if (next.status === 'IN_PROGRESS') return next
     const from = next.availableFrom ?? null
     if (from && new Date(from).getTime() > Date.now()) return null
     return next
@@ -424,7 +435,11 @@ export function GroundParticipantPage() {
    * after this one, before this one exists. Excluded here rather than only where it is shown, so
    * every reader of `opensLater` (the header line and the composer's own line) agrees.
    */
-  const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now() && !probeSession.isPending
+  /* REVIEW ROUND 3, ITEM 1: THE SAME RULE AS `myOpenForAutoOpen` ABOVE - IN_PROGRESS IS ALREADY
+     OPEN, WHATEVER ITS `availableFrom` SAYS. Without this, "No check-in open right now" and a
+     later "opens on such-and-such date" were both shown for a session the person had already
+     started answering. */
+  const opensLater = !!openAvailableFrom && new Date(openAvailableFrom).getTime() > Date.now() && !probeSession.isPending && (openCheckIn as any)?.status !== 'IN_PROGRESS'
   const dueNow = !!openCheckIn && !opensLater
 
 
@@ -524,13 +539,24 @@ export function GroundParticipantPage() {
           subtitle={(ground as any).cadence ? `${cadenceLabel((ground as any).cadence)}.` : undefined}
           action={(
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-              {/* "Start my check-in" (board-as-participant.txt): the same place the Check-in tab opens. */}
-              <Link
-                to={`/grounds/${id}/p`}
-                style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
-              >
-                Start my check-in
-              </Link>
+              {/*
+                REVIEW ROUND 3, ITEM 1: THIS LINK WENT TO THE PAGE THE PERSON WAS ALREADY ON.
+                `/grounds/${id}/p` IS this page - clicking it while standing on it reloads the
+                same tab bar, not the conversation. It opens the person's own open session
+                directly now (the same call the Check-in tab makes on mount), and does not show
+                at all when there is none to open, rather than promise a check-in that is not
+                there.
+              */}
+              {myOpenForAutoOpen && (
+                <button
+                  type="button"
+                  onClick={() => probeSession.mutate(myOpenForAutoOpen)}
+                  disabled={probeSession.isPending}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: probeSession.isPending ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+                >
+                  {probeSession.isPending ? 'Opening…' : 'Start my check-in'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={showAsk}
