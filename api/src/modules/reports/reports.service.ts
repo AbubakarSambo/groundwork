@@ -6191,22 +6191,43 @@ happened, and what is in the way.`;
       },
     });
 
-    return this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
+    const status = await this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
+    return this.activationStatusThisReaderMaySee(status, ground as any, ground.initiatorId === requestingUserId ? null : participant.id);
   }
 
-  /** Guard-checked version for the controller - verifies caller is a party first. */
-  async getActivationStatusForUser(groundId: string, requestingUserId: string) {
+  /**
+   * WHO HAS SHOWN THEIRS, READ ONLY BY THE PEOPLE IN THIS CHECK-IN AND ITS ORGANISATION'S ADMINS.
+   *
+   * This used to answer anybody who was signed in, from any organisation, with every participant id
+   * on the check-in: its own comment said "non-parties can still see aggregate status", and both of
+   * its branches returned the same thing. Now somebody who is neither in the check-in nor an admin
+   * of the organisation it belongs to is told it does not exist (404, as `get()` does, so a guessed
+   * id cannot be told from a real one). On a check-in that hides people from each other, a
+   * participant reads only their own row; the lead and an admin read every row.
+   */
+  async getActivationStatusForUser(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
-    const isParty = ground.initiatorId === requestingUserId ||
-      ground.participants.some((p) => p.userId === requestingUserId);
-    // Non-parties (org admins, platform admins) can still see aggregate status.
-    if (!isParty) return this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
-    return this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
+    const isInitiator = ground.initiatorId === requestingUserId;
+    const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
+    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
+    if (!isInitiator && !me && !isOrgAdmin) throw new NotFoundException('Check-in not found');
+    const status = await this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
+    return this.activationStatusThisReaderMaySee(status, ground as any, isInitiator || isOrgAdmin ? null : me?.id ?? null);
+  }
+
+  /** On a check-in that hides people from each other, a participant reads only their own row. */
+  private activationStatusThisReaderMaySee<T extends { parties: Array<{ participantId: string }> }>(
+    status: T,
+    ground: { peersVisibleToEachOther?: boolean | null },
+    participantId: string | null,
+  ): T {
+    if (!participantId || ground.peersVisibleToEachOther !== false) return status;
+    return { ...status, parties: status.parties.filter((p) => p.participantId === participantId) };
   }
 
   /** Returns activation status for all participants on a ground. */

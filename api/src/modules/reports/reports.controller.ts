@@ -121,7 +121,11 @@ export class ReportsController {
 
   @Get('activation-status')
   @ApiOperation({ summary: 'Check which participants have shown theirs' })
-  async activationStatus(@Param('groundId') groundId: string, @CurrentUser('id') userId: string) {
-    return this.reports.getActivationStatusForUser(groundId, userId);
+  async activationStatus(
+    @Param('groundId') groundId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string,
+  ) {
+    return this.reports.getActivationStatusForUser(groundId, userId, organizationId);
   }
 }
