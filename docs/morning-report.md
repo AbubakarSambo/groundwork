@@ -292,6 +292,21 @@ Tests: 693 files and 6,544 tests pass in the parts touched.
 
 **Week 12c:** an unnamed person in the lead's list of what to ask was headed "Somebody", and is now "A colleague" (`0b6736d1`). The rest was already done.
 
+**Run-19 finished: all 24 scenarios, in 1 hour 50 minutes, on `c645570c`. Nothing is worse than the baseline.**
+- Every problem count is 0, including sentences that start in lower case, which were 3 on run-18.
+- Every engine-value number is above the baseline:
+  - specific detail asked for: 105 (baseline 88; run-18 had 74, which the re-checks showed was noise)
+  - blocker checked: 45 (37)
+  - proof asked for: 47 (42)
+  - past words brought back: 33 (25)
+  - differences found: 42 (29)
+  - agreements found: 66 (56)
+  - commitments recorded: 49 (33)
+  - judgement present: 29 (21)
+- Jargon in Groundwork's turns is 21 (baseline 42).
+- **Jargon in reports and boards rose to 126,** from 46 on run-18. The baseline was 511, and the bar is 128, so it is under the bar, but it is a big rise. The new words are "bottleneck", "escalate", "deliverable" and "alignment". Most follow what people said this time: people themselves said "escalate" in five scenarios, against three on run-18, and each of the other words came from a person too. Decision 41 says a person's own word used back to them is not jargon, but the scorer cannot tell the difference.
+- **The model hit its rate limit 204 times,** against none on run-18. 15 calls failed after every retry. The cause is new today: the warm-up that words each report ahead of time, for each reader, ran up to 9 times after one session, and the board's warm-up up to 18 times. That multiplies model calls. It should run once per new thing. This is the first thing to fix next, before more readers or longer check-ins make it worse.
+
 **Run-19, the day's second full run, started at 17:37** on `c645570c`, in three parts. The two privacy items from the live check are being built alongside it. They filter what is served, so their tests prove them, not the run. Both are now done:
 - **A goal the lead has not told the person about reaches only the lead** (`7a81746c`). Tobi's You board listed "Take over the scheduling." before Wanjiru had spoken to him about it. As Tobi, the report read "Tobi Adewale has started well. Wanjiru Mwangi expects Tobi Adewale to take over the scheduling. Both have answered." It now reads "Tobi Adewale has started well. Both have answered." The lead reads all of it. This goes by what the lead chose ("not told"). It does not go by whether the person has opened the Context page, because that would hide every goal forever.
 - **A colleague's target in the lead's own words stays with its owner** (`1ea89d29`). Femi read "Ngozi Eze is trying to get 14 new facilities approved and have N42 million disbursed." Now that sentence reaches only Ngozi and the lead. Femi still reads his own ("Femi Okonkwo is trying to get 12 new facilities approved."). A number counts as a target only in a sentence about a target, so "the first 90 days" and years stay.
