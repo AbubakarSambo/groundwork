@@ -133,7 +133,7 @@ describe('and nowhere else', () => {
       for (const f of readdirSync(dir)) {
         const p = join(dir, f);
         if (statSync(p).isDirectory()) walk(p);
-        else if (p.endsWith('.ts') && !p.endsWith('.spec.ts') && /keptLately|keptLatelySays/.test(readFileSync(p, 'utf8'))) found.push(p.slice(root.length + 1));
+        else if (p.endsWith('.ts') && !p.endsWith('.spec.ts') && /keptLately|keptLatelySays/.test(readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))) found.push(p.slice(root.length + 1));
       }
     };
     walk(root);
