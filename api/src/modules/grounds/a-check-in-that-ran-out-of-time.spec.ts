@@ -179,42 +179,20 @@ describe('the order of the two sweeps', () => {
 });
 
 /**
- * AND THE ONES ALREADY DEAD ARE REOPENED, FOR EVERYBODY.
- *
- * They were stopped by a product fault rather than by anybody's decision, so they are not left for
- * each lead to find and fix by hand.
+ * AND THE ONES ALREADY STALLED ARE NOT REOPENED BY A MIGRATION (Hafsah, 29 September 2026,
+ * decision 54). The new rule, that a stalled check-in has a way back, applies from now on, and a
+ * lead can reopen one themselves. This migration once reopened every stalled check-in with work
+ * outstanding; it now changes no data, and its file stays so the order of migrations is unchanged.
  */
 describe('the check-ins that were already stalled', () => {
   const SQL = readFileSync(
     join(__dirname, '../../../prisma/migrations/20260923200000_reopen_every_check_in_that_ran_out_of_time/migration.sql'),
     'utf8',
-  );
+  )
+    .replace(/^\s*--.*$/gm, '');
 
-  it('come back active, with real time rather than a status flip', () => {
-    expect(SQL).toMatch(/SET status = 'ACTIVE'/);
-    /* Setting ACTIVE alone would hand every one of them straight back to tonight's sweep. */
-    expect(SQL).toMatch(/timeline_days = GREATEST\(/);
-    expect(SQL).toMatch(/\+ 30/);
-    /* And never shortens one that already had longer. */
-    expect(SQL).toMatch(/GREATEST\(\s*\n?\s*g\.timeline_days,/);
-  });
-
-  it('and get a fresh notice before any of them could stall again', () => {
-    expect(SQL).toMatch(/stall_warning_sent_at = NULL/);
-  });
-
-  /*
-   * ONLY THE ONES WITH WORK OUTSTANDING. A stalled check-in where every session is complete stopped
-   * because it was finished; reopening it gives nobody anything to do and restarts its billing,
-   * since the monthly sweep only counts ACTIVE grounds.
-   */
-  it('and only where somebody still owes a check-in', () => {
-    expect(SQL).toMatch(/AND EXISTS \(/);
-    expect(SQL).toMatch(/c\.status <> 'COMPLETED'/);
-  });
-
-  it('and the end date moves with the length', () => {
-    expect(SQL).toMatch(/ends_at = CASE/);
-    expect(SQL).toMatch(/WHEN g\.ends_at IS NULL THEN NULL/);
+  it('are left as they are: the migration changes no data', () => {
+    expect(SQL).not.toMatch(/\b(UPDATE|INSERT|DELETE|ALTER|DROP|TRUNCATE)\b/i);
+    expect(SQL.trim()).toBe('SELECT 1;');
   });
 });
