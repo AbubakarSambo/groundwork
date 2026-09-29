@@ -48,6 +48,7 @@ import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../com
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
 import { recordRoundCompletion } from '../grounds/round-completion';
 import { Prisma } from '@prisma/client';
+import { endingOnTheClose, endsOnTheClose } from './the-close-says-what-comes-next';
 import { theEndCard, theCardStillStanding, type EndCard, type ALineForTheCard } from './the-end-card';
 import { aThingToCarry, openingWithASentence, thePrivateSummaryAsRead } from './the-private-summary-opens-with-a-sentence';
 import { READ_WHAT_HAPPENED, WHAT_HAPPENED_SCHEMA, theSettlements, thePrompt as theHappenedPrompt } from './what-happened-to-what-they-said';
@@ -1499,7 +1500,7 @@ export class ConversationService {
        * card. A goodbye is only ever left on a turn that closed (see the goodbye rule below), so the
        * reply itself says whether it closed.
        */
-      return { reply: again.reply, sessionComplete: hasAGoodbye(again.reply) && !stillAsking(again.reply) };
+      return { reply: again.reply, sessionComplete: endsOnTheClose(again.reply) || (hasAGoodbye(again.reply) && !stillAsking(again.reply)) };
     }
     if (again.kind === 'the same answer, still working') {
       return { reply: STILL_ON_YOUR_LAST_ANSWER, sessionComplete: false };
@@ -2548,6 +2549,11 @@ export class ConversationService {
      * product's own plumbing: the twenty-answer ceiling is a fact about our storage and nobody
      * being told a conversation is over needs the number.
      */
+    /* AND THE CLOSE ENDS AS THE PROTOTYPE'S DOES, with the card below it. See the-close-says-what-comes-next. */
+    if (sessionComplete) {
+      const closed = endingOnTheClose(aiTurn.content ?? '');
+      if (closed !== (aiTurn.content ?? '')) aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: closed } });
+    }
     const room = sessionComplete ? null : howMuchRoomIsLeft(personTurnCount + 1);
     const withRoomLeft = room ? `${aiTurn.content}\n\n${room}` : aiTurn.content;
 
