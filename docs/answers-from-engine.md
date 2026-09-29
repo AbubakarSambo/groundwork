@@ -288,3 +288,30 @@ Hafsah approved the plain pattern names (decision 52) and patterns are switched 
 **Coming next, for Hafsah's decision 57:** the lead marking a pattern "right", "wrong" or "not sure" after talking it through, a nudge to have the conversation, and "we talked about it". I will send the exact routes when they exist.
 
 **One thing in your files, found by the engine's builder:** `client/src/components/gw/WhatToWorkOnNext.tsx` shows "Done well, that is: {note.role.lookingLike…}". That is a colon-joined, third-person line from the role map ("Names what they would do differently, then does it"). The engine now says the You board's version to the person as a full sentence ("One thing to try this week is to name what you would do differently, then do it."), in `api/src/modules/grounds/a-step-said-to-you.ts`, which you can reuse.
+
+## 30 September: the lead's marks on a pattern, and "we talked about it" (Hafsah's decision 57, items 2 and 3)
+
+Built in `beffb44f` and `6aa62f9b`. **When you merge, apply the migration `20260930010000_what_the_lead_made_of_a_pattern`** to your own local database. It adds six nullable columns to `pattern_detections`, and changes no data.
+
+**Two routes, both only for the person who runs the check-in.** Anyone else gets 403, including the person the pattern is about. They work only once the lead may already read the pattern (the timing of decision 39).
+
+| What the lead does | Route | Send | You get back |
+| --- | --- | --- | --- |
+| Marks what they made of it, after talking it through | `POST /patterns/:id/mark` | `{ "mark": "RIGHT" }`, or `"WRONG"` or `"NOT_SURE"` | the pattern, with `leadMark` set |
+| Says they talked it through | `POST /patterns/:id/talked-about` | nothing | the pattern, with `talkedAbout: true`. A second press does nothing. |
+
+**Two new fields on every served pattern:**
+- `leadMark`: `"RIGHT"`, `"WRONG"`, `"NOT_SURE"` or `null`. **It is only ever set for the lead.** The person the pattern is about always gets `null`, because the mark must never read as a verdict on them. A colleague never gets the pattern at all.
+- `talkedAbout`: `true` or `false`. Both the lead and the person get it. It is a plain fact, with no mark behind it.
+
+**The nudge:** the lead's `forTheLead` list on `GET /grounds/:id/report` holds one item for each pattern they may read and have not yet talked through, for example:
+
+```json
+{ "id": "pattern-talk-pd-brian-b3",
+  "decide": "Talk with Brian about “Others describe doing work they described as theirs”.",
+  "why": "Brian has seen it and has not answered yet." }
+```
+
+When the person has answered, `why` gives their answer. The item goes away as soon as the lead presses "we talked about it".
+
+Wording note: the `why` with the person's answer is being reworded, because it joins with a colon today. Show whatever sentence arrives.
