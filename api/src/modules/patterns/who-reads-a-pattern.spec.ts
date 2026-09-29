@@ -68,6 +68,9 @@ describe('who reads a pattern', () => {
       theirWords: 'The committee only meets on the last Friday of the month.',
       canAnswer: true,
       whoSeesIt: 'Tunde can see this too, with anything you say about it. Nothing is decided from it.',
+      /* Decision 57, item 2: never shown to the person it is about, however the lead marked it. */
+      leadMark: null,
+      talkedAbout: false,
     });
     const served = JSON.stringify(servedPatterns(ROWS, LEAD, on));
     for (const name of EVERY_INTERNAL_NAME) expect(served).not.toContain(name);

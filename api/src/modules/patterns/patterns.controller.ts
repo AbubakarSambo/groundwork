@@ -1,8 +1,11 @@
-import { Controller, Get, Patch, Post, Param, Body, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Param, Body, UseGuards, HttpCode, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PatternsService } from './patterns.service';
 import { CurrentUser } from '../../common';
 import { PlatformAdminGuard } from '../../common/guards/platform-admin.guard';
+import type { ALeadPatternMark } from './who-reads-a-pattern';
+
+const LEAD_MARKS: ALeadPatternMark[] = ['RIGHT', 'WRONG', 'NOT_SURE'];
 
 @ApiTags('Patterns')
 @ApiBearerAuth()
@@ -55,5 +58,40 @@ export class PatternsController {
     @CurrentUser('id') userId: string,
   ) {
     return this.patterns.answerAsThePerson(id, userId, String(body?.text ?? ''));
+  }
+
+  /**
+   * THE LEAD MARKS A PATTERN RIGHT, WRONG OR NOT SURE, AFTER TALKING IT THROUGH (decision 57, item
+   * 2). Only the person who runs this check-in; the service answers 403 for anybody else, including
+   * the person the pattern is about and a colleague, and for a pattern the lead may not read yet.
+   */
+  @Post(':id/mark')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'The lead marks a pattern right, wrong or not sure, after talking it through' })
+  async mark(
+    @Param('id') id: string,
+    @Body() body: { mark?: string },
+    @CurrentUser('id') userId: string,
+  ) {
+    const mark = String(body?.mark ?? '').toUpperCase();
+    if (!LEAD_MARKS.includes(mark as ALeadPatternMark)) {
+      throw new BadRequestException('Say whether this was right, wrong or not sure.');
+    }
+    return this.patterns.markAsTheLead(id, userId, mark as ALeadPatternMark);
+  }
+
+  /**
+   * THE LEAD MARKS THAT THEY TALKED A PATTERN THROUGH WITH THE PERSON (decision 57, item 3). Same
+   * identity and timing as `mark` above. The nudge to have this conversation goes away once this is
+   * set.
+   */
+  @Post(':id/talked-about')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'The lead marks that they talked a pattern through with the person' })
+  async talkedAbout(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.patterns.markTalkedAbout(id, userId);
   }
 }

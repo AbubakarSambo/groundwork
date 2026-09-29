@@ -213,6 +213,8 @@ describe('with the switch on, every reader reads patterns under the rules', () =
       howOften: 'This came up in 3 of your check-ins, in sessions 1, 2 and 3.',
       askThem: null, theirWords: null, canAnswer: true,
       whoSeesIt: 'You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it.',
+      /* Decision 57, item 2: never shown to the person it is about, however the lead marked it. */
+      leadMark: null, talkedAbout: false,
     }]);
     /* And being shown it starts the clock on when Tunde may read it. */
     expect(served.writes.some((w) => w.where.id.in.includes('pd2') && w.data.shownToPersonAt)).toBe(true);
@@ -230,6 +232,8 @@ describe('with the switch on, every reader reads patterns under the rules', () =
       theirWords: NGOZI_ANSWERED,
       canAnswer: false,
       whoSeesIt: 'Ngozi saw this first and said what is behind it.',
+      /* Decision 57, item 2: not yet marked. */
+      leadMark: null, talkedAbout: false,
     }]);
     /* The lead reading is never the person being shown it. */
     expect(served.writes).toEqual([]);

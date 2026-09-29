@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
@@ -6,7 +6,7 @@ import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherC
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
 import { plainVoice } from './plain-voice';
-import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN, PATTERN_ROW_SELECT, patternRowsThisReaderMayRead, servedPatterns, type AServedPattern } from './who-reads-a-pattern';
+import { PERIODS_BEFORE_A_PATTERN_IS_SHOWN, PATTERN_ROW_SELECT, patternRowsThisReaderMayRead, servedPatterns, periodsSeen, type AServedPattern, type ALeadPatternMark } from './who-reads-a-pattern';
 import { periodOf } from './period-of';
 import { PATTERNS_ARE_SERVED } from './patterns-are-served';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
@@ -839,6 +839,75 @@ export class PatternsService {
     const ground = row.participant.ground;
     const lead = ground?.participants?.find((p) => !!ground.initiatorId && p.userId === ground.initiatorId);
     return servedPatterns([saved], reader, { now, leadName: theFirstNameFrom(lead?.user?.firstName, lead?.user?.lastName), leadParticipantId: lead?.id ?? null })[0];
+  }
+
+  /**
+   * The row plus the lead's identity, loaded the same way for both routes below: `markAsTheLead`
+   * and `markTalkedAbout`. "The person who runs the check-in" is the ground's own lead
+   * (`initiatorId`), the same identity `forTheLeadFrom` gates its nudge on - not the wider `runsIt`
+   * class (which also lets an org admin read a pattern) and never the person it is about or a
+   * colleague. Both routes answer 403 for anybody else, so nobody outside that one identity can even
+   * learn whether the pattern exists.
+   */
+  private async loadForTheLeadToMark(detectionId: string, userId: string) {
+    const forbidden = () => new ForbiddenException('Only the person who runs this check-in can do that.');
+    if (!PATTERNS_ARE_SERVED) throw forbidden();
+    const row = await this.prisma.patternDetection.findUnique({
+      where: { id: detectionId },
+      select: {
+        ...PATTERN_ROW_SELECT,
+        participant: {
+          select: {
+            ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true } } } },
+          },
+        },
+      },
+    });
+    if (!row) throw forbidden();
+    const ground = row.participant.ground;
+    if (!ground.initiatorId || ground.initiatorId !== userId) throw forbidden();
+    const lead = ground.participants.find((p) => p.userId === userId);
+    const reader = { participantId: lead?.id ?? null, runsIt: true };
+    /* Decision 39's timing: allowed only once the lead may already read the pattern. */
+    if (!patternRowsThisReaderMayRead([row], reader).length) throw forbidden();
+    return { row, reader };
+  }
+
+  /**
+   * "AFTER TALKING A PATTERN THROUGH, THE LEAD MARKS IT RIGHT, WRONG OR NOT SURE" (decision 57, item
+   * 2). Only the person who runs the check-in, and only once they may already read the pattern
+   * (decision 39's timing). The mark is stored beside `personAnswer`, the person's own answer, which
+   * already counts as evidence; it is never served back to the person or to a colleague - see
+   * `servedPatterns`, which nulls it out for anybody but this reader.
+   */
+  async markAsTheLead(detectionId: string, userId: string, mark: ALeadPatternMark): Promise<AServedPattern> {
+    const { row, reader } = await this.loadForTheLeadToMark(detectionId, userId);
+    const now = new Date();
+    const saved = await this.prisma.patternDetection.update({
+      where: { id: row.id },
+      data: { leadMark: mark, leadMarkedAt: now, leadMarkedBy: userId },
+      select: PATTERN_ROW_SELECT,
+    });
+    return servedPatterns([saved], reader, { now })[0];
+  }
+
+  /**
+   * "AND CAN MARK 'WE TALKED ABOUT IT'" (decision 57, item 3). Same identity, same timing as the mark
+   * above. Sets `talkedAboutAt` once - a second call is a no-op, not an error, since the nudge that
+   * leads here goes away the moment this is set and there is nothing left for a repeat call to change.
+   * `talkedAboutAtPeriod` is the anchor `seenAgainAfterTalk` derives "did it come up again" from.
+   */
+  async markTalkedAbout(detectionId: string, userId: string): Promise<AServedPattern> {
+    const { row, reader } = await this.loadForTheLeadToMark(detectionId, userId);
+    const now = new Date();
+    const saved = row.talkedAboutAt
+      ? row
+      : await this.prisma.patternDetection.update({
+          where: { id: row.id },
+          data: { talkedAboutAt: now, talkedAboutBy: userId, talkedAboutAtPeriod: periodsSeen(row) },
+          select: PATTERN_ROW_SELECT,
+        });
+    return servedPatterns([saved], reader, { now })[0];
   }
 
   /**

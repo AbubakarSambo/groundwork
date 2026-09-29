@@ -2331,6 +2331,22 @@ model PatternDetection {
   /// person and, beside the pattern, by whoever runs the check-in. Never by a colleague.
   personAnswer     String?       @map("person_answer") @db.Text
   personAnsweredAt DateTime?     @map("person_answered_at")
+  /// After talking a pattern through, the lead marks it right, wrong or not sure (decision 57, item
+  /// 2). The person's own answer above counts as evidence too. Never shown to the person as a rating
+  /// of them, and never to a colleague — only whoever runs the check-in reads it. The existing
+  /// `accuracyRating` (platform admin) stays; this is separate.
+  leadMark         LeadPatternMark? @map("lead_mark")
+  leadMarkedAt     DateTime?        @map("lead_marked_at")
+  leadMarkedBy     String?          @map("lead_marked_by") // userId of the lead who marked it
+  /// The lead is nudged once to talk a pattern through, and can mark that they did (decision 57, item
+  /// 3). The nudge goes away once this is set. The person may see that their lead has talked it
+  /// through as a plain fact, never a verdict on them.
+  talkedAboutAt       DateTime? @map("talked_about_at")
+  talkedAboutBy       String?   @map("talked_about_by") // userId of the lead who marked it
+  /// How many periods had been seen (seenInSessions/periodsObserved) at the moment `talkedAboutAt`
+  /// was set — the anchor later check-ins derive "seen again after the talk" from, rather than
+  /// storing that count itself and having it drift out of step with the honest history.
+  talkedAboutAtPeriod Int?      @map("talked_about_at_period")
   firstSeenAt      DateTime      @default(now()) @map("first_seen_at")
   lastSeenAt       DateTime      @default(now()) @map("last_seen_at")
   createdAt        DateTime      @default(now()) @map("created_at")
@@ -2342,6 +2358,14 @@ model PatternDetection {
   @@index([groundId])
   @@index([code, accuracyRating]) // for per-code accuracy aggregation
   @@map("pattern_detections")
+}
+
+/// The lead's own read of a pattern, after talking it through with the person (decision 57, item 2).
+/// Never a rating served to the person or a colleague.
+enum LeadPatternMark {
+  RIGHT
+  WRONG
+  NOT_SURE
 }
 
 // ---------------------------------------------------------------------------

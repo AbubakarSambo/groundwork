@@ -52,6 +52,10 @@ export const DAYS_THE_PERSON_HAS_TO_ANSWER = 3;
 export const DAYS_BEFORE_IT_REACHES_THE_LEAD_UNOPENED = 7;
 const DAY = 24 * 60 * 60 * 1000;
 
+/** The lead's own read of a pattern, after talking it through (decision 57, item 2). Never served to
+ *  the person it is about, and never to a colleague. */
+export type ALeadPatternMark = 'RIGHT' | 'WRONG' | 'NOT_SURE';
+
 /** The stored row, as much of it as the rules read. */
 export interface APatternRow {
   id: string;
@@ -64,12 +68,16 @@ export interface APatternRow {
   shownToPersonAt?: Date | string | null;
   personAnswer?: string | null;
   personAnsweredAt?: Date | string | null;
+  leadMark?: ALeadPatternMark | null;
+  talkedAboutAt?: Date | string | null;
+  talkedAboutAtPeriod?: number | null;
 }
 
 /** The columns every road selects, so none of them can forget the ones rule 5 reads. */
 export const PATTERN_ROW_SELECT = {
   id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true,
   readyAt: true, shownToPersonAt: true, personAnswer: true, personAnsweredAt: true,
+  leadMark: true, talkedAboutAt: true, talkedAboutAtPeriod: true,
 } as const;
 
 export interface APatternReader {
@@ -106,6 +114,18 @@ export interface AServedPattern {
   canAnswer: boolean;
   /** Who else reads it, and when, as a sentence for this reader. */
   whoSeesIt: string;
+  /**
+   * After talking it through, whoever runs the check-in marks it right, wrong or not sure (decision
+   * 57, item 2). Only for that reader — always null for the person it is about, so it is never shown
+   * to them as a rating of themselves, and null for a colleague, who never reaches this row at all.
+   */
+  leadMark: ALeadPatternMark | null;
+  /**
+   * Whether whoever runs the check-in has said they talked this through with the person (decision 57,
+   * item 3). A plain fact both readers may see — never the mark behind it — so the person may know
+   * their lead has talked it through, not a verdict on them.
+   */
+  talkedAbout: boolean;
 }
 
 /** The names a sentence needs: the lead's, for the person, and the person's first name, for the lead. */
@@ -285,9 +305,39 @@ export function servedPatterns(
         theirWords: (row.personAnswer ?? '').trim() || null,
         canAnswer: yours,
         whoSeesIt: whoSeesIt(row, yours, opts, now),
+        leadMark: yours ? null : (row.leadMark ?? null),
+        talkedAbout: !!row.talkedAboutAt,
       };
     })
     .sort((a, b) => Number(b.yours) - Number(a.yours));
+}
+
+/**
+ * "THINGS CHANGED" AFTER THE TALK, DERIVED, NEVER GUESSED (decision 57, item 3).
+ *
+ * `talkedAboutAtPeriod` is the anchor written once, when the lead marks that the conversation
+ * happened: how many periods `seenInSessions` held at that moment. Everything in `seenInSessions`
+ * beyond that count is a period the pattern was seen in AFTER the talk, so this is derived from the
+ * honest history rather than kept as a counter of its own that could drift out of step with it.
+ * `null` before the talk has happened at all — there is nothing yet to derive it from.
+ */
+export function seenAgainAfterTalk(row: Pick<APatternRow, 'seenInSessions' | 'talkedAboutAt' | 'talkedAboutAtPeriod'>): number | null {
+  if (!row.talkedAboutAt) return null;
+  const anchor = row.talkedAboutAtPeriod ?? 0;
+  return new Set((row.seenInSessions ?? []).filter((n) => Number.isFinite(n) && n > anchor)).size;
+}
+
+/**
+ * THE NUDGE, ONCE (decision 57, item 3). "Talk with Tobi about 'Steps in to stop things failing'.
+ * Tobi has seen it and said: '...'." — or, if Tobi has not answered yet, says so plainly. Built from
+ * a served pattern, so it never carries a code or an internal name either. The caller leaves this
+ * pattern out once `talkedAbout` is true: the nudge goes away once it is marked.
+ */
+export function patternTalkNudge(pattern: Pick<AServedPattern, 'id' | 'heading' | 'theirWords'>, name: string): { id: string; decide: string; why: string } {
+  const why = pattern.theirWords
+    ? `${name} has seen it and said: “${pattern.theirWords}”.`
+    : `${name} has seen this and has not answered yet.`;
+  return { id: `pattern-talk-${pattern.id}`, decide: `Talk with ${name} about “${pattern.heading}”.`, why };
 }
 
 /** The ones this reader is the person for and has never been shown: rule 5's clock starts when they are. */
