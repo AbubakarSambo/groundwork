@@ -8,7 +8,7 @@ import { useYourOrganisations, initialsOf, roleWord, whyYouAreIn } from './your-
  */
 export function OrganisationChoices() {
   const user = useAuthStore(s => s.user)
-  const { myOrgs, chooseOrganisation, onlyOneNotChosen, startMyOwnWorkspace } = useYourOrganisations()
+  const { myOrgs, chooseOrganisation, onlyOneNotChosen } = useYourOrganisations()
   /*
    * NEVER A NAME THAT ISN'T THE ORGANISATION'S OWN (U.8 review, Hafsah's instruction of 27
    * September). This fallback row is only reached before `myOrganisations` has answered, or on a
@@ -45,19 +45,16 @@ export function OrganisationChoices() {
       ))}
       {/* As on the prototype's "More" (more-menu-phone.txt). */}
       <Link to="/welcome" className="gw-rl-menu-item gw-rl-menu-join">Join or create an organisation</Link>
-      {onlyOneNotChosen && (
+      {/*
+       * NO SECOND BUTTON HERE (group 1 re-review, fault D): the prototype's own "More" draws only
+       * the link above - creating an organisation is reachable through the page it opens
+       * (WelcomePage.tsx, "Create a new organisation" -> /org-new), the same route
+       * `startMyOwnWorkspace` used to jump to directly. The note explaining why you are in the one
+       * organisation you did not choose still belongs here; only the extra button is gone.
+       */}
+      {onlyOneNotChosen && whyYouAreIn(myOrgs[0], user?.email) && (
         <div className="gw-rl-menu-note">
-          {whyYouAreIn(myOrgs[0], user?.email) && <p>{whyYouAreIn(myOrgs[0], user?.email)}</p>}
-          {/*
-           * "CREATE AN ORGANISATION", NEVER "START MY OWN WORKSPACE" (group 1 review): "workspace"
-           * is not a word this product uses anywhere else, and `startMyOwnWorkspace` only ever
-           * navigates to /org-new, which makes a new organisation - it never offers to join one -
-           * so the button says exactly what it does, the way "Join or create an organisation"
-           * above it says what THAT link does.
-           */}
-          <button type="button" className="gw-b gw-b-secondary gw-b-small gw-b-wide" onClick={startMyOwnWorkspace}>
-            Create an organisation
-          </button>
+          <p>{whyYouAreIn(myOrgs[0], user?.email)}</p>
         </div>
       )}
     </>
