@@ -509,3 +509,40 @@ Hafsah said yes on 27 September. The engine side is done. This is exactly what t
 - For an ongoing check-in the engine never says how many sessions there are, how far through it is, "halfway", or "the last session", in the conversation, the reports, the board, Today or the suggestions. There is no "Decide how it ends" prompt, because there is no planned last session. The only ending is the lead's.
 - `howItIsGoing` has no planned rounds for an ongoing check-in. Do not draw "x of y rounds".
 - The setting history on the Context page carries `untilItIsEnded` (true on the change that made it ongoing) and `weeks.to` is `null` for that change.
+
+## 1 October: links between check-ins (your request 18)
+
+Done. Nothing in `client/` is changed. Below is exactly where each field is and its shape.
+
+**(a) Which check-in a handoff waits on.** `GroundDependency.waitingOnGroundId` is now written when the conversation records a handoff. It is set only when it is certain, and only in code: the words the person said for the team ("Finance") must all be in the name of exactly one other running check-in of the same organisation ("Finance, Q3"). The plain words every team name carries ("team", "review", "Q3") are set aside. Two check-ins that fit, the handoff's own check-in fitting as well, another organisation's check-in, or a person named in the same check-in all give null. A newer account that names a team updates the link; an account that names no team leaves it alone. `GET /grounds/:id/links` needed no change.
+
+**(b) When, and where it stands.** These four fields are on every item of `GET /grounds/:id/links` (`waitingOnOtherTeams[]` and `askedOfThisCheckIn[]`) and of `askedOfYou.items[]` on `GET /you`, under the rules those already use:
+
+| Field | Shape | What it is |
+| --- | --- | --- |
+| `dueSaid` | string or null | The person's own words for when, word for word ("by Friday"). Kept only if those exact words are in what they said; null if they gave no time. |
+| `dueOn` | "2026-09-25" or null | The day those words meant, read in code ("Friday", "tomorrow", "30 September"). Null for "soon" or "after the audit": a day is never guessed. |
+| `dueWord` | string or null | "Overdue", "Today", a short weekday through the next six days ("Fri"), or a short date ("9 Oct"). Null when `dueOn` is null. Counted in Lagos time. Use it for the due word in "Everything asked of you this week". |
+| `standing` | string | One plain sentence of where it stands, written from the record. |
+
+What a person reads in `standing`: "The Mombasa depot's count is due Friday." (a time was given; "are due" where the thing is plural, such as "The seals are due next week."), "Not decided yet." (the handoff is a decision nobody has made), or "No date has been given yet." Show it after "Asked 14 Sept." Show `dueSaid` where you want their own words.
+
+**(c) Where the blocker started.** `GET /grounds/:id/blocker-trace`, for anybody who may open that check-in (404 otherwise). It answers `{ traces: [...] }`, one trace for each blocker that ends in this check-in, often none.
+
+    {
+      id: string,
+      steps: [{ kind: 'need' | 'request' | 'question' | 'approval' | 'priority' | 'delay' | 'effect',
+                checkIn: string, checkInId: string,        // the check-in it came from; open with /grounds/<checkInId>/board
+                owner: string | null,                       // a name this reader may read, "You", or "a colleague"
+                text: string }],                            // one full sentence
+      whereItStarted: string | null,    // "Where it started: the request went to Finance without ..."
+      decisionNeeded: string | null,    // "Decision needed: sign off Westgate's credit terms this week?"
+      decidedBy: string | null          // "Amani Njoroge decides."
+    }
+
+Who reads what. Each reader gets only the steps from check-ins they may open (the same list as the links). Where a check-in keeps people apart, a reader who does not run it (and is not an admin) reads only the steps that are theirs. If the first step or the last step is not readable, the trace is not served at all. If any step between is hidden, the steps the reader may read are served and `whereItStarted`, `decisionNeeded` and `decidedBy` are null, because they were written from the whole chain. Nothing is ever rated or labelled; the sentences are checked for names and for words that judge a person. The prototype's "Nobody was slow on their own." is not written, because the record cannot say it. Show the steps, then the two sentences when they are there; "Ask Miriam for the references" is yours to draw from the owner of the request step.
+
+How it is built. Stored in `blocker_traces`, without names (each step holds its check-in and a person id). Built only when a handoff is written or changes, in `ConversationService.followTheBlockersAcrossCheckIns`, never on opening. The same record again makes no second model call. The model gets the handoffs on record with people as tokens; its answer is kept only if every step cites a handoff on the record, takes its check-in and person from that handoff, shares words with it, names nobody and judges nobody, and the chain crosses two check-ins and ends where the blocker is felt. The instructions are the stored prompt `blocker_trace` (seeded on boot); the row records `promptVersionId`. Names are swapped in when it is served, for each step's own check-in, through the same wrapper every report uses.
+
+**Also, from request 37.** A participant's session report now says "Session 3. It runs until Wairimu Kamau ends it." (the lead's name, or "the person running it" where the reader may not read a name); the lead still reads "Session 3. It runs until you end it." `POST /check-ins` on the public API takes `runsUntilEnded: true`, as the product's own create does.
+
