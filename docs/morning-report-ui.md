@@ -6853,4 +6853,98 @@ For you to decide, and on the list: the prototype's "Add your own" and "Build yo
 
 Not yet pictured: the page after API access is approved. No organisation on this Mac has approved access, and I did not add any to the database to force it. The approved page is checked by the page's own tests instead.
 
+**Group 1's review sent it back (30 September, night).** The background was right on every page for all three readers. Nothing scrolled sideways on a phone, and the button rules held. Every action the old pages had is still there. The API refuses a participant every admin route, checked from the server itself. The faults it found, most serious first:
+- A participant opening Connections, WhatsApp or the developer page was told "Adding people is something your organisation's admins do", which is about the wrong thing.
+- The example pictures on Connections and the developer page showed your name and Coamana's CRM to every organisation, under a caption saying they were that organisation's own console.
+- Developer notes such as "Not on the prototype's own screen" would show to customers once API access is approved, and several lines there were jargon.
+- "Your data" on Settings said "28 things you wrote, across 13 check-ins, on 7 grounds:".
+- Smaller wording and layout differences from the prototype on Settings, Plan and billing, Connections, WhatsApp and More.
+
+A builder is fixing all of them now. The review's pictures are in the scratchpad's `pictures/review-g1/`.
+
+**Group 1's faults are fixed, and are being reviewed again.**
+- A participant is now told "Connecting your organisation's systems is something its admins do."
+- The example consoles are drawn with the prototype's made-up Baridi people, and no real name is anywhere.
+- The developer page's approved state is in plain sentences, with new tests for keys shown once, webhooks, deliveries, embedding and how long conversations are kept.
+- Settings has "Everything you've written", with one "Download it" button, and reads "You have written 28 answers, in 7 check-ins."
+- "Leave" is the white button with red words.
+- Plan and billing hides the sharing codes from people who cannot make one, says "Each of these is a free check-in" once instead of on every row, and introduces Sahar Jamal in a full sentence.
+- Connections says "Not set up" or "Needs a key", whichever is true.
+- WhatsApp and the developer page have the prototype's title area, and the WhatsApp steps sit flat on the page.
+- More says "Create an organisation".
+
+The whole screen suite passes (3,684 tests), and so do the button test (10 of 10) and the page-colour test (3 of 3).
+
+**Group 1's second review: nine of the ten faults are fixed, as a person sees them.** It found one serious new fault. The WhatsApp example picture on Connections and the developer page looks like a real check-in, with numbers and answers, and every organisation with WhatsApp switched on would see it. It is being redrawn with the prototype's made-up conversation with Miriam. The other faults being fixed now:
+- the rest of the developer page's wording, including the "for your engineer" reference;
+- the drawn console's menu running off the side on a phone;
+- a duplicate "Create an organisation" on More;
+- "Download it" doing two things at once;
+- an unmarked link on WhatsApp.
+
+Those are now fixed.
+- The WhatsApp example is drawn, word for word, from the prototype's conversation with Miriam.
+- None of the three screenshots of real-looking check-ins is used anywhere now. The files are kept.
+- The developer page's reference for your engineer is in plain sentences.
+- On a phone, the console's menu wraps onto a second line.
+- More has one way to join or create an organisation.
+- "Download it" is an outlined button that says "Saved." with your counts, and "Erase it" is always there.
+- The whole screen suite passes (3,688 tests), and so do the button test (10 of 10) and the page-colour test (3 of 3).
+
+A third review is reading every sentence on the six pages for jargon.
+
+The third review confirmed those fixes, and found three more things, which are being fixed now:
+- The three old screenshots were still in the app's public folder, so anyone could open them by address. They are being deleted.
+- "Erase it" read as "erase everything you wrote", but it removes only your name and email. It is being renamed.
+- About 40 lines on the six pages are clipped or use jargon, many of them the prototype's own words. I decided how to handle the prototype's fragments, and it is under "Decided for Hafsah to confirm".
+
+**Group 1 is finished and passed its review (1 October).**
+- The screenshots are gone, and nothing points at them.
+- "Remove your name and email" says what it does, and its confirmation agrees.
+- Every clipped or jargon line on the six pages now reads as a plain sentence.
+- The last broken sentence on Connections was fixed. It now reads "Your system opens a check-in and sends people the link. It is told when the check-in is done, but never what anyone said."
+- The whole screen suite passes (3,688 tests), and so do the button test (10 of 10) and the page-colour test (3 of 3).
+
+The review's pictures are in the scratchpad's `pictures/review-g1d/`.
+
+Not checked on screen, because no local organisation has them: the developer page after API access is approved, and a connected WhatsApp or Slack. Both were judged from the code and its tests.
+
+**The side-by-side pictures, where you can open them.** They are in `/Users/hafsahjumare/Documents/GitHub/groundwork-pictures/`, next to the project folder and outside git. There is one folder for each of 13 screens. Each holds the prototype's picture, the screen before the fixes, and the screen now. Its `README.md` says, screen by screen, what differed and what was fixed.
+
+**The API tests after the second merge (1 October).** 12,086 of 12,090 passed at first.
+- Three of the four failures came from group 1's own wording. They are API tests that read screen files. Two were updated to the new words, and the promise they check is unchanged.
+- The rebuild had dropped the words "shown once" from the embed's secret box, leaving them only in a passing message. The box says it again.
+- The password sign-up test fails only when every test runs at once, and passes on its own.
+- The last one is the engine's own new test, and is request 94.
+
+From now on, each group's checks also run the API tests that read screen files.
+
+**Group 2, first piece: Today and the check-ins list are rebuilt from the shared parts (1 October).** Nothing on them uses the old parts now.
+- Every need, link, appeal, the admin's first-run card and checklist, "You are in." and every section of the list is kept.
+- "Start a check-in" is each screen's one navy button: the admin's "Approve" is now white, and "Decline it" is red.
+- What the prototype draws but the product has no data for, such as "Since yesterday" and "Your deals", is still left out rather than made up.
+- I compared the pictures with the prototype's myself. The admin's welcome card, with its dark edge above the greeting, is the prototype's own drawing.
+
+Tests:
+- The screen suite passes, except the wording guard, which is over its limit (62 against 60). Every new match since the merges is in the engine's own files, so it is request 95.
+- The button test passes (12 of 12), and so does the page-colour test.
+
+Two findings for the engine, both in request 95:
+- Today still says "Faraji hasn't yet" about someone an admin did not let in. The board was fixed for this in request 85, and Today needs the same rule.
+- The wording guard's new matches.
+
+The pictures are in the scratchpad's `pictures/g2a/`, before and after. Group 2's review comes once all four pieces are done.
+
+**Group 2, second piece: the You page is rebuilt from the shared parts (1 October).**
+- It keeps every section the server sends, and every pattern and coaching piece, unchanged.
+- The line under "You" now changes with the reader, as in the prototype's four versions.
+- The next check-in is the prototype's dark-edged card, with the page's one navy "Start it".
+- "Download it" sits beside its sentence.
+- Today had the same double navy fault: with two check-ins to start, only the first "Start it" is now navy.
+- The privacy tests for You pass (58 of 58), and so does the button test.
+
+One fault in the data, not the page: "What you said you'd do" lists each promise twice, short and in full, so four promises show as eight. That is request 96.
+
+The pictures are in the scratchpad's `pictures/g2b/`.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.

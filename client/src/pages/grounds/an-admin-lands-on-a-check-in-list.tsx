@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/stores/auth'
 import { Link } from 'react-router-dom'
-import { Button, Tag } from '@/components/gw/kit'
+import { Button, Tag } from '@/components/gw/ui'
 
 /**
  * WHAT A NEW ORGANISATION'S ADMIN SEES FIRST (A3 and C1, U.3): the welcome card and the prototype's
@@ -35,6 +35,11 @@ import { Button, Tag } from '@/components/gw/kit'
  *
  * It replaces "Setting up <organisation>", whose steps were ours. Choosing a plan and connecting your
  * systems stay where they always were, under the organisation's name in the sidebar.
+ *
+ * REBUILT FROM THE SHARED PARTS (group 2): `Button` and `Tag` from `components/gw/ui` in place of
+ * the old kit, and the welcome card and checklist's own classes moved into `gw-ui.css` under the
+ * `gwui-` prefix (`gwui-welcome-card`, `gwui-get-going`, and so on), in place of the old `gw-`
+ * classes - no other change to what is drawn.
  */
 interface RolloutFacts {
   people: number
@@ -96,22 +101,22 @@ export function AdminFirstRun() {
   if (finished && !showWelcome) return null
 
   return (
-    <div className="gw-first-run">
+    <div className="gwui-first-run">
       {showWelcome && (
-        <section className="gw-welcome-card" aria-label="Welcome">
-          <div className="gw-welcome-card-head">
+        <section className="gwui-welcome-card" aria-label="Welcome">
+          <div className="gwui-welcome-card-head">
             <h2>You’re an admin at {orgName}</h2>
             <Button kind="quiet" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
           </div>
-          <p className="gw-welcome-card-line">
+          <p className="gwui-welcome-card-line">
             You can see every board and report, including what people said in them. You never see anyone’s
             questions to Ask Groundwork, anyone’s own report, or a lead’s private notes, and never a
             performance plan, promotion or renewal unless given access to that check-in.
           </p>
-          <ul className="gw-welcome-doors">
+          <ul className="gwui-welcome-doors">
             {doorsFor(data).map(d => (
               <li key={d.to}>
-                <Link to={d.to} className="gw-welcome-door">
+                <Link to={d.to} className="gwui-welcome-door">
                   <b>{d.title}</b>
                   <span>{d.line}</span>
                 </Link>
@@ -121,15 +126,15 @@ export function AdminFirstRun() {
         </section>
       )}
       {!finished && (
-        <section className="gw-get-going">
-          <div className="gw-get-going-head">
+        <section className="gwui-get-going">
+          <div className="gwui-get-going-head">
             <h2>Get {orgName} going</h2>
             <span>{done} of {steps.length} done</span>
           </div>
           <ul>
             {steps.map(s => (
               <li key={s.key}>
-                <span className="gw-get-going-title">{s.title}</span>
+                <span className="gwui-get-going-title">{s.title}</span>
                 {s.done ? <Tag tone="proven">Done</Tag> : <Button kind="secondary" size="small" to={s.to}>Do it</Button>}
               </li>
             ))}

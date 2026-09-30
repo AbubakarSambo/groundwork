@@ -64,6 +64,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-stack-12.gwui-stack-12 > * + * { margin-top: 12px; }
 .gwui-stack-18.gwui-stack-18 > * + * { margin-top: 18px; }
 .gwui-stack-19.gwui-stack-19 > * + * { margin-top: 19px; }
+.gwui-stack-30.gwui-stack-30 > * + * { margin-top: 30px; }
 
 /* ── PAGE TITLE (prototype: .t-title, .crumb, .t-small, .av at 56px) ────── */
 .gwui-pt-eyebrow { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }
@@ -94,6 +95,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
    `background:var(--chat);border-radius:10px;padding:10px 14px`, class `t-small`) ─────────── */
 .gwui-callout { background: var(--gw-bg); color: var(--gw-text); border-radius: 10px; padding: 10px 14px; font-size: 14.5px; line-height: 1.45; margin: 0; }
+.gwui-callout-success { background: var(--gw-green-bg); color: var(--gw-green-t); }
 
 /* ── SUB-HEADING (join-invite.jpg: "What it asks", "Who sees your answers") ─────────── */
 .gwui-subheading { font-family: var(--gw-font-ui); font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin: 0 0 6px; }
@@ -102,6 +104,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── PANEL TEXT (prototype: a fact's body, inside a panel - 14.5px, 21px line) ─────────── */
 .gwui-panel-text { font-size: 14.5px; line-height: 21px; color: var(--gw-text); margin: 0; }
 .gwui-panel-text-muted { font-size: 14.5px; line-height: 21px; color: var(--gw-sub); margin: 0; }
+/* A plain list inside a Panel - the You board's own "Your goals"/"Your to-dos"/"What you contributed". */
+.gwui-panel-list { list-style: none; margin: 0; padding: 0; }
+.gwui-panel-list li { padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-panel-list li:first-child { border-top: none; padding-top: 0; }
 
 /* ── FINE PRINT (prototype: the sentence under a button, e.g. "About two minutes…") ─────── */
 .gwui-fine { font-size: 13px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
@@ -176,6 +182,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
   background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px;
 }
 .gwui-panel-pad { padding: 20px 22px; }
+.gwui-panel-heading { font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); margin: 0 0 8px; }
 
 /* ── EDGE LIST / EDGE ROW (prototype: .list, .item, .sp) ─────────────────── */
 .gwui-edge-list { border-top: 1px solid var(--gw-border); list-style: none; margin: 0; padding: 0; }
@@ -319,11 +326,31 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: underline;
 }
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+/* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
+   is `width: 100%` on its own, which inside a flex row computes a wide flex-basis and pushes the
+   button onto its own line as soon as the row is narrower than the field's natural width. Letting
+   the field shrink (`flex: 1 1 140px`, `width: auto`) keeps it and its button on the same row down
+   to a phone's own width, the way the prototype draws it. */
+.gwui-invite-actions > input.gwui-input { flex: 1 1 140px; width: auto; }
 .gwui-invite-answer { margin-top: 16px; }
 .gwui-invite-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--gw-border); }
 .gwui-invite-link-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .gwui-invite-link-address { font-size: 14.5px; color: var(--gw-text); overflow-wrap: anywhere; }
 .gwui-two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+/*
+ * GROUP 1'S THIRD REVIEW: pinning each caption to the bottom of a card stretched to match its
+ * taller neighbour (the previous fix, for the gap that used to sit AFTER the shorter caption)
+ * just moved the same empty gap to BEFORE the caption instead - the illustration itself still
+ * only took its own natural height, now with dead space between it and the pinned-down caption.
+ * A card with a `<figure>` in it no longer stretches to match its neighbour at all
+ * (`align-self: start`, scoped to exactly the cards this page's illustrations sit in via `:has()`,
+ * so ordinary card grids elsewhere - "More you can connect", the People page - keep stretching to
+ * match each other as before). Each caption now sits directly under its own illustration, with
+ * nothing empty above or below it; the two captions no longer force-align when the illustrations
+ * are genuinely different heights, which is honest rather than papering over the difference.
+ */
+.gwui-two-up > .gwui-panel:has(figure) { align-self: start; }
+.gwui-two-up > .gwui-panel > figure { margin: 0; }
 
 /* ── PANEL ROW (more than one fact inside one Panel(pad=false), a line between each -
    "Who can join": the domain switch and the invite link, in one white panel) ─────────────────── */
@@ -828,3 +855,181 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-numstep-title { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
 .gwui-numstep-title-btn { background: none; border: none; padding: 0; font: inherit; font-size: 16px; font-weight: 700; color: var(--gw-text); cursor: pointer; text-align: left; }
 .gwui-numstep-content { margin-top: 12px; }
+
+/* ── OPS CONSOLE EXAMPLE (F1-connections/tools.jpg, connections.jpg: "How it looks inside your
+   tool" / "Inside your own tool"). Drawn in markup, from the prototype's own made-up company and
+   people (Baridi Ops Console, Grace Achieng, Eastside Foods and the rest) - never a screenshot of
+   a real person's or a real organisation's own tool, and never the reader's own organisation
+   name, because the same illustration is shown to every organisation. */
+.gwui-console { border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; background: #fff; }
+.gwui-console-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--gw-navy); color: #fff; padding: 12px 16px; font-size: 14.5px; font-weight: 700;
+}
+.gwui-console-body { display: flex; min-height: 0; }
+.gwui-console-nav {
+  width: 128px; flex-shrink: 0; background: var(--gw-bg); border-right: 1px solid var(--gw-border);
+  padding: 10px 0; display: flex; flex-direction: column;
+}
+.gwui-console-nav-item { padding: 9px 14px; font-size: 13.5px; color: var(--gw-sub); }
+.gwui-console-nav-item-active { background: #fff; color: var(--gw-text); font-weight: 700; border-right: 2px solid var(--gw-navy); }
+.gwui-console-main { flex: 1; min-width: 0; padding: 16px 18px; }
+.gwui-console-main-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gwui-console-main-title { font-size: 15px; font-weight: 700; color: var(--gw-text); margin: 0; }
+.gwui-console-main-from { font-size: 13px; color: var(--gw-sub); }
+.gwui-console-main-sub { font-size: 13.5px; color: var(--gw-sub); margin: 4px 0 14px; }
+.gwui-console-deal { padding: 12px 0; border-top: 1px solid var(--gw-border); }
+.gwui-console-deal:first-of-type { border-top: none; padding-top: 0; }
+.gwui-console-deal-company { font-size: 14.5px; font-weight: 700; color: var(--gw-text); }
+.gwui-console-deal-person { font-size: 13px; color: var(--gw-sub); margin: 0 0 8px; }
+.gwui-console-dots { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; }
+.gwui-console-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gw-border); flex-shrink: 0; }
+.gwui-console-dot-on { background: var(--gw-green-t); }
+.gwui-console-dot-line { flex: 1; height: 2px; background: var(--gw-border); }
+.gwui-console-dot-line-on { background: var(--gw-green-t); }
+.gwui-console-stage-names { display: flex; justify-content: space-between; gap: 4px; }
+.gwui-console-stage-name { font-size: 13px; color: var(--gw-sub); flex: 1; text-align: center; }
+.gwui-console-foot { font-size: 13px; color: var(--gw-sub); padding: 12px 16px; border-top: 1px solid var(--gw-border); }
+.gwui-console-frame { padding: 20px; }
+
+/* ── EMBED WIDGET EXAMPLE (tools.txt: "Show Groundwork inside your own tool") ────────────────── */
+.gwui-embed-split { display: flex; min-height: 0; }
+.gwui-embed-host { flex: 1.4; min-width: 0; padding: 16px 18px; border-right: 1px solid var(--gw-border); background: var(--gw-bg); }
+.gwui-embed-host-title { font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin: 0 0 10px; }
+.gwui-embed-table { display: flex; flex-direction: column; }
+.gwui-embed-row { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--gw-border); }
+.gwui-embed-row:first-child { border-top: none; }
+.gwui-embed-cell { font-size: 13px; color: var(--gw-sub); flex: 1; min-width: 0; }
+.gwui-embed-cell-name { color: var(--gw-text); font-weight: 700; flex: 1.4; }
+.gwui-embed-cell-stage { color: var(--gw-amber-t); font-weight: 700; }
+.gwui-embed-cell-stage-on { color: var(--gw-green-t); }
+.gwui-embed-widget { flex: 1; min-width: 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.gwui-embed-widget-head { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--gw-sub); }
+.gwui-embed-widget-brand { font-weight: 700; color: var(--gw-navy); letter-spacing: 0.04em; }
+.gwui-embed-widget-msg { font-size: 13.5px; line-height: 1.5; color: var(--gw-text); background: var(--gw-bg); border-radius: 10px; padding: 12px 14px; margin: 0; }
+.gwui-embed-widget-replies { display: flex; gap: 8px; flex-wrap: wrap; }
+.gwui-embed-widget-reply { font-size: 13px; font-weight: 700; color: var(--gw-navy); border: 1px solid var(--gw-border); border-radius: 20px; padding: 6px 12px; }
+@media (max-width: 640px) {
+  .gwui-embed-split { flex-direction: column; }
+  .gwui-embed-host { border-right: none; border-bottom: 1px solid var(--gw-border); }
+}
+
+/* ── WHATSAPP CONVERSATION EXAMPLE (connections.txt: "What these look like / On WhatsApp") ────── */
+.gwui-wa { border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; background: #075E54; }
+.gwui-wa-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: #fff; }
+.gwui-wa-avatar {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+}
+.gwui-wa-org { font-size: 14.5px; font-weight: 700; margin: 0; }
+.gwui-wa-sub { font-size: 13px; margin: 1px 0 0; opacity: .8; }
+.gwui-wa-body { background: var(--gw-bg); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.gwui-wa-bubble {
+  max-width: 82%; padding: 10px 14px; border-radius: 14px; font-size: 14.5px; line-height: 1.45; margin: 0;
+}
+.gwui-wa-bubble-them { align-self: flex-start; background: #fff; color: var(--gw-text); border-bottom-left-radius: 4px; }
+.gwui-wa-bubble-mine { align-self: flex-end; background: #DCF8C6; color: var(--gw-text); border-bottom-right-radius: 4px; }
+@media (max-width: 640px) {
+  /*
+   * GROUP 1 RE-REVIEW, FAULT C: `overflow-x: auto` let "Team check-ins" (the active tab, drawn
+   * last) scroll off the side with no visible scrollbar, so a phone reader never saw it at all -
+   * and the space it would have taken sat empty under the row. Wrapping instead means every item
+   * is on screen, on however many lines it takes.
+   */
+  .gwui-console-body { flex-direction: column; }
+  .gwui-console-nav { width: auto; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--gw-border); }
+  .gwui-console-nav-item-active { border-right: none; border-bottom: 2px solid var(--gw-navy); }
+}
+
+/* ── GREETING (prototype: .t-greet, app.css - Today's own big heading, C1, U.5 group 2) ────── */
+.gwui-greet-block { margin: 0; }
+.gwui-greet { font-family: var(--gw-font-name); font-size: clamp(30px, 4vw, 38px); line-height: 1.12; font-weight: 500; letter-spacing: -.01em; margin: 0 0 8px; color: var(--gw-text); }
+.gwui-greet-sub { font-size: 17px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
+@media (max-width: 860px) {
+  .gwui-greet { font-size: 30px; }
+}
+
+/* ── TODAY'S TWO-COLUMN LAYOUT (prototype: .side, app.css line 78: "minmax(0,1fr) 340px", gap
+   44px; the check-ins list, board and other screens share the same shape) ─────────────────── */
+.gwui-side { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 44px; align-items: start; }
+@media (max-width: 1100px) {
+  .gwui-side { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── COMING UP (prototype: Today's own sidebar list, app.css) ───────────────────────────────── */
+.gwui-comingup-h { margin: 0 0 12px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); }
+.gwui-comingup-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
+.gwui-comingup-list li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; }
+.gwui-comingup-list b { color: var(--gw-text); }
+.gwui-comingup-list a { color: var(--gw-text); text-decoration: none; }
+.gwui-comingup-list a:hover, .gwui-comingup-list a:focus-visible { text-decoration: underline; }
+
+/* ── WELCOME CARD AND "GET <ORGANISATION> GOING" (prototype: the admin's first-run doors and
+   checklist, C1/A3, U.3 and U.5) ────────────────────────────────────────────────────────────── */
+.gwui-first-run { display: grid; gap: 14px; }
+.gwui-welcome-card { display: grid; gap: 12px; padding: 16px 20px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 2px var(--gw-text); }
+.gwui-welcome-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gwui-welcome-card-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 600; color: var(--gw-text); }
+.gwui-welcome-card-line { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--gw-sub); }
+.gwui-welcome-doors { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.gwui-welcome-door { display: block; padding: 12px 14px; border: 1px solid var(--gw-border); border-radius: 10px; text-decoration: none; color: var(--gw-text); }
+.gwui-welcome-door:hover, .gwui-welcome-door:focus-visible { background: var(--gw-page); }
+.gwui-welcome-door b { display: block; font-size: 15.5px; }
+.gwui-welcome-door span { display: block; margin-top: 2px; font-size: 13.5px; color: var(--gw-sub); }
+.gwui-get-going { padding: 16px 20px; border: 1px solid var(--gw-border); border-radius: 12px; background: #fff; }
+.gwui-get-going-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.gwui-get-going-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 600; color: var(--gw-text); }
+.gwui-get-going-head span { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-get-going ul { list-style: none; margin: 0; padding: 0; }
+.gwui-get-going li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; border-top: 1px solid var(--gw-border); }
+.gwui-get-going-title { font-size: 15.5px; font-weight: 700; color: var(--gw-text); }
+
+/* ── CHECK-INS TABLE (prototype: check-ins.txt, C1, U.5 group 2) ────────────────────────────── */
+.gwui-ci-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.gwui-ci-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 18px; border-bottom: 1px solid var(--gw-border); }
+.gwui-ci-table th:nth-child(1) { width: 34%; }
+.gwui-ci-table th:nth-child(2) { width: 26%; }
+.gwui-ci-table th:nth-child(3) { width: 19%; }
+.gwui-ci-table td { padding: 16px 18px; vertical-align: middle; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); border-top: 1px solid var(--gw-border); overflow-wrap: anywhere; }
+.gwui-ci-table tbody tr:first-child td { border-top: none; }
+.gwui-ci-table tbody tr { cursor: pointer; }
+.gwui-ci-table tbody tr:hover td { background: var(--gw-page); }
+.gwui-ci-table-name { display: block; font-size: 17px; font-weight: 700; color: var(--gw-text); text-decoration: none; }
+.gwui-ci-table-name:hover, .gwui-ci-table-name:focus-visible { text-decoration: underline; }
+.gwui-ci-table-about { margin-top: 2px; font-size: 14.5px; color: var(--gw-sub); }
+.gwui-ci-table-also { margin-top: 2px; font-size: 13px; color: var(--gw-sub); }
+.gwui-ci-table td a { color: var(--gw-text); }
+@media (max-width: 860px) {
+  .gwui-ci-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .gwui-ci-table, .gwui-ci-table tbody, .gwui-ci-table tr, .gwui-ci-table td { display: block; width: auto; }
+  .gwui-ci-table td { border-top: none; padding: 2px 16px; }
+  .gwui-ci-table td:first-child { padding-top: 14px; }
+  .gwui-ci-table td:last-child { padding-bottom: 14px; }
+  .gwui-ci-table tbody tr + tr { border-top: 1px solid var(--gw-border); }
+  .gwui-ci-table td:nth-child(2) { color: var(--gw-sub); }
+}
+
+/* ── WAITING FOR YOU (prototype: an admin's check-ins list, awaiting approval, C1, U.5 group 2) ── */
+.gwui-panel-caution { background: var(--gw-amber-bg); border-color: var(--gw-amber-b-soft); }
+.gwui-panel-caution h2 { margin: 0 0 4px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-amber-t); }
+.gwui-waiting-one { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; }
+.gwui-waiting-one + .gwui-waiting-one { margin-top: 8px; }
+.gwui-waiting-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.gwui-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 14.5px; resize: vertical; }
+
+/* ── CARD GRIDS (the You board, C2, U.12: "Your goals"/"Your to-dos"/"What you contributed" in
+   three, "Worth knowing now"/"noticed"/"coaching over time" in two) ────────────────────────────── */
+.gwui-cards-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.gwui-cards-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 900px) {
+  .gwui-cards-3, .gwui-cards-2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── ROW LIST / ROW (the You board's own lists, C2, U.12) ───────────────────────────────────── */
+.gwui-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
+.gwui-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-row a { color: var(--gw-navy); font-weight: 700; text-decoration: none; }
+.gwui-row a:hover, .gwui-row a:focus-visible { text-decoration: underline; }
+@media (max-width: 900px) {
+  .gwui-row { grid-template-columns: minmax(0, 1fr) !important; }
+}

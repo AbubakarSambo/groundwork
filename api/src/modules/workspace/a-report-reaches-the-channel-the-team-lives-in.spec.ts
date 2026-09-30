@@ -32,7 +32,9 @@ describe('the console', () => {
     expect(page).toMatch(/hooks\\.slack\\.com[\s\S]{0,40}'slack' : 'teams'/);
   });
   it('a notice says something is ready and links to it, never what is in it', () => {
-    expect(page).toContain('A notice says something is ready and links to it; it never includes what anyone said, because a channel is read by more people than a check-in.');
+    /* Group 1's wording review (1 October) split the prototype's semicolon-joined line into two
+       plain sentences. The promise is the same: a notice links, and never carries what anyone said. */
+    expect(page).toContain('A notice says something is ready and links to it. It never includes what anyone said, because more people read a channel than a check-in.');
   });
   it('and the server can only send that: a sentence and a link, with nowhere to put what anyone said', () => {
     const notice = told.slice(told.indexOf('export interface Notice {'), told.indexOf('}', told.indexOf('export interface Notice {')) + 1);

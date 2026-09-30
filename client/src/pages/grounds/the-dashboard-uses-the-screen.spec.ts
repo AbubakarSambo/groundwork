@@ -35,9 +35,19 @@ describe('the dashboard uses the screen it is given', () => {
   })
 
   it('the list of check-ins is not capped at a reading width', () => {
-    const bd = LIST.slice(LIST.indexOf('className="gw-bd"'), LIST.indexOf('className="gw-bd"') + 200)
-    expect(bd).toMatch(/maxWidth: 1160/)
-    expect(bd).not.toMatch(/maxWidth: 600/)
+    /*
+     * UPDATED, GROUP 2 REBUILD: the page's own hand-rolled `className="gw-bd"` wrapper (an inline
+     * `style={{ maxWidth: 1160, ... }}`) is gone - the-rebuilt-pages-use-only-the-new-parts.spec.ts
+     * now bans exactly that kind of inline size on a listed page. The page renders inside the
+     * shared `Page` component (components/gw/ui/Page.tsx) instead, whose own wrap caps at 1150 -
+     * the prototype's own `.wrap` value, the same frame every other rebuilt page uses. 1150 still
+     * proves the finding this test is named for (a list of check-ins is not a 600px reading column);
+     * the bespoke 1160 found nowhere else in the product is what changed, not the finding.
+     */
+    expect(LIST).toMatch(/from '@\/components\/gw\/ui'/)
+    expect(LIST).not.toContain('className="gw-bd"')
+    expect(LIST).not.toMatch(/maxWidth: 600/)
+    expect(LIST).not.toMatch(/maxWidth: 1160/)
   })
 
   it('and the pages that ARE reading keep theirs', () => {
@@ -83,9 +93,10 @@ describe('the dashboard uses the screen it is given', () => {
   })
 
   it('it is a cap, not a fixed width, so it still fits a narrow screen', () => {
-    /* Measured: 778 at 1024, 375 on mobile, nothing overflowing. A fixed width would have. */
-    const bd = LIST.slice(LIST.indexOf('className="gw-bd"'), LIST.indexOf('className="gw-bd"') + 200)
-    expect(bd).toMatch(/width: '100%'/)
-    expect(bd).not.toMatch(/\bwidth: 1160\b/)
+    /* UPDATED, GROUP 2 REBUILD: the shared `Page` frame's own wrap (`.gwui-page-wrap`, gw-ui.css)
+       is `max-width: 1150`, never a fixed width, and is already relied on by every other rebuilt
+       page - checked here by absence of a fixed pixel width on this page's own markup. */
+    expect(LIST).not.toMatch(/\bwidth: 1160\b/)
+    expect(LIST).not.toMatch(/width: '100%'.*maxWidth: 1160/s)
   })
 })

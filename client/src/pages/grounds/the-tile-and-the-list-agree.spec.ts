@@ -51,8 +51,16 @@ describe('the count and the list do not argue', () => {
   })
 
   it('and each section counts the very rows it draws', () => {
+    /*
+     * UPDATED, GROUP 2 REBUILD: the page's own local `Section({ title, count })` and a
+     * `CheckInsTable` fed a `rows` array are gone - each heading is now the SHARED `Section`
+     * (prop `note`, not `count`), and the shared `CheckInsTable` (components/gw/ui) takes its rows
+     * as children (`CheckInsRows`, which renders one `CheckInRow` per row), not a `rows` prop. The
+     * finding this test protects - the count printed and the rows drawn under it come from the same
+     * variable, so they cannot disagree - still holds, checked against the new shape.
+     */
     for (const [title, pile] of [['You run', 'youRun'], ['You’re in', 'youreIn']]) {
-      expect(CODE).toMatch(new RegExp(`<Section title="${title}" count=\\{${pile}\\.length\\}>\\s*<CheckInsTable label="${title}" rows=\\{${pile}\\}`))
+      expect(CODE).toMatch(new RegExp(`<Section heading="${title}" note=\\{\`\\$\\{${pile}\\.length\\} open\`\\}[^>]*>\\s*<CheckInsTable label="${title}"><CheckInsRows rows=\\{${pile}\\}`))
     }
   })
 

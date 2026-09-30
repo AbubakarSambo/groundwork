@@ -89,7 +89,10 @@ describe('Grace, an admin, reads Connections', () => {
     serve()
     open(GRACE)
     expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeTruthy()
-    expect(screen.getByText('Baridi Appliances')).toBeTruthy()
+    /* "Baridi Appliances" also names the fictional business account inside the WhatsApp
+       conversation illustration (group 1 re-review, fault A: connections.txt's own words), so
+       this is now more than one text node with that exact name. */
+    expect(screen.getAllByText('Baridi Appliances').length).toBeGreaterThan(0)
     await screen.findByRole('heading', { name: 'Your numbers' })
   })
 
@@ -162,10 +165,11 @@ describe('Grace, an admin, reads Connections', () => {
     serve({ glance: { whatsapp: null, figures: { fromYourProduct: true } } })
     open(GRACE)
     const nums = await screen.findByRole('region', { name: 'Your numbers' })
-    expect(nums.textContent).toContain('So what people say is checked against where the work shows up')
+    /* GROUP 1'S THIRD REVIEW: full plain sentences, not fragments. */
+    expect(nums.textContent).toContain('Groundwork checks what people say against the numbers where the work shows up.')
     expect(nums.textContent).toContain('Your own product sends its numbers')
     expect(nums.textContent).toContain('Accounting or sales tools')
-    expect(nums.textContent).toContain('Invoices paid, deals won.')
+    expect(nums.textContent).toContain('Groundwork reads which invoices are paid and which deals are won.')
     await within(nums).findByText('Connected')
     expect(within(nums).getByText('Needs a key')).toBeTruthy()
     expect(hrefOf(nums, 'Set it up')).toBe('/settings/tools')
@@ -191,9 +195,11 @@ describe('Grace, an admin, reads Connections', () => {
     open(GRACE)
     const n = await screen.findByRole('region', { name: 'Notices in Slack or Teams' })
     expect(within(n).getByText('Not set up')).toBeTruthy()
-    expect(n.textContent).toContain('Post a notice to a channel when a report is ready. A notice says something is ready and links to it; it never includes what anyone said, because a channel is read by more people than a check-in.')
-    expect(n.textContent).toContain('It arrives switched off. Send one test notice, see it land, then turn it on.')
-    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s incoming-webhook address' }), { target: { value: 'https://hooks.slack.com/services/T0/B0/x' } })
+    /* GROUP 1'S THIRD REVIEW: the notice sentence split in two, and "incoming-webhook" (jargon)
+       is gone from both the placeholder and its label. */
+    expect(n.textContent).toContain('Post a notice to a channel when a report is ready. A notice says something is ready and links to it. It never includes what anyone said, because more people read a channel than a check-in.')
+    expect(n.textContent).toContain('It starts switched off. Send one test notice, check that it arrived, then switch it on.')
+    fireEvent.change(within(n).getByRole('textbox', { name: 'The channel’s address from Slack or Teams' }), { target: { value: 'https://hooks.slack.com/services/T0/B0/x' } })
     fireEvent.click(within(n).getByRole('button', { name: 'Add it, switched off' }))
     await waitFor(() => expect(api.connectWorkspace).toHaveBeenCalledWith('slack', 'https://hooks.slack.com/services/T0/B0/x'))
   })
@@ -216,9 +222,10 @@ describe('Grace, an admin, reads Connections', () => {
     serve()
     open(GRACE)
     const f = await screen.findByRole('region', { name: 'Figures from your other systems' })
-    expect(f.textContent).toContain('Send a figure from your CRM, billing or support desk, and it sits beside the goal it belongs to, as proven. A payment from your billing system, for example, fills in “sold”.')
-    await within(f).findByText('For whoever runs your systems. Say what it’s for and accept the terms; keys, webhooks and delivery logs open once access is approved.')
-    expect(hrefOf(f, 'Ask for API access')).toBe('/settings/tools')
+    /* GROUP 1'S THIRD REVIEW: full sentences, and no "API". */
+    expect(f.textContent).toContain('Send a number from your sales, billing or support system. It appears beside the goal it belongs to, marked as proven. A payment from your billing system, for example, fills in “sold”.')
+    await within(f).findByText('This is for whoever runs your systems. Say what you want to use it for and accept the terms. Once we approve it, you can make keys and choose where we send updates.')
+    expect(hrefOf(f, 'Ask to connect your own systems')).toBe('/settings/tools')
     expect(hrefOf(f, 'Read how it works')).toBe('/settings/tools')
   })
 
@@ -226,15 +233,27 @@ describe('Grace, an admin, reads Connections', () => {
     serve({ creds: [{ id: 'k1', name: 'HR sync', clientId: 'gwc_1', sourceSystem: 'hr', scopes: ['graph:write'], lastUsedAt: null, revokedAt: null, replacedByClientId: null, createdAt: '' }] })
     open(GRACE)
     const more = await screen.findByRole('region', { name: 'More you can connect' })
-    expect(more.textContent).toContain('Each one means one less list to keep in two places')
+    /* GROUP 1'S THIRD REVIEW: full sentences throughout. */
+    expect(more.textContent).toContain('Each one means one less list you keep in two places.')
     const people = within(more).getByRole('region', { name: 'Your people come in' })
-    expect(people.textContent).toContain('Who works here and who they report to, from your HR system. Joiners, movers and leavers arrive too.')
+    expect(people.textContent).toContain('Your HR system tells Groundwork who works here and who they report to. People who join, change roles or leave are updated too.')
     await within(people).findByText('Connected')
     const brief = within(more).getByRole('region', { name: 'The brief before a hard conversation' })
-    expect(brief.textContent).toContain('One page on one person: what they said they’d do, what they’re waiting on, what they raised. Never a score.')
+    expect(brief.textContent).toContain('One page about one person, with what they said they would do, what they are waiting on, and what they raised. It never gives a score.')
     expect(within(brief).getByText('Needs a key')).toBeTruthy()
-    for (const name of ['Your goals come in', 'Roles and handovers', 'Your handbook', 'Start a check-in from your own system']) {
-      expect(hrefOf(within(more).getByRole('region', { name }), 'Set up')).toBe('/settings/tools')
+    const start = within(more).getByRole('region', { name: 'Start a check-in from your own system' })
+    expect(within(start).getByText('Needs a key')).toBeTruthy()
+    /*
+     * GROUP 1 REVIEW: ONLY "START A CHECK-IN" AND "THE BRIEF" NEED A KEY. The other four cards here
+     * are not backed by the credential system the way those two are - the prototype's own screen
+     * (connections.txt) says "Not set up" for them, and saying "Needs a key" for every card here
+     * was the fault sent back.
+     */
+    for (const name of ['Your goals come in', 'Roles and handovers', 'Your handbook']) {
+      const region = within(more).getByRole('region', { name })
+      expect(within(region).getByText('Not set up')).toBeTruthy()
+      expect(within(region).queryByText('Needs a key')).toBeNull()
+      expect(hrefOf(region, 'Set up')).toBe('/settings/tools')
     }
   })
 
@@ -250,20 +269,39 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
   it('starts at step 2, with the prototype’s heading, lede and the three things to paste', async () => {
     serve()
     open(GRACE, 'whatsapp')
-    expect(screen.getByRole('link', { name: 'Connections' }).getAttribute('href')).toBe('/settings/connections')
+    /*
+     * GROUP 1 REVIEW: THE PROTOTYPE'S OWN TITLE AREA (whatsapp.txt, whatsapp.jpg). "Settings" as
+     * the title, the organisation's name as its subtitle, then a plain "Connections" link back -
+     * never a "Settings / Connections" crumb joined with a slash.
+     */
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeTruthy()
+    expect(screen.getByText('Baridi Appliances')).toBeTruthy()
+    expect(screen.queryByText('Settings / Connections')).toBeNull()
+    const connectionsLink = screen.getByRole('link', { name: 'Connections' })
+    expect(connectionsLink.getAttribute('href')).toBe('/settings/connections')
+    expect(connectionsLink.closest('nav')?.textContent).toBe('Connections')
     expect(screen.getByRole('heading', { name: 'Connect WhatsApp' })).toBeTruthy()
-    expect(screen.getByText('People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step; what you’ve entered is kept.')).toBeTruthy()
+    /* GROUP 1'S THIRD REVIEW: full plain sentences. */
+    expect(screen.getByText('People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept.')).toBeTruthy()
     await screen.findByText('Paste three things from Meta')
     for (const [label, hint] of [
-      ['Phone number ID', 'In Meta: WhatsApp, API Setup.'],
-      ['Access token', 'A permanent system-user token, not the 24-hour one. In Meta: Business Settings, System users.'],
-      ['App secret', 'In Meta: your app, Settings, Basic.'],
+      ['Phone number ID', 'You find it in Meta, under WhatsApp, then API Setup.'],
+      ['Access token', 'Use a permanent token from a system user, not the one that lasts 24 hours. You find it in Meta, under Business Settings, then System users.'],
+      ['App secret', 'You find it in Meta, under your app, then Settings, then Basic.'],
     ]) {
       expect(screen.getByText(label)).toBeTruthy()
       expect(screen.getByText(hint)).toBeTruthy()
     }
     expect(screen.getByText(/A Meta Business account, a WhatsApp Business number on it, and a Meta app with WhatsApp added\./)).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'How to get these' })).toBeTruthy()
+    /* PLAIN WORDS, NOT "id" (group 1 review, CLAUDE.md's banned-jargon list). */
+    expect(screen.getByText('Your WhatsApp Business account ID, if you have one')).toBeTruthy()
+    expect(screen.queryByText('WhatsApp Business Account id (optional)')).toBeNull()
+    /* GROUP 1 RE-REVIEW, FAULT F: this read as plain grey text, not a link, with nothing to show
+       it was clickable. Underlined now, the same style "Read them" and other in-sentence links
+       already use. */
+    const howToGetThese = screen.getByRole('link', { name: 'How to get these' })
+    expect(howToGetThese).toBeTruthy()
+    expect(howToGetThese.className).toContain('gwui-plain-link')
     expect(screen.queryByText('Done')).toBeNull()
     /*
      * A STEP STILL TO COME IS PLAIN TEXT, NOT A BUTTON (Hafsah, 30 September, item 2: "no more
@@ -276,9 +314,12 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
       expect(screen.getByText(later)).toBeTruthy()
       expect(screen.queryByRole('button', { name: later })).toBeNull()
     }
+    /* THE STEPS SIT FLAT ON THE PAGE (group 1 review), not inside a white Panel whose left border
+       used to run through the middle of each step's numbered circle. */
+    expect(document.querySelector('.gwui-numsteps')?.closest('.gwui-panel')).toBeNull()
     expect(screen.getByText('Keep your number on your own system instead')).toBeTruthy()
     expect(screen.getByText('If your WhatsApp number already runs through your own customer system, it can pass check-in messages to us and send our replies back. Nothing moves to Meta. Whoever runs your systems sets this up with a key.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Read how the relay works' }).getAttribute('href')).toBe('/settings/tools')
+    expect(screen.getByRole('link', { name: 'Read how this works' }).getAttribute('href')).toBe('/settings/tools')
   })
 
   it('"Connect" needs all three the first time, and sends them to the server', async () => {
@@ -297,7 +338,7 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
   it('once saved, step 3 shows the address and token to copy, and waits for Meta', async () => {
     serve({ connection: { ...CONNECTED, webhookProvenAt: null, lastOutboundAt: null } })
     open(GRACE, 'whatsapp')
-    await screen.findByText('In Meta: WhatsApp, Configuration, Webhook. Paste these two, then subscribe to', { exact: false })
+    await screen.findByText('You find it in Meta, under WhatsApp, then Configuration, then Webhook. Paste these two, then subscribe to', { exact: false })
     expect((screen.getByRole('textbox', { name: 'Callback address' }) as HTMLInputElement).value).toContain('/api/v1/webhooks/whatsapp/org-baridi')
     expect((screen.getByRole('textbox', { name: 'Verify token' }) as HTMLInputElement).value).toBe('gwv_7f3a91c2')
     expect(screen.getAllByRole('button', { name: 'Copy' })).toHaveLength(2)

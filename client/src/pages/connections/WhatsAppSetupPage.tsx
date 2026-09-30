@@ -90,7 +90,7 @@ export function WhatsAppSetupPage() {
   const test = useMutation({
     mutationFn: () => integrationsApi.testWhatsapp(to),
     onSuccess: () => { toast.success('Sent. Check that phone.'); refresh() },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Meta refused it.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Meta did not send it. Check the number and try again.'),
   })
   const turn = useMutation({
     mutationFn: (enabled: boolean) => integrationsApi.setWhatsappEnabled(enabled),
@@ -117,7 +117,7 @@ export function WhatsAppSetupPage() {
         return (
           <p className="gwui-panel-text-muted">
             A Meta Business account, a WhatsApp Business number on it, and a Meta app with WhatsApp added.{' '}
-            <a href={HOW_TO_GET_THESE} target="_blank" rel="noreferrer">How to get these</a>
+            <a className="gwui-plain-link" href={HOW_TO_GET_THESE} target="_blank" rel="noreferrer">How to get these</a>
           </p>
         )
       case 2:
@@ -127,24 +127,24 @@ export function WhatsAppSetupPage() {
               <div>
                 <FieldLabel htmlFor="wa-number-id">Phone number ID</FieldLabel>
                 <TextField id="wa-number-id" value={numberId} onChange={e => setNumberId(e.target.value)} placeholder={c?.phoneNumberId ?? ''} inputMode="numeric" />
-                <p className="gwui-field-help">In Meta: WhatsApp, API Setup.</p>
+                <p className="gwui-field-help">You find it in Meta, under WhatsApp, then API Setup.</p>
               </div>
               <div>
                 <FieldLabel htmlFor="wa-token">Access token</FieldLabel>
                 <TextField id="wa-token" type="password" value={token} onChange={e => setToken(e.target.value)} placeholder={c ? 'New permanent access token (leave blank to keep)' : ''} />
-                <p className="gwui-field-help">A permanent system-user token, not the 24-hour one. In Meta: Business Settings, System users.</p>
+                <p className="gwui-field-help">Use a permanent token from a system user, not the one that lasts 24 hours. You find it in Meta, under Business Settings, then System users.</p>
               </div>
               <div>
                 <FieldLabel htmlFor="wa-secret">App secret</FieldLabel>
                 <TextField id="wa-secret" type="password" value={secret} onChange={e => setSecret(e.target.value)} placeholder={c ? 'New app secret (leave blank to keep)' : ''} />
-                <p className="gwui-field-help">In Meta: your app, Settings, Basic.</p>
+                <p className="gwui-field-help">You find it in Meta, under your app, then Settings, then Basic.</p>
               </div>
               <div>
                 <FieldLabel htmlFor="wa-display">The number, as people will see it (optional)</FieldLabel>
                 <TextField id="wa-display" value={display} onChange={e => setDisplay(e.target.value)} placeholder={c?.displayNumber ?? ''} />
               </div>
               <div>
-                <FieldLabel htmlFor="wa-business">WhatsApp Business Account id (optional)</FieldLabel>
+                <FieldLabel htmlFor="wa-business">Your WhatsApp Business account ID, if you have one</FieldLabel>
                 <TextField id="wa-business" value={business} onChange={e => setBusiness(e.target.value)} placeholder={c?.businessAccountId ?? ''} />
               </div>
               <Button kind="primary" type="submit" disabled={!mayConnect || save.isPending}>{save.isPending ? 'Connecting…' : firstTime ? 'Connect' : 'Save'}</Button>
@@ -155,7 +155,7 @@ export function WhatsAppSetupPage() {
         if (!c) return null
         return (
           <Stack gap={12}>
-            <p className="gwui-panel-text-muted">In Meta: WhatsApp, Configuration, Webhook. Paste these two, then subscribe to <b>messages</b>.</p>
+            <p className="gwui-panel-text-muted">You find it in Meta, under WhatsApp, then Configuration, then Webhook. Paste these two, then subscribe to <b>messages</b>.</p>
             <CopyField label="Callback address" value={callback} />
             <CopyField label="Verify token" value={c.verifyToken} />
             {!c.webhookProvenAt && (
@@ -215,18 +215,28 @@ export function WhatsAppSetupPage() {
 
   return (
     <Page>
+      {/*
+       * THE PROTOTYPE'S OWN TITLE AREA (whatsapp.txt, whatsapp.jpg; group 1 review): "Settings" as
+       * the title, the organisation name as its subtitle, then a plain "Connections" link back -
+       * never a "Settings / Connections" crumb joined with a slash.
+       */}
+      <PageTitle title="Settings" subtitle={orgName} />
       <PageTitle
-        eyebrow={orgName}
-        crumbs={[{ label: 'Settings', to: '/settings' }, { label: 'Connections', to: '/settings/connections' }]}
+        crumbs={[{ label: 'Connections', to: '/settings/connections' }]}
         title="Connect WhatsApp"
-        subtitle="People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step; what you’ve entered is kept."
+        subtitle="People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept."
       />
 
       {whatsapp.isError && <Note tone="error">Connections did not load.</Note>}
 
-      <Panel pad={false}>
-        <ol className="gwui-numsteps">
-          {steps.map(s => {
+      {/*
+       * THE STEPS SIT FLAT ON THE PAGE (whatsapp.jpg; group 1 review), not inside a white `Panel` -
+       * a panel's own left border ran straight through the middle of each step's numbered circle,
+       * which the prototype's own screen does not draw at all: there, the steps sit directly under
+       * the title, separated only by the thin rule `.gwui-numstep` already puts between them.
+       */}
+      <ol className="gwui-numsteps">
+        {steps.map(s => {
             const state = s.done ? 'done' : s.n === current || (s.n === 1 && !c) ? 'now' : 'later'
             /*
              * ALWAYS THE PROTOTYPE'S OWN SHAPE (whatsapp.txt): a step still to come shows its
@@ -252,14 +262,13 @@ export function WhatsAppSetupPage() {
               </li>
             )
           })}
-        </ol>
-      </Panel>
+      </ol>
 
       <Section heading="Keep your number on your own system instead">
         <Panel>
           <Stack gap={12}>
             <p className="gwui-panel-text-muted">If your WhatsApp number already runs through your own customer system, it can pass check-in messages to us and send our replies back. Nothing moves to Meta. Whoever runs your systems sets this up with a key.</p>
-            <Button kind="quiet" to="/settings/tools">Read how the relay works</Button>
+            <Button kind="quiet" to="/settings/tools">Read how this works</Button>
           </Stack>
         </Panel>
       </Section>

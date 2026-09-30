@@ -64,9 +64,12 @@ beforeEach(() => {
 })
 afterEach(() => { vi.useRealTimers() })
 
-const rows = () => [...document.querySelectorAll('.gw-need')].map(li => ({
-  title: li.querySelector('.gw-need-h')?.textContent,
-  detail: li.querySelector('.gw-need-s')?.textContent ?? null,
+/* Rebuilt from the shared parts (group 2): the row is now the shared `EdgeRow` (`gwui-edge-row`,
+   `gwui-edge-h`, `gwui-edge-s`), in place of the old `NeedsYouRow` (`gw-need`, `gw-need-h`, `gw-need-s`) -
+   the same shape, one shared part used by every list of things that need a reader. */
+const rows = () => [...document.querySelectorAll('.gwui-edge-row')].map(li => ({
+  title: li.querySelector('.gwui-edge-h')?.textContent,
+  detail: li.querySelector('.gwui-edge-s')?.textContent ?? null,
   action: [...li.querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')]),
 }))
 
@@ -184,5 +187,18 @@ describe('the words for when', () => {
     expect(whenItComes(new Date(2026, 8, 24, 16, 30), MORNING)).toBe('Tomorrow, 4:30pm')
     expect(whenItComes(new Date(2026, 8, 28, 9, 0), MORNING)).toBe('Monday')
     expect(whenItComes(new Date(2026, 9, 1, 9, 0), MORNING)).toBe('1 October')
+  })
+})
+
+describe('Today has one navy button', () => {
+  /* Hafsah, 30 September: at most one primary button per screen. The prototype's own Today draws
+     every "Start it" navy; with two check-ins open that is two at once. Only the first is navy. */
+  it('with two check-ins to start, only the first "Start it" is navy', async () => {
+    open(WAIRIMU, LEAD_READ)
+    const starts = await screen.findAllByRole('link', { name: 'Start it' })
+    expect(starts).toHaveLength(2)
+    expect(starts[0].className).toContain('gwui-btn-primary')
+    expect(starts[1].className).not.toContain('gwui-btn-primary')
+    expect(document.querySelectorAll('.gwui-btn-primary')).toHaveLength(1)
   })
 })

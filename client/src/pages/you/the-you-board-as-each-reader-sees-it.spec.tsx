@@ -88,7 +88,9 @@ describe('Miriam reads her own You board', () => {
     await screen.findByRole('heading', { name: 'What you said you’d do' })
     const said = section('What you said you’d do')
     expect(within(said).getByText('From every check-in')).toBeInTheDocument()
-    expect([...said.querySelectorAll('.gw-you-row')].map(r => [...r.children].map(c => c.textContent))).toEqual([
+    /* Rebuilt from the shared parts (group 2, piece 2): the row is now the shared `Row`
+       (`gwui-row`, components/gw/ui/Rows.tsx), in place of the page's own `gw-you-row`. */
+    expect([...said.querySelectorAll('.gwui-row')].map(r => [...r.children].map(c => c.textContent))).toEqual([
       ['Visit Westgate Deli on Friday', 'Sales team, Q3', 'Friday', 'Open'],
       ['Send Green Mart the quote, with a photo', 'Sales team, Q3', '', 'Kept'],
     ])
@@ -315,5 +317,45 @@ describe('Everything asked of you this week (D3, U.16), on your own board only',
     open(GRACE, EMPTY)
     await screen.findByText('You are not in any check-in yet.')
     expect(screen.queryByRole('heading', { name: 'Everything asked of you this week' })).toBeNull()
+  })
+})
+
+describe('Your turn, drawn as the prototype\'s own card (you-board-miriam.jpg)', () => {
+  it('draws each turn in its own card, with a dark inset edge, not the striped "What needs you" row', async () => {
+    open(MIRIAM, MIRIAMS)
+    await screen.findByText('Your own check-in for Sales team, Q3')
+    const card = screen.getByText('Your own check-in for Sales team, Q3').closest('.gwui-welcome-card')
+    expect(card).toBeTruthy()
+    expect(card?.querySelector('.gwui-edge-row')).toBeNull()
+  })
+
+  /* Hafsah, 30 September: at most one primary button per screen. The prototype's own board draws
+     every "Start it" navy; with two turns open that is two at once. Only the first is navy - the
+     same rule Today already applies to its own repeated "Start it" (TodayPage.tsx). */
+  it('with two turns to start, only the first "Start it" is navy', async () => {
+    open(MIRIAM, {
+      ...MIRIAMS,
+      turns: [
+        { key: 't1', title: 'Your sales check-in closes at 6pm', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/c39' } },
+        { key: 't2', title: 'Your own check-in for Leadership, Q3', detail: 'About two minutes.', action: { label: 'Start it', to: '/checkin/c40' } },
+      ],
+    })
+    const starts = await screen.findAllByRole('link', { name: 'Start it' })
+    expect(starts).toHaveLength(2)
+    expect(starts[0].className).toContain('gwui-btn-primary')
+    expect(starts[1].className).not.toContain('gwui-btn-primary')
+    expect(document.querySelectorAll('.gwui-btn-primary')).toHaveLength(1)
+    expect(document.querySelectorAll('.gwui-welcome-card')).toHaveLength(2)
+  })
+})
+
+describe('Your data, on one line at 1440 (you-board-miriam.jpg)', () => {
+  it('puts the sentence and "Download it" in the same row, so it wraps to its own line on a phone', async () => {
+    open(MIRIAM, MIRIAMS)
+    const data = await screen.findByRole('region', { name: 'Your data' })
+    const row = data.querySelector('.gwui-sentence-row')
+    expect(row).toBeTruthy()
+    expect(within(row as HTMLElement).getByText('Everything you’ve written, in every check-in, as one file.')).toBeInTheDocument()
+    expect(within(row as HTMLElement).getByRole('button', { name: 'Download it' })).toBeInTheDocument()
   })
 })

@@ -1,5 +1,5 @@
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -9,7 +9,7 @@ import { myDataApi, type MyData } from '@/api/my-data'
 import { todaysPasswordRules } from '@/pages/auth/password-rules'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, SwitchRow, Steps, Step,
-  Button, TextField, FieldLabel,
+  Button, TextField, FieldLabel, SubHeading,
 } from '@/components/gw/ui'
 
 /**
@@ -160,9 +160,48 @@ export function SettingsPage() {
 
   const [myData, setMyData] = useState<MyData | null>(null)
   const [showEraseConfirm, setShowEraseConfirm] = useState(false)
+  function saveAsAFile(data: MyData) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'groundwork-my-data.json'
+    /*
+     * ATTACHED BEFORE THE CLICK, REMOVED AFTER (group 1 re-review, fault G): clicking a link that
+     * was never part of the page is exactly the kind of thing a browser can handle inconsistently
+     * - including, on the picture that flagged this, focus drifting away from the button somebody
+     * actually pressed. A normal, connected element behaves like every other link on the page.
+     */
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+  /*
+   * THE PROTOTYPE'S OWN ONE BUTTON, "Download it" (own-settings.txt, beside the heading): loaded
+   * on demand, never on every visit to Settings, so this is somebody's whole record and fetching
+   * it because they came to change a phone number would be the wrong default. One press both
+   * saves the file straight away and fills in the sentence and the list below it, so nothing the
+   * page did before ("Show me") is lost - it is the same load, the file just comes with it now,
+   * matching the prototype's own single button rather than adding a second one beside it (the
+   * button-count check, e2e/the-prototype-count-of-buttons.spec.ts, holds the product to the
+   * prototype's own count for this screen).
+   */
+  const downloadItRef = useRef<HTMLButtonElement | HTMLAnchorElement>(null)
   const loadMyData = useMutation({
     mutationFn: myDataApi.get,
-    onSuccess: setMyData,
+    onSuccess: (data) => {
+      setMyData(data)
+      saveAsAFile(data)
+      /*
+       * GROUP 1 RE-REVIEW, FAULT G: a picture taken right after this press showed "Skip to
+       * content" over the Email label - the skip link briefly gaining focus once the download's
+       * own browser activity (a native file save) moved it away from this button. This keeps
+       * focus where the person's attention already is, on the button whose own text now confirms
+       * what happened, rather than leaving it to drift.
+       */
+      requestAnimationFrame(() => downloadItRef.current?.focus())
+    },
     onError: () => toast.error('Could not load your data. Try again.'),
   })
   const eraseMyData = useMutation({
@@ -170,17 +209,6 @@ export function SettingsPage() {
     onSuccess: () => { toast.success('Your way in is gone. What you shared stays with the check-ins you were part of.'); logout(); navigate('/auth') },
     onError: () => toast.error('That did not happen. Nothing has changed - try again.'),
   })
-  function downloadMyData() {
-    if (!myData) return
-    const blob = new Blob([JSON.stringify(myData, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'groundwork-my-data.json'
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const leaveOrg = useMutation({
     mutationFn: authApi.leaveOrg,
@@ -233,7 +261,7 @@ export function SettingsPage() {
             value={!editingName ? (
               <span>
                 {user?.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}` : 'Not set'}
-                <span className="gwui-field-help">This is what your team sees next to what you said. Without it we can only show your email address.</span>
+                <span className="gwui-field-help">This is what your team sees. A first name is enough.</span>
               </span>
             ) : (
               <Stack gap={10}>
@@ -295,48 +323,76 @@ export function SettingsPage() {
 
       <Section heading="Your data">
         <Panel>
-          {!myData ? (
-            <Stack gap={12}>
-              <p className="gwui-panel-text-muted">
-                Every answer, which check-in it came from, and nothing anyone else wrote. As a file you can open.
-              </p>
-              <Button kind="secondary" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
-                {loadMyData.isPending ? 'Loading…' : 'Show me'}
+          <Stack gap={12}>
+            <div className="gwui-sentence-row">
+              <SubHeading>Everything you’ve written</SubHeading>
+              {/*
+               * THE PROTOTYPE'S OWN OUTLINED BUTTON (own-settings.jpg; group 1 re-review, fault E):
+               * a quiet text link read as decoration, not something to press - "Download it" is
+               * `kind="secondary"`, the same outlined weight the prototype draws it in.
+               */}
+              <Button ref={downloadItRef} kind="secondary" size="small" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
+                {loadMyData.isPending ? 'Downloading…' : 'Download it'}
               </Button>
-            </Stack>
-          ) : (
-            <Stack gap={12}>
+            </div>
+            <p className="gwui-panel-text-muted">
+              The file holds every answer you gave and which check-in it came from, and nothing anyone else wrote. You can open it on any computer.
+            </p>
+            {/*
+             * "Saved. ..." (fault E): confirms the file actually saved, then states what it holds,
+             * with the real counts - never a second "Download all of it" button repeating the one
+             * action "Download it" already did.
+             */}
+            {myData && (
               <div>
                 <p className="gwui-panel-text-muted">
-                  {myData.recordEntries.length} things you wrote, across {myData.checkIns.length} check-ins,
-                  on {myData.grounds.length} {myData.grounds.length === 1 ? 'ground' : 'grounds'}:
+                  Saved. You have written {myData.recordEntries.length} answer{myData.recordEntries.length === 1 ? '' : 's'}, in{' '}
+                  {myData.grounds.length} check-in{myData.grounds.length === 1 ? '' : 's'}.
                 </p>
                 <Stack gap={0}>
                   {myData.grounds.map(g => <p key={g.id} className="gwui-panel-text">{g.label}</p>)}
                 </Stack>
               </div>
-              <div className="gwui-invite-actions">
-                <Button kind="secondary" onClick={downloadMyData}>Download all of it</Button>
-                {!showEraseConfirm && <Button kind="quiet" onClick={() => setShowEraseConfirm(true)}>Erase it</Button>}
+            )}
+          </Stack>
+          {/*
+           * "REMOVE YOUR NAME AND EMAIL", NEVER "ERASE IT" (group 1's third review): the old label
+           * said the opposite of what this does - your answers stay on the record, only your name
+           * and email go. Said plainly before the link, not just inside the confirmation, and the
+           * confirmation's own words now agree with the label.
+           *
+           * REACHABLE WITHOUT DOWNLOADING FIRST (fault E), as it was before "Download it" started
+           * saving a file on press: it no longer waits for `myData`. Still a plain text link
+           * (`.gwui-plain-link`), like "Cancel" and "Never mind" elsewhere on this page, rather than
+           * a second boxed button - the prototype's own screen has no erase flow at all, so a second
+           * always-visible button here would put this screen over the prototype's own button count
+           * (e2e/the-prototype-count-of-buttons.spec.ts already holds it to exactly the prototype's
+           * five).
+           */}
+          <Stack gap={12}>
+            {!showEraseConfirm && (
+              <div>
+                <p className="gwui-panel-text-muted">Your answers stay in the check-ins, without your name.</p>
+                <button type="button" className="gwui-plain-link" onClick={() => setShowEraseConfirm(true)}>Remove your name and email</button>
               </div>
-              {showEraseConfirm && (
-                <Stack gap={10}>
-                  <p className="gwui-panel-text-muted">
-                    Your name and email are removed everywhere and cannot be brought back. What you wrote
-                    into these check-ins stays on the record, without your name on it, because the other
-                    people on them have their own account of the same events. Download a copy first if
-                    you want one.
-                  </p>
-                  <div className="gwui-invite-actions">
-                    <Button kind="danger" onClick={() => eraseMyData.mutate()} disabled={eraseMyData.isPending}>
-                      {eraseMyData.isPending ? 'Erasing…' : 'Yes, erase it'}
-                    </Button>
-                    <Button kind="quiet" onClick={() => setShowEraseConfirm(false)}>Cancel</Button>
-                  </div>
-                </Stack>
-              )}
-            </Stack>
-          )}
+            )}
+            {showEraseConfirm && (
+              <Stack gap={10}>
+                <p className="gwui-panel-text-muted">
+                  Your name and email are removed everywhere and cannot be brought back. What you wrote
+                  into these check-ins stays on the record, without your name on it, because the other
+                  people on them have their own account of the same events. Download a copy first if
+                  you want one.
+                </p>
+                <div className="gwui-invite-actions">
+                  <Button kind="danger" onClick={() => eraseMyData.mutate()} disabled={eraseMyData.isPending}>
+                    {eraseMyData.isPending ? 'Removing…' : 'Yes, remove them'}
+                  </Button>
+                  <Button kind="quiet" onClick={() => setShowEraseConfirm(false)}>Cancel</Button>
+                </div>
+              </Stack>
+            )}
+          </Stack>
         </Panel>
       </Section>
 
@@ -347,12 +403,12 @@ export function SettingsPage() {
               <p className="gwui-panel-text-muted">
                 You’ll lose access. What you shared stays in the check-ins you were part of, as it is today.
               </p>
-              <Button kind="danger" onClick={() => setShowLeaveConfirm(true)}>Leave</Button>
+              <Button kind="secondary" redText onClick={() => setShowLeaveConfirm(true)}>Leave</Button>
             </div>
           ) : (
             <Stack gap={12}>
               <p className="gwui-panel-text-muted">
-                You will lose access to {orgName} immediately. Your contributions to existing check-ins stay on record.
+                You will lose access to {orgName} immediately. What you said in your check-ins stays on the record.
               </p>
               <div className="gwui-invite-actions">
                 <Button kind="danger" onClick={() => leaveOrg.mutate()} disabled={leaveOrg.isPending}>

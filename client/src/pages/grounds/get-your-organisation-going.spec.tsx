@@ -33,7 +33,9 @@ describe('the new admin', () => {
     expect(screen.getByRole('button', { name: 'Got it' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Get Nyali Foods going' })).toBeTruthy()
     expect(screen.getByText('0 of 3 done')).toBeTruthy()
-    expect([...document.querySelectorAll('.gw-get-going-title')].map(e => e.textContent)).toEqual([
+    /* Rebuilt from the shared parts (group 2): the checklist's own class moved from the old
+       `gw-get-going-title` to `gwui-get-going-title`, in gw-ui.css. */
+    expect([...document.querySelectorAll('.gwui-get-going-title')].map(e => e.textContent)).toEqual([
       'Invite your team', 'Add a second admin', 'Start your first check-in',
     ])
     expect(screen.getAllByRole('link', { name: 'Do it' }).map(a => a.getAttribute('href'))).toEqual(['/org/members', '/org/members', '/start'])
@@ -48,7 +50,8 @@ describe('the new admin', () => {
   it('the welcome card has the prototype\'s doors, Suites included now that its page exists', async () => {
     open(ADMIN)
     await screen.findByRole('heading', { name: 'You’re an admin at Nyali Foods' })
-    const doors = [...document.querySelectorAll('.gw-welcome-door')].map(a => [a.querySelector('b')?.textContent, a.querySelector('span')?.textContent, a.getAttribute('href')])
+    /* Rebuilt from the shared parts (group 2): `gw-welcome-door` -> `gwui-welcome-door`. */
+    const doors = [...document.querySelectorAll('.gwui-welcome-door')].map(a => [a.querySelector('b')?.textContent, a.querySelector('span')?.textContent, a.getAttribute('href')])
     expect(doors).toEqual([
       ['People', 'Invite people, set roles and teams, let guests in', '/org/members'],
       ['Connections', 'Your numbers, your own address', '/settings/connections'],

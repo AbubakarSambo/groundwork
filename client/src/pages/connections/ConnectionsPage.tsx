@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import {
-  Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note,
+  Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note, OpsConsoleExample, WhatsAppConversationExample,
 } from '@/components/gw/ui'
 
 /**
@@ -66,13 +66,19 @@ export function kindOf(url: string): 'slack' | 'teams' {
   return /^https:\/\/hooks\.slack\.com\//i.test(url.trim()) ? 'slack' : 'teams'
 }
 
-const MORE: { key: keyof typeof SCOPE_FOR; title: string; line: string }[] = [
-  { key: 'people', title: 'Your people come in', line: 'Who works here and who they report to, from your HR system. Joiners, movers and leavers arrive too.' },
-  { key: 'goals', title: 'Your goals come in', line: 'Goals, projects and decisions from wherever you keep them. Groundwork points at yours instead of copying them.' },
-  { key: 'roles', title: 'Roles and handovers', line: 'Who holds which role and since when, so a handover leaves a written brief.' },
-  { key: 'handbook', title: 'Your handbook', line: 'Documents people can ask in plain words; the answer quotes the page it came from.' },
-  { key: 'start', title: 'Start a check-in from your own system', line: 'Your system opens one, sends people the link, and is told when it’s done. Never what anyone said.' },
-  { key: 'brief', title: 'The brief before a hard conversation', line: 'One page on one person: what they said they’d do, what they’re waiting on, what they raised. Never a score.' },
+/**
+ * "NEEDS A KEY" ONLY WHERE A KEY IS THE NEXT STEP (group 1 review): every card here used to say
+ * "Needs a key" - true of "Start a check-in from your own system" and "The brief before a hard
+ * conversation", the two backed directly by a credential on "Connect your own tools", but not of
+ * the other four, which the prototype's own screen (connections.txt) says are simply "Not set up".
+ */
+const MORE: { key: keyof typeof SCOPE_FOR; title: string; line: string; needsKey?: boolean }[] = [
+  { key: 'people', title: 'Your people come in', line: 'Your HR system tells Groundwork who works here and who they report to. People who join, change roles or leave are updated too.' },
+  { key: 'goals', title: 'Your goals come in', line: 'Groundwork reads your goals, projects and decisions from wherever you keep them. Groundwork points at yours instead of copying them.' },
+  { key: 'roles', title: 'Roles and handovers', line: 'Groundwork knows who holds each role and since when, so a handover leaves a written brief.' },
+  { key: 'handbook', title: 'Your handbook', line: 'People can ask your documents questions in plain words. Each answer quotes the page it came from.' },
+  { key: 'start', title: 'Start a check-in from your own system', line: 'Your system opens a check-in and sends people the link. It is told when the check-in is done, but never what anyone said.', needsKey: true },
+  { key: 'brief', title: 'The brief before a hard conversation', line: 'One page about one person, with what they said they would do, what they are waiting on, and what they raised. It never gives a score.', needsKey: true },
 ]
 
 /** The counts, said as a person would say them, one or many. */
@@ -111,11 +117,11 @@ export function ConnectionsPage() {
 
       {/* FIELDROWS SIT FLAT (Hafsah, 30 September, the setting row): `srow` in the prototype has
           no side padding and sits on the page, not inside a white Panel - see FieldRow.tsx. */}
-      <Section heading="Your numbers" note="So what people say is checked against where the work shows up">
+      <Section heading="Your numbers" note="Groundwork checks what people say against the numbers where the work shows up.">
         <FieldRows>
           <FieldRow
             label="Your own product sends its numbers"
-            value={<span>Usage numbers, sent by your own product.</span>}
+            value={<span>Your own product sends Groundwork its usage numbers.</span>}
             action={(
               <span className="gwui-invite-actions">
                 <Tag tone={glance.data?.figures.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures.fromYourProduct ? 'Connected' : 'Not set up'}</Tag>
@@ -125,7 +131,7 @@ export function ConnectionsPage() {
           />
           <FieldRow
             label="Accounting or sales tools"
-            value={<span>Invoices paid, deals won.</span>}
+            value={<span>Groundwork reads which invoices are paid and which deals are won.</span>}
             action={(
               <span className="gwui-invite-actions">
                 {!hasAKeyFor(creds.data, SCOPE_FOR.figures) && <Tag tone="plain">Needs a key</Tag>}
@@ -144,19 +150,19 @@ export function ConnectionsPage() {
       >
         <Panel>
           <Stack gap={10}>
-            <p className="gwui-panel-text-muted">Send a figure from your CRM, billing or support desk, and it sits beside the goal it belongs to, as proven. A payment from your billing system, for example, fills in “sold”.</p>
+            <p className="gwui-panel-text-muted">Send a number from your sales, billing or support system. It appears beside the goal it belongs to, marked as proven. A payment from your billing system, for example, fills in “sold”.</p>
             <div className="gwui-invite-actions">
-              {!access.data?.approved && <Button kind="secondary" size="small" to="/settings/tools">Ask for API access</Button>}
+              {!access.data?.approved && <Button kind="secondary" size="small" to="/settings/tools">Ask to connect your own systems</Button>}
               <Button kind="quiet" size="small" to="/settings/tools">Read how it works</Button>
             </div>
             {!access.data?.approved && (
-              <p className="gwui-fine">For whoever runs your systems. Say what it’s for and accept the terms; keys, webhooks and delivery logs open once access is approved.</p>
+              <p className="gwui-fine">This is for whoever runs your systems. Say what you want to use it for and accept the terms. Once we approve it, you can make keys and choose where we send updates.</p>
             )}
           </Stack>
         </Panel>
       </Section>
 
-      <Section heading="More you can connect" note="Each one means one less list to keep in two places">
+      <Section heading="More you can connect" note="Each one means one less list you keep in two places.">
         <div className="gwui-two-up">
           {MORE.map(m => (
             <Panel key={m.key} role="region" aria-label={m.title}>
@@ -164,7 +170,11 @@ export function ConnectionsPage() {
                 <SubHeading>{m.title}</SubHeading>
                 <p className="gwui-panel-text-muted">{m.line}</p>
                 <div className="gwui-sentence-row">
-                  {hasAKeyFor(creds.data, SCOPE_FOR[m.key]) ? <Tag tone="proven">Connected</Tag> : <Tag tone="attention">Needs a key</Tag>}
+                  {hasAKeyFor(creds.data, SCOPE_FOR[m.key])
+                    ? <Tag tone="proven">Connected</Tag>
+                    : m.needsKey
+                      ? <Tag tone="attention">Needs a key</Tag>
+                      : <Tag tone="plain">Not set up</Tag>}
                   <Button kind="quiet" size="small" to="/settings/tools">Set up</Button>
                 </div>
               </Stack>
@@ -178,14 +188,14 @@ export function ConnectionsPage() {
           {showWhatsApp && (
             <Panel pad={false}>
               <figure>
-                <img src="/connect/whatsapp.png" alt="A check-in over WhatsApp" />
+                <div className="gwui-console-frame"><WhatsAppConversationExample /></div>
                 <figcaption className="gwui-panel-row"><b>On WhatsApp</b></figcaption>
               </figure>
             </Panel>
           )}
           <Panel pad={false}>
             <figure>
-              <img src="/connect/ops-panel.png" alt="Groundwork inside an organisation’s own tool" />
+              <div className="gwui-console-frame"><OpsConsoleExample /></div>
               <figcaption className="gwui-panel-row"><b>Inside your own tool</b></figcaption>
             </figure>
           </Panel>
@@ -205,7 +215,7 @@ function WhatsAppSection({ orgName, glance }: { orgName: string; glance: { peopl
   const test = useMutation({
     mutationFn: () => integrationsApi.testWhatsapp(to),
     onSuccess: () => { toast.success('Sent. Check that phone.'); setTesting(false); setTo('') },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Meta refused it.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Meta did not send it. Check the number and try again.'),
   })
   const disconnect = useMutation({
     mutationFn: () => integrationsApi.disconnectWhatsapp(),
@@ -295,7 +305,7 @@ function NoticesSection({ notifiers }: { notifiers: { kind: 'SLACK' | 'TEAMS'; c
     <Section heading="Notices in Slack or Teams" action={notifiers.length === 0 ? <Tag tone="plain">Not set up</Tag> : <Tag tone={anyOn ? 'proven' : 'plain'}>{anyOn ? 'Connected' : 'Switched off'}</Tag>}>
       <Panel>
         <Stack gap={12}>
-          <p className="gwui-panel-text-muted">Post a notice to a channel when a report is ready. A notice says something is ready and links to it; it never includes what anyone said, because a channel is read by more people than a check-in.</p>
+          <p className="gwui-panel-text-muted">Post a notice to a channel when a report is ready. A notice says something is ready and links to it. It never includes what anyone said, because more people read a channel than a check-in.</p>
           {notifiers.map(n => {
             const kind = n.kind === 'SLACK' ? 'slack' : 'teams'
             return (
@@ -323,11 +333,11 @@ function NoticesSection({ notifiers }: { notifiers: { kind: 'SLACK' | 'TEAMS'; c
           })}
           <form onSubmit={e => { e.preventDefault(); if (url.trim().startsWith('https://')) add.mutate() }}>
             <div className="gwui-invite-actions">
-              <TextField placeholder="Paste the channel’s incoming-webhook address" value={url} onChange={e => setUrl(e.target.value)} aria-label="The channel’s incoming-webhook address" />
+              <TextField placeholder="Paste the channel’s address from Slack or Teams" value={url} onChange={e => setUrl(e.target.value)} aria-label="The channel’s address from Slack or Teams" />
               <Button kind="secondary" size="small" type="submit" disabled={!url.trim().startsWith('https://') || add.isPending}>Add it, switched off</Button>
             </div>
           </form>
-          <p className="gwui-fine">It arrives switched off. Send one test notice, see it land, then turn it on.</p>
+          <p className="gwui-fine">It starts switched off. Send one test notice, check that it arrived, then switch it on.</p>
         </Stack>
       </Panel>
     </Section>

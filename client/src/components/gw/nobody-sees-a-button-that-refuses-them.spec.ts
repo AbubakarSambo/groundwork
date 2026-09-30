@@ -39,10 +39,14 @@ describe('the button is not shown to somebody it would refuse', () => {
      * new setup - `navigate('/start?new=1')` - which is a change to the query and not to the guard
      * this file is about. A spec that a rename can satisfy is not guarding anything, so it now
      * matches any navigation to /start whatever it carries.
+     *
+     * UPDATED, GROUP 2 REBUILD: the header's "Start a check-in" is now the shared `Button`'s own
+     * `to="/start?new=1"` (a `Link`), not an `onClick` that calls `navigate(...)` - so this also
+     * matches a bare `to="/start..."`, still checked for the same guard immediately before it.
      */
     const near = strip(LIST)
     let count = 0
-    for (const m of near.matchAll(/navigate\(['\`]\/start[^'\`]*['\`]\)/g)) {
+    for (const m of near.matchAll(/(?:navigate\(['\`]\/start[^'\`]*['\`]\)|\bto=["'\`]\/start[^"'\`]*["'\`])/g)) {
       count++
       expect(near.slice(Math.max(0, m.index! - 300), m.index!)).toContain('user?.mayOpenCheckIns !== false')
     }

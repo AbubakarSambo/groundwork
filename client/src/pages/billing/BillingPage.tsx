@@ -84,12 +84,12 @@ function ThingsWeDoByHand() {
 
   const open: Record<string, string> = asked.data?.open ?? {}
   const rows = [
-    { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar reads the report with your team and turns what it found into a decision somebody owns.' },
-    { subject: 'HANDS_ON', title: 'Setting you up', what: 'A named person to get you running and train your team, over the first month.' },
+    { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar Jamal, a partner at Groundwork who coaches teams and helps them set up, reads the report with your team and turns what it found into a decision somebody owns.' },
+    { subject: 'HANDS_ON', title: 'Setting you up', what: 'A named person gets you running and trains your team during your first month.' },
   ]
 
   return (
-    <Section heading="Things our team does by hand" note="Not part of your plan; invoiced afterwards, what it costs told before anybody starts">
+    <Section heading="Things our team does by hand" note="These are not part of your plan. We tell you what they cost before anyone starts, and invoice you afterwards.">
       <Panel pad={false}>
         <FieldRows>
           {rows.map(r => (
@@ -203,6 +203,10 @@ export function BillingPage() {
   const endsAt = orgSub?.endsAt ?? null
   const peopleOverCap = billingStatus?.people?.cap != null && billingStatus.people.count > billingStatus.people.cap
   const hasBillingHistory = (billingStatus?.activeGrounds ?? []).length > 0
+  /* "IN PROGRESS": ONE SENTENCE ABOVE THE LIST WHEN IT IS TRUE OF EVERY ROW, never a tag repeated
+     on each one for a fact that is the same for all of them. See the comment where this is used. */
+  const allFreeRows = grounds.length > 0 && (grounds as any[]).every((g: any) => g.isFreeGround)
+  const anyExtensionUsed = (grounds as any[]).some((g: any) => g.org?.freeExtensionUsed ?? false)
 
   if (!isAdmin) {
     return (
@@ -277,7 +281,7 @@ export function BillingPage() {
           {usage && (
             <FieldRow
               label="So far"
-              value={`${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'}, ${usage.reportsReleased} ${usage.reportsReleased === 1 ? 'report' : 'reports'} shared, and ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
+              value={`So far there have been ${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'} and ${usage.reportsReleased} shared ${usage.reportsReleased === 1 ? 'report' : 'reports'}, with ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
             />
           )}
         </FieldRows>
@@ -295,7 +299,7 @@ export function BillingPage() {
       )}
 
       <div id="billing-plans">
-        <Section heading="Plans" note="One flat monthly rate, unlimited check-ins, sessions and reports">
+        <Section heading="Plans" note="Each plan is one monthly price, with as many check-ins and reports as you need.">
           <div className="gwui-plan-grid">
             {PLANS.filter(p => p !== 'ENTERPRISE').map(plan => {
               const mine = (isSubscribed || isPaused) && orgSub?.plan === plan
@@ -323,7 +327,7 @@ export function BillingPage() {
             })}
             <Panel className="gwui-plan-card gwui-plan-card-enterprise">
               <p className="gwui-plan-name">Enterprise</p>
-              <p className="gwui-plan-cap">Custom needs, volume pricing or dedicated support.</p>
+              <p className="gwui-plan-cap">For special needs, a lower price per person, or your own support person.</p>
               <Button kind="secondary" size="small" wide onClick={() => { window.location.href = 'mailto:hello@myground.work?subject=Enterprise plan enquiry' }}>Contact us</Button>
             </Panel>
           </div>
@@ -408,57 +412,90 @@ export function BillingPage() {
         ) : grounds.length === 0 ? (
           <Panel><p className="gwui-panel-text-muted">Nothing active yet.</p></Panel>
         ) : (
-          <FieldRows>
-            {(grounds as any[]).map((g: any) => {
-              const balance: number | undefined = g.sessionsBalance
-              const isFree: boolean = !!g.isFreeGround
-              const extUsed: boolean = g.org?.freeExtensionUsed ?? false
-              return (
-                <FieldRow
-                  key={g.id}
-                  label={g.label}
-                  value={(
-                    <span className="gwui-invite-actions">
-                      {isSubscribed ? (
-                        <Tag tone="proven">Unlimited sessions</Tag>
-                      ) : isFree ? (
-                        <Tag tone="proven">Free check-in</Tag>
-                      ) : balance !== undefined ? (
-                        <Tag tone={balance > 0 ? 'plain' : 'concern'}>{balance} session{balance !== 1 ? 's' : ''} left</Tag>
-                      ) : null}
-                      {!isSubscribed && !extUsed && <Tag tone="proven">Free extension available</Tag>}
-                      {!isSubscribed && extUsed && <Tag tone="plain">Free extension used</Tag>}
-                    </span>
-                  )}
-                  action={!isFree && !isSubscribed
-                    ? <Button kind="secondary" size="small" onClick={() => navigate('/billing/checkout', { state: { groundId: g.id, groundName: g.label } })}>Add sessions</Button>
-                    : undefined}
-                />
-              )
-            })}
-          </FieldRows>
+          <Stack gap={10}>
+            {/*
+             * ONE SENTENCE ABOVE THE LIST, NOT A TAG ON EVERY ROW (group 1 review): "Free
+             * check-in" and "Free extension available" repeated on every row read as clipped
+             * labels, not sentences, saying the same thing over and over for the same
+             * organisation-wide facts (every ground here is free the same way, and the free
+             * extension is an organisation's, not a ground's). Said once above the list instead,
+             * and only when it is true of every row - if the rows differ (some free, some metered,
+             * or the extension already used on this organisation), each row keeps its own tag
+             * below rather than a sentence that would not be true of all of them.
+             */}
+            {/*
+             * GROUP 1'S THIRD REVIEW: "You can extend any of them for free" was not true of
+             * anything on this page - the free extension is claimed from inside a check-in itself
+             * (SessionPaywallModal.tsx's "Continue for free", shown when a session completes),
+             * never from Plan and billing. Said truthfully, naming where it actually happens.
+             */}
+            {allFreeRows && !anyExtensionUsed && (
+              <p className="gwui-panel-text-muted">Each of these is a free check-in. You can extend one for free from its own check-in.</p>
+            )}
+            {allFreeRows && anyExtensionUsed && (
+              <p className="gwui-panel-text-muted">Each of these is a free check-in. The one free extension for your organisation has already been used.</p>
+            )}
+            <FieldRows>
+              {(grounds as any[]).map((g: any) => {
+                const balance: number | undefined = g.sessionsBalance
+                const isFree: boolean = !!g.isFreeGround
+                const extUsed: boolean = g.org?.freeExtensionUsed ?? false
+                return (
+                  <FieldRow
+                    key={g.id}
+                    label={g.label}
+                    value={(
+                      <span className="gwui-invite-actions">
+                        {isSubscribed ? (
+                          <Tag tone="proven">Unlimited sessions</Tag>
+                        ) : allFreeRows ? null : isFree ? (
+                          <Tag tone="proven">Free check-in</Tag>
+                        ) : balance !== undefined ? (
+                          <Tag tone={balance > 0 ? 'plain' : 'concern'}>{balance} session{balance !== 1 ? 's' : ''} left</Tag>
+                        ) : null}
+                        {!isSubscribed && !allFreeRows && !extUsed && <Tag tone="proven">Free extension available</Tag>}
+                        {!isSubscribed && !allFreeRows && extUsed && <Tag tone="plain">Free extension used</Tag>}
+                      </span>
+                    )}
+                    action={!isFree && !isSubscribed
+                      ? <Button kind="secondary" size="small" onClick={() => navigate('/billing/checkout', { state: { groundId: g.id, groundName: g.label } })}>Add sessions</Button>
+                      : undefined}
+                  />
+                )
+              })}
+            </FieldRows>
+          </Stack>
         )}
       </Section>
 
-      <Section heading="Share Groundwork with another organisation" note="A code they can use to start">
-        <Panel>
-          <Stack gap={12}>
-            <p className="gwui-panel-text-muted">A code gives another organisation sessions on us. Useful for a supplier or partner you want to check in with.</p>
-            {codes.length > 0 && (
-              <FieldRows>
-                {(codes as any[]).map((c: any) => (
-                  <FieldRow
-                    key={c.code}
-                    label={c.code}
-                    value={`${c.sessionsGranted} session${c.sessionsGranted !== 1 ? 's' : ''} granted, ${c.sessionsUsed ?? 0} used${c.note ? `, ${c.note}` : ''}.`}
-                    action={<Button kind="secondary" size="small" onClick={() => copyToClipboard(c.code)}>{copied === c.code ? 'Copied' : 'Copy'}</Button>}
-                  />
-                ))}
-              </FieldRows>
-            )}
-          </Stack>
-        </Panel>
-      </Section>
+      {/*
+       * SHOWN ONLY TO SOMEONE WHO CAN MAKE OR SEE A CODE (group 1 review): generating a code is a
+       * platform admin's own action ("Send access code by email" and "Generate a code" below are
+       * already `user?.isPlatformAdmin` only) - so this section was a dead end for an ordinary
+       * admin, with nothing to see and no way to make one. Shown to a platform admin as before, or
+       * to any admin whose organisation already has a code to see.
+       */}
+      {(user?.isPlatformAdmin || codes.length > 0) && (
+        <Section heading="Share Groundwork with another organisation" note="A code they can use to start">
+          <Panel>
+            <Stack gap={12}>
+              <p className="gwui-panel-text-muted">A code gives another organisation sessions on us. Useful for a supplier or partner you want to check in with.</p>
+              {codes.length > 0 && (
+                <FieldRows>
+                  {(codes as any[]).map((c: any) => (
+                    <FieldRow
+                      key={c.code}
+                      label={c.code}
+                      value={`${c.sessionsGranted} session${c.sessionsGranted !== 1 ? 's' : ''} granted, ${c.sessionsUsed ?? 0} used${c.note ? `, ${c.note}` : ''}.`}
+                      action={<Button kind="secondary" size="small" onClick={() => copyToClipboard(c.code)}>{copied === c.code ? 'Copied' : 'Copy'}</Button>}
+                    />
+                  ))}
+                </FieldRows>
+              )}
+            </Stack>
+          </Panel>
+        </Section>
+      )}
 
       {user?.isPlatformAdmin && (
         <Section heading="Send access code by email">

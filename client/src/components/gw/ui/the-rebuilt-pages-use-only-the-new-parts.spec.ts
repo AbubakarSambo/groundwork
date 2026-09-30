@@ -328,6 +328,14 @@ describe('a rebuilt page never falls back to the old parts', () => {
       /* Group 1's last page (30 September): "Connect your own tools", #/settings/tools - see the
          comment at the top of IntegrationsPage.tsx for what was kept, folded, and left out. */
       'pages/org/IntegrationsPage.tsx',
+      /* Group 2's first piece: Today and the check-ins list (C1-today-and-check-ins). See the
+         comment on REBUILT_PAGES in rebuilt-pages.ts. */
+      'pages/today/TodayPage.tsx',
+      'pages/today/YouAreIn.tsx',
+      'pages/grounds/GroundsListPage.tsx',
+      'pages/grounds/an-admin-lands-on-a-check-in-list.tsx',
+      /* Group 2, piece 2: the You board (C2-the-you-board). */
+      'pages/you/YouPage.tsx',
     ])
   })
 

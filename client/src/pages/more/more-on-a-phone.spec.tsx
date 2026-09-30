@@ -158,10 +158,14 @@ describe('switching organisation and signing out on a phone', () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
 
-  /* U.3: "Start my own workspace" opens "Create an organisation" (#/org-new), which asks the name
-     first, instead of making one straight away after a confirm box. Storing (user, token) the right
-     way round is now tested on that page (pages/org/OrgNewPage.spec.tsx). */
-  it('"Start my own workspace" opens "Create an organisation"', async () => {
+  /*
+   * U.3, then group 1 re-review fault D: this used to be a second control here, "Start my own
+   * workspace", renamed to "Create an organisation", then removed outright - the prototype's own
+   * "More" draws only the "Join or create an organisation" link (more-menu-phone.txt), and
+   * creating one stays reachable through the page that link opens (WelcomePage.tsx's own "Create a
+   * new organisation", tested in pages/org/WelcomePage.spec.tsx, which leads to #/org-new).
+   */
+  it('"Join or create an organisation" opens Welcome, with no second button here', async () => {
     useAuthStore.setState({ user: PARTICIPANT, token: 't', isAuthenticated: true } as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
     qc.setQueryData(['grounds'], [])
@@ -171,13 +175,14 @@ describe('switching organisation and signing out on a phone', () => {
         <MemoryRouter initialEntries={['/more']}>
           <Routes>
             <Route path="/more" element={<AppShell><MorePage /></AppShell>} />
-            <Route path="/org-new" element={<p>The create page</p>} />
+            <Route path="/welcome" element={<p>The welcome page</p>} />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    fireEvent.click(within(main()).getByRole('button', { name: 'Start my own workspace' }))
-    expect(await screen.findByText('The create page')).toBeInTheDocument()
+    expect(within(main()).queryByRole('button', { name: 'Create an organisation' })).toBeNull()
+    fireEvent.click(within(main()).getByRole('link', { name: 'Join or create an organisation' }))
+    expect(await screen.findByText('The welcome page')).toBeInTheDocument()
   })
 })
 

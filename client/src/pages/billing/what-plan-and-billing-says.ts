@@ -57,7 +57,12 @@ export function thePlanLine(status: BillingStatus | undefined, pricing: LivePric
   }
   if (covers === 'no plan') return 'No plan yet. Choose one below to open check-ins and add people.'
   /* The free plan's people include the person who signed up, and every message says so. */
-  return `The free plan, for up to ${freeGrounds} check-ins. ${people(count, cap, true)}`
+  const places = cap == null
+    ? `${count} ${count === 1 ? 'person is' : 'people are'} using it, including you.`
+    : count >= cap
+      ? `All ${cap} places are used, including yours.`
+      : `${count} of ${cap} places are used, including yours.`
+  return `You are on the free plan, which covers up to ${freeGrounds} check-ins${cap == null ? '' : ` and ${cap} people`}. ${places}`
 }
 
 /** "1 October, $400, by card ending 4417." Or what happens instead of a payment. */
@@ -78,11 +83,11 @@ export function theNextPaymentLine(status: BillingStatus | undefined, pricing: L
 }
 
 /**
- * "Every person with a Groundwork account at Baridi Appliances. Guests with no account don't." (F2), as
+ * "Everyone with a Groundwork account at Baridi Appliances counts. Guests without an account do not." (F2), as
  * the server counts a seat: a guest with an account takes one (U.4 re-review, the prototype's rule).
  */
 export function whoCounts(orgName: string): string {
-  return `Every person with a Groundwork account at ${orgName || 'your organisation'}. Guests with no account don’t.`
+  return `Everyone with a Groundwork account at ${orgName || 'your organisation'} counts. Guests without an account do not.`
 }
 
 /** The smallest paid plan that holds this many people, from the table. */

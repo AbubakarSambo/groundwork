@@ -13,8 +13,13 @@ import './gw-ui.css'
  * inline `gap` on one of these pages again (the-rebuilt-pages-use-only-the-new-parts.spec.ts bans
  * it there). `gap={0}` groups two things with no space at all - the invitation's heading sits
  * flush against the tinted line under it, the prototype's own zero.
+ *
+ * `gap={30}` IS `Page`'s OWN 30px (group 2, Today): the same flat stacking `Page` gives its direct
+ * children, used here for one column of a two-column layout (`gwui-side`) rather than the whole
+ * page, so the column's own blocks - "You are in.", the admin's first-run card, the greeting, "What
+ * needs you" - stay 30px apart without the page's stacking rule reaching the OTHER column beside it.
  */
-export type StackGap = 0 | 10 | 12 | 18 | 19
+export type StackGap = 0 | 10 | 12 | 18 | 19 | 30
 
 export function Stack({ gap, children }: { gap: StackGap; children: ReactNode }) {
   return <div className={`gwui-stack-${gap}`}>{children}</div>

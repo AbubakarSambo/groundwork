@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { todayApi, type Need } from '@/api/today'
 import { useAuthStore } from '@/stores/auth'
-import { Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
+import { Page, Stack, Greeting, Section, EdgeList, EdgeRow, Button, Note, Empty, ComingUp } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { AdminFirstRun } from '@/pages/grounds/an-admin-lands-on-a-check-in-list'
 import { partOfTheDay, whenItComes } from './when-it-comes'
@@ -28,6 +28,14 @@ import { YouAreIn } from './YouAreIn'
  * NOT HERE YET, because nothing in the product holds it: the message Groundwork writes first, "Since
  * yesterday" with the deal ladder, "Your deals", and the chief executive's company priorities. Each
  * waits for the part of the product that holds it (see docs/morning-report-ui.md, U.5).
+ *
+ * REBUILT FROM THE SHARED PARTS (group 2): `Greeting` for the big heading, in place of the old
+ * `gw-t-greet`/`gw-today-line` classes; `Section` with its own `note` for "What needs you"; the
+ * shared `EdgeList`/`EdgeRow` in place of `NeedsYouList`/`NeedsYouRow` (the same shape, one shared
+ * part - `EdgeRow`'s own kinds, `ready`/`decide`/`look`, are exactly `Need`'s); `Note`/`Empty` for
+ * the loading, error and nothing-needs-you states; and `ComingUp` for the sidebar list, in place of
+ * the page's own `gw-coming-up`. The two-column layout is the prototype's own shared `.side` shape
+ * (`gwui-side`, gw-ui.css), not a layout built just for this page.
  */
 export function TodayPage() {
   const user = useAuthStore(s => s.user)
@@ -48,63 +56,54 @@ export function TodayPage() {
   const needs = data?.needs ?? []
 
   return (
-    <div className="gw-today">
-      <div className="gw-today-main">
-        {params.get('welcome') === '1' && (
-          <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
+    <Page>
+      <div className="gwui-side">
+        <Stack gap={30}>
+          {params.get('welcome') === '1' && (
+            <YouAreIn checkIns={grounds.isSuccess ? (grounds.data?.length ?? 0) : null} mayStart={user?.mayOpenCheckIns !== false} />
+          )}
+          <AdminFirstRun />
+
+          <Greeting
+            title={greeting}
+            subtitle={`${whenItWas(now, 'weekdayAndDay')}.${data?.line ? ` ${data.line}` : ''}`}
+          />
+
+          {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
+          {user?.role === 'ADMIN' && <AppealsToDecide />}
+
+          <Section heading="What needs you" note={needs.length > 1 ? `${needs.length} things, most important first` : undefined}>
+            {isLoading && <Note>Loading…</Note>}
+            {isError && (
+              <div>
+                <Note tone="error">What needs you did not load. Nothing you have written is affected.</Note>
+                <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
+              </div>
+            )}
+            {data && needs.length === 0 && <Empty>Nothing needs you right now.</Empty>}
+            {needs.length > 0 && (
+              <EdgeList label="What needs you">
+                {/* ONE NAVY BUTTON (Hafsah, 30 September): the prototype's own Today draws every "Start it"
+                    navy, but with two check-ins open that is two navy buttons at once. Only the first,
+                    the most important, is navy; the rest are white. */}
+                {needs.map((n: Need, i: number) => (
+                  <EdgeRow
+                    key={n.key}
+                    kind={n.kind}
+                    title={n.title}
+                    detail={n.detail ?? undefined}
+                    actions={<Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>}
+                  />
+                ))}
+              </EdgeList>
+            )}
+          </Section>
+        </Stack>
+
+        {data && data.comingUp.length > 0 && (
+          <ComingUp items={data.comingUp.map(c => ({ when: whenItComes(c.at, now), what: c.what, to: c.to }))} />
         )}
-        <AdminFirstRun />
-
-        <h1 className="gw-t-greet gw-today-h1">{greeting}</h1>
-        <p className="gw-today-line">
-          {whenItWas(now, 'weekdayAndDay')}.{data?.line ? ` ${data.line}` : ''}
-        </p>
-
-        {/* Appeals to decide (C3, U.13): an admin's only. The server refuses anybody else. */}
-        {user?.role === 'ADMIN' && <AppealsToDecide />}
-
-        <section aria-labelledby="needs-you-h" className="gw-today-section">
-          <div className="gw-today-section-head">
-            <h2 id="needs-you-h" className="gw-t-h2">What needs you</h2>
-            {needs.length > 1 && <span className="gw-t-small">{needs.length} things, most important first</span>}
-          </div>
-          {isLoading && <p className="gw-t-body gw-today-quiet">Loading…</p>}
-          {isError && (
-            <div role="alert" className="gw-today-quiet">
-              <p className="gw-t-body">What needs you did not load. Nothing you have written is affected.</p>
-              <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
-            </div>
-          )}
-          {data && needs.length === 0 && <p className="gw-t-body gw-today-quiet">Nothing needs you right now.</p>}
-          {needs.length > 0 && (
-            <NeedsYouList label="What needs you">
-              {needs.map((n: Need) => (
-                <NeedsYouRow
-                  key={n.key}
-                  kind={n.kind}
-                  title={n.title}
-                  detail={n.detail ?? undefined}
-                  actions={<Button kind={n.action.label === 'Start it' ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>}
-                />
-              ))}
-            </NeedsYouList>
-          )}
-        </section>
       </div>
-
-      {data && data.comingUp.length > 0 && (
-        <aside aria-labelledby="coming-up-h" className="gw-today-aside">
-          <h2 id="coming-up-h" className="gw-t-h3">Coming up</h2>
-          <ul className="gw-coming-up">
-            {data.comingUp.map(c => (
-              <li key={c.at + c.what}>
-                <b>{whenItComes(c.at, now)}</b>
-                <Link to={c.to}>{c.what}</Link>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
-    </div>
+    </Page>
   )
 }
