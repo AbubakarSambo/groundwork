@@ -52,3 +52,21 @@ export function restatesSuccess(said: string | null | undefined): RestatedSucces
   if (!newSuccess) return null;
   return { newSuccess, reason: reason || null };
 }
+
+/**
+ * WHAT THE LEAD READS ONCE THE RESTATEMENT IS SAVED. FOUND LIVE, 30 September 2026, on the four live
+ * checks: this used to be a fragment glued together with a colon and a parenthesis -
+ *
+ *   Recorded. What doing well looks like now: "every stage has an owner and a next date" (the board
+ *   kept going stale)
+ *
+ * - joined pieces rather than a sentence a person reads. This is the same information, said as plain,
+ * full sentences: what it is now, in quotes; why, in its own clause rather than bracketed on the end;
+ * and, only once there was an earlier version to speak of, that it was kept rather than lost.
+ */
+export function saidBackForRestatedSuccess(baseline: { version: number; successLooksLike: string | null; changeReason: string | null }): string {
+  const text = baseline.successLooksLike ?? '';
+  const base = `What doing well looks like is now "${text}"`;
+  if (baseline.version <= 1 || !baseline.changeReason) return `${base}.`;
+  return `${base}, because ${baseline.changeReason}. The earlier version is kept.`;
+}

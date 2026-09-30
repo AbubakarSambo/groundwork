@@ -30,7 +30,7 @@ import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works'
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
-import { restatesSuccess } from './restating-what-good-means';
+import { restatesSuccess, saidBackForRestatedSuccess } from './restating-what-good-means';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { EmailService } from '../email/email.service';
@@ -3606,8 +3606,7 @@ export class GroundsService {
       });
       return {
         changed: 'success',
-        say: `Recorded. What doing well looks like now: "${applied.successLooksLike}"`
-          + (applied.changeReason ? ` (${applied.changeReason})` : ''),
+        say: saidBackForRestatedSuccess(applied),
       };
     }
 

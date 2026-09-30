@@ -1,4 +1,4 @@
-import { restatesSuccess } from './restating-what-good-means';
+import { restatesSuccess, saidBackForRestatedSuccess } from './restating-what-good-means';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -40,6 +40,36 @@ describe('restatesSuccess: a restatement of what doing well looks like, read wit
 
   it('the trigger with nothing after it is not a statement to record', () => {
     expect(restatesSuccess('Change what good means')).toBeNull();
+  });
+});
+
+/*
+ * FOUND LIVE, 30 September 2026, on the four live checks: the confirmation of a restated success was
+ * a fragment, pieces glued together with a colon and a trailing parenthesis rather than a sentence a
+ * person reads -
+ *   Recorded. What doing well looks like now: "every stage has an owner and a next date" (the board
+ *   kept going stale)
+ */
+describe('saidBackForRestatedSuccess: the confirmation reads as a full sentence, not a fragment', () => {
+  it('the exact exchange the fix names, said as full sentences', () => {
+    const said = saidBackForRestatedSuccess({
+      version: 2,
+      successLooksLike: 'every stage has an owner and a next date',
+      changeReason: 'the board kept going stale',
+    });
+    expect(said).toBe(
+      'What doing well looks like is now "every stage has an owner and a next date", because the board kept going stale. The earlier version is kept.',
+    );
+    /* No colon-joined fragment, no bracketed reason. */
+    expect(said).not.toContain(':');
+    expect(said).not.toContain('(');
+    expect(said).not.toMatch(/^Recorded\./);
+  });
+
+  it('the very first version has nothing earlier to speak of, and no reason is required for it', () => {
+    const said = saidBackForRestatedSuccess({ version: 1, successLooksLike: 'every client gets a same-day reply', changeReason: null });
+    expect(said).toBe('What doing well looks like is now "every client gets a same-day reply".');
+    expect(said).not.toContain('earlier version');
   });
 });
 
