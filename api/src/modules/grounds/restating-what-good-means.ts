@@ -70,3 +70,17 @@ export function saidBackForRestatedSuccess(baseline: { version: number; successL
   if (baseline.version <= 1 || !baseline.changeReason) return `${base}.`;
   return `${base}, because ${baseline.changeReason}. The earlier version is kept.`;
 }
+
+/**
+ * WHAT THE LEAD IS ASKED, BEFORE THE RESTATEMENT IS SAVED. FOUND LIVE, 30 September 2026, on the
+ * four live checks: this used to be the same colon-joined fragment `saidBackForRestatedSuccess`
+ * above was fixed for - "I will record that as what doing well looks like now: '...'" - shown at the
+ * propose stage with a Yes underneath it, before the lead had said anything. Said as a question
+ * instead, the same shape as every other say-back: the quote sits inside the sentence as its own
+ * clause, and there is no colon.
+ */
+export function askToRestateSuccess(restated: RestatedSuccess, existingSuccess: boolean): string {
+  const base = `Shall I change what doing well looks like to "${restated.newSuccess}"`;
+  const asked = restated.reason ? `${base}, because ${restated.reason}?` : `${base}?`;
+  return existingSuccess ? `${asked} The earlier version is kept.` : asked;
+}

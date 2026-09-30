@@ -30,7 +30,7 @@ import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works'
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
-import { restatesSuccess, saidBackForRestatedSuccess } from './restating-what-good-means';
+import { restatesSuccess, saidBackForRestatedSuccess, askToRestateSuccess } from './restating-what-good-means';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { EmailService } from '../email/email.service';
@@ -2888,9 +2888,9 @@ export class GroundsService {
         changeSay = 'Say why this is changing, and I will record the new version - what is on the record now stays too.';
         proposal = { kind: 'none', why: 'Waiting for a reason.' } as any;
       } else {
-        const say = `I will record that as what doing well looks like now: "${restated.newSuccess}"`
-          + (restated.reason ? `, because ${restated.reason}.` : '.')
-          + (existingSuccess ? ' What is on the record now stays too, as an earlier version.' : '');
+        /* FOUND LIVE, 30 September 2026: a colon joining two clauses rather than a sentence. Said as
+           a question instead - see askToRestateSuccess. */
+        const say = askToRestateSuccess(restated, !!existingSuccess);
         changeSay = say;
         proposal = { kind: 'restate_success', text: restated.newSuccess, reason: restated.reason, say } as any;
       }

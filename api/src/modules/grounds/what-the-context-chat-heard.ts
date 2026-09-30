@@ -1,4 +1,4 @@
-import { worthRecording, withoutFraming, verbatimQuote } from './what-setup-agreed';
+import { worthRecording, verbatimQuote, verbatimExpectation } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
@@ -75,7 +75,7 @@ export type Proposal =
   | { kind: 'timeline'; days: number; say: string }
   | { kind: 'cadence'; cadence: Cadence; say: string }
   | { kind: 'success'; text: string; say: string }
-  | { kind: 'expectation'; participantId: string; personLabel: string; text: string; say: string }
+  | { kind: 'expectation'; participantId: string; personLabel: string; firstName: string; text: string; say: string }
   | { kind: 'targets'; targets: { name: string; target: number | null }[]; say: string }
   /**
    * THE LEAD'S READ OF A NAMED PERSON, KEPT AS THEIR OWN PRIVATE NOTE. FIX 4, inventory items 10-11.
@@ -88,7 +88,7 @@ export type Proposal =
    * write directly (`addLeadContext`, LEAD_ONLY, never quoted to the person it is about), reached from
    * the conversation and confirmed the same way as everything else here.
    */
-  | { kind: 'lead_read'; participantId: string; personLabel: string; text: string; say: string };
+  | { kind: 'lead_read'; participantId: string; personLabel: string; firstName: string; text: string; say: string };
 
 /**
  * A day count somebody would actually choose. Below a week there is nothing to check in against;
@@ -213,7 +213,14 @@ export function proposalFrom(
     }
     /* The lead's own words, not this call's own paraphrase of them - see verbatimQuote. */
     const text = verbatimQuote(raw, said);
-    return { kind: 'success', text, say: `I will record that as what doing well looks like: "${text}"` };
+    /*
+     * FOUND LIVE, 30 September 2026, on the four live checks: two clauses glued together with a
+     * colon rather than a sentence - "I will record that as what doing well looks like: '...'" - the
+     * exact shape CLAUDE.md's wording rule refuses. Said as a question instead, the quote sitting
+     * inside the sentence as its own clause, so the lead reads one plain sentence and answers yes or
+     * no to it.
+     */
+    return { kind: 'success', text, say: `Shall I record "${text}" as what doing well looks like?` };
   }
 
   /**
@@ -242,10 +249,15 @@ export function proposalFrom(
      * while confirm's independent extraction (a second model call, on the same words) read "the
      * update in by every Friday". Both calls run this same strip now, so both converge on the same
      * text far more often than leaving the model to decide on its own where the sentence starts.
+     *
+     * REGRESSION, found live again, 30 September 2026: stripping the CANDIDATE's own framing is not
+     * enough on its own when a model has already half-trimmed its candidate ("want the update...",
+     * the "I " gone but "want" left standing) - `withoutFraming` needs the framing whole to recognise
+     * it. `verbatimExpectation` locates the quote in `said` itself and pulls its start forward past
+     * wherever `said`'s OWN framing ends, so both calls converge on "the update in by every Friday"
+     * whatever either one handed back. See its own comment in what-setup-agreed.ts.
      */
-    /* The lead's own words: framing stripped deterministically, then locked to the literal
-       characters they typed rather than either call's own paraphrase - see verbatimQuote. */
-    const text = verbatimQuote(withoutFraming((heard.expectationText ?? '').trim()), said);
+    const text = verbatimExpectation((heard.expectationText ?? '').trim(), said);
     if (!person || !text) {
       return { kind: 'none', why: 'No expectation of a named person in that answer.' };
     }
@@ -265,18 +277,27 @@ export function proposalFrom(
         kind: 'lead_read',
         participantId: match.id,
         personLabel: match.label,
+        firstName: match.firstName,
         text,
-        say: `Shall I keep "${text}" as a private note about ${match.label} that only you can see? `
-          + `It guides how this check-in is run and is never quoted to ${match.label} or put into their own check-in.`,
+        say: `Shall I keep "${text}" as a private note about ${match.firstName} that only you can see? `
+          + `It guides how this check-in is run and is never quoted to ${match.firstName} or put into their own check-in.`,
       };
     }
+    /*
+     * FOUND LIVE, 30 September 2026, on the four live checks: a colon joining "what you expect of
+     * [name]" to the quote, capitals for emphasis ("YOUR"), and "them" for a person named two words
+     * earlier - none of which a person reads in plain, full sentences. Said as a question the lead
+     * answers yes or no to, the person's first name (how the rest of the product names somebody),
+     * and no colon or capital for emphasis.
+     */
     return {
       kind: 'expectation',
       participantId: match.id,
       personLabel: match.label,
+      firstName: match.firstName,
       text,
-      say: `I will record that as what you expect of ${match.label}: "${text}". It goes down as YOUR expectation, `
-        + 'not as agreed, and marked as not yet seen by them.',
+      say: `Shall I record "${text}" as what you expect of ${match.firstName}? It is kept as your `
+        + `expectation, not as something ${match.firstName} agreed to, and ${match.firstName} has not seen it yet.`,
     };
   }
 
@@ -410,12 +431,18 @@ export function confirmedSay(proposal: Proposal): string {
        * here, none of which are colon-joined: the quote sits inside the sentence as its own clause.
        */
       return `I have recorded "${proposal.text}" as what doing well looks like.`;
+    /*
+     * FOUND LIVE, 30 September 2026, on the four live checks: a colon joining "what you expect of
+     * [name]" to the quote, capitals for emphasis ("YOUR"), and "them" for a person named two words
+     * earlier. Said the same way the say-back above now asks it, past tense, with the person's first
+     * name - how the rest of the product names somebody - in place of both faults.
+     */
     case 'expectation':
-      return `I have recorded "${proposal.text}" as what you expect of ${proposal.personLabel}. `
-        + 'It goes down as YOUR expectation, not as agreed, and is not yet seen by them.';
+      return `I have recorded "${proposal.text}" as what you expect of ${proposal.firstName}. It is kept as `
+        + `your expectation, not as something ${proposal.firstName} agreed to, and ${proposal.firstName} has not seen it yet.`;
     case 'lead_read':
-      return `I have kept "${proposal.text}" as a private note about ${proposal.personLabel} that only you can see. `
-        + `It guides how this check-in is run and is never quoted to ${proposal.personLabel} or put into their own check-in.`;
+      return `I have kept "${proposal.text}" as a private note about ${proposal.firstName} that only you can see. `
+        + `It guides how this check-in is run and is never quoted to ${proposal.firstName} or put into their own check-in.`;
     case 'targets':
       /* Already a done statement ("Set N measures ..."), with nothing to ask - returned as it is. */
       return proposal.say;

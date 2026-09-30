@@ -116,6 +116,44 @@ export function verbatimQuote(candidate: string, said: string): string {
 }
 
 /**
+ * THE QUOTE IS A SUBSTRING OF WHAT THE LEAD TYPED, AND IT STARTS AFTER THEIR FRAMING. REGRESSION,
+ * found live again, 30 September 2026, on the four live checks, run through both doors on the same
+ * sentence: "I want the update in by every Friday." The old route said back and saved "want the
+ * update in by every Friday" - "I " gone, "want" left standing as though it were the first word of
+ * the expectation. Ask Groundwork, the same sentence, said back "the update in by every Friday".
+ *
+ * `withoutFraming` (above) strips the framing off the CANDIDATE the model returned, which only works
+ * when the model's own candidate still has the framing attached whole ("I want the update..."). Read
+ * live, one model call had already half-trimmed its own candidate to "want the update in by every
+ * Friday" - the "I " gone but "want" kept - so `withoutFraming`'s pattern, which requires the "i" at
+ * the front, never matched, and `verbatimQuote` correctly, faithfully, located that exact fragment
+ * inside `said` and returned it: correct in isolation, wrong once you look at the sentence, because
+ * "want" is still the lead's framing, one word short of what `withoutFraming` would have removed had
+ * the model handed it over whole.
+ *
+ * THE FIX DOES NOT TRUST THE MODEL'S OWN BOUNDARY AT ALL. It locates the candidate inside `said` the
+ * same way `verbatimQuote` always has, then checks that start against where `said` ITSELF - the one
+ * sentence both calls are reading, not either call's paraphrase of it - stops being framing. A match
+ * that starts inside that framing is pulled forward to just past it, keeping its end fixed, so "want
+ * the update in by every Friday" (found starting two characters after "I ") becomes exactly "the
+ * update in by every Friday" - the same words a match that started in the right place all along would
+ * have produced. A candidate that already starts after the framing is untouched.
+ */
+export function verbatimExpectation(candidate: string, said: string): string {
+  const stripped = withoutFraming((candidate ?? '').trim());
+  const quoted = verbatimQuote(stripped, said);
+  const source = said ?? '';
+  const framingMatch = source.match(FRAMING);
+  if (!framingMatch) return quoted;
+  const framingEnd = framingMatch[0].length;
+  const idx = source.toLowerCase().indexOf(quoted.toLowerCase());
+  if (idx === -1 || idx >= framingEnd) return quoted;
+  const end = idx + quoted.length;
+  if (end <= framingEnd) return quoted;
+  return source.slice(framingEnd, end);
+}
+
+/**
  * WHAT MAKES AN EXPECTATION WORTH RECORDING.
  *
  * A sentence with nothing checkable in it - "do a good job", "be more proactive" - is worse than no

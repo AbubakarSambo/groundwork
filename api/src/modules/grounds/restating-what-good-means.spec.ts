@@ -1,4 +1,4 @@
-import { restatesSuccess, saidBackForRestatedSuccess } from './restating-what-good-means';
+import { restatesSuccess, saidBackForRestatedSuccess, askToRestateSuccess } from './restating-what-good-means';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -69,6 +69,34 @@ describe('saidBackForRestatedSuccess: the confirmation reads as a full sentence,
   it('the very first version has nothing earlier to speak of, and no reason is required for it', () => {
     const said = saidBackForRestatedSuccess({ version: 1, successLooksLike: 'every client gets a same-day reply', changeReason: null });
     expect(said).toBe('What doing well looks like is now "every client gets a same-day reply".');
+    expect(said).not.toContain('earlier version');
+  });
+});
+
+/*
+ * FOUND LIVE, 30 September 2026, on the four live checks: the PROPOSE-stage say-back for a
+ * restatement had the same fault `saidBackForRestatedSuccess` above was fixed for, one turn earlier -
+ * "I will record that as what doing well looks like now: '...'" - a colon-joined fragment shown with
+ * a Yes underneath it, before the lead had said anything. `askToRestateSuccess` is that sentence,
+ * said as a question instead.
+ */
+describe('askToRestateSuccess: the say-back, before the lead has said yes, asks rather than states', () => {
+  it('the exact exchange the fix names, said as a question with no colon', () => {
+    const said = askToRestateSuccess(
+      { newSuccess: 'every stage has an owner and a next date', reason: 'the board kept going stale' },
+      true,
+    );
+    expect(said).toBe(
+      'Shall I change what doing well looks like to "every stage has an owner and a next date", '
+      + 'because the board kept going stale? The earlier version is kept.',
+    );
+    expect(said).not.toContain(':');
+    expect(said).not.toMatch(/^I will/);
+  });
+
+  it('with no earlier version, there is nothing to say was kept', () => {
+    const said = askToRestateSuccess({ newSuccess: 'every client gets a same-day reply', reason: null }, false);
+    expect(said).toBe('Shall I change what doing well looks like to "every client gets a same-day reply"?');
     expect(said).not.toContain('earlier version');
   });
 });

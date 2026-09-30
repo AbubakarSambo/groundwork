@@ -1,6 +1,6 @@
 import { proposalFrom, extractionToolFor, confirmedSay } from './what-the-context-chat-heard';
 import { whoTheyMeant } from './who-they-meant';
-import { withoutFraming, verbatimQuote } from './what-setup-agreed';
+import { withoutFraming, verbatimQuote, verbatimExpectation } from './what-setup-agreed';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -19,12 +19,23 @@ describe('setup can write an expectation, once the lead confirms it', () => {
     expect((p as any).participantId).toBe('p1');
   });
 
-  it('says it is the lead\'s expectation and not agreement, in the sentence they confirm', () => {
+  /*
+   * FOUND LIVE, 30 September 2026, on the four live checks: this used to pin the fault -
+   * "It goes down as YOUR expectation... and marked as not yet seen by them" - a colon-joined
+   * sentence, capitals for emphasis, and "them" for a person named two words earlier. It is a
+   * question now, in plain sentences, with Dele's own first name in place of "them".
+   */
+  it('asks whether to record it as the lead\'s expectation and not agreement, using the person\'s first name', () => {
     const p = proposalFrom('objectives', {
       expectationPerson: 'Dele', expectationText: 'Own the renewals for the twelve quiet accounts',
     }, PARTIES) as any;
-    expect(p.say).toContain('YOUR expectation');
-    expect(p.say).toContain('not yet seen by them');
+    expect(p.say).toBe(
+      'Shall I record "Own the renewals for the twelve quiet accounts" as what you expect of Dele? '
+      + 'It is kept as your expectation, not as something Dele agreed to, and Dele has not seen it yet.',
+    );
+    expect(p.say).not.toContain(':');
+    expect(p.say).not.toContain('YOUR');
+    expect(p.say).not.toContain('them');
   });
 
   it('refuses when nobody was named', () => {
@@ -47,7 +58,10 @@ describe('setup can write an expectation, once the lead confirms it', () => {
     expect(p.kind).toBe('lead_read');
     expect((p as any).participantId).toBe('p1');
     expect((p as any).text).toBe('be more proactive');
-    expect((p as any).say).toContain('private note about Dele Okonkwo');
+    /* Dele's first name, how the rest of the product names somebody in a sentence - not the fuller
+       "Dele Okonkwo" form `label` still carries for telling two Deles apart. */
+    expect((p as any).say).toContain('private note about Dele');
+    expect((p as any).say).not.toContain('Dele Okonkwo');
     expect((p as any).say).toContain('never quoted');
   });
 
@@ -84,21 +98,46 @@ describe('the say-back quote never starts with a clipped verb fragment (FIX 5)',
     expect(p.say).not.toContain('want the update in by every Friday');
   });
 
+  /*
+   * REGRESSION, found live again, 30 September 2026, on the four live checks: passing `said` - the
+   * lead's actual sentence - is what makes propose and confirm converge even when the model has
+   * already half-trimmed its own candidate to "want the update..." ("I " gone, "want" left). Without
+   * `said` neither call has the lead's own sentence to anchor against, so this now exercises the real
+   * path both `contextChat` and `applyContextProposal` use - see verbatimExpectation.
+   */
   it('propose and confirm converge on the same text even when the model has already half-trimmed it', () => {
+    const said = 'I want the update in by every Friday.';
     /* The model's two calls do not always agree on how much framing it already stripped - this is
-       the point: whatever each one hands in, the deterministic strip lands on the same value. */
-    const propose = proposalFrom('objectives', { expectationPerson: 'Dele', expectationText: 'I want the update in by every Friday' }, PARTIES) as any;
-    const confirm = proposalFrom('objectives', { expectationPerson: 'Dele', expectationText: 'want the update in by every Friday' }, PARTIES) as any;
-    /* propose's raw text starts with "I want ", which withoutFraming strips in full. confirm's raw
-       text already lacks the "I ", so the FRAMING pattern (which requires the "i" at the front) does
-       not match it - the model's own inconsistency is real, and this documents its edge honestly
-       rather than papering over a case the deterministic strip cannot reach on its own. */
+       the point: whatever each one hands in, the deterministic strip lands on the same value, because
+       both are anchored to the lead's own sentence and its own framing, not to whichever candidate a
+       model call happened to return. */
+    const propose = proposalFrom('objectives', { expectationPerson: 'Dele', expectationText: 'I want the update in by every Friday' }, PARTIES, said) as any;
+    const confirm = proposalFrom('objectives', { expectationPerson: 'Dele', expectationText: 'want the update in by every Friday' }, PARTIES, said) as any;
     expect(propose.text).toBe('the update in by every Friday');
-    expect(confirm.text).toBe('want the update in by every Friday');
+    expect(confirm.text).toBe('the update in by every Friday');
+    expect(confirm.text).toBe(propose.text);
   });
 
   it('withoutFraming keeps the lead\'s own case, unlike the internal thin-check which lowercases', () => {
     expect(withoutFraming('I want The Update In By Every Friday')).toBe('The Update In By Every Friday');
+  });
+
+  /*
+   * verbatimExpectation ITSELF: the quote starts after the lead's own framing in `said`, whatever the
+   * candidate already had stripped off it.
+   */
+  it('verbatimExpectation: a candidate that still has "want" left over from the framing is pulled forward past it', () => {
+    expect(verbatimExpectation('want the update in by every Friday', 'I want the update in by every Friday.'))
+      .toBe('the update in by every Friday');
+    /* A candidate that already starts after the framing is untouched. */
+    expect(verbatimExpectation('the update in by every Friday', 'I want the update in by every Friday.'))
+      .toBe('the update in by every Friday');
+    /* A candidate that still has the whole framing on it is stripped in full, same as before. */
+    expect(verbatimExpectation('I want the update in by every Friday', 'I want the update in by every Friday.'))
+      .toBe('the update in by every Friday');
+    /* "They should" framing, not just "I want". */
+    expect(verbatimExpectation('should close 3 renewals by December', 'they should close 3 renewals by December.'))
+      .toBe('close 3 renewals by December');
   });
 });
 
@@ -150,21 +189,36 @@ describe('what is saved is exactly what was said back, character for character (
    *   own check-in.
    * - rather than saying it had been done. `confirmedSay` is what `applyContextProposal` now returns
    * on every write instead of the propose-worded `proposal.say`.
+   *
+   * FOUND LIVE AGAIN, 30 September 2026: the full name "Ben Okafor" is now Ben's first name, how the
+   * rest of the product names somebody in a sentence a person reads.
    */
   it('confirmedSay: a lead_read write says it was kept, not the question that was already answered', () => {
-    const p = { kind: 'lead_read' as const, participantId: 'p1', personLabel: 'Ben Okafor', text: 'should be more proactive', say: 'unused' };
+    const p = { kind: 'lead_read' as const, participantId: 'p1', personLabel: 'Ben Okafor', firstName: 'Ben', text: 'should be more proactive', say: 'unused' };
     expect(confirmedSay(p)).toBe(
-      'I have kept "should be more proactive" as a private note about Ben Okafor that only you can see. '
-      + 'It guides how this check-in is run and is never quoted to Ben Okafor or put into their own check-in.',
+      'I have kept "should be more proactive" as a private note about Ben that only you can see. '
+      + 'It guides how this check-in is run and is never quoted to Ben or put into their own check-in.',
     );
     expect(confirmedSay(p)).not.toContain('Shall I');
+    expect(confirmedSay(p)).not.toContain('Ben Okafor');
   });
 
-  it('confirmedSay: an expectation write says it was recorded, not "I will"', () => {
-    const p = { kind: 'expectation' as const, participantId: 'p1', personLabel: 'Ben Okafor', text: 'close 3 renewals by the end of December', say: 'unused' };
+  /*
+   * FOUND LIVE, 30 September 2026, on the four live checks: a colon joining "what you expect of
+   * [name]" to the quote, capitals for emphasis ("YOUR"), and "them" for a person named two words
+   * earlier.
+   */
+  it('confirmedSay: an expectation write says it was recorded, not "I will", in plain sentences with no colon', () => {
+    const p = { kind: 'expectation' as const, participantId: 'p1', personLabel: 'Ben Okafor', firstName: 'Ben', text: 'close 3 renewals by the end of December', say: 'unused' };
     const said = confirmedSay(p);
-    expect(said).toContain('I have recorded "close 3 renewals by the end of December" as what you expect of Ben Okafor.');
+    expect(said).toBe(
+      'I have recorded "close 3 renewals by the end of December" as what you expect of Ben. '
+      + 'It is kept as your expectation, not as something Ben agreed to, and Ben has not seen it yet.',
+    );
     expect(said).not.toMatch(/^I will/);
+    expect(said).not.toContain(':');
+    expect(said).not.toContain('YOUR');
+    expect(said).not.toContain('them');
   });
 
   it('confirmedSay: a timeline write says it was set, matching propose\'s own weeks-or-days choice', () => {
