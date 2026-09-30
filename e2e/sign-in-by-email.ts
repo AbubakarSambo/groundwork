@@ -71,8 +71,40 @@ function linkFor(email: string, since: number): string | null {
   return null;
 }
 
+/*
+ * ONE SIGN-IN PER PERSON PER RUN. The API lets one computer ask for at most 5 sign-in links a
+ * minute (auth.controller.ts, member-signin), a security limit this test must not loosen. The
+ * button test opens eight screens, several as the same person, so asking for a new link each
+ * time ran into that limit and the later screens timed out waiting for an email. Now the first
+ * sign-in's signed-in state (cookies and the page's saved storage) is kept, in memory only, for
+ * the rest of the run and given to that person's next page. If it no longer works, it signs in
+ * by email again. Nothing is written to disk.
+ */
+type Kept = Awaited<ReturnType<import('@playwright/test').BrowserContext['storageState']>>;
+const kept = new Map<string, Kept>();
+
+async function stillSignedIn(page: Page, app: string): Promise<boolean> {
+  await page.goto(`${app}/today`);
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1000);
+  return !/\/(auth|login|signin)/.test(new URL(page.url()).pathname);
+}
+
 /** Signs in as this local test account by the emailed link, the way a person does. */
 export async function signIn(page: Page, email: string, app = 'http://localhost:5173') {
+  const state = kept.get(email.toLowerCase());
+  if (state) {
+    await page.context().addCookies(state.cookies);
+    await page.context().addInitScript((origins: Kept['origins']) => {
+      for (const o of origins) {
+        if (o.origin !== location.origin) continue;
+        for (const { name, value } of o.localStorage) {
+          if (window.localStorage.getItem(name) === null) window.localStorage.setItem(name, value);
+        }
+      }
+    }, state.origins);
+    if (await stillSignedIn(page, app)) return;
+  }
   await startCatcher();
   const since = mail.length;
   await page.goto(`${app}/auth`);
@@ -83,4 +115,5 @@ export async function signIn(page: Page, email: string, app = 'http://localhost:
   expect(link, `a sign-in email for ${email}`).not.toBeNull();
   await page.goto(link!);
   await page.waitForTimeout(2500);
+  kept.set(email.toLowerCase(), await page.context().storageState());
 }

@@ -107,16 +107,14 @@ page-level fault found was not in a shared part at all:
   and `Context and resources` are unchanged and still read at 600px; nothing in this pass found
   either of those two to be wrong. The guard test was updated to match (see its own comment,
   30 September, for why).
-- **The People page's no-seat warning** was rebuilt again on Hafsah's own instruction (30
-  September, after this pass started) to follow the prototype's row shape (`s11.js`): one `EdgeRow`
-  per person waiting for a seat, a quiet "Free a seat" link to their own page, and "Move to a larger
-  plan" as a secondary button (not the prototype's second navy one - the page's one navy button is
-  spoken for). The product's own bulk "Send their invitations" has no place in the prototype's row,
-  so it stays as a quiet text link inside the warning. This is expected to still fail the running
-  product's own button count against the prototype for one reason that is not a styling fault: the
-  seeded dev organisation always has somebody waiting for a seat, while the prototype's own
-  comparison render of this screen does not show that state at all - so the count is compared
-  against a prototype screenshot with zero buttons in that section, whatever this page draws there.
+- **The People page's no-seat warning** (corrected after this pass). The builder first rebuilt it
+  after `s11.js`, with a "Free a seat" and a "Move to a larger plan" button on each person's row.
+  But the prototype's People screen as it finally reads (`screens/A4-people-roles-and-access/people.txt`)
+  does not show this warning at all, so under Hafsah's rule its action is one quiet text link:
+  "Move to a larger plan" when the plan is full, "Send their invitations" when there is room. The
+  rows keep the prototype's shape and wording, with no buttons. The live button test counts a
+  `.gwui-plain-link` as a link, the way it never counted the prototype's own plain links, and
+  People passes.
 - Everything else checked in this pass (the check-in conversation, Done, between check-ins, People,
   one person, Connections, WhatsApp, More) already matched the prototype's own use of the shared
   parts closely enough that no further part or page change was made.
