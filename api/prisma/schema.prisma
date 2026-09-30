@@ -1164,6 +1164,7 @@ model Ground {
   reportRounds      ReportRound[]
   reportNotices     ReportNotice[]
   report            Report?
+  weeklyReports     WeeklyReport[]
   patternDetections PatternDetection[]
   resolution        Resolution?
   /// Groundwork's suggestions from a verdict, about someone in this check-in (C3, U.13).
@@ -8218,4 +8219,23 @@ model LearningSignalCount {
   @@unique([scope, kind, key])
   @@index([kind, key])
   @@map("learning_signal_counts")
+}
+
+/// THE WEEKLY REPORT'S SENTENCE ABOUT EACH PERSON (week 12b, decision 43). One row per check-in per week,
+/// built when a check-in comes in and never when somebody opens the page (decision 7). `eachPerson` holds
+/// `{ participantId, says }` with `says` written by report label ("Participant A named ..."), never a
+/// name: names are swapped in when it is served. It is written from what people named, never from how
+/// their answers were rated.
+model WeeklyReport {
+  id         String   @id @default(uuid())
+  groundId   String   @map("ground_id")
+  /// The Monday the week starts on, in Lagos, as a date: "2026-09-21".
+  weekStart  String   @map("week_start") @db.VarChar(10)
+  eachPerson Json     @map("each_person")
+  builtAt    DateTime @default(now()) @map("built_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, weekStart])
+  @@map("weekly_reports")
 }
