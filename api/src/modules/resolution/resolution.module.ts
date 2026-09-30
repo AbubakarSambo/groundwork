@@ -3,6 +3,7 @@ import { ResolutionService } from './resolution.service';
 import { ResolutionController } from './resolution.controller';
 import { IntelligenceModule } from '../intelligence';
 import { ReportsModule } from '../reports';
+import { SuggestionsModule } from '../suggestions/suggestions.module';
 
 @Module({
   imports: [
@@ -14,6 +15,8 @@ import { ReportsModule } from '../reports';
      * called it, so that report has been reading columns nobody filled.
      */
     ReportsModule,
+    /** For the ending page's suggestions (week 11). */
+    SuggestionsModule,
   ],
   controllers: [ResolutionController],
   providers: [ResolutionService],
