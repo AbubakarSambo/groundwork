@@ -117,6 +117,10 @@ const SCREENS: Record<string, Counterpart> = {
   'pages/today/YouAreIn.tsx': null, // a piece of Today, above
   'pages/grounds/an-admin-lands-on-a-check-in-list.tsx': null, // a piece of Today, above
   'pages/grounds/GroundsListPage.tsx': { productPath: '/grounds', reader: 'lead', hash: '#/checkins', persona: 'lead' },
+  /* Group 2, piece 2 (C2-the-you-board). Amani (participant) is the reader closest to the
+     prototype's own Miriam - the same shape of person, a participant across a few check-ins - so
+     her persona here is "part", as docs/prototype/screens/index.json has you-board-miriam. */
+  'pages/you/YouPage.tsx': { productPath: '/you', reader: 'participant', hash: '#/you', persona: 'part' },
 };
 
 /* Sign-in is by the emailed link, through the one mail catcher every browser test shares

@@ -334,6 +334,8 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/today/YouAreIn.tsx',
       'pages/grounds/GroundsListPage.tsx',
       'pages/grounds/an-admin-lands-on-a-check-in-list.tsx',
+      /* Group 2, piece 2: the You board (C2-the-you-board). */
+      'pages/you/YouPage.tsx',
     ])
   })
 

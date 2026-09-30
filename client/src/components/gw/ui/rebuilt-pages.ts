@@ -70,4 +70,11 @@ export const REBUILT_PAGES: string[] = [
   'pages/today/YouAreIn.tsx',
   'pages/grounds/GroundsListPage.tsx',
   'pages/grounds/an-admin-lands-on-a-check-in-list.tsx',
+  /*
+   * GROUP 2, PIECE 2 (C2-the-you-board, docs/prototype/screens/C2-the-you-board): the You board.
+   * New shared parts this piece added: `Panel`'s own `as="section"`/`heading` (a titled card that
+   * is a landmark, in place of the page's own `Card`) and `RowList`/`Row` (the page's four plain
+   * row-lists) - see docs/the-parts-against-the-prototype.md.
+   */
+  'pages/you/YouPage.tsx',
 ]
