@@ -1,29 +1,23 @@
 import './gw-ui.css'
 
 /**
- * STAGE TRACK (request 76: a kind of work's records, with stages, docs/prototype/screens/
- * G1-example-check-ins/salesorg.txt, "Stage now"). A row's kind of work moves through a fixed
- * list of stages the lead's board keeps (sales: Contacted, Need established, Pitched, Qualified,
- * Quoted, Won; engineering: Worked on, Written, Merged, Tested, Deployed, Used; and so on).
+ * STAGE TRACK: "THE SHAPE OF THE WORK" (request 76, salesorg.txt: "Reported vs criteria met, across
+ * 4 teams / The shape of the work"; founder.txt: "Said vs happened, week by week / The shape of the
+ * work" - the prototype's own subheading for this, reused verbatim across kinds).
  *
- * This draws every stage in order, in one line, so a reader sees the whole path a record can take
- * and where this one sits on it - not only its current word, which reads as a status label with no
- * sense of what is left. A stage before the current one is marked done; the current one is marked
- * as where the record stands now; a stage after it is plain.
- *
- * `current` can be `null` (no stage said yet) or a word not in `stages` (the server only ever sends
- * one of the kind's own stages, but a lead's own record kept before the stages changed could still
- * carry an old one) - either way nothing is marked done or current, and every stage reads as plain.
+ * Drawn once per section, never once per row: every stage a kind of work keeps, in order, with how
+ * many of its rows sit at each one. Counted from the served rows only - never "criteria met" or
+ * "proven", which nothing served here says - so a stage with nothing against it reads as 0, not as
+ * an empty gap.
  */
-export function StageTrack({ stages, current }: { stages: string[]; current: string | null }) {
-  const i = current ? stages.findIndex((s) => s === current) : -1
+export function StageTrack({ stages, counts }: { stages: string[]; counts: Record<string, number> }) {
   return (
-    <ol className="gwui-stage-track" aria-label={current ? `Stage: ${current}` : 'No stage said yet'}>
-      {stages.map((s, idx) => {
-        const state = i === -1 ? 'plain' : idx < i ? 'done' : idx === i ? 'current' : 'plain'
+    <ol className="gwui-stage-track" aria-label="The shape of the work, by stage">
+      {stages.map((s) => {
+        const n = counts[s] ?? 0
         return (
-          <li key={s} className={`gwui-stage-track-item gwui-stage-track-${state}`} aria-current={state === 'current' ? 'step' : undefined}>
-            {s}
+          <li key={s} className={`gwui-stage-track-item ${n > 0 ? 'gwui-stage-track-done' : 'gwui-stage-track-plain'}`}>
+            {`${s} (${n})`}
           </li>
         )
       })}
