@@ -736,7 +736,138 @@ into any other chat.
 `items-8-9-17-through-ask-groundwork.spec.ts` and the new
 `decision-50-piece-3-through-ask-groundwork.spec.ts` between them now exercise every item this
 inventory names as reachable through Ask Groundwork at all (1, 2, 3 (inside `contextChat`), 5, 8, 9, 14,
-17 and the "which check-in" mechanism), each through the exact function its old route calls. The one
-piece still outstanding is unchanged from piece 2, step (c): the live proof script,
-`api/journey/context-chat-equivalence.ts`, has not been run, because the local API this checkout would
-hit is running a scenario suite. Hafsah runs it once that finishes.
+17 and the "which check-in" mechanism), each through the exact function its old route calls.
+
+**Step (b), piece 2, step (c) - RUN (30 September 2026).** `api/journey/context-chat-equivalence.ts`
+ran end to end against the local API (build 5cdedcd0) and `gw_pw9_1786222102`. The first two runs
+found real script faults, not product differences - fixed, and left in the file's own comments so the
+next person does not repeat them:
+
+- The two grounds were created with `timelineDays`/`cadence` already set, which marks those gaps
+  closed (`timelineStated`/`cadenceStated`, `grounds.service.ts` lines 580-581) before the setup turns
+  ever ran, so turns written to answer duration then cadence landed on whatever gap actually was open
+  instead, differently between runs. Fixed by leaving both unset at creation.
+- `waitingQuestionByName`, this script's own helper, matched a colleague's first name against the
+  served card's FULL name (`theNameWeUseFor`) with `===` rather than a substring, so it silently found
+  nobody and the confirm/decline calls for Ben, Chidi and the admin-refusal test never ran on the old
+  route at all - every one of them stayed "waiting" and the admin test printed nothing. Fixed to match
+  by substring, the same way the product's own `findByName` (`assistant.service.ts`) does.
+- The two doors were sent two different sentences for the same setup turn: the old route's history
+  carried the bare words, Ask Groundwork's message carried the same words with an extra "the context
+  for our check-in:" opener stitched on the front, needed only to fire the router - and
+  `runContextChat` hands the whole message, opener included, to `contextChat` as the lead's own words.
+  Two different sentences reaching the same extractor is not a product difference. Fixed by wrapping
+  every setup turn and the paste in the identical opener text (`setup()`/`asContext()`) on both sides.
+
+**The result, after those three fixes (full output kept below):** every item this inventory can check
+without a model in the loop - the target a paste sets, `whoSeesTargets`, the three lines typed directly
+(kind, text, audience, retired), the lead's private notes (shared and still-private), the refusal to
+ever share a note about a named person, the document's content (bank detail hidden) and visibility, the
+admin asymmetry's refusal message, and what the setup conversation said back for duration and cadence -
+matched **word for word** between the old routes and Ask Groundwork. Decision 34's own promise (a
+person either gets no question, a waiting one, or a confirmed one, and who runs the check-in decides
+that, nobody else) held for Ben, Chidi and Femi alike; the exact SENTENCE each one reads was compared
+too, and is shown below, but is not itself part of what MATCH means for that row, for the reason under
+"open questions" below.
+
+Two things are still open, described exactly rather than patched around, because they touch how a
+model in the loop behaves rather than a line the router or a service misapplied:
+
+1. **A success statement said properly was kept differently.** Same literal input on both doors
+   (`Good means every pipeline stage has an owner, the weekly numbers are posted before Friday close,
+   and nothing sits unowned for more than two days.`). The old route recorded it with the leading
+   "Good means" kept; Ask Groundwork recorded it with "Good means" trimmed off the front (see the
+   output below). Both are the lead's own words, in order, so nothing here was invented - the
+   extraction model chose a different starting point for the quote each time it ran. `proposalFrom`
+   ("success" branch, `what-the-context-chat-heard.ts`) just takes whatever `heard.success` the model
+   returned and stores it - this is the model's own read of where the sentence starts, once, not a
+   difference in what either door does with it afterwards.
+2. **A success statement too short to record was refused on one door and not the other.** Same literal
+   input on both doors (`Setting up context for our check-in: Good.`). The old route's PROPOSE call
+   returned nothing to confirm (as Ask Groundwork's did too), and this script's own old-route driver
+   still called `/context-chat/confirm` anyway - which re-derives from the words independently
+   (`applyContextProposal` never trusts what propose said) and, on its own separate model call, read a
+   short enough `heard.success` to trigger the length refusal. Ask Groundwork's driver only ever says
+   "yes" when a proposal was actually offered - the same as a real lead only ever presses a button that
+   is on the screen - so it never reached that second, independent extraction at all for this turn.
+   This is not a bug in either door: `contextChat` (propose) and `applyContextProposal` (confirm) are
+   two separate model calls by design (item 5, "extraction is confirmed rather than adopted"), so they
+   are not guaranteed to agree with each other on a borderline input, and a script that always presses
+   confirm regardless of what propose showed is testing a lead who clicks a button that was not there.
+   Left open rather than forced: a fair, deterministic version of this particular test would need an
+   input where PROPOSE itself offers a "success" proposal that CONFIRM then independently refuses for
+   length, which this input does not reliably produce given the model is free to read "Good." as
+   nothing at all on either call.
+
+**The full comparison output**, the third and passing run (ground A `d891ed3f-3aeb-4c8f-82c3-7450115f93d9`,
+ground B `3b1317cd-587a-4a06-bc0d-c790cfc8edab`):
+
+```
+- Targets set for a named person (owner, number), hidden from others by default
+  MATCH (1): for a named person "Q4 sales" = 45000000
+
+- Who sees targets on the check-in (default THEIR_OWN, unchanged by any of this)
+  MATCH: THEIR_OWN
+
+- Context lines typed directly (item 17): kind, text, audience, and whether retired
+  MATCH (3): DECISION: "we will drop the small clients pilot" (EVERYONE, RETIRED) | STRATEGY: "we will focus on retention across existing accounts" (EVERYONE) | UNSETTLED: "who owns the marketing budget for next quarter" (EVERYONE)
+
+- Context lines read out of the paste (item 6): by kind only - wording is the model's own
+  MISMATCH on kind counts (old {"UNSETTLED":1,"NOTE":1}, ask groundwork {"UNSETTLED":1}). Wording, which the model draws from the paste independently on each side:
+    old route:      UNSETTLED: "The launch date is still moving around." | NOTE: "The Lagos pitch is our biggest open item this quarter."
+    ask groundwork: UNSETTLED: "The launch date is still moving around while marketing decides on the campaign name."
+
+- The lead's private notes: about the whole check-in (shared) and about Ben (still private)
+  MATCH (2): "keep an eye on Ben's workload this month" (EVERYONE, about the whole check-in) | "struggling with the pitch deck this month" (LEAD_ONLY, about somebody named)
+
+- A note about a named person can never be shared (the refusal, word for word)
+  MATCH: A note everyone reads is about the whole check-in, not about one person. To say what you expect of somebody, say it in your own check-in - it is published with your name on it.
+
+- Ben's exact question, confirmed as shown
+  MATCH on state (confirmed). The model's own wording, which may legitimately differ between the two doors:
+    old route:      "How is the Lagos pitch going?" (confirmed)
+    ask groundwork: "How is the Lagos pitch going?" (confirmed)
+
+- Chidi's exact question, confirmed with the lead's changed wording
+  MATCH on state (confirmed). The model's own wording, which may legitimately differ between the two doors:
+    old route:      "Is the renewals forecast still on track for Q1?" (confirmed)
+    ask groundwork: "Is the renewals forecast still on track for Q1?" (confirmed)
+
+- Femi's question, still waiting - an admin who is not the lead could not confirm it
+  MATCH on state (waiting). The model's own wording, which may legitimately differ between the two doors:
+    old route:      "What is blocking your onboarding checklist right now?" (waiting)
+    ask groundwork: "What is blocking the onboarding checklist right now?" (waiting)
+
+- An admin who is not the lead is refused at the confirm step (the asymmetry, word for word)
+  MATCH: Only the person who runs this check-in can confirm a question for somebody on it.
+
+- The document's content: the target is kept, the bank detail is hidden
+  MATCH: Chidi: Q1 renewals target is 20,000,000. Account number: [account number hidden] for payouts.
+
+- The document's visibility (private to the lead by default)
+  MATCH: OWN
+
+- The setup conversation: what it said back for the duration
+  MATCH: I will set this to run for 12 weeks.
+
+- The setup conversation: what it said back for the cadence
+  MATCH: I will set people to check in once a week.
+
+- A success statement too short to record is refused, word for word
+  MISMATCH.
+    old route:      That is too short to stand as what doing well looks like.
+    ask groundwork: Good. What is still missing from the setup for this check-in? I need to know what success looks like for "askgw check-in", what targets will measure it, and what each person is trying to achieve. I also need to know if there are any documents everybody should be working from.
+
+- A success statement said properly is recorded, word for word
+  MISMATCH.
+    old route:      I will record that as what doing well looks like: "Good means every pipeline stage has an owner, the weekly numbers are posted before Friday close, and nothing sits unowned for more than two days."
+    ask groundwork: I will record that as what doing well looks like: "every pipeline stage has an owner, the weekly numbers are posted before Friday close, and nothing sits unowned for more than two days."
+```
+
+Reproduce with:
+
+```
+DATABASE_URL="postgresql://hafsahjumare@localhost:5432/gw_pw9_1786222102?schema=public" \
+  npx ts-node -T journey/context-chat-equivalence.ts
+```
+(run from `api/`, against a local build and a local database only - the script refuses anything else).
