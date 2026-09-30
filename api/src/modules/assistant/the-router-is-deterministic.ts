@@ -37,6 +37,8 @@ export type Lane =
   | 'add_a_to_do'
   | 'my_to_dos'
   | 'tick_off_a_to_do'
+  | 'move_a_deadline'
+  | 'add_a_commitment'
   | 'add_context'
   | 'context_line'
   | 'lead_note'
@@ -75,6 +77,19 @@ const RULES = [
     /\b(?:tick|cross|strike)\s+(?:off\s+)?(.{3,120}?)(?:\s+off)?\s*$/i,
     /^(?:done|finished|did)[:,]\s+(.{3,120})$/i,
     /\bmark\s+(.{3,120}?)\s+(?:as\s+)?done\s*$/i,
+  ]),
+  /*
+   * WEEK 18: CHANGING A COMMITMENT BY TALKING. Above adding a to-do, because "push the rota back to
+   * Friday" names a change to something that already has a day, and nothing here is written until
+   * it has been said back and answered yes.
+   */
+  rule('move_a_deadline', [
+    /^\s*(?:please\s+)?(?:can\s+you\s+)?(?:move|push|postpone|reschedule|delay)\s+(?:the\s+(?:deadline|due\s+date|date)\s+(?:on|for|of)\s+)?(.{3,160}?)\s+(?:back\s+)?(?:to|until|till|out\s+to)\s+.{2,60}$/i,
+    /^\s*(?:please\s+)?(?:can\s+you\s+)?change\s+the\s+(?:deadline|due\s+date|date)\s+(?:on|for|of)\s+(.{3,160}?)\s+(?:to|until|till)\s+.{2,60}$/i,
+  ]),
+  rule('add_a_commitment', [
+    /\b(?:add|record|log|write\s+down)\s+(?:a\s+)?commitment[:,]?\s+(.{3,160})$/i,
+    /\bcommit\s+me\s+to\s+(.{3,160})$/i,
   ]),
   rule('add_a_to_do', [
     /* A deadline may trail the list: "add the rota to my to-do list by Friday". The lane reads the whole message for when. */

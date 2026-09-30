@@ -55,11 +55,27 @@ export interface Capability {
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
     key: 'tick_off_a_to_do',
-    does: 'Close one of your own to-dos by naming it',
+    does: 'Mark one of your own to-dos or commitments as done by naming it. It is said back first.',
     writes: 'after you confirm it',
     ordered: 'First, because "done: send the rota" holds the same words as the to-do it closes.',
     owns: ['done: send the rota', 'tick off the rota', 'mark the rota as done'],
     refuses: ['what did I commit to', 'what am I on'],
+  },
+  {
+    key: 'move_a_deadline',
+    does: 'Move the day on one of your own commitments, or on one you set for somebody on a check-in you run. It is said back with both days first.',
+    writes: 'after you confirm it',
+    ordered: 'Above adding a to-do, because "push the rota back to Friday" changes something that already has a day.',
+    owns: ['move the Westgate price list to Tuesday', 'push the rota back to Friday', 'change the deadline on the report to 7 October'],
+    refuses: ['what did I commit to', 'what is on my list?'],
+  },
+  {
+    key: 'add_a_commitment',
+    does: 'Write down something you will do, with the day if you give one. It is said back first, and it is yours.',
+    writes: 'after you confirm it',
+    ordered: 'Above adding a to-do, because a commitment is to somebody and a to-do is a note to yourself.',
+    owns: ['add a commitment: book the room by Friday', 'commit me to sending the report'],
+    refuses: ['add the rota to my to-do list', 'remind me to book the room'],
   },
   {
     key: 'add_a_to_do',

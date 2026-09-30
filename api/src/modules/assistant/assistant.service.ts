@@ -26,6 +26,12 @@ import { ScenariosService } from '../detectors/scenarios.service';
 import { DraftsService } from '../drafts/drafts.service';
 import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
 import { readToDo, toDoProposal, whichToDo, listToDos, addedToYourToDos } from './a-to-do-is-yours';
+import {
+  readTheDay, readAMove, thereIsNoMoveToRead, moveProposal, moveDone, NOTHING_WAS_CHANGED, onlyTheyCanChangeIt,
+  readACommitment, noCommitmentToRead, additionProposal, additionDone, tickProposal, tickDone,
+  type AMove, type AnAddition, type ATick,
+} from './a-change-said-back-first';
+import { addACommitment, markACommitmentDone, moveACommitmentsDeadline } from './a-commitment-has-one-writer';
 import { whatItTakesToStart } from './what-it-takes-to-start';
 import {
   ROLE_INTERVIEW_KIND, ROLE_INTERVIEW_CONFIRM_KIND, THE_FOUR, INTERVIEW_INVITATION, theyWantToBegin, theyWantToStop,
@@ -291,6 +297,10 @@ export class AssistantService {
         return this.compose(await this.myToDos(organizationId, who));
       case 'tick_off_a_to_do':
         return this.tickOffAToDo(organizationId, who, routed.subject ?? message);
+      case 'move_a_deadline':
+        return this.moveADeadline(organizationId, who, userId ?? null, message);
+      case 'add_a_commitment':
+        return this.addACommitmentByChat(organizationId, who, message);
       case 'what_you_can_see':
         return this.compose(await this.whatICanSee(organizationId));
       case 'what_am_i_on':
@@ -1529,6 +1539,9 @@ export class AssistantService {
     }
     if (parked.kind === 'change_context_line') {
       return this.resolveParkedChangeContextLine(organizationId, who, parked, decision);
+    }
+    if (parked.kind === 'move_deadline' || parked.kind === 'add_commitment' || parked.kind === 'tick_off') {
+      return this.resolveParkedChange(organizationId, who, parked, decision);
     }
     if (parked.kind === 'question_for_person') {
       return this.resolveParkedQuestionForPerson(organizationId, who, parked, decision);
@@ -3074,14 +3087,196 @@ export class AssistantService {
     return open.length ? this.withItsSource(listed, YOUR_TO_DOS_SOURCE) : listed;
   }
 
+  /**
+   * TICKING SOMETHING OFF IS SAID BACK FIRST (week 18). It used to close on a matching sentence; now
+   * it parks a question, and only a yes through `POST /ask/answer` closes it. It reaches the
+   * person's own to-dos and their own commitments and nobody else's: not even a lead marks
+   * somebody's commitment done, because the person doing the thing owns the answer.
+   */
   private async tickOffAToDo(organizationId: string, who: string | null, said: string): Promise<Reply> {
     if (!who) return rules('tick_off_a_to_do', text('I cannot see you in your organisation records, so I have no list to close anything on.'));
-    const open = await this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const todos = await this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const commitments = await this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const open = [
+      ...todos.map((t: any) => ({ id: `todo:${t.id}`, text: t.text as string, dueSaid: (t.dueSaid ?? null) as string | null })),
+      ...commitments.map((c: any) => ({ id: `commitment:${c.id}`, text: c.text as string, dueSaid: (c.dueSaid ?? null) as string | null })),
+    ];
     const which = whichToDo(said, open);
-    if ('none' in which) return rules('tick_off_a_to_do', text(open.length ? `Nothing on your list reads like "${said}". ${listToDos(open)}` : 'Your list is empty, so there is nothing to close.'));
+    if ('none' in which) {
+      const colleague = await this.aColleagueNamedIn(organizationId, who, said);
+      if (colleague) return rules('tick_off_a_to_do', text(onlyTheyCanChangeIt(colleague)));
+      return rules('tick_off_a_to_do', text(open.length ? `Nothing on your list reads like "${said}". ${listToDos(todos)}` : 'Your list is empty, so there is nothing to close.'));
+    }
     if ('several' in which) return rules('tick_off_a_to_do', text(`More than one of these could be it. Which?\n${which.several.map((t) => `- ${t.text}`).join('\n')}`));
-    await this.prisma.todo.update({ where: { id: which.one.id }, data: { state: 'DONE', doneAt: new Date() } });
-    return rules('tick_off_a_to_do', text(`I have ticked off "${which.one.text}".`));
+    const [kind, id] = which.one.id.split(':');
+    const tick: ATick = { kind: kind as ATick['kind'], id, text: which.one.text };
+    return this.parkAChange('tick_off_a_to_do', organizationId, who, 'tick_off', tickProposal(tick), tick);
+  }
+
+  /** One question parked, and the same sentence shown, with the proposal the screen answers. */
+  private async parkAChange(lane: Lane, organizationId: string, who: string, kind: string, summary: string, payload: object): Promise<Reply> {
+    const proposal = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind, summary, payload: payload as any },
+    });
+    return { lane, composedBy: 'rules', blocks: [text(proposal.summary), { type: 'proposal', proposalId: proposal.id, summary: proposal.summary }] };
+  }
+
+  /**
+   * THE FIRST NAME OF A COLLEAGUE THE ASKER NAMED, never anybody the asker did not name. A refusal
+   * built from what the asker typed tells them nothing they did not already say.
+   */
+  private async aColleagueNamedIn(organizationId: string, who: string, said: string): Promise<string | null> {
+    const people = await this.prisma.person.findMany({
+      where: { organizationId, active: true },
+      select: { externalId: true, displayName: true, givenName: true },
+    });
+    for (const p of people as any[]) {
+      if (p.externalId === who) continue;
+      const first = ((p.givenName ?? p.displayName ?? '') as string).trim().split(/\s+/)[0];
+      if (first.length >= 2 && new RegExp(`\\b${first.replace(/[^a-z0-9]/gi, '')}(?:['’]s)?\\b`, 'i').test(said)) return first;
+    }
+    return null;
+  }
+
+  /**
+   * THE COMMITMENTS THIS PERSON MAY MOVE. Their own, and - only for a lead - the ones the lead made
+   * for somebody on a check-in the lead runs. A commitment somebody made for themselves is theirs to
+   * move, whoever runs the check-in.
+   */
+  private async commitmentsIMayMove(organizationId: string, who: string, userId: string | null) {
+    const own = await this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const out: { id: string; text: string; dueAt: Date | null; dueSaid: string | null; ownerExternalId: string; mine: boolean }[] =
+      (own as any[]).map((c) => ({ id: c.id, text: c.text, dueAt: c.dueAt ?? null, dueSaid: c.dueSaid ?? null, ownerExternalId: c.personExternalId, mine: true }));
+    if (userId) {
+      const setByMe = await this.prisma.personObjective.findMany({
+        where: { authoredBy: 'lead', status: 'OPEN', ground: { initiatorId: userId, organizationId } },
+        select: { id: true },
+      });
+      const ids = (setByMe as any[]).map((o) => o.id);
+      if (ids.length) {
+        const forOthers = await this.prisma.commitment.findMany({
+          where: { organizationId, state: 'OPEN', sourcePersonObjectiveId: { in: ids }, personExternalId: { not: who } },
+        });
+        for (const c of forOthers as any[]) {
+          out.push({ id: c.id, text: c.text, dueAt: c.dueAt ?? null, dueSaid: c.dueSaid ?? null, ownerExternalId: c.personExternalId, mine: false });
+        }
+      }
+    }
+    return out;
+  }
+
+  private async firstNameOf(organizationId: string, externalId: string): Promise<string> {
+    const p: any = await this.prisma.person.findFirst({ where: { organizationId, externalId }, select: { displayName: true, givenName: true } });
+    return ((p?.givenName ?? p?.displayName ?? 'them') as string).trim().split(/\s+/)[0];
+  }
+
+  /**
+   * MOVING A DEADLINE, SAID BACK. The day is read in code, by the reader the product uses for a date
+   * said in a check-in, or asked for. Nothing is moved here: the exact change is parked as a
+   * question, and only a yes moves it.
+   */
+  private async moveADeadline(organizationId: string, who: string | null, userId: string | null, message: string): Promise<Reply> {
+    if (!who) return rules('move_a_deadline', text('I cannot see you in your organisation records, so I have nothing of yours to move.'));
+    const move = readAMove(message);
+    if (!move) return rules('move_a_deadline', text(thereIsNoMoveToRead()));
+
+    const mine = await this.commitmentsIMayMove(organizationId, who, userId);
+    const which = whichToDo(move.what, mine);
+    if ('none' in which) {
+      const colleague = await this.aColleagueNamedIn(organizationId, who, move.what);
+      if (colleague) return rules('move_a_deadline', text(onlyTheyCanChangeIt(colleague)));
+      return rules('move_a_deadline', text(mine.length
+        ? `Nothing you may move reads like "${move.what}". Say part of the words of the commitment you mean.`
+        : 'You have no open commitments to move.'));
+    }
+    if ('several' in which) return rules('move_a_deadline', text(`More than one of these could be it. Which?\n${which.several.map((t) => `- ${t.text}`).join('\n')}`));
+
+    const day = readTheDay(move.whenSaid, new Date());
+    if ('ask' in day) return rules('move_a_deadline', text(day.ask));
+
+    const one = which.one as (typeof mine)[number];
+    const proposal: AMove = {
+      commitmentId: one.id,
+      text: one.text,
+      ownerExternalId: one.ownerExternalId,
+      ownerFirstName: one.mine ? null : await this.firstNameOf(organizationId, one.ownerExternalId),
+      was: { at: one.dueAt ? one.dueAt.toISOString() : null, said: one.dueAt ? null : one.dueSaid },
+      toISO: day.date.toISOString(),
+      toSaid: move.whenSaid,
+    };
+    return this.parkAChange('move_a_deadline', organizationId, who, 'move_deadline', moveProposal(proposal), proposal);
+  }
+
+  /** ADDING A COMMITMENT, SAID BACK. It is always the asker's own: nobody adds one in somebody else's name. */
+  private async addACommitmentByChat(organizationId: string, who: string | null, message: string): Promise<Reply> {
+    if (!who) return rules('add_a_commitment', text('I cannot see you in your organisation records, so I have nowhere to write that.'));
+    const c = readACommitment(message);
+    if (!c) return rules('add_a_commitment', text(noCommitmentToRead()));
+    let dueISO: string | null = null;
+    if (c.dueSaid) {
+      const day = readTheDay(c.dueSaid, new Date());
+      if ('ask' in day) return rules('add_a_commitment', text(day.ask));
+      dueISO = day.date.toISOString();
+    }
+    const addition: AnAddition = { text: c.text, dueSaid: c.dueSaid, dueISO };
+    return this.parkAChange('add_a_commitment', organizationId, who, 'add_commitment', additionProposal(addition), addition);
+  }
+
+  /**
+   * THE YES OR THE NO TO ONE OF THE THREE. Everything is checked again here, at the moment of the
+   * yes, because what a person could change when the question was asked is not what they may change
+   * now: the commitment may have closed, or the check-in may have passed to somebody else.
+   */
+  private async resolveParkedChange(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    const lane: Lane = parked.kind === 'move_deadline' ? 'move_a_deadline' : parked.kind === 'add_commitment' ? 'add_a_commitment' : 'tick_off_a_to_do';
+    const settle = (state: 'ACCEPTED' | 'DECLINED' | 'DROPPED') =>
+      this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state, resolvedAt: new Date() } });
+    if (decision === 'decline') {
+      await settle('DECLINED');
+      return rules(lane, text(NOTHING_WAS_CHANGED));
+    }
+    const me: any = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    if (!me) {
+      await settle('DROPPED');
+      return rules(lane, text('I could not change that, because I can no longer see you in your organisation records. Nothing was changed.'));
+    }
+
+    if (parked.kind === 'add_commitment') {
+      const a = parked.payload as AnAddition;
+      await addACommitment(this.prisma, {
+        organizationId, personExternalId: who, text: a.text, dueSaid: a.dueSaid, dueAt: a.dueISO ? new Date(a.dueISO) : null, source: 'assistant',
+      });
+      await settle('ACCEPTED');
+      return rules(lane, text(additionDone(a)));
+    }
+
+    if (parked.kind === 'tick_off') {
+      const t = parked.payload as ATick;
+      const row: any = t.kind === 'todo'
+        ? await this.prisma.todo.findFirst({ where: { id: t.id, organizationId, personExternalId: who, state: 'OPEN' } })
+        : await this.prisma.commitment.findFirst({ where: { id: t.id, organizationId, personExternalId: who, state: 'OPEN' } });
+      if (!row) {
+        await settle('DROPPED');
+        return rules(lane, text(`"${t.text}" is no longer open on your list, so I have changed nothing.`));
+      }
+      if (t.kind === 'todo') await this.prisma.todo.update({ where: { id: t.id }, data: { state: 'DONE', doneAt: new Date() } });
+      else await markACommitmentDone(this.prisma, t.id);
+      await settle('ACCEPTED');
+      return rules(lane, text(tickDone(t)));
+    }
+
+    const m = parked.payload as AMove;
+    const allowed = (await this.commitmentsIMayMove(organizationId, who, me.linkedUserId ?? null)).find((c) => c.id === m.commitmentId);
+    if (!allowed) {
+      await settle('DROPPED');
+      const first = m.ownerFirstName ?? (await this.firstNameOf(organizationId, m.ownerExternalId));
+      return rules(lane, text(m.ownerExternalId === who
+        ? `"${m.text}" is no longer open, so I have changed nothing.`
+        : `${onlyTheyCanChangeIt(first)} You can no longer move it for them, so I have changed nothing.`));
+    }
+    await moveACommitmentsDeadline(this.prisma, m.commitmentId, new Date(m.toISO), m.toSaid);
+    await settle('ACCEPTED');
+    return rules(lane, text(moveDone(m)));
   }
 
   private async myCommitments(organizationId: string, personId: string): Promise<Reply> {
