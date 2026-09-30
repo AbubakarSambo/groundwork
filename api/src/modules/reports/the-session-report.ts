@@ -91,6 +91,10 @@ export interface SessionReportShape {
   sessionNumber: number;
   /** How many this run holds, so the header can say "check-in 3 of 6". Null when nobody set both. */
   plannedSessions?: number | null;
+  /** True when the check-in runs until the lead ends it: no total, so nothing says how far through it is. */
+  runsUntilEnded?: boolean;
+  /** The plain count, ready to print: "Session 3 of 12.", or "Session 3. It runs until you end it." */
+  position?: string;
   /** 'forming' while the round is open, 'final' once it closed and was snapshotted. */
   state: 'forming' | 'final';
   whereThingsStand: {
@@ -160,6 +164,8 @@ export interface SessionReportInputs {
   sessionNumber: number;
   /** From the length and the rhythm. Null where either is unset, so the header simply omits it. */
   plannedSessions?: number | null;
+  /** The check-in runs until the lead ends it (request 37). */
+  runsUntilEnded?: boolean;
   /** Whether the round closed and was snapshotted. */
   closed: boolean;
   /**
@@ -573,7 +579,11 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
 
   return {
     sessionNumber: input.sessionNumber,
-    plannedSessions: input.plannedSessions ?? null,
+    plannedSessions: input.runsUntilEnded ? null : input.plannedSessions ?? null,
+    runsUntilEnded: input.runsUntilEnded === true,
+    position: input.runsUntilEnded
+      ? `Session ${input.sessionNumber}. It runs until you end it.`
+      : input.plannedSessions ? `Session ${input.sessionNumber} of ${input.plannedSessions}.` : `Session ${input.sessionNumber}.`,
     state: input.closed ? 'final' : 'forming',
     confidence,
     whereThingsStand: { agreed, stillOpen, saying: standing, settled, open: openNow, openWithReasons },

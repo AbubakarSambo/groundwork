@@ -6310,10 +6310,11 @@ export class GroundsService {
      * has already passed would hand it straight back to tonight's sweep, and the person would watch
      * it stall again by morning having done exactly what the product told them to.
      */
-    const reopening = hasStalled(ground.status) && goesOnUntilEnded
-      ? new Date(Date.now() + 86_400_000)
-      : hasStalled(ground.status) && requestedDays !== undefined
-      ? deadlineOf({ createdAt: ground.createdAt, startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt, timelineDays: requestedDays })
+    const reopening = hasStalled(ground.status) && requestedDays !== undefined
+      ? goesOnUntilEnded
+        /* No end to be past: it opens again, and only the lead ending it closes it. */
+        ? new Date(Date.now() + 86_400_000)
+        : deadlineOf({ createdAt: ground.createdAt, startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt, timelineDays: requestedDays })
       : null;
     const opensAgain = !!reopening && reopening.getTime() > Date.now();
     if (hasStalled(ground.status) && requestedDays !== undefined && !opensAgain) {

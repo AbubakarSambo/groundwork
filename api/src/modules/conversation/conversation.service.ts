@@ -3674,7 +3674,8 @@ export class ConversationService {
        * to pass it and stopped. Derived here from the same timeline and cadence the header uses, so
        * the two cannot say different numbers.
        */
-      totalSessions: (ground as any).runsUntilEnded ? undefined : totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
+      /* Zero days for a check-in that runs until the lead ends it, which gives no total. */
+      totalSessions: totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
       /* Their own words for their part only: for anybody the lead invited it is the lead's sentence about them. */
       roleAsDescribed: aRoleInTheirOwnWords(checkIn.participant as any),

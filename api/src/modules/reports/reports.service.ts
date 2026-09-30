@@ -2849,6 +2849,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
         /* The run's length, for "session N of M": with the rhythm it gives plannedSessions below.
            Left out of this select, plannedSessions was null on every read (request 55). */
         timelineDays: true,
+        runsUntilEnded: true,
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -3042,6 +3043,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const whoseDocument = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
     const shape = theSessionReport({
       sessionNumber,
+      runsUntilEnded: !!(ground as any).runsUntilEnded,
       /* The same arithmetic the chat composer does when it says "session 3 of 6": the length over
          the rhythm. Null where either is unset, so the header omits the position rather than
          inventing a denominator. */

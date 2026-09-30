@@ -301,7 +301,7 @@ export function saidUntilIEndIt(said: string | null | undefined, whileLengthIsTh
   const text = (said ?? '').toLowerCase().replace(/[’]/g, "'");
   if (!text) return false;
   /* Plain forms, read whatever question is open. */
-  if (/\b(until|till) (i|we) (end|stop|close|finish|call|say|decide)\b/.test(text)
+  if (/\b(until|till) (i|we) (end|stop|close|finish|call)\b/.test(text)
     || /\bwhen (i|we) (end|stop|close|finish|call) (it|this)\b/.test(text)
     || /\b(keep|keeps) (it )?(going|running) until\b/.test(text)) return true;
   /* Looser words ("ongoing") are read only as the answer to how long it runs, so a sentence about
