@@ -43,6 +43,7 @@ describe('the chosen end', () => {
     const src = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src.match(/timelineDays: howLongItRuns\(dto\),/g)).toHaveLength(2);
     expect(src).not.toContain('timelineDays: dto.timelineDays ?? DEFAULT_TIMELINE_DAYS[dto.scenario],');
-    expect(src.match(/timelineStated: dto\.timelineDays != null \|\| !!dto\.endsAt,/g)).toHaveLength(2);
+    // Request 37: choosing "until I end it" also counts as stated.
+    expect(src.match(/timelineStated: dto\.runsUntilEnded === true \|\| dto\.timelineDays != null \|\| !!dto\.endsAt,/g)).toHaveLength(2);
   });
 });

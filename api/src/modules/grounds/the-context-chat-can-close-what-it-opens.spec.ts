@@ -76,7 +76,7 @@ describe('what it heard', () => {
 describe('what the model can reach', () => {
   it('only the field the question was about', () => {
     // An answer to "how long" must not be able to change the cadence, even if they mention it.
-    expect(Object.keys(extractionToolFor('timeline').input_schema.properties)).toEqual(['timelineDays']);
+    expect(Object.keys(extractionToolFor('timeline').input_schema.properties)).toEqual(['runsUntilEnded', 'timelineDays']); // request 37: "until I end it" is also an answer to how long
     expect(Object.keys(extractionToolFor('cadence').input_schema.properties)).toEqual(['cadence']);
     expect(Object.keys(extractionToolFor('success').input_schema.properties)).toEqual(['success']);
   });
@@ -226,8 +226,8 @@ describe('the question this whole feature exists to ask', () => {
     const creates = CODE.split('timelineDays: howLongItRuns(dto),');
     expect(creates.length).toBe(3); // two call sites, so two splits
     for (const after of creates.slice(1)) {
-      expect(after.slice(0, 260)).toMatch(/timelineStated: dto\.timelineDays != null/);
-      expect(after.slice(0, 260)).toMatch(/cadenceStated: dto\.cadence != null/);
+      expect(after.slice(0, 420)).toMatch(/timelineStated: dto\.runsUntilEnded === true \|\| dto\.timelineDays != null/); // request 37: until-ended also counts as stated
+      expect(after.slice(0, 420)).toMatch(/cadenceStated: dto\.cadence != null/);
     }
   });
 
@@ -242,7 +242,7 @@ describe('the question this whole feature exists to ask', () => {
 
   it('and stating it through updateTimeline marks it stated', () => {
     // Otherwise the chat would keep offering to set a length the lead had just set.
-    expect(CODE).toMatch(/timelineDays: requestedDays,\s*\n\s*timelineWeeks: Math\.max\(1, Math\.round\(requestedDays \/ 7\)\),\s*\n\s*timelineStated: true/);
+    expect(CODE).toMatch(/timelineDays: requestedDays,\s*\n\s*timelineWeeks: goesOnUntilEnded \? null : Math\.max\(1, Math\.round\(requestedDays \/ 7\)\),\s*\n\s*runsUntilEnded: goesOnUntilEnded,\s*\n\s*timelineStated: true/);
     expect(CODE).toMatch(/cadence: dto\.cadence as Cadence, cadenceStated: true/);
   });
 

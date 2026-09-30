@@ -80,6 +80,8 @@ describe('opening a check-in returns what it should and nothing else', () => {
       /* The brief is echoed since 10 Sep 2026: the caller set the standard and could not see it. */
       'brief',
       'cadence', 'endsAt', 'id', 'invitations', 'label', 'mode', 'moment',
+      /* Request 37: says whether the check-in runs until the lead ends it, since timelineDays is then null. */
+      'runsUntilEnded',
       'scenario', 'startsAt', 'status', 'timelineDays',
     ]);
   });

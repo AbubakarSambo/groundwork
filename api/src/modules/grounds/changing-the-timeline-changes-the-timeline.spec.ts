@@ -32,7 +32,7 @@ describe('changing the timeline', () => {
 
   it('keeps the legacy column in step rather than leaving it stale', () => {
     // Anything still reading weeks gets a value derived from days, never the reverse.
-    expect(SERVICE).toMatch(/timelineWeeks: Math\.max\(1, Math\.round\(requestedDays \/ 7\)\)/);
+    expect(SERVICE).toMatch(/timelineWeeks: goesOnUntilEnded \? null : Math\.max\(1, Math\.round\(requestedDays \/ 7\)\)/);
   });
 
   it('accepts days, so a timeline that is not whole weeks survives an edit', () => {
@@ -45,12 +45,12 @@ describe('changing the timeline', () => {
   });
 
   it('and audits the days, which is what actually changed', () => {
-    expect(SERVICE).toMatch(/timelineDays: \{ from: ground\.timelineDays, to: requestedDays \}/);
+    expect(SERVICE).toMatch(/timelineDays: \{ from: \(ground as any\)\.runsUntilEnded \? null : ground\.timelineDays, to: goesOnUntilEnded \? null : requestedDays \}/);
   });
 
   it('never rounds a proposal to whole weeks before applying it', () => {
     // The internal caller used to send Math.round(proposal.days / 7), applying 42 for a 45-day proposal.
     expect(SERVICE).not.toMatch(/updateTimeline\([^)]*Math\.round\(proposal\.days/);
-    expect(SERVICE).toMatch(/updateTimeline\(groundId, requestingUserId, \{ timelineDays: proposal\.days \}\)/);
+    expect(SERVICE).toMatch(/updateTimeline\(groundId, requestingUserId, proposal\.untilEnded \? \{ runsUntilEnded: true \} : \{ timelineDays: proposal\.days \}\)/);
   });
 });
