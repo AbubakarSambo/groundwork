@@ -6893,4 +6893,9 @@ Those are now fixed.
 
 A third review is reading every sentence on the six pages for jargon.
 
+The third review confirmed those fixes, and found three more things, which are being fixed now:
+- The three old screenshots were still in the app's public folder, so anyone could open them by address. They are being deleted.
+- "Erase it" read as "erase everything you wrote", but it removes only your name and email. It is being renamed.
+- About 40 lines on the six pages are clipped or use jargon, many of them the prototype's own words. I decided how to handle the prototype's fragments, and it is under "Decided for Hafsah to confirm".
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
