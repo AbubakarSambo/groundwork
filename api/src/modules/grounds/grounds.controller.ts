@@ -71,6 +71,12 @@ class UpdateTimelineDto {
   @Min(1)
   timelineWeeks?: number;
 
+  /** True sets the check-in to run until the lead ends it (request 37). A length sent later turns it off. */
+  @ApiPropertyOptional({ description: 'Run until the lead ends it.' })
+  @IsOptional()
+  @IsBoolean()
+  runsUntilEnded?: boolean;
+
   /**
    * WHEN THE FIRST CHECK-IN OPENS, which could be set at creation and never afterwards.
    *

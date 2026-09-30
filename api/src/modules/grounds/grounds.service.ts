@@ -65,7 +65,7 @@ import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
-import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows, withoutTheWordGround, aLengthAndNothingElse } from './nothing-proposed-that-nobody-said';
+import { saidUntilIEndIt, nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows, withoutTheWordGround, aLengthAndNothingElse } from './nothing-proposed-that-nobody-said';
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
 import {
@@ -632,14 +632,16 @@ export class GroundsService {
         mode: dto.mode ?? defaultModeFor(dto.scenario),
         moment: dto.moment,
         timelineDays: howLongItRuns(dto),
+        /** "Until I end it": no planned length, no planned last session (request 37). */
+        runsUntilEnded: dto.runsUntilEnded === true,
         /** Whether this was chosen or guessed for them, so the setup chat can offer to fix it. */
-        timelineStated: dto.timelineDays != null || !!dto.endsAt,
+        timelineStated: dto.runsUntilEnded === true || dto.timelineDays != null || !!dto.endsAt,
         cadenceStated: dto.cadence != null,
         cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
         cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
         workingDays: workingDaysOf(dto.workingDays),
         startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
-        endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
+        endsAt: dto.endsAt && dto.runsUntilEnded !== true ? new Date(dto.endsAt) : null,
         /**
          * AN ORG ADMIN ACCEPTS A GROUND BEFORE ANYBODY IS INVITED TO IT.
          *
@@ -844,14 +846,15 @@ export class GroundsService {
         mode: dto.mode ?? defaultModeFor(dto.scenario),
           moment: dto.moment,
           timelineDays: howLongItRuns(dto),
+          runsUntilEnded: dto.runsUntilEnded === true,
           /** Whether this was chosen or guessed for them, so the setup chat can offer to fix it. */
-          timelineStated: dto.timelineDays != null || !!dto.endsAt,
+          timelineStated: dto.runsUntilEnded === true || dto.timelineDays != null || !!dto.endsAt,
           cadenceStated: dto.cadence != null,
           cadence: dto.cadence ?? RECOMMENDED_CADENCE[dto.scenario],
           cadenceAnchorDay: dto.cadenceAnchorDay ?? null,
           workingDays: workingDaysOf(dto.workingDays),
           startsAt: this.theFirstDayTheyWork(dto.startsAt ? new Date(dto.startsAt) : null, dto.workingDays),
-          endsAt: dto.endsAt ? new Date(dto.endsAt) : null,
+          endsAt: dto.endsAt && dto.runsUntilEnded !== true ? new Date(dto.endsAt) : null,
           /* OPEN FROM THE START. There is no lead page any more (10 Sep 2026): nobody sets a check-in
              up for somebody else to confirm. A ground made through the API with people on it waits
              for them; one with nobody yet is simply open, and the lead's first check-in exists now. */
@@ -1444,7 +1447,7 @@ export class GroundsService {
           checkIns: checkIns as any,
           participants: (rest as any).participants ?? [],
           dependencies: ((rest as any).dependencies ?? []) as any,
-          timelineDays: (rest as any).timelineDays ?? null,
+          timelineDays: (rest as any).runsUntilEnded ? null : (rest as any).timelineDays ?? null,
           cadence: (rest as any).cadence ?? null,
           scenario: (rest as any).scenario ?? null,
           sharedPicture: ((rest as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
@@ -1542,6 +1545,8 @@ export class GroundsService {
         /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). */
         return this.withoutTheTargetsHiddenFrom(g as any, userId, {
           ...safe,
+          /* Until the lead ends it: no length to show. The flag says so (request 37). */
+          timelineDays: (safe as any).runsUntilEnded ? null : (safe as any).timelineDays,
           /*
            * THE BRIEF, BY THE SAME RULE AS THE CHECK-IN'S OWN READ (U.7 third review). It went out
            * raw in `safe` to every reader of the list, so Aisha was sent the lead's setup answers
@@ -1854,7 +1859,9 @@ export class GroundsService {
           by: e.changedBy === requestingUserId ? ('you' as const)
             : e.changedBy === ground.initiatorId ? ('lead' as const)
             : ('admin' as const),
-          weeks: days ? { from: days.from != null ? Math.round(days.from / 7) : null, to: Math.round(days.to / 7) } : null,
+          weeks: days ? { from: days.from ? Math.round(days.from / 7) : null, to: days.to != null ? Math.round(days.to / 7) : null } : null,
+          /* True when this change made it run until the lead ends it. */
+          untilItIsEnded: e.changes?.runsUntilEnded?.to === true,
           cadence: e.changes?.cadence ?? null,
         };
       });
@@ -2406,6 +2413,8 @@ export class GroundsService {
     /* And no sentence carrying a goal the lead has not told its person about (a-goal-not-told-stays-with-the-lead). */
     return withoutGoalsNotToldIn(this.withoutTheTargetsHiddenFrom(ground as any, requestingUserId, {
       ...rest,
+      /* Until the lead ends it: no length to show. The flag says so (request 37). */
+      timelineDays: (rest as any).runsUntilEnded ? null : (rest as any).timelineDays,
       /* Everyone on the check-in may see what is to be done; only the lead's private notes are walled. */
       commitments,
       /* The buckets. Already filtered above: a participant is never sent a line about anybody. */
@@ -2660,7 +2669,7 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        id: true, label: true, scenario: true, initiatorId: true, timelineDays: true,
+        id: true, label: true, scenario: true, initiatorId: true, timelineDays: true, runsUntilEnded: true,
         cadence: true, brief: true, timelineStated: true, cadenceStated: true,
         organizationId: true, createdByUserId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
@@ -2744,6 +2753,7 @@ export class GroundsService {
        * this conversation was built to ask.
        */
       timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      runsUntilEnded: !!(ground as any).runsUntilEnded,
       cadence: ground.cadenceStated ? ground.cadence : null,
       /* The success gap reads the baseline, not the brief - they are two different things and
          sharing one column broke both. See `ContextGaps.successLooksLike`. */
@@ -3003,12 +3013,14 @@ export class GroundsService {
     /* A length and nothing else is a length, whatever question was open (request 92, point 10). */
     const justALength = lastFromLead ? aLengthAndNothingElse(lastFromLead) : null;
     if (justALength) proposal = proposalFrom('timeline', { timelineDays: justALength } as any, [], lastFromLead);
+    /* And "until I end it" is an answer to how long it runs, whatever question was open (request 37). */
+    else if (lastFromLead && saidUntilIEndIt(lastFromLead, openGap === 'timeline')) proposal = proposalFrom('timeline', { runsUntilEnded: true }, [], lastFromLead);
     if (proposal.kind !== 'none' && lastFromLead) {
       const untraceable =
         (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
         || (proposal.kind === 'expectation' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
         || (proposal.kind === 'lead_read' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
-        || (proposal.kind === 'timeline' && !aLengthTheyCouldHaveMeant((proposal as any).days, lastFromLead));
+        || (proposal.kind === 'timeline' && !(proposal as any).untilEnded && !aLengthTheyCouldHaveMeant((proposal as any).days, lastFromLead));
       if (untraceable) {
         this.logger.warn(`Context chat on ${groundId}: dropped a ${proposal.kind} proposal whose words were not theirs.`);
         proposal = { kind: 'none', why: 'Nothing in that answer to record.' } as any;
@@ -3043,7 +3055,7 @@ export class GroundsService {
      * asked away a second time.
      */
     const isOpeningTurn = !history.some((h) => h.role === 'assistant');
-    const openedOn = isOpeningTurn ? openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null) : null;
+    const openedOn = isOpeningTurn ? openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null, !!(ground as any).runsUntilEnded) : null;
     /*
      * FIX 4: NOTHING SAYS IT WILL BE RECORDED UNLESS SOMETHING IS ACTUALLY BEING PROPOSED THIS TURN.
      * "I will record this as your read of Ben" was once said with no `lead_read` or `expectation`
@@ -3650,7 +3662,7 @@ export class GroundsService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true, scenario: true,
+        id: true, initiatorId: true, timelineDays: true, runsUntilEnded: true, cadence: true, brief: true, scenario: true,
         timelineStated: true, cadenceStated: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
@@ -3688,6 +3700,7 @@ export class GroundsService {
        * this conversation was built to ask.
        */
       timelineDays: ground.timelineStated ? ground.timelineDays : null,
+      runsUntilEnded: !!(ground as any).runsUntilEnded,
       cadence: ground.cadenceStated ? ground.cadence : null,
       /* The success gap reads the baseline, not the brief - they are two different things and
          sharing one column broke both. See `ContextGaps.successLooksLike`. */
@@ -3735,6 +3748,12 @@ export class GroundsService {
       if (asLength.kind !== 'timeline') throw new BadRequestException((asLength as any).why);
       await this.updateTimeline(groundId, requestingUserId, { timelineDays: asLength.days });
       return { changed: 'timeline', say: confirmedSay(asLength) };
+    }
+
+    if (saidUntilIEndIt(dto.said, openGap === 'timeline')) {
+      const untilEnded = proposalFrom('timeline', { runsUntilEnded: true }, [], dto.said);
+      await this.updateTimeline(groundId, requestingUserId, { runsUntilEnded: true });
+      return { changed: 'timeline', say: confirmedSay(untilEnded) };
     }
 
     if (!openGap) throw new BadRequestException('There is no open question for this to answer.');
@@ -3908,7 +3927,7 @@ export class GroundsService {
       (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, dto.said))
       || (proposal.kind === 'expectation' && !traceableToWhatTheySaid((proposal as any).text, dto.said))
       || (proposal.kind === 'lead_read' && !traceableToWhatTheySaid((proposal as any).text, dto.said))
-      || (proposal.kind === 'timeline' && !aLengthTheyCouldHaveMeant((proposal as any).days, dto.said))
+      || (proposal.kind === 'timeline' && !(proposal as any).untilEnded && !aLengthTheyCouldHaveMeant((proposal as any).days, dto.said))
     ) {
       throw new BadRequestException('I could not find that in what you said, so nothing was recorded. Say it in your own words and I will take it.');
     }
@@ -3921,7 +3940,7 @@ export class GroundsService {
     if (proposal.kind === 'timeline') {
       // Days straight through. This used to round to whole weeks, so a proposal of 45 days
       // was applied as 42 - a silent change to a number somebody had agreed.
-      await this.updateTimeline(groundId, requestingUserId, { timelineDays: proposal.days });
+      await this.updateTimeline(groundId, requestingUserId, proposal.untilEnded ? { runsUntilEnded: true } : { timelineDays: proposal.days });
       return { changed: 'timeline', say: confirmedSay(proposal) };
     }
     if (proposal.kind === 'cadence') {
@@ -6011,7 +6030,7 @@ export class GroundsService {
   async updateTimeline(
     groundId: string,
     requestingUserId: string,
-    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[] },
+    dto: { label?: string; timelineDays?: number; timelineWeeks?: number; runsUntilEnded?: boolean; cadence?: string; contextNote?: string; startsAt?: string; brief?: string; workingDays?: number[] },
   ) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId } });
     if (!ground) throw new NotFoundException('Check-in not found');
@@ -6048,7 +6067,10 @@ export class GroundsService {
      * this, only `timelineWeeks` was written, and `timelineDays` - the value the stall cron and the
      * session-planning maths both read - was left untouched. The change was audited and had no effect.
      */
-    const requestedDays = dto.timelineDays ?? (dto.timelineWeeks !== undefined ? dto.timelineWeeks * 7 : undefined);
+    /* "Until I end it" (request 37) is stored as no planned length: zero days and the flag. A finite
+       length sent later turns the flag off again. */
+    const goesOnUntilEnded = dto.runsUntilEnded === true;
+    const requestedDays = goesOnUntilEnded ? 0 : dto.timelineDays ?? (dto.timelineWeeks !== undefined ? dto.timelineWeeks * 7 : undefined);
     /*
      * AND WHICH DAYS THE TEAM WORKS, WHICH COULD ONLY EVER BE SAID AT CREATION.
      *
@@ -6209,7 +6231,8 @@ export class GroundsService {
         changedAt: new Date().toISOString(),
         changedBy: requestingUserId,
         changes: {
-          ...(requestedDays !== undefined && { timelineDays: { from: ground.timelineDays, to: requestedDays } }),
+          ...(requestedDays !== undefined && { timelineDays: { from: (ground as any).runsUntilEnded ? null : ground.timelineDays, to: goesOnUntilEnded ? null : requestedDays } }),
+          ...(requestedDays !== undefined && ((ground as any).runsUntilEnded === true) !== goesOnUntilEnded && { runsUntilEnded: { from: !!(ground as any).runsUntilEnded, to: goesOnUntilEnded } }),
           ...(dto.cadence !== undefined && { cadence: { from: ground.cadence, to: dto.cadence } }),
           ...(dto.workingDays !== undefined && {
             workingDays: { from: (ground as any).workingDays ?? [], to: workingDaysOf(dto.workingDays) },
@@ -6287,7 +6310,9 @@ export class GroundsService {
      * has already passed would hand it straight back to tonight's sweep, and the person would watch
      * it stall again by morning having done exactly what the product told them to.
      */
-    const reopening = hasStalled(ground.status) && requestedDays !== undefined
+    const reopening = hasStalled(ground.status) && goesOnUntilEnded
+      ? new Date(Date.now() + 86_400_000)
+      : hasStalled(ground.status) && requestedDays !== undefined
       ? deadlineOf({ createdAt: ground.createdAt, startsAt: dto.startsAt ? new Date(dto.startsAt) : ground.startsAt, timelineDays: requestedDays })
       : null;
     const opensAgain = !!reopening && reopening.getTime() > Date.now();
@@ -6318,8 +6343,10 @@ export class GroundsService {
          */
         ...(requestedDays !== undefined && {
           timelineDays: requestedDays,
-          timelineWeeks: Math.max(1, Math.round(requestedDays / 7)),
+          timelineWeeks: goesOnUntilEnded ? null : Math.max(1, Math.round(requestedDays / 7)),
+          runsUntilEnded: goesOnUntilEnded,
           timelineStated: true,
+          ...(goesOnUntilEnded && { endsAt: null }),
         }),
         ...(dto.cadence !== undefined && { cadence: dto.cadence as Cadence, cadenceStated: true }),
         /* Normalised on the way in: seven days listed is the same instruction as saying nothing,
@@ -6336,7 +6363,7 @@ export class GroundsService {
          */
         ...(dto.startsAt !== undefined && {
           startsAt: dto.startsAt ? new Date(dto.startsAt) : null,
-          endsAt: dto.startsAt
+          endsAt: dto.startsAt && !(goesOnUntilEnded || (requestedDays === undefined && (ground as any).runsUntilEnded))
             ? new Date(new Date(dto.startsAt).getTime() + (requestedDays ?? ground.timelineDays ?? 90) * 24 * 60 * 60 * 1000)
             : null,
         }),
@@ -7529,7 +7556,9 @@ export class GroundsService {
  * HOW LONG A NEW CHECK-IN RUNS (U.6 review): what they said, else the end they chose, else the
  * situation's usual length. See timelineDaysForAChosenEnd.
  */
-function howLongItRuns(dto: { timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null }): number {
+function howLongItRuns(dto: { runsUntilEnded?: boolean; timelineDays?: number; endsAt?: string | Date | null; startsAt?: string | Date | null; cadence?: any; scenario: any; workingDays?: number[] | null }): number {
+  /* No planned length. Zero is what every reader of the length already reads as "no end". */
+  if (dto.runsUntilEnded === true) return 0;
   if (dto.timelineDays != null) return dto.timelineDays;
   if (dto.endsAt) {
     return timelineDaysForAChosenEnd({

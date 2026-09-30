@@ -626,7 +626,7 @@ export class BoardService {
         checkIns: (ground as any).checkIns ?? [],
         participants: ground.participants ?? [],
         dependencies: (ground as any).dependencies ?? [],
-        timelineDays: (ground as any).timelineDays ?? null,
+        timelineDays: (ground as any).runsUntilEnded ? null : (ground as any).timelineDays ?? null,
         cadence: (ground as any).cadence ?? null,
         scenario: (ground as any).scenario ?? null,
         /*

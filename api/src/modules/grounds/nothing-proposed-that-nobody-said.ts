@@ -291,6 +291,27 @@ export function aLengthTheyCouldHaveMeant(days: number | null | undefined, said:
 }
 
 /**
+ * WHETHER THEY SAID IT RUNS UNTIL THEY END IT (request 37).
+ *
+ * "When I end it", "until I stop it", "no end date", "keep going until I say" and "ongoing" are all an
+ * answer to how long it runs. Read in code from the lead's own sentence, so that the answer is taken
+ * even when the model read it as no length at all.
+ */
+export function saidUntilIEndIt(said: string | null | undefined, whileLengthIsTheQuestion = false): boolean {
+  const text = (said ?? '').toLowerCase().replace(/[’]/g, "'");
+  if (!text) return false;
+  /* Plain forms, read whatever question is open. */
+  if (/\b(until|till) (i|we) (end|stop|close|finish|call|say|decide)\b/.test(text)
+    || /\bwhen (i|we) (end|stop|close|finish|call) (it|this)\b/.test(text)
+    || /\b(keep|keeps) (it )?(going|running) until\b/.test(text)) return true;
+  /* Looser words ("ongoing") are read only as the answer to how long it runs, so a sentence about
+     "ongoing support" is never taken as a length. */
+  return whileLengthIsTheQuestion
+    && (/\b(no|without an?) (set |fixed |planned )?(end|end date|length|finish)\b/.test(text)
+      || /\b(ongoing|open[- ]ended|indefinitely|forever)\b/.test(text));
+}
+
+/**
  * A LENGTH ANSWER IS ONLY EVER READ AS A LENGTH (request 92, point 10).
  *
  * "It should run for 13 weeks." was recorded as what doing well looks like, because the question on

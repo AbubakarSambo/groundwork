@@ -1,5 +1,6 @@
 import { worthRecording, verbatimQuote, verbatimExpectation, readablePhrase } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
+import { saidUntilIEndIt } from './nothing-proposed-that-nobody-said';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
  *
@@ -55,6 +56,8 @@ export const CADENCE_WORDS: Record<Cadence, string> = {
 export interface Heard {
   /** Days, as the ground stores it. */
   timelineDays?: number | null;
+  /** The lead said it runs until they end it (request 37). Then there is no length. */
+  runsUntilEnded?: boolean | null;
   cadence?: string | null;
   /** What doing well looks like, in the lead's own words. */
   success?: string | null;
@@ -72,7 +75,8 @@ export interface Heard {
 
 export type Proposal =
   | { kind: 'none'; why: string }
-  | { kind: 'timeline'; days: number; say: string }
+  /** `untilEnded` means no planned length at all: `days` is then 0 and means nothing. */
+  | { kind: 'timeline'; days: number; say: string; untilEnded?: boolean }
   | { kind: 'cadence'; cadence: Cadence; say: string }
   | { kind: 'success'; text: string; say: string }
   | { kind: 'expectation'; participantId: string; personLabel: string; firstName: string; text: string; say: string }
@@ -175,6 +179,9 @@ export function proposalFrom(
   }
 
   if (gap === 'timeline') {
+    if (heard.runsUntilEnded === true || saidUntilIEndIt(said, true)) {
+      return { kind: 'timeline', days: 0, untilEnded: true, say: 'I will set this to run until you end it.' };
+    }
     const days = heard.timelineDays;
     if (days == null || !Number.isFinite(days)) {
       return { kind: 'none', why: 'No length in that answer.' };
@@ -323,6 +330,10 @@ export function proposalFrom(
 export function extractionToolFor(gap: string) {
   const props: Record<string, any> = {};
   if (gap === 'timeline') {
+    props.runsUntilEnded = {
+      type: 'boolean',
+      description: 'True only if they said it should run until they end it themselves, with no set length (for example "when I end it" or "until I stop it"). Omit otherwise.',
+    };
     props.timelineDays = {
       type: 'number',
       description: 'How many DAYS the person said this should run for. Convert weeks and months yourself: three months is 90, six weeks is 42. Omit if they did not say.',
@@ -425,6 +436,7 @@ export function asContextThenTheSentence(
 export function confirmedSay(proposal: Proposal): string {
   switch (proposal.kind) {
     case 'timeline': {
+      if (proposal.untilEnded) return 'I have set this to run until you end it.';
       const weeks = Math.round(proposal.days / 7);
       return weeks >= 4 && proposal.days % 7 === 0
         ? `I have set this to run for ${weeks} weeks.`
