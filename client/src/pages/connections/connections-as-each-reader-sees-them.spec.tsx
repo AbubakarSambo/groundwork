@@ -265,8 +265,16 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     expect(screen.getByText(/A Meta Business account, a WhatsApp Business number on it, and a Meta app with WhatsApp added\./)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'How to get these' })).toBeTruthy()
     expect(screen.queryByText('Done')).toBeNull()
+    /*
+     * A STEP STILL TO COME IS PLAIN TEXT, NOT A BUTTON (Hafsah, 30 September, item 2: "no more
+     * buttons than the prototype's own version of that screen has"). This used to render these
+     * as a `<button>` that let somebody peek at a later step's body early - which the prototype's
+     * own screen (whatsapp.txt) does not offer, and which put this page over the prototype's own
+     * button count. Updated together with the fix, in WhatsAppSetupPage.tsx.
+     */
     for (const later of ['Tell Meta where to send replies', 'Send yourself a test', 'Approve the reminder messages', 'Turn it on, and choose who uses it']) {
-      expect(screen.getByRole('button', { name: later })).toBeTruthy()
+      expect(screen.getByText(later)).toBeTruthy()
+      expect(screen.queryByRole('button', { name: later })).toBeNull()
     }
     expect(screen.getByText('Keep your number on your own system instead')).toBeTruthy()
     expect(screen.getByText('If your WhatsApp number already runs through your own customer system, it can pass check-in messages to us and send our replies back. Nothing moves to Meta. Whoever runs your systems sets this up with a key.')).toBeTruthy()

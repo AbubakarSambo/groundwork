@@ -68,7 +68,6 @@ export function WhatsAppSetupPage() {
   const steps = stepsFor(c, data?.canStartAConversation === true)
   /* Step 1 has nothing to press, so before anything is saved the step to do is 2, and 1 stays open above it. */
   const current = c ? steps.find(s => !s.done)?.n ?? 0 : 2
-  const [opened, setOpened] = useState<number[]>([])
   const refresh = () => { qc.invalidateQueries({ queryKey: ['integrations'] }); qc.invalidateQueries({ queryKey: ['whatsapp-is-on'] }) }
 
   const [numberId, setNumberId] = useState('')
@@ -229,16 +228,23 @@ export function WhatsAppSetupPage() {
         <ol className="gwui-numsteps">
           {steps.map(s => {
             const state = s.done ? 'done' : s.n === current || (s.n === 1 && !c) ? 'now' : 'later'
-            const open = state !== 'later' || opened.includes(s.n)
+            /*
+             * ALWAYS THE PROTOTYPE'S OWN SHAPE (whatsapp.txt): a step still to come shows its
+             * number and its title, in plain text, and nothing else - never a button that lets
+             * somebody peek at a later step's content early. This used to draw that title as a
+             * `<button>` that toggled the body open, which the prototype's own screen does not
+             * have, and which pushed this page past the prototype's own button count (Hafsah, 30
+             * September, item 2: "no more buttons than the prototype's own version of that screen
+             * has"). Every step still opens as soon as it becomes the current one, or is done.
+             */
+            const open = state !== 'later'
             const content = open ? body(s.n) : null
             return (
               <li key={s.n} className="gwui-numstep">
                 <span className={`gwui-numstep-num${state === 'done' ? ' gwui-numstep-num-done' : state === 'now' ? ' gwui-numstep-num-now' : ''}`} aria-hidden>{s.done ? '✓' : s.n}</span>
                 <div className="gwui-numstep-body">
                   <div className="gwui-numstep-head">
-                    {state === 'later' ? (
-                      <button type="button" className="gwui-numstep-title-btn" aria-expanded={open} onClick={() => setOpened(o => o.includes(s.n) ? o.filter(x => x !== s.n) : [...o, s.n])}>{s.title}</button>
-                    ) : <p className="gwui-numstep-title">{s.title}</p>}
+                    <p className="gwui-numstep-title">{s.title}</p>
                     {s.done && <Tag tone="proven">Done</Tag>}
                   </div>
                   {content && <div className="gwui-numstep-content">{content}</div>}
