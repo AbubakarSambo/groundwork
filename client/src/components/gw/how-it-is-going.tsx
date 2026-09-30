@@ -43,6 +43,8 @@ const spellOne = (n: number) => (n === 1 ? 'One' : String(n))
 function roundsSentence(progress: Glance['progress']): string {
   const { roundsDone, roundsPlanned } = progress
   const verb = roundsDone === 1 ? 'is' : 'are'
+  /* None done yet reads as a sentence, not "0 of the 12 rounds are done." */
+  if (roundsDone === 0) return roundsPlanned ? `None of the ${roundsPlanned} rounds is done yet.` : 'No round is done yet.'
   if (roundsPlanned && roundsDone < roundsPlanned) {
     return `${spellOne(roundsDone)} of the ${roundsPlanned} rounds ${verb} done.`
   }

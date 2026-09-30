@@ -14,6 +14,10 @@ const glance = (progress: Partial<Glance['progress']> = {}): Glance => ({
 })
 
 describe('HowItIsGoing: the rounds line', () => {
+  it('reads "None of the 12 rounds is done yet." before any round is done', () => {
+    render(<HowItIsGoing glance={glance({ roundsDone: 0, roundsPlanned: 12 })} />)
+    expect(screen.getByText('None of the 12 rounds is done yet.')).toBeTruthy()
+  })
   it('reads "One of the 12 rounds is done." for a single round done, short of the plan', () => {
     render(<HowItIsGoing glance={glance({ roundsDone: 1, roundsPlanned: 12 })} />)
     expect(screen.getByText('One of the 12 rounds is done.')).toBeTruthy()
