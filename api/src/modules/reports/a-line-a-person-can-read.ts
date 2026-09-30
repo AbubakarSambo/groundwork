@@ -77,6 +77,19 @@ export const WHAT_THE_TASK_ADDS: AProblem[] = [
     pattern: /(?<!\b(?:for|to|with|on|at|from|of|about|by|than|like)\s)\b[Yy]ou (?:(?:also|still|only|now|already|never|just|really|even|often|always|usually|actually|then) ){0,2}(?:is|was|has|does|says|believes|thinks|expects|wants|feels|needs|knows|agrees|plans|sees|reports|describes)\b|\bYou\b[^.?!]*?,? (?:but|and) (?:(?:also|still|only|now|already|never|just) )?(?:has|is|was|does|says|believes|thinks|expects|reports|wants|feels|needs|plans|knows|agrees|sees)\b/g,
     dropIfUnfixed: false,
   },
+  {
+    what: 'a pattern used as a label on a person, rather than saying what happened',
+    /*
+     * DECISION 11: NO LABEL. "You have a pattern of replacing a decision with a conversation about
+     * the decision" and "The record shows a pattern of you holding on to..." both put a pattern on
+     * the reader as a description of them, rather than saying what happened and how often - the
+     * exact thing patterns/who-reads-a-pattern's own rule 2 (never a label beside a name) already
+     * refuses at the serve step. This is the same rule, for a sentence the judgement wrote that
+     * never went near that step. Never dropped: what happened is still worth saying.
+     */
+    pattern: /\ba pattern of\b|\bpattern of you\b|\byour pattern\b|\bthe pattern of\b/g,
+    dropIfUnfixed: false,
+  },
 ];
 
 export const EVERY_PROBLEM: AProblem[] = [...WHAT_THE_SCORER_COUNTS, ...WHAT_THE_TASK_ADDS];

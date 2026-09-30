@@ -31,6 +31,29 @@ export const THE_CLOSE_ON: Record<Door, string> = {
   api: 'That’s all for today. Thank you for your answers. When this check-in is closed, they go into the report.',
 };
 
+/**
+ * EVERY QUESTION SENTENCE THE MODEL ASKED, TAKEN OUT BEFORE THE CLOSE IS ADDED.
+ *
+ * Caught on run 20 (24-scenario run, 30 September 2026): the model's own closing reply sometimes still
+ * asked something - "...what is the current on-time delivery percentage you are seeing from them? It
+ * helps to have the starting point for that 98% target." and "What will you do about getting those
+ * bank statements, and by when?" - and the close ("Is anything wrong?") was appended on top of it, so
+ * the person was asked something they had no way left to answer. A sentence is found the same way
+ * `withoutTheSentencesMarked` (a-quote-is-what-they-said.ts) finds one, and only a sentence ending on
+ * a question mark is removed; every other sentence, including a thank-you or a restatement of what
+ * they said, is kept exactly as written. Nothing here changes a word that stays.
+ */
+export function withoutQuestionSentences(text: string): string {
+  const pieces: string[] = [];
+  let at = 0;
+  for (const m of text.matchAll(/[.!?]["”’)\]]*(?:\s+|$)|\n+/g)) {
+    pieces.push(text.slice(at, m.index! + m[0].length));
+    at = m.index! + m[0].length;
+  }
+  if (at < text.length) pieces.push(text.slice(at));
+  return pieces.filter((p) => !/\?["”’)\]]*\s*$/.test(p)).join('');
+}
+
 const NOT_BEFORE_THE_CARD = [
   /\b(?:your|the)\s+(?:session\s+)?report\s+is\s+(?:ready|done|finished|complete)(?:\s+now)?\b[^.!?\n]*[.!?]?/gi,
   /\b(?:speak|talk|chat)\s+(?:to you\s+)?(?:soon|again|next time)\b[.!]?/gi,
@@ -45,6 +68,7 @@ export function endingOnTheClose(text: string, door: Door = 'web'): string {
   let out = String(text ?? '');
   for (const c of Object.values(THE_CLOSE_ON)) if (out.includes(c)) out = out.split(c).join(' ');
   for (const rx of NOT_BEFORE_THE_CARD) out = out.replace(rx, ' ');
+  out = withoutQuestionSentences(out);
   out = out
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\s+([.,;!?])/g, '$1')

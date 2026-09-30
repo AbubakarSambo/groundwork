@@ -1464,6 +1464,14 @@ model GroundParticipant {
   detectedFunction           String?           @map("detected_function")
   detectedFunctionConfidence Float?            @map("detected_function_confidence")
   detectedFunctionAt         DateTime?         @map("detected_function_at")
+  /// A role guessed with low confidence is confirmed before it is used (decision 57, item 5). Set
+  /// once the person confirms or corrects it in their own check-in, or the lead confirms or changes
+  /// it on the Context page — by a userId, so it is always plain who. Until this is set, a read
+  /// below LOW_CONFIDENCE_CONFIRM_THRESHOLD is never used for a role-tuned probe or coaching
+  /// strategy (see function-detection.ts, needsRoleConfirmation); only the role-agnostic universal
+  /// floor applies.
+  detectedFunctionConfirmedAt DateTime?        @map("detected_function_confirmed_at")
+  detectedFunctionConfirmedBy String?          @map("detected_function_confirmed_by")
   // THE COFOUNDER INTAKE IS GONE. Twelve free-text columns lived here -
   // founding/role/personal/exit intent, compensation/autonomy/recognition/
   // growth/relationship asks, financial floor, stress and relational tolerance -
@@ -1868,6 +1876,21 @@ model GroundObjective {
   /// Null keeps the original meaning and is still the common case: a target for the whole thing,
   /// belonging to nobody in particular.
   ownerParticipantId String? @map("owner_participant_id")
+  /// THE LEAD SAYS PLAINLY WHEN THIS TARGET IS A DECISION ABOUT A PERSON (decision 46, 29 September
+  /// 2026), never guessed from its wording.
+  ///
+  /// `whose-number-is-whose-business.ts` used to test the target's `name` against a pair of regular
+  /// expressions ("decide", "confirm", "probation") to keep a decision like "Decide whether to
+  /// confirm Aisha in her role" off everybody's board but the lead's - a guess, and every guess here
+  /// is either a false positive that hides an ordinary team target from people who should see it, or
+  /// a false negative that puts a decision about somebody's place on their own check-in. Hafsah: this
+  /// is a field the lead sets when the target is made, set by the lead alone, never inferred.
+  ///
+  /// False on every row that existed before this column - existing targets are not guessed at either;
+  /// they stay false until a lead marks one. `targetsFor` (whose-number-is-whose-business.ts) reads
+  /// this instead of the old wording guess: a target with it set is shown to the check-in's lead and
+  /// nobody else, whoever else is reading and whatever `whoSeesTargets` says.
+  isADecisionAboutAPerson Boolean @default(false) @map("is_a_decision_about_a_person")
   /// Who SAID this target, when it came out of a check-in rather than the setup form. A target the
   /// lead set for a person is put to that person as the lead's expectation; one they set themselves
   /// is theirs. Without this the two read the same and a rep was asked about "the N4m gap that the
@@ -2316,6 +2339,29 @@ model PatternDetection {
   /// person and, beside the pattern, by whoever runs the check-in. Never by a colleague.
   personAnswer     String?       @map("person_answer") @db.Text
   personAnsweredAt DateTime?     @map("person_answered_at")
+  /// After talking a pattern through, the lead marks it right, wrong or not sure (decision 57, item
+  /// 2). The person's own answer above counts as evidence too. Never shown to the person as a rating
+  /// of them, and never to a colleague — only whoever runs the check-in reads it. The existing
+  /// `accuracyRating` (platform admin) stays; this is separate.
+  leadMark         LeadPatternMark? @map("lead_mark")
+  leadMarkedAt     DateTime?        @map("lead_marked_at")
+  leadMarkedBy     String?          @map("lead_marked_by") // userId of the lead who marked it
+  /// The lead is nudged once to talk a pattern through, and can mark that they did (decision 57, item
+  /// 3). The nudge goes away once this is set. The person may see that their lead has talked it
+  /// through as a plain fact, never a verdict on them.
+  talkedAboutAt       DateTime? @map("talked_about_at")
+  talkedAboutBy       String?   @map("talked_about_by") // userId of the lead who marked it
+  /// How many periods had been seen (seenInSessions/periodsObserved) at the moment `talkedAboutAt`
+  /// was set — the anchor later check-ins derive "seen again after the talk" from, rather than
+  /// storing that count itself and having it drift out of step with the honest history.
+  talkedAboutAtPeriod Int?      @map("talked_about_at_period")
+  /// What backed this detection, decision 57 item 4: the model's own reading, the matching
+  /// number-based rule (PATTERN_DETECTORS), or both. 'model' | 'rule' | 'both'. Set when first
+  /// observed and kept current as later periods are added — a rule that later agrees moves it from
+  /// 'model' to 'both'. Read by the lead only, never the person or a colleague: when it is 'both',
+  /// the lead is told "Two separate reads of the record found this." beside the pattern; the rule is
+  /// evidence, never shown as an accusation or a score.
+  evidenceSource   String?       @map("evidence_source")
   firstSeenAt      DateTime      @default(now()) @map("first_seen_at")
   lastSeenAt       DateTime      @default(now()) @map("last_seen_at")
   createdAt        DateTime      @default(now()) @map("created_at")
@@ -2327,6 +2373,14 @@ model PatternDetection {
   @@index([groundId])
   @@index([code, accuracyRating]) // for per-code accuracy aggregation
   @@map("pattern_detections")
+}
+
+/// The lead's own read of a pattern, after talking it through with the person (decision 57, item 2).
+/// Never a rating served to the person or a colleague.
+enum LeadPatternMark {
+  RIGHT
+  WRONG
+  NOT_SURE
 }
 
 // ---------------------------------------------------------------------------

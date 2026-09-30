@@ -1,4 +1,4 @@
-import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
@@ -63,6 +63,7 @@ import { theyOweAnAccountFirst, BECAUSE_YOURS_WOULD_BE_AN_ANSWER } from './a-boa
 import { whatThisDocumentIs } from '../documents/what-kind-of-thing-a-document-is';
 import { wordedByTheModel, type Drafted } from '../reports/the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
+import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { OneAtATime } from '../reports/one-warm-up-at-a-time';
 import { ReadInput, buildContribution, buildCoverage, dedupeDependencies } from './reads';
 import { oneBlockerPerThingWaitedOn } from './a-blocker-with-nothing-in-it-is-the-same-blocker';
@@ -80,7 +81,7 @@ import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-q
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
-import { theLeadsWordsAbout } from '../grounds/the-leads-words-about-someone';
+import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
 import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
@@ -91,6 +92,8 @@ import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-spli
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
+import { viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
@@ -252,7 +255,7 @@ export class BoardService {
       include: {
         participants: {
           select: {
-            id: true, email: true, userId: true, partyType: true, createdAt: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true,
+            id: true, email: true, userId: true, partyType: true, createdAt: true, roleAsDescribed: true, remitAsGiven: true, nameGiven: true, organisationGiven: true,
             managingOnly: true, signedOffAt: true,
             /* What the population rule reads: still holding a live invitation counts as expected. */
             invitedAt: true, inviteTokenExpiresAt: true,
@@ -581,6 +584,14 @@ export class BoardService {
       ground.participants as any[],
     );
 
+    /*
+     * BUILT ONCE PER READ, for the read-side net below (decision 30, narrowed 30 September 2026):
+     * everything a non-lead reader may already read regardless of the lead's private descriptions,
+     * so a legitimately shared sentence - the brief, a shared target, an aim, what somebody said in
+     * their own check-in - is never taken out just because it happens to share words with one.
+     */
+    const shareableText = isInitiator ? [] : await theShareableTextFor(this.prisma as any, ground as any).catch(() => [] as string[]);
+
     const out: Record<string, any> = {
       groundId,
       renders: true,
@@ -613,9 +624,25 @@ export class BoardService {
         timelineDays: (ground as any).timelineDays ?? null,
         cadence: (ground as any).cadence ?? null,
         scenario: (ground as any).scenario ?? null,
-        sharedPicture: ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+        /*
+         * NEVER A RUN OF THE LEAD'S PRIVATE DESCRIPTION OF ANYONE, FOR A READER WHO IS NOT THE LEAD
+         * (decision 30). The read-side net: see withoutTheLeadsDescriptionOfAnyone and the same
+         * guard on the report. Both fields are shared with everybody on the ground by design; what
+         * is stripped is only a sentence built from a description nobody but the lead wrote.
+         */
+        sharedPicture: withoutTheLeadsDescriptionOfAnyone(
+          ((ground as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
+          (ground.participants as any[] ?? []).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]),
+          isInitiator,
+          shareableText,
+        ),
         /* The opening the report wrote, preferred over slicing the picture. See how-a-check-in-is-going. */
-        theOpening: ((ground as any).report?.theOpening as string | null) ?? null,
+        theOpening: withoutTheLeadsDescriptionOfAnyone(
+          ((ground as any).report?.theOpening as string | null) ?? null,
+          (ground.participants as any[] ?? []).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]),
+          isInitiator,
+          shareableText,
+        ),
       }),
       /* Whether this is over, and what ended it. The board drew a live clock on a resolved ground. */
       groundStatus: ground.status,
@@ -1082,6 +1109,9 @@ export class BoardService {
             noProof: !!thisRound && ((thisRound as any).specificityDimensions as any)?.evidence != null
               && (thisRound as any).specificityDimensions.evidence !== 'specific',
             roundIsA: (ground as any).cadence === 'WEEKLY' ? 'week' : (ground as any).cadence === 'FORTNIGHTLY' ? 'fortnight' : (ground as any).cadence === 'MONTHLY' ? 'month' : 'check-in',
+            /* Decision 53, item 11: an admin standing in, who cannot see this person's target, is
+               never told "nothing here needs you this week" as if that were known to be true. */
+            targetHiddenFromReader: sharesStayWithTheirOwner,
           };
         }),
         /* The planned length, for the only honest read of pace. Without one it says nothing
@@ -1405,8 +1435,18 @@ export class BoardService {
           })),
         ),
       );
-      /* Three periods, whatever the pattern (decision 8). The builder's own floor is lower. */
-      const seenThreeTimes = alignment.filter((a) => Number(a.periods ?? 0) >= 3);
+      /*
+       * THREE PERIODS, WHATEVER THE PATTERN (decision 8) - EXCEPT THE ONE THAT IS NOT A BEHAVIOUR.
+       *
+       * SETUP_NEVER_SAID only ever has one period (it reads what the setup did or did not say, and
+       * there is no second period in which an absence becomes more true - see coverage.ts and the
+       * builder above). Applying the three-period floor here unconditionally filtered it straight
+       * back out even though `buildManagerAlignment` already exempted it, which is why it never
+       * once reached a board (decision 55's "restored, fixed properly"; decision 57, item 7).
+       */
+      const seenThreeTimes = alignment.filter(
+        (a) => a.pattern === LeadershipPattern.SETUP_NEVER_SAID || Number(a.periods ?? 0) >= 3,
+      );
       if (seenThreeTimes.length) out.managerAlignment = seenThreeTimes;
     }
 
@@ -1428,7 +1468,16 @@ export class BoardService {
         take: 60,
       });
       const patternReader = { participantId: me?.id ?? null, runsIt: runsThisGround };
-      out.patterns = servedPatterns(detections as any, patternReader, whoIsWhoIn(ground.participants as any, ground.initiatorId));
+      const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
+      const served = servedPatterns(detections as any, patternReader, namesForPatterns);
+      out.patterns = await wordPatternEvidence(
+        served,
+        namesForPatterns.firstNameOf ?? (() => null),
+        rememberedCompose(this.prisma, opts.mayWordNewLines
+          ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
+          /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
+          : async () => null, !!opts.mayWordNewLines),
+      ).catch(() => served);
       /* The person reading their own for the first time starts the clock on when the lead may read it. */
       await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(detections as any, out.patterns as any));
     }
@@ -1484,11 +1533,24 @@ export class BoardService {
     if (isInitiator && Array.isArray(out.eachPerson)) {
       const firstFor = new Map<string, any>();
       for (const t of (out.toLookAt as any[] | undefined) ?? []) if (!firstFor.has(t.participantId)) firstFor.set(t.participantId, t);
+      /*
+       * DECISION 56, ITEM 3. Wherever an untold goal counts against the person - here, the team
+       * board's per-person line - the lead is also shown it as a conversation point, so nothing is
+       * read into it before they have talked it through. Lead only, like the rest of this block: a
+       * colleague and an admin who only reads never see `eachPersonToday` at all.
+       */
+      const nameByParticipant = new Map((out.eachPerson as any[]).map((row) => [row.participantId, String(row.who ?? '').trim()]));
+      const untoldByParticipant = new Map<string, string[]>();
+      for (const g of await this.goalsNotToldYetByParticipant(groundId)) {
+        const name = nameByParticipant.get(g.participantId) || 'This person';
+        untoldByParticipant.set(g.participantId, [...(untoldByParticipant.get(g.participantId) ?? []), theConversationPointForTheLead(name)]);
+      }
       out.eachPersonToday = (out.eachPerson as any[]).map((row) => {
         const k = firstFor.get(row.participantId);
         const said = String(row.says ?? '');
         const line = k ? said.replace(/, and nothing here needs you this week\.$/, '.') : said;
-        return { participantId: row.participantId, who: row.who, line, ...(k ? { keepsComingUp: k.says } : {}) };
+        const points = untoldByParticipant.get(row.participantId);
+        return { participantId: row.participantId, who: row.who, line, ...(k ? { keepsComingUp: k.says } : {}), ...(points?.length ? { conversationPoints: points } : {}) };
       });
     }
 
@@ -1636,6 +1698,28 @@ export class BoardService {
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
       /* And a line with no words is left out here, never served for the page to draw as an empty line. */
       walled = withoutLinesWithNoWords(walled, ['whoOwnsWhat', '*', 'items'], 'text');
+      /*
+       * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being
+       * reviewed reads the facts on this board, never a colleague's exact words - those stay with
+       * the manager (an admin reads as the manager does). See
+       * colleagues-exact-words-stay-with-the-manager.ts. A colleague giving a view, and every
+       * reader on every other kind of check-in, reads `whoOwnsWhat` and `divergence` exactly as
+       * before - this is a no-op for them.
+       */
+      if (viewerIsTheSubjectOfAnEvaluationCheckIn({
+        scenario: ground.scenario,
+        isLead: runsThisGround,
+        viewerParticipantId: me?.id ?? null,
+        participants: ground.participants as any,
+      })) {
+        if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = whoOwnsWhatForTheSubject(walled.whoOwnsWhat, me?.id ?? null);
+        if (Array.isArray(walled.divergence?.items)) {
+          walled.divergence = {
+            ...walled.divergence,
+            items: divergenceForTheSubject(walled.divergence.items, [me?.id ? nameOf(me.id) : null]),
+          };
+        }
+      }
       /* A record whose name was only a hidden number is not left as a row with no name. */
       if (Array.isArray(walled.workRecords)) {
         walled.workRecords = walled.workRecords.map((sec: any) => (Array.isArray(sec.rows)
@@ -1802,6 +1886,16 @@ export class BoardService {
       select: { text: true, awareness: true, authoredBy: true },
     }) ?? Promise.resolve([])).catch(() => []);
     return (rows as any[]).filter(notToldYet).map((r) => String(r.text ?? '')).filter(Boolean);
+  }
+
+  /** The same rows, kept by participant - decision 56, item 3: wherever an untold goal counts
+   *  against the person, the lead is shown it as a conversation point. */
+  private async goalsNotToldYetByParticipant(groundId: string): Promise<{ participantId: string; text: string }[]> {
+    const rows = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { participantId: true, text: true, awareness: true, authoredBy: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    return (rows as any[]).filter(notToldYet).map((r) => ({ participantId: r.participantId as string, text: String(r.text ?? '') })).filter((r) => r.text);
   }
 
   private buildManagerAlignment(
@@ -2038,7 +2132,7 @@ export class BoardService {
   async createObjective(
     groundId: string,
     requestingUserId: string,
-    dto: { name: string; target?: number | null; ownerParticipantId?: string | null },
+    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
@@ -2067,6 +2161,10 @@ export class BoardService {
         ownerParticipantId: owner,
         sortOrder: count,
         addedAtSession,
+        /* Decision 46, 29 September 2026: said plainly by the lead when the target is made, never
+           guessed from its wording. This route is already the lead's alone - assertInitiatorOfBoardGround
+           above. */
+        isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true,
       },
     });
   }
@@ -2131,7 +2229,7 @@ export class BoardService {
     groundId: string,
     objectiveId: string,
     requestingUserId: string,
-    dto: { name?: string; target?: number | null; count?: number; assumes?: string[] },
+    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
@@ -2146,6 +2244,8 @@ export class BoardService {
           : {}),
         ...(dto.target !== undefined ? { target: dto.target } : {}),
         ...(dto.count !== undefined ? { count: dto.count, prevCount: existing.count } : {}),
+        /* Decision 46: the lead alone (assertInitiatorOfBoardGround above), set plainly, never guessed. */
+        ...(dto.isADecisionAboutAPerson !== undefined ? { isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true } : {}),
       },
     });
   }

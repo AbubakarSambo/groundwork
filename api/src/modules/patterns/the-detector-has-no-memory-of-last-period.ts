@@ -45,6 +45,36 @@ export interface SeenLastPeriod {
   lastPeriodNumber: number | null;
 }
 
+/**
+ * THE STEER RECOGNISED THE THING AND MISLABELLED IT ANYWAY.
+ *
+ * Found live: Femi's K5 ("Tasks are described without saying what they are for") was served the
+ * sentence "The response to delays is to increase the frequency of follow-ups, rather than
+ * changing the approach to resolve the underlying problem" - which is K3's own signal, Reporting
+ * Without Intervention, not K5's. `lastPeriodBlockFor` had shown the model K3's own words from a
+ * recent period so a genuinely continuing behaviour would be recognised; the model recognised it,
+ * and wrote it up under K5 instead of K3. The block's own instruction ("recognise the same thing")
+ * gives no instruction about which code to write it under if it does.
+ *
+ * So a detection is refused, not stored, when its observation is really another code's steer read
+ * back: near enough to what a DIFFERENT code's recent evidence said that it is that code's words,
+ * not a fresh reading of this period. `observe`'s unique key is (participantId, code), so this is
+ * checked before that write, never after - a wrongly-coded row would otherwise sit in the table
+ * under its own id forever, however good the model's next answer is.
+ */
+export function evidenceBorrowedFromAnotherCode(observation: string, code: string, recent: SeenLastPeriod[]): string | null {
+  const normalise = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const mine = normalise(observation);
+  if (!mine) return null;
+  for (const r of recent) {
+    if (r.code === code || !r.observationText) continue;
+    const theirs = normalise(r.observationText);
+    if (!theirs) continue;
+    if (mine === theirs || mine.includes(theirs) || theirs.includes(mine)) return r.code;
+  }
+  return null;
+}
+
 /** How far back a detection is still worth recognising by name. Three periods, and no further. */
 export const HOW_FAR_BACK = 3;
 

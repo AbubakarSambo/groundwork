@@ -209,6 +209,58 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     refuses: ['how am I doing', 'what am I on'],
   },
   {
+    key: 'context_line',
+    does:
+      'Type one line straight onto a check-in\'s context - a strategy note, a way of working, a '
+      + 'decision, something unsettled - with no conversation needed, for the lead who runs it or an '
+      + 'admin covering for them. The same door as the Context and resources page\'s own "type it in" '
+      + 'box.',
+    writes: 'after you confirm it',
+    ordered:
+      'Above add_context and anchored on the whole message, so a kind word used in passing elsewhere '
+      + 'never lands here by accident - the lead has to open with the kind and a colon. See decision '
+      + '50, item 17.',
+    owns: ['decision: we will drop the pilot', 'strategy: focus on the Lagos market', 'unsettled: who owns marketing'],
+    refuses: ['add this as context', 'what is missing from this check-in'],
+  },
+  {
+    key: 'lead_note',
+    does:
+      'A note only the lead sees, about the whole check-in or about one named person, never shared '
+      + 'or shown to that person.',
+    writes: 'after you confirm it',
+    ordered:
+      'Above add_context, on the word "private" or "privately" - a bare "note:" is ambiguous with a '
+      + 'shared context note and is left unplaced rather than guessed onto either. See decision 50, item 9.',
+    owns: ['private note: Dayo keeps missing the Friday call', 'note privately that the budget is not settled'],
+    refuses: ['add this as context', 'context note: we will focus on retention'],
+  },
+  {
+    key: 'questions_for_people',
+    does:
+      'The lead\'s exact questions waiting to be asked of somebody, and confirming or leaving one out, '
+      + 'word for word, before it ever reaches that person\'s check-in.',
+    writes: 'after you confirm it',
+    ordered:
+      'Above add_context, narrow on the phrase "questions for people" or a name after confirm/decline. '
+      + 'See the lead\'s exact question rule and decision 50, item 8.',
+    owns: ['questions for people', 'confirm the question for Ben', 'leave out the question for Ben'],
+    refuses: ['add this as context', 'what did I commit to'],
+  },
+  {
+    key: 'add_context',
+    does:
+      'Add or change a check-in\'s setup - how long it runs, how often people check in, what doing '
+      + 'well looks like, its documents and targets - for the lead who runs it, or an admin covering '
+      + 'for them. The same setup conversation as before, reached from here.',
+    writes: 'after you confirm it',
+    ordered:
+      'Above how_we_work only, so a real handbook question never lands here first. Below everything '
+      + 'more specific: "context" and "what is missing" are narrow words nothing else here owns.',
+    owns: ['add this as context', 'the context for the Q4 check-in', 'what is missing from this check-in'],
+    refuses: ['set an objective for the quarter', 'what are my objectives', 'how does the freeze work'],
+  },
+  {
     key: 'what_you_can_see',
     does: 'What this assistant is connected to and what it can answer from',
     writes: 'nothing',

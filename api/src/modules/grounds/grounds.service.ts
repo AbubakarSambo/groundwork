@@ -1,4 +1,5 @@
-import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn } from './a-goal-not-told-stays-with-the-lead';
+import { goalsThisReaderMaySee, notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
+import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { namesNotEverybodyMayOpen, withoutPrivateFileNames } from '../documents/a-private-file-is-not-named';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { hashed } from '../auth/a-token-is-stored-as-its-hash';
@@ -7,6 +8,8 @@ import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-g
 import { theColleaguePickedById, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
+import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
+import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
 import { hasEnded, hasStalled, isHeld, isShut, mayChangeOnItsOwn, whyItRefuses, WHILE_IT_IS_HELD, IT_RAN_OUT_OF_TIME } from './a-ground-that-has-ended';
 import { AN_ANSWER, AT_LEAST_ONE_ACCOUNT } from './an-answer-includes-a-refusal';
@@ -1540,7 +1543,7 @@ export class GroundsService {
          */
         /* Whose number it is, so the page can group them rather than stack nine of one person's
            beside the team's - see the target table on the Context page. */
-        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, assumes: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, assumes: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
         /**
          * `agreements` and `divergences` are selected because `alignmentRead` COUNTS them. Without
          * them this endpoint could only ever report null, so the ground page said "No read yet"
@@ -1598,7 +1601,7 @@ export class GroundsService {
              */
             /* Whose number it is, so the page can group them rather than stack nine of one person's
            beside the team's - see the target table on the Context page. */
-        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, assumes: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { id: true, name: true, target: true, ownerParticipantId: true, assumes: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
             /**
              * `agreements` and `divergences` are here because `alignmentRead` COUNTS them, and
              * without them in the select it could only ever return null - so the ground page said
@@ -1680,11 +1683,22 @@ export class GroundsService {
      * at all while patterns are not served, and then not even the reader lookup is made.
      */
     const signals = PATTERNS_ARE_SERVED
-      ? servedPatterns(
-          ground.patternDetections as any,
-          await this.patternReaderOf(ground as any, requestingUserId),
-          whoIsWhoIn(ground.participants as any, ground.initiatorId),
-        ).map((p) => ({ ...p, groundId: id }))
+      ? await (async () => {
+          const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
+          const served = servedPatterns(
+            ground.patternDetections as any,
+            await this.patternReaderOf(ground as any, requestingUserId),
+            namesForPatterns,
+          );
+          /* Opening a page never asks the model (decision 7): kept wording only, from the same
+             cache the warm-up (ReportsService.wordTheReadsFor, BoardService.get) fills. */
+          const worded = await wordPatternEvidence(
+            served,
+            namesForPatterns.firstNameOf ?? (() => null),
+            rememberedCompose(this.prisma, async () => null, false),
+          ).catch(() => served);
+          return worded.map((p) => ({ ...p, groundId: id }));
+        })()
       : [];
     /* The person reading their own for the first time starts the clock on when the lead may read it. */
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(ground.patternDetections as any, signals));
@@ -1899,11 +1913,39 @@ export class GroundsService {
          * somebody returns to: "by end of October" cannot be read as late, and an expectation that
          * was met, dropped or changed should not sit here looking outstanding forever.
          */
-        dueDate: true, status: true,
+        dueDate: true, status: true, createdAt: true,
       },
     });
-    const objectiveRows = goalsThisReaderMaySee(objectiveRowsAsStored, viewerIsInitiator);
-    const goalsNotToldHere = viewerIsInitiator ? [] : objectiveRowsAsStored.filter(notToldYet).map((o) => o.text ?? '');
+    let objectiveRows = goalsThisReaderMaySee(objectiveRowsAsStored, viewerIsInitiator);
+    /*
+     * A goal past its week (item 4 below) is no longer scrubbed out of every other sentence: the
+     * person is now told, plainly, that it exists - so its words stop needing to be kept out of the
+     * rest of what they read. Still never its full raw sentence, only the area-of-work placeholder
+     * built below.
+     */
+    const goalsNotToldHere = viewerIsInitiator
+      ? []
+      : objectiveRowsAsStored.filter((o: any) => notToldYet(o) && !aWeekHasPassedSinceNotTold(o)).map((o) => o.text ?? '');
+    /*
+     * DECISION 56, ITEM 4. Once a week has passed still not told, the person reads it plainly here
+     * too, on their own check-in page, not only on their You board: who set it, and the worded area
+     * - never the number, never the raw sentence.
+     */
+    if (!viewerIsInitiator && requestingUserId) {
+      const viewerParticipantId = (ground.participants ?? []).find((p: any) => p.userId === requestingUserId)?.id ?? null;
+      const dueAWeek = objectiveRowsAsStored.filter((o: any) => o.participantId === viewerParticipantId && aWeekHasPassedSinceNotTold(o));
+      if (dueAWeek.length) {
+        const leadFirst = (ground.participants ?? []).find((p: any) => p.partyType === 'INITIATOR')?.user?.firstName?.trim() || 'Your lead';
+        const worded = await Promise.all(dueAWeek.map(async (o: any) => ({
+          ...o,
+          /* The plain sentence only - never the lead's own private note about telling them
+             (`awarenessDetail`), which stays the lead's alone like any other private note. */
+          text: whatThePersonReadsAfterAWeek(leadFirst, await areaOfGoalOrFallback(this.prisma, o.text ?? '')),
+          awarenessDetail: null,
+        })));
+        objectiveRows = [...objectiveRows, ...worded];
+      }
+    }
     /**
      * ALL OF THEM, PER PERSON. A person can be held to a commitment and a standing role expectation
      * at once, and the map used to keep whichever row happened to come back last - so the page showed
@@ -2069,6 +2111,21 @@ export class GroundsService {
             awareness: (row as any)?.awareness ?? null,
             awarenessDetail: (row as any)?.awarenessDetail ?? null,
             /**
+             * DECISION 56, ITEM 1. The prototype's own flag ("Not told yet", Context page): true only
+             * for a goal the lead wrote and has not told this person about. Served here whatever the
+             * reader is, because `withholdTheirNumbers`/the peer rule above already decide whether
+             * this row reaches them at all - a colleague who cannot see the goal cannot see this flag
+             * either, since `row` is undefined for them.
+             */
+            notToldYet: notToldYet(row as any),
+            /**
+             * DECISION 56, ITEM 3. Wherever this goal counts against the person - and it does, this
+             * flag changes nothing about that - the lead is shown it as a conversation point, so
+             * nothing is read into it before they have talked it through. The person's own name,
+             * never a pronoun.
+             */
+            conversationPoint: notToldYet(row as any) ? theConversationPointForTheLead((p.user?.firstName ?? '').trim() || 'This person') : null,
+            /**
              * GW-EXP-3. Null means they have not said what doing well looks like to them yet, which the
              * surface reports as "not yet said". An absent view is never a matching one.
              */
@@ -2109,6 +2166,8 @@ export class GroundsService {
               alignmentNote: (o as any).alignmentNote ?? null,
               objection: (o as any).objection ?? null,
               seenBySubject: o.seenBySubject,
+              /* Decision 56, item 1 - see the single-expectation shape above. */
+              notToldYet: notToldYet(o as any),
             })),
             kind: (row as any)?.kind ?? null,
             check: (row as any)?.check ?? null,
@@ -4137,7 +4196,7 @@ export class GroundsService {
       select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, closedAt: true },
     });
     if (!line) throw new NotFoundException('That question is not on this check-in.');
-    if (line.closedAt) throw new BadRequestException('You left this question out. Open it again on the Context page first if you want it asked.');
+    if (line.closedAt) throw new BadRequestException('You left this question out. Open it again on the Context and resources page first if you want it asked.');
     if (!line.aboutParticipantId) throw new BadRequestException('This question is not for anybody on this check-in, so there is nobody to ask it.');
     const edited = typeof dto?.exactQuestion === 'string' ? (withoutBankDetails(dto.exactQuestion) as string).replace(/\s+/g, ' ').trim() : '';
     if (typeof dto?.exactQuestion === 'string' && !edited) throw new BadRequestException('Write the question as you want it asked first.');
@@ -4588,9 +4647,9 @@ export class GroundsService {
         ? 'Nobody can be invited yet: nothing has been said about what this check-in is for. You are '
           + 'running this check-in rather than taking part in it, so it has to come from you in '
           + 'writing - write the brief, say what you expect of somebody, or add a document or a note '
-          + 'on the Context tab.'
+          + 'on the Context and resources tab.'
         : 'Nobody can be invited yet: nothing has been said about what this check-in is for. Write the '
-          + 'brief, say what you expect of somebody, add a document or a note on the Context tab, or do '
+          + 'brief, say what you expect of somebody, add a document or a note on the Context and resources tab, or do '
           + 'your own check-in first.',
     );
   }
@@ -6926,7 +6985,7 @@ export class GroundsService {
           orderBy: { lastSeenAt: 'desc' },
         },
         /* For the one sentence that says who else reads it: the lead's first name. */
-        ground: { select: { initiatorId: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } },
+        ground: { select: { initiatorId: true, cadence: true, participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } } } },
         checkIns: {
           select: { sessionNumber: true, completedAt: true, status: true },
           orderBy: { sessionNumber: 'asc' },
@@ -6970,11 +7029,18 @@ export class GroundsService {
      * sessions shows something worth noticing", served every SURFACED row including good news seen
      * once, and gave no way to answer. None at all while patterns are not served.
      */
-    const patterns = servedPatterns(
+    const namesForOwnPatterns = whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId, (participant as any).ground?.cadence);
+    const servedOwn = servedPatterns(
       participant.patternDetections as any,
       { participantId: participant.id, runsIt: false },
-      whoIsWhoIn((participant as any).ground?.participants, (participant as any).ground?.initiatorId),
+      namesForOwnPatterns,
     );
+    /* Opening a page never asks the model (decision 7): kept wording only. */
+    const patterns = await wordPatternEvidence(
+      servedOwn,
+      namesForOwnPatterns.firstNameOf ?? (() => null),
+      rememberedCompose(this.prisma, async () => null, false),
+    ).catch(() => servedOwn);
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(participant.patternDetections as any, patterns));
 
     return {

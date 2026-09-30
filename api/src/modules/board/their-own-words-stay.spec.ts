@@ -120,7 +120,10 @@ describe("a sentence Groundwork writes about Rukia's hidden target still goes", 
 
   it('Juma is served her row without the number', async () => {
     const row = rukiasRow(await boardAs('u-juma', 'ADMIN'));
-    expect(row.says).toBe('Rukia Mwangi has checked in, and nothing here needs you this week.');
+    /* Decision 53, item 11 (29 September 2026): Juma cannot see Rukia's target, so she is never told
+       "nothing here needs you this week" - that claim is about the very number she cannot see. Was
+       'Rukia Mwangi has checked in, and nothing here needs you this week.' before the decision. */
+    expect(row.says).toBe('Rukia Mwangi has checked in.');
   });
 
   it('outside what Rukia said, nothing Juma or Baraka is served gives her 4; Amina is served it', async () => {

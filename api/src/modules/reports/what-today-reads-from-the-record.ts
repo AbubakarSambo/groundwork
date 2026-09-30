@@ -1,5 +1,8 @@
 import { plainWordsByPerson, atTheStart, labelsForParties, namesVisibleTo, withNames, eachSideGetsSomebody } from './party-labels';
 import { targetsFor } from '../board/whose-number-is-whose-business';
+import { notToldYet, theLeadIsNudgedToTell, aWeekHasPassedSinceNotTold } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
+import { PATTERN_ROW_SELECT, servedPatterns, patternTalkNudge } from '../patterns/who-reads-a-pattern';
 
 /** A phrase put inside a sentence, as the board does it (board.service's inASentence, kept here so
  *  the report does not import the board's service). */
@@ -80,6 +83,7 @@ async function load(prisma: any, groundId: string) {
     select: {
       initiatorId: true,
       whoSeesTargets: true,
+      cadence: true,
       participants: {
         select: {
           id: true, email: true, userId: true, partyType: true, createdAt: true, roleAsDescribed: true,
@@ -88,7 +92,9 @@ async function load(prisma: any, groundId: string) {
         },
       },
       dependencies: { orderBy: { createdAt: 'asc' } },
-      objectives: { select: { id: true, name: true, target: true, count: true, prevCount: true, ownerParticipantId: true, sortOrder: true } },
+      objectives: { select: { id: true, name: true, target: true, count: true, prevCount: true, ownerParticipantId: true, sortOrder: true, isADecisionAboutAPerson: true } },
+      /* Decision 56, item 1 - a goal the lead has not told its person about, so Today can nudge them. */
+      personObjectives: { select: { id: true, participantId: true, text: true, authoredBy: true, awareness: true } },
     },
   })?.catch?.(() => null);
   if (!ground) return null;
@@ -250,6 +256,57 @@ export async function forTheLeadFrom(prisma: any, groundId: string, l: Loaded, r
 
   /* Where people said different things, one item per open difference on the stored report. */
   out.push(...(await whereWhatPeopleSaidDiffers(prisma, groundId, participants, lead)).map((x) => ({ ...x, order: 1 })));
+
+  /*
+   * DECISION 57, ITEM 3. "AFTER A PATTERN REACHES THE LEAD, THEY ARE NUDGED ONCE TO HAVE THE
+   * CONVERSATION." A pattern about somebody else reaches the lead through the same rule as anywhere
+   * else it is served (servedPatterns / patternRowsThisReaderMayRead), so this is exactly the set the
+   * lead may already read on the board or the ground page - nothing new is exposed here. The nudge
+   * goes away the moment `talkedAboutAt` is set, which is why it is left out below rather than left
+   * on the list with a "done" flag.
+   */
+  if (lead) {
+    const patternRows = (((await prisma.patternDetection?.findMany?.({
+      where: { groundId, participantId: { not: lead.id } },
+      select: PATTERN_ROW_SELECT,
+    })?.catch?.(() => [])) ?? []) as any[]);
+    const served = servedPatterns(patternRows, { participantId: lead.id, runsIt: true }, {
+      leadName: nameOf(lead.id),
+      leadParticipantId: lead.id,
+      firstNameOf: (pid: string) => nameOf(pid),
+      isDaily: ground.cadence === 'DAILY',
+    });
+    for (const p of served) {
+      const row = patternRows.find((r) => r.id === p.id);
+      if (row?.talkedAboutAt) continue; // the nudge goes away once marked
+      out.push({ ...patternTalkNudge(p, nameOf(p.participantId)), order: 0 });
+    }
+  }
+
+  /*
+   * DECISION 56, ITEM 1. A goal the lead wrote and has not told its person about yet, flagged here as
+   * needing their attention: "Tell Tobi about the goal you set for the scheduling and the stock
+   * counts. You have not told Tobi yet." - the person's name throughout, never a pronoun, and the
+   * worded area (the-area-of-a-goal-is-worded-once.ts), never the raw sentence with its number.
+   * Ordered with the other things only the lead can settle - first, since telling somebody a goal
+   * exists is rarely something to leave for later.
+   */
+  const untold = ((ground.personObjectives ?? []) as any[]).filter(notToldYet);
+  for (const o of untold) {
+    const name = nameOf(o.participantId);
+    const area = await areaOfGoalOrFallback(prisma, o.text ?? '');
+    const nudge = theLeadIsNudgedToTell(name, area);
+    /*
+     * A WEEK ON, THE REMINDER IS STRONGER, ONCE, IN FULL SENTENCES. Item 4: once a week has passed
+     * not told, the person has already been told plainly on their own board that a goal exists, with
+     * no number - so the lead reads that this has now happened, and is reminded once to have the
+     * actual conversation.
+     */
+    const why = aWeekHasPassedSinceNotTold(o)
+      ? `${nudge.why} It has been a week, so ${name} has now been told that a goal exists, without any number. Talk it through with ${name} yourself.`
+      : nudge.why;
+    out.push({ id: `not-told-${o.id}`, decide: nudge.decide, why, order: 0 });
+  }
 
   /* What the lead wrote down as still to decide. Their own note, read back only to them. */
   const notes = ((await prisma.groundContextItem?.findMany?.({

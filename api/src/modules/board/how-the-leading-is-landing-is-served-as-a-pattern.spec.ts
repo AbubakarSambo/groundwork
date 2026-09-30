@@ -86,15 +86,23 @@ describe('with patterns switched off, as they are', () => {
 
 describe('with patterns switched on', () => {
   const mods = withTheSwitch(true);
-  it('the lead reads the one seen in three periods, and not the ones seen fewer times', async () => {
+  /*
+   * Decision 57, item 7 (30 September 2026): SETUP_NEVER_SAID only ever has one period, so the
+   * three-period floor below is never a reason to hold it back - it is restored, not just kept off
+   * the discard pile inside `buildManagerAlignment`. WORK_NOT_HANDED_OVER at two periods is still
+   * not enough: it is a behaviour, and one period of that really might be nothing.
+   */
+  it('the lead reads the one seen in three periods and the setup gap, and not the one seen fewer times', async () => {
     const board = await boardAs(mods, 'u-rukia');
-    expect(board.managerAlignment.map((m: any) => m.gap)).toEqual([THREE]);
+    expect(board.managerAlignment.map((m: any) => m.gap)).toEqual([THREE, SETUP]);
     expect(board.managerAlignment[0].periods).toBe(3);
+    expect(board.managerAlignment[1].periods).toBe(1);
   });
 
   it.each(READERS.slice(1))('%s is still served none of it', async (_who, userId, role) => {
     const board = await boardAs(mods, userId, role);
     expect(board).not.toHaveProperty('managerAlignment');
     expect(JSON.stringify(board)).not.toContain(THREE);
+    expect(JSON.stringify(board)).not.toContain(SETUP);
   });
 });

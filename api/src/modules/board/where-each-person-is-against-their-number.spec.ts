@@ -106,6 +106,13 @@ describe('where each person is against their number', () => {
     expect(out[out.length - 1].says).toBe('Fatima has checked in, and nothing here needs you this week.');
   });
 
+  it('decision 53, item 11: a reader who cannot see this target reads only that they checked in', () => {
+    const [row] = whereEachPersonIs([rep({ who: 'Fatima', count: 30, targetHiddenFromReader: true })], 12);
+    expect(row.reason).toBe('nothing to do');
+    expect(row.says).toBe('Fatima has checked in.');
+    expect(row.says).not.toMatch(/needs you/);
+  });
+
   it('orders by name within a reason, so a read does not shuffle and look like movement', () => {
     const out = whereEachPersonIs([
       rep({ participantId: 'b', who: 'Bala', answeredThisRound: false }),

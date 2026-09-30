@@ -69,6 +69,47 @@ export async function theRecordAQuoteMayComeFrom(prisma: TheRecordsReader, groun
 }
 
 /**
+ * THE SAME LINES, KEPT APART BY WHO SAID THEM.
+ *
+ * Built for one reason: telling whether a quote in a served report is the SUBJECT's own words or a
+ * colleague's, on an evaluation check-in (part 3, Hafsah's ruling, 30 September 2026 - see
+ * colleagues-exact-words-stay-with-the-manager.ts). `theRecordAQuoteMayComeFrom`, above, already
+ * reads the same rows and flattens them into one list because the ordinary quote pass does not
+ * care whose words a quote is, only whether it is anybody's. This does the same read with
+ * `participantId` kept on, and runs `theLinesAQuoteMayComeFrom` once per person rather than once
+ * over everybody - so `theRecordsWordsFor(quote, recordByParticipant.get(subjectId))` answers
+ * "is this the subject's own words" with the same matching rule the quote pass already uses.
+ *
+ * The lead's own words at set-up (the brief, each role as given) are deliberately left out here:
+ * they belong to nobody a subject could be confused with a colleague's account of, and the lead is
+ * never the subject of their own evaluation check-in.
+ */
+export async function theRecordAQuoteMayComeFromByParticipant(
+  prisma: TheRecordsReader & { groundCommitment?: { findMany?: (args: any) => Promise<any[]> } },
+  groundId: string,
+): Promise<Map<string, string[]>> {
+  const read = <T,>(f: () => Promise<T> | undefined, fallback: T): Promise<T> =>
+    Promise.resolve().then(() => f() ?? fallback).catch(() => fallback);
+  const [lines, promises] = await Promise.all([
+    read(() => prisma.recordEntry?.findMany?.({ where: { participant: { groundId } }, select: { text: true, saidWordForWord: true, participantId: true } }), [] as any[]),
+    read(() => prisma.groundCommitment?.findMany?.({ where: { groundId } , select: { text: true, whenSaid: true, saidWordForWord: true, whenSaidWordForWord: true, participantId: true } }), [] as any[]),
+  ]);
+  const byParticipant = new Map<string, { text: string; saidWordForWord?: boolean | null }[]>();
+  const add = (pid: string | null | undefined, row: { text: string | null | undefined; saidWordForWord?: boolean | null }) => {
+    if (!pid || !row.text) return;
+    byParticipant.set(pid, [...(byParticipant.get(pid) ?? []), { text: row.text, saidWordForWord: row.saidWordForWord }]);
+  };
+  for (const l of Array.isArray(lines) ? lines : []) add(l.participantId, l);
+  for (const c of Array.isArray(promises) ? promises : []) {
+    add(c.participantId, { text: c.text, saidWordForWord: c.saidWordForWord === true });
+    add(c.participantId, { text: c.whenSaid, saidWordForWord: c.whenSaidWordForWord === true });
+  }
+  const out = new Map<string, string[]>();
+  for (const [pid, rows] of byParticipant) out.set(pid, theLinesAQuoteMayComeFrom(rows));
+  return out;
+}
+
+/**
  * Every quote in a value built at the read, made the record's words, made not a quote, or taken out
  * with its sentence. `changed` collects what was unquoted or dropped, for the log.
  */

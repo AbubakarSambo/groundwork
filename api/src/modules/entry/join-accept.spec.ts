@@ -181,3 +181,40 @@ describe('the link is what does the work', () => {
     expect(prisma.groundParticipant.update).toHaveBeenCalled();
   });
 });
+
+describe('what somebody typed about themselves on the join page never becomes the lead\'s private description', () => {
+  /*
+   * `PendingJoin.roleAsDescribed` is "Your part in this" from JoinPage.tsx — the joiner's own
+   * words about their own role, typed before the lead has ever seen them. GroundParticipant's
+   * column of the same name is the opposite: the LEAD's private description of somebody,
+   * never shown to that person or anyone else (decision 30). A join used to copy one straight
+   * into the other. It now goes to the person's own profile field, User.jobTitle — the same
+   * field participants.service.ts#updateRole and the check-in's own role-correction write to.
+   */
+  it('a brand-new joiner\'s own words go to their new account\'s job title, never to roleAsDescribed', async () => {
+    const { service, created } = makeService({ pending: aLiveLink({ roleAsDescribed: 'I run the clinic that refers into this' }) });
+    await service.joinConfirm('confirm-token');
+
+    expect(created.user.jobTitle).toBe('I run the clinic that refers into this');
+    expect(created.participant.roleAsDescribed).toBeUndefined();
+  });
+
+  it('an existing account joining a further check-in has its job title updated from what it just typed, never roleAsDescribed', async () => {
+    const existing = { id: 'u9', email: 'cohort@acme.test', organizationId: 'org1', role: 'MEMBER', firstName: 'Cohort' };
+    const { service, prisma, created } = makeService({
+      pending: aLiveLink({ roleAsDescribed: 'Clinic manager, four sites' }),
+      existingUser: existing,
+    });
+    await service.joinConfirm('confirm-token');
+
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'u9' }, data: { jobTitle: 'Clinic manager, four sites' } });
+    expect(created.participant.roleAsDescribed).toBeUndefined();
+  });
+
+  it('a blank answer touches nobody\'s job title', async () => {
+    const existing = { id: 'u9', email: 'cohort@acme.test', organizationId: 'org1', role: 'MEMBER', firstName: 'Cohort' };
+    const { service, prisma } = makeService({ pending: aLiveLink({ roleAsDescribed: null }), existingUser: existing });
+    await service.joinConfirm('confirm-token');
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+});

@@ -48,8 +48,10 @@ describe('the good ones are detected and kept, the same as the bad ones', () => 
     const src = readFileSync(join(__dirname, 'patterns.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     /* The line that used to throw every non-bad-faith code away now has the good ones taken out
-       in front of it, and routed to the method that was already there for them. */
-    expect(src).toMatch(/if \(isPositiveCode\(d\.code\)\) \{[\s\S]{0,600}observePositive\(/);
+       in front of it, and routed to the method that was already there for them. The cap grew from
+       600 to 750 when decision 57 item 4 added a call in this block to check the number-based rule
+       before a positive code is written, which is a few more real characters, not new dropping. */
+    expect(src).toMatch(/if \(isPositiveCode\(d\.code\)\) \{[\s\S]{0,750}observePositive\(/);
     expect(src.indexOf('isPositiveCode(d.code)')).toBeLessThan(src.indexOf('if (!isBadFaithCode(d.code)) continue;'));
   });
 

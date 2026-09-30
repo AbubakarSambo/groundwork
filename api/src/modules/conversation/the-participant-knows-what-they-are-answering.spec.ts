@@ -33,7 +33,8 @@ describe('opening a check-in returns what it is about', () => {
     expect(OPEN).toMatch(/\.\.\.WHAT_THE_BRIEF_IS_READ_FROM/);
     const shape = CODE.split('const WHAT_THE_BRIEF_IS_READ_FROM = {')[1]?.split('} as const;')[0] ?? '';
     expect(shape).toMatch(/label: true/);
-    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/);
+    /* Gained isADecisionAboutAPerson (decision 46, 29 September 2026) alongside the rest. */
+    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true \}/);
   });
 
   it('BOTH return paths carry the brief, not just a first open', () => {

@@ -30,6 +30,27 @@ describe('the close, as a person reads it', () => {
     expect(endsOnTheClose('What happened with Green Mart?')).toBe(false);
   });
 
+  /*
+   * Run 20, 30 September 2026: the model's own closing reply sometimes still asked something, and the
+   * close was appended on top of it, so the person was asked something they had no way to answer.
+   */
+  it("takes the model's own question out before the close, and keeps what still makes sense", () => {
+    expect(endingOnTheClose(
+      'Thanks, Priti. What is the current on-time delivery percentage you are seeing from them? '
+      + 'It helps to have the starting point for that 98% target.',
+    )).toBe(`Thanks, Priti. It helps to have the starting point for that 98% target.\n\n${THE_CLOSE}`);
+    expect(endingOnTheClose('What will you do about getting those bank statements, and by when?')).toBe(THE_CLOSE);
+  });
+
+  it('never serves a closing turn with more than the close\'s own one question', () => {
+    const out = endingOnTheClose('Thanks. What will you do about getting those bank statements, and by when?');
+    expect((out.match(/\?/g) ?? []).length).toBe((THE_CLOSE.match(/\?/g) ?? []).length);
+    for (const door of ['whatsapp', 'api'] as const) {
+      const onDoor = endingOnTheClose('Thanks. What will you do about it, and by when?', door);
+      expect((onDoor.match(/\?/g) ?? []).length).toBe((THE_CLOSE_ON[door].match(/\?/g) ?? []).length);
+    }
+  });
+
   it('is put on the turn that closed, after it is known to be closed', () => {
     const src = readFileSync(join(__dirname, 'conversation.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const decided = src.indexOf("const sessionComplete = close.ready && !stillAsking(aiTurn.content ?? '');");

@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { notToldYet, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { labelsForParties, namesVisibleTo, viewerLabelOf, withNames, displayName } from '../reports/party-labels';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import {
@@ -9,12 +10,15 @@ import {
   forAnAdmin,
   forTheLead,
   forThePerson,
+  theLeadMayReadIt,
   type ForAnAdmin,
   type ForTheLead,
   type ForThePerson,
   type SuggestionRow,
   type WhoIsWho,
 } from './a-suggestion-told-like-a-signal';
+import { aSuggestionFromTheRecord, type TheRecordForOnePerson } from './a-suggestion-reached-from-the-record';
+import { readSuggestionThresholds, SUGGESTION_THRESHOLDS_KEY, type SuggestionThresholds } from './thresholds';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REFUSED = {
@@ -110,6 +114,17 @@ export class SuggestionsService {
     });
     if (!about) throw new BadRequestException('The person a suggestion is about must be in that check-in.');
 
+    /*
+     * CONFIRMED ITEM 17: A NEW SUGGESTION DOES NOT REPLACE ONE NOBODY HAS DECIDED. If this person
+     * already has a suggestion on this check-in with no decision yet, that one stands - the engine
+     * hands back its id rather than writing a second, competing row over it.
+     */
+    const existing = await this.prisma.suggestion.findFirst({
+      where: { groundId: input.groundId, aboutParticipantId: input.aboutParticipantId, decision: null },
+      select: { id: true },
+    });
+    if (existing) return existing;
+
     return this.prisma.suggestion.create({
       data: {
         organizationId: ground.organizationId,
@@ -131,8 +146,39 @@ export class SuggestionsService {
     });
   }
 
-  /** Every suggestion on one check-in, each in the shape this reader may read. */
-  async forGround(groundId: string, reader: Reader): Promise<{ suggestions: (ForTheLead | ForThePerson | ForAnAdmin)[] }> {
+  /**
+   * The live thresholds (thresholds.ts), or nothing set (decision 33). Never throws: a missing or
+   * malformed row must mean "nothing set", never a made-up threshold that reaches a suggestion
+   * nobody asked for.
+   */
+  async thresholds(): Promise<SuggestionThresholds> {
+    try {
+      const row = await this.prisma.platformSetting.findUnique({ where: { key: SUGGESTION_THRESHOLDS_KEY } });
+      return readSuggestionThresholds(row?.value);
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * THE ENGINE'S OTHER DOOR IN: reads one person's record, and reaches a suggestion only when a
+   * threshold is set for it (a-suggestion-reached-from-the-record.ts). Null when nothing is
+   * reached - no threshold set, or the record does not cross the one that is. Whatever is reached
+   * still goes through `record`, so it never replaces a suggestion nobody has decided (item 4).
+   */
+  async reachFromTheRecord(groundId: string, record: TheRecordForOnePerson) {
+    const thresholds = await this.thresholds();
+    const suggestion = aSuggestionFromTheRecord(groundId, record, thresholds);
+    if (!suggestion) return null;
+    return this.record(suggestion);
+  }
+
+  /**
+   * Every suggestion on one check-in, each in the shape this reader may read. `now` exists for
+   * tests of the timing rule (decision 53, theLeadMayReadIt); nothing else passes it, so every
+   * real caller reads it against the actual clock.
+   */
+  async forGround(groundId: string, reader: Reader, now: Date = new Date()): Promise<{ suggestions: (ForTheLead | ForThePerson | ForAnAdmin)[] }> {
     const ground = await this.theGround(groundId);
     const role = await this.whoIsTheReader(ground, reader);
     if (role === 'outsider') throw new ForbiddenException(REFUSED.notInIt);
@@ -142,14 +188,38 @@ export class SuggestionsService {
       const names = await this.deciders(rows);
       return { suggestions: rows.map((r) => forThePerson(r, this.whoIsWho(ground, r, 'person', names))) };
     }
-    const rows = await this.rows({ groundId });
-    const names = await this.deciders(rows);
+    const allRows = await this.rows({ groundId });
+    const names = await this.deciders(allRows);
     if (role === 'lead') {
-      return { suggestions: rows.map((r) => forTheLead(r, this.whoIsWho(ground, r, 'lead', names))) };
+      /*
+       * DECISION 53: THE PERSON SEES IT FIRST. Whoever runs the check-in reads a suggestion only
+       * once the person has had their turn - see theLeadMayReadIt. Nothing else on this row is
+       * held back once that is true: the count itself never reaches this reader because the
+       * engine never wrote one into a lead-facing field (a-suggestion-reached-from-the-record.ts).
+       */
+      const rows = allRows.filter((r) => theLeadMayReadIt(r, now));
+      /*
+       * DECISION 56, ITEM 3. Wherever an untold goal counts against the person - here, a suggestion
+       * about them - the lead is shown it as a conversation point too. Lead only: `forThePerson` and
+       * `forAnAdmin` below never receive this.
+       */
+      const untoldRows = await ((this.prisma as any).personObjective?.findMany?.({
+        where: { groundId, awareness: 'NOT_TOLD' },
+        select: { participantId: true, text: true, awareness: true, authoredBy: true },
+      }) ?? Promise.resolve([])).catch(() => []);
+      const untoldFor = new Set((untoldRows as any[]).filter(notToldYet).map((o) => o.participantId));
+      return {
+        suggestions: rows.map((r) => {
+          const shaped = forTheLead(r, this.whoIsWho(ground, r, 'lead', names));
+          return untoldFor.has(r.aboutParticipantId)
+            ? { ...shaped, conversationPoints: [theConversationPointForTheLead(shaped.aboutName)] }
+            : shaped;
+        }),
+      };
     }
     /* An admin who is not in it: only what has been appealed. */
     return {
-      suggestions: rows
+      suggestions: allRows
         .map((r) => forAnAdmin(r, this.whoIsWho(ground, r, 'admin', names), reader.userId))
         .filter((s): s is ForAnAdmin => !!s),
     };

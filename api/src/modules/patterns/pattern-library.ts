@@ -926,3 +926,25 @@ export function detectPattern(code: string, input: DetectionInput): boolean {
   const fn = PATTERN_DETECTORS[code];
   return fn ? fn(input) : false;
 }
+
+/**
+ * WHAT BACKED A DETECTION (decision 57, item 4): the model's own reading, the matching number-based
+ * rule, or both. 'rule' is for the handful of codes that are never read by the model at all (R3,
+ * COLLUSION_RISK) - a rule-only finding, not a lesser one. Read by the lead only; never shown to the
+ * person or a colleague, and a rule never surfaces a bad-faith code by itself (see patterns.service.ts).
+ */
+export type AnEvidenceSource = 'model' | 'rule' | 'both';
+
+/**
+ * Combines what a detection was already backed by with what this period adds. Once two separate
+ * reads have agreed even once, that stays true forever - a later period where the rule happens not
+ * to fire does not erase that earlier agreement, any more than a pattern once SURFACED becomes
+ * unsurfaced. Anything else simply takes the newest read, falling back to what was already stored.
+ */
+export function mergedEvidenceSource(
+  existing: AnEvidenceSource | null | undefined,
+  incoming: AnEvidenceSource | null | undefined,
+): AnEvidenceSource | null {
+  if (existing === 'both' || incoming === 'both') return 'both';
+  return incoming ?? existing ?? null;
+}

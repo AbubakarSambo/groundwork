@@ -295,6 +295,18 @@ export class AdminController {
     return this.adminService.setCorrectionWindow(Number(body?.days), userId);
   }
 
+  @Get('suggestion-thresholds')
+  @ApiOperation({ summary: 'The thresholds that let a suggestion be reached, one per verdict. Empty by default (decision 33): nothing is suggested until these are set.' })
+  getSuggestionThresholds() {
+    return this.adminService.getSuggestionThresholds();
+  }
+
+  @Patch('suggestion-thresholds')
+  @ApiOperation({ summary: 'Set the thresholds that let a suggestion be reached. Replaces the whole set.' })
+  setSuggestionThresholds(@CurrentUser('id') userId: string, @Body() body: unknown) {
+    return this.adminService.setSuggestionThresholds(body, userId);
+  }
+
   @Get('writers')
   @ApiOperation({ summary: 'Zero-row detection: every writer that should fill a table, its row count, last write and ship date. Zero since shipped is flagged.' })
   getWriters() {

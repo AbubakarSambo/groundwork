@@ -40,6 +40,14 @@ export interface ACommitmentOverTime {
   /** How it was settled: SAID, PROVEN or CONFIRMED (week 9). Null while open or not known. */
   settledBy?: string | null;
   fromAPaste?: boolean;
+  /**
+   * Whether `what` (and, separately, `when`) is a passage of what the person actually typed, stamped
+   * once when the commitment is written (conversation.service.ts, `saidWordForWord`/
+   * `whenSaidWordForWord`). A model's own copy of a commitment is usually close but not exact, so
+   * only a row stamped true here may be shown inside quotation marks. See aCommitmentSaid.
+   */
+  saidWordForWord?: boolean;
+  whenSaidWordForWord?: boolean;
   /** The product's sentence about it, sessions and all. */
   say: string;
 }
@@ -125,6 +133,9 @@ export interface ACommitmentRow {
   saidAgainIn: number[];
   /** How it was settled: SAID, PROVEN or CONFIRMED (week 9). Null while open. */
   settledBy?: string | null;
+  /** Stamped when the row is written; see ACommitmentOverTime above. */
+  saidWordForWord?: boolean | null;
+  whenSaidWordForWord?: boolean | null;
 }
 
 export function commitmentsOverTime(
@@ -147,9 +158,56 @@ export function commitmentsOverTime(
       theySaidIt: !!c.explicit,
       settledBy: c.settledBy ?? null,
       fromAPaste: c.source === 'PASTE',
+      saidWordForWord: c.saidWordForWord === true,
+      whenSaidWordForWord: c.whenSaidWordForWord === true,
     };
     return { ...row, say: aCommitmentSaid(row, sessionsSoFar) };
   });
+}
+
+/**
+ * A WORD SAYING WHETHER `s` READS AS A TIME OR A DATE, so a `whenSaid` that is not one of those is
+ * never read out as though it were.
+ *
+ * Caught on run 20 (24-scenario run, 30 September 2026): a commitment's `text` had landed in a report
+ * as though it were the time given for it, and "lead that review with the team" is not a time at all.
+ * Short, and holding a day, a month, a number, or a word like "next" or "soon" that only makes sense
+ * about when something happens: that is what a person's answer to "when" actually looks like.
+ */
+const A_TIME_OR_DATE = /\b(?:today|tomorrow|tonight|yesterday|next|this|last|by|before|after|soon|asap|now|end of|week|weeks|month|months|day|days|year|years|session|sessions|morning|afternoon|evening|night|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t)?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|q[1-4]|quarter|deadline|\d)\b/i;
+export function looksLikeATimeOrADate(s: string): boolean {
+  const words = s.trim().split(/\s+/).filter(Boolean);
+  if (!words.length || words.length > 8) return false;
+  return A_TIME_OR_DATE.test(s);
+}
+
+/**
+ * A COMMITMENT'S TEXT, MADE PART OF THE PRODUCT'S OWN SENTENCE, so it never reads as a clipped
+ * instruction ("committed to this. Lead that review with the team.") or as first-person words put
+ * into a sentence that is not that person's own ("Priti Sharma committed to this. I'll reach out to
+ * the InfoSec team...", "I" belonging to nobody the reader is reading about).
+ *
+ * A commitment is usually written first person - "I will do X", "I'll do X" - because that is how the
+ * person said it. Said in our own voice, that becomes "{who} committed to do X": the leading
+ * first-person frame comes off, and the verb after it is lower-cased since it is now the middle of a
+ * sentence, not its start. A fragment that never had a first-person frame ("lead that review with the
+ * team", the lead's own shorthand for what somebody would do) already reads as the object of
+ * "committed to" once it is lower-cased, so nothing else changes.
+ *
+ * AND WHERE A FIRST-PERSON WORD IS LEFT AFTER THAT - "my", "me", "I", "our", deeper in the sentence
+ * than the opening frame - IT CANNOT BE SAID SAFELY IN OUR VOICE, because whoever it belongs to is
+ * not the "I" of this sentence any more. Null tells the caller to fall back to a sentence with no
+ * text in it at all.
+ */
+const FIRST_PERSON_FRAME = /^(?:i will|i'll|i am going to|i'm going to|i plan to|we will|we'll)\s+/i;
+const FIRST_PERSON_WORD = /\b(?:i|me|my|mine|myself|we|us|our|ours|ourselves)\b/i;
+export function inOurVoice(what: string | null | undefined): string | null {
+  const trimmed = String(what ?? '').trim();
+  if (!trimmed) return null;
+  const frame = FIRST_PERSON_FRAME.exec(trimmed);
+  const rest = (frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
+  if (!rest || FIRST_PERSON_WORD.test(rest)) return null;
+  return rest[0].toLowerCase() + rest.slice(1);
 }
 
 /**
@@ -161,9 +219,24 @@ export function commitmentsOverTime(
  * says how it was settled (SAID on the person's own word, PROVEN by a document they added, CONFIRMED
  * by the colleague who received it), and the sentence says that. The person's quoted words are kept
  * exactly. No pronoun is guessed: the name is used again.
+ *
+ * AND QUOTATION MARKS GO ROUND A COMMITMENT'S TEXT OR TIME ONLY WHEN THOSE ARE ITS OWN WORDS.
+ * `GroundCommitment.text` and `.whenSaid` are a model's reading of a check-in, and 6 of 604 served
+ * quotes in run 20 (30 September 2026) were not, character for character, in the record they claimed
+ * to be from - once a commitment's `text`, once a `whenSaid` that read like the commitment itself
+ * ("lead that review with the team"), never anybody's exact words. `saidWordForWord` and
+ * `whenSaidWordForWord` are stamped once, when the row is written (conversation.service.ts), true
+ * only where the words are a passage of what the person typed in that session. Where either is false,
+ * the marks come off and the sentence says plainly that it is what the person committed to, never
+ * that these are their words, and names the person again rather than guessing a pronoun. A `when`
+ * that does not read as a time or a date at all is left out rather than mislabelled as one.
  */
 export function aCommitmentSaid(
-  c: { who: string; what: string; when: string | null; statedInSession: number | null; restatedIn: number[]; status: string; theySaidIt: boolean; settledBy?: string | null; fromAPaste?: boolean },
+  c: {
+    who: string; what: string; when: string | null; statedInSession: number | null; restatedIn: number[];
+    status: string; theySaidIt: boolean; settledBy?: string | null; fromAPaste?: boolean;
+    saidWordForWord?: boolean; whenSaidWordForWord?: boolean;
+  },
   sessionsSoFar: number,
 ): string {
   const who = c.who;
@@ -172,16 +245,38 @@ export function aCommitmentSaid(
   const open = status === 'UNKNOWN';
   const sessionsOpen = stated !== null ? Math.max(0, sessionsSoFar - stated) : null;
   const out: string[] = [];
+  const quoteWhat = c.saidWordForWord === true;
+  const quoteWhen = c.whenSaidWordForWord === true;
+
+  const clause = inOurVoice(c.what);
 
   if (!c.theySaidIt) {
-    out.push(stated !== null
-      ? `In session ${stated}, the lead said that ${who} would do this, "${c.what}"`
-      : `The lead said that ${who} would do this, "${c.what}"`);
+    if (quoteWhat) {
+      out.push(stated !== null
+        ? `In session ${stated}, the lead said that ${who} would do this, "${c.what}"`
+        : `The lead said that ${who} would do this, "${c.what}"`);
+    } else if (clause) {
+      out.push(stated !== null
+        ? `In session ${stated}, the lead committed ${who} to ${clause}.`
+        : `The lead committed ${who} to ${clause}.`);
+    } else {
+      out.push(stated !== null
+        ? `In session ${stated}, the lead committed ${who} to something, which is in the record.`
+        : `The lead committed ${who} to something, which is in the record.`);
+    }
     out.push(`${who} did not say it.`);
-  } else if (stated !== null) out.push(`In session ${stated}, ${who} said, "${c.what}"`);
-  else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} is down to do this, "${c.what}"`);
-  else out.push(`${who} said, "${c.what}"`);
-  if (c.when) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was "${c.when}".`);
+  } else if (quoteWhat) {
+    if (stated !== null) out.push(`In session ${stated}, ${who} said, "${c.what}"`);
+    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} is down to do this, "${c.what}"`);
+    else out.push(`${who} said, "${c.what}"`);
+  } else if (clause) {
+    if (stated !== null) out.push(`In session ${stated}, ${who} committed to ${clause}.`);
+    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} committed to ${clause}.`);
+    else out.push(`${who} committed to ${clause}.`);
+  } else if (stated !== null) out.push(`In session ${stated}, ${who} made a commitment, which is in the record.`);
+  else out.push(`${who} made a commitment, which is in the record.`);
+  if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was "${c.when}".`);
+  else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
     out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
   }
@@ -518,7 +613,11 @@ export function toSettleFirst(o: {
   const restated = theOnesStillOpen(o.commitments).filter((c) => c.restatedIn.length >= 2);
   if (restated.length) {
     const first = restated[0];
-    out.push(`"${first.what}" has been said again in ${first.restatedIn.length} sessions and nobody has said whether it happened. Ask ${first.who} what it is waiting on, and decide whether it is still wanted.`);
+    /* Quoted only where `what` is the person's own words; otherwise said plainly, unquoted. */
+    const what = first.saidWordForWord === true
+      ? `"${first.what}"`
+      : first.what.trim().replace(/[.!?]+$/, '').replace(/^\p{Ll}/u, (c) => c.toUpperCase());
+    out.push(`${what} has been said again in ${first.restatedIn.length} sessions and nobody has said whether it happened. Ask ${first.who} what it is waiting on, and decide whether it is still wanted.`);
   }
 
   const inside = o.dependencies.filter((d) => !d.chased && d.onParticipantId);

@@ -46,7 +46,11 @@ describe('one route for patterns', () => {
     const at = SERVICE.indexOf('const patternRowsForPage = PATTERNS_ARE_SERVED');
     expect(at).toBeGreaterThan(-1);
     const block = SERVICE.slice(at, at + 1200);
-    expect(block).toContain('const patternsForPage = servedPatterns(');
+    /* 29 September 2026: `whatHappened` is now reworded once for the reader (decision 7, warm-up
+       only), through pattern-evidence-in-plain-words.ts's wordPatternEvidence, which wraps this
+       same call rather than replacing it. */
+    expect(block).toContain('const patternsForPage = await wordPatternEvidence(');
+    expect(block).toContain('servedPatterns(');
     expect(block).toContain('runsIt: viewerIsLead');
     const RULES = strip(readFileSync(join(__dirname, '../patterns/who-reads-a-pattern.ts'), 'utf8'));
     expect(RULES).toContain('ALIGNMENT_FEED_ONLY_CODES.has(row.code)');

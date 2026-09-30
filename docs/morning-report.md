@@ -6,6 +6,76 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## SUMMARY OF THE NIGHT, 29 TO 30 SEPTEMBER (read this first)
+
+**Every decision Hafsah sent tonight is recorded in `docs/decisions-merged.md`, as decisions 44 to 57.** Clarifications were also added to decisions 4, 5, 6, 9, 12, 17, 21 and 27.
+
+### Finished and pushed
+
+- **The warm-up runs once** (decision 44), proven live. The board warmed 9 times for nine check-ins, where it used to warm 18 times.
+- **Screens request 77.** A person's own words are never removed by the hidden-target filter. Only a private file's name is hidden.
+- **Screens request 76.** Each check-in stores its kind of work, and each kind gets its own records on the board: deals and stages, releases, tickets, deadlines and so on.
+- **The pattern names are approved and patterns are switched on** (decisions 52 and 55).
+  - Every rule holds live: three periods, the person first, no colleague sees another person's, and E4 and F5 reach nobody.
+  - The wording around each pattern is fixed in place.
+  - Nothing protected is still switched off, hidden or simplified.
+- **The provisional decisions confirmed, with Hafsah's four changes:**
+  - An admin can share the report if the lead has left.
+  - An admin who cannot see a target reads only "has checked in".
+  - A decision about a person is a field the lead sets.
+  - Week 10 is done the more private way: the person sees the suggestion first, and the manager gets a line with no count. It needs a threshold before any suggestion is reached, and none is set.
+- **An untold goal follows the prototype** (decision 56).
+  - The lead sees "Not told yet" and is nudged.
+  - The model asks about the area of work, never the number.
+  - After a week the person is told a goal exists.
+  - Checked twice: the number never reached the person.
+- **Evaluation check-ins.** The person being reviewed sees the facts and the decision, never a colleague's exact words.
+- **Decision 57, all nine points:**
+  - a period is at least a week;
+  - the lead marks a pattern right, wrong or not sure, is nudged once, and marks "we talked about it";
+  - the number-based rules are a second source of evidence;
+  - a role guessed with low confidence is confirmed first;
+  - coaching is on by default;
+  - "setup never said" is back;
+  - later check-ins count periods;
+  - self-learning is added early, as week 8b.
+- **One chat.** Ask Groundwork can now do everything the context chat does, by calling the context chat's own code.
+- **Privacy fixes found along the way:**
+  - Ask Groundwork could hand back a colleague's hidden target.
+  - An admin could read the lead's private description inside the judgement.
+  - A person's own role, typed at joining or in a check-in, was written into the lead's private field.
+  - A quote could be the model's words rather than the person's.
+- **The screens workspace is told** what they will receive, in `docs/answers-from-engine.md`.
+
+### Tests and runs
+
+- **The whole API suite passed at the end of each finished piece.** The last full count was 1,229 files and 11,426 tests.
+- **Run-20, today's one full run: nothing worse than the baseline.**
+  - Every problem count is 0.
+  - Commitments recorded: 70, against 33 at the baseline.
+  - Agreements found: 71, against 56.
+  - Proof asked for: 51, against 42.
+- **Watch:**
+  - specific detail asked for is 85, against 88, inside its usual swing;
+  - jargon in reports and boards is 141, above the bar of 128.
+- **Quick checks after every run:**
+  - quotes are word for word, after tonight's fix;
+  - none of the lead's private words reach anyone, apart from one false alarm, which is explained;
+  - the reports match the database.
+
+### The most important finding
+
+**Patterns are not steady from run to run.** Across all 24 scenarios, only 15% of the person-and-pattern findings in run-19 appeared again in run-20. The lead's marks and self-learning are built to work on this, but the detector itself, and what the test personas say, should be looked at before patterns reach anyone live.
+
+### Needs Hafsah
+
+1. **Switching off the old context chat.** Everything the doors decide matches in the live proof. Two differences remain, both the model reading a success statement differently. On your word it is switched off.
+2. **The six disagreements between decisions**, listed under Hafsah's second set of answers, each with how it is being handled.
+3. **The release questions** in `docs/ready-to-deploy.md`. The safety check refused my edit because of a name in the command. The corrected content is in this report.
+4. **Week 10's thresholds** are empty, so no suggestion is reached until you set them.
+
+---
+
 ## HOW THE ENGINE WORK RUNS NOW (Hafsah, 29 September, evening)
 
 Hafsah wants the engine work done much faster. Every session keeps to this:
@@ -31,6 +101,279 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Run-20, today's one full run: nothing worse than the baseline, with three things to watch
+
+All 24 scenarios, in 92 minutes, on `d1f7fa74`. **The scorer's verdict is "nothing got worse than the baseline".**
+
+| Number | Baseline | Run-19 | Run-20 |
+| --- | --- | --- | --- |
+| Every problem count | 734 and more | 0 | 0 |
+| Proof asked for | 42 | 47 | 51 |
+| Past words brought back | 25 | 33 | 31 |
+| Specific detail asked for | 88 | 105 | 85 |
+| Blocker checked | 37 | 45 | 39 |
+| Agreements found | 56 | 66 | 71 |
+| Commitments recorded | 33 | 49 | 70 |
+| Patterns found | 100 | 112 | 100 |
+| Judgement present | 21 | 29 | 29 |
+| Turns asking two questions | 37 | 0 | 2 |
+| Jargon in Groundwork's turns | 42 | 21 | 28 |
+| Jargon in reports and boards | 511 | 126 | 141 |
+
+Three things to watch, not hidden:
+- **Specific detail asked for is 85**, against 88 at the baseline. It is inside the range this number moved on the same build in the re-checks (74 to 105), and the scorer passes it.
+- **Two turns asked two questions** (run-19 had none). Both are closing turns: the model's reply still asked a question, and the prototype's close was added after it. For example: "What will you do about getting those bank statements, and by when? That's all for today. Below is what I wrote down…". This is a fault from tonight's close fix, and it is being fixed now.
+- **Jargon in reports and boards is 141,** above the bar of 128 set in task 1.4. Most of it last time was people's own words said back to them (decision 41), which the scorer cannot tell apart. It needs a look.
+
+**Quick checks:**
+- **Quotes: 598 of 604 are word for word. 6 are not.** All six are in the lead's commitments over time. Tonight's new sentences for how a commitment was settled put the model's own write-up of the commitment in quote marks, as if it were the person's words. One was not even a time: "lead that review with the team". This is being fixed now.
+- **The lead's private words:** the only flag is seniorhire's shared sentence, the same one found earlier. It is not a leak.
+
+**Pattern steadiness, run-19 against run-20, all 24 scenarios: 15%.** Only 26 of 143 person-and-pattern findings appeared in both runs. The steadiest were seniorhire (44%), shock (43%) and realign (40%). Seven scenarios had none in common. This confirms the finding from the smaller runs: patterns change a lot from run to run.
+
+### Decision 55: every place the protected parts were switched off, hidden, simplified or removed
+
+A builder searched the code and the history since 15 September across patterns, coaching, role maps, role detection, board reads and the check-in's questions. **Nothing is still switched off, hidden, simplified or removed.**
+
+| What | How it was off | Now |
+| --- | --- | --- |
+| Patterns | One constant, `PATTERNS_ARE_SERVED`, set off on 27 September until the names were approved | On (`19cdf9b0`), with every rule kept |
+| "Setup never said" | The board applied the three-period rule again to a reading that only ever has one period, so it never reached a board | Restored for the lead (`eea057c8`) |
+| Coaching | A missing setting read as off, so coaching was dark on every new database | On by default, and an admin can pause it (`b2d6395f`) |
+| Confirming a low-confidence role | Built, but not wired, and with nowhere to store the answer | Finished (`25c2761a`, `daa83475`) |
+
+Allowed, because they keep the feature (decision 55's own exception):
+- E4 and F5 are never named to either person.
+- The coaching note no longer repeats the lead's words to the person.
+- The reading of how the check-in is led goes to the lead only.
+
+The ten patterns with no number-based rule are found by the model, by design. That is not switched off. The document setting `CONTEXT_ENABLED` is not one of the four protected parts.
+
+### One chat: Ask Groundwork takes over the context chat, piece 1 (decision 50)
+
+Built in `f978d3cf`. **The old context chat still works, untouched, and stays until every item is proven.**
+- **Ask Groundwork has a lane for adding context to a check-in.** It calls the context chat's own code, not a copy, so the rules are the same by construction:
+  - what is pulled out is said back and confirmed before it is saved;
+  - hidden targets and private documents stay private;
+  - bank details are hidden.
+- **Who may use it is unchanged.** The lead or an admin may hold the conversation, but only the lead may confirm a change. The test the inventory said was missing now pins this. A participant, a guest, or an admin of another organisation never reaches the lane.
+- **Which check-in:** it uses the one chosen, the one named, or the only one the person may set up. If it cannot tell, it asks.
+- **What is said in this lane is not kept in the person's private Ask Groundwork history.** The context chat keeps none today either.
+- **A gap found and fixed:** Ask Groundwork worked out which check-in a question was about, then never passed it on.
+- **Proven so far** (see "Comparison, item by item" in `docs/context-chat-inventory.md`): 3 items with new tests, and 12 by construction. That is not yet the live proof Hafsah asked for.
+- **Piece 2 is being built:**
+  - the exact question for a person, the lead's private notes, and typing a context line, through Ask Groundwork;
+  - carrying on a setup conversation over several turns;
+  - "Context and resources" in the engine's own sentences;
+  - a script that puts the same documents and messages through both and compares everything saved. It runs after run-20, because the API is busy.
+
+**Piece 2 is built** (`ef2452c2`, `ae6b962b`, `74ecb622`, `51b0ee4d`):
+- **Through Ask Groundwork,** each by calling the existing code:
+  - the exact question for a person, lead only, said back word for word before it is sent;
+  - the lead's private notes, always private, and never guessing whose note it is when a name is unclear;
+  - typing a line of context directly.
+- **A setup conversation carries on over several turns.** A bare "twelve weeks" now answers the question it was given.
+- **"Context and resources"** is how the engine now names the page in its own sentences: two refusals, the document message and the lead's invitation email.
+  - One of these renames is in the instructions the setup chat's model is given. The 24-scenario runs do not go through the setup chat, so no scenario run can measure it. It only changes the page's name in a sentence the model is told to say.
+- **The live proof script,** `api/journey/context-chat-equivalence.ts`, is written and runs after run-20. It puts the same message, paste, line, note and document through the old context chat and through Ask Groundwork. Then it compares the saved rows in the database, item by item.
+- **Piece 3 is being built:**
+  - the say-back sentences are still clipped and joined with colons, for example "Add this to the check-in's context, as a decision: …? Yes to add it.";
+  - sharing a note, and changing a line, are still only in the old chat;
+  - changing the wording of a lead's question in chat is still to do.
+
+**Piece 3 is built** (`4a87183e`, `0e88b0d5`). Every item the context chat does can now be done through Ask Groundwork, each by calling the old code:
+- **The say-backs are full sentences.** For example: "Shall I add "we will drop the pilot" to this check-in's context as a decision?" and "Shall I keep "keep an eye on Ben's workload" as a private note that only you can see?"
+- **Sharing a note with everybody works through chat.** Only a note about the whole check-in is offered, so a note about one person is never shared.
+- **So do rewording, sharing, making private or retiring a line.** A line about a person has no way in.
+- **The lead can change the wording of a question.** "ask Ben 'How are the Lagos numbers looking?' instead" is said back word for word, and sent only on a yes.
+- **A routing fault is fixed.** "share the note…" was being read as adding a document.
+- **One test** still expected "Context tab" after the rename, and now expects "Context and resources". The list of people waiting reads "Ben and Ada", not "Ben, Ada".
+- **Left:** only the live proof, which runs after run-20. The old context chat stays on until it passes.
+
+**The live proof ran end to end, and it is not proven yet. The old context chat stays on.** The script puts the same messages, paste, lines, notes and document through the old context chat on one fresh check-in, and through Ask Groundwork on another. It then compares what the database holds.
+- **Match:**
+  - the lead's private notes, including which one stays private;
+  - the refusal to share a note about one person, word for word;
+  - the document keeping its target with the bank detail hidden;
+  - the document staying private to the lead;
+  - the check-in's hidden-target setting;
+  - a line retired on both sides.
+- **Mismatch, 10 items.** They look like three kinds, and each is being sorted with evidence:
+  - **The script fed the two sides differently.** For example, on the old side none of the questions ended up confirmed, and the admin's refusal was not recorded.
+  - **The model wrote the text differently each time.** The exact question's wording and the context lines taken from a paste differ between runs, so they must be compared by kind, owner and state rather than word for word.
+  - **Possibly real differences between the two doors, which I will not paper over.** Through Ask Groundwork, "This runs for twelve weeks" was recorded as what doing well looks like. A proper success statement became three measures, where the old chat recorded one statement. "Good." got a clarifying question, where the old chat refused it.
+- Three faults in the script itself were found and fixed on the way: capital letters in email addresses, a missing organisation membership, and a missing field on the check-in request.
+- **Sorted with evidence, the ten differences are all the script's own doing, with no real product difference found yet:**
+  - The script created the test check-ins with the duration and cadence already filled in. So the setup answers landed on whatever question was actually open, differently on each side.
+  - It added an opening phrase to the messages on the Ask Groundwork side only.
+  - It looked each person's question up by first name, but the full name is served, so on the old side the confirms, and the admin's refused confirm, never ran.
+  - The exact question's wording and the lines taken from a paste are written by the model each time, so they now compare by kind, owner and state.
+
+  The script is fixed for all of these and is running again. The three differences I suspected in the product came from the first cause. The next run will show whether that holds.
+
+**The corrected proof run** (`eda630f6`; the full output is in `docs/context-chat-inventory.md`).
+- **These now match on both doors:**
+  - targets and who sees them;
+  - the three typed context lines, reworded, made private and retired;
+  - the lead's private notes, and the refusal to share a note about one person, word for word;
+  - each person's exact question: confirmed as shown, confirmed with the lead's own words, and left waiting;
+  - an admin who is not the lead being refused, word for word;
+  - the document's content, with the bank detail hidden, and its visibility;
+  - the setup answers for how long it runs and how often.
+- **Two differences remain, both about what doing well looks like, and neither is a difference between the doors:**
+  - The same success statement was kept with different opening words, "Good means…" on one side and without it on the other. The model chose a different starting point for the same quote.
+  - A success statement too short to record was refused on one side and not the other. Proposing and confirming are two separate model reads by design, and on a borderline input they can disagree.
+- The lines taken from a pasted update differ in number of each kind, as expected, because the model writes them fresh each time.
+
+**Needs Hafsah: switching off the old context chat.** Decision 50 says to switch it off once every item is proven. Everything the doors decide matches. The two differences above are the model varying, not the doors. But switching it off removes a working feature the screens use, so I have not done it on my own reading. On your word it is switched off, and the screens workspace is told in `docs/answers-from-engine.md`.
+
+**The two fixes from run-20's checks hold, on one re-run of sales and renewal:**
+- **No closing turn asks a question.** There were 2 on run-20.
+- **95 of 95 quotes are word for word.**
+- **Scores:**
+  - Sales stored 9 commitments. Run-20 stored 23, but across ten runs sales has stored between 5 and 23, so this is normal.
+  - "Specific detail asked for" in sales was 19. That is below anything sales has had before (22 to 36), which is borderline, so under the working rules sales is being run a second time before the fix is counted as kept.
+- **The second sales run settles it:** specific detail asked for is 29, inside its normal range, so 19 was a low draw. No closing turn asked a question, and 12 commitments were stored. **Both fixes are kept.**
+
+### Decision 57, part C: steadiness, a second source of evidence, and confirming a role
+
+**How steady patterns are: not steady.** This is the most important finding tonight. A new read-only script, `api/journey/pattern-steadiness.ts` (`e9e6edae`), compares which person got which pattern across two runs of the same scenarios:
+- goals-1 against goals-2 (cofounder, drift, pip, seniorhire): 1 of 24 findings appeared in both runs, **3%**. Seniorhire 11%, the other three 0%.
+- card3-1 against card3-2 (drift, handover, sales): 9 of 31 findings appeared in both, **23%**. Sales 39%, handover 17%, drift 14%.
+
+So if the same check-ins were run again, a lead would mostly be shown different patterns. The three-period rule, the person-first rule and the lead's marks all hold, but what they are applied to changes from run to run. This is what self-learning (week 8b) and the lead's marks are for. It also argues for looking at the detector itself, and at what the scenario personas say, before patterns reach anyone live. I have changed nothing in how patterns are judged, because decision 55 says such a change is proven on the runs first and big ones go to Hafsah.
+
+**What else is built:**
+- **The lead's nudge** now reads in two sentences: "Brian has seen it. Brian said, “I ran the call, Miriam built the numbers.”" (`2f1e1125`)
+- **The number-based rules now run beside the model** for every code that has one, over each person's scores by period (`e04260cd`). The model still decides what is written, and a rule alone never surfaces a pattern. Storing which source found each one, and telling the lead "Two separate reads of the record found this.", is being finished now.
+- **A role guessed with low confidence** (below 0.5, the product's existing line for "confident enough to coach from") will be confirmed before it is used (`26c8765c`). Until then, only the general rules that do not depend on role apply, as today. The person's check-in will ask "It sounds like most of your work is sales. Is that right, or would you describe it differently?", and the lead can confirm or change it.
+
+**Finished** (`cf0dd804`, `87092298`, `25c2761a`, `daa83475`, `f39940dc`; migration `20260930020000_evidence_and_a_confirmed_role`, applied to the local test database only):
+- **Where each pattern came from is stored:** the model, the rule, or both. Only the lead is told "Two separate reads of the record found this."
+- **The role question is asked once.** After the check-in, the person's answer is read: a clear yes confirms the guessed role, and a different description sets their own role. With no clear answer, the question is not asked again for two periods.
+- **The person's own words about their role go into their own job title,** never into the field that holds the lead's private description of them (decision 30). The same mix-up was found on the open-link join and is being fixed now.
+- A guard caught two checks for a missing lead that could never be true, and they are removed (`d1f7fa74`).
+
+**The whole API suite passes: 1,229 files and 11,426 tests.**
+
+**Run-20, today's one full run, started at 02:50** on `d1f7fa74`, in three parts. It covers every change since run-19 to what the model is given: the untold goal, the pattern label rewrite, periods in later check-ins, the role question, and the evidence notes.
+
+### Decision 57, part B: the lead's marks on a pattern, and "we talked about it"
+
+Built in `beffb44f` and `6aa62f9b`, migration `20260930010000_what_the_lead_made_of_a_pattern`, applied to the local test database only.
+- **The lead marks a pattern "right", "wrong" or "not sure"** after talking it through (`POST /patterns/:id/mark`). The person's own answer is stored beside it, as evidence too. Only the lead can mark, and only once they may already read the pattern. The mark goes to the lead alone: the person the pattern is about never gets it, because it must not read as a verdict on them, and a colleague never gets the pattern at all.
+- **The lead is nudged once**, in their Today list: "Talk with Brian about “Others describe doing work they described as theirs”." If Brian has not answered, it says so plainly. The nudge goes away when the lead marks "we talked about it" (`POST /patterns/:id/talked-about`). Both the lead and the person then see that they talked it through.
+- **Whether things changed** is worked out from the record: how many later periods the same pattern was seen in after the talk. Nothing is decided from it.
+- The screens workspace has the exact routes and fields in `docs/answers-from-engine.md`.
+- **One sentence is being fixed in part C.** "Brian has seen it and said: “…”." joins with a colon and doubles the full stop.
+
+### Decision 57, part A: periods, coaching on, "setup never said", and later check-ins
+
+Built in `4ae4ace8`, `277844d4`, `4baa50d1`, `b2d6395f` and `eea057c8`.
+- **A period is at least a week.** One function, `periodOf`, decides it. For a weekly or slower check-in each session is a period; for a daily check-in each calendar week is one. Everything that counts periods uses it: storing a pattern, what each reader is shown, the session report's cut-off, and coaching's "seen in two periods". For a daily check-in the person reads "This came up in 3 of your weeks.", where it used to list session numbers.
+- **Coaching is on by default on every database.** A missing setting now reads as on. An admin can still pause it by setting it off.
+- **"Setup never said" is restored.** One check already let it through, but the board then applied the three-period rule again and threw it out, so it had never once reached a board. It now reaches the lead, as a reading about the setup.
+- **Later check-ins count periods too.** A pattern shapes a sharper question only once it has three real periods, gaps included. Before, good news steered a question after one session, and the "one question worth asking" after two.
+  - **This changes what the model is given.** It goes into the day's one full run, together with parts B and C.
+- **Left, and noted:** the rare check for two people covering for each other counts its periods its own way. It matters only on a daily check-in.
+
+### Part 3: evaluation check-ins (decisions 4 and 17, as clarified)
+
+Built in `fc2550a8`, `26f5e5a0`, `396459f7` and `20e7ef99`. **In an evaluation check-in, the person being reviewed reads the facts, and the decision with its reasons, never a colleague's exact words.**
+- **Which check-ins count:** one rule decides, and it counts a performance plan, a recognition round and a contract renewal, the check-ins where a verdict is reached.
+- **For the person being reviewed:**
+  - A colleague's row in "what each person said" reads "A colleague's own words are not shown to you here. What was found, and the decision with its reasons, are below."
+  - A colleague's quote in the team report's shared picture becomes "A colleague described this differently.", and the person's own quote stays.
+  - A quote that cannot be matched to the person's own words is taken out, so the rule errs on the private side.
+  - The same applies to the board's own words and to where people disagree.
+- **The manager, an admin, and the colleagues who gave views** read everything as before. An ordinary team check-in does not change, and a test proves it.
+- **Honest limit:** deciding whether a sentence still reads well once a quote is taken out is a rule of thumb. The colleague's words always go, but a sentence can read a little cut short.
+- **Decided for Hafsah to confirm:** nothing in the database says which person a check-in is about. In a performance plan or a renewal there are only two people, so it is clear. A recognition round can add colleagues, so the first person added after the lead is taken as the one being reviewed.
+
+### Part 2B: a goal the lead has not told the person about, as the prototype has it (decision 56)
+
+Built in `5ee3c4b4`, `4886d2ed`, `f1ed931d`, `c542f51c`, `fb5da92f` and `7df73897`. Take Tobi's goal "Take over the scheduling and hit 40 stock counts by Friday", which Wanjiru has not told him about.
+- **The lead** reads it marked "Not told yet". Their Today list says "Tell Tobi about the goal you set for the scheduling and the stock counts. You have not told Tobi yet." Wherever the goal counts against Tobi, on the Context page, Today, the team board or a suggestion, the lead also reads "Tobi has not been told about this goal yet, so talk it through with Tobi before reading anything into it."
+- **The model in Tobi's own check-in** is given only the area of the work, "the scheduling and the stock counts", to ask about. It is never given the number or the deadline. If a reply still gives the number, or says that a goal has been set, it is caught and asked again once.
+- **The area is worded once by the model, when the goal is saved,** and checked in code: no digit, number word, amount, percentage, date or target verb. Until it is worded, every reader gets "this part of the work", never the goal's own wording.
+- **Tobi** sees nothing of it for a week. After a week he reads "Wanjiru has set a goal about the scheduling and the stock counts, and will talk it through with you." Wanjiru is reminded that he now knows a goal exists.
+- **A colleague, or an admin who only reads,** never sees it.
+- **The goal still counts.** Nothing had ever taken it out of how reports are built.
+- **Not done yet:** the judgement's own text does not carry the conversation point. The week is counted from when the goal was made, because nothing records when it was marked "not told".
+
+**It is being re-run now:** seniorhire, pip, cofounder and drift, the scenarios with the most untold goals, twice each. The first run started at 23:48 on `7df73897`. The pattern label rewrite from part 1 is in the same build, so these runs check both.
+
+**First re-run, finished at about 00:10.**
+- **The untold number never reached the person.** Pip's goal is "Consistently meet the eight renewals per quarter target". The person's check-in never mentions "eight", "8", the target, or renewals per quarter, from Groundwork or from them. The other three had no number in their untold goals, and nothing of them leaked.
+- **Quotes:** 146 of 146 are word for word in the record.
+- **Reports:** two copies are older than the database, not different from it. This is the run script taking its last copy early, as before.
+
+**Scores on the same four scenarios, against run-19:**
+
+| Number | run-19 | This run |
+| --- | --- | --- |
+| Specific detail asked for | 10 | 15 |
+| Blocker checked | 3 | 5 |
+| Agreements found | 16 | 19 |
+| Proof asked for | 7 | 5 |
+| Past words brought back | 19 | 14 |
+| Commitments recorded | 19 | 13 |
+| Patterns found | 22 | 20 |
+| Jargon in reports and boards | 23 | 8 |
+
+The rest are the same, and every problem count is 0. Four scenarios is a small sample, and these numbers move by this much between runs. The second re-run, started at 00:12, decides. If commitments or past words stay down, the change is dropped, as the rule says.
+
+**Second re-run, finished at about 00:40, and the change is kept.**
+
+| Number | run-19 | First re-run | Second re-run |
+| --- | --- | --- | --- |
+| Proof asked for | 7 | 5 | 9 |
+| Past words brought back | 19 | 14 | 22 |
+| Specific detail asked for | 10 | 15 | 14 |
+| Blocker checked | 3 | 5 | 4 |
+| Agreements found | 16 | 19 | 18 |
+| Patterns found | 22 | 20 | 21 |
+| Commitments recorded | 19 | 13 | 7 |
+
+- **Proof and past words came back.** Only commitments stayed down.
+- **The drop in commitments is almost all seniorhire:** 8 stored commitments on run-19, then 6, then 3. On older builds, before any of tonight's work, seniorhire stored 2 (run-14), 3 (run-16), 7 (run-18) and 2 (the earlier review run). So 6 and 3 are inside its normal spread, and it is the model varying, not this change. The other three scenarios hardly record commitments at all.
+- **I kept the untold-goal change.** Seniorhire's count swings this much, so it is a poor measure on its own. The day's full run should show whether commitments hold across all 24.
+- **Quick checks:**
+  - 96 of 96 quotes are word for word.
+  - The untold number never reached the person, again.
+  - The script flagged seniorhire once more. It is Amina's own check-in sentence, "I brought him in to own the relationships with our five largest clients", shown to Tobi with one word changed. That is allowed.
+- **A real wording fault it turned up:** Tobi reads "Dr Amina Bello brought in you to own…", which should be "brought you in". It comes from the step that swaps a name for "you" in a person's own report, the known weak spot of request 33 and task 1.6.
+
+**A privacy leak the quick checks found, already there on run-19, being fixed now.** The lead's private description of Tobi reads "Engagement Director. Owns the relationships with the five largest clients." Tobi's own report and board say "Dr Amina Bello says you are here to own the relationships with the five largest clients." Nobody said that in any check-in, so it reaches his report through what the report writer is given. That breaks decision 30.
+
+**Correction: it was not a leak.** Looking further, the same words are shared legitimately:
+- in what Tobi was told when he was invited ("…owning relationships with the five largest clients");
+- in the check-in page's aims;
+- in a team target;
+- in what Amina said in her own check-in ("He's here to own the relationships with our five largest clients.");
+- and in what Tobi said himself.
+
+My check script counted any match with the lead's private description as a leak. It now leaves out words that are also in something the reader may already read. With that, run-19 and the first re-run have no private words reaching anyone.
+
+The builder's work on it keeps one real fix (`233041e1`). The coaching note about a person was given the lead's private description as that person's role. It was harmless only by accident, and it is now never given it. The builder had also added a read-side net that took out any sentence sharing six words with the description. That would have removed Tobi's legitimately shared sentences, so it is being narrowed to the same rule as the script.
+
+**The read-side net is narrowed** (`590fbe20`). A sentence is taken out for a reader who is not the lead only when its run of the lead's private words appears nowhere that reader may already read. That means what they were told, the check-in's aims and targets, and what people said in their check-ins. So Tobi keeps his shared sentence, and a truly private phrase such as "struggles to take ownership without being chased" is still taken out.
+
+**An admin no longer reads the lead's private description inside the judgement** (`71781c87`, decision 5 as clarified). The judgement is written with the lead's description of each person, for the lead. An admin who does not run the check-in still reads the judgement, but without any sentence that carries that description. The lead reads all of it, and a participant never gets the judgement at all.
+
+**A test that failed under load now checks order, not the clock** (`c187ce59`). It proved the two reads of the lead's brief run side by side by timing them, and it failed when the machine was busy. It now checks that the second read starts before the first one finishes. It still fails if they run one after the other.
+
+Tests: 608 files and 5,537 tests pass in reports, conversation and check-ins.
+
+
+### Part 2A: sharing when the lead has left, the admin's line, and the decision field
+
+- **If the lead has left the organisation, an admin can share the report** (`d8a4ebb1`). Everybody reads, for example, "Grace Otieno shared this report, because Rukia Mwangi has left the organisation.", on the report and in the email. While the lead is still there, only the lead can share it, as before.
+- **An admin who cannot see a target reads only "has checked in"** (`badb332e`, `4390d671`). The line used to read "Aisha Otieno has checked in, and nothing here needs you this week."; it now reads "Aisha Otieno has checked in." No page yet sums up a whole check-in for an admin, so decision 47's "Nothing you have access to needs you this week." has nowhere to go yet. It will be used when such a page exists.
+- **A decision about a person is now a field the lead sets** (`979b5e41`, migration `20260929150000_a_decision_about_a_person`, applied to the local test database only). The guess from the target's wording is removed entirely. Existing targets stay unmarked, because they are not guessed. A target marked as a decision about a person reaches only the lead, whatever the check-in's setting.
+
+Tests: 697 files and 6,508 tests pass in the parts touched.
+
 ### Part 1: pattern names approved, and patterns switched on
 
 - **The names** (`5595c033`) live in one place, `api/src/modules/patterns/plain-pattern-names.ts`, and every served pattern reads its name from there. Hafsah's eight rewordings are in, and B5 is as written. `docs/pattern-names.md` is marked approved, and a test keeps the two word for word the same. E4 and F5 are in a list nothing that serves a pattern reads.
@@ -54,6 +397,17 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
   - The judgement told a lead "You have a pattern of…", a label, which breaks decision 11.
   - A session 1 report showed a pattern that only reached three at session 3.
   - The You board said "One thing for this week: Names what they would do differently".
+- **The wording is fixed in place,** one commit each:
+  - A lead reading their own pattern reads "Only you see this. Nothing is decided from it." (`1d027288`)
+  - A title is never used as a first name (`b5735a70`).
+  - "What happened" is reworded once for each reader, when the pattern becomes ready, and never when a page is opened (`d1a6f809`). The person gets "you", and the lead gets the person's first name. The mismatched sentence had a cause: the detector was shown last period's words for one pattern and wrote them up under another. Such a detection is now refused before it is stored.
+  - "This came up in 3 of your check-ins, not just once." (`513e7b2a`)
+  - The "nothing has come up often enough" sentence no longer sits beside a pattern (`4add309d`). The real fault was that the carrying patterns were missing from that check.
+  - "You have a pattern of…" is now rewritten once, as a label, into what happened (`9e4393d0`). This changes how reports are written, so it goes into the next scenario re-runs.
+  - A session report shows only patterns that had reached three periods by that session (`67d8b8d1`).
+  - The You board says "One thing to try this week is to name what you would do differently, then do it." (`6859e4a1`)
+- Tests: 421 files and 3,965 tests pass in the parts touched.
+- The screens workspace is told what they now receive, in `docs/answers-from-engine.md`. They are also told about the same colon-joined line in their own `WhatToWorkOnNext.tsx`.
 - **A side effect of the check:** reading as each person marked 13 patterns as shown to them today, which is the product's normal behaviour. The leads' three-day clocks for those started today.
 
 ### Part 4: migrations

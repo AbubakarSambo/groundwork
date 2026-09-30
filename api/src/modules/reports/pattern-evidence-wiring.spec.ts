@@ -210,7 +210,10 @@ describe('GW-PATTERN-WIRE-B: patterns do not reach the synthesis prompt at all',
     const src = require('fs').readFileSync(__dirname + '/reports.service.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     const at = src.indexOf('const patternRowsForPage = PATTERNS_ARE_SERVED');
     expect(at).toBeGreaterThan(-1);
-    expect(src.slice(at, at + 1200)).toContain('const patternsForPage = servedPatterns(');
+    /* 29 September 2026: wrapped in wordPatternEvidence, which reworks `whatHappened` for the
+       reader once (decision 7); the call to servedPatterns underneath is unchanged. */
+    expect(src.slice(at, at + 1200)).toContain('const patternsForPage = await wordPatternEvidence(');
+    expect(src.slice(at, at + 1200)).toContain('servedPatterns(');
     const rules = require('fs').readFileSync(__dirname + '/../patterns/who-reads-a-pattern.ts', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
     expect(rules).toContain('ALIGNMENT_FEED_ONLY_CODES.has(row.code)');
   });

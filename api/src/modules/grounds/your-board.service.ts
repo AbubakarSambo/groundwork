@@ -1,4 +1,5 @@
-import { notToldYet } from './a-goal-not-told-stays-with-the-lead';
+import { notToldYet, aWeekHasPassedSinceNotTold, whatThePersonReadsAfterAWeek } from './a-goal-not-told-stays-with-the-lead';
+import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
@@ -57,13 +58,26 @@ export class YourBoardService {
             select: { id: true, groundId: true, participantId: true, text: true, kind: true, status: true, authoredBy: true, dueSaid: true, awareness: true, createdAt: true },
             orderBy: { createdAt: 'asc' },
           /* A goal the lead has not told you about is not on your board until they have. The lead of
-             that check-in still reads it. See a-goal-not-told-stays-with-the-lead. */
-          }).then((rows: any[]) => rows.filter((o) => !notToldYet(o) || mine.some((g) => g.id === o.groundId && g.initiatorId === reader.userId)))
+             that check-in still reads it. See a-goal-not-told-stays-with-the-lead.
+             DECISION 56, ITEM 4: once a week has passed still not told, it is not left off any more -
+             it is told plainly, with no number, and who set it. */
+          }).then((rows: any[]) => Promise.all(rows
+            .filter((o) => !notToldYet(o)
+              || mine.some((g) => g.id === o.groundId && g.initiatorId === reader.userId)
+              || aWeekHasPassedSinceNotTold(o))
+            .map(async (o) => {
+              if (!notToldYet(o) || mine.some((g) => g.id === o.groundId && g.initiatorId === reader.userId)) return o;
+              const g = mine.find((x) => x.id === o.groundId);
+              const lead = (g?.participants ?? []).find((p: any) => p.userId === g?.initiatorId);
+              const leadName = (lead?.user?.firstName ?? '').trim() || 'Your lead';
+              const area = await areaOfGoalOrFallback(this.prisma, o.text);
+              return { ...o, text: whatThePersonReadsAfterAWeek(leadName, area) };
+            })))
         : none,
       participantIds.length
         ? this.prisma.groundObjective.findMany({
             where: { groundId: { in: groundIds }, ownerParticipantId: { in: participantIds } },
-            select: { id: true, groundId: true, name: true, target: true, count: true, ownerParticipantId: true },
+            select: { id: true, groundId: true, name: true, target: true, count: true, ownerParticipantId: true, isADecisionAboutAPerson: true },
             orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
           })
         : none,

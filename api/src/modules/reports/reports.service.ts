@@ -30,8 +30,9 @@ import { isThisACascade } from '../board/is-this-a-cascade';
 import { theSessionReport, hasOwnerAndDate } from './the-session-report';
 import { whatToWorkOnNext } from './what-to-work-on-next';
 import { whatToProbe } from './what-to-probe';
-import { wordedByTheModel, type Drafted } from './the-engine-drafts-it-the-model-words-it';
+import { wordedByTheModel, type Drafted, type Compose } from './the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from './a-line-worded-once-is-kept';
+import { wordPatternEvidence } from './pattern-evidence-in-plain-words';
 import { OneAtATime } from './one-warm-up-at-a-time';
 import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
@@ -86,13 +87,15 @@ import { withoutOtherPeoplesReads } from './own-reads-only';
 import { findingsWithoutTheirLabels } from './a-finding-is-served-without-its-label';
 import { gapsAsTheirSentences } from './a-gap-is-served-as-its-sentence';
 import { linesBuiltAtTheRead } from './a-line-built-at-the-read-is-read-too';
-import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
+import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom, theRecordAQuoteMayComeFromByParticipant } from './a-quote-built-at-the-read';
 import { whatTodayReads } from './what-today-reads-from-the-record';
 import { theSameThingForTheLead } from '../board/the-same-thing-read-from-the-record';
 import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRewrite, THE_LINES_REWRITTEN, theRewritesById } from './every-line-is-read-before-it-is-kept';
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
+import { viewerIsTheSubjectOfAnEvaluationCheckIn } from './is-this-an-evaluation-check-in';
+import { whatEachPersonSaidForTheSubject, deeplyWithoutColleaguesQuotesForTheSubject } from './colleagues-exact-words-stay-with-the-manager';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
 import { tallyInReport } from './counts-accounts';
 import { forensicInReport, withoutDashes } from './forensic-voice';
@@ -138,7 +141,8 @@ import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType,
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternRow } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternRow } from '../patterns/who-reads-a-pattern';
+import { periodOf } from '../patterns/period-of';
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
@@ -160,11 +164,12 @@ import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-w
 import { whatThisSessionHolds } from './what-this-session-holds';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { ONLY_THE_LEAD_RELEASES } from './only-the-lead-releases';
+import { whoSharedItBecauseTheLeadLeft, fullNameOf, sharedByAnAdminFrom, type SharedBecauseLeadLeft } from './who-shared-it-because-the-lead-left';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { documentBackedShare } from './backed-by-a-document';
 import { howManyHaveAnswered, howManyInTheRoundAnswered } from './how-many-have-answered';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
-import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
+import { aRoleInTheirOwnWords, withoutTheLeadsDescriptionOfAnyone, deeplyWithoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
 
 // Lookup from pattern code -> its name, for readable synthesis-evidence phrasing.
 // Built once from the two code tables rather than duplicating names here.
@@ -3143,6 +3148,22 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }
     }
 
+    /*
+     * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being
+     * reviewed reads the facts, never a colleague's exact words - those go only to the manager (an
+     * admin reads as the manager does). This is the one reader that changes for: see
+     * colleagues-exact-words-stay-with-the-manager.ts. A colleague giving a view, and everybody on
+     * every other kind of check-in, reads `whatEachPersonSaid` exactly as before.
+     */
+    if (viewerIsTheSubjectOfAnEvaluationCheckIn({
+      scenario: (ground as any).scenario,
+      isLead: viewerIsLead,
+      viewerParticipantId: me?.id ?? null,
+      participants: ground.participants as any,
+    })) {
+      shape.whatEachPersonSaid = whatEachPersonSaidForTheSubject(shape.whatEachPersonSaid as any[]) as any;
+    }
+
     /**
      * WHO THIS REPORT IS COUNTING, AND WHO HAS SHOWN THEIRS.
      *
@@ -3273,11 +3294,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const patternRowsForPage = PATTERNS_ARE_SERVED
       ? await this.prisma.patternDetection.findMany({ where: { groundId }, orderBy: [{ lastSeenAt: 'desc' }], select: PATTERN_ROW_SELECT })
       : [];
-    const patternsForPage = servedPatterns(
-      patternRowsForPage as any,
-      { participantId: me?.id ?? null, runsIt: viewerIsLead },
-      whoIsWhoIn(ground.participants as any, ground.initiatorId),
-    );
+    /* A report for session N shows only what had reached three periods BY session N - not the
+       ground's current state, which may have reached it later. See patternRowAsOfSession. On a
+       daily ground `seenInSessions` holds calendar-week period numbers, not session numbers (see
+       period-of.ts), so "as of this session" has to ask in the same units: the period this
+       session's own report was taken in, not its raw session number. */
+    const periodOfThisSession = periodOf({ sessionNumber, when: snapshot?.takenAt }, ground as any);
+    const patternRowsAsOfThisSession = (patternRowsForPage as APatternRow[]).map((r) => patternRowAsOfSession(r, periodOfThisSession));
+    const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
+    const patternsForPage = await wordPatternEvidence(
+      servedPatterns(
+        patternRowsAsOfThisSession as any,
+        { participantId: me?.id ?? null, runsIt: viewerIsLead },
+        namesForPatterns,
+      ),
+      namesForPatterns.firstNameOf ?? (() => null),
+      this.patternEvidenceCompose(),
+    ).catch(() => servedPatterns(patternRowsAsOfThisSession as any, { participantId: me?.id ?? null, runsIt: viewerIsLead }, namesForPatterns));
     /* The person reading their own for the first time starts the clock on when the lead may read it. */
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(patternRowsForPage as any, patternsForPage));
     /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */
@@ -4088,6 +4121,7 @@ happened, and what is in the way.`;
         select: {
           participantId: true, text: true, whenSaid: true, explicit: true, status: true, source: true,
           statedInSession: true, saidAgainIn: true, settledBy: true,
+          saidWordForWord: true, whenSaidWordForWord: true,
         },
       }) ?? Promise.resolve([])).catch(() => [] as any[]),
       (this.prisma.groundDependency?.findMany?.({
@@ -4518,22 +4552,53 @@ happened, and what is in the way.`;
   }
 
   /**
-   * ONLY THE PERSON WHO RUNS THE CHECK-IN RELEASES ITS REPORT (request 57).
+   * ONLY THE PERSON WHO RUNS THE CHECK-IN RELEASES ITS REPORT (request 57) - UNLESS THEY HAVE LEFT
+   * (decision 53, 29 September 2026).
    *
    * The route was guarded by the admin role alone, so any admin of the organisation could share a
    * check-in's report while the lead's own Sessions tab told them "Sharing the report and ending
    * the check-in are Rukia's to decide". Hafsah's decision: the lead (`initiatorId`) decides, and
    * nobody else. There is no override for another admin; the automatic release the listener does
    * when a round closes goes through `release()` itself and is not a person pressing anything.
+   *
+   * DECISION 53 ADDS ONE EXCEPTION: if the lead's membership has ended - `User.isActive === false`,
+   * the same flag `leaveOrg` and the admin's `remove` set (users.service.ts) - there is nobody left
+   * who could ever press the button, and the report would sit released-never. Another admin may
+   * share it in their place, and the report and its notification say who shared it and why. See
+   * who-shared-it-because-the-lead-left.ts.
    */
   async releaseAsTheLead(groundId: string, userId: string, organizationId: string) {
     const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, select: { initiatorId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    if (!userId || ground.initiatorId !== userId) throw new ForbiddenException(ONLY_THE_LEAD_RELEASES);
-    return this.release(groundId, organizationId);
+    if (ground.initiatorId === userId) return this.release(groundId, organizationId);
+
+    const lead = await this.prisma.user.findUnique({
+      where: { id: ground.initiatorId },
+      select: { isActive: true, firstName: true, lastName: true },
+    }).catch(() => null);
+    /* Present, just not the one who pressed Release: still refused, exactly as request 57 decided. */
+    if (!userId || !lead || lead.isActive) throw new ForbiddenException(ONLY_THE_LEAD_RELEASES);
+
+    /* AND STILL ONLY AN ADMIN OF THIS ORGANISATION. The route is already gated on the admin role
+       (`@Roles(Role.ADMIN)`), but that gate lives on the HTTP layer; checked again here so this
+       method refuses on its own, the same defence-in-depth `isAnAdminOf` gives every other read. */
+    const sharingAdmin = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true, role: true, organizationId: true },
+    }).catch(() => null);
+    if (!adminsThisOrg(sharingAdmin, { organizationId })) throw new ForbiddenException(ONLY_THE_LEAD_RELEASES);
+
+    const byName = fullNameOf(sharingAdmin, 'An admin');
+    const leadName = fullNameOf(lead, 'The person who ran this check-in');
+    return this.release(groundId, organizationId, {
+      byUserId: userId,
+      byName,
+      leadName,
+      sentence: whoSharedItBecauseTheLeadLeft(byName, leadName),
+    });
   }
 
-  async release(groundId: string, organizationId: string) {
+  async release(groundId: string, organizationId: string, sharedBecauseLeadLeft?: Omit<SharedBecauseLeadLeft, 'at'>) {
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
       include: { participants: { include: { user: { select: { passwordHash: true } } } }, report: true },
@@ -4552,9 +4617,22 @@ happened, and what is in the way.`;
      * here, so session two's report told nobody and an open link's late answerers got nothing.
      */
     const roundNow = await this.prisma.checkIn.aggregate({ where: { groundId, status: CheckInStatus.COMPLETED }, _max: { sessionNumber: true } }).then((r) => r._max.sessionNumber ?? 1).catch(() => 1);
-    const told = await this.tellThemTheReportIsReady(groundId, roundNow);
+    const told = await this.tellThemTheReportIsReady(groundId, roundNow, undefined, sharedBecauseLeadLeft?.sentence);
     if (told.attempted > 0 && told.failed === told.attempted) {
       throw new Error('All report notification emails failed - report not released. Retry to send notifications.');
+    }
+
+    /* DECISION 53: KEPT ON THE GROUND'S OWN AUDIT LOG, an existing free-form JSON column, so this
+       needs no schema change. `getAsBuilt` reads this one key back out and serves it to every reader
+       of the report as `sharedByAnAdmin`, so the sentence outlives the one release email. */
+    if (sharedBecauseLeadLeft) {
+      const existingLog = ground.groundAuditLog && typeof ground.groundAuditLog === 'object' && !Array.isArray(ground.groundAuditLog)
+        ? (ground.groundAuditLog as Record<string, unknown>)
+        : {};
+      await this.prisma.ground.update({
+        where: { id: groundId },
+        data: { groundAuditLog: { ...existingLog, sharedBecauseLeadLeft: { ...sharedBecauseLeadLeft, at: new Date().toISOString() } } },
+      }).catch((err: any) => this.logger.warn(`Could not record who shared the report for ${groundId}: ${err?.message}`));
     }
 
     /* A discovery session's direction is what its report IS; read it at release, once, and keep it. */
@@ -4594,7 +4672,7 @@ happened, and what is in the way.`;
    * nowhere to send it. Called on release, when a later round closes, and when somebody completes after
    * the report has released - the last of these is what the open link needed.
    */
-  async tellThemTheReportIsReady(groundId: string, sessionNumber: number, onlyParticipantId?: string): Promise<{ attempted: number; failed: number }> {
+  async tellThemTheReportIsReady(groundId: string, sessionNumber: number, onlyParticipantId?: string, sharedByAnAdminSentence?: string): Promise<{ attempted: number; failed: number }> {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
       include: { participants: { include: { user: { select: { passwordHash: true } } } } },
@@ -4626,8 +4704,8 @@ happened, and what is in the way.`;
         await this.prisma.reportNotice.create({ data: { groundId, participantId: p.id, sessionNumber } });
       } catch { continue; }
       try {
-        if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p));
-        else await this.email.sendReportReady(p.email, ground.label, linkFor(p));
+        if (aStandingUpdate && theOneLine) await this.email.sendTeamUpdateAllIn(p.email, theOneLine, ground.participants.length, linkFor(p), sharedByAnAdminSentence);
+        else await this.email.sendReportReady(p.email, ground.label, linkFor(p), sharedByAnAdminSentence);
       } catch (err: any) {
         failed += 1;
         this.logger.error(`Report-ready mail failed for ${p.email} on ${groundId} round ${sessionNumber}: ${err?.message}`);
@@ -5132,6 +5210,15 @@ happened, and what is in the way.`;
     return Object.fromEntries(out.map((d) => [d.key, d.text]));
   }
 
+  /** The same warm-up-only, kept-once wording as `phrase`, for pattern-evidence.ts's one-line-at-a-time compose. */
+  private patternEvidenceCompose(): Compose {
+    const mayWord = WORDING_NEW_LINES.getStore() === true;
+    return rememberedCompose(this.prisma, mayWord
+      ? (system, draft) => this.anthropic.respond(system, [{ role: 'user', content: draft }])
+      /* Kept lines only: nothing new is worded, and nothing is written, by opening. */
+      : async () => null, mayWord);
+  }
+
   /**
    * WHAT THE READS OF A ROUND ARE BUILT FROM, AS ONE FINGERPRINT (decision 44).
    *
@@ -5290,7 +5377,7 @@ happened, and what is in the way.`;
   private async coachingNoteFor(
     groundId: string,
     ground: any,
-    participant: { id: string; roleAsDescribed?: string | null },
+    participant: { id: string; roleAsDescribed?: string | null; partyType?: string | null },
     nameOf: (participantId: string | null, fallback: string | null) => string | null,
   ) {
     /* No coaching note for a discovery participant: they were asked as experts, not people being developed. */
@@ -5325,7 +5412,15 @@ happened, and what is in the way.`;
       /* Their own, after three periods, and nobody else's. See patterns/who-reads-a-pattern. */
       patterns: patternRowsThisReaderMayRead(held.detections, { participantId: participant.id, runsIt: false })
         .map((d) => ({ code: d.code, periodsObserved: periodsSeen(d) })),
-      role: participant.roleAsDescribed ?? null,
+      /*
+       * NEVER THE LEAD'S SENTENCE ABOUT THIS PERSON, EVEN HERE (decision 30). This note is served
+       * to the very person `roleAsDescribed` is about, and it used to hand that field to
+       * `whatToWorkOnNext` unguarded - safe today only because `roleToSay` below happens to also be
+       * passed and preferred, which is an accident of two fields agreeing, not a rule. Both fields
+       * now carry the same guarded value: their own words at setup for a lead, nothing for anyone
+       * else. See aRoleInTheirOwnWords.
+       */
+      role: aRoleInTheirOwnWords(participant as any),
       /* Said to this person only in their own words, never the lead's sentence about them (request 36). */
       roleToSay: aRoleInTheirOwnWords(participant as any),
       /*
@@ -6105,20 +6200,33 @@ happened, and what is in the way.`;
         };
       }
 
+      const formingBase: any = whatAParticipantMayRead(withoutOtherPeoplesReads(
+        this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
+        {
+          viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
+          viewerParticipantId: participant?.id ?? null,
+          viewerIsLead: isInitiator || isOrgAdmin,
+        },
+      ), { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null });
+      /*
+       * AND THE JUDGEMENT, FOR AN ADMIN WHO DOES NOT RUN THE CHECK-IN, ON A FORMING REPORT TOO
+       * (decision 5, clarified 29 September). Same reason as the released branch below: an admin
+       * keeps `theJudgement` in full under decision 5, but not a sentence built from the lead's
+       * private description of somebody. See deeplyWithoutTheLeadsDescriptionOfAnyone.
+       */
+      if (!isInitiator && 'theJudgement' in formingBase) {
+        const theDescriptions = (ground.participants as any[]).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]);
+        const shareable = await theShareableTextFor(this.prisma as any, ground as any).catch(() => [] as string[]);
+        formingBase.theJudgement = deeplyWithoutTheLeadsDescriptionOfAnyone(formingBase.theJudgement, theDescriptions, false, shareable);
+      }
+
       return {
         /* THE LEAD'S LAYER COMES OFF HERE TOO. A forming report carries the same stored row, so a
            participant who has answered read the judgement about the room before it was released. */
         /* AND OTHER PEOPLE'S RATINGS OFF, as in the released branch below. This branch skipped
            withoutOtherPeoplesReads, so a participant who had answered read every other person's
            specificity read on a forming report (screens request 43, 28 September 2026). */
-        ...whatAParticipantMayRead(withoutOtherPeoplesReads(
-          this.asItWasShared(ground as any, participant?.id ?? null, isInitiator || isOrgAdmin) as any,
-          {
-            viewerLabel: participant ? (labelsForParties(ground.participants as any).get(participant.id) ?? null) : null,
-            viewerParticipantId: participant?.id ?? null,
-            viewerIsLead: isInitiator || isOrgAdmin,
-          },
-        ), { isLead: isInitiator || isOrgAdmin, participantId: participant?.id ?? null }),
+        ...formingBase,
         activated: true,
         forming: true,
         /* NAMED, LIKE EVERYTHING ELSE SOMEBODY READS. overTime is assembled after the name pass,
@@ -6345,6 +6453,69 @@ happened, and what is in the way.`;
         ? await this.whatTheRecordHolds(groundId, ground.participants as any, isInitiator || isOrgAdmin, { isTheLead: isInitiator, participantId: participant?.id ?? null })
         : {}),
     };
+    /*
+     * THE READ-SIDE NET (decision 30, narrowed 30 September 2026). `sharedPicture`, `findings` and
+     * `theOpening` are the shared picture everybody in the check-in reads - by design (see
+     * the-judgement-is-the-leads) - so they are never stripped wholesale. What may not reach a
+     * non-lead reader is a sentence built from a lead's private description of anyone that is not
+     * ALSO something this reader may already read some other way - what they were told, the shared
+     * targets and aims, and what people said in their own check-ins (decision 4). Checked live: the
+     * seniorhire "own the relationships with the five largest clients" sentence is shareable this
+     * way on both run 19 and goals-1, and stays for Tobi; a private phrase found nowhere shareable
+     * still comes out. See theShareableTextFor and withoutTheLeadsDescriptionOfAnyone.
+     */
+    if (!isInitiator) {
+      const theDescriptions = (ground.participants as any[]).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]);
+      const shareable = await theShareableTextFor(this.prisma as any, ground as any).catch(() => [] as string[]);
+      base.sharedPicture = withoutTheLeadsDescriptionOfAnyone(base.sharedPicture, theDescriptions, false, shareable);
+      base.theOpening = withoutTheLeadsDescriptionOfAnyone(base.theOpening, theDescriptions, false, shareable);
+      if (Array.isArray(base.findings)) {
+        base.findings = base.findings.map((f: any) => (f && typeof f === 'object'
+          ? { ...f, text: withoutTheLeadsDescriptionOfAnyone(f.text, theDescriptions, false, shareable) ?? '' }
+          : f));
+      }
+      /*
+       * AND THE JUDGEMENT, FOR AN ADMIN WHO DOES NOT RUN THE CHECK-IN (decision 5, clarified 29
+       * September). `whatAParticipantMayRead` keeps `theJudgement` here because an admin reads the
+       * room's judgement in full under decision 5 - but the room judgement is handed "taken on for:
+       * <role>", where role is `remitAsGiven ?? roleAsDescribed`, the lead's own private words. What
+       * the model writes back can carry those words in any of its sentences, so the same net that
+       * protects sharedPicture, theOpening and findings above is walked over the whole structure. A
+       * no-op for a genuine participant, whose `theJudgement` is already gone by this point. See
+       * deeplyWithoutTheLeadsDescriptionOfAnyone.
+       */
+      if ('theJudgement' in base) {
+        base.theJudgement = deeplyWithoutTheLeadsDescriptionOfAnyone(base.theJudgement, theDescriptions, false, shareable);
+      }
+    }
+    /*
+     * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: a quote of a colleague's words in the TEAM
+     * report - sharedPicture, theOpening, findings[].text, agreements, and anywhere else this is
+     * served as prose - becomes a statement of the fact without the exact words, for the subject of
+     * an evaluation check-in only. Every quote here is already known to be somebody's own words
+     * (a-quote-is-what-they-said runs before this is ever stored, and a-quote-built-at-the-read for
+     * what is built now); this only decides whose, using the same matching rule
+     * (theRecordAQuoteMayComeFromByParticipant), and fails closed - a quote is left alone only
+     * where it positively matches the SUBJECT's own record. A no-op for the lead, an admin (both
+     * count as `isLead` here, same as everywhere else in this method) and a colleague giving a view.
+     */
+    if (viewerIsTheSubjectOfAnEvaluationCheckIn({
+      scenario: (ground as any).scenario,
+      isLead: isInitiator || isOrgAdmin,
+      viewerParticipantId: participant?.id ?? null,
+      participants: ground.participants as any,
+    })) {
+      const recordByParticipant = await theRecordAQuoteMayComeFromByParticipant(this.prisma as any, groundId).catch(() => new Map<string, string[]>());
+      const subjectRecord = recordByParticipant.get(participant!.id) ?? [];
+      base.sharedPicture = deeplyWithoutColleaguesQuotesForTheSubject(base.sharedPicture, subjectRecord);
+      base.theOpening = deeplyWithoutColleaguesQuotesForTheSubject(base.theOpening, subjectRecord);
+      base.agreements = deeplyWithoutColleaguesQuotesForTheSubject(base.agreements, subjectRecord);
+      if (Array.isArray(base.findings)) {
+        base.findings = base.findings.map((f: any) => (f && typeof f === 'object'
+          ? { ...f, text: deeplyWithoutColleaguesQuotesForTheSubject(f.text, subjectRecord) ?? '' }
+          : f));
+      }
+    }
     if (!isInitiator && !isOrgAdmin) {
       delete base.arcSignals;
     } else if (base.arcSignals && typeof base.arcSignals === 'object') {
@@ -6379,6 +6550,15 @@ happened, and what is in the way.`;
         isPostSignOff: c.isPostSignOff,
       }));
     }
+
+    /*
+     * DECISION 53: WHO SHARED THIS, IF IT WAS NOT THE LEAD. Kept on the ground's own audit log by
+     * release() (see who-shared-it-because-the-lead-left.ts) rather than a new column. Served to
+     * every reader of a released report - the fact of who shared it, and why, is not one of this
+     * product's private things.
+     */
+    const sharedByAnAdmin = sharedByAnAdminFrom((ground as any).groundAuditLog);
+    if (sharedByAnAdmin) base.sharedByAnAdmin = sharedByAnAdmin;
 
     return base;
   }

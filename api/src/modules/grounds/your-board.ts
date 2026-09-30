@@ -2,6 +2,7 @@ import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said'
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 import type { AServedPattern } from '../patterns/who-reads-a-pattern';
+import { aStepSaidToYou } from './a-step-said-to-you';
 
 /**
  * THE YOU BOARD (C2, U.12): WHAT IS YOURS, ACROSS YOUR CHECK-INS, FOR YOUR EYES ONLY.
@@ -219,6 +220,27 @@ export function keptLately(rows: readonly { status: string | null; createdAt?: D
   return of ? { kept, of, says: keptLatelySays(kept, of) } : null;
 }
 
+/**
+ * THE SAME COUNT, FOR THE ENGINE'S OWN USE (week 10). suggestions/a-suggestion-reached-from-the-
+ * record.ts is handed this pair to decide whether a "support" suggestion is worth reaching from
+ * the record - it never computes the count itself, and the count it is handed never reaches
+ * anybody but the person it belongs to (a-suggestion-reached-from-the-record.ts never writes it
+ * into a lead-facing field; decision 24, "the count stays the person's alone").
+ *
+ * A differently named wrapper, so kept-in-the-last-four-weeks-is-yours-alone.spec.ts's whole-repo
+ * scan for the identifiers `keptLately` and `keptLatelySays` still finds them nowhere but this
+ * file - the rule it proves ("nothing outside the You board works out... the count") is about who
+ * computes it, and this still computes it here and nowhere else, once, reused rather than
+ * duplicated.
+ */
+export function commitmentsKeptInTheLastFourWeeks(
+  rows: readonly { status: string | null; createdAt?: Date | string | null }[],
+  now: Date = new Date(),
+): { kept: number; of: number } | null {
+  const r = keptLately(rows, now);
+  return r ? { kept: r.kept, of: r.of } : null;
+}
+
 const SETTLED_BY: Record<string, 'said' | 'proven' | 'confirmed'> = { SAID: 'said', PROVEN: 'proven', CONFIRMED: 'confirmed' };
 
 const STATE_SAYS: Record<SaidState, string> = { open: 'Open', kept: 'Kept', not_done: 'Not done' };
@@ -338,9 +360,10 @@ export function yourBoard(
     .filter((c) => myParticipantIds.has(c.participantId) && (c.currentStep ?? '').trim())
     .sort((a, b) => time(b.updatedAt) - time(a.updatedAt))[0];
   let coaching: YourBoard['coaching'] = null;
-  if (step) {
+  const saidToYou = step ? aStepSaidToYou(step.currentStep) : null;
+  if (step && saidToYou) {
     const g = mine.find((x) => (x.participants ?? []).some((p) => p.id === step.participantId));
-    coaching = { says: `One thing for this week: ${step.currentStep!.trim()}`, checkIn: g?.label ?? '' };
+    coaching = { says: saidToYou, checkIn: g?.label ?? '' };
   }
 
   return {

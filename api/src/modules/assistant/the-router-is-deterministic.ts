@@ -30,6 +30,10 @@ export type Lane =
   | 'add_a_to_do'
   | 'my_to_dos'
   | 'tick_off_a_to_do'
+  | 'add_context'
+  | 'context_line'
+  | 'lead_note'
+  | 'questions_for_people'
   | 'unplaced';
 
 export interface Routed {
@@ -84,7 +88,12 @@ const RULES = [
      * directions and the send lane owns the word "send". Narrow: it wants a word that names a FILE
      * or an act of adding one, not any mention of a document.
      */
-    /\b(?:upload|attach|add|put\s+in|share)\s+(?:a|an|our|my|the|this)?\s*(?:file|document|doc|pdf|deck|handbook|policy|contract|notes?)\b/i,
+    /*
+     * "notes" (plural) still reads as a document, e.g. "share the meeting notes" - but singular
+     * "note" does not, so it is free for the lead_note/context_line lanes' own "share the note ..."
+     * (decision 50, piece 3, item 2), which would otherwise never be reached from here.
+     */
+    /\b(?:upload|attach|add|put\s+in|share)\s+(?:a|an|our|my|the|this)?\s*(?:file|document|doc|pdf|deck|handbook|policy|contract|notes)\b/i,
     /\bhere\s+is\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf|handbook|policy|contract)\b/i,
     /\bi\s+(?:have|want\s+to\s+(?:add|upload|attach))\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf)\b/i,
     /*
@@ -295,6 +304,72 @@ const RULES = [
     /\bwhat(?:'s| is)\s+connected\b/i,
     /\bhow\s+current\b/i,
     /\bwhat\s+would\s+you\s+connect\b/i,
+  ]),
+  rule('context_line', [
+    /*
+     * TYPING A LINE DIRECTLY, WITH NO CHAT (decision 50, item 17). Anchored on the WHOLE message so
+     * "strategy" or "decision" said in passing, anywhere else, never lands here by accident - the
+     * lead has to name the kind and put the line straight after it, the same shape the Context and
+     * resources page's own "type it in" box already asks for.
+     */
+    /^\s*strategy\s*[:\-]\s*.{2,400}$/i,
+    /^\s*way\s+of\s+working\s*[:\-]\s*.{2,400}$/i,
+    /^\s*decision\s*[:\-]\s*.{2,400}$/i,
+    /^\s*unsettled\s*[:\-]\s*.{2,400}$/i,
+    /^\s*context\s+note\s*[:\-]\s*.{2,400}$/i,
+    /*
+     * CHANGING A LINE ALREADY ON THE RECORD (decision 50, piece 3, item 2: `changeContextLine`).
+     * "the line" keeps this apart from changing an objective, a commitment or a to-do, each of which
+     * has its own lane and its own words for the same action.
+     */
+    /\b(?:reword|change)\s+the\s+line\b/i,
+    /\bshare\s+the\s+line\b/i,
+    /\bmake\s+the\s+line\s+private\b/i,
+    /\bretire\s+the\s+line\b/i,
+  ]),
+  rule('lead_note', [
+    /*
+     * A NOTE ONLY THE LEAD SEES (decision 50, item 9). Narrow, on the word "private" or "privately" -
+     * an ordinary "note:" alone is ambiguous with a shared context note (above) and is left unplaced
+     * rather than guessed onto either.
+     */
+    /\b(?:private|personal)\s+note\b/i,
+    /\bnote\s+(?:privately|only\s+for\s+me|just\s+for\s+me)\b/i,
+    /*
+     * SHARING A PRIVATE NOTE WITH EVERYBODY (decision 50, piece 3, item 2: `shareLeadContext`).
+     */
+    /\bshare\s+(?:the|my|this)\s+note\b/i,
+  ]),
+  rule('questions_for_people', [
+    /*
+     * THE LEAD'S EXACT QUESTIONS FOR PEOPLE (decision 34; decision 50 item 8). Lists what is waiting,
+     * and a name after "confirm"/"decline"/"leave out" acts on one of them - never a bare yes or no
+     * without saying which, since more than one could be waiting at once.
+     */
+    /\bquestions?\s+for\s+(?:people|someone|somebody|him|her|them)\b/i,
+    /\b(?:confirm|decline|leave\s+out)\s+(?:the\s+)?question\s+for\s+.+/i,
+    /*
+     * CONFIRMING WITH THE LEAD'S OWN CHANGED WORDING (decision 34; decision 50, piece 3, item 3).
+     * "ask Ben 'how are the Lagos numbers looking?' instead" - a name, then the lead's own sentence in
+     * quotes, replacing whatever question was waiting for that person.
+     */
+    /\bask\s+\S.*["'“].+["'”]\s*(?:instead)?\s*[.!]?\s*$/i,
+  ]),
+  rule('add_context', [
+    /*
+     * THE SETUP CONVERSATION, REACHED FROM HERE RATHER THAN A SEPARATE CHAT (decision 50).
+     *
+     * Narrow, and on the word "context" or an explicit statement of what a check-in still needs to
+     * run - not "objectives" or "targets", which the drafting lane above already owns for a
+     * different kind of writing (a draft the team agrees together, not a lead's own setup). Placed
+     * above `how_we_work` only, so a genuine handbook question never lands here first, and below
+     * everything more specific for the same reason every lane here stays narrow.
+     */
+    /\b(?:add|put|note)\s+(?:this|that|it)\s+(?:as\s+|to\s+|into\s+|for\s+)?(?:the\s+)?context\b/i,
+    /\b(?:the\s+)?context\s+(?:for|on|about)\s+(.+)/i,
+    /\bset(?:ting)?\s+up\s+(?:the\s+)?context\b/i,
+    /\b(?:add|give)\s+(?:some\s+)?context\s+(?:for|to|on)\s+(?:the|this|our|my)\s+check[-\s]?in\b/i,
+    /\bwhat(?:'s| is)\s+missing\s+(?:from|on)\s+(?:the|this|our)\s+check[-\s]?in\b/i,
   ]),
   /*
    * LAST, ON PURPOSE. "How do we..." is the broadest shape here, and above the others it would

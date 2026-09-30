@@ -262,3 +262,75 @@ Built in `343cf214`, `46eff9f0` and `643a245a`. **When you merge, apply the migr
 **Who sees which rows:** the lead and an admin see every row, with names. Where people do not see each other, a participant sees only their own rows, the lead's, and rows with nobody's name on them. Hidden targets, private file names and goals not told yet are taken out, and a person's own words in `said` stay exactly as said.
 
 **Not built yet:** the other sections of your request 70, and records filled from another system, such as a helpdesk or payments.
+
+## 29 September, night: patterns are switched on, with the approved names
+
+Hafsah approved the plain pattern names (decision 52) and patterns are switched on (`19cdf9b0`). Nothing changes in where you read them: every road still goes through the same served shape, and a pattern arrives only when every rule holds (three periods, the person first, the lead later, no colleague ever sees another person's, E4 and F5 never). What you will now receive where you had nothing before:
+
+```json
+{ "id": "pd2", "participantId": "p-femi", "yours": true, "kind": "attention",
+  "heading": "Others describe doing work they described as theirs",
+  "whatHappened": "You described the Harbor Foods deal as your own, although Ngozi prepared the pricing.",
+  "sessions": [1, 2, 3],
+  "howOften": "This came up in 3 of your check-ins, in sessions 1, 2 and 3.",
+  "askThem": null, "theirWords": null, "canAnswer": true,
+  "whoSeesIt": "You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it." }
+```
+
+- `heading` is always the approved plain name. Never show a code or any other name.
+- `whatHappened` is worded for the reader: "you" for the person it is about, their first name for the lead. It can be `null`; draw nothing then.
+- `kind` is `good`, `carrying` or `attention`.
+- `canAnswer` is true only for the person it is about. Their answer is `POST /patterns/:id/answer` with `{ "text": "..." }`, and the lead then reads it in `theirWords`.
+- For the lead, `askThem` holds one question to ask the person, and `whoSeesIt` says whether the person has answered yet.
+- `participantId` is for placing it under the right person. Never join it to a name as a label beside the person (decision 11).
+- A session report now shows only patterns that had reached three periods by that session.
+
+**Coming next, for Hafsah's decision 57:** the lead marking a pattern "right", "wrong" or "not sure" after talking it through, a nudge to have the conversation, and "we talked about it". I will send the exact routes when they exist.
+
+**One thing in your files, found by the engine's builder:** `client/src/components/gw/WhatToWorkOnNext.tsx` shows "Done well, that is: {note.role.lookingLike…}". That is a colon-joined, third-person line from the role map ("Names what they would do differently, then does it"). The engine now says the You board's version to the person as a full sentence ("One thing to try this week is to name what you would do differently, then do it."), in `api/src/modules/grounds/a-step-said-to-you.ts`, which you can reuse.
+
+## 30 September: the lead's marks on a pattern, and "we talked about it" (Hafsah's decision 57, items 2 and 3)
+
+Built in `beffb44f` and `6aa62f9b`. **When you merge, apply the migration `20260930010000_what_the_lead_made_of_a_pattern`** to your own local database. It adds six nullable columns to `pattern_detections`, and changes no data.
+
+**Two routes, both only for the person who runs the check-in.** Anyone else gets 403, including the person the pattern is about. They work only once the lead may already read the pattern (the timing of decision 39).
+
+| What the lead does | Route | Send | You get back |
+| --- | --- | --- | --- |
+| Marks what they made of it, after talking it through | `POST /patterns/:id/mark` | `{ "mark": "RIGHT" }`, or `"WRONG"` or `"NOT_SURE"` | the pattern, with `leadMark` set |
+| Says they talked it through | `POST /patterns/:id/talked-about` | nothing | the pattern, with `talkedAbout: true`. A second press does nothing. |
+
+**Two new fields on every served pattern:**
+- `leadMark`: `"RIGHT"`, `"WRONG"`, `"NOT_SURE"` or `null`. **It is only ever set for the lead.** The person the pattern is about always gets `null`, because the mark must never read as a verdict on them. A colleague never gets the pattern at all.
+- `talkedAbout`: `true` or `false`. Both the lead and the person get it. It is a plain fact, with no mark behind it.
+
+**The nudge:** the lead's `forTheLead` list on `GET /grounds/:id/report` holds one item for each pattern they may read and have not yet talked through, for example:
+
+```json
+{ "id": "pattern-talk-pd-brian-b3",
+  "decide": "Talk with Brian about “Others describe doing work they described as theirs”.",
+  "why": "Brian has seen it and has not answered yet." }
+```
+
+When the person has answered, `why` gives their answer. The item goes away as soon as the lead presses "we talked about it".
+
+Wording note: the `why` with the person's answer is being reworded, because it joins with a colon today. Show whatever sentence arrives.
+
+## 30 September: confirming a person's role, and where a person's own role is kept (Hafsah's decision 57, item 5)
+
+**When you merge, apply the migration `20260930020000_evidence_and_a_confirmed_role`.** It adds three nullable columns and changes no data.
+
+**A person's own words about their role live in `User.jobTitle`.** `GroundParticipant.roleAsDescribed` is only ever the lead's private description of a person (decision 30), with one exception: the lead's own row, which holds the lead's own words. On the join page, "Your part in this" now goes to the person's own job title (`ae2b5a9e`). It used to be copied into the lead's private field.
+
+**Two routes, for the person themselves or the lead of the check-in:**
+
+| What happens | Route | Send | You get back |
+| --- | --- | --- | --- |
+| "Yes, that's right" | `POST /participants/:id/confirm-role` | nothing | `{ "id": "…", "detectedFunction": "SALES", "detectedFunctionConfirmedAt": "…" }` |
+| "I'd describe it differently" | `PATCH /participants/:id` | `{ "roleAsDescribed": "Mostly sales, closing deals." }` | from the person: `{ "id": "…", "ownRoleAsGiven": "…" }`; from the lead: `{ "id": "…", "roleAsDescribed": "…" }` |
+
+- When the person themselves sends `PATCH`, their words go to their own job title, never to the lead's field. When the lead sends it about someone else, it is the lead's private description, as before.
+- Anyone else gets 404, so a stranger learns nothing.
+- The person's own check-in also asks them once, in words: "It sounds like most of your work is sales. Is that right, or would you describe it differently?" Their answer is read after the check-in, so you need no screen for that part. A Context page confirm for the lead is yours to draw.
+
+**One more field on a served pattern, for the lead only:** `secondReadNote`. It is "Two separate reads of the record found this." when both the model and the number-based rule found the pattern, and otherwise `null`. The person it is about always gets `null`.

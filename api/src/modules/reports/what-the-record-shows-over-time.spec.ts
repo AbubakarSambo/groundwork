@@ -3,6 +3,16 @@ import {
   whatThisCannotTellYou, toSettleFirst,
 } from './what-the-record-shows-over-time';
 
+/*
+ * 30 September 2026, run 20 of the 24-scenario check: 6 of 604 served quotes were not, character for
+ * character, in the record - all of them `overTime.commitments[].say`, built here. A commitment's
+ * `text` and `whenSaid` are a model's reading of a check-in, not guaranteed to be the person's own
+ * words, so from here on a test that wants a quote must say so with `saidWordForWord: true` (and
+ * `whenSaidWordForWord: true` for the time). The tests below that already existed are updated to say
+ * so explicitly, because until now the function quoted every commitment regardless - the defect this
+ * closes - and new tests below cover the two real strings the run caught.
+ */
+
 const labelOf = (id: string | null) => (id === 'marcus' ? 'Marcus Oyelaran' : id === 'amina' ? 'Amina Bello' : 'a party');
 const nameOf = (code: string) => (code === 'E2' ? 'Intro Evasion' : code);
 
@@ -12,7 +22,7 @@ describe('what the record shows over time', () => {
       const [c] = commitmentsOverTime([{
         participantId: 'marcus', text: 'I will arrange meetings with the technical team',
         whenSaid: 'next week', explicit: true, status: 'UNKNOWN', source: 'CHECK_IN',
-        statedInSession: 1, saidAgainIn: [2, 3, 5],
+        statedInSession: 1, saidAgainIn: [2, 3, 5], saidWordForWord: true, whenSaidWordForWord: true,
       }], labelOf, 6);
       /* Changed 29 Sep 2026: full sentences, no colon, dash or semicolon joins (review, item 5). */
       expect(c.say).toBe('In session 1, Marcus Oyelaran said, "I will arrange meetings with the technical team". The time Marcus Oyelaran gave for it was "next week". Marcus Oyelaran said it again in sessions 2, 3 and 5. It has been open for 5 sessions, and nobody has said whether it happened.');
@@ -30,15 +40,25 @@ describe('what the record shows over time', () => {
     it('says when the lead said it rather than them', () => {
       const [c] = commitmentsOverTime([{
         participantId: 'marcus', text: 'get the MOU signed', whenSaid: null, explicit: false,
-        status: 'UNKNOWN', source: 'PASTE', statedInSession: null, saidAgainIn: [],
+        status: 'UNKNOWN', source: 'PASTE', statedInSession: null, saidAgainIn: [], saidWordForWord: true,
       }], labelOf, 3);
       expect(c.say).toBe('The lead said that Marcus Oyelaran would do this, "get the MOU signed". Marcus Oyelaran did not say it. Nobody has said yet whether it happened.');
+    });
+
+    it('says so plainly, without quote marks, when the lead\'s words for it are not word for word', () => {
+      const [c] = commitmentsOverTime([{
+        participantId: 'marcus', text: 'get the MOU signed', whenSaid: null, explicit: false,
+        status: 'UNKNOWN', source: 'PASTE', statedInSession: null, saidAgainIn: [], saidWordForWord: false,
+      }], labelOf, 3);
+      expect(c.say).toBe('The lead committed Marcus Oyelaran to get the MOU signed. Marcus Oyelaran did not say it. Nobody has said yet whether it happened.');
+      expect(c.say).not.toContain('"');
     });
 
     it('says truly how it was settled, never "somebody marked it done", in full sentences', () => {
       const row = (settledBy: string | null, status = 'DONE') => commitmentsOverTime([{
         participantId: 'marcus', text: 'I will continue to monitor client health closely.', whenSaid: 'next', explicit: true,
         status, source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], settledBy,
+        saidWordForWord: true, whenSaidWordForWord: true,
       }], labelOf, 3)[0].say;
       expect(row('SAID')).toBe('In session 1, Marcus Oyelaran said, "I will continue to monitor client health closely." The time Marcus Oyelaran gave for it was "next". Marcus Oyelaran said later that it was done.');
       expect(row('PROVEN')).toMatch(/A document Marcus Oyelaran added shows it was done\.$/);
@@ -49,6 +69,75 @@ describe('what the record shows over time', () => {
         expect(row(by)).not.toMatch(/somebody marked|; | - |Oyelaran:/);
         expect(row(by)).toContain('"I will continue to monitor client health closely."');
       }
+    });
+
+    /* The exact two strings run 20 served in quote marks that were nobody's own words. */
+    it('never puts quote marks round a commitment the record does not confirm word for word', () => {
+      const [c] = commitmentsOverTime([{
+        participantId: 'marcus', text: 'lead that review with the team', whenSaid: null, explicit: true,
+        status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 2, saidAgainIn: [], saidWordForWord: false,
+      }], labelOf, 2);
+      expect(c.say).toBe('In session 2, Marcus Oyelaran committed to lead that review with the team. Nobody has said yet whether it happened.');
+      expect(c.say).not.toContain('"');
+    });
+
+    it('never quotes the time either, unless the record confirms those are their own words', () => {
+      const [c] = commitmentsOverTime([{
+        participantId: 'marcus', text: "I'll reach out to the InfoSec team to push the security review forward.",
+        whenSaid: 'as soon as the 29th arrives', explicit: true, status: 'UNKNOWN', source: 'CHECK_IN',
+        statedInSession: 1, saidAgainIn: [], saidWordForWord: false, whenSaidWordForWord: false,
+      }], labelOf, 1);
+      expect(c.say).toBe(
+        'In session 1, Marcus Oyelaran committed to reach out to the InfoSec team to push the security review forward. '
+        + 'The time Marcus Oyelaran gave for it was as soon as the 29th arrives. Nobody has said yet whether it happened.',
+      );
+      expect(c.say).not.toContain('"');
+    });
+
+    /*
+     * ONE SENTENCE, IN THE PRODUCT'S OWN VOICE, NEVER A CLIPPED INSTRUCTION OR SOMEBODY ELSE'S "I".
+     *
+     * A first pass at this fix read "Priti Sharma committed to this. I'll reach out to the InfoSec
+     * team..." - a clipped instruction for "lead that review with the team", and, worse, "I" left in
+     * the product's own sentence belonging to nobody the reader is reading about. The leading
+     * first-person frame ("I'll", "I will", ...) comes off and the rest becomes the object of
+     * "committed to"; the exact strings from run 20 are checked here.
+     */
+    it("puts a commitment's own words into the product's sentence, in our voice, not theirs", () => {
+      const priti = (id: string | null) => (id === 'priti' ? 'Priti Sharma' : 'a party');
+      const [c1] = commitmentsOverTime([{
+        participantId: 'marcus', text: 'lead that review with the team', whenSaid: null, explicit: true,
+        status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 2, saidAgainIn: [], saidWordForWord: false,
+      }], labelOf, 2);
+      expect(c1.say).toContain('In session 2, Marcus Oyelaran committed to lead that review with the team.');
+
+      const [c2] = commitmentsOverTime([{
+        participantId: 'priti', text: "I'll reach out to the InfoSec team to push the security review forward.",
+        whenSaid: null, explicit: true, status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [],
+        saidWordForWord: false,
+      }], priti, 1);
+      expect(c2.say).toContain('In session 1, Priti Sharma committed to reach out to the InfoSec team to push the security review forward.');
+
+      /* A first-person word left deeper in the sentence cannot be said safely in our voice. */
+      const [c3] = commitmentsOverTime([{
+        participantId: 'priti', text: 'I will get my documents sorted out.', whenSaid: null, explicit: true,
+        status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], saidWordForWord: false,
+      }], priti, 1);
+      expect(c3.say).toContain('In session 1, Priti Sharma made a commitment, which is in the record.');
+      for (const say of [c1.say, c2.say, c3.say]) {
+        expect(say).not.toContain('"');
+        expect(say).not.toMatch(/\bmy\b|\bI\b|\bI'll\b|\bme\b|\bour\b/);
+      }
+    });
+
+    it('leaves the time out altogether when it does not read as a time or a date at all', () => {
+      const [c] = commitmentsOverTime([{
+        participantId: 'marcus', text: 'sign the lease', whenSaid: 'lead that review with the team',
+        explicit: true, status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [],
+        saidWordForWord: true, whenSaidWordForWord: false,
+      }], labelOf, 1);
+      expect(c.say).not.toMatch(/The time .* gave for it/);
+      expect(c.say).not.toContain('lead that review with the team');
     });
 
     it('puts the most-restated open one first', () => {
@@ -242,6 +331,22 @@ describe('what the record shows over time', () => {
       for (const q of questions) expect(q).not.toMatch(/\b(failing|unreliable|should be (let go|replaced))\b/i);
       /* And no management words in any of them, including the "unescalated" this used to say. */
       for (const q of questions) expect(q).not.toMatch(/\b(escalat\w*|unescalated|bottleneck|cadence|pipeline)\b/i);
+    });
+
+    it('asks about a restated commitment plainly, without quote marks, when it is not word for word', () => {
+      const commitments = commitmentsOverTime([{
+        participantId: 'marcus', text: 'lead that review with the team', whenSaid: null,
+        explicit: true, status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [2, 3, 4],
+        saidWordForWord: false,
+      }], labelOf, 6);
+      const questions = toSettleFirst({
+        commitments, dependencies: [], patterns: [], documentsAttached: 1, anybodySaidWhoArrangedThings: true,
+      });
+      expect(questions[0]).toBe(
+        'Lead that review with the team has been said again in 3 sessions and nobody has said whether it happened. '
+        + 'Ask Marcus Oyelaran what it is waiting on, and decide whether it is still wanted.',
+      );
+      expect(questions[0]).not.toContain('"');
     });
   });
 });

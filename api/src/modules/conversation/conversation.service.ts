@@ -79,7 +79,12 @@ import {
   nextMove, coachingBlockFor, afterOffering, afterOutcome, EMPTY,
   type CoachingStateShape, type StepOutcome,
 } from '../coaching/one-step-at-a-time';
-import { detectFunction, detectUniversalModes } from '../board/function-detection';
+import {
+  detectFunction, detectUniversalModes, needsRoleConfirmation, roleConfirmationQuestion,
+  ROLE_CONFIRM_ASKED, ROLE_CONFIRM_COOLDOWN_PERIODS, ROLE_CONFIRMATION_READ_PROMPT, ROLE_CONFIRMATION_READ_SCHEMA,
+  theRoleConfirmationVerdict, LOW_CONFIDENCE_CONFIRM_THRESHOLD,
+} from '../board/function-detection';
+import { RoleFunction } from '../board/role-maps';
 import { whoOpenedThis } from './who-opened-this';
 import { documentWhereFor } from '../documents/who-can-see-a-document';
 import { displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
@@ -149,6 +154,7 @@ import { whatThisSessionHasCovered, sayWhatHasBeenCovered, whereTheSpineIs, they
 import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
+import { periodOf } from '../patterns/period-of';
 import { withoutTheClaimsTheNumbersDoNotSupport, numbersIn as numbersInAClaim } from './a-claim-the-numbers-do-not-support';
 import { recordAndMoveOn, NOTHING_HERE_HAS_A_NUMBER, NO_DECISION_YET } from './a-refusal-is-an-answer';
 import { nothingSaidYetCannotBeQuoted } from './nothing-said-yet-cannot-be-quoted';
@@ -205,6 +211,9 @@ import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { whatWasRecordedFromADocument } from '../documents/what-was-recorded-from-a-document';
+import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { wordTheAreaOfAGoal, areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
+import { saysWhatAnUntoldGoalWithholds, IT_NAMED_THE_UNTOLD_NUMBER, type AnUntoldGoal } from './an-untold-goals-number-is-not-said';
 
 /**
  * How many things in this text could actually be checked by someone later.
@@ -304,7 +313,7 @@ const WHAT_THE_BRIEF_IS_READ_FROM = {
      who set this up said". See nothing-said-yet-cannot-be-quoted. */
   initiator: { select: { firstName: true, lastName: true } },
   whoSeesTargets: true,
-  objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' as const } },
+  objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' as const } },
 } as const;
 
 const RECORD_EXTRACTION_SCHEMA = {
@@ -1924,6 +1933,36 @@ export class ConversationService {
       }
 
       /*
+       * DECISION 56, ITEM 2, SECOND LAYER. `composeSystemPrompt` already gives the model only the
+       * area of a goal the lead has not told this person about - no number, no date - and tells it
+       * never to say a goal has been set. This is the check: a reply is read for the number that
+       * goal is measured by, or for saying outright that a goal, target or expectation exists, and
+       * if either slipped through, the model is asked again once. See
+       * an-untold-goals-number-is-not-said.ts.
+       */
+      const untoldGoalsHere: AnUntoldGoal[] = await (this.prisma.personObjective?.findMany?.({
+        where: { groundId: checkIn.groundId, participantId: checkIn.participantId, awareness: 'NOT_TOLD' },
+        select: { text: true, target: true, authoredBy: true, awareness: true },
+      }) ?? Promise.resolve([] as any[]))
+        .catch(() => [] as any[])
+        .then((rows: any[]) => rows.filter(notToldYet).map((o) => ({ text: o.text as string, target: o.target ?? null })));
+      if (untoldGoalsHere.length && saysWhatAnUntoldGoalWithholds(screened.text, untoldGoalsHere)) {
+        this.logger.warn(`Check-in ${checkIn.id}: a reply named a number or a goal the lead has not told them about; asking again.`);
+        const withheld = await this.anthropic
+          .respond(`${fullSystem}\n\n${IT_NAMED_THE_UNTOLD_NUMBER}`, history)
+          .catch(() => '');
+        const second = withheld.trim()
+          ? screen(withoutQuotesTheyDidNotSay(forHumans(withheld), theirWords), known, readerName, conversationSoFar)
+          : null;
+        if (second?.text && !second.hits.length && !saysWhatAnUntoldGoalWithholds(second.text, untoldGoalsHere)) {
+          screened = second;
+          this.logger.log(`Check-in ${checkIn.id}: the second try withheld it.`);
+        } else {
+          this.logger.warn(`Check-in ${checkIn.id}: the second try named it too; the first stands.`);
+        }
+      }
+
+      /*
        * AND A DECLINE IS AN ANSWER. "I don't focus on a weekly number" was followed by a question about
        * the weekly number; "we don't share that" by the same ask reworded (adversarial run 2, 20 Sep
        * 2026, the judge's "badgering", ten times). Same guard as the pushback, same retry, different
@@ -3076,7 +3115,7 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       include: {
-        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
         /* The product's finding per person, for the lead's side of the disagreement. */
         report: { select: { findings: true } },
         /**
@@ -3332,7 +3371,9 @@ export class ConversationService {
      * up asking about the wrong half of somebody's quarter.
      */
     const evidenceItems = personObjectives
-      .filter((o: any) => o.lastSeenState && o.lastSeenAt)
+      /* An untold goal's tracked-system state is a number too (decision 56, item 2) - left out here
+         for the same reason dueSaid/dueDate/whyThisNumber are left out above. */
+      .filter((o: any) => o.lastSeenState && o.lastSeenAt && !notToldYet(o))
       .map((o: any) => {
         let state: Record<string, string | number> = {};
         try {
@@ -3575,26 +3616,40 @@ export class ConversationService {
        * `personObjectives` is what the block renders - a person holding a target and a commitment
        * and a standing expectation had everything after the first invisible to the interview.
        */
-      personObjectives: personObjectives.map((o: any) => ({
-        text: o.text,
-        authoredBy: o.authoredBy,
-        seenBySubject: o.seenBySubject,
-        authoredByThem: o.authoredBy === 'self',
-        fromTheirSystem: !!o.sourceSystem,
-        /* Loaded from the row all along and dropped here. See `describeObjective`. */
-        kind: o.kind ?? null,
-        dueSaid: o.dueSaid ?? null,
-        dueDate: o.dueDate ?? null,
-        /* Why the number is that number, where the customer's system recorded one.
-           The session facing a shortfall can then ask whether the reason still
-           holds rather than asking somebody why they are behind. */
-        whyThisNumber: o.whyThisNumber ?? null,
-        owedToName: o.owedToParticipantId ? (nameByParticipantId.get(o.owedToParticipantId) ?? 'somebody on this check-in') : null,
-        status: o.status ?? null,
+      /*
+       * DECISION 56, ITEM 2. A goal the lead wrote and has not yet told this person about still
+       * reaches the model - so it can ask about the work - but with `text` cut back to the WORDED
+       * area (see the-area-of-a-goal-is-worded-once.ts: worded once by the model when the goal was
+       * saved, kept, and only ever read here - never asked for on this turn), and every
+       * number-carrying field left null, so nothing here can say the number or the date the lead has
+       * not shared. `notToldYetAreaOnly` is what tells `describeObjective` to render it that way
+       * instead of the ordinary sentence.
+       */
+      personObjectives: await Promise.all(personObjectives.map(async (o: any) => {
+        const untold = notToldYet(o);
+        return {
+          text: untold ? await areaOfGoalOrFallback(this.prisma, o.text) : o.text,
+          authoredBy: o.authoredBy,
+          seenBySubject: o.seenBySubject,
+          authoredByThem: o.authoredBy === 'self',
+          fromTheirSystem: !!o.sourceSystem,
+          /* Loaded from the row all along and dropped here. See `describeObjective`. */
+          kind: o.kind ?? null,
+          dueSaid: untold ? null : (o.dueSaid ?? null),
+          dueDate: untold ? null : (o.dueDate ?? null),
+          /* Why the number is that number, where the customer's system recorded one.
+             The session facing a shortfall can then ask whether the reason still
+             holds rather than asking somebody why they are behind. Withheld for an untold goal,
+             same reason as dueSaid/dueDate: it is stated in terms of the number. */
+          whyThisNumber: untold ? null : (o.whyThisNumber ?? null),
+          owedToName: untold ? null : (o.owedToParticipantId ? (nameByParticipantId.get(o.owedToParticipantId) ?? 'somebody on this check-in') : null),
+          status: o.status ?? null,
+          notToldYetAreaOnly: untold,
+        };
       })),
       personObjective: personObjective
         ? {
-            text: personObjective.text,
+            text: notToldYet(personObjective) ? await areaOfGoalOrFallback(this.prisma, personObjective.text) : personObjective.text,
             authoredBy: personObjective.authoredBy,
             seenBySubject: personObjective.seenBySubject,
             /*
@@ -3605,6 +3660,7 @@ export class ConversationService {
             authoredByThem: personObjective.authoredBy === 'self',
             /* Seeded by an integration rather than written by anybody here. */
             fromTheirSystem: !!(personObjective as any).sourceSystem,
+            notToldYetAreaOnly: notToldYet(personObjective),
           }
         : null,
       partyType: checkIn.participant.partyType,
@@ -4336,6 +4392,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // uncertain profile never produces coaching from a guess.
     const roleRead = await this.roleReadForThisTurn(checkIn as any, latestMessage);
     const roleProbeBlock = buildRoleProbeBlock(roleRead.fn, roleRead.confidence, roleRead.modes);
+    /* A role guessed with low confidence is confirmed before it is used (decision 57, item 5). */
+    const roleConfirmationBlock = await this.roleConfirmationBlockFor(checkIn.participantId, roleRead.fn, roleRead.confidence, checkIn.sessionNumber);
 
     /**
      * G42. THE COACHING STEP, AND THE FIRST TIME ANYTHING HAS READ THESE ROWS.
@@ -4699,7 +4757,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     const named: [string, string][] = [
       ['language', theirLanguage], ['intake', intakeBlock], ['pending', pendingLines.join('')], ['evidence', evidenceLines.join('')], ['theirWeek', theirWeek],
       ['howWeDoIt', howWeDoIt], ['style', styleBlock], ['clarification', clarificationContext], ['selfCorrection', selfCorrectionContext],
-      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
+      ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
       ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
@@ -4878,7 +4936,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -5028,7 +5086,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     try {
       const rows = await this.prisma.patternDetection.findMany({
         where: { participantId, status: PatternStatus.SURFACED },
-        select: { code: true, periodsObserved: true, accuracyRating: true },
+        select: { code: true, periodsObserved: true, seenInSessions: true, accuracyRating: true },
       });
       return askAboutItBlockFor(theOneWorthAsking(rows));
     } catch (err) {
@@ -5042,13 +5100,20 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     return true;
   }
 
-  /** platform_settings.coaching_live = true, set by hand once the first outputs have been read. */
+  /**
+   * platform_settings.coaching_live: ON BY DEFAULT, ON EVERY DATABASE (decision 57, item 6, 30
+   * September 2026). Coaching is one of the product's protected capabilities (decision 55); a
+   * missing row used to read as off, which switched it off everywhere until somebody had set the
+   * row by hand, including on every new database. A missing row now reads as on. An admin can
+   * still pause it: a row whose value is explicitly `false` (or `"false"`) still turns it off.
+   */
   private async coachingIsLive(): Promise<boolean> {
     try {
       const row = await this.prisma.platformSetting.findUnique({ where: { key: COACHING_LIVE_KEY } });
-      return row?.value === true || row?.value === 'true';
+      if (row === null || row === undefined) return true;
+      return row.value !== false && row.value !== 'false';
     } catch {
-      return false;
+      return true;
     }
   }
 
@@ -5306,8 +5371,22 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      */
     const prior = await this.prisma.coachingState.findUnique({ where: { participantId }, select: { observations: true } }).catch(() => null);
     const observations: Observation[] = Array.isArray((prior as any)?.observations) ? ((prior as any).observations as Observation[]) : [];
-    if (read?.noticed && read.reason?.trim() && !observations.some((o) => o.sessionNumber === sessionNumber && o.noticed === read.noticed)) {
-      observations.push({ sessionNumber, noticed: read.noticed, reason: read.reason.trim() });
+    /* Two DISTINCT PERIODS, not two sessions (decision 57, item 1). On a weekly-or-slower ground
+       these are the same thing, as they always were; on a daily ground several sessions in one
+       calendar week must not look like recurrence on their own. Observation.sessionNumber is read
+       by seenInEnoughSessions as the period number, so what is stored here already is one. */
+    const checkInForPeriod = await (this.prisma.checkIn?.findUnique?.({
+      where: { id: checkInId },
+      select: { completedAt: true, startedAt: true, createdAt: true, ground: { select: { cadence: true } } },
+    }) ?? Promise.resolve(null)).catch(() => null);
+    const period = checkInForPeriod
+      ? periodOf(
+        { sessionNumber, when: checkInForPeriod.completedAt ?? checkInForPeriod.startedAt ?? checkInForPeriod.createdAt },
+        checkInForPeriod.ground,
+      )
+      : sessionNumber;
+    if (read?.noticed && read.reason?.trim() && !observations.some((o) => o.sessionNumber === period && o.noticed === read.noticed)) {
+      observations.push({ sessionNumber: period, noticed: read.noticed, reason: read.reason.trim() });
     }
     const recurring = seenInEnoughSessions(observations, read?.noticed ?? null);
     /* The word check decides. The model's own field said "they asked for it" on six cases the word
@@ -5880,6 +5959,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     this.reviseDetectedFunction(checkIn.participantId).catch((err) =>
       this.logger.warn(`Function detection failed for participant ${checkIn.participantId}: ${err.message}`),
+    );
+
+    this.extractRoleConfirmation({ id: checkIn.id, participantId: checkIn.participantId }).catch((err) =>
+      this.logger.warn(`Role-confirmation read failed for check-in ${checkIn.id}: ${err.message}`),
     );
 
     /**
@@ -7744,6 +7827,42 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   }
 
   /**
+   * A ROLE GUESSED WITH LOW CONFIDENCE IS CONFIRMED BEFORE IT IS USED (decision 57, item 5).
+   *
+   * Below LOW_CONFIDENCE_CONFIRM_THRESHOLD (the same MIN_COACHING_CONFIDENCE that already withholds
+   * a role-tuned probe - see buildRoleProbeBlock) and not yet confirmed, the model is told to ask
+   * the plain-words question once, this turn. Their answer is read as their own account of their
+   * role, never scored - it is turned into a confirmation or a correction by the participants route
+   * (PATCH /participants/:id or POST /participants/:id/confirm-role), not by this prompt. Nothing
+   * here is a role-tuned probe: buildRoleProbeBlock already stays silent below the same threshold,
+   * so the universal floor is all that is asked from otherwise.
+   */
+  private async roleConfirmationBlockFor(participantId: string, fn: string | null, confidence: number | null, sessionNumber: number): Promise<string> {
+    if (!fn) return '';
+    const participant = await this.prisma.groundParticipant
+      .findUnique({ where: { id: participantId }, select: { detectedFunctionConfirmedAt: true } })
+      .catch(() => null);
+    if (!needsRoleConfirmation({ fn: fn as RoleFunction, confidence: confidence ?? 0 }, participant?.detectedFunctionConfirmedAt ?? null)) return '';
+
+    /*
+     * ASKED ONCE, NOT EVERY CHECK-IN. An unclear earlier answer is stamped ROLE_CONFIRM_ASKED (see
+     * extractRoleConfirmation, run after the check-in that carries the stamp closes) - a clear
+     * confirmation or correction instead sets detectedFunctionConfirmedAt, which the check above
+     * already catches. Skip asking again until the cooldown has passed.
+     */
+    const recentlyAsked = await this.prisma.conversationTurn
+      .findFirst({
+        where: { role: TurnRole.AI, askedFor: ROLE_CONFIRM_ASKED, checkIn: { participantId } },
+        orderBy: { createdAt: 'desc' },
+        select: { checkIn: { select: { sessionNumber: true } } },
+      })
+      .catch(() => null);
+    if (recentlyAsked && sessionNumber - (recentlyAsked.checkIn?.sessionNumber ?? 0) < ROLE_CONFIRM_COOLDOWN_PERIODS) return '';
+
+    return `CONFIRM THE ROLE, ONCE (decision 57, item 5): somewhere natural in this turn, ask plainly - "${roleConfirmationQuestion(fn as RoleFunction)}" Their answer is their own statement of their role, not a score. If they have already answered a version of this earlier in this check-in, do not ask again.`;
+  }
+
+  /**
    * WHAT HAS ALREADY BEEN SEEN ACROSS THIS PERSON'S SESSIONS, framed as offerWhatWorked frames it:
    * a place to look, not a finding. SURFACED only; a CANDIDATE never reaches a conversation. The
    * query is on THIS participantId, so nothing another person said can arrive through it.
@@ -8016,6 +8135,84 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           `Role-tuned probes and coaching are OFF for them, which is correct and not a failure: ${result.basis} ` +
           `If this holds for a whole ground, either the work is not covered by the nine role maps or nobody described the role at setup.`,
       );
+    }
+  }
+
+  /**
+   * READING WHAT THEY SAID, AFTER THE CHECK-IN CLOSES (decision 57, item 5, tightened 30 September
+   * 2026). Fire-and-forget beside the other post-close reads: a failure here must never be why a
+   * completed session does not complete.
+   *
+   * Runs only when this check-in actually carried the confirmation question - found by the
+   * question's own literal text on one of this check-in's AI turns, never assumed from the prompt
+   * block having been built (a model can leave an offered line unused). A clear "yes" stamps
+   * detectedFunctionConfirmedAt/By; a different description does too, AND is written to the
+   * person's OWN role (their account's jobTitle - see PATCH /participants/:id for why this is never
+   * GroundParticipant.roleAsDescribed, the lead's private description, decision 30). Anything else
+   * stamps nothing about the person - only the turn that asked, with ROLE_CONFIRM_ASKED, so the
+   * cooldown in roleConfirmationBlockFor holds off asking again for a couple of periods rather than
+   * every remaining check-in.
+   */
+  async extractRoleConfirmation(checkIn: { id: string; participantId: string }): Promise<void> {
+    const participant = await this.prisma.groundParticipant.findUnique({
+      where: { id: checkIn.participantId },
+      select: { userId: true, detectedFunction: true, detectedFunctionConfidence: true, detectedFunctionConfirmedAt: true },
+    });
+    if (!participant?.userId || !participant.detectedFunction || participant.detectedFunctionConfirmedAt) return;
+    if ((participant.detectedFunctionConfidence ?? 0) >= LOW_CONFIDENCE_CONFIRM_THRESHOLD) return;
+
+    const question = roleConfirmationQuestion(participant.detectedFunction as RoleFunction);
+    const turns = await this.prisma.conversationTurn.findMany({
+      where: { checkInId: checkIn.id },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, role: true, content: true, askedFor: true },
+    });
+    const askedAt = turns.findIndex((t) => t.role === TurnRole.AI && (t.content ?? '').includes(question));
+    if (askedAt === -1) return; // Never put to them this check-in; nothing to read, nothing to stamp.
+
+    const stampAskedIfUnstamped = () => {
+      const turn = turns[askedAt];
+      if (turn.askedFor) return Promise.resolve(); // Already carries a stamp from something else - never overwritten.
+      return this.prisma.conversationTurn.update({ where: { id: turn.id }, data: { askedFor: ROLE_CONFIRM_ASKED } }).catch(() => {});
+    };
+
+    const reply = (turns.slice(askedAt + 1).find((t) => t.role === TurnRole.PERSON)?.content ?? '').trim();
+    if (!reply) {
+      await stampAskedIfUnstamped();
+      return;
+    }
+
+    let said: { verdict?: string; correctedRole?: string } | null = null;
+    try {
+      said = await this.anthropic.extract<{ verdict?: string; correctedRole?: string }>(
+        ROLE_CONFIRMATION_READ_PROMPT,
+        [{ role: 'user', content: `QUESTION THEY WERE ASKED: ${question}\nTHEIR REPLY: ${reply}` }],
+        ROLE_CONFIRMATION_READ_SCHEMA,
+        { fast: true },
+      );
+    } catch (err) {
+      this.logger.warn(`Role-confirmation read failed for check-in ${checkIn.id}: ${(err as Error)?.message}`);
+    }
+    const verdict = theRoleConfirmationVerdict(said);
+    const now = new Date();
+
+    if (verdict.verdict === 'confirmed') {
+      await this.prisma.groundParticipant.update({
+        where: { id: checkIn.participantId },
+        data: { detectedFunctionConfirmedAt: now, detectedFunctionConfirmedBy: participant.userId },
+      });
+      this.logger.log(`Check-in ${checkIn.id}: the person confirmed their guessed function as it stands.`);
+    } else if (verdict.verdict === 'corrected') {
+      await Promise.all([
+        this.prisma.user.update({ where: { id: participant.userId }, data: { jobTitle: verdict.correctedRole } }),
+        this.prisma.groundParticipant.update({
+          where: { id: checkIn.participantId },
+          data: { detectedFunctionConfirmedAt: now, detectedFunctionConfirmedBy: participant.userId },
+        }),
+      ]);
+      this.logger.log(`Check-in ${checkIn.id}: the person described their role differently ("${verdict.correctedRole}") - written to their own job title, never the lead's roleAsDescribed.`);
+    } else {
+      await stampAskedIfUnstamped();
     }
   }
 
@@ -8713,6 +8910,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             ...(textChanged ? { seenBySubject: false } : {}),
           },
         });
+        /* DECISION 56, ITEM 2: the area is worded once, here, at the point the goal is saved - never
+           on a page read (decision 7). Best effort: a failure here is retried by the next save or by
+           the warm-up, and every reader falls back to FALLBACK_AREA until then. */
+        if (awareness === 'NOT_TOLD') {
+          wordTheAreaOfAGoal(this.anthropic, this.prisma, text).catch((err: any) => this.logger.warn(`Wording the area of an untold goal failed: ${err?.message}`));
+        }
       } else {
         const created = await this.prisma.personObjective.create({
           data: {
@@ -8727,6 +8930,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
             seenBySubject: false,
           },
         });
+        /* Decision 56, item 2 - see the update branch above for why this is fire-and-forget. */
+        if (awareness === 'NOT_TOLD') {
+          wordTheAreaOfAGoal(this.anthropic, this.prisma, text).catch((err: any) => this.logger.warn(`Wording the area of an untold goal failed: ${err?.message}`));
+        }
 
         /*
          * AND A COPY THAT OUTLIVES THIS GROUND, for the org layer.
@@ -9899,7 +10106,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       where: { id: groundId, initiatorId: requestingUserId },
       select: {
         id: true, label: true, scenario: true, brief: true,
-        objectives: { select: { name: true, target: true, ownerParticipantId: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
         participants: {
           select: {
             id: true, email: true, partyType: true, roleAsDescribed: true,

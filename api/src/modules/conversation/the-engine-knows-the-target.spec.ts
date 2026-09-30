@@ -92,8 +92,9 @@ describe('and the service actually fetches them', () => {
      * required `objectives` to be the ONLY thing in the braces. What this test is for is that the
      * prompt-feeding query fetches the objectives at all - not the order of the keys beside them.
      */
+    /* Gained isADecisionAboutAPerson (decision 46, 29 September 2026) alongside the rest. */
     expect(CODE).toMatch(
-      /const ground = await this\.prisma\.ground\.findUnique\(\{\s*where: \{ id: checkIn\.groundId \},\s*include: \{[\s\S]{0,400}?objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/,
+      /const ground = await this\.prisma\.ground\.findUnique\(\{\s*where: \{ id: checkIn\.groundId \},\s*include: \{[\s\S]{0,400}?objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true \}/,
     );
   });
 

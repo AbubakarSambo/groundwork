@@ -52,6 +52,10 @@ export const DAYS_THE_PERSON_HAS_TO_ANSWER = 3;
 export const DAYS_BEFORE_IT_REACHES_THE_LEAD_UNOPENED = 7;
 const DAY = 24 * 60 * 60 * 1000;
 
+/** The lead's own read of a pattern, after talking it through (decision 57, item 2). Never served to
+ *  the person it is about, and never to a colleague. */
+export type ALeadPatternMark = 'RIGHT' | 'WRONG' | 'NOT_SURE';
+
 /** The stored row, as much of it as the rules read. */
 export interface APatternRow {
   id: string;
@@ -64,12 +68,18 @@ export interface APatternRow {
   shownToPersonAt?: Date | string | null;
   personAnswer?: string | null;
   personAnsweredAt?: Date | string | null;
+  leadMark?: ALeadPatternMark | null;
+  talkedAboutAt?: Date | string | null;
+  talkedAboutAtPeriod?: number | null;
+  /** What backed it: the model's reading, the number-based rule, or both (decision 57, item 4). */
+  evidenceSource?: string | null;
 }
 
 /** The columns every road selects, so none of them can forget the ones rule 5 reads. */
 export const PATTERN_ROW_SELECT = {
   id: true, participantId: true, code: true, observationText: true, periodsObserved: true, seenInSessions: true,
   readyAt: true, shownToPersonAt: true, personAnswer: true, personAnsweredAt: true,
+  leadMark: true, talkedAboutAt: true, talkedAboutAtPeriod: true, evidenceSource: true,
 } as const;
 
 export interface APatternReader {
@@ -106,7 +116,29 @@ export interface AServedPattern {
   canAnswer: boolean;
   /** Who else reads it, and when, as a sentence for this reader. */
   whoSeesIt: string;
+  /**
+   * After talking it through, whoever runs the check-in marks it right, wrong or not sure (decision
+   * 57, item 2). Only for that reader — always null for the person it is about, so it is never shown
+   * to them as a rating of themselves, and null for a colleague, who never reaches this row at all.
+   */
+  leadMark: ALeadPatternMark | null;
+  /**
+   * Whether whoever runs the check-in has said they talked this through with the person (decision 57,
+   * item 3). A plain fact both readers may see — never the mark behind it — so the person may know
+   * their lead has talked it through, not a verdict on them.
+   */
+  talkedAbout: boolean;
+  /**
+   * "Two separate reads of the record found this." Served only when the model's own reading and the
+   * matching number-based rule both agree (decision 57, item 4), and only to whoever runs the
+   * check-in — always null for the person it is about, so it never reads as a score or a rating of
+   * them, and null for a colleague, who never reaches this row at all.
+   */
+  secondReadNote: string | null;
 }
+
+/** The one place this sentence is written, so it is never paraphrased from one surface to the next. */
+export const TWO_SEPARATE_READS_NOTE = 'Two separate reads of the record found this.';
 
 /** The names a sentence needs: the lead's, for the person, and the person's first name, for the lead. */
 export interface WhoIsWho {
@@ -114,6 +146,8 @@ export interface WhoIsWho {
   /** The lead's own participant id in this check-in, so a pattern about the lead can be told apart from one about somebody else. */
   leadParticipantId?: string | null;
   firstNameOf?: (participantId: string) => string | null;
+  /** Whether this ground's periods are calendar weeks, not sessions (decision 57, item 1). */
+  isDaily?: boolean;
 }
 
 /** The headings the page puts over the list, from the prototype's screens. */
@@ -134,6 +168,25 @@ export function periodsSeen(row: Pick<APatternRow, 'seenInSessions' | 'periodsOb
 
 export function hasBeenSeenInThreePeriods(row: Pick<APatternRow, 'seenInSessions' | 'periodsObserved'>): boolean {
   return periodsSeen(row) >= PERIODS_BEFORE_A_PATTERN_IS_SHOWN;
+}
+
+/**
+ * A ROW, AS IT STOOD AT A GIVEN SESSION - NOT AS IT STANDS TODAY.
+ *
+ * `/report/session/N` is a report for session N, and a pattern that only reached three periods at
+ * session 3 has no business on session 1's report: it had not happened yet. `periodsSeen` reads
+ * `seenInSessions` and `periodsObserved` as they are stored NOW, which is the ground's current
+ * state, so a session report built from the raw rows silently used information from the future.
+ *
+ * `periodsObserved` is a consecutive-run counter with no history of its own value at an earlier
+ * session, so it cannot be trimmed to "as it stood then" - only the distinct count can, from
+ * `seenInSessions`, which is a per-session record. Using that count as the substitute never
+ * overstates how many periods had been seen by `sessionNumber`, which is the direction that matters:
+ * decision 8 is a floor, never a reason to show something early.
+ */
+export function patternRowAsOfSession<T extends APatternRow>(row: T, sessionNumber: number): T {
+  const seenInSessions = (row.seenInSessions ?? []).filter((n) => Number.isFinite(n) && n <= sessionNumber);
+  return { ...row, seenInSessions, periodsObserved: seenInSessions.length };
 }
 
 /**
@@ -158,8 +211,21 @@ function andList(xs: string[]): string {
   return `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 }
 
-export function howOftenItCameUp(row: Pick<APatternRow, 'seenInSessions' | 'periodsObserved'>, yours: boolean): string {
+/**
+ * "IN 3 OF YOUR WEEKS", NOT "IN 3 CHECK-INS", ON A DAILY GROUND (decision 57, item 1).
+ *
+ * `seenInSessions` holds period numbers now, not session numbers, for a daily ground (see
+ * `period-of.ts`), so naming them as "sessions" would be wrong twice over: the numbers are
+ * calendar weeks, and several sessions already collapsed into each one. `isDaily` says which
+ * wording this ground needs; the sentence never lists the raw period numbers for a daily ground,
+ * because a calendar-week number ("202540") means nothing to a person reading their own report.
+ */
+export function howOftenItCameUp(row: Pick<APatternRow, 'seenInSessions' | 'periodsObserved'>, yours: boolean, isDaily: boolean = false): string {
   const n = periodsSeen(row);
+  if (isDaily) {
+    const whose = yours ? `${n} of your weeks` : `${n} weeks`;
+    return `This came up in ${whose}.`;
+  }
   const sessions = [...new Set(row.seenInSessions ?? [])].sort((a, b) => a - b).map(String);
   const whose = yours ? `${n} of your check-ins` : `${n} check-ins`;
   return sessions.length >= n
@@ -243,15 +309,48 @@ export function servedPatterns(
         kind: plain.kind,
         heading: plain.name,
         whatHappened: whatHappenedIn(row.observationText),
-        sessions: [...new Set(row.seenInSessions ?? [])].sort((a, b) => a - b),
-        howOften: howOftenItCameUp(row, yours),
+        /* Raw session numbers on a weekly-or-slower ground; a daily ground's numbers are calendar
+           weeks, which nobody reading their own report should have to decode, so none are listed. */
+        sessions: opts.isDaily ? [] : [...new Set(row.seenInSessions ?? [])].sort((a, b) => a - b),
+        howOften: howOftenItCameUp(row, yours, !!opts.isDaily),
         askThem: yours ? null : whatToAskAbout(row.code),
         theirWords: (row.personAnswer ?? '').trim() || null,
         canAnswer: yours,
         whoSeesIt: whoSeesIt(row, yours, opts, now),
+        leadMark: yours ? null : (row.leadMark ?? null),
+        talkedAbout: !!row.talkedAboutAt,
+        secondReadNote: !yours && row.evidenceSource === 'both' ? TWO_SEPARATE_READS_NOTE : null,
       };
     })
     .sort((a, b) => Number(b.yours) - Number(a.yours));
+}
+
+/**
+ * "THINGS CHANGED" AFTER THE TALK, DERIVED, NEVER GUESSED (decision 57, item 3).
+ *
+ * `talkedAboutAtPeriod` is the anchor written once, when the lead marks that the conversation
+ * happened: how many periods `seenInSessions` held at that moment. Everything in `seenInSessions`
+ * beyond that count is a period the pattern was seen in AFTER the talk, so this is derived from the
+ * honest history rather than kept as a counter of its own that could drift out of step with it.
+ * `null` before the talk has happened at all — there is nothing yet to derive it from.
+ */
+export function seenAgainAfterTalk(row: Pick<APatternRow, 'seenInSessions' | 'talkedAboutAt' | 'talkedAboutAtPeriod'>): number | null {
+  if (!row.talkedAboutAt) return null;
+  const anchor = row.talkedAboutAtPeriod ?? 0;
+  return new Set((row.seenInSessions ?? []).filter((n) => Number.isFinite(n) && n > anchor)).size;
+}
+
+/**
+ * THE NUDGE, ONCE (decision 57, item 3). "Talk with Tobi about 'Steps in to stop things failing'.
+ * Tobi has seen it and said: '...'." — or, if Tobi has not answered yet, says so plainly. Built from
+ * a served pattern, so it never carries a code or an internal name either. The caller leaves this
+ * pattern out once `talkedAbout` is true: the nudge goes away once it is marked.
+ */
+export function patternTalkNudge(pattern: Pick<AServedPattern, 'id' | 'heading' | 'theirWords'>, name: string): { id: string; decide: string; why: string } {
+  const why = pattern.theirWords
+    ? `${name} has seen it. ${name} said, “${pattern.theirWords}”${/[.!?]$/.test(pattern.theirWords) ? '' : '.'}`
+    : `${name} has seen this and has not answered yet.`;
+  return { id: `pattern-talk-${pattern.id}`, decide: `Talk with ${name} about “${pattern.heading}”.`, why };
 }
 
 /** The ones this reader is the person for and has never been shown: rule 5's clock starts when they are. */
@@ -286,6 +385,7 @@ export async function markShownToThePerson(
 export function whoIsWhoIn(
   participants: readonly { id: string; userId?: string | null; nameGiven?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null }[] | null | undefined,
   initiatorId: string | null | undefined,
+  cadence?: string | null,
 ): WhoIsWho {
   /* A title is not a first name ("Dr" is not who anybody is called): skip it and use the next
      name, through the one helper that knows every title people here really carry. */
@@ -303,5 +403,6 @@ export function whoIsWhoIn(
     leadName: first(lead),
     leadParticipantId: lead?.id ?? null,
     firstNameOf: (pid: string) => first(rows.find((p) => p.id === pid)),
+    isDaily: cadence === 'DAILY',
   };
 }

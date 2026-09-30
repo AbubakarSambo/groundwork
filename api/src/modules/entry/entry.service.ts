@@ -1033,11 +1033,12 @@ Rules:
       and the screen tells them so. Ask for the names once; do not hold the setup hostage to them.
   Once you are done gathering, On that turn your reply MUST be a warm closer that contains NO question mark anywhere. A closer and a question are mutually exclusive: if you have what you need, you close and you do NOT ask one more thing; if you still genuinely need one of those four items, you ask for it and you do NOT wrap up yet. Never do both in the same reply. Do not close with "does that sound right?", "shall we begin?", "anything else?", or any other trailing question. Do NOT claim to have what you need, and do not summarise what you took down: the screen prints what is actually on the record directly underneath your reply, including anything still missing, so a claim from you can only contradict it. Say what happens next (the next screen asks who gives the accounts, then the check-in itself) and stop.
 - AND SAY WHERE THE REST OF THE CONTEXT GOES, ONCE, IN THE CLOSER. A lead finishes setup believing
-  this conversation was their only chance to explain the situation. It is not: the Context tab takes
-  documents, notes and anything else the check-ins should be held against, and nothing in this flow
-  has ever said so - so the plan, the brief and the spreadsheet they already have never arrive, and
-  every session afterwards runs on memory. One clause, in the closer, in plain words: anything else
-  worth holding this against goes on the Context tab, any time.
+  this conversation was their only chance to explain the situation. It is not: the Context and
+  resources tab takes documents, notes and anything else the check-ins should be held against, and
+  nothing in this flow has ever said so - so the plan, the brief and the spreadsheet they already
+  have never arrive, and every session afterwards runs on memory. One clause, in the closer, in
+  plain words: anything else worth holding this against goes on the Context and resources tab, any
+  time.
 - THE CLOSER MUST NOT READ AS THE END OF EVERYTHING. "Thank you, that gives me what I need to set
   this up for you." is a full stop, and the screen then asks another question, so the product looks
   like it changed its mind. It is a HANDOVER, not a finish: say what you have, then say plainly that
@@ -2747,6 +2748,13 @@ from finishing at all.`;
           update: {},
         });
       }
+      /* pending.roleAsDescribed is what THIS PERSON typed about THEMSELVES on the join page
+         ("Your part in this" - JoinPage.tsx) - their own words about their own role, never the
+         lead's private description of somebody (that is GroundParticipant.roleAsDescribed,
+         decision 30; PendingJoin's own comment says "what they told us about themselves"). Own
+         words about one's own role go to the person's own profile field, User.jobTitle - the same
+         distinction and the same field participants.service.ts#updateRole and
+         conversation.service.ts's role-correction write to, and never into roleAsDescribed. */
       if (!user) {
         user = await tx.user.create({
           data: {
@@ -2760,8 +2768,13 @@ from finishing at all.`;
             passwordHash: null,
             /* Holds no seat and cannot check in until somebody says yes. */
             awaitingOrgApproval: wait,
+            jobTitle: pending.roleAsDescribed ?? null,
           },
         });
+      } else if (pending.roleAsDescribed) {
+        /* An existing account, joining a further check-in, just typed their own words again - the
+           same statement updateRole writes whenever the person themselves gives it. */
+        user = await tx.user.update({ where: { id: user.id }, data: { jobTitle: pending.roleAsDescribed } });
       }
 
       /* THE QUEUE. One row per (organisation, person); a second link joins the request already waiting. */
@@ -2808,7 +2821,9 @@ from finishing at all.`;
             email,
             userId: user.id,
             partyType: PartyType.PARTICIPANT,
-            roleAsDescribed: pending.roleAsDescribed ?? null,
+            /* NEVER pending.roleAsDescribed here - see the note above the user create/update: that is
+               this person's own words about themselves, not the lead's private description this
+               column holds (decision 30). It went to User.jobTitle instead. */
             department: pending.department ?? null,
             invitedAt: new Date(),
             notifiedAt: new Date(),

@@ -18,6 +18,10 @@ import { COACHING_LIVE_KEY } from '../conversation/conversation.service';
 import {
   CORRECTION_WINDOW_KEY, DEFAULT_CORRECTION_WINDOW_DAYS, MAX_CORRECTION_WINDOW_DAYS, isAWindow,
 } from '../conversation/the-window-for-correcting-a-record';
+import {
+  SUGGESTION_THRESHOLDS_KEY, DEFAULT_SUGGESTION_THRESHOLDS, isValidSuggestionThresholds,
+  readSuggestionThresholds, type SuggestionThresholds,
+} from '../suggestions/thresholds';
 
 @Injectable()
 export class AdminService implements OnApplicationBootstrap {
@@ -156,6 +160,35 @@ export class AdminService implements OnApplicationBootstrap {
       update: { value: days, updatedBy: adminUserId },
     });
     return { days, default: DEFAULT_CORRECTION_WINDOW_DAYS, max: MAX_CORRECTION_WINDOW_DAYS };
+  }
+
+  /**
+   * THE THRESHOLDS FOR A SUGGESTION (week 10, decision 33). Read the same defensive way suggestions
+   * itself reads them - a bad row means nothing set, never a guess.
+   */
+  async getSuggestionThresholds(): Promise<{ thresholds: SuggestionThresholds }> {
+    const row = await this.prisma.platformSetting.findUnique({ where: { key: SUGGESTION_THRESHOLDS_KEY } }).catch(() => null);
+    return { thresholds: readSuggestionThresholds(row?.value) ?? DEFAULT_SUGGESTION_THRESHOLDS };
+  }
+
+  /**
+   * Written the same way the WhatsApp switch, the correction window and the two free limits are
+   * written, from the same page. Anything that is not the documented shape is refused with a plain
+   * sentence rather than silently dropped or guessed at - see thresholds.ts for what is checked.
+   */
+  async setSuggestionThresholds(thresholds: unknown, adminUserId: string): Promise<{ thresholds: SuggestionThresholds }> {
+    if (!isValidSuggestionThresholds(thresholds)) {
+      throw new BadRequestException(
+        'Each verdict (keep, reward, support, plan, exit) needs a keptBelow fraction greater than 0 and no more than 1, ' +
+          'and a whole number of settled commitments (overPeriods) greater than 0. Send only those keys.',
+      );
+    }
+    await this.prisma.platformSetting.upsert({
+      where: { key: SUGGESTION_THRESHOLDS_KEY },
+      create: { key: SUGGESTION_THRESHOLDS_KEY, value: thresholds as any, updatedBy: adminUserId },
+      update: { value: thresholds as any, updatedBy: adminUserId },
+    });
+    return { thresholds };
   }
 
   /**

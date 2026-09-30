@@ -114,6 +114,7 @@ function setup() {
         return { id: row.id };
       }),
       findMany: jest.fn(async ({ where }: any) => suggestions.filter((r) => matches(r, where))),
+      findFirst: jest.fn(async ({ where }: any) => suggestions.find((r) => matches(r, where)) ?? null),
       findUnique: jest.fn(async ({ where }: any) => {
         const r = suggestions.find((x) => x.id === where.id);
         if (!r) return null;
@@ -134,9 +135,23 @@ const LABELS = /\b(PIP|at[- ]risk|exit|low[- ]performer|underperform\w*)\b/i;
 const RATINGS = /specificity|confidence|severity|rating|score|"verdict"|"plan"/i;
 
 describe('the lead, Wairimu, reads the suggestion and decides', () => {
-  it('is served the suggestion in the prototype’s parts, with Daniel named', async () => {
+  it('reads nothing until Daniel has had his turn (decision 53: the person sees it first)', async () => {
     const { svc, as } = setup();
     await svc.record(aSuggestion());
+    /* Nothing said yet, and no time passed since it was reached (test rows are stamped early in
+       the month; `now` here is the same moment, before the three days decision 53 waits). */
+    const justReached = new Date(2026, 8, 1);
+    expect((await svc.forGround('g-daniel', as('wairimu'), justReached)).suggestions).toEqual([]);
+    /* And three days later, unanswered, Wairimu reads it anyway. */
+    const threeDaysOn = new Date(2026, 8, 4);
+    expect((await svc.forGround('g-daniel', as('wairimu'), threeDaysOn)).suggestions).toHaveLength(1);
+  });
+
+  it('is served the suggestion in the prototype’s parts, with Daniel named, once Daniel has answered', async () => {
+    const { svc, as } = setup();
+    const { id } = await svc.record(aSuggestion());
+    /* Decision 53: whoever runs the check-in reads it only once the person has had their turn. */
+    await svc.addSide(id, as('daniel'), { side: 'Most of my time goes on cleaning the customer records.' });
     const { suggestions } = await svc.forGround('g-daniel', as('wairimu'));
     expect(suggestions).toHaveLength(1);
     const s: any = suggestions[0];
@@ -326,6 +341,36 @@ describe('a colleague, Miriam, and somebody outside, Kofi', () => {
     await expect(svc.forGround('g-sales', as('kofi'))).rejects.toThrow(REFUSED.notInIt);
     /* Daniel still reads his own there. */
     expect((await svc.forGround('g-sales', as('daniel'))).suggestions).toHaveLength(1);
+  });
+});
+
+describe('decision 56, item 3: an untold goal counts against Daniel, so Wairimu reads it as a conversation point here too', () => {
+  it('Wairimu, the lead, reads it - Daniel does not, and it is absent when there is no untold goal', async () => {
+    const { svc, as, prisma } = setup();
+    prisma.personObjective = {
+      findMany: jest.fn(async ({ where }: any) => (where?.awareness === 'NOT_TOLD'
+        ? [{ participantId: 'p-d1', text: 'Take over the scheduling', awareness: 'NOT_TOLD', authoredBy: 'lead' }]
+        : [])),
+    };
+    const { id } = await svc.record(aSuggestion());
+    /* Decision 53: Wairimu reads it only once Daniel has had his turn. */
+    await svc.addSide(id, as('daniel'), { side: 'Most of my time goes on cleaning the customer records.' });
+    const wairimuSees: any = (await svc.forGround('g-daniel', as('wairimu'))).suggestions[0];
+    expect(wairimuSees.conversationPoints).toEqual([
+      'Daniel has not been told about this goal yet, so talk it through with Daniel before reading anything into it.',
+    ]);
+
+    const danielSees: any = (await svc.forGround('g-daniel', as('daniel'))).suggestions[0];
+    expect(danielSees).not.toHaveProperty('conversationPoints');
+  });
+
+  it('is absent for the lead when nothing is untold', async () => {
+    const { svc, as, prisma } = setup();
+    prisma.personObjective = { findMany: jest.fn(async () => []) };
+    const { id } = await svc.record(aSuggestion());
+    await svc.addSide(id, as('daniel'), { side: 'Most of my time goes on cleaning the customer records.' });
+    const wairimuSees: any = (await svc.forGround('g-daniel', as('wairimu'))).suggestions[0];
+    expect(wairimuSees).not.toHaveProperty('conversationPoints');
   });
 });
 
