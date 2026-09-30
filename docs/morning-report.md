@@ -6,6 +6,29 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 30 SEPTEMBER, MORNING: HAFSAH'S FIVE STEPS (the old chat stays on, patterns, the disagreements, week 10)
+
+**Step 1: the old context chat stays on.** Nothing switches it off until the screens workspace has built Ask Groundwork's document and confirmation screens and confirmed live that everything works through them. What those screens must show is now in `docs/answers-from-engine.md` (`2eb5fd42`).
+
+What was proven through Ask Groundwork, and what was not:
+- **Proven live, same result as the old chat:** the target a paste sets, and its number; who sees targets; lines typed directly; the lead's private notes; the refusal to share a note about a person; exact questions confirmed, reworded and left waiting; an admin refused at "Yes"; a document's text with the bank detail hidden; a document arriving private; the length and rhythm said back.
+- **Proven in tests only, not live:** a participant typing setup words gets nothing said back and nothing saved.
+- **Not proven, and found missing:** numbers read out of a document added through Ask Groundwork are never said back, so they can never be saved. The old chat takes them when the lead answers "yes" to the sentence "Here is the context we have from ...", which only the Context page shows. This is being built next.
+- **Not tested through Ask Groundwork yet:** that a target lands on the right person (the live check matched the number but did not print whose it is); a change to a line already on the record (item 7); a lead saying someone is struggling (item 10); an expectation of a named person (item 11); a colleague's private document staying out (item 12); a colleague asking about someone else's number (item 13); opening on what is already there (item 15); success restated with a reason (item 16); bank details in a message (item 18, the message is cleaned at the door, not yet shown live); a paste sent twice, and two people with the same first name (item 21). These are the next helper's work, after requests 84, 83 and 81.
+
+**Step 4: the thresholds for week 10, explained. Nothing is set.**
+
+A suggestion about a person can only be reached when a threshold is set for it, and none is set. Each threshold has two numbers.
+- **"Kept below"** decides how often a person must be keeping their commitments before Groundwork stays quiet. For example 0.6 means: if they kept fewer than 6 in 10, a suggestion is reached.
+- **"Over periods"** is misnamed: it is really how many commitments must have been settled, kept or not, in the last four weeks before the share is read at all. With too few, one missed commitment would swing the share wildly.
+
+Only "extra support" can be reached today. Keep, reward, a plan and exit have no reading of the record built yet, so a threshold set for them does nothing.
+
+My recommendations, for Hafsah to decide:
+- **Support: kept below 0.5, over at least 6 settled commitments.** Half is a clear line a person can see on their own board, and six is roughly three check-ins of two commitments each, so one bad week cannot reach it. A lower bar (0.4) would miss people who need help; a higher one (0.7) would reach people having an ordinary month.
+- **Keep, reward, plan, exit: leave empty.** Set them only once each has a reading of the record built and tested. Plan and exit most of all, because they are the least reversible.
+- **Rename "over periods" to "at least this many settled commitments"** on the admin page, so whoever sets it knows what it counts.
+
 ## SUMMARY OF THE NIGHT, 29 TO 30 SEPTEMBER (read this first)
 
 **Every decision Hafsah sent tonight is recorded in `docs/decisions-merged.md`, as decisions 44 to 57.** Clarifications were also added to decisions 4, 5, 6, 9, 12, 17, 21 and 27.
