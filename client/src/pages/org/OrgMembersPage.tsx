@@ -115,8 +115,18 @@ export function OrgMembersPage() {
   }
 
   const noSeatHeading = (seatQueue.data?.length ?? 0) === 1
-    ? 'Somebody is on a check-in with no seat for them'
-    : `${seatQueue.data?.length ?? 0} people are on check-ins with no seat for them`
+    ? 'Somebody is on a check-in with no seat'
+    : `${seatQueue.data?.length ?? 0} people are on check-ins with no seat`
+
+  /* HAFSAH, ITEM (FOLLOWING THE PROTOTYPE'S OWN ROW): the prototype does draw this warning after
+     all - source/s11.js, "Somebody is on a check-in with no seat" - as one EdgeRow per person,
+     a red edge, "<name> is on <check-in> but has no seat", "They can't check in until there's
+     room. <count> of <cap> seats are taken.", with a quiet "Free a seat" link to that person's own
+     page and a secondary "Move to a larger plan" link to billing (secondary, not the prototype's
+     second navy button, since Hafsah's one-navy-button rule - already followed on the board - wins
+     over the mock). Filled from what the server actually sends, not the prototype's fictional
+     "Tom Odhiambo"/"25 of 25". */
+  const seatsTakenSaying = people?.cap != null ? `${people.count} of ${people.cap} seats are taken.` : null
 
   return (
     <Page>
@@ -124,49 +134,55 @@ export function OrgMembersPage() {
 
       {(seatQueue.data?.length ?? 0) > 0 && (
         <EdgeList label={noSeatHeading}>
-          <EdgeRow
-            kind="concern"
-            title={noSeatHeading}
-            detail={(
-              <>
-                <p className="gwui-panel-text-muted">{whoAddedThem(seatQueue.data!, seatsFree)}</p>
-                <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
-                  {(person: any) => (
-                    <div key={person.id}>
-                      <p className="gwui-panel-text"><b>{person.email}</b></p>
-                      <p className="gwui-panel-text-muted">
-                        {`Added by ${person.addedBy ?? 'a lead'}${person.forCheckIn ? ` for ${person.forCheckIn}` : ''}.`}
-                      </p>
-                    </div>
-                  )}
-                </ShowAFew>
-              </>
+          {/* THE SUMMARY SENTENCE (kept, word for word): who added them, and whether there is room
+              now - `whoAddedThem`, unchanged, still the one place that says this. */}
+          <p className="gwui-panel-text-muted">{whoAddedThem(seatQueue.data!, seatsFree)}</p>
+          <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
+            {(person: any) => (
+              <EdgeRow
+                key={person.id}
+                kind="concern"
+                title={`${person.email} is on ${person.forCheckIn ?? 'a check-in'} but has no seat`}
+                detail={(
+                  <>
+                    <p className="gwui-panel-text-muted">
+                      {`Added by ${person.addedBy ?? 'a lead'}${person.forCheckIn ? ` for ${person.forCheckIn}` : ''}.`}
+                    </p>
+                    <p className="gwui-panel-text-muted">
+                      {`They can’t check in until there’s room.${seatsTakenSaying ? ` ${seatsTakenSaying}` : ''}`}
+                    </p>
+                  </>
+                )}
+                actions={(
+                  <div className="gwui-edge-acts">
+                    <Button kind="quiet" onClick={() => navigate(`/org/members/${person.id}`)}>Free a seat</Button>
+                    {/*
+                      SECONDARY, NOT THE PROTOTYPE'S OWN "btn pri" (Hafsah, 30 September, item 2,
+                      carried forward here): a second navy button beside "Send their invitations"
+                      below and "Invite a colleague" further down would give this one page three
+                      navy buttons at once. "Move to a larger plan" stays the one real link to
+                      billing; "See the plans" is not repeated a second time on this page.
+                    */}
+                    <Button kind="secondary" onClick={() => navigate('/settings/billing')}>Move to a larger plan</Button>
+                  </div>
+                )}
+              />
             )}
-            /*
-              HAFSAH, 30 SEPTEMBER, ITEM 2: NOT A SECOND PRIMARY, AND NOT A REPEATED "SEE THE
-              PLANS". The prototype does not draw this card at all (it is the one part of this
-              page the prototype leaves out, kept because a lead can put somebody on a check-in
-              with no seat for them, and only an admin can make room - see the note above
-              OrgMembersPage). Where it is real, on this product, it must still leave the "Invite
-              people" form's own "Send their invitations" (InvitePeople.tsx) as the page's one
-              navy button, so "Send their invitations" here is a plain link, not a second
-              `Button`, and it sends a genuinely different thing (the people already waiting for a
-              seat, not whatever is typed into the invite form below) so it stays, rather than
-              being dropped. "See the plans" is not kept a second time here: it is the exact same
-              "Put your whole team on" link further down this page, and a person only needs to be
-              told that once.
-            */
-            actions={(
-              <button
-                type="button"
-                className="gwui-plain-link"
-                onClick={() => sendHeld.mutate()}
-                disabled={sendHeld.isPending}
-              >
-                {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
-              </button>
-            )}
-          />
+          </ShowAFew>
+          {/*
+            THE PRODUCT'S OWN ACTION, WITH NO PLACE IN THE PROTOTYPE'S ROW. "Send their
+            invitations" sends every held invitation there is room for in one go - a genuinely
+            different thing from either button above - so it stays, as a quiet text link inside
+            the warning rather than a second `Button` on any one row.
+          */}
+          <button
+            type="button"
+            className="gwui-plain-link"
+            onClick={() => sendHeld.mutate()}
+            disabled={sendHeld.isPending}
+          >
+            {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
+          </button>
         </EdgeList>
       )}
 
