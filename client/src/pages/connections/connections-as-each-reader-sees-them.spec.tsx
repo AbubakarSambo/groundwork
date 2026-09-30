@@ -281,12 +281,13 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     expect(connectionsLink.getAttribute('href')).toBe('/settings/connections')
     expect(connectionsLink.closest('nav')?.textContent).toBe('Connections')
     expect(screen.getByRole('heading', { name: 'Connect WhatsApp' })).toBeTruthy()
-    expect(screen.getByText('People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step; what you’ve entered is kept.')).toBeTruthy()
+    /* GROUP 1'S THIRD REVIEW: full plain sentences. */
+    expect(screen.getByText('People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept.')).toBeTruthy()
     await screen.findByText('Paste three things from Meta')
     for (const [label, hint] of [
-      ['Phone number ID', 'In Meta: WhatsApp, API Setup.'],
-      ['Access token', 'A permanent system-user token, not the 24-hour one. In Meta: Business Settings, System users.'],
-      ['App secret', 'In Meta: your app, Settings, Basic.'],
+      ['Phone number ID', 'You find it in Meta, under WhatsApp, then API Setup.'],
+      ['Access token', 'Use a permanent token from a system user, not the one that lasts 24 hours. You find it in Meta, under Business Settings, then System users.'],
+      ['App secret', 'You find it in Meta, under your app, then Settings, then Basic.'],
     ]) {
       expect(screen.getByText(label)).toBeTruthy()
       expect(screen.getByText(hint)).toBeTruthy()
@@ -318,7 +319,7 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     expect(document.querySelector('.gwui-numsteps')?.closest('.gwui-panel')).toBeNull()
     expect(screen.getByText('Keep your number on your own system instead')).toBeTruthy()
     expect(screen.getByText('If your WhatsApp number already runs through your own customer system, it can pass check-in messages to us and send our replies back. Nothing moves to Meta. Whoever runs your systems sets this up with a key.')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Read how the relay works' }).getAttribute('href')).toBe('/settings/tools')
+    expect(screen.getByRole('link', { name: 'Read how this works' }).getAttribute('href')).toBe('/settings/tools')
   })
 
   it('"Connect" needs all three the first time, and sends them to the server', async () => {
@@ -337,7 +338,7 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
   it('once saved, step 3 shows the address and token to copy, and waits for Meta', async () => {
     serve({ connection: { ...CONNECTED, webhookProvenAt: null, lastOutboundAt: null } })
     open(GRACE, 'whatsapp')
-    await screen.findByText('In Meta: WhatsApp, Configuration, Webhook. Paste these two, then subscribe to', { exact: false })
+    await screen.findByText('You find it in Meta, under WhatsApp, then Configuration, then Webhook. Paste these two, then subscribe to', { exact: false })
     expect((screen.getByRole('textbox', { name: 'Callback address' }) as HTMLInputElement).value).toContain('/api/v1/webhooks/whatsapp/org-baridi')
     expect((screen.getByRole('textbox', { name: 'Verify token' }) as HTMLInputElement).value).toBe('gwv_7f3a91c2')
     expect(screen.getAllByRole('button', { name: 'Copy' })).toHaveLength(2)

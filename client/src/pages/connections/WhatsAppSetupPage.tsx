@@ -90,7 +90,7 @@ export function WhatsAppSetupPage() {
   const test = useMutation({
     mutationFn: () => integrationsApi.testWhatsapp(to),
     onSuccess: () => { toast.success('Sent. Check that phone.'); refresh() },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Meta refused it.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Meta did not send it. Check the number and try again.'),
   })
   const turn = useMutation({
     mutationFn: (enabled: boolean) => integrationsApi.setWhatsappEnabled(enabled),
@@ -127,17 +127,17 @@ export function WhatsAppSetupPage() {
               <div>
                 <FieldLabel htmlFor="wa-number-id">Phone number ID</FieldLabel>
                 <TextField id="wa-number-id" value={numberId} onChange={e => setNumberId(e.target.value)} placeholder={c?.phoneNumberId ?? ''} inputMode="numeric" />
-                <p className="gwui-field-help">In Meta: WhatsApp, API Setup.</p>
+                <p className="gwui-field-help">You find it in Meta, under WhatsApp, then API Setup.</p>
               </div>
               <div>
                 <FieldLabel htmlFor="wa-token">Access token</FieldLabel>
                 <TextField id="wa-token" type="password" value={token} onChange={e => setToken(e.target.value)} placeholder={c ? 'New permanent access token (leave blank to keep)' : ''} />
-                <p className="gwui-field-help">A permanent system-user token, not the 24-hour one. In Meta: Business Settings, System users.</p>
+                <p className="gwui-field-help">Use a permanent token from a system user, not the one that lasts 24 hours. You find it in Meta, under Business Settings, then System users.</p>
               </div>
               <div>
                 <FieldLabel htmlFor="wa-secret">App secret</FieldLabel>
                 <TextField id="wa-secret" type="password" value={secret} onChange={e => setSecret(e.target.value)} placeholder={c ? 'New app secret (leave blank to keep)' : ''} />
-                <p className="gwui-field-help">In Meta: your app, Settings, Basic.</p>
+                <p className="gwui-field-help">You find it in Meta, under your app, then Settings, then Basic.</p>
               </div>
               <div>
                 <FieldLabel htmlFor="wa-display">The number, as people will see it (optional)</FieldLabel>
@@ -155,7 +155,7 @@ export function WhatsAppSetupPage() {
         if (!c) return null
         return (
           <Stack gap={12}>
-            <p className="gwui-panel-text-muted">In Meta: WhatsApp, Configuration, Webhook. Paste these two, then subscribe to <b>messages</b>.</p>
+            <p className="gwui-panel-text-muted">You find it in Meta, under WhatsApp, then Configuration, then Webhook. Paste these two, then subscribe to <b>messages</b>.</p>
             <CopyField label="Callback address" value={callback} />
             <CopyField label="Verify token" value={c.verifyToken} />
             {!c.webhookProvenAt && (
@@ -224,7 +224,7 @@ export function WhatsAppSetupPage() {
       <PageTitle
         crumbs={[{ label: 'Connections', to: '/settings/connections' }]}
         title="Connect WhatsApp"
-        subtitle="People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step; what you’ve entered is kept."
+        subtitle="People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step, and what you have entered is kept."
       />
 
       {whatsapp.isError && <Note tone="error">Connections did not load.</Note>}
@@ -268,7 +268,7 @@ export function WhatsAppSetupPage() {
         <Panel>
           <Stack gap={12}>
             <p className="gwui-panel-text-muted">If your WhatsApp number already runs through your own customer system, it can pass check-in messages to us and send our replies back. Nothing moves to Meta. Whoever runs your systems sets this up with a key.</p>
-            <Button kind="quiet" to="/settings/tools">Read how the relay works</Button>
+            <Button kind="quiet" to="/settings/tools">Read how this works</Button>
           </Stack>
         </Panel>
       </Section>
