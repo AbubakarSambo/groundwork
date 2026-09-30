@@ -104,6 +104,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── PANEL TEXT (prototype: a fact's body, inside a panel - 14.5px, 21px line) ─────────── */
 .gwui-panel-text { font-size: 14.5px; line-height: 21px; color: var(--gw-text); margin: 0; }
 .gwui-panel-text-muted { font-size: 14.5px; line-height: 21px; color: var(--gw-sub); margin: 0; }
+/* A plain list inside a Panel - the You board's own "Your goals"/"Your to-dos"/"What you contributed". */
+.gwui-panel-list { list-style: none; margin: 0; padding: 0; }
+.gwui-panel-list li { padding: 8px 0; border-top: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-panel-list li:first-child { border-top: none; padding-top: 0; }
 
 /* ── FINE PRINT (prototype: the sentence under a button, e.g. "About two minutes…") ─────── */
 .gwui-fine { font-size: 13px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
@@ -178,6 +182,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
   background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px;
 }
 .gwui-panel-pad { padding: 20px 22px; }
+.gwui-panel-heading { font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); margin: 0 0 8px; }
 
 /* ── EDGE LIST / EDGE ROW (prototype: .list, .item, .sp) ─────────────────── */
 .gwui-edge-list { border-top: 1px solid var(--gw-border); list-style: none; margin: 0; padding: 0; }
@@ -1011,3 +1016,20 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-waiting-one + .gwui-waiting-one { margin-top: 8px; }
 .gwui-waiting-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
 .gwui-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 14.5px; resize: vertical; }
+
+/* ── CARD GRIDS (the You board, C2, U.12: "Your goals"/"Your to-dos"/"What you contributed" in
+   three, "Worth knowing now"/"noticed"/"coaching over time" in two) ────────────────────────────── */
+.gwui-cards-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.gwui-cards-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+@media (max-width: 900px) {
+  .gwui-cards-3, .gwui-cards-2 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── ROW LIST / ROW (the You board's own lists, C2, U.12) ───────────────────────────────────── */
+.gwui-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
+.gwui-row { display: grid; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-row a { color: var(--gw-navy); font-weight: 700; text-decoration: none; }
+.gwui-row a:hover, .gwui-row a:focus-visible { text-decoration: underline; }
+@media (max-width: 900px) {
+  .gwui-row { grid-template-columns: minmax(0, 1fr) !important; }
+}
