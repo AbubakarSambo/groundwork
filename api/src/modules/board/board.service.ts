@@ -73,7 +73,7 @@ import {
   whoIsBeingWaitedOn,
 } from './what-the-whole-place-is-waiting-on';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
 import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
@@ -1467,7 +1467,10 @@ export class BoardService {
         orderBy: { lastSeenAt: 'desc' },
         take: 60,
       });
-      const patternReader = { participantId: me?.id ?? null, runsIt: runsThisGround };
+      /* Decision 58: an admin who does not run this check-in reads no pattern, even where
+         `runsThisGround` (which includes every admin of the organisation) says they may read the
+         rest of the board. See patterns/who-reads-a-pattern, runsItForAPattern. */
+      const patternReader = { participantId: me?.id ?? null, runsIt: runsItForAPattern(ground as any, requestingUserId) };
       const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
       const served = servedPatterns(detections as any, patternReader, namesForPatterns);
       out.patterns = await wordPatternEvidence(

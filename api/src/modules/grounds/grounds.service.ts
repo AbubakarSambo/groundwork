@@ -7,7 +7,7 @@ import { theirHome } from '../participants/where-somebody-is-from';
 import { aGuestHereIfTheyAreFromElsewhere } from '../participants/a-guest-is-a-guest-from-the-moment-they-are-added';
 import { theColleaguePickedById, NOT_SOMEONE_HERE } from '../../common/colleagues';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, type APatternReader, type AServedPattern } from '../patterns/who-reads-a-pattern';
 import { rememberedCompose } from '../reports/a-line-worded-once-is-kept';
 import { wordPatternEvidence } from '../reports/pattern-evidence-in-plain-words';
 import { withoutBankDetails, withoutBankDetailsInEachTurn } from '../documents/bank-details-are-never-kept';
@@ -5420,20 +5420,16 @@ export class GroundsService {
   /** The one rule (who-may-read-this-check-in.ts), asked with the viewer's and the lead's departments resolved. */
   /**
    * WHO THIS READER IS, FOR A PATTERN. Their own row when they take part, and whether they run the
-   * check-in: its lead, whoever set it up, or an admin of the organisation it belongs to. A lead of
-   * a department who may open the check-in does not run it, and reads no pattern about anybody.
+   * check-in for a pattern's purposes (decision 58): its lead, or the admin who set it up for them -
+   * never every admin of the organisation. See `runsItForAPattern`, the one rule this calls. A lead
+   * of a department who may open the check-in does not run it, and reads no pattern about anybody.
    */
-  private async patternReaderOf(
-    ground: { organizationId: string; initiatorId: string | null; createdByUserId?: string | null; participants?: { id: string; userId: string | null }[] },
+  private patternReaderOf(
+    ground: { initiatorId: string | null; createdByUserId?: string | null; participants?: { id: string; userId: string | null }[] },
     userId: string | undefined,
-  ): Promise<APatternReader> {
-    if (!userId) return { participantId: null, runsIt: false };
+  ): APatternReader {
     const mine = (ground.participants ?? []).find((p) => p.userId === userId) ?? null;
-    if (ground.initiatorId === userId || (!!ground.createdByUserId && ground.createdByUserId === userId)) {
-      return { participantId: mine?.id ?? null, runsIt: true };
-    }
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
-    return { participantId: mine?.id ?? null, runsIt: adminsThisOrg(user as any, ground) };
+    return { participantId: mine?.id ?? null, runsIt: runsItForAPattern(ground, userId) };
   }
 
   private async assertMaySeeGround(groundId: string, userId: string) {

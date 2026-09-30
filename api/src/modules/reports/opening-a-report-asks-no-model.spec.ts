@@ -177,8 +177,14 @@ describe('the wording is done when something new comes in, and served from then 
     expect(modelCalls()).toBe(0);
     expect(lead.probes[0].encourage[0]).toBe('Worth getting on record, where anyone could check it later: Green Mart has a quote and Lakeside will buy on the 29th, as worded.');
     expect(lead.probes[1].triedToUnblock).toBe('Nothing recorded as blocked, so there is nothing here about unblocking, as worded.');
-    /* An admin reads the same list, worded the same, from the one admin the warm-up read it as. */
-    expect(admin.probes?.[0]?.encourage?.[0]).toMatch(/, as worded\.$/);
+    /*
+     * Decision 58 (screens request 84, 30 September 2026): the probe list is a pattern surface (it
+     * carries each person's patterns), so an admin who only reads - and was not the one who set
+     * `g-sales` up for Wairimu (`createdByUserId` is hers, not Grace's) - reads none of it, the
+     * same as a colleague. Before this she read the same list as the lead, worded the same, purely
+     * because she was any admin of the organisation.
+     */
+    expect(admin.probes ?? null).toBeNull();
     expect(aisha.coaching.whyItMatters).toMatch(/what you can point at, as worded\.$/);
     expect(aisha.probes ?? null).toBeNull();
   });

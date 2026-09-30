@@ -1,5 +1,5 @@
 import { BAD_FAITH_CODES, CARRYING_CODES, POSITIVE_CODES } from './pattern-library';
-import { servedPatterns, whatHappenedIn, periodsSeen, thePersonHasHadTheirTurn, theOnesTheyAreSeeingFirst, whoIsWhoIn, patternRowAsOfSession, type APatternRow } from './who-reads-a-pattern';
+import { servedPatterns, whatHappenedIn, periodsSeen, thePersonHasHadTheirTurn, theOnesTheyAreSeeingFirst, whoIsWhoIn, patternRowAsOfSession, runsItForAPattern, type APatternRow } from './who-reads-a-pattern';
 
 /**
  * THE RULES FOR SERVING A PATTERN, READ AS EACH READER. See who-reads-a-pattern.
@@ -211,5 +211,32 @@ describe('the second-read note (decision 57, item 4): only whoever runs the chec
   it('says nothing when only the model backed it, or nobody said', () => {
     const lead = servedPatterns(ROWS, LEAD, on).find((p) => p.id === 'pd1');
     expect(lead?.secondReadNote).toBeNull();
+  });
+});
+
+describe('runsItForAPattern (decision 58, screens request 84): only the lead, or the admin who set it up', () => {
+  const CHECK_IN = { initiatorId: 'u-lead', createdByUserId: 'u-setup-admin' };
+
+  it('is true for the check-in’s own lead', () => {
+    expect(runsItForAPattern(CHECK_IN, 'u-lead')).toBe(true);
+  });
+
+  it('is true for the admin who set this particular check-in up for its lead', () => {
+    expect(runsItForAPattern(CHECK_IN, 'u-setup-admin')).toBe(true);
+  });
+
+  it('is false for any other admin of the organisation, even though the wider runsIt class lets them in elsewhere', () => {
+    expect(runsItForAPattern(CHECK_IN, 'u-other-admin')).toBe(false);
+  });
+
+  it('is false for the person it is about, a colleague, a guest, or nobody signed in', () => {
+    expect(runsItForAPattern(CHECK_IN, 'u-ngozi')).toBe(false);
+    expect(runsItForAPattern(CHECK_IN, undefined)).toBe(false);
+    expect(runsItForAPattern(CHECK_IN, null)).toBe(false);
+  });
+
+  it('is false when nobody set the check-in up (createdByUserId null), for anyone but the lead', () => {
+    expect(runsItForAPattern({ initiatorId: 'u-lead', createdByUserId: null }, 'u-other-admin')).toBe(false);
+    expect(runsItForAPattern({ initiatorId: 'u-lead', createdByUserId: null }, 'u-lead')).toBe(true);
   });
 });

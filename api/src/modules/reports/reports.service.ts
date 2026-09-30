@@ -141,7 +141,7 @@ import { GroundStatus, PartyType, CheckInStatus, GroundScenario, UsageEventType,
 import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCHEMA } from '../conversation/prompt-library';
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
-import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, type APatternRow } from '../patterns/who-reads-a-pattern';
+import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, type APatternRow } from '../patterns/who-reads-a-pattern';
 import { periodOf } from '../patterns/period-of';
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
@@ -2809,6 +2809,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       select: {
         organizationId: true,
         initiatorId: true,
+        /* The one per-check-in admin grant a pattern's access rule reads: see runsItForAPattern. */
+        createdByUserId: true,
         /* `partyType` and the user's name because `namesVisibleTo` decides from both which
            labels this reader may resolve; `email` as the last resort a lead is entitled to. */
         participants: {
@@ -3302,15 +3304,19 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const periodOfThisSession = periodOf({ sessionNumber, when: snapshot?.takenAt }, ground as any);
     const patternRowsAsOfThisSession = (patternRowsForPage as APatternRow[]).map((r) => patternRowAsOfSession(r, periodOfThisSession));
     const namesForPatterns = whoIsWhoIn(ground.participants as any, ground.initiatorId, (ground as any).cadence);
+    /* Decision 58: narrower than viewerIsLead (which counts every admin of the organisation) - a
+       pattern and its answer go only to the lead or the admin who set this check-in up for them.
+       See patterns/who-reads-a-pattern, runsItForAPattern. */
+    const patternRunsIt = runsItForAPattern(ground as any, requestingUserId);
     const patternsForPage = await wordPatternEvidence(
       servedPatterns(
         patternRowsAsOfThisSession as any,
-        { participantId: me?.id ?? null, runsIt: viewerIsLead },
+        { participantId: me?.id ?? null, runsIt: patternRunsIt },
         namesForPatterns,
       ),
       namesForPatterns.firstNameOf ?? (() => null),
       this.patternEvidenceCompose(),
-    ).catch(() => servedPatterns(patternRowsAsOfThisSession as any, { participantId: me?.id ?? null, runsIt: viewerIsLead }, namesForPatterns));
+    ).catch(() => servedPatterns(patternRowsAsOfThisSession as any, { participantId: me?.id ?? null, runsIt: patternRunsIt }, namesForPatterns));
     /* The person reading their own for the first time starts the clock on when the lead may read it. */
     await markShownToThePerson(this.prisma as any, theOnesTheyAreSeeingFirst(patternRowsForPage as any, patternsForPage));
     /* Rows the picture draft and the question read. Each starts inside a promise: see myOwnSoftSpots. */
@@ -6134,6 +6140,10 @@ happened, and what is in the way.`;
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
     const isOrgAdmin = !isInitiator && !participant && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
     if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
+    /* Decision 58: narrower than isInitiator || isOrgAdmin - a pattern (the lead's probe list
+       included) goes only to the lead or the admin who set this check-in up for them, never to
+       every admin of the organisation. See patterns/who-reads-a-pattern, runsItForAPattern. */
+    const patternRunsIt = runsItForAPattern(ground as any, requestingUserId);
 
     /*
      * THE LINES A QUOTE MAY COME FROM, for everything below that is built now rather than stored.
@@ -6359,7 +6369,7 @@ happened, and what is in the way.`;
          8, 21 Sep 2026). */
       (ground as any).cadence === Cadence.ONE_TIME
         ? Promise.resolve(null)
-        : this.whatToProbeOn(groundId, ground as any, isInitiator || isOrgAdmin, nameOf, plainNameOf).catch((err) => {
+        : this.whatToProbeOn(groundId, ground as any, patternRunsIt, nameOf, plainNameOf).catch((err) => {
           this.logger.warn(`Could not build the probe list for ${groundId}: ${err?.message}`);
           return null;
         }),
