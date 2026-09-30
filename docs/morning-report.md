@@ -25,6 +25,12 @@ Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settl
 6. The confirmation of a restated success is a fragment: `Recorded. What doing well looks like now: "..." (the board kept going stale)`.
 7. The two doors differed on "should be more proactive": Ask Groundwork asked what it means instead of offering a private note. This is the model varying, recorded, not changed.
 
+**Six of the seven smaller faults fixed** (`1e61a882` to `70de32df`, 1,847 tests pass). From the live run on the real model:
+- After a yes, Ada now reads what was done: "I have kept "should be more proactive" as a private note about Ben Okafor that only you can see." and "What doing well looks like is now "every stage has an owner and a next date", because the board kept going stale. The earlier version is kept."
+- What is saved is exactly what was said back, character for character.
+- The opening line shows only on the first turn.
+- One false sentence was still there, now with the builder: before Ada said yes, Ask Groundwork said "I have also recorded that you want the pipeline update by every Friday." The guard missed "also" in the middle.
+
 **Patterns: more reads do not reach 8 in 10. Needs Hafsah.** Through the product's own code, all twelve scenarios, each check-in read 14 times so different numbers of reads could be compared on the same reads. "Beyond the real ones" counts patterns kept that fewer than half of 12 earlier reads found.
 
 | Reads, and how many must agree | The same | Real patterns still found | Beyond the real ones |
