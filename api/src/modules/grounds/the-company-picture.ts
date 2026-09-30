@@ -322,12 +322,16 @@ function showCountsFor(p: PriorityFacts, input: PictureInput): boolean {
 
 const JUDGING = /\b(slow|slowly|lazy|laziness|fault|blame|blamed|failed|failure|careless|negligent|incompetent|excuse|excuses|dropped the ball|unreliable|underperform\w*|low performer|high performer|flight risk|pip)\b/i;
 const RANKING = /\b(best|worst|top team|bottom|ranked|ranking|leading team|lagging|outperform\w*|slowest|fastest|weakest|strongest|than any other|than the other teams?|better than|worse than|ahead of|behind the other)\b/i;
+const NUMBER_WORDS: Record<string, number> = {
+  two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+  thirteen: 13, fourteen: 14, fifteen: 15, twenty: 20, thirty: 30, forty: 40, fifty: 50, hundred: 100, dozen: 12,
+};
 const QUOTES = /["“”«»]/;
 
 const words = (t: string) => (t.toLowerCase().match(/[a-z0-9']+/g) ?? []);
 
-/** Seven words in a row that the record also has in a row is a quotation, not a paraphrase. */
-function copiesTheRecord(text: string, sources: string[], run = 7): boolean {
+/** Six words in a row that the record also has in a row is a quotation, not a paraphrase. */
+function copiesTheRecord(text: string, sources: string[], run = 6): boolean {
   const w = words(text);
   if (w.length < run) return false;
   const grams = new Set<string>();
@@ -358,6 +362,8 @@ export function aSentenceTheRecordSupports(
   if (QUOTES.test(t) || JUDGING.test(t) || RANKING.test(t) || namesSomebody(t, o.names)) return null;
   if (/[:→]|->|\s—\s/.test(t)) return null; // pieces joined with colons or arrows
   const numbers = (t.match(/\d+/g) ?? []).map(Number);
+  /* A number spelled out is still a number. "One" is left alone: it is too often "no one" or "one of the". */
+  for (const [word, value] of Object.entries(NUMBER_WORDS)) if (new RegExp(`\\b${word}\\b`, 'i').test(t)) numbers.push(value);
   if (numbers.some((x) => !o.allowedNumbers.includes(x))) return null;
   if (o.needsANumber && numbers.length === 0) return null;
   if (copiesTheRecord(t, o.sources)) return null;
