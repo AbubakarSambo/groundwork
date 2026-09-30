@@ -369,7 +369,10 @@ export function SettingsPage() {
               <p className="gwui-panel-text">Sign out</p>
               <p className="gwui-panel-text-muted">Signs you out of Groundwork on this device. Nothing you have written is affected.</p>
             </div>
-            <Button kind="secondary" onClick={() => navigate('/signout', { replace: true })}>Sign out</Button>
+            {/* A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): "/signout" is a real page
+                (SignOutPage.tsx) that does the actual signing out as it opens - this only goes
+                there, and does nothing itself. */}
+            <Link className="gwui-open-link" to="/signout" replace>Sign out</Link>
           </div>
         </Panel>
       </Section>

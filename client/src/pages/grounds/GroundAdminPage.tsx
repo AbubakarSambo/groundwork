@@ -1543,7 +1543,7 @@ export function GroundAdminPage() {
               {parts.join(' ')}
               {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
               {sessionsDone === 0 && !ended && (
-                <>{parts.length ? ' ' : ''}<TextAction onClick={() => navigate('/org/guide')} size={13}>How to run one</TextAction></>
+                <>{parts.length ? ' ' : ''}<TextAction to="/org/guide" size={13}>How to run one</TextAction></>
               )}
             </p>
           )

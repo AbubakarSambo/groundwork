@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { PeopleTable, PersonRow, Tag, Button, type TagTone } from '@/components/gw/ui'
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { ShareSection } from '@/pages/grounds/ShareSection'
@@ -40,7 +41,7 @@ export function WhosInItRoster({
   newParticipantEmail, setNewParticipantEmail, newParticipantNote, setNewParticipantNote,
   newParticipantDepartment, setNewParticipantDepartment, addParticipantMut,
   queuedToAdd, setQueuedToAdd, inviteTheQueue, lastInvitedEmail, whyItWaits, lastInviteWaits,
-  billingStatus, navigate, onShareCode, fixingEmailId, setFixingEmailId, fixingEmailValue,
+  billingStatus, onShareCode, fixingEmailId, setFixingEmailId, fixingEmailValue,
   setFixingEmailValue, fixEmail, resendInvite, showAdd, showLink,
   sessionParties, peersHidden, notOpenYet, viewerIsParty, leadName, viewerIsTheLead,
 }: {
@@ -126,13 +127,8 @@ export function WhosInItRoster({
             <div className="gwui-note gwui-note-error" role="alert">
               Your plan covers {seats.cap} people, including you, and all {seats.cap} are taken. Move to a
               larger plan to add more.{' '}
-              <button
-                onClick={() => navigate('/billing')}
-                className="gwui-btn gwui-btn-quiet"
-                style={{ display: 'inline' }}
-              >
-                View plans
-              </button>
+              {/* A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): it only goes to another page. */}
+              <Link className="gwui-open-link" to="/billing">View plans</Link>
             </div>
           )}
           <p className="gwui-note">
@@ -343,6 +339,9 @@ export function WhosInItRoster({
              * SPEAK TO AN ADMIN AS "YOU" (U.4 review, item 4). And "View plans" now goes to the
              * plans page itself, not to People - pressing it used to land an admin back on the
              * roster they were already reading, with nothing about a plan on it.
+             *
+             * A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): it only goes to another page, and
+             * does nothing here.
              */
             help = {
               tone: 'look',
@@ -350,7 +349,7 @@ export function WhosInItRoster({
                 ? `Your plan has no seat for ${inASentence}. Free one or move to a larger plan, and the invitation goes out.`
                 : 'Your plan has no seat for them yet. An admin has to make room before their invitation goes out.',
               action: isOrgAdmin
-                ? <Button size="small" kind="secondary" onClick={() => navigate('/billing')}>View plans</Button>
+                ? <Link className="gwui-open-link" to="/billing">View plans</Link>
                 : undefined,
             }
           } else if (notLetIn) {
@@ -369,14 +368,15 @@ export function WhosInItRoster({
             }
           } else if (waitingForAdmin) {
             /* SPEAK TO AN ADMIN AS "YOU" (U.4 review, item 4). For a lead who is not an admin, no
-               button is offered - "Go to People" would only meet a page that refuses them. */
+               button is offered - "Go to People" would only meet a page that refuses them.
+               A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): it only goes to another page. */
             help = {
               tone: 'look',
               text: isOrgAdmin
                 ? `You can let ${inASentence} in on People.`
                 : `${atTheStart(name)} is from outside your organisation, so an admin has to let them in before they can check in.`,
               action: isOrgAdmin
-                ? <Button size="small" kind="secondary" onClick={() => navigate('/org/members')}>Go to People</Button>
+                ? <Link className="gwui-open-link" to="/org/members">Go to People</Link>
                 : undefined,
             }
           } else if (!p.userId && isInitiator) {
