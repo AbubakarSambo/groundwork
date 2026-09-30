@@ -141,6 +141,22 @@ Built in `f978d3cf`. **The old context chat still works, untouched, and stays un
 
   The script is fixed for all of these and is running again. The three differences I suspected in the product came from the first cause. The next run will show whether that holds.
 
+**The corrected proof run** (`eda630f6`; the full output is in `docs/context-chat-inventory.md`).
+- **These now match on both doors:**
+  - targets and who sees them;
+  - the three typed context lines, reworded, made private and retired;
+  - the lead's private notes, and the refusal to share a note about one person, word for word;
+  - each person's exact question: confirmed as shown, confirmed with the lead's own words, and left waiting;
+  - an admin who is not the lead being refused, word for word;
+  - the document's content, with the bank detail hidden, and its visibility;
+  - the setup answers for how long it runs and how often.
+- **Two differences remain, both about what doing well looks like, and neither is a difference between the doors:**
+  - The same success statement was kept with different opening words, "Good means…" on one side and without it on the other. The model chose a different starting point for the same quote.
+  - A success statement too short to record was refused on one side and not the other. Proposing and confirming are two separate model reads by design, and on a borderline input they can disagree.
+- The lines taken from a pasted update differ in number of each kind, as expected, because the model writes them fresh each time.
+
+**Needs Hafsah: switching off the old context chat.** Decision 50 says to switch it off once every item is proven. Everything the doors decide matches. The two differences above are the model varying, not the doors. But switching it off removes a working feature the screens use, so I have not done it on my own reading. On your word it is switched off, and the screens workspace is told in `docs/answers-from-engine.md`.
+
 **The two fixes from run-20's checks hold, on one re-run of sales and renewal:**
 - **No closing turn asks a question.** There were 2 on run-20.
 - **95 of 95 quotes are word for word.**
