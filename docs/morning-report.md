@@ -8,6 +8,11 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ## 30 SEPTEMBER, MORNING: HAFSAH'S FIVE STEPS (the old chat stays on, patterns, the disagreements, week 10)
 
+**Requests 84, 83 and 81 are done** (`12777e64`, `78b139c4`, `4aa45ed0`, `2efd92cc`).
+- **84 (decision 58):** one rule now decides who reads a pattern or the person's answer. It is the check-in's lead, or the admin who set that check-in up for them, and nobody else. An admin who did neither used to get patterns on the board and on the check-in page; they now get none. A test serves the board and the check-in page as each reader, and the session report and the probe list use the same rule.
+- **83:** already fixed before tonight. The lead's description of a person reaches the lead alone on all four routes, and a person's own words go to their own job title.
+- **81:** the test still checked the old pattern shape and now checks the served one. That is the only reason it changed.
+
 **Step 1: the old context chat stays on.** Nothing switches it off until the screens workspace has built Ask Groundwork's document and confirmation screens and confirmed live that everything works through them. What those screens must show is now in `docs/answers-from-engine.md` (`2eb5fd42`).
 
 What was proven through Ask Groundwork, and what was not:
