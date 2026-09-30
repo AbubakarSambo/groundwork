@@ -38,6 +38,10 @@ export interface Setup {
   objectives?: any[];
   closedAt?: Date | null;
   createdByUserId?: string;
+  /** A stored report, where a spec reads the parts of the board that are built from it. */
+  report?: any;
+  /** Who may read the targets (the ground's own setting). */
+  whoSeesTargets?: string;
 }
 
 export const commitment = (id: string, participantId: string | null, text: string, more: Record<string, any> = {}) => ({
@@ -63,7 +67,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     id: 'g-1', scenario: setup.scenario ?? GroundScenario.OKR_ALIGNMENT, mode: GroundMode.SHARED,
     initiatorId: 'u-amina', createdByUserId: setup.createdByUserId ?? 'u-amina', organizationId: 'org-1',
     peopleWorkTogether: true, peersVisibleToEachOther: setup.peersVisibleToEachOther ?? true, timelineDays: 28, cadence: 'WEEKLY',
-    whoSeesTargets: 'THEIR_OWN', label: 'The team, Q3', participants: PEOPLE, checkIns, report: null,
+    whoSeesTargets: setup.whoSeesTargets ?? 'THEIR_OWN', label: 'The team, Q3', participants: PEOPLE, checkIns, report: setup.report ?? null,
     dependencies: setup.dependencies ?? [], poll: null, objectives: setup.objectives ?? [], closedAt: setup.closedAt ?? null,
     kindOfWork: null, workStages: null,
   };
