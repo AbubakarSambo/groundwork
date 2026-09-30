@@ -383,3 +383,24 @@ A reply is `{ "blocks": [...], "composedBy": "model" or "rules", "lane": "…" }
 3. Each row of the table above, as the lead.
 4. The same messages typed as a participant: nothing is said back and nothing is saved.
 5. As an admin who is not the lead: the refusal sentence shows at "Yes".
+
+## 30 September, later the same day: a document's numbers, said back through Ask Groundwork, and what to send after an upload
+
+The gap this closes: `DocumentsService.whatItHolds` reads a document and keeps the numbers it found on the document itself, resolved to the right person or to the whole check-in, and writes nothing - see `docs/context-chat-inventory.md`, item 3 and 4. The Context page already says this back (`theContextWeHave`, `askingAboutIt` on the upload response) and the check-in conversation already asks and saves it. Ask Groundwork now does the same third thing, through the same `POST /ask` and `POST /ask/answer` used for everything else - no new route.
+
+**A new kind of thing said back: `document_numbers`.** It arrives as an ordinary `proposal` block, the same shape as everything else in the table above:
+
+```json
+{ "type": "proposal", "proposalId": "…", "summary": "Here is the context we have from Q4 targets.xlsx. …\n\nShall I record these numbers on this check-in?" }
+```
+
+`summary` is the exact words the Context page already shows for that document (`theContextWeHave`), with the same rule: every number says whose it is, by name, or says it is for everybody. Draw it exactly as you draw every other proposal - the text, then "Yes" and "No" through `POST /ask/answer`. "Yes" writes the numbers, with each person's own number under their name and a team number under nobody. "No" leaves the document exactly as it was - still read, still on the document, still asking the next time somebody mentions it.
+
+**When it appears.** Either of two ways, and you do not have to tell them apart on the screen - Ask Groundwork decides:
+
+- The person says, in the ordinary chat box, that they have just put a document in - "I added the Q4 targets sheet", "I've uploaded it" - and that document (theirs, on a check-in they are part of) still has numbers nobody has said yes to.
+- The person starts to add a document through Ask Groundwork's own upload flow, and an earlier upload of theirs on that check-in is still waiting on a yes.
+
+**What the screen should send after an upload finishes: nothing, automatically.** `whatItHolds` runs in the background after the file is stored (`readTheRestOfIt`), so `holds` is not on the row yet when the upload's own response comes back (`numbersWaiting` is always `0` at that moment, by design - see `documents.service.ts`, "AND THE TWO SLOW READS, AFTER THE ANSWER"). Sending "I've uploaded it" straight after the upload call returns will usually find nothing waiting and say nothing. The decision, so every screen does the same thing: **poll the document (or the Context page's own read) until `numbersWaiting` is greater than zero or a reasonable time has passed (the Context page already shows "still reading"), and only then send the message "I've uploaded it." to `POST /ask`.** That is the one sentence to standardise on; Ask Groundwork recognises it (and close variants - "I added it", "I attached the file") whichever of the two ways above triggered it.
+
+**Who this reaches.** The same rule as everywhere a document's numbers may be set (`docs/context-chat-inventory.md`, item 4): only the uploader's own numbers, and a number for somebody else only when the uploader is the lead - decided when the document is read, not here, so nothing about who may set whose number changes by asking through Ask Groundwork instead of the Context page.
