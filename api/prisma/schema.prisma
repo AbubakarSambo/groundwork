@@ -1593,6 +1593,11 @@ model CheckIn {
   /// the database and ordered in one place (conversation/how-checkable-a-session-was.ts). The map that
   /// ranked "managed" above "directional" is gone.
   specificityLevel            String?       @map("specificity_level")
+  /// Where the questions this session was given to work from came from, as plain keys such as
+  /// "situation:PERFORMANCE", "role:ENGINEERING" or "pattern:D1". Written when the plan is made, and
+  /// read only by the learning counts (week 8b), which set it beside how specific the answers were.
+  /// Keys of the product's own questions, never anybody's words.
+  probeSources                String[]      @default([]) @map("probe_sources")
   /// When scoring was TRIED. Set with a null level means the scorer failed; null means not scored yet.
   /// The two used to be one silence, and the report said "nobody was asked" about a fault of ours.
   specificityScoredAt         DateTime?     @map("specificity_scored_at")
@@ -8174,4 +8179,43 @@ model CompanyPicture {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("company_pictures")
+}
+
+// ---------------------------------------------------------------------------
+// Self-learning counts (week 8b, decisions 55 and 57 point 9). COUNTS ONLY.
+// ---------------------------------------------------------------------------
+
+/// How each pattern, coaching step and probe source has fared, counted from records that already
+/// exist. One row per scope (an organisation's id, or "ALL" for the total) and per thing. It holds
+/// no person id, no name and no words: signals are counted, and nobody reads another person's
+/// answers through them (decision 55). `suggestedWeight` is stored and, while the switch in
+/// learning/a-suggested-weight.ts is off, read by nothing that detects, chooses or orders.
+model LearningSignalCount {
+  id              String   @id @default(uuid())
+  /// An organisation's id, or "ALL" for the total across organisations.
+  scope           String
+  /// PATTERN (by code), COACHING_STEP (by the step's own sentence from the role map), or PROBE (by its source).
+  kind            String
+  key             String
+  /// How many times there is an answer to "was it right" for this.
+  judged          Int      @default(0)
+  goodCount       Int      @default(0) @map("good_count")
+  badCount        Int      @default(0) @map("bad_count")
+  unsureCount     Int      @default(0) @map("unsure_count")
+  /// For a pattern, how many the person also answered. Zero for the other kinds.
+  answeredCount   Int      @default(0) @map("answered_count")
+  /// Did the conversation happen: how many were due one, and how many had it.
+  talkDue         Int      @default(0) @map("talk_due")
+  talkHappened    Int      @default(0) @map("talk_happened")
+  /// Did things change: how many show a later period, and in how many it did not come back or was done.
+  changeJudged    Int      @default(0) @map("change_judged")
+  changedCount    Int      @default(0) @map("changed_count")
+  suggestedWeight Float    @default(1) @map("suggested_weight")
+  /// False while there are too few signals for the weight to move from neutral.
+  weightMoved     Boolean  @default(false) @map("weight_moved")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([scope, kind, key])
+  @@index([kind, key])
+  @@map("learning_signal_counts")
 }
