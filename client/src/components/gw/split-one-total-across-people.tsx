@@ -112,7 +112,11 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
               <div key={s.key}>
                 <div className="gwui-gap-12" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                   <span className="gwui-fs-14 gwui-ink-dark" style={{ fontWeight: 700 }}>{s.key}</span>
-                  <span className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.target}</span>
+                  {/* Board review, 30 September, item 9: a bare number ("4100") beside a comma-
+                      grouped one elsewhere on the board ("6,000") reads as two different systems.
+                      Thousands take a comma everywhere - TargetsBand.tsx already does this with
+                      `toLocaleString('en-GB')`, so this matches it. */}
+                  <span className="gwui-fs-15 gwui-ink-dark" style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{s.target.toLocaleString('en-GB')}</span>
                 </div>
                 <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.5, maxWidth: '68ch' }}>
                   {s.because}
