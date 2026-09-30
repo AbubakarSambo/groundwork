@@ -10,6 +10,21 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settled as proposed (60), the first threshold for week 10 (61), old patterns start the person-first process on release day (62), only the lead confirms setup unless the lead has left the organisation (63), the setup part of "how the leading is landing" restored without the three-period rule (64), and Ask Groundwork opened inside a check-in knows which one (65).
 
+**Patterns, second round: five steady reads by majority reaches 8 in 10.** The same 50 check-ins, read 16 more times each. "Real patterns" here come from the first round's 12 reads, so they are independent of the reads being judged.
+
+| Way of reading | The same | Real patterns still found |
+| --- | --- | --- |
+| One steady read | 57% | 68% |
+| Three steady reads, most must agree | 65% | 67% |
+| **Five steady reads, at least three must agree** | **80%** | **71%** |
+| Steady with the smallest thinking budget, one read | 21% | 13% |
+
+- **Chosen: five steady reads, keeping a pattern when at least three agree.** It meets the aim on the measure used all along (80% of person-and-pattern pairs the same across a scenario), and on 35 of 50 check-ins the patterns were exactly the same. It still finds real patterns at least as well as today's single read. No pattern is removed or weakened; every code, filter and confirming call runs on each of the five reads.
+- **Ruled out:** the smallest thinking budget, because it stops finding patterns at all.
+- **The cost:** five readings of each check-in instead of one, plus the confirming calls for each. This runs once, after a check-in ends, never while someone waits.
+- **Being built now.** Then measured again on the stored run-20 conversations through the product's own code.
+- **Steady enough for release?** On these numbers, yes, just: 8 in 10 on pairs, 7 in 10 on exact check-ins, and the three-period rule adds more steadiness before anyone sees a pattern. The final answer comes after the measurement through the product's own code.
+
 **Patterns, first round of measuring (the model answers again from about 11:40).** 50 check-ins from 12 run-20 scenarios, each read 12 times: 6 at the normal setting and 6 at the steady setting. "The same" means the person-and-pattern pairs two separate copies of a way of reading find across a whole scenario. "Real patterns" are the ones at least half of all 12 reads found.
 
 | Way of reading | The same | Real patterns still found |
@@ -24,6 +39,11 @@ Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settl
 - It is still short of the aim of 8 in 10. Even at its steadiest setting the model does not give the same answer twice, and the difference starts in its first reading (two steady readings of the same check-in share 60% of what they name), not in the second call that confirms a pattern.
 - Keeping only what two normal reads both agree on is steadier but loses half the real patterns, so it is ruled out.
 - A second round is running: five steady reads by majority, and the steady setting with the smallest thinking budget the model allows.
+
+**Decisions 64, 61 and 65 done** (`47e392bc`, `fcb053e8`, `897c25b5`).
+- **64.** The setup part of "how the leading is landing" was already showing after one period (restored on 29 September). What was missing is the access rule: it now follows decision 58, so the lead or the admin who set the check-in up reads it, and no other admin. The lead reads, for example, "One account describes a target of ten shops, and another describes a different one."
+- **61.** Extra support is suggested when fewer than half of at least 6 settled commitments were kept. It is set by a migration that never overwrites a row someone already set. A fault was found and fixed on the way: a missing settings row was read as "nothing set" instead of the default. The admin page gets the label "At least this many settled commitments".
+- **65.** When Ask Groundwork is opened from inside a check-in, the screen sends `openedFrom: "check_in_setup"` with the check-in, and the lead gets the setup conversation at once, even with an empty first message. A participant gets the ordinary answer. The screens workspace has the exact request in `docs/answers-from-engine.md`.
 
 **Done while the model was down** (`0bfd0d04`, `4e7983c8`, `53621395`, `d55bdf32`, `99fac00a`):
 - **Decision 62.** The migration now starts every existing pattern's clock on the day it runs: nothing is readable by the lead on release day, the person is shown theirs first, and the lead's 3 and 7 days count from then. The release questions list it as changing data, and the edit was accepted this time.
