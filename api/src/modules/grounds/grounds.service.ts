@@ -53,7 +53,7 @@ import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
 import { cleanText } from '../reports/what-the-record-actually-holds';
 import { AUTHORED_AT_SETUP, WHAT_RECORDING_IT_MEANS } from './what-setup-agreed';
-import { proposalFrom, extractionToolFor, Heard, Proposal, WHO_AND_WHAT_THEY_EXPECT, asContextThenTheSentence } from './what-the-context-chat-heard';
+import { proposalFrom, extractionToolFor, Heard, Proposal, WHO_AND_WHAT_THEY_EXPECT, asContextThenTheSentence, confirmedSay } from './what-the-context-chat-heard';
 import { freeSeatLimitMessage } from '../billing/billing.service';
 import { isCovered } from '../../common/subscription';
 import { DEFAULT_FREE_MEMBER_LIMIT } from '../billing/pricing.service';
@@ -3792,11 +3792,11 @@ export class GroundsService {
       // Days straight through. This used to round to whole weeks, so a proposal of 45 days
       // was applied as 42 - a silent change to a number somebody had agreed.
       await this.updateTimeline(groundId, requestingUserId, { timelineDays: proposal.days });
-      return { changed: 'timeline', say: proposal.say };
+      return { changed: 'timeline', say: confirmedSay(proposal) };
     }
     if (proposal.kind === 'cadence') {
       await this.updateTimeline(groundId, requestingUserId, { cadence: proposal.cadence });
-      return { changed: 'cadence', say: proposal.say };
+      return { changed: 'cadence', say: confirmedSay(proposal) };
     }
     if (proposal.kind === 'expectation') {
       /*
@@ -3817,7 +3817,7 @@ export class GroundsService {
           seenBySubject: false,
         },
       });
-      return { changed: 'expectation', say: proposal.say };
+      return { changed: 'expectation', say: confirmedSay(proposal) };
     }
     if (proposal.kind === 'lead_read') {
       /*
@@ -3832,7 +3832,7 @@ export class GroundsService {
         text: proposal.text,
         audience: 'LEAD_ONLY',
       });
-      return { changed: 'a private note', say: proposal.say };
+      return { changed: 'a private note', say: confirmedSay(proposal) };
     }
 
     /*
@@ -3892,7 +3892,7 @@ export class GroundsService {
         changeReason: latestBaseline ? 'Restated in the context conversation.' : null,
       },
     });
-    return { changed: 'success', say: proposal.say };
+    return { changed: 'success', say: confirmedSay(proposal) };
   }
 
   /**

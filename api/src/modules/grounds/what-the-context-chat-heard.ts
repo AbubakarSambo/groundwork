@@ -373,3 +373,48 @@ export function asContextThenTheSentence(
   const already = recent.length && recent[recent.length - 1]?.content?.trim() === said.trim();
   return [...(already ? recent.slice(0, -1) : recent), { role: 'user' as const, content: said }];
 }
+
+/**
+ * WHAT THE LEAD IS TOLD ONCE IT IS DONE, NOT THE QUESTION THEY JUST ANSWERED. FIX (found live, the
+ * four live checks, 30 September 2026).
+ *
+ * `proposal.say` is worded to ASK - "Shall I keep ... as a private note ...?", "I will record that
+ * ..." - because that is what it is used for everywhere it is first shown, with a Yes underneath it.
+ * `applyContextProposal` used to return that very same sentence again, unchanged, once the lead had
+ * already said yes and the row was written. For `lead_read` that read back as the chat re-asking its
+ * own question after being answered - live:
+ *
+ *   Shall I keep "should be more proactive" as a private note about Ben Okafor that only you can
+ *   see? It guides how this check-in is run and is never quoted to Ben Okafor or put into their own
+ *   check-in.
+ *
+ * said AGAIN, after the yes that was already given. This is the sentence for after: a plain,
+ * past-tense statement that the thing was done, for every kind that writes something, so no confirm
+ * path is left saying "I will ..." or asking a question about something that already happened.
+ */
+export function confirmedSay(proposal: Proposal): string {
+  switch (proposal.kind) {
+    case 'timeline': {
+      const weeks = Math.round(proposal.days / 7);
+      return weeks >= 4 && proposal.days % 7 === 0
+        ? `I have set this to run for ${weeks} weeks.`
+        : `I have set this to run for ${proposal.days} days.`;
+    }
+    case 'cadence':
+      return `I have set people to check in ${CADENCE_WORDS[proposal.cadence]}.`;
+    case 'success':
+      return `I have recorded that as what doing well looks like: "${proposal.text}"`;
+    case 'expectation':
+      return `I have recorded "${proposal.text}" as what you expect of ${proposal.personLabel}. `
+        + 'It goes down as YOUR expectation, not as agreed, and is not yet seen by them.';
+    case 'lead_read':
+      return `I have kept "${proposal.text}" as a private note about ${proposal.personLabel} that only you can see. `
+        + `It guides how this check-in is run and is never quoted to ${proposal.personLabel} or put into their own check-in.`;
+    case 'targets':
+      /* Already a done statement ("Set N measures ..."), with nothing to ask - returned as it is. */
+      return proposal.say;
+    case 'none':
+      /* Never reaches a confirm write at all; kept only so this switch is exhaustive. */
+      return proposal.why;
+  }
+}

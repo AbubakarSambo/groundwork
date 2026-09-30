@@ -1,4 +1,4 @@
-import { proposalFrom, extractionToolFor } from './what-the-context-chat-heard';
+import { proposalFrom, extractionToolFor, confirmedSay } from './what-the-context-chat-heard';
 import { whoTheyMeant } from './who-they-meant';
 import { withoutFraming, verbatimQuote } from './what-setup-agreed';
 import { readFileSync } from 'fs';
@@ -140,6 +140,41 @@ describe('what is saved is exactly what was said back, character for character (
   it('a genuine paraphrase, not a substring of what they typed, still falls back to the trimmed candidate', () => {
     const p = proposalFrom('success', { success: 'Every stage owned, nothing stale' }, PARTIES, 'Good means each stage has somebody on it and the board never goes stale.') as any;
     expect(p.text).toBe('Every stage owned, nothing stale');
+  });
+
+  /*
+   * FOUND LIVE, 30 September 2026, on the four live checks: after a lead said yes to a lead_read
+   * proposal, the confirmation answer repeated the QUESTION -
+   *   Shall I keep "should be more proactive" as a private note about Ben Okafor that only you can
+   *   see? It guides how this check-in is run and is never quoted to Ben Okafor or put into their
+   *   own check-in.
+   * - rather than saying it had been done. `confirmedSay` is what `applyContextProposal` now returns
+   * on every write instead of the propose-worded `proposal.say`.
+   */
+  it('confirmedSay: a lead_read write says it was kept, not the question that was already answered', () => {
+    const p = { kind: 'lead_read' as const, participantId: 'p1', personLabel: 'Ben Okafor', text: 'should be more proactive', say: 'unused' };
+    expect(confirmedSay(p)).toBe(
+      'I have kept "should be more proactive" as a private note about Ben Okafor that only you can see. '
+      + 'It guides how this check-in is run and is never quoted to Ben Okafor or put into their own check-in.',
+    );
+    expect(confirmedSay(p)).not.toContain('Shall I');
+  });
+
+  it('confirmedSay: an expectation write says it was recorded, not "I will"', () => {
+    const p = { kind: 'expectation' as const, participantId: 'p1', personLabel: 'Ben Okafor', text: 'close 3 renewals by the end of December', say: 'unused' };
+    const said = confirmedSay(p);
+    expect(said).toContain('I have recorded "close 3 renewals by the end of December" as what you expect of Ben Okafor.');
+    expect(said).not.toMatch(/^I will/);
+  });
+
+  it('confirmedSay: a timeline write says it was set, matching propose\'s own weeks-or-days choice', () => {
+    expect(confirmedSay({ kind: 'timeline' as const, days: 84, say: 'unused' })).toBe('I have set this to run for 12 weeks.');
+    expect(confirmedSay({ kind: 'timeline' as const, days: 90, say: 'unused' })).toBe('I have set this to run for 90 days.');
+  });
+
+  it('confirmedSay: a success write says it was recorded, quoting the same text that was saved', () => {
+    const p = { kind: 'success' as const, text: 'every pipeline stage has an owner', say: 'unused' };
+    expect(confirmedSay(p)).toBe('I have recorded that as what doing well looks like: "every pipeline stage has an owner"');
   });
 
   it('verbatimQuote itself: drops a trailing full stop the candidate had that the source does not need, and matches case from the source', () => {
