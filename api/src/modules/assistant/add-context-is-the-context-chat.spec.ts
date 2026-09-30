@@ -324,11 +324,20 @@ describe('inventory item 2: a multi-turn setup conversation continues (decision 
  * lead versus a participant is `ask.service.ts`'s job, covered in ask/opened-from-check-in-setup.spec.ts.
  */
 describe('decision 65: openedFromSetup skips the keyword and goes straight to the setup conversation', () => {
+  /*
+   * FIX, 30 September 2026: this used to assert `[{ role: 'user', content: '' }]`, which is not what
+   * the old route sends on an empty opener - the old route's client sends `history: []`, and
+   * `GroundsService.contextChat` only substitutes `{ role: 'user', content: 'Start.' }` for the MODEL
+   * when `history.length` is zero. Sending a turn with empty content reaches Gemini as an empty user
+   * turn, which Gemini refuses with a 400, surfaced to the person as a 503 - a real live defect found
+   * on this exact path. An empty opener has to produce an empty history, matching the old route, not a
+   * history with one empty turn in it.
+   */
   it('an empty message opens on what the setup is missing, the same as opening the old context chat', async () => {
     const { service, contextChat } = svc();
     const r = await service.respond('org-a', 'p1', '', 'g1', true);
     expect(r.lane).toBe('add_context');
-    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [{ role: 'user', content: '' }]);
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', []);
   });
 
   it('a message with none of the "context" wording is still treated as an answer in the setup conversation', async () => {
@@ -353,5 +362,67 @@ describe('decision 65: openedFromSetup skips the keyword and goes straight to th
     expect(r.blocks.some((b: any) => b.type === 'proposal')).toBe(true);
     expect(prisma.assistantProposal.create).toHaveBeenCalled();
     expect(contextChat).toHaveBeenCalled();
+  });
+
+  /*
+   * FIX 1, 30 September 2026: an empty opener must reach `contextChat` as an EMPTY HISTORY, never a
+   * turn with empty content - Gemini rejects an empty user turn with a 400. The stub here plays
+   * Gemini's own part: it throws on anything but an empty array, the same way the real model throws
+   * on an empty turn, so this test fails the way the live defect did if the fix ever regresses.
+   */
+  it('an empty opener reaches contextChat as an empty history - a stub that rejects an empty user turn, the way Gemini does', async () => {
+    const contextChat = jest.fn(async (_groundId: string, _userId: string, history: { role: string; content: string }[]) => {
+      if (history.some((h) => !h.content?.trim())) {
+        throw new Error('400 Model input cannot be empty');
+      }
+      return { reply: 'This check-in runs for 12 weeks. What does doing well look like here?', gaps: ['success'], done: false, proposal: null };
+    });
+    const { service } = svc({ contextChat });
+    const r = await service.respond('org-a', 'p1', '', 'g1', true);
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', []);
+    expect(r.lane).toBe('add_context');
+  });
+});
+
+describe('FIX 2, 30 September 2026: a setup conversation opened with openedFromSetup carries its history turn to turn, even once the ground\'s own structural gaps are closed', () => {
+  /*
+   * THE DEFECT: `context_turn` used to park only when `result.done` was false, and `done` is
+   * `gaps.length === 0` - a fact about the ground's structural setup, not about whether this
+   * conversation (coaching the lead about a named person, inventory item 10) is finished. On a fully
+   * set-up ground, `done` is true from the first turn, so nothing ever parked and the SECOND message
+   * of the exchange reached `contextChat` with no memory of the first.
+   */
+  it('a coaching exchange on an already-set-up ground still carries its history to the second turn', async () => {
+    const contextChat = jest.fn()
+      .mockResolvedValueOnce({
+        reply: 'What have you seen that makes you say that, and what have you already tried with him?',
+        gaps: [],
+        done: true,
+        proposal: null,
+      })
+      .mockResolvedValueOnce({
+        reply: 'I will record that as what you expect of Ben: "the pipeline update in by every Friday". It goes down as your expectation.',
+        gaps: [],
+        done: true,
+        proposal: { gap: 'objectives', say: 'Shall I record that as what you expect of Ben?' },
+      });
+    const { service, proposals } = svc({ contextChat });
+
+    const r1 = await service.respond('org-a', 'p1', 'Ben is struggling and honestly he is difficult to work with.', 'g1', true);
+    expect(r1.blocks.some((b) => b.type === 'proposal')).toBe(false);
+    const firstParked = proposals.find((p) => p.kind === 'context_turn' && p.state === 'PARKED');
+    expect(firstParked).toBeTruthy();
+
+    const { service: service2, contextChat: contextChat2 } = svc({ contextChat, parked: firstParked });
+    const r2 = await service2.respond(
+      'org-a', 'p1',
+      'He has missed the last two pipeline updates. I spoke to him once. I want the update in by every Friday.',
+    );
+    expect(contextChat2).toHaveBeenNthCalledWith(2, 'g1', 'lead-1', [
+      { role: 'user', content: 'Ben is struggling and honestly he is difficult to work with.' },
+      { role: 'assistant', content: 'What have you seen that makes you say that, and what have you already tried with him?' },
+      { role: 'user', content: 'He has missed the last two pipeline updates. I spoke to him once. I want the update in by every Friday.' },
+    ]);
+    expect(r2.blocks.some((b) => b.type === 'proposal')).toBe(true);
   });
 });

@@ -2007,9 +2007,21 @@ export class AssistantService {
     said: string,
     priorHistory?: { role: 'user' | 'assistant'; content: string }[],
   ): Promise<Reply> {
-    const history: { role: 'user' | 'assistant'; content: string }[] = priorHistory
-      ? [...priorHistory, { role: 'user', content: said }]
-      : [{ role: 'user', content: said }];
+    /*
+     * AN EMPTY OPENER IS AN EMPTY HISTORY, NOT AN EMPTY TURN.
+     *
+     * Decision 65's opener sends `said: ''` to mean "start" - the same thing the old route's client
+     * sends as `history: []` on the very first call. This used to build `[{ role: 'user', content: '' }]`
+     * and hand THAT to `GroundsService.contextChat`, which maps it straight into a message sent to the
+     * model - Gemini refuses an empty user turn with a 400, surfaced to the person as a 503. The old
+     * route never does this: `dto.history ?? []` is empty, and `contextChat` itself substitutes
+     * `{ role: 'user', content: 'Start.' }` only when `history.length` is zero. So an empty `said` with
+     * nothing carried forward must produce the same empty array, never a turn with nothing in it - and
+     * the same is true mid-conversation, in case a blank message ever reaches this with prior turns.
+     */
+    const history: { role: 'user' | 'assistant'; content: string }[] = said.trim()
+      ? (priorHistory ? [...priorHistory, { role: 'user', content: said }] : [{ role: 'user', content: said }])
+      : (priorHistory ?? []);
     const result = await this.grounds.contextChat(groundId, userId, history);
 
     if (result.proposal) {
@@ -2037,8 +2049,19 @@ export class AssistantService {
      * rather than folded into the `context` kind above: a `context` proposal is a concrete value
      * waiting for a yes/no, and this is not one - the next message, whatever it is, is read as an
      * answer to keep gathering with, not as a decision.
+     *
+     * THIS USED TO READ `!result.done`, AND `done` IS `gaps.length === 0` - A FACT ABOUT THE GROUND'S
+     * OWN STRUCTURAL SETUP, NOT ABOUT WHETHER THIS CONVERSATION IS FINISHED. Driven live: a lead told
+     * a fully set-up check-in "Ben is struggling and honestly he is difficult to work with", was asked
+     * what they had seen, answered on the next message - and that second message reached `contextChat`
+     * with NO history at all, because `gaps.length === 0` on this ground made `done` true on the first
+     * turn, so nothing had parked to carry the conversation forward. The coaching conversation in rule
+     * 2 of `contextChatPrompt`, and an expectation of a named person, both carry on turn to turn
+     * whether or not the ground still has a structural gap open - so what decides whether to keep
+     * gathering is whether anything CONCRETE came back to confirm, not whether the ground's own setup
+     * gaps happen to be empty.
      */
-    if (!result.done) {
+    if (!result.proposal) {
       const withReply = [...history, { role: 'assistant' as const, content: result.reply }];
       await this.prisma.assistantProposal.create({
         data: {
