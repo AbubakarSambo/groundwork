@@ -67,12 +67,21 @@ describe('the plain-language half comes first', () => {
     expect(credentials === -1 || credentials > plain).toBe(true)
   })
 
+  /*
+   * UPDATED (group 1 review): `/connect/panel.png` was an actual screenshot naming a real person
+   * ("Hafsah Jumare") and a real company ("Coamana CRM"), shown to every organisation - the same
+   * fault `/connect/ops-panel.png` had, fixed the same way: drawn in markup instead
+   * (`EmbedWidgetExample`, with the prototype's own made-up company and people), never a
+   * screenshot. The three-illustrations structure this test protects (10 Sep 2026 decision) is
+   * unchanged; only the first illustration is no longer a real screenshot.
+   */
   it('shows what it looks like rather than listing what it never returns', () => {
     /* 10 Sep 2026: the "What this API never returns" section was removed on Hafsah's decision and
-       replaced with three screenshots (the panel, an organisation's own panel, a WhatsApp check-in).
+       replaced with three illustrations (the panel, an organisation's own panel, a WhatsApp check-in).
        The exclusions live in the API's own terms and in the engine; the page shows the product. */
     expect(SRC).toContain('How it looks inside your tool')
-    expect(SRC).toContain('/connect/panel.png')
+    expect(SRC).toContain('EmbedWidgetExample')
+    expect(SRC).not.toContain('/connect/panel.png')
     expect(SRC).not.toContain('What this API never returns')
   })
 

@@ -11,7 +11,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { OnlyAnAdmin } from '@/pages/connections/ConnectionsPage'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Folded, Steps, Step,
-  Button, Tag, TextField, TextArea, Select, FieldLabel, Note, OpsConsoleExample,
+  Button, Tag, TextField, TextArea, Select, FieldLabel, Note, OpsConsoleExample, EmbedWidgetExample,
 } from '@/components/gw/ui'
 
 /**
@@ -575,7 +575,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
         <div className="gwui-two-up">
           <Panel pad={false}>
             <figure>
-              <img src="/connect/panel.png" alt="The panel on your own page" />
+              <div className="gwui-console-frame"><EmbedWidgetExample /></div>
               <figcaption className="gwui-panel-row"><b>The panel on your own page</b></figcaption>
             </figure>
           </Panel>
