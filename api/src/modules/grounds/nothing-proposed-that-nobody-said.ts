@@ -152,6 +152,19 @@ const PROMISES_TO_RECORD = new RegExp(
 );
 
 /**
+ * A SENTENCE STARTING "IT", "THIS" OR "THAT" HAS NOTHING TO POINT AT ONCE WHAT IT CONTINUES IS GONE.
+ * FIX (found live, the four live checks, 30 September 2026).
+ *
+ * Driven live, no proposal attached that turn: "I will keep that as a private note about Ben. It will
+ * guide how this check-in is run and how I talk to you about it. It is not quoted to Ben Okafor as a
+ * finding." The first sentence matched `PROMISES_TO_RECORD` and was dropped; neither "It..." sentence
+ * did, because neither one itself promises to record anything - so both survived, orphaned, pointing
+ * at a sentence the lead never saw. A pronoun opening a sentence that used to follow a dropped one is
+ * not a sentence with its own meaning; it is the second half of one, with the first half removed.
+ */
+const OPENS_WITH_A_DANGLING_PRONOUN = /^\s*(?:it|this|that)\b/i;
+
+/**
  * `hasProposal` is unused now: the sentence is dropped either way, for two different reasons - see
  * the comment above. The parameter stays so every call site keeps saying, in its own words, whether a
  * proposal is attached this turn, which is worth reading at the call site even though both branches
@@ -159,8 +172,83 @@ const PROMISES_TO_RECORD = new RegExp(
  */
 export function dropsAPromiseWithNothingToKeep(text: string, hasProposal: boolean): string {
   void hasProposal;
-  const kept = intoSentences(text).filter((s) => !PROMISES_TO_RECORD.test(s));
-  return kept.join('').trim();
+  const sentences = intoSentences(text);
+  const kept = sentences.map((s) => !PROMISES_TO_RECORD.test(s));
+  /* Cascades: a second orphan can follow the first one that this pass just dropped. */
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 1; i < sentences.length; i++) {
+      if (kept[i] && !kept[i - 1] && OPENS_WITH_A_DANGLING_PRONOUN.test(sentences[i])) {
+        kept[i] = false;
+        changed = true;
+      }
+    }
+  }
+  return sentences.filter((_, i) => kept[i]).join('').trim();
+}
+
+/** Whether a sentence, once its trailing whitespace is ignored, is a question. */
+const endsInAQuestion = (s: string): boolean => /\?\s*$/.test(s.trimEnd());
+
+/**
+ * A sentence CLAIMING something is being recorded, kept, noted, added, marked, described or saved -
+ * broader than `PROMISES_TO_RECORD`, which only exists to catch a FALSE promise on a turn with
+ * nothing behind it. This is used the other way round, on a turn that DOES have something behind it:
+ * any sentence making that claim, in whatever words, is the model's own second description of what
+ * `proposal.say` already states once, deterministically - never the one the lead should read twice,
+ * and never trustworthy as a stand-in acknowledgement before the model's question.
+ */
+const CLAIMS_TO_RECORD_KEEP_OR_DESCRIBE =
+  /\b(record\w*|keeps?|keeping|kept|notes?|noting|noted|adds?|adding|added|marks?|marking|marked|describ\w*|description|saves?|saving|saved)\b/i;
+
+/** Short enough to be a plain acknowledgement, not a sentence carrying its own claim. */
+const SHORT_ACKNOWLEDGEMENT_MAX_WORDS = 12;
+
+/**
+ * WHAT THE LEAD READS FROM THE MODEL'S OWN REPLY, STRUCTURALLY RATHER THAN BY PATTERN. FIX (found
+ * live again, the four live checks, 30 September 2026, on the real model).
+ *
+ * `dropsAPromiseWithNothingToKeep` above is a list of the phrasings caught so far, and every live run
+ * has found one more: "I'll make a note of that: ..." (no modal-then-verb the regex requires), "It
+ * will guide how this check-in is run..." (nothing here promises to record anything, it is a second
+ * sentence with the first one removed), "'Good means ...' is now the description of success for this
+ * check-in." (no promise verb at all, a false claim in the present tense that something already
+ * happened). Each was a new way of saying the same two things this function exists to stop: restating
+ * what `proposal.say` already states once, or claiming a fact about the record before the lead has
+ * said yes to it. Regexing the next phrasing is not a fix, it is a queue.
+ *
+ * THE STRUCTURAL RULE, RULE 1: when a proposal is attached to this turn, `proposal.say` - built
+ * deterministically from the lead's own words, in `proposalFrom` or `restatesSuccess` - is the one
+ * statement of what will be kept. It is shown separately, with its own Yes. Whatever the MODEL wrote
+ * this turn is read for one thing only: the question it is asking next. Every sentence that ends in
+ * "?" is kept; at most one short sentence immediately before the first of them is kept alongside it,
+ * as a plain acknowledgement, and only if it makes no claim about recording, keeping, noting, adding,
+ * marking, describing or saving anything, and does not open with a pronoun that would refer back to a
+ * sentence already dropped. Every other sentence is dropped. If the model asked no question at all,
+ * nothing here is worth reading twice on top of `proposal.say`, and this returns empty.
+ *
+ * With no proposal attached, this defers to `dropsAPromiseWithNothingToKeep`, unchanged: there is no
+ * `proposal.say` standing beside it in that case, so the model's own sentences are what the lead has,
+ * and only a false promise or a sentence orphaned by dropping one is removed from them.
+ */
+export function whatTheModelsReplyShows(text: string, hasProposal: boolean): string {
+  if (!hasProposal) return dropsAPromiseWithNothingToKeep(text, false);
+  const sentences = intoSentences(text);
+  const isQuestion = sentences.map(endsInAQuestion);
+  const firstQuestion = isQuestion.indexOf(true);
+  /* No question anywhere: proposal.say is the whole of what is shown, and nothing here is added. */
+  if (firstQuestion === -1) return '';
+  const keep = isQuestion.slice();
+  if (firstQuestion > 0) {
+    const ack = sentences[firstQuestion - 1];
+    const words = ack.trim().split(/\s+/).filter(Boolean).length;
+    const isShort = words > 0 && words <= SHORT_ACKNOWLEDGEMENT_MAX_WORDS;
+    const claims = CLAIMS_TO_RECORD_KEEP_OR_DESCRIBE.test(ack);
+    const dangling = OPENS_WITH_A_DANGLING_PRONOUN.test(ack);
+    if (isShort && !claims && !dangling) keep[firstQuestion - 1] = true;
+  }
+  return sentences.filter((_, i) => keep[i]).join('').trim();
 }
 
 /** A number a person typed, in any of the ways they write it: 90, ninety, 12 weeks, 3 months. */

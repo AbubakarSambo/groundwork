@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, dropsAPromiseWithNothingToKeep } from './nothing-proposed-that-nobody-said';
+import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, dropsAPromiseWithNothingToKeep, whatTheModelsReplyShows } from './nothing-proposed-that-nobody-said';
 
 /**
  * "I WILL RECORD THAT AS WHAT DOING WELL LOOKS LIKE: 'HI! WHAT'S ON YOUR MIND?'"
@@ -67,10 +67,23 @@ describe('nothing proposed that nobody said', () => {
  * something is dropped unless a proposal is actually attached to the same turn.
  */
 describe('dropsAPromiseWithNothingToKeep: nothing says it will be recorded unless something actually is', () => {
-  it('drops the promise when nothing is proposed', () => {
+  /*
+   * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: this used to assert the SECOND
+   * sentence survived - "It will never be quoted to Ben." - once the first one, the promise it
+   * continues, was dropped. Read on its own it is a fragment pointing at nothing: "it" has no
+   * antecedent left on the page. See OPENS_WITH_A_DANGLING_PRONOUN and the live example that drove
+   * the fix, "It will guide how this check-in is run..." orphaned the same way.
+   */
+  it('drops the promise when nothing is proposed, and the pronoun sentence that continued it', () => {
     expect(dropsAPromiseWithNothingToKeep(
       'I will record this as your read of Ben. It will never be quoted to Ben.', false,
-    )).toBe('It will never be quoted to Ben.');
+    )).toBe('');
+  });
+
+  it('a pronoun-opening sentence survives when the sentence before it was not dropped', () => {
+    expect(dropsAPromiseWithNothingToKeep(
+      'Ben has missed two updates. It will help to know what you have already tried.', false,
+    )).toBe('Ben has missed two updates. It will help to know what you have already tried.');
   });
 
   /*
@@ -84,7 +97,9 @@ describe('dropsAPromiseWithNothingToKeep: nothing says it will be recorded unles
    */
   it('drops the model\'s own restating sentence even when a proposal is attached this turn, because proposal.say already says it', () => {
     const text = 'I will record this as your read of Ben. It will never be quoted to Ben.';
-    expect(dropsAPromiseWithNothingToKeep(text, true)).toBe('It will never be quoted to Ben.');
+    /* And the pronoun sentence that continued the dropped one goes too - see the dangling-pronoun
+       test above. */
+    expect(dropsAPromiseWithNothingToKeep(text, true)).toBe('');
   });
 
   it('catches the other phrasings the model uses for the same promise', () => {
@@ -237,5 +252,94 @@ describe('a disagreement between the two model calls refuses honestly, not with 
     expect(block).toContain('I could not find that in what you said, so nothing was recorded. Say it in your own words and I will take it.');
     /* And the open gap's own reason is only used when the second reading was never even tried. */
     expect(block).toContain(': proposal.why,');
+  });
+});
+
+/*
+ * THE FOUR LIVE CHECKS, RE-RUN AFTER FIX 7 (30 September 2026): the residual leaks that still reached
+ * the browser on the real model - phrase-by-phrase regex dropping either caught the wrong half of a
+ * sentence, or nothing at all of a phrasing nobody had written a pattern for yet. `whatTheModelsReplyShows`
+ * replaces phrase-matching, for a turn with a proposal attached, with a structural rule: keep the
+ * model's question, drop everything else, because `proposal.say` already says what will be kept.
+ */
+describe('whatTheModelsReplyShows: with a proposal attached, only the model\'s question survives', () => {
+  /*
+   * Item 16, second turn, both doors, live: the whole reply read "What is on the record now stays
+   * too, as an earlier version." - the guard dropped the product's OWN restatement sentence
+   * (`changeSay`, built in code by `restatesSuccess`/`saidBackForRestatedSuccess`) and left its tail
+   * standing alone. Fixed by Rule 2, not here - `changeSay` never reaches this function at all now
+   * (see grounds.service.ts) - so this proves the function would not have mangled it even if it had:
+   * the two clauses read as one sentence with no question, so a proposal attached this turn means
+   * nothing here is shown at all, never a fragment of it.
+   */
+  it('item 16\'s exact sentence, with no question in it, produces nothing rather than a fragment', () => {
+    const text = 'I will record that as what doing well looks like now: "every stage has an owner and a next date", '
+      + 'because the board kept going stale. What is on the record now stays too, as an earlier version.';
+    expect(whatTheModelsReplyShows(text, true)).toBe('');
+  });
+
+  /*
+   * Ask Groundwork, live: "I'll make a note of that: Ben is expected to close 3 renewals by the end
+   * of December. To clarify, is this check-in running until the end of December?" - "make a note of"
+   * has no modal directly before a record verb, so no regex in `dropsAPromiseWithNothingToKeep`
+   * caught it. The structural rule needs no pattern for it: it is not a question, so it goes,
+   * whatever words it uses.
+   */
+  it('"I\'ll make a note of that: ..." - a phrasing no regex caught - is dropped, and the question survives', () => {
+    const text = "I'll make a note of that: Ben is expected to close 3 renewals by the end of December. "
+      + 'To clarify, is this check-in running until the end of December?';
+    expect(whatTheModelsReplyShows(text, true)).toBe('To clarify, is this check-in running until the end of December?');
+  });
+
+  /*
+   * Ask Groundwork, live: "It will guide how this check-in is run and how I talk to you about it. It
+   * is not quoted to Ben Okafor as a finding. Regarding the timeline, how long should this run?" - the
+   * sentence "It" referred to (the model's own restating of the private-note offer) had already been
+   * dropped, leaving two orphaned "It" sentences standing in front of the real question. Under the
+   * structural rule neither survives regardless of what dropped the sentence before them: only a
+   * question, or a short, claim-free, non-pronoun-opening sentence directly before the FIRST question,
+   * is kept - and "It is not quoted to Ben Okafor as a finding." (the sentence directly before the
+   * question) opens with a dangling pronoun, so it is refused that seat too.
+   */
+  it('"It will guide..." / "It is not quoted..." are both dropped; only the timeline question survives', () => {
+    const text = 'It will guide how this check-in is run and how I talk to you about it. '
+      + 'It is not quoted to Ben Okafor as a finding. '
+      + 'Regarding the timeline, how long should this run?';
+    expect(whatTheModelsReplyShows(text, true)).toBe('Regarding the timeline, how long should this run?');
+  });
+
+  /*
+   * Ask Groundwork, live, before any yes: '"Good means every pipeline stage ..." is now the
+   * description of success for this check-in.' - a false claim that something is already recorded,
+   * in the present tense, with no promise VERB in it at all ("is now the description of", not
+   * "record/mark/note/keep/save"), so `PROMISES_TO_RECORD` never had a chance of catching it. It also
+   * has no question in it, so under the structural rule nothing here is shown - the lead reads only
+   * `proposal.say`, the true, not-yet-confirmed offer.
+   */
+  it('a false claim with no promise verb and no question in it produces nothing', () => {
+    const text = '"Good means every pipeline stage has an owner and nothing sits unowned for more than two days" '
+      + 'is now the description of success for this check-in.';
+    expect(whatTheModelsReplyShows(text, true)).toBe('');
+  });
+
+  it('a short, claim-free, non-pronoun acknowledgement directly before the question is kept alongside it', () => {
+    expect(whatTheModelsReplyShows('Got it, thanks. What else have you seen?', true))
+      .toBe('Got it, thanks. What else have you seen?');
+  });
+
+  it('an acknowledgement more than a short sentence away from the question is dropped, only the question kept', () => {
+    const text = 'That is useful context, and it helps to hear it in your own words rather than a summary. '
+      + 'What else have you seen?';
+    expect(whatTheModelsReplyShows(text, true)).toBe('What else have you seen?');
+  });
+
+  it('with no proposal attached, defers to dropsAPromiseWithNothingToKeep unchanged', () => {
+    const text = 'I will record this as your read of Ben. It will never be quoted to Ben.';
+    expect(whatTheModelsReplyShows(text, false)).toBe(dropsAPromiseWithNothingToKeep(text, false));
+    expect(whatTheModelsReplyShows(text, false)).toBe('');
+  });
+
+  it('a genuine question with a proposal attached and nothing before it survives whole', () => {
+    expect(whatTheModelsReplyShows('What else have you tried with Ben?', true)).toBe('What else have you tried with Ben?');
   });
 });
