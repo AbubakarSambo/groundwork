@@ -133,6 +133,20 @@ Built in `f978d3cf`. **The old context chat still works, untouched, and stays un
   - **The model wrote the text differently each time.** The exact question's wording and the context lines taken from a paste differ between runs, so they must be compared by kind, owner and state rather than word for word.
   - **Possibly real differences between the two doors, which I will not paper over.** Through Ask Groundwork, "This runs for twelve weeks" was recorded as what doing well looks like. A proper success statement became three measures, where the old chat recorded one statement. "Good." got a clarifying question, where the old chat refused it.
 - Three faults in the script itself were found and fixed on the way: capital letters in email addresses, a missing organisation membership, and a missing field on the check-in request.
+- **Sorted with evidence, the ten differences are all the script's own doing, with no real product difference found yet:**
+  - The script created the test check-ins with the duration and cadence already filled in. So the setup answers landed on whatever question was actually open, differently on each side.
+  - It added an opening phrase to the messages on the Ask Groundwork side only.
+  - It looked each person's question up by first name, but the full name is served, so on the old side the confirms, and the admin's refused confirm, never ran.
+  - The exact question's wording and the lines taken from a paste are written by the model each time, so they now compare by kind, owner and state.
+
+  The script is fixed for all of these and is running again. The three differences I suspected in the product came from the first cause. The next run will show whether that holds.
+
+**The two fixes from run-20's checks hold, on one re-run of sales and renewal:**
+- **No closing turn asks a question.** There were 2 on run-20.
+- **95 of 95 quotes are word for word.**
+- **Scores:**
+  - Sales stored 9 commitments. Run-20 stored 23, but across ten runs sales has stored between 5 and 23, so this is normal.
+  - "Specific detail asked for" in sales was 19. That is below anything sales has had before (22 to 36), which is borderline, so under the working rules sales is being run a second time before the fix is counted as kept.
 
 ### Decision 57, part C: steadiness, a second source of evidence, and confirming a role
 
