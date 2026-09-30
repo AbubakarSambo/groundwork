@@ -89,7 +89,10 @@ describe('Grace, an admin, reads Connections', () => {
     serve()
     open(GRACE)
     expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeTruthy()
-    expect(screen.getByText('Baridi Appliances')).toBeTruthy()
+    /* "Baridi Appliances" also names the fictional business account inside the WhatsApp
+       conversation illustration (group 1 re-review, fault A: connections.txt's own words), so
+       this is now more than one text node with that exact name. */
+    expect(screen.getAllByText('Baridi Appliances').length).toBeGreaterThan(0)
     await screen.findByRole('heading', { name: 'Your numbers' })
   })
 

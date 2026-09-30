@@ -330,6 +330,16 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-invite-link-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .gwui-invite-link-address { font-size: 14.5px; color: var(--gw-text); overflow-wrap: anywhere; }
 .gwui-two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+/*
+ * GROUP 1 RE-REVIEW, FAULT C: a grid row stretches every card to the tallest one in it (CSS
+ * Grid's own default), so a shorter illustration's card grew to match a taller one beside it -
+ * but its own `<figure>` did not grow with it, leaving a blank gap between the illustration and
+ * its caption at the bottom of the card. Filling the card's height with the figure itself, and
+ * pinning the caption to the figure's own bottom, means the two cards' captions line up exactly,
+ * with nothing empty hanging beneath the shorter illustration instead.
+ */
+.gwui-two-up > .gwui-panel > figure { display: flex; flex-direction: column; height: 100%; margin: 0; }
+.gwui-two-up > .gwui-panel > figure > figcaption { margin-top: auto; }
 
 /* ── PANEL ROW (more than one fact inside one Panel(pad=false), a line between each -
    "Who can join": the domain switch and the invite link, in one white panel) ─────────────────── */
@@ -892,8 +902,30 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-embed-split { flex-direction: column; }
   .gwui-embed-host { border-right: none; border-bottom: 1px solid var(--gw-border); }
 }
+
+/* ── WHATSAPP CONVERSATION EXAMPLE (connections.txt: "What these look like / On WhatsApp") ────── */
+.gwui-wa { border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; background: #075E54; }
+.gwui-wa-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: #fff; }
+.gwui-wa-avatar {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center; font-weight: 700;
+}
+.gwui-wa-org { font-size: 14.5px; font-weight: 700; margin: 0; }
+.gwui-wa-sub { font-size: 13px; margin: 1px 0 0; opacity: .8; }
+.gwui-wa-body { background: var(--gw-bg); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.gwui-wa-bubble {
+  max-width: 82%; padding: 10px 14px; border-radius: 14px; font-size: 14.5px; line-height: 1.45; margin: 0;
+}
+.gwui-wa-bubble-them { align-self: flex-start; background: #fff; color: var(--gw-text); border-bottom-left-radius: 4px; }
+.gwui-wa-bubble-mine { align-self: flex-end; background: #DCF8C6; color: var(--gw-text); border-bottom-right-radius: 4px; }
 @media (max-width: 640px) {
+  /*
+   * GROUP 1 RE-REVIEW, FAULT C: `overflow-x: auto` let "Team check-ins" (the active tab, drawn
+   * last) scroll off the side with no visible scrollbar, so a phone reader never saw it at all -
+   * and the space it would have taken sat empty under the row. Wrapping instead means every item
+   * is on screen, on however many lines it takes.
+   */
   .gwui-console-body { flex-direction: column; }
-  .gwui-console-nav { width: auto; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--gw-border); }
+  .gwui-console-nav { width: auto; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--gw-border); }
   .gwui-console-nav-item-active { border-right: none; border-bottom: 2px solid var(--gw-navy); }
 }

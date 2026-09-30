@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import {
-  Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note, OpsConsoleExample,
+  Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note, OpsConsoleExample, WhatsAppConversationExample,
 } from '@/components/gw/ui'
 
 /**
@@ -188,7 +188,7 @@ export function ConnectionsPage() {
           {showWhatsApp && (
             <Panel pad={false}>
               <figure>
-                <img src="/connect/whatsapp.png" alt="A check-in over WhatsApp" />
+                <div className="gwui-console-frame"><WhatsAppConversationExample /></div>
                 <figcaption className="gwui-panel-row"><b>On WhatsApp</b></figcaption>
               </figure>
             </Panel>
