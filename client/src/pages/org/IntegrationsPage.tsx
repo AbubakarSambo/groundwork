@@ -627,7 +627,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
 
               {embedSecret && (
                 <div className="gwui-secret-box">
-                  <p className="gwui-secret-box-label">Signing secret</p>
+                  <p className="gwui-secret-box-label">Signing secret. Copy it now, because it is shown only once.</p>
                   <p className="gwui-secret-box-value">{embedSecret}</p>
                   <Button kind="secondary" size="small" onClick={() => copyText(embedSecret)}>Copy</Button>
                 </div>

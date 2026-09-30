@@ -20,10 +20,13 @@ describe('the console', () => {
     expect(page).toMatch(/integrationsApi\.setUpEmbed\(\{/);
   });
   it('asks the three things the server takes, shows the secret once, and hands over the snippet', () => {
-    expect(page).toContain('aria-label="Allowed domains"');
-    expect(page).toContain('aria-label="Placement"');
-    expect(page).toContain('aria-label="Out-of-scope departments"');
-    expect(page).toContain('Signing secret - shown once');
+    /* The page was rebuilt from the shared parts (group 1, 30 September): each field now has a
+       visible label tied to it by id, instead of an aria-label, and the secret box says in a full
+       sentence that it is shown once. The three things asked are the same. */
+    expect(page).toMatch(/<FieldLabel htmlFor="tools-embed-domains">Sites allowed to show it<\/FieldLabel>[\s\S]{0,200}id="tools-embed-domains"/);
+    expect(page).toMatch(/<FieldLabel htmlFor="tools-embed-placement">Where it sits<\/FieldLabel>[\s\S]{0,200}id="tools-embed-placement"/);
+    expect(page).toMatch(/<FieldLabel htmlFor="tools-embed-out">Departments that should see nothing at all<\/FieldLabel>[\s\S]{0,200}id="tools-embed-out"/);
+    expect(page).toContain('Signing secret. Copy it now, because it is shown only once.');
     expect(page).toMatch(/<script src="\$\{API_ORIGIN\}\/embed\.js" data-mode=/);
   });
   it('the snippet uses the attributes the loader actually reads', () => {
