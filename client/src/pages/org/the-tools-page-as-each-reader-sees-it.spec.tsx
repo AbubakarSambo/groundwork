@@ -115,7 +115,7 @@ describe('the approved state, with keys, webhooks, deliveries, embed and retenti
     open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
     await screen.findByText('Keys')
     expect(screen.getByText('The list comes from Groundwork, so new events appear here.')).toBeTruthy()
-    expect(screen.getByText(/2 more are coming\. They will appear here when they are ready\./)).toBeTruthy()
+    expect(screen.getByText(/2 more are coming\. Nothing sends them yet, so they will appear here once Groundwork can\./)).toBeTruthy()
     expect(screen.queryByText(/can be ticked now/)).toBeNull()
   })
 
