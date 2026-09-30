@@ -120,6 +120,20 @@ Built in `f978d3cf`. **The old context chat still works, untouched, and stays un
 - **One test** still expected "Context tab" after the rename, and now expects "Context and resources". The list of people waiting reads "Ben and Ada", not "Ben, Ada".
 - **Left:** only the live proof, which runs after run-20. The old context chat stays on until it passes.
 
+**The live proof ran end to end, and it is not proven yet. The old context chat stays on.** The script puts the same messages, paste, lines, notes and document through the old context chat on one fresh check-in, and through Ask Groundwork on another. It then compares what the database holds.
+- **Match:**
+  - the lead's private notes, including which one stays private;
+  - the refusal to share a note about one person, word for word;
+  - the document keeping its target with the bank detail hidden;
+  - the document staying private to the lead;
+  - the check-in's hidden-target setting;
+  - a line retired on both sides.
+- **Mismatch, 10 items.** They look like three kinds, and each is being sorted with evidence:
+  - **The script fed the two sides differently.** For example, on the old side none of the questions ended up confirmed, and the admin's refusal was not recorded.
+  - **The model wrote the text differently each time.** The exact question's wording and the context lines taken from a paste differ between runs, so they must be compared by kind, owner and state rather than word for word.
+  - **Possibly real differences between the two doors, which I will not paper over.** Through Ask Groundwork, "This runs for twelve weeks" was recorded as what doing well looks like. A proper success statement became three measures, where the old chat recorded one statement. "Good." got a clarifying question, where the old chat refused it.
+- Three faults in the script itself were found and fixed on the way: capital letters in email addresses, a missing organisation membership, and a missing field on the check-in request.
+
 ### Decision 57, part C: steadiness, a second source of evidence, and confirming a role
 
 **How steady patterns are: not steady.** This is the most important finding tonight. A new read-only script, `api/journey/pattern-steadiness.ts` (`e9e6edae`), compares which person got which pattern across two runs of the same scenarios:
