@@ -145,7 +145,7 @@ It says, for example, "Yemi is on leave until Friday 2 October, so this round do
 
 **Week 25. The slow report for a larger team.** *Built 1 October (`3f34d2cc`): independent calls run together, readers warmed four at a time, and a plain line while it is being written. To be measured on the next run.* For nine people, the report takes five to six minutes after the last check-in to include everyone. This week makes it faster, or shows the lead plainly that it is still being written.
 
-**Week 26. The remaining wording.** Counts that mix a word and a figure, the board's own sentences, which are built when the board is opened, and the pronoun check in the conversation. All are brought under the automatic check of task 1.6.
+**Week 26. The remaining wording.** *Board and reports part built 1 October (`025c05dc`): every product sentence there is checked, about twenty fixed. The conversation's pronoun check is still to do.* Counts that mix a word and a figure, the board's own sentences, which are built when the board is opened, and the pronoun check in the conversation. All are brought under the automatic check of task 1.6.
 
 ---
 
