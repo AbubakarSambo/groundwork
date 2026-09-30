@@ -64,9 +64,12 @@ beforeEach(() => {
 })
 afterEach(() => { vi.useRealTimers() })
 
-const rows = () => [...document.querySelectorAll('.gw-need')].map(li => ({
-  title: li.querySelector('.gw-need-h')?.textContent,
-  detail: li.querySelector('.gw-need-s')?.textContent ?? null,
+/* Rebuilt from the shared parts (group 2): the row is now the shared `EdgeRow` (`gwui-edge-row`,
+   `gwui-edge-h`, `gwui-edge-s`), in place of the old `NeedsYouRow` (`gw-need`, `gw-need-h`, `gw-need-s`) -
+   the same shape, one shared part used by every list of things that need a reader. */
+const rows = () => [...document.querySelectorAll('.gwui-edge-row')].map(li => ({
+  title: li.querySelector('.gwui-edge-h')?.textContent,
+  detail: li.querySelector('.gwui-edge-s')?.textContent ?? null,
   action: [...li.querySelectorAll('a')].map(a => [a.textContent, a.getAttribute('href')]),
 }))
 
