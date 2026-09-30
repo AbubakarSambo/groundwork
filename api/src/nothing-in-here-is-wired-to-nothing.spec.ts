@@ -46,6 +46,8 @@ const NOT_WIRED_ON_PURPOSE: Record<string, string> = {
   // Nest finds these by convention or by decorator rather than by import.
   'main.ts': 'the entrypoint - nothing imports it, it imports everything',
   // Screens request 93: shared set-up for the request 92 specs, in assistant/ and grounds/, used by tests only.
+  // Request 70: shared set-up for the board's seven new section specs, used by tests only.
+  'the-switchboards-sections-harness.ts': 'test-only set-up shared by the request 70 board section specs; nothing in the product should import it',
   'request-92-harness.ts': 'test-only set-up shared by the request 92 specs in assistant/ and grounds/; nothing in the product should import it',
   // Duplicated deliberately into the client, and documented there.
   'what-this-ground-can-tell-you.ts': 'shares its rules with client/src/lib/contextStrength.ts by deliberate duplication - see the header in both',
