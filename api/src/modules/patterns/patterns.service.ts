@@ -48,6 +48,20 @@ const CODE_DESCRIPTIONS = new Map(BAD_FAITH_CODES.map((c) => [c.code, `${c.name}
  */
 export const PATTERN_DETECTION_STEADY_OPTIONS = { temperature: 0, seed: 20260930 } as const;
 
+/**
+ * READ FIVE TIMES, KEEP WHAT THREE AGREE ON.
+ *
+ * Measured live against run-20 of journey/all-24 (50 check-ins, 30 September 2026 - see
+ * api/journey/how-steady-each-way-is.py and -2.py, and docs/morning-report.md). One ordinary read
+ * gives the same (person, pattern) pairs across a scenario only 36% of the time. One read at the
+ * steady setting above (temperature 0, a fixed seed) gives 57%. Five steady reads, keeping a
+ * pattern only when at least three of the five keep it, gives 80%, while still finding at least as
+ * many real patterns as today's single read (71% of the patterns most reads agree on, measured
+ * independently). The smallest thinking budget was ruled out separately - it finds almost nothing.
+ */
+export const READS_PER_CHECK_IN = 5;
+export const READS_THAT_MUST_AGREE = 3;
+
 const THREE_PERIOD_RULE = 3;
 
 
@@ -195,109 +209,57 @@ export class PatternsService {
       return ruleAgrees ? 'both' : 'model';
     };
 
-    try {
-      const result = await this.anthropic.extract<{ detections: { code: string; observation: string }[] }>(
-        PATTERN_DETECTION_PROMPT + recogniseBlock,
-        [{ role: 'user', content }],
-        PATTERN_DETECTION_SCHEMA,
-      );
+    /*
+     * READ FIVE TIMES, KEEP WHAT THREE AGREE ON (measured 30 September 2026 - see
+     * PATTERN_DETECTION_STEADY_OPTIONS's neighbour, READS_PER_CHECK_IN, above). Each read goes
+     * through exactly the same steps as before this change - whatOneReadKeeps runs the extraction
+     * call and every filter in the same order, and only decides what a single read would keep,
+     * without writing anything. The five run in parallel, at the steadiest setting the model has.
+     */
+    const attempts = await Promise.allSettled(
+      Array.from({ length: READS_PER_CHECK_IN }, () =>
+        this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput),
+      ),
+    );
 
-      for (const d of result?.detections ?? []) {
-        if (!d.observation?.trim()) continue;
-
-        /* The steer recognised something and wrote it up under the wrong code. See
-           the-detector-has-no-memory-of-last-period.evidenceBorrowedFromAnotherCode. */
-        const borrowedFrom = evidenceBorrowedFromAnotherCode(d.observation, d.code, lastPeriod);
-        if (borrowedFrom) {
-          this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; its evidence is ${borrowedFrom}'s own words from a recent period, not a fresh reading of this one.`);
-          continue;
-        }
-
-        /*
-         * THE GOOD ONES TAKE THE SHORT ROAD, WHICH IS THE PRODUCT'S OWN RULE.
-         *
-         * "Positive patterns do not require three periods. Surface them immediately when seen" -
-         * the conversation prompt has said that for the product's whole life, and observePositive
-         * has existed to do it. Nothing reached it but R3, because the line below dropped every
-         * code that was not bad faith, so the seven good ones were extracted and thrown away.
-         *
-         * No confirmation pass either. That gate exists because a false positive on a bad-faith
-         * code is an accusation, and asking a second model to confirm is worth the call. A false
-         * positive here is a compliment somebody did not quite earn, on a board that says where it
-         * came from. The costs are not the same and the gate should not be either.
-         */
-        if (isPositiveCode(d.code)) {
-          /* M1 is about the goal they stated. An output about something else, or with no goal on record, is not it. */
-          if (d.code === 'M1' && !isAgainstAGoalTheyStated(d.observation, statedGoals)) {
-            this.logger.log(`Check-in ${checkInId}: M1 dropped; ${statedGoals.length ? 'the observation speaks to none of the goals this person stated' : 'no goal is on record yet to have delivered against'}.`);
-            continue;
-          }
-          /* And a good pattern needs something somebody could check. "Actively manages what their work
-             needs" with no number, date, name or document in it is a compliment, not an observation
-             (run 3, 20 Sep 2026, credited to a director whose pipeline was two drafts). */
-          if (!saysSomethingCheckable(d.observation)) {
-            this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; the observation carries nothing anybody could check.`);
-            continue;
-          }
-          await this.observePositive(
-            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period,
-            await evidenceSourceFor(d.code),
-          );
-          continue;
-        }
-        /*
-         * CARRYING TAKES THE LONG ROAD AND SKIPS THE GATE.
-         *
-         * Longitudinal like the bad-faith codes, so it goes through observe() and the three-period
-         * rule: one hard week is not somebody holding the place together. But no confirmation
-         * call - that gate is there to slow an accusation down, and saying somebody is carrying
-         * too much is not an accusation of them.
-         */
-        if (isCarryingCode(d.code)) {
-          await this.observe(
-            checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period,
-            await evidenceSourceFor(d.code),
-          );
-          continue;
-        }
-        if (!isBadFaithCode(d.code)) continue;
-        /*
-         * AND NOT ABOUT THE PERSON WAITING. B5, B11 and K3 read one transcript for "a lot of talking
-         * and it has not moved", which is exactly the shape a lead produces when the person they
-         * hired is not delivering - it surfaced on the client, not the consultant, and her coaching
-         * then told her to communicate better. See a-chaser-is-not-the-blocker.
-         */
-        const mine = shouldThisCodeBeAboutThem(d.code, theirDependencies as any[]);
-        if (!mine.keep) {
-          this.logger.log(`Check-in ${checkInId}: ${d.code} not written about this person; ${mine.because}.`);
-          continue;
-        }
-        // AI confirmation gate: each candidate pattern is confirmed by a
-        // second AI call before being written to the record. This prevents
-        // false positives from the batch extraction step.
-        const confirmed = await this.confirmDetection(d.code, d.observation.trim()).catch((err) => {
-          this.logger.warn(`Pattern confirmation skipped for ${d.code}: ${err.message}`);
-          return false;
-        });
-        if (!confirmed) continue;
-
-        // Gap #30 - F1 composite gate: F1 (Insight Without Operation) requires
-        // ALL four conditions (high thinking-language, low output-language,
-        // pattern sustained 3 periods, no change after prior surfacing). The AI
-        // extraction pass can flag F1 too early; we enforce the composite rule
-        // here using per-participant historical scores before accepting the signal.
-        if (d.code === 'F1') {
-          const f1Input = await getDetectionInput();
-          if (!checkF1Conditions(f1Input)) {
-            this.logger.debug(`F1 gate: composite conditions not met for participant ${checkIn.participantId} - skipping`);
-            continue;
-          }
-        }
-
-        await this.observe(checkIn.groundId, checkIn.participantId, d.code, d.observation.trim(), period, await evidenceSourceFor(d.code));
+    const succeeded: { code: string; observation: string }[][] = [];
+    attempts.forEach((attempt, i) => {
+      if (attempt.status === 'fulfilled') {
+        succeeded.push(attempt.value);
+      } else {
+        this.logger.error(`Pattern extraction failed for check-in ${checkInId}, read ${i + 1} of ${READS_PER_CHECK_IN}: ${attempt.reason?.message}`);
       }
-    } catch (err: any) {
-      this.logger.error(`Pattern extraction failed for check-in ${checkInId}: ${err.message}`);
+    });
+
+    if (succeeded.length < READS_THAT_MUST_AGREE) {
+      /* Fewer than three reads to agree on anything. Nothing is written, and the check-in is left
+         unmarked so the nightly sweep (patterns.cron.ts) retries it rather than treating a run of
+         bad luck against the model as "nothing here". */
+      this.logger.error(`Pattern extraction: only ${succeeded.length} of ${READS_PER_CHECK_IN} reads succeeded for check-in ${checkInId}; leaving it unanalysed for the nightly sweep to retry.`);
+      return;
+    }
+
+    /* Count how many of the successful reads kept each code, keeping the observation from the
+       first of the five (in order) that kept it - the Map below only ever sets it once. */
+    const votes = new Map<string, { count: number; observation: string }>();
+    for (const kept of succeeded) {
+      const codesThisRead = new Set<string>();
+      for (const { code, observation } of kept) {
+        if (codesThisRead.has(code)) continue; // one vote per read, even if a read named a code twice
+        codesThisRead.add(code);
+        const entry = votes.get(code);
+        if (entry) entry.count += 1;
+        else votes.set(code, { count: 1, observation });
+      }
+    }
+
+    for (const [code, { count, observation }] of votes) {
+      if (count < READS_THAT_MUST_AGREE) continue;
+      if (isPositiveCode(code)) {
+        await this.observePositive(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code));
+      } else {
+        await this.observe(checkIn.groundId, checkIn.participantId, code, observation, period, await evidenceSourceFor(code));
+      }
     }
 
     // LOW_SPEC_MULTI_DIM: alignment-feed-only flag when 3+ dimensions were vague/managed.
@@ -316,6 +278,125 @@ export class PatternsService {
     }
 
     await this.markAnalyzed(checkInId);
+  }
+
+  /**
+   * WHAT ONE READ OF THIS CHECK-IN WOULD KEEP, without writing anything.
+   *
+   * One extraction call at the steady setting, then the same filters in the same order this method
+   * always ran, when it ran once: the borrowed-evidence check, the positive-code short road (M1
+   * against a stated goal, then "does this say something checkable"), carrying codes (no
+   * confirmation), the chaser guard, the confirming call (also at the steady setting), and the F1
+   * composite gate. Five calls to this, run in parallel, are how analyzeCheckIn reads a check-in
+   * five times; a code is only written once at least three of the five keep it.
+   */
+  private async whatOneReadKeeps(
+    checkInId: string,
+    content: string,
+    recogniseBlock: string,
+    lastPeriod: { code: string; observationText: string | null; lastPeriodNumber: number | null }[],
+    statedGoals: string[],
+    theirDependencies: any[],
+    getDetectionInput: () => Promise<DetectionInput>,
+  ): Promise<{ code: string; observation: string }[]> {
+    const kept: { code: string; observation: string }[] = [];
+
+    const result = await this.anthropic.extract<{ detections: { code: string; observation: string }[] }>(
+      PATTERN_DETECTION_PROMPT + recogniseBlock,
+      [{ role: 'user', content }],
+      PATTERN_DETECTION_SCHEMA,
+      PATTERN_DETECTION_STEADY_OPTIONS,
+    );
+
+    for (const d of result?.detections ?? []) {
+      if (!d.observation?.trim()) continue;
+
+      /* The steer recognised something and wrote it up under the wrong code. See
+         the-detector-has-no-memory-of-last-period.evidenceBorrowedFromAnotherCode. */
+      const borrowedFrom = evidenceBorrowedFromAnotherCode(d.observation, d.code, lastPeriod);
+      if (borrowedFrom) {
+        this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; its evidence is ${borrowedFrom}'s own words from a recent period, not a fresh reading of this one.`);
+        continue;
+      }
+
+      /*
+       * THE GOOD ONES TAKE THE SHORT ROAD, WHICH IS THE PRODUCT'S OWN RULE.
+       *
+       * "Positive patterns do not require three periods. Surface them immediately when seen" -
+       * the conversation prompt has said that for the product's whole life, and observePositive
+       * has existed to do it.
+       *
+       * No confirmation pass either. That gate exists because a false positive on a bad-faith
+       * code is an accusation, and asking a second model to confirm is worth the call. A false
+       * positive here is a compliment somebody did not quite earn, on a board that says where it
+       * came from. The costs are not the same and the gate should not be either.
+       */
+      if (isPositiveCode(d.code)) {
+        /* M1 is about the goal they stated. An output about something else, or with no goal on record, is not it. */
+        if (d.code === 'M1' && !isAgainstAGoalTheyStated(d.observation, statedGoals)) {
+          this.logger.log(`Check-in ${checkInId}: M1 dropped; ${statedGoals.length ? 'the observation speaks to none of the goals this person stated' : 'no goal is on record yet to have delivered against'}.`);
+          continue;
+        }
+        /* And a good pattern needs something somebody could check. "Actively manages what their work
+           needs" with no number, date, name or document in it is a compliment, not an observation
+           (run 3, 20 Sep 2026, credited to a director whose pipeline was two drafts). */
+        if (!saysSomethingCheckable(d.observation)) {
+          this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; the observation carries nothing anybody could check.`);
+          continue;
+        }
+        kept.push({ code: d.code, observation: d.observation.trim() });
+        continue;
+      }
+      /*
+       * CARRYING TAKES THE LONG ROAD AND SKIPS THE GATE.
+       *
+       * Longitudinal like the bad-faith codes, so it goes through observe() and the three-period
+       * rule: one hard week is not somebody holding the place together. But no confirmation
+       * call - that gate is there to slow an accusation down, and saying somebody is carrying
+       * too much is not an accusation of them.
+       */
+      if (isCarryingCode(d.code)) {
+        kept.push({ code: d.code, observation: d.observation.trim() });
+        continue;
+      }
+      if (!isBadFaithCode(d.code)) continue;
+      /*
+       * AND NOT ABOUT THE PERSON WAITING. B5, B11 and K3 read one transcript for "a lot of talking
+       * and it has not moved", which is exactly the shape a lead produces when the person they
+       * hired is not delivering - it surfaced on the client, not the consultant, and her coaching
+       * then told her to communicate better. See a-chaser-is-not-the-blocker.
+       */
+      const mine = shouldThisCodeBeAboutThem(d.code, theirDependencies as any[]);
+      if (!mine.keep) {
+        this.logger.log(`Check-in ${checkInId}: ${d.code} not written about this person; ${mine.because}.`);
+        continue;
+      }
+      // AI confirmation gate: each candidate pattern is confirmed by a
+      // second AI call before being written to the record. This prevents
+      // false positives from the batch extraction step.
+      const confirmed = await this.confirmDetection(d.code, d.observation.trim(), PATTERN_DETECTION_STEADY_OPTIONS).catch((err) => {
+        this.logger.warn(`Pattern confirmation skipped for ${d.code}: ${err.message}`);
+        return false;
+      });
+      if (!confirmed) continue;
+
+      // Gap #30 - F1 composite gate: F1 (Insight Without Operation) requires
+      // ALL four conditions (high thinking-language, low output-language,
+      // pattern sustained 3 periods, no change after prior surfacing). The AI
+      // extraction pass can flag F1 too early; we enforce the composite rule
+      // here using per-participant historical scores before accepting the signal.
+      if (d.code === 'F1') {
+        const f1Input = await getDetectionInput();
+        if (!checkF1Conditions(f1Input)) {
+          this.logger.debug(`F1 gate: composite conditions not met for participant - skipping`);
+          continue;
+        }
+      }
+
+      kept.push({ code: d.code, observation: d.observation.trim() });
+    }
+
+    return kept;
   }
 
   /**
