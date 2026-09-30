@@ -57,6 +57,7 @@ import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, sessionDay, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
 import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
+import { KindOfWorkBanner, WorkRecordsSections } from './WorkRecords'
 
 /**
  * The delivery board.
@@ -247,6 +248,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* Whether to build the attendance grid as a grid at all. See the component it chooses. */
   const onAPhone = useIsAPhone()
   const viewerRunsThisCheckIn = !!user?.id && (groundForSignals as any)?.initiatorId === user.id
+  /*
+   * WHO MAY CHANGE THE KIND OF WORK (request 76): the lead of this check-in, or an admin of this
+   * organisation - the same rule the server checks (aSettingOnlyTheLeadMayChange). Mirrors
+   * GroundPage.tsx's own `runsIt` check, rather than a new copy of the rule that could drift from it.
+   */
+  const canEditKindOfWork = viewerRunsThisCheckIn
+    || (user?.role === 'ADMIN' && !!(groundForSignals as any)?.organizationId && (groundForSignals as any).organizationId === user?.organizationId)
 
   /*
    * U.10 ITEM 7: THE SAME ROWS THE REPORT TAB BUILDS "EVERY SESSION" FROM.
@@ -592,6 +600,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {b.readOnlyNote && (
           <p role="note" style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '8px 0 0' }}>{b.readOnlyNote}</p>
         )}
+
+        {/*
+          THE KIND OF WORK, SAID ONCE, NEAR THE TOP OF THE BOARD (item 4). The lead, or an admin of
+          this organisation, can change it and its own stage names; a participant reads the same
+          sentence and gets no "Change" button. See WorkRecords.tsx.
+        */}
+        <KindOfWorkBanner
+          groundId={id!}
+          kindOfWork={(b as any).kindOfWork ?? null}
+          workStages={(groundForSignals as any)?.workStages}
+          canEdit={canEditKindOfWork}
+        />
 
         {/*
           HOW IT IS GOING, AND THE SESSION SPINE - KEPT, RESTYLED AS PLAIN TEXT (U.10 item 2).
@@ -1022,6 +1042,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             </Card>
           </>
         )}
+
+        {/*
+          THE KIND OF WORK'S OWN RECORDS (request 76): deals and their stages, releases, tickets, a
+          matter's deadlines and parties, and so on - one section per name the server sends under
+          `workRecords`, in the switchboard's own order (Deal grid, Forecast, Themes, Work plan,
+          Timeline, Obligations sit right after Targets in G2's own table). Drawn exactly as the
+          server sends it: which sections exist, and whether each is filled, has none yet, or is not
+          something Groundwork keeps for this kind of work, are all already decided server-side -
+          this only draws what it is given. Only the lead may add, change or remove a record.
+        */}
+        <WorkRecordsSections
+          groundId={id!}
+          sections={b.workRecords}
+          participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+          leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+          canEdit={b.canEditFrame}
+        />
 
         {/* What was agreed at the start, so the rest of the board has something
             to be read against. This section has been in the DELIVERY family's
