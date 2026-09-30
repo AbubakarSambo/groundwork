@@ -6919,4 +6919,20 @@ Not checked on screen, because no local organisation has them: the developer pag
 
 From now on, each group's checks also run the API tests that read screen files.
 
+**Group 2, first piece: Today and the check-ins list are rebuilt from the shared parts (1 October).** Nothing on them uses the old parts now.
+- Every need, link, appeal, the admin's first-run card and checklist, "You are in." and every section of the list is kept.
+- "Start a check-in" is each screen's one navy button: the admin's "Approve" is now white, and "Decline it" is red.
+- What the prototype draws but the product has no data for, such as "Since yesterday" and "Your deals", is still left out rather than made up.
+- I compared the pictures with the prototype's myself. The admin's welcome card, with its dark edge above the greeting, is the prototype's own drawing.
+
+Tests:
+- The screen suite passes, except the wording guard, which is over its limit (62 against 60). Every new match since the merges is in the engine's own files, so it is request 95.
+- The button test passes (12 of 12), and so does the page-colour test.
+
+Two findings for the engine, both in request 95:
+- Today still says "Faraji hasn't yet" about someone an admin did not let in. The board was fixed for this in request 85, and Today needs the same rule.
+- The wording guard's new matches.
+
+The pictures are in the scratchpad's `pictures/g2a/`, before and after. Group 2's review comes once all four pieces are done.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
