@@ -53,7 +53,7 @@ The order follows Hafsah's: the check-in conversation first; then judging, and m
 - The "setup never said" reading shows again, under the period rule.
 - **Screens later:** the lead's "right", "wrong", "not sure" and "we talked about it".
 
-**Week 8b. Self-learning (decisions 55 and 57), early, because everything after it gets better with it.** Every pattern, coaching step and probe keeps three signals:
+**Week 8b. Self-learning (decisions 55 and 57), early, because everything after it gets better with it.** *Built 1 October (`5c0d187d`, `a8fe3f79`, `7e5a36f9`): the three signals are counted and a weight is suggested for each; the weights are switched off until proven on the scenario runs and agreed by Hafsah.* Every pattern, coaching step and probe keeps three signals:
 - was it right (the lead's mark, and the person's answer);
 - did the conversation happen (the lead's "we talked about it", or the step asked about);
 - did things change (what later check-ins show).
@@ -84,11 +84,11 @@ It needs week 8's marks, and week 9's kept and missed commitments, to have signa
 **Week 10. The first suggestion, told like a signal (decision 6).** The engine reaches a suggestion for one person and records it: why, what would change it, and the person's own answer, in plain sentences. The screens that show, decide, answer and appeal a suggestion are already built.
 - **Needs Hafsah first:** the thresholds for each suggestion (for example "below 6 in 10"), how "the last 4 weeks" is counted, and whether a new suggestion replaces one nobody has decided.
 
-**Week 11. Suggestions on the ending page and in reviews.** The ending page gets its suggestion, signals and questions. The reviews suite can start reviews that fall due from inside the product, not only from an outside system, and writes "What Groundwork noticed".
+**Week 11. Suggestions on the ending page and in reviews.** *Built 1 October: the ending page carries the suggestion, signals and questions; a review that falls due is proposed, and only the writer's yes starts it (decided for Hafsah to confirm).* The ending page gets its suggestion, signals and questions. The reviews suite can start reviews that fall due from inside the product, not only from an outside system, and writes "What Groundwork noticed".
 - **Needs Hafsah first:** whether the product itself starts reviews, and how often.
 - **Screens later:** any changes to the reviews board.
 
-**Week 12. Who is slipping, said as what happened.** *Partly done 28 September (`b450fbf2`): no row says "nothing here needs you" and then gives something to ask, "waiting 0 days" is gone, and nobody is asked to speak to a thing. The alert in the prototype's words is still to do.* Each person's line on the board says what needs the lead. It never says "nothing here needs you" and then names a blocker. It fixes "waiting 0 days". The alert reads like the prototype's "Samuel has chased the same 5 leads for 3 check-ins". Never a label on a person.
+**Week 12. Who is slipping, said as what happened.** *Partly done 28 September (`b450fbf2`): no row says "nothing here needs you" and then gives something to ask, "waiting 0 days" is gone, and nobody is asked to speak to a thing. The alert in the prototype's words is still to do.* *Finished later (`1f17703e`), on the report and each person's line.* Each person's line on the board says what needs the lead. It never says "nothing here needs you" and then names a blocker. It fixes "waiting 0 days". The alert reads like the prototype's "Samuel has chased the same 5 leads for 3 check-ins". Never a label on a person.
 
 **Week 12b. The weekly report's sentence about each person (decision 43).** The prototype's weekly report says, in one plain sentence, how people's accounts read, for example "Aisha and Miriam consistently get to specific customer needs and next steps." The engine has no weekly report yet (screens request 9). This writes that sentence from the record, never from the rating itself, and never as a label.
 - **Screens later:** the weekly report page.
@@ -102,13 +102,13 @@ It needs week 8's marks, and week 9's kept and missed commitments, to have signa
 **Week 13. A plan becomes proposals, confirmed one by one.** A pasted or uploaded plan becomes separate proposals, one each for goals, roles, commitments and rules, each with Confirm, Edit and Not now. Dates are kept. Roles are created. Everything comes before any row is written. This is screens request 6a.
 - **Screens later:** the "Waiting for you to confirm" cards, and the storage for proposals waiting to be confirmed, which the screens workspace offered to add.
 
-**Week 14. A document read item by item.** For each document: what was taken, with page numbers, and what was left out, and why. When a document disagrees with the record, the product asks about it once, and does not ask again after it is answered. Numbers are kept on "Yes, but…" as well as a bare "yes". This is screens request 6c.
+**Week 14. A document read item by item.** *Built 29 September (`3d60bbaf` and after).* For each document: what was taken, with page numbers, and what was left out, and why. When a document disagrees with the record, the product asks about it once, and does not ask again after it is answered. Numbers are kept on "Yes, but…" as well as a bare "yes". This is screens request 6c.
 - **Screens later:** the item-by-item view on "Add a document".
 
-**Week 15. Photos as proof, said out loud.** A photo that backs a line is marked as proof and shown, and the person is told it counted. The check-in asks for a photo when a claim is only someone's word. A receipt or an invoice is never called "a conversation".
+**Week 15. Photos as proof, said out loud.** *Built 29 September (`61c48f3d` and after).* A photo that backs a line is marked as proof and shown, and the person is told it counted. The check-in asks for a photo when a claim is only someone's word. A receipt or an invoice is never called "a conversation".
 - **Screens later:** the proof mark on the board and the end card.
 
-**Week 16. Today, and alerts.** Today shows what really needs each person: blockers, people waiting, decisions only the lead can make. It never says nothing needs them while their board shows otherwise. This is screens request 3.
+**Week 16. Today, and alerts.** *Built 29 September (`30e398df` and after).* Today shows what really needs each person: blockers, people waiting, decisions only the lead can make. It never says nothing needs them while their board shows otherwise. This is screens request 3.
 - **Screens later:** any new parts of Today.
 
 ---
