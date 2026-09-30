@@ -15,7 +15,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
-import { Card, Row, Pill, btn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
+import { btn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
 import { todayApi, type Need } from '@/api/today'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
@@ -56,7 +56,8 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, sessionDay, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section, Panel, Tag, Button as UIButton } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Panel, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList } from '@/components/gw/ui'
+import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { KindOfWorkBanner, WorkRecordsSections } from './WorkRecords'
@@ -1026,7 +1027,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             aria-label={`One more: ${o.name}`}
                           >Raise</UIButton>
                           <UIButton
-                            kind="danger" size="small"
+                            kind="quiet" danger size="small"
                             onClick={() => sureAboutTarget.arm(o.id)}
                             disabled={removeObjective.isPending}
                             aria-label={`Remove target: ${o.name}`}
@@ -1438,11 +1439,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           a target nobody set, a dependency nobody owns.
         */}
         {!!b.stillUnanswered?.length && (
-          <div>
-            <Section heading="Asked for, not answered" note="The check-in asked twice, then stopped." />
-            <Card>
-              {b.stillUnanswered.map((g, i) => (
-                <Row key={`${g.who}-${g.what}`} first={i === 0}>
+          <Section heading="Asked for, not answered" note="The check-in asked twice, then stopped.">
+            <Panel pad={false}>
+              {b.stillUnanswered.map((g) => (
+                <div key={`${g.who}-${g.what}`} className="gwui-panel-row">
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 13.5, color: 'var(--gw-dark)' }}>
                       <b style={{ fontWeight: 700 }}>{g.who}</b> &mdash; {g.what}
@@ -1455,20 +1455,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       {g.certain ? `open since session ${g.sinceRound}` : `asked in session ${g.sinceRound}, could not confirm`}
                     </span>
                   </div>
-                </Row>
+                </div>
               ))}
-            </Card>
-          </div>
+            </Panel>
+          </Section>
         )}
 
-
-
         {shown.decisions && b.decisions && (
-          <div>
-            <Section heading="Decisions needed" note="Raised by what people see differently, or what is stuck." />
-            <Card>
+          <Section heading="Decisions needed" note="Raised by what people see differently, or what is stuck.">
+            <Panel pad={false}>
               {b.decisions.map((d, i) => (
-                <Row key={i} first={i === 0}>
+                <div key={i} className="gwui-panel-row">
                   <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
                     <span style={{ fontFamily: 'var(--gw-font-name)', fontSize: 17, color: 'var(--gw-navy)', minWidth: 18 }}>{i + 1}</span>
                     <div style={{ flex: 1 }}>
@@ -1478,10 +1475,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {/* U.10: a name, not a verdict - the owner is who this is for, not a label on them. */}
                     <span style={{ fontSize: 12.5, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{d.owner}</span>
                   </div>
-                </Row>
+                </div>
               ))}
-            </Card>
-          </div>
+            </Panel>
+          </Section>
         )}
 
         {/* ---------------------------------------------- against the plan */}
@@ -1494,14 +1491,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
 
         {shown.whoOwnsWhat && b.whoOwnsWhat && (
-          <div>
-            {/* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */}
-            {b.family === 'UPDATE'
-              ? <Section heading="What each person said" note="Their own answers to the question, in their words." />
-              : <Section heading="Who owns what" note="Read from what people said in their check-ins." />}
+          /* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */
+          <Section
+            heading={b.family === 'UPDATE' ? 'What each person said' : 'Who owns what'}
+            note={b.family === 'UPDATE' ? 'Their own answers to the question, in their words.' : 'Read from what people said in their check-ins.'}
+          >
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 14 }}>
               {b.whoOwnsWhat.map((p) => (
-                <Card key={p.participantId} pad={false}>
+                <Panel key={p.participantId} pad={false}>
                   <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)' }}>
                     {/*
                       The server falls back from a missing name to the ROLE rather than the email
@@ -1532,15 +1529,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       </div>
                     )) })()}
                   </div>
-                </Card>
+                </Panel>
               ))}
             </div>
-          </div>
+          </Section>
         )}
 
         {shown.dependencies && b.dependencies && (
-          <div>
-            <Section heading="Waiting on" note="Handoffs between people, read from their check-ins." />
+          <Section heading="Waiting on" note="Handoffs between people, read from their check-ins.">
             {/*
               U.10: ONE CARD PER BLOCKER, THE PROTOTYPE'S LAYOUT (board-as-lead.jpg, "Blockers").
               Each blocker there is its own white card: a bold title, an outlined status pill top
@@ -1558,20 +1554,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               for it. W8-24.
             */}
             {b.dependencies.length === 0 ? (
-              <Card><Row first><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Row></Card>
+              <Panel><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Panel>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
                   const onWhom = d.on ?? 'someone outside this check-in'
                   const statusSaid = d.status === 'BLOCKING' ? 'This is blocking work.' : d.status === 'CLEARED' ? 'This is cleared.' : 'This is waiting.'
                   const title = d.what ? d.what.charAt(0).toUpperCase() + d.what.slice(1) : 'Waiting on something'
-                  const tone = d.status === 'BLOCKING' ? 'bad' : d.status === 'CLEARED' ? 'good' : 'warn'
+                  const tone: TagTone = d.status === 'BLOCKING' ? 'concern' : d.status === 'CLEARED' ? 'proven' : 'attention'
                   const word = d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'
                   return (
-                    <div key={d.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '14px 16px' }}>
+                    <Panel key={d.id}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
                         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{title}</div>
-                        <Pill tone={tone} outline>{word}</Pill>
+                        <Tag tone={tone}>{word}</Tag>
                       </div>
                       <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 8 }}>
                         Waiting on: <span style={{ color: 'var(--gw-dark)', fontWeight: 600 }}>{onWhom}</span>
@@ -1584,12 +1580,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           When this arrives, {d.from} says: “{String(d.then).replace(/[.\s]+$/, '')}.”
                         </div>
                       )}
-                    </div>
+                    </Panel>
                   )
                 })}
               </div>
             )}
-          </div>
+          </Section>
         )}
 
         {/* Links between check-ins (D3, U.16): drawn only when the server serves this reader any. */}
@@ -1616,9 +1612,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
            * header.
            */
           return (
-          <div>
-            <Section heading="Who checked in" note="The last 10 sessions, one row each." />
-            <Card>
+            <Section heading="Who checked in" note="The last 10 sessions, one row each.">
               {/*
                 A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
                 IT IS. Measured on the running board at 375px: 1088px of table inside a 301px box,
@@ -1632,27 +1626,27 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   openSessions={b.checkInGrid.sessions.filter((s) => sessionState.get(s) !== 'upcoming')}
                 />
               ) : (
-                <div>
-                  {/*
-                    U.10 PICTURE-CHECK ROUND 6, ITEM D: SQUARES IN THEIR OWN FIXED COLUMN.
-                    The name cell used to sit inline with the lead's note ("Faraji Odhiambo I sell
-                    fridges in Kilimani"), so a long note pushed that row's squares right of every
-                    other row's. The name column is now `flex: 1` and the note is its own line under
-                    the name, in small grey text; the squares sit in a column of a fixed width
-                    (enough for ten 14px squares with 5px gaps), so they line up across every row
-                    regardless of how long a name or a note is.
-                  */}
-                  {b.checkInGrid.rows.map((r, i) => (
-                    <div key={r.participantId} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 13.5 }}>{nameOnTheBoard(b, r.participantId, r.name)}</div>
-                        {anyRoleToShow && (r.role && r.role !== r.name || r.managingOnly) && (
-                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>
-                            {r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : 'Managing only'}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: 5, flex: '0 0 auto', width: 190, justifyContent: 'flex-end' }}>
+                /*
+                  U.10 (c2): FROM THE SHARED PARTS. A PeopleTable of PersonRows, the same shape
+                  "The team today" uses - name (and, where a role is worth its own column, the
+                  lead's note or "Managing only" as the level line), then the same ten squares
+                  "The team today" draws, from the same `squaresFor` helper, in their own
+                  fixed-width column so they line up across every row.
+                */
+                <PeopleTable>
+                  {b.checkInGrid.rows.map((r) => (
+                    <PersonRow
+                      key={r.participantId}
+                      extraColumns="190px"
+                      person={{
+                        initials: initialsOf(nameOnTheBoard(b, r.participantId, r.name)),
+                        name: nameOnTheBoard(b, r.participantId, r.name),
+                        level: anyRoleToShow && (r.role && r.role !== r.name || r.managingOnly)
+                          ? (r.role && r.role !== r.name ? <span data-leads-note>{theLeadsNote(r.role)}</span> : 'Managing only')
+                          : undefined,
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
                         {squaresFor(r.participantId).map((sq) => (
                           <span
                             key={sq.key}
@@ -1666,12 +1660,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           />
                         ))}
                       </div>
-                    </div>
+                    </PersonRow>
                   ))}
-                </div>
+                </PeopleTable>
               )}
-            </Card>
-          </div>
+            </Section>
           )
         })()}
 
@@ -1696,9 +1689,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {shown.contribution && b.contribution && (
-          <div>
-            <Section heading="Contribution against role" note="Measured against each person’s own role." />
-            <Card>
+          <Section heading="Contribution against role" note="Measured against each person’s own role.">
+            <Panel>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Is the role clear, and what does the record actually hold for each person, read in their own function's terms.
               </div>
@@ -1753,9 +1745,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       )}
                       {c.fnLabel && (
                         <div style={{ marginTop: 6, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <Pill tone="info">read as {c.fnLabel.toLowerCase()}</Pill>
+                          <Tag tone="action">read as {c.fnLabel.toLowerCase()}</Tag>
                           {!c.fnConfident && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic' }}>still provisional</span>}
-                          {c.isBlocked && <Pill tone="warn">part of this is blocked</Pill>}
+                          {c.isBlocked && <Tag tone="attention">part of this is blocked</Tag>}
                         </div>
                       )}
                       <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.4, background: c.ownVoice ? 'var(--gw-blue-bg)' : 'transparent', border: c.ownVoice ? '1px solid var(--gw-blue-b)' : '1px dashed var(--gw-border)', borderRadius: 9, padding: '6px 10px', color: c.ownVoice ? 'var(--gw-blue-t)' : 'var(--gw-muted)', fontStyle: c.ownVoice ? 'normal' : 'italic' }}>
@@ -1770,14 +1762,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   {b.contribution[0].guard}
                 </div>
               )}
-            </Card>
-          </div>
+            </Panel>
+          </Section>
         )}
 
         {shown.coverage && b.coverage && (
-          <div>
-            <Section heading="Where work is landing" note="Whose work is landing where." />
-            <Card>
+          <Section heading="Where work is landing" note="Whose work is landing where.">
+            <Panel>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 A drop in ownership shows up as your responsibilities landing more and more in what other people describe as theirs.
                 Rising is the early warning, often before targets are missed, because the work still gets done, by someone else.
@@ -1805,9 +1796,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         the name, not a section of its own, so it no longer renders in capitals. */}
                     <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>at {r.scope} level</span>
                     <span style={{ marginLeft: 'auto' }}>
-                      <Pill tone={r.kind === 'LEAKING' ? 'warn' : r.kind === 'ABSORBING' ? 'info' : 'flat'}>
+                      <Tag tone={r.kind === 'LEAKING' ? 'attention' : r.kind === 'ABSORBING' ? 'action' : 'plain'}>
                         {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : 'Staying with them'}
-                      </Pill>
+                      </Tag>
                     </span>
                   </div>
 
@@ -1856,8 +1847,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 concludes that you have stopped contributing. It raises a question for the team to discuss, never a verdict about a
                 person. It is only shown where the role is defined, because an undefined boundary has no coverage to measure.
               </div>
-            </Card>
-          </div>
+            </Panel>
+          </Section>
         )}
 
         {/*
@@ -1870,23 +1861,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
          * sessions have actually happened here.
          */}
         {viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
-          <div>
-            <Section heading="How the leading is landing" note="Two sides of the same leadership." />
-            <Card>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
+          <Section heading="How the leading is landing" note="Two sides of the same leadership.">
+            <Panel pad={false}>
+              <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '16px 22px 2px' }}>
                 Where one person's read of how this team is being led differs from another's. Neither is called wrong.
               </div>
               {b.managerAlignment.map((m, i) => (
-                <Row key={i}>
+                <div key={i} className="gwui-panel-row">
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>{m.label}</span>
                     {/* The pole matters more than the gap: holding on to everything
                         and holding nobody need opposite responses, and telling one
                         to do the other makes it worse. */}
                     {m.pole !== 'NEITHER' && (
-                      <Pill tone="info">
+                      <Tag tone="action">
                         {m.pole === 'CONTROL' ? 'nobody else gets to own it' : 'nobody is being held to it'}
-                      </Pill>
+                      </Tag>
                     )}
                     {seenAcross(m.periods, b.phaseSpine?.currentSession ?? null) && (
                       <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 'auto' }}>
@@ -1896,15 +1886,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-text)', marginTop: 4, lineHeight: 1.45 }}>{m.gap}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{m.note}</div>
-                </Row>
+                </div>
               ))}
-              <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 22px 16px', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
                 Neither read is called wrong. Something can be set clearly and still not land, and both people can be describing
                 their own experience honestly. This shows that two sides of the same leadership differ, never who said what, and it
                 is a prompt for a conversation rather than a finding about anyone.
               </div>
-            </Card>
-          </div>
+            </Panel>
+          </Section>
         )}
 
         {/* ---------------------------------------------- the record over time */}
@@ -1919,25 +1909,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           here and no branch for one.
         */}
         {shown.hiddenContributors && b.hiddenContributors && (
-          <div>
-            <Section heading="Named here, and not in this check-in" note="Built from what people said." />
-            <Card>
+          <Section heading="Named here, and not in this check-in" note="Built from what people said.">
+            <Panel pad={false}>
               {b.hiddenContributors.rows.map((r, i) => (
-                <Row key={r.label + i} first={i === 0}>
+                <div key={r.label + i} className="gwui-panel-row">
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>{r.label}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{r.evidence}</div>
-                </Row>
+                </div>
               ))}
-              <Row>
+              <div className="gwui-panel-row">
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{b.hiddenContributors.why}</div>
-              </Row>
-            </Card>
-          </div>
+              </div>
+            </Panel>
+          </Section>
         )}
 
 
         {shown.patterns && b.patterns && (
-          <div>
+          <>
             {/*
               WHAT KEEPS COMING UP (board-as-lead.txt). Named after three check-ins in a row, never
               after one, and each one describes the work - never a label joined to a name (see
@@ -1945,38 +1934,38 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               a pattern and in what words). `visiblePatterns` is filtered again here for a colleague,
               on top of what the server already withheld: see the comment on `visiblePatterns` above.
             */}
-            <Section heading="What keeps coming up" note="Named after three check-ins in a row, never after one. Each describes the work." />
-            <Card>
-              {visiblePatterns.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></Row>
-              ) : (
-                <>
-                  <Row first>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>About each person’s work</div>
-                  </Row>
-                  {visiblePatterns.map((p) => (
-                    <Row key={p.id}>
-                      <PatternPanel
-                        pattern={p}
-                        invalidateKey={['board', id]}
-                        name={patternPersonName(p.participantId, p.yours)}
-                      />
-                    </Row>
-                  ))}
-                </>
-              )}
-              <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
-                Patterns about the work only. Anything that would read as a judgement about a person stays in the lead's private report and never appears here.
-              </div>
-            </Card>
-          </div>
+            <Section heading="What keeps coming up" note="Named after three check-ins in a row, never after one. Each describes the work.">
+              <Panel pad={false}>
+                {visiblePatterns.length === 0 ? (
+                  <div className="gwui-panel-row"><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></div>
+                ) : (
+                  <>
+                    <div className="gwui-panel-row">
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>About each person’s work</div>
+                    </div>
+                    {visiblePatterns.map((p) => (
+                      <div key={p.id} className="gwui-panel-row">
+                        <PatternPanel
+                          pattern={p}
+                          invalidateKey={['board', id]}
+                          name={patternPersonName(p.participantId, p.yours)}
+                        />
+                      </div>
+                    ))}
+                  </>
+                )}
+                <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 22px', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
+                  Patterns about the work only. Anything that would read as a judgement about a person stays in the lead's private report and never appears here.
+                </div>
+              </Panel>
+            </Section>
+          </>
         )}
 
         {/* ---------------------------------------------- logistics */}
         {has('poll') && (
-          <div>
-            <Section heading="Find a time" note={b.canEditFrame ? 'The only thing on this board you set up yourself.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`} />
-            <Card>
+          <Section heading="Find a time" note={b.canEditFrame ? 'The only thing on this board you set up yourself.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`}>
+            <Panel>
               {b.canEditFrame && (
                 <div style={{ padding: '8px 0', borderBottom: b.poll ? '1px solid var(--gw-border)' : 'none' }}>
                   {!showPollForm ? (
@@ -1996,11 +1985,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         </div>
                       )}
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button type="submit" disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}
-                          style={{ ...btn, padding: '7px 14px', fontSize: 12.5, opacity: !pollQ.trim() || !pollOpts.trim() || savePoll.isPending ? 0.5 : 1 }}>
+                        <UIButton kind="primary" size="small" type="submit" disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}>
                           {savePoll.isPending ? 'Saving...' : 'Save'}
-                        </button>
-                        <button type="button" onClick={() => { if (pollQ.trim() || pollOpts.trim()) setPollCancelArmed(true); else setShowPollForm(false) }} style={{ ...btnGhost, padding: '7px 12px', fontSize: 12.5 }}>Cancel</button>
+                        </UIButton>
+                        <UIButton kind="secondary" size="small" onClick={() => { if (pollQ.trim() || pollOpts.trim()) setPollCancelArmed(true); else setShowPollForm(false) }}>Cancel</UIButton>
                       </div>
                       {pollCancelArmed && (
                         <Confirm saying="Discard the question and times you typed?" confirmLabel="Discard" keepLabel="Keep typing"
@@ -2011,7 +1999,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
               )}
               {!b.poll ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No availability poll yet.</div></Row>
+                <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No availability poll yet.</div>
               ) : (
                 <>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', padding: '4px 0' }}>
@@ -2055,8 +2043,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   })}
                 </>
               )}
-            </Card>
-          </div>
+            </Panel>
+          </Section>
         )}
 
         {/*
@@ -2083,18 +2071,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           if (sigs.length === 0) return null
           if (shown.patterns) {
             return (
-              <div>
-                <Section heading="Alignment feed" />
-                <Card>
-                  <Row first>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>
-                      {sigs.length === 1
-                        ? 'One pattern has come up so far. It is shown above, under What keeps coming up.'
-                        : `${sigs.length} patterns have come up so far. They are shown above, under What keeps coming up.`}
-                    </div>
-                  </Row>
-                </Card>
-              </div>
+              <Section heading="Alignment feed">
+                <Panel>
+                  <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>
+                    {sigs.length === 1
+                      ? 'One pattern has come up so far. It is shown above, under What keeps coming up.'
+                      : `${sigs.length} patterns have come up so far. They are shown above, under What keeps coming up.`}
+                  </div>
+                </Panel>
+              </Section>
             )
           }
           const good = sigs.filter((s) => s.kind === 'good').length
@@ -2106,20 +2091,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             ...(carrying ? [carrying === 1 ? '1 pattern of somebody carrying something' : `${carrying} patterns of somebody carrying something`] : []),
           ]
           return (
-            <div>
-              <Section heading="Alignment feed" note={`${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}.`} />
-              <Card>
-                {sigs.map((sig, i) => (
-                  <Row key={sig.id} first={i === 0}>
+            <Section heading="Alignment feed" note={`${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}.`}>
+              <Panel pad={false}>
+                {sigs.map((sig) => (
+                  <div key={sig.id} className="gwui-panel-row">
                     <PatternPanel
                       pattern={sig}
                       invalidateKey={['ground', id]}
                       name={patternPersonName(sig.participantId, sig.yours)}
                     />
-                  </Row>
+                  </div>
                 ))}
-              </Card>
-            </div>
+              </Panel>
+            </Section>
           )
         })()}
 
@@ -2146,31 +2130,35 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           rule that could drift from the server's.
         */}
         {shown.checkInGrid && sessionRows.length > 0 && (
-          <div>
-            <Section heading="Reports" note="Every session has two: each person's own, and the team's once you share it." />
-            <Card>
-              {sessionRows.slice(0, 5).map((r, i) => (
-                <Row key={r.sessionNumber} first={i === 0}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>
-                        Session {r.sessionNumber}{r.opened ? `, ${sessionDay(r.opened)}` : ''}
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{checkedIn(r.answered, r.total)}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Pill tone={r.closed ? 'good' : 'warn'}>{r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared}</Pill>
-                      <button
+          <Section heading="Reports" note="Every session has two: each person's own, and the team's once you share it.">
+            {/*
+              U.10 (c2): FROM THE SHARED PARTS - the prototype's own list shape (board-as-lead.jpg:
+              a session's date and who has checked in on the left, Share/Open on the right), which
+              is exactly what EdgeRow already draws for "anything that needs you" elsewhere on this
+              board. `kind="decide"` for a session still waiting to be shared (a decision for
+              whoever runs it), `kind="ready"` once it is (ready to read).
+            */}
+            <EdgeList label="Reports">
+              {sessionRows.slice(0, 5).map((r) => (
+                <EdgeRow
+                  key={r.sessionNumber}
+                  kind={r.closed ? 'ready' : 'decide'}
+                  title={`Session ${r.sessionNumber}${r.opened ? `, ${sessionDay(r.opened)}` : ''}`}
+                  detail={checkedIn(r.answered, r.total)}
+                  actions={(
+                    <>
+                      <Tag tone={r.closed ? 'proven' : 'attention'}>{r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared}</Tag>
+                      <UIButton
+                        kind={r.closed ? 'secondary' : 'primary'} size="small"
                         onClick={() => navigate(r.myCheckInId ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)}
-                        style={r.closed ? btnGhost : btn}
                       >
                         {r.closed ? 'Open' : 'Share it'}
-                      </button>
-                    </div>
-                  </div>
-                </Row>
+                      </UIButton>
+                    </>
+                  )}
+                />
               ))}
-            </Card>
+            </EdgeList>
             {/*
               PICTURE-CHECK ROUND 6, ITEM F: "N SESSION(S) IN ALL", AND A REAL OUTLINED BUTTON.
               "All 1 session" read oddly in the singular; the prototype's own phrasing puts the
@@ -2187,7 +2175,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             >
               {EVERY_SESSION.heading}
             </Link>
-          </div>
+          </Section>
         )}
 
         {/*
