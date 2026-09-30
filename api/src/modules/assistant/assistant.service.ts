@@ -2077,7 +2077,7 @@ export class AssistantService {
            * client holds the conversation. A yes to a paste's list writes what participants are told only
            * when that sentence was in the list the lead read, and it can only tell from the list itself.
            */
-          payload: { groundId, said, history: [...history, { role: 'assistant' as const, content: result.proposal.say }] } as never,
+          payload: { groundId, said, history: [...history, { role: 'assistant' as const, content: result.proposal.say }], openQuestion: (result as any).openQuestion ?? null } as never,
         },
       });
       return {
@@ -2154,7 +2154,30 @@ export class AssistantService {
   private async resolveParkedContext(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_context', text('I have left it as it was. Nothing was changed.'));
+      /*
+       * A NO DOES NOT END THE CONVERSATION (request 92, point 10). Nothing was written, so whatever
+       * was still open is still open: it is asked again, in the product's own words, and the next
+       * message is read as its answer. The say-back that was just declined is not kept in what the
+       * conversation carries forward, because nobody agreed to it.
+       */
+      const declined = parked.payload as { groundId?: string; history?: { role: 'user' | 'assistant'; content: string }[]; openQuestion?: string | null };
+      const left = 'I have left it as it was. Nothing was changed.';
+      const still = (declined?.openQuestion ?? '').trim();
+      const spoken = still ? `${left}\n\n${still}` : left;
+      if (declined?.groundId) {
+        const before = [...(declined.history ?? [])];
+        if (before.length && before[before.length - 1].role === 'assistant') before.pop();
+        await this.prisma.assistantProposal.create({
+          data: {
+            organizationId,
+            personExternalId: who,
+            kind: 'context_turn',
+            summary: spoken,
+            payload: { groundId: declined.groundId, history: [...before, { role: 'assistant' as const, content: spoken }] } as never,
+          },
+        });
+      }
+      return rules('add_context', text(spoken));
     }
 
     const payload = parked.payload as {

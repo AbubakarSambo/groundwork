@@ -289,3 +289,37 @@ export function aLengthTheyCouldHaveMeant(days: number | null | undefined, said:
   if (!numbers.length) return false;
   return numbers.some((n) => [n, n * 7, n * 14, n * 30, n * 31, n * 90, n * 365].some((cand) => Math.abs(cand - days) <= 1));
 }
+
+/**
+ * A LENGTH ANSWER IS ONLY EVER READ AS A LENGTH (request 92, point 10).
+ *
+ * "It should run for 13 weeks." was recorded as what doing well looks like, because the question on
+ * the table was about that, the sentence shares its words with nothing else, and the words were the
+ * lead's own. Which question is open decides what a sentence MAY answer; it must not decide what a
+ * sentence that is only a length becomes. Returns the days when the message says a length and nothing
+ * else of substance, and null otherwise, so "13 weeks, and doing well means every shop pays" is still
+ * read for what else it says.
+ */
+const UNIT_DAYS: Record<string, number> = { day: 1, week: 7, month: 30, quarter: 90, year: 365 };
+const A_LENGTH = /\b(\d+(?:\.\d+)?|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|twenty|thirty|forty|fifty|sixty|ninety)\s*(?:-\s*)?(day|week|month|quarter|year)s?\b/i;
+const LENGTH_FILLER = new Set([
+  'it', 'its', 'should', 'would', 'could', 'can', 'will', 'shall', 'lets', 'let', 'make', 'have', 'run', 'running', 'runs', 'last', 'lasts',
+  'go', 'goes', 'take', 'takes', 'be', 'for', 'about', 'around', 'roughly', 'approximately', 'just', 'only', 'maybe', 'say', 'the', 'this',
+  'that', 'checkin', 'check', 'in', 'long', 'over', 'of', 'a', 'an', 'to', 'we', 'i', 'think', 'want', 'like', 'set', 'us', 'is', 'ok',
+  'okay', 'please', 'then', 'so', 'yes', 'and', 'or', 'up', 'at', 'least', 'most', 'more', 'less', 'than', 'whole', 'full', 'length', 'time',
+  'duration', 'period', 'how', 'our', 'my', 'sounds', 'good', 'fine', 'perfect', 'right', 'says', 'said', 'needs', 'need', 'get', 'there', 'one',
+]);
+const NUMBER_TO_DAYS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, ninety: 90 };
+
+export function aLengthAndNothingElse(said: string | null | undefined): number | null {
+  const text = (said ?? '').trim();
+  if (!text || text.length > 120) return null;
+  const m = A_LENGTH.exec(text);
+  if (!m) return null;
+  const n = /^\d/.test(m[1]) ? Number(m[1]) : NUMBER_TO_DAYS[m[1].toLowerCase()];
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const rest = (text.slice(0, m.index) + ' ' + text.slice(m.index + m[0].length))
+    .toLowerCase().replace(/[^a-z\s']/g, ' ').replace(/'/g, '').split(/\s+/).filter(Boolean);
+  if (rest.some((w) => !LENGTH_FILLER.has(w))) return null;
+  return Math.round(n * UNIT_DAYS[m[2].toLowerCase()]);
+}

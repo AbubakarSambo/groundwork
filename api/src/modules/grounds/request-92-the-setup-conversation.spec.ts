@@ -179,3 +179,52 @@ describe('point 9: a question the lead wrote to the person is kept in her words'
     expect(theLeadsOwnQuestionIfAddressedToThem('Have you sent the price list?', 'have you sent the price list', { name: 'Amani' })).toBe('Have you sent the price list?');
   });
 });
+
+/* ------------------------------------------------------------------------------------------------ */
+
+import { aLengthAndNothingElse } from './nothing-proposed-that-nobody-said';
+
+describe('point 10: a length answer is only ever read as a length', () => {
+  it.each([
+    ['It should run for 13 weeks.', 91],
+    ['13 weeks', 91],
+    ['about three months', 90],
+    ['let us make it a quarter', 90],
+    ['for 6 weeks please', 42],
+  ])('"%s" is %s days and nothing else', (said, days) => {
+    expect(aLengthAndNothingElse(said)).toBe(days);
+  });
+
+  it.each([
+    'Doing well means every Kilimani shop has paid its deposit.',
+    'It should run for 13 weeks, and doing well means every shop has paid.',
+    'Amani should sign 4 shops in 6 weeks.',
+    'hello',
+  ])('"%s" is not only a length', (said) => {
+    expect(aLengthAndNothingElse(said)).toBeNull();
+  });
+
+  const SET_UP = { timelineStated: true, cadenceStated: true };
+
+  it('while what doing well looks like is the open question, "It should run for 13 weeks." is offered as a length', async () => {
+    const { service } = aSetupConversation({
+      ground: SET_UP,
+      extract: () => ({ success: 'It should run for 13 weeks.' }),
+    });
+    const out: any = await service.contextChat('g1', 'userLead', [{ role: 'user', content: 'It should run for 13 weeks.' }], { yesOrNo: true });
+    expect(out.proposal.gap).toBe('timeline');
+    expect(out.proposal.say).toBe('I will set this to run for 13 weeks.');
+  });
+
+  it('and the yes sets the length, and records nothing as what doing well looks like', async () => {
+    const { service, writes } = aSetupConversation({
+      ground: { ...SET_UP, initiatorId: 'userLead' },
+      extract: () => ({ success: 'It should run for 13 weeks.' }),
+    });
+    const update = jest.spyOn(service as any, 'updateTimeline').mockResolvedValue({});
+    const out: any = await service.applyContextProposal('g1', 'userLead', { said: 'It should run for 13 weeks.', history: [] });
+    expect(update).toHaveBeenCalledWith('g1', 'userLead', { timelineDays: 91 });
+    expect(out.say).toBe('I have set this to run for 13 weeks.');
+    expect(writes.filter((w) => w.startsWith('groundBaseline'))).toEqual([]);
+  });
+});

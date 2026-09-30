@@ -189,3 +189,33 @@ describe('point 8: the refusal an admin reads names the person who runs the chec
       .toBe('Only Rukia Otieno, who runs this check-in, can change how it is set up. An admin can only do that once Rukia has left the organisation. Nothing was changed.');
   });
 });
+
+describe('point 10: after a No, the setup conversation carries on with the same open question', () => {
+  it('says plainly that nothing was changed, asks what is still open, and keeps the conversation going', async () => {
+    const open = 'How long should this run? Until a date, or for a set number of weeks.';
+    const history = [{ role: 'user', content: 'Good means every shop pays.' }, { role: 'assistant', content: 'Shall I record "Good means every shop pays." as what doing well looks like?' }];
+    const { service, created } = askGroundwork({
+      parked: { id: 'pr1', kind: 'context', state: 'PARKED', summary: 's', payload: { groundId: 'g1', said: 'Good means every shop pays.', history, openQuestion: open } },
+    });
+    const reply = await service.respond('org-a', 'p1', 'no', 'g1');
+    expect(textOf(reply)).toBe(`I have left it as it was. Nothing was changed.\n\n${open}`);
+    const carried = created.find((c: any) => c.kind === 'context_turn');
+    expect(carried.payload.groundId).toBe('g1');
+    /* The say-back that was declined is not carried forward, and the question that was asked is. */
+    expect(carried.payload.history).toEqual([
+      { role: 'user', content: 'Good means every shop pays.' },
+      { role: 'assistant', content: `I have left it as it was. Nothing was changed.\n\n${open}` },
+    ]);
+  });
+
+  it('and the next message is read as the answer to that question, by the same conversation', async () => {
+    const contextChat = jest.fn(async () => ({ reply: 'How often should people check in?', gaps: ['cadence'], done: false, proposal: null }));
+    const carried = { id: 'pr2', kind: 'context_turn', state: 'PARKED', summary: 's', payload: { groundId: 'g1', history: [{ role: 'assistant', content: 'How long should this run?' }] } };
+    const { service } = askGroundwork({ groundsService: { contextChat }, parked: carried });
+    await service.respond('org-a', 'p1', 'thirteen weeks', 'g1');
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [
+      { role: 'assistant', content: 'How long should this run?' },
+      { role: 'user', content: 'thirteen weeks' },
+    ], { yesOrNo: true });
+  });
+});

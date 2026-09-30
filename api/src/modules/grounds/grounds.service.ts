@@ -65,7 +65,7 @@ import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
-import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows, withoutTheWordGround } from './nothing-proposed-that-nobody-said';
+import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows, withoutTheWordGround, aLengthAndNothingElse } from './nothing-proposed-that-nobody-said';
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
 import {
@@ -2997,6 +2997,9 @@ export class GroundsService {
      * the lead never typed and offering it as theirs. Checked in code against the message itself -
      * see traceableToWhatTheySaid - because it is the model that is wrong when this happens.
      */
+    /* A length and nothing else is a length, whatever question was open (request 92, point 10). */
+    const justALength = lastFromLead ? aLengthAndNothingElse(lastFromLead) : null;
+    if (justALength) proposal = proposalFrom('timeline', { timelineDays: justALength } as any, [], lastFromLead);
     if (proposal.kind !== 'none' && lastFromLead) {
       const untraceable =
         (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
@@ -3087,6 +3090,8 @@ export class GroundsService {
     return {
       reply: replyText,
       gaps: gaps.map((g: { key: string }) => g.key),
+      /** The question still open, as the product words it, so a No to a proposal can carry on with it. */
+      openQuestion: (gaps[0] as { ask?: string } | undefined)?.ask ?? null,
       done: gaps.length === 0,
       /** Present only when there is something concrete to confirm. Same boundary: it is said to a person. */
       proposal: proposal.kind === 'none' ? null : {
@@ -3718,6 +3723,15 @@ export class GroundsService {
         changed: 'success',
         say: saidBackForRestatedSuccess(applied),
       };
+    }
+
+    /* A length and nothing else is a length, whatever question is open: never what doing well looks like. */
+    const justALength = aLengthAndNothingElse(dto.said);
+    if (justALength) {
+      const asLength = proposalFrom('timeline', { timelineDays: justALength } as any, [], dto.said);
+      if (asLength.kind !== 'timeline') throw new BadRequestException((asLength as any).why);
+      await this.updateTimeline(groundId, requestingUserId, { timelineDays: asLength.days });
+      return { changed: 'timeline', say: confirmedSay(asLength) };
     }
 
     if (!openGap) throw new BadRequestException('There is no open question for this to answer.');
