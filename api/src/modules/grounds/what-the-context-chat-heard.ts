@@ -40,6 +40,18 @@ export type ClosableGap = 'timeline' | 'cadence' | 'success';
 export const CADENCES = ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ONE_TIME'] as const;
 export type Cadence = (typeof CADENCES)[number];
 
+/**
+ * SAID IN PLAIN WORDS, SHARED BY THE PROPOSAL SENTENCE AND THE OPENING LINE.
+ *
+ * Exported rather than kept local to the cadence branch below: `the-context-chat.ts` needs the exact
+ * same words to open on what this check-in already holds (FIX 3), and two copies of "once a week"
+ * drift the moment one of them is reworded.
+ */
+export const CADENCE_WORDS: Record<Cadence, string> = {
+  DAILY: 'every day', WEEKLY: 'once a week', FORTNIGHTLY: 'every two weeks',
+  MONTHLY: 'once a month', ONE_TIME: 'once, at the end',
+};
+
 export interface Heard {
   /** Days, as the ground stores it. */
   timelineDays?: number | null;
@@ -171,11 +183,7 @@ export function proposalFrom(
     if (!CADENCES.includes(c as Cadence)) {
       return { kind: 'none', why: 'No rhythm in that answer that maps to how often people can check in.' };
     }
-    const words: Record<Cadence, string> = {
-      DAILY: 'every day', WEEKLY: 'once a week', FORTNIGHTLY: 'every two weeks',
-      MONTHLY: 'once a month', ONE_TIME: 'once, at the end',
-    };
-    return { kind: 'cadence', cadence: c as Cadence, say: `I will set people to check in ${words[c as Cadence]}.` };
+    return { kind: 'cadence', cadence: c as Cadence, say: `I will set people to check in ${CADENCE_WORDS[c as Cadence]}.` };
   }
 
   if (gap === 'success') {

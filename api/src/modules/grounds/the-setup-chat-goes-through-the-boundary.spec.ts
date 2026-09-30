@@ -27,9 +27,15 @@ const CHAT = SERVICE.slice(SERVICE.indexOf('async contextChat('), SERVICE.indexO
 
 describe('the setup chat goes through the boundary', () => {
   it('the reply does', () => {
-    /* `changeSay` is the reply on a turn where they asked to change something - see
-       what-the-lead-wants-changed. Either way it goes through the boundary. */
-    expect(CHAT).toContain('reply: forHumans(changeSay ?? reply)');
+    /*
+     * `changeSay` is the reply on a turn where they asked to change something - see
+     * what-the-lead-wants-changed. FIX 3 (30 September 2026) added `spokenReply`, which is exactly
+     * `changeSay ?? reply` with the opening turn's greeting stripped - still built from the same two
+     * sources, and still returned through `forHumans` either way, so the boundary this test protects
+     * is unchanged.
+     */
+    expect(CHAT).toContain('const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(changeSay ?? reply) : (changeSay ?? reply);');
+    expect(CHAT).toContain('reply: forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply)');
   });
 
   /** The proposal is said to a person too - "I will set this to run for 90 days" - so it does as well. */

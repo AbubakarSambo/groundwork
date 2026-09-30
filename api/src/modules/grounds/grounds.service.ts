@@ -29,7 +29,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
-import { contextGaps, contextChatPrompt } from './the-context-chat';
+import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { EmailService } from '../email/email.service';
@@ -2985,8 +2985,21 @@ export class GroundsService {
      * got the next gap question and the change offered underneath it, as though they had said two
      * things. What they said was one thing, and it is the reply.
      */
+    /*
+     * FIX 3: THE OPENING TURN OPENS ON WHAT THE CHECK-IN HOLDS, WRITTEN BY THE PRODUCT, NEVER A
+     * GREETING. `isOpeningTurn` is "no prior assistant turn in this conversation yet" - true whether
+     * the lead's very first message was empty (decision 65's opener) or something they typed, because
+     * either way this is the first reply this conversation has given. `openingLine` says the length
+     * and the rhythm as a plain sentence when either is set - the one thing `hasList` in
+     * `contextChatPrompt` never covered, because duration and cadence were never part of it - and a
+     * greeting the model still adds despite "OPEN ON THAT, NOT ON A GREETING" is stripped rather than
+     * asked away a second time.
+     */
+    const isOpeningTurn = !history.some((h) => h.role === 'assistant');
+    const openedOn = isOpeningTurn ? openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null) : null;
+    const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(changeSay ?? reply) : (changeSay ?? reply);
     return {
-      reply: forHumans(changeSay ?? reply),
+      reply: forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply),
       gaps: gaps.map((g: { key: string }) => g.key),
       done: gaps.length === 0,
       /** Present only when there is something concrete to confirm. Same boundary: it is said to a person. */
