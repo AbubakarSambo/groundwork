@@ -9,6 +9,11 @@
  * WHAT THIS IS NOT: an attempt at understanding. It is a small set of confident matches and an
  * honest default. The default is the important half.
  */
+import { quotedThenEnding } from './a-quote-takes-no-second-mark';
+import { parseAskAPerson } from './a-line-or-a-note-typed-in-chat';
+
+/** A sentence that asks one named person something. Shares its reading with the lane that acts on it. */
+const ASKS_A_PERSON = { exec: (m: string): RegExpExecArray | null => (parseAskAPerson(m) ? (['ask'] as unknown as RegExpExecArray) : null) } as unknown as RegExp;
 
 export type Lane =
   | 'what_you_can_see'
@@ -324,7 +329,8 @@ const RULES = [
      */
     /\b(?:reword|change)\s+the\s+line\b/i,
     /\bshare\s+the\s+line\b/i,
-    /\bmake\s+the\s+line\s+private\b/i,
+    /* Both word orders: "make the line private" and "make the line 'X' private". */
+    /\bmake\s+the\s+line\b[\s\S]*\bprivate\b/i,
     /\bretire\s+the\s+line\b/i,
   ]),
   rule('lead_note', [
@@ -354,6 +360,12 @@ const RULES = [
      * quotes, replacing whatever question was waiting for that person.
      */
     /\bask\s+\S.*["'“].+["'”]\s*(?:instead)?\s*[.!]?\s*$/i,
+    /*
+     * A QUESTION FOR ONE PERSON, IN ONE SENTENCE (request 92, point 11): "I want to ask Amani whether
+     * the Kilimani shops have paid". The same lane, because what happens next is the same: the exact
+     * question is said back and the lead confirms it. See `parseAskAPerson`.
+     */
+    ASKS_A_PERSON,
   ]),
   rule('add_context', [
     /*
@@ -438,7 +450,7 @@ export function whatICanDoWith(input: string): { line: string; options: { key: s
   const short = trimmed.length <= 60 ? trimmed : `${trimmed.slice(0, 57)}…`;
   return {
     line: trimmed
-      ? `I cannot answer that one yet. Here is what I can do with "${short}".`
+      ? `I cannot answer that one yet. Here is what I can do with ${quotedThenEnding(short)}`
       : 'Ask me something, or pick one of these.',
     options: [
       { key: 'what_you_can_see', label: 'Tell me what you can see' },

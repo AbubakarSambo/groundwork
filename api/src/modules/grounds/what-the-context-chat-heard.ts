@@ -1,4 +1,4 @@
-import { worthRecording } from './what-setup-agreed';
+import { worthRecording, verbatimQuote, verbatimExpectation, readablePhrase } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
@@ -40,6 +40,18 @@ export type ClosableGap = 'timeline' | 'cadence' | 'success';
 export const CADENCES = ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ONE_TIME'] as const;
 export type Cadence = (typeof CADENCES)[number];
 
+/**
+ * SAID IN PLAIN WORDS, SHARED BY THE PROPOSAL SENTENCE AND THE OPENING LINE.
+ *
+ * Exported rather than kept local to the cadence branch below: `the-context-chat.ts` needs the exact
+ * same words to open on what this check-in already holds (FIX 3), and two copies of "once a week"
+ * drift the moment one of them is reworded.
+ */
+export const CADENCE_WORDS: Record<Cadence, string> = {
+  DAILY: 'every day', WEEKLY: 'once a week', FORTNIGHTLY: 'every two weeks',
+  MONTHLY: 'once a month', ONE_TIME: 'once, at the end',
+};
+
 export interface Heard {
   /** Days, as the ground stores it. */
   timelineDays?: number | null;
@@ -63,8 +75,20 @@ export type Proposal =
   | { kind: 'timeline'; days: number; say: string }
   | { kind: 'cadence'; cadence: Cadence; say: string }
   | { kind: 'success'; text: string; say: string }
-  | { kind: 'expectation'; participantId: string; personLabel: string; text: string; say: string }
-  | { kind: 'targets'; targets: { name: string; target: number | null }[]; say: string };
+  | { kind: 'expectation'; participantId: string; personLabel: string; firstName: string; text: string; say: string }
+  | { kind: 'targets'; targets: { name: string; target: number | null }[]; say: string }
+  /**
+   * THE LEAD'S READ OF A NAMED PERSON, KEPT AS THEIR OWN PRIVATE NOTE. FIX 4, inventory items 10-11.
+   *
+   * What a lead says about somebody that is not something checkable to hold them to - "Ben should be
+   * more proactive", "he is struggling and difficult to work with" - used to fall all the way to
+   * `{kind:'none'}` here, and the model's OWN reply text still promised to record it as their read
+   * (`contextChatPrompt` rule 2). Nothing was ever proposed, so nothing was ever saved, and the
+   * promise was false. This is the proposal that makes it true: the same private note a lead can
+   * write directly (`addLeadContext`, LEAD_ONLY, never quoted to the person it is about), reached from
+   * the conversation and confirmed the same way as everything else here.
+   */
+  | { kind: 'lead_read'; participantId: string; personLabel: string; firstName: string; text: string; say: string };
 
 /**
  * A day count somebody would actually choose. Below a week there is nothing to check in against;
@@ -125,6 +149,13 @@ export function proposalFrom(
   heard: Heard,
   /** Who is on this ground, so a name in an answer can be matched to somebody real. */
   parties: { id: string; email: string; name?: string | null }[] = [],
+  /**
+   * The lead's own sentence this turn, so a quoted text is the LITERAL characters they typed rather
+   * than either extraction call's own paraphrase of them - see `verbatimQuote`. Optional and empty by
+   * default so every existing caller and every unit test that builds a `Heard` by hand still works;
+   * where it is missing, the candidate text is used trimmed, exactly as before.
+   */
+  said: string = '',
 ): Proposal {
   if (!gap) return { kind: 'none', why: 'There is no open question for this to answer.' };
 
@@ -171,20 +202,25 @@ export function proposalFrom(
     if (!CADENCES.includes(c as Cadence)) {
       return { kind: 'none', why: 'No rhythm in that answer that maps to how often people can check in.' };
     }
-    const words: Record<Cadence, string> = {
-      DAILY: 'every day', WEEKLY: 'once a week', FORTNIGHTLY: 'every two weeks',
-      MONTHLY: 'once a month', ONE_TIME: 'once, at the end',
-    };
-    return { kind: 'cadence', cadence: c as Cadence, say: `I will set people to check in ${words[c as Cadence]}.` };
+    return { kind: 'cadence', cadence: c as Cadence, say: `I will set people to check in ${CADENCE_WORDS[c as Cadence]}.` };
   }
 
   if (gap === 'success') {
-    const text = (heard.success ?? '').trim();
-    if (text.length < MIN_SUCCESS) return { kind: 'none', why: 'That is too short to stand as what doing well looks like.' };
-    if (text.length > MAX_SUCCESS) {
+    const raw = (heard.success ?? '').trim();
+    if (raw.length < MIN_SUCCESS) return { kind: 'none', why: 'That is too short to stand as what doing well looks like.' };
+    if (raw.length > MAX_SUCCESS) {
       return { kind: 'none', why: 'That is longer than this field holds. The short version is the useful one.' };
     }
-    return { kind: 'success', text, say: `I will record that as what doing well looks like: "${text}"` };
+    /* The lead's own words, not this call's own paraphrase of them - see verbatimQuote. */
+    const text = verbatimQuote(raw, said);
+    /*
+     * FOUND LIVE, 30 September 2026, on the four live checks: two clauses glued together with a
+     * colon rather than a sentence - "I will record that as what doing well looks like: '...'" - the
+     * exact shape CLAUDE.md's wording rule refuses. Said as a question instead, the quote sitting
+     * inside the sentence as its own clause, so the lead reads one plain sentence and answers yes or
+     * no to it.
+     */
+    return { kind: 'success', text, say: `Shall I record "${text}" as what doing well looks like?` };
   }
 
   /**
@@ -206,24 +242,71 @@ export function proposalFrom(
    */
   if (gap === 'objectives') {
     const person = (heard.expectationPerson ?? '').trim();
-    const text = (heard.expectationText ?? '').trim();
+    /*
+     * FIX 5, inventory item 11's say-back: the framing stripped DETERMINISTICALLY, in code, rather
+     * than left to whatever each separate model call happens to have already trimmed. Driven live:
+     * propose's own quote read "want the update in by every Friday" - a fragment clipped mid-clause -
+     * while confirm's independent extraction (a second model call, on the same words) read "the
+     * update in by every Friday". Both calls run this same strip now, so both converge on the same
+     * text far more often than leaving the model to decide on its own where the sentence starts.
+     *
+     * REGRESSION, found live again, 30 September 2026: stripping the CANDIDATE's own framing is not
+     * enough on its own when a model has already half-trimmed its candidate ("want the update...",
+     * the "I " gone but "want" left standing) - `withoutFraming` needs the framing whole to recognise
+     * it. `verbatimExpectation` locates the quote in `said` itself and pulls its start forward past
+     * wherever `said`'s OWN framing ends, so both calls converge on "the update in by every Friday"
+     * whatever either one handed back. See its own comment in what-setup-agreed.ts.
+     */
+    const text = verbatimExpectation((heard.expectationText ?? '').trim(), said);
     if (!person || !text) {
       return { kind: 'none', why: 'No expectation of a named person in that answer.' };
-    }
-    if (!worthRecording(text)) {
-      return { kind: 'none', why: 'That is not specific enough to hold anybody to, so it is better left to the check-in.' };
     }
     const match = whoTheyMeant(person, parties);
     if (!match) {
       return { kind: 'none', why: `Nobody on this check-in matches "${person}".` };
     }
+    /*
+     * FIX 4, inventory items 10-11: WHAT IS NOT CHECKABLE ENOUGH TO HOLD SOMEBODY TO IS NOT NOTHING -
+     * it is the lead's own read of that person, kept private. This used to stop at `{kind: 'none'}`
+     * here, silent, while the model's own reply (rule 2 of `contextChatPrompt`) told the lead it was
+     * being recorded as their read regardless - a promise nothing behind it made true. Matched to a
+     * real person FIRST, so the note lands on the right row.
+     */
+    if (!worthRecording(text)) {
+      /*
+       * FIX (found live, the four live checks, 30 September 2026, item 10): a readable phrase, not a
+       * clipped verb left without its subject - see readablePhrase's own comment. "Ben is struggling
+       * and honestly he is difficult to work with" used to be said back and saved as "is struggling";
+       * now it is "Ben is struggling", still a literal substring of what the lead typed.
+       */
+      const readable = readablePhrase(text, said, match.firstName);
+      return {
+        kind: 'lead_read',
+        participantId: match.id,
+        personLabel: match.label,
+        firstName: match.firstName,
+        text: readable,
+        /* FIX, same item: "their own check-in" named nobody. Now it is the person's own first name,
+           how the rest of the product names somebody, so the sentence says whose check-in it is. */
+        say: `Shall I keep "${readable}" as a private note about ${match.firstName} that only you can see? `
+          + `It guides how this check-in is run and is never quoted to ${match.firstName} or put into ${match.firstName}'s own check-in.`,
+      };
+    }
+    /*
+     * FOUND LIVE, 30 September 2026, on the four live checks: a colon joining "what you expect of
+     * [name]" to the quote, capitals for emphasis ("YOUR"), and "them" for a person named two words
+     * earlier - none of which a person reads in plain, full sentences. Said as a question the lead
+     * answers yes or no to, the person's first name (how the rest of the product names somebody),
+     * and no colon or capital for emphasis.
+     */
     return {
       kind: 'expectation',
       participantId: match.id,
       personLabel: match.label,
+      firstName: match.firstName,
       text,
-      say: `I will record that as what you expect of ${match.label}: "${text}". It goes down as YOUR expectation, `
-        + 'not as agreed, and marked as not yet seen by them.',
+      say: `Shall I record "${text}" as what you expect of ${match.firstName}? It is kept as your `
+        + `expectation, not as something ${match.firstName} agreed to, and ${match.firstName} has not seen it yet.`,
     };
   }
 
@@ -319,4 +402,62 @@ export function asContextThenTheSentence(
   const recent = (history ?? []).slice(-6).filter((h) => (h.content ?? '').trim());
   const already = recent.length && recent[recent.length - 1]?.content?.trim() === said.trim();
   return [...(already ? recent.slice(0, -1) : recent), { role: 'user' as const, content: said }];
+}
+
+/**
+ * WHAT THE LEAD IS TOLD ONCE IT IS DONE, NOT THE QUESTION THEY JUST ANSWERED. FIX (found live, the
+ * four live checks, 30 September 2026).
+ *
+ * `proposal.say` is worded to ASK - "Shall I keep ... as a private note ...?", "I will record that
+ * ..." - because that is what it is used for everywhere it is first shown, with a Yes underneath it.
+ * `applyContextProposal` used to return that very same sentence again, unchanged, once the lead had
+ * already said yes and the row was written. For `lead_read` that read back as the chat re-asking its
+ * own question after being answered - live:
+ *
+ *   Shall I keep "should be more proactive" as a private note about Ben Okafor that only you can
+ *   see? It guides how this check-in is run and is never quoted to Ben Okafor or put into their own
+ *   check-in.
+ *
+ * said AGAIN, after the yes that was already given. This is the sentence for after: a plain,
+ * past-tense statement that the thing was done, for every kind that writes something, so no confirm
+ * path is left saying "I will ..." or asking a question about something that already happened.
+ */
+export function confirmedSay(proposal: Proposal): string {
+  switch (proposal.kind) {
+    case 'timeline': {
+      const weeks = Math.round(proposal.days / 7);
+      return weeks >= 4 && proposal.days % 7 === 0
+        ? `I have set this to run for ${weeks} weeks.`
+        : `I have set this to run for ${proposal.days} days.`;
+    }
+    case 'cadence':
+      return `I have set people to check in ${CADENCE_WORDS[proposal.cadence]}.`;
+    case 'success':
+      /*
+       * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: a colon joining two clauses
+       * together rather than a sentence - "I have recorded that as what doing well looks like:
+       * '...'" See `nothing-proposed-that-nobody-said.ts` and the confirmations for every other kind
+       * here, none of which are colon-joined: the quote sits inside the sentence as its own clause.
+       */
+      return `I have recorded "${proposal.text}" as what doing well looks like.`;
+    /*
+     * FOUND LIVE, 30 September 2026, on the four live checks: a colon joining "what you expect of
+     * [name]" to the quote, capitals for emphasis ("YOUR"), and "them" for a person named two words
+     * earlier. Said the same way the say-back above now asks it, past tense, with the person's first
+     * name - how the rest of the product names somebody - in place of both faults.
+     */
+    case 'expectation':
+      return `I have recorded "${proposal.text}" as what you expect of ${proposal.firstName}. It is kept as `
+        + `your expectation, not as something ${proposal.firstName} agreed to, and ${proposal.firstName} has not seen it yet.`;
+    case 'lead_read':
+      /* FIX, same item: "their own check-in" named nobody; now it is the person's own first name. */
+      return `I have kept "${proposal.text}" as a private note about ${proposal.firstName} that only you can see. `
+        + `It guides how this check-in is run and is never quoted to ${proposal.firstName} or put into ${proposal.firstName}'s own check-in.`;
+    case 'targets':
+      /* Already a done statement ("Set N measures ..."), with nothing to ask - returned as it is. */
+      return proposal.say;
+    case 'none':
+      /* Never reaches a confirm write at all; kept only so this switch is exhaustive. */
+      return proposal.why;
+  }
 }

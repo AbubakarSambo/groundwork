@@ -42,15 +42,15 @@ describe('a dump is many things at once', () => {
 
   it('lists everything it took, one line per person, carrying every number of theirs', () => {
     const said = whatWeTookFromThat(got)!;
-    expect(said).toContain('What doing well looks like: "I want to know what each of them is really doing week to week');
+    expect(said).toContain('What doing well looks like is "I want to know what each of them is really doing week to week');
     expect(said).toContain('- Q4 sales: 180m');
     expect(said).toContain('- credit as a share of sales: 35, not to be passed');
     expect(said).toContain('- Chika Nwosu: "I want her at N35m and at least 4 new dealers signed." (Q4 sales: 35m; new dealers signed: 4)');
     /* Her line once, not once per number. */
     expect(said.match(/Chika Nwosu/g)).toHaveLength(1);
-    expect(said).toContain('marked as yours and not yet seen by them');
+    expect(said).toContain('It is marked as yours, and they have not seen it yet.');
     expect(said).toContain('- quarter ends: 31 December');
-    expect(said).toContain('One name is not on this check-in: Bola Yusuf.');
+    expect(said).toContain('One name is not on this check-in. It is Bola Yusuf.');
   });
 
   it('asks for a yes in the chat and states the receipt afterwards', () => {
@@ -78,7 +78,8 @@ describe('a dump is many things at once', () => {
     expect(apply).toContain('looksLikeADump(dto.said)');
     expect(apply).toContain('thePasteThisYesIsFor(dto.said, dto.history as any)');
     expect(apply).toContain('await this.whatAPasteGives(groundId, thePaste)');
-    expect(apply).toContain('await this.writeWhatThePasteGave(groundId, got)');
+    /* Decision 63: also carries who confirmed it, when it was an admin standing in for the lead. */
+    expect(apply).toContain('await this.writeWhatThePasteGave(groundId, got, confirmedByAdminNote)');
   });
 
   it('writes it the way the one-at-a-time path does, and tells the team', () => {
@@ -93,8 +94,11 @@ describe('a dump is many things at once', () => {
        22 September 2026 - exact names let one paste read twice write two rows for one number. */
     expect(w).toContain("alreadyHeld(p.participantId, t.name)");
     expect(w).toContain("alreadyHeld('team', t.name)");
-    /* And the team's own About box is written again from what the paste settled. */
-    expect(w).toContain('await this.tellParticipantsAboutThis(groundId, fromTheContext');
+    /* CHANGED 30 September 2026 (request 92, point 3): the team's About box used to be rewritten
+       silently on every yes. It is now written only with the sentence the list showed before the yes
+       (got.toldToParticipants); this test pinned the silent rewrite. */
+    expect(w).toContain('data: { toldToParticipants: got.toldToParticipants }');
+    expect(w).not.toContain('tellParticipantsAboutThis');
   });
 });
 
@@ -211,12 +215,13 @@ describe('the parts of a paste that are words', () => {
 
   it('and listed back with what will be done with it', () => {
     const said = took(got);
-    expect(said).toContain('How this team works. Everybody sees these, said as yours rather than as anything agreed');
+    expect(said).toContain('How this team works, said as yours rather than as anything agreed. Everyone on this check-in will see these.');
     expect(said).toContain('- follow up 48 hours after a demo');
-    expect(said).toContain('Still to decide, kept for you:');
-    expect(said).toContain('Not settled, so nothing here is treated as a fact or a target:');
+    /* Was 'Still to decide, kept for you:', over lines saved for everyone (request 92). */
+    expect(said).toContain('Still to decide. Everyone on this check-in will see these.');
+    expect(said).toContain('Not settled, so nothing here is treated as a fact or a target. Everyone on this check-in will see these.');
     expect(said).toContain('someone mentioned 15m for Q4, not approved');
-    expect(said).toContain('Kept where only you read it, and never quoted to them or in a report');
+    expect(said).toContain('Only you will see these. They are never quoted to the person or in a report');
     expect(said).toContain('- Amina: "relationships are good, does not ask for the deal"');
   });
 
@@ -277,8 +282,8 @@ describe('actions, questions and pairs', () => {
     expect(said).toContain('Nobody is marked as having done or not done any of it until they say');
     expect(said).toContain('- Amina: ask Client D who signs the budget (this week)');
     expect(said).toContain('2 things have no owner');
-    expect(said).toContain("What this does not settle:");
-    expect(said).toContain("2 things to do with nobody's name on them");
+    expect(said).toContain("Some things are still not settled.");
+    expect(said).toContain("2 things to do have nobody's name on them.");
   });
 
   it('says when nothing sets the yardstick, and who has a job with no number', () => {
@@ -289,7 +294,7 @@ describe('actions, questions and pairs', () => {
         { who: 'Amina', participantId: 'p1', expectation: 'close 4m', targets: [{ name: 'sales', number: 4_000_000 }] },
       ],
     });
-    expect(said).toContain('nothing in it says what doing well looks like');
+    expect(said).toContain('Nothing in it says what doing well looks like');
     expect(said).toContain('Hassan has something expected of them and no number to measure it by');
     expect(said).not.toContain('Amina has something expected');
   });

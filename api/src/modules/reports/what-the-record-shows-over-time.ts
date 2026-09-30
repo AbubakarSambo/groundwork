@@ -98,6 +98,11 @@ export interface AGapOverTime {
 
 export interface WhatTheRecordShowsOverTime {
   sessions: number;
+  /**
+   * The count of sessions as the end of a heading, in the right number: "in 1 session", "in 3
+   * sessions" (screens request 87, which read "over 1 sessions"). Null before any session.
+   */
+  inSessions?: string | null;
   commitments: ACommitmentOverTime[];
   dependencies: ADependencyOverTime[];
   patterns: APatternOverTime[];
@@ -239,7 +244,16 @@ export function aCommitmentSaid(
   },
   sessionsSoFar: number,
 ): string {
+  /*
+   * THE READER'S OWN NAME, SWAPPED FOR "You", IS "you" ANYWHERE BUT THE START OF A SENTENCE
+   * (screens request 87). The name was put back as "You" on the row (a word on its own starts a
+   * sentence), and this sentence is rebuilt from the row on every read, so it read "In session 1,
+   * You committed" and "The time You gave for it". `who` is used as it is at the start of a
+   * sentence and as `mid` everywhere else, and "is" becomes "are" after "you".
+   */
   const who = c.who;
+  const mid = who === 'You' ? 'you' : who;
+  const isWord = who === 'You' ? 'are' : 'is';
   const stated = c.statedInSession ?? null;
   const status = String(c.status).toUpperCase();
   const open = status === 'UNKNOWN';
@@ -253,30 +267,30 @@ export function aCommitmentSaid(
   if (!c.theySaidIt) {
     if (quoteWhat) {
       out.push(stated !== null
-        ? `In session ${stated}, the lead said that ${who} would do this, "${c.what}"`
-        : `The lead said that ${who} would do this, "${c.what}"`);
+        ? `In session ${stated}, the lead said that ${mid} would do this, "${c.what}"`
+        : `The lead said that ${mid} would do this, "${c.what}"`);
     } else if (clause) {
       out.push(stated !== null
-        ? `In session ${stated}, the lead committed ${who} to ${clause}.`
-        : `The lead committed ${who} to ${clause}.`);
+        ? `In session ${stated}, the lead committed ${mid} to ${clause}.`
+        : `The lead committed ${mid} to ${clause}.`);
     } else {
       out.push(stated !== null
-        ? `In session ${stated}, the lead committed ${who} to something, which is in the record.`
-        : `The lead committed ${who} to something, which is in the record.`);
+        ? `In session ${stated}, the lead committed ${mid} to something, which is in the record.`
+        : `The lead committed ${mid} to something, which is in the record.`);
     }
     out.push(`${who} did not say it.`);
   } else if (quoteWhat) {
-    if (stated !== null) out.push(`In session ${stated}, ${who} said, "${c.what}"`);
-    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} is down to do this, "${c.what}"`);
+    if (stated !== null) out.push(`In session ${stated}, ${mid} said, "${c.what}"`);
+    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${mid} ${isWord} down to do this, "${c.what}"`);
     else out.push(`${who} said, "${c.what}"`);
   } else if (clause) {
-    if (stated !== null) out.push(`In session ${stated}, ${who} committed to ${clause}.`);
-    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} committed to ${clause}.`);
+    if (stated !== null) out.push(`In session ${stated}, ${mid} committed to ${clause}.`);
+    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${mid} committed to ${clause}.`);
     else out.push(`${who} committed to ${clause}.`);
-  } else if (stated !== null) out.push(`In session ${stated}, ${who} made a commitment, which is in the record.`);
+  } else if (stated !== null) out.push(`In session ${stated}, ${mid} made a commitment, which is in the record.`);
   else out.push(`${who} made a commitment, which is in the record.`);
-  if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was "${c.when}".`);
-  else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was ${c.when}.`);
+  if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : 'the lead'} gave for it was "${c.when}".`);
+  else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : 'the lead'} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
     out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
   }
@@ -287,7 +301,7 @@ export function aCommitmentSaid(
   } else {
     const outcome = status === 'DONE' ? 'done' : status === 'NOT_DONE' ? 'not done' : status === 'DROPPED' ? 'dropped' : status.toLowerCase().replace(/_/g, ' ');
     const by = String(c.settledBy ?? '').toUpperCase();
-    if (by === 'PROVEN' && status === 'DONE') out.push(`A document ${who} added shows it was done.`);
+    if (by === 'PROVEN' && status === 'DONE') out.push(`A document ${mid} added shows it was done.`);
     else if (by === 'CONFIRMED' && status === 'DONE') out.push(`The colleague who received it confirmed that it was done.`);
     else if (by === 'SAID') out.push(`${who} said later that it was ${outcome}.`);
     else out.push(`It is marked ${outcome}, and the record does not say who marked it.`);
@@ -668,10 +682,17 @@ export const A_QUESTION_BUILT_FROM_A_PATTERN_ENDS = ' what they have changed abo
  * patterns/who-reads-a-pattern, read live from the rows; this read leaves out the patterns and the
  * questions made from them, with the switch on or off.
  */
+export function inSessions(n: number | null | undefined): string | null {
+  const count = Number(n ?? 0);
+  if (!count || count < 1) return null;
+  return `in ${count} ${count === 1 ? 'session' : 'sessions'}`;
+}
+
 export function overTimeAsServed(it: WhatTheRecordShowsOverTime | null | undefined): WhatTheRecordShowsOverTime | null {
   if (!it) return null;
   return {
     ...it,
+    inSessions: inSessions(it.sessions),
     /* The sentence is rebuilt from the row, so a report stored before it was rewritten reads it too. */
     commitments: (it.commitments ?? []).map((c) => (c && typeof c.what === 'string' && typeof c.who === 'string' && typeof c.theySaidIt === 'boolean'
       ? { ...c, say: aCommitmentSaid({ ...c, restatedIn: c.restatedIn ?? [] }, it.sessions ?? 0) }
@@ -735,6 +756,7 @@ export function overTimeForThisReader(
   if (!mine) return null;
   return {
     sessions: it.sessions,
+    inSessions: inSessions(it.sessions),
     commitments: (it.commitments ?? []).filter((c) => c.participantId === mine),
     dependencies: (it.dependencies ?? []).filter((d) => d.fromParticipantId === mine || d.onParticipantId === mine),
     /* Reads about people, all of them the lead's. */

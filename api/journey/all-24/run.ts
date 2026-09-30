@@ -18,6 +18,8 @@ const PW = 'SuiteRun123!';
 const OUT = process.env.OUT ?? 'journey/all-24/out';
 const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
 const MAX_TURNS = Number(process.env.MAX_TURNS ?? 9);
+/* Decision 68: SESSIONS=6 runs every scenario for six sessions, so patterns can reach three periods. */
+const SESSIONS = process.env.SESSIONS ? Number(process.env.SESSIONS) : null;
 
 const tokens: Record<string, string> = {};
 const log = (s: string) => { console.log(s); fs.appendFileSync(`${OUT}/run.log`, s + '\n'); };
@@ -154,8 +156,9 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
 
   const record: any = { scenario: s, groundId: gid, orgId: org.id, emails: Object.fromEntries(s.people.map((p) => [p.key, email(p)])), sessions: [] };
 
-  for (let n = 1; n <= s.sessions; n++) {
-    log(`\n  --- session ${n} of ${s.sessions}`);
+  const howMany = SESSIONS ?? s.sessions;
+  for (let n = 1; n <= howMany; n++) {
+    log(`\n  --- session ${n} of ${howMany}`);
     const people: any[] = [];
     for (const p of s.people) {
       if (!rows[p.key] || !tokens[email(p)]) { people.push({ key: p.key, error: 'no sign-in' }); continue; }
@@ -242,6 +245,24 @@ async function runScenario(prisma: any, model: AnthropicService, s: AScenario) {
     record.sessions.push(sess);
     fs.writeFileSync(`${OUT}/${s.key}.json`, JSON.stringify(record, null, 1));
     log(`    report ${released ? 'released' : 'NOT RELEASED'} · commitments ${Array.isArray(sess.commitments) ? sess.commitments.length : '?'} · patterns ${(sess.patterns ?? []).map((x: any) => `${x.code}/${x.status}`).join(' ') || 'none'}`);
+  }
+  /*
+   * DECISION 68: WHAT EACH PERSON WOULD BE SHOWN, ONCE THE LAST SESSION HAS BEEN READ.
+   * Patterns are read after a check-in ends, in the background, so the last session's reading may
+   * not be done when the loop above stops. Wait until every check-in on this ground has been read
+   * (up to ten minutes), then keep the patterns as they finally stand.
+   */
+  if (SESSIONS) {
+    for (let i = 0; i < 150; i++) {
+      const left = await prisma.checkIn.count({ where: { groundId: gid, status: 'COMPLETED' as any, patternsAnalyzedAt: null } }).catch(() => 0);
+      if (left === 0) break;
+      await new Promise((r) => setTimeout(r, 4000));
+    }
+    record.finalPatterns = await prisma.patternDetection.findMany({
+      where: { groundId: gid },
+      select: { code: true, status: true, seenInSessions: true, observationText: true, participant: { select: { email: true } } },
+    }).catch(() => []);
+    fs.writeFileSync(`${OUT}/${s.key}.json`, JSON.stringify(record, null, 1));
   }
   return record;
 }

@@ -38,7 +38,7 @@ describe('the sentence a lead reads, before anything is asked', () => {
         { who: 'Tunde', participantId: 'p2', question: 'which accounts actually have a buying process?', exactQuestion: null },
       ],
     }, { asking: true })!;
-    expect(said).toContain('Questions you want asked, each one exactly as Groundwork will ask it:');
+    expect(said).toContain('Questions you want asked, each one exactly as Groundwork will ask it.');
     expect(said).toContain('- Groundwork will ask Ngozi: "Have you sent the Client B proposal?"');
     expect(said).toContain('- Groundwork will ask Tunde: "Which accounts actually have a buying process?"');
     expect(said).toContain(NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT);
@@ -51,7 +51,7 @@ describe('the sentence a lead reads, before anything is asked', () => {
       notSettled: [], aboutPeople: [], commitments: [], betweenPeople: [], strategy: [], notes: [],
       questionsForPeople: [{ who: 'Ngozi', participantId: 'p1', question: 'x', exactQuestion: 'Have you sent the Client B proposal?' }],
     }, { asking: true })!;
-    expect(said).toContain('A question you want asked, exactly as Groundwork will ask it:\n- Groundwork will ask Ngozi: "Have you sent the Client B proposal?"\nThis question is not asked until you confirm it. You can confirm it, change it or leave it out.');
+    expect(said).toContain('A question you want asked, exactly as Groundwork will ask it.\n- Groundwork will ask Ngozi: "Have you sent the Client B proposal?"\nThis question is not asked until you confirm it. You can confirm it, change it or leave it out.');
   });
 });
 
@@ -193,7 +193,7 @@ describe('the lead confirms, changes or leaves out each question on its own', ()
   it('confirm keeps the sentence as shown, and says so', async () => {
     const { service, lines } = aGroundsServiceWith([aWaitingQuestion()]);
     const out = await service.confirmQuestionForPerson('g1', 'userLead', 'q1');
-    expect(out.say).toBe('Confirmed. Groundwork will ask Ngozi Balogun "Have you sent the Client B proposal?" in their next check-in, word for word.');
+    expect(out.say).toBe('I have confirmed it. Groundwork will ask Ngozi Balogun "Have you sent the Client B proposal?" in their next check-in, word for word.');
     expect(lines[0].exactQuestion).toBe('Have you sent the Client B proposal?');
     expect(lines[0].questionConfirmedAt).toBeInstanceOf(Date);
   });
@@ -216,7 +216,7 @@ describe('the lead confirms, changes or leaves out each question on its own', ()
     const { service, lines } = aGroundsServiceWith([aWaitingQuestion()]);
     await service.confirmQuestionForPerson('g1', 'userLead', 'q1');
     const out = await service.declineQuestionForPerson('g1', 'userLead', 'q1');
-    expect(out.say).toBe('Left out. Groundwork will not ask Ngozi Balogun this question.');
+    expect(out.say).toBe('I have left it out. Groundwork will not ask Ngozi Balogun this question.');
     expect(lines[0].closedAt).toBeInstanceOf(Date);
     expect(lines[0].questionConfirmedAt).toBeNull();
     expect(await service.questionsForPeople('g1', 'userLead')).toEqual([]);
@@ -226,7 +226,7 @@ describe('the lead confirms, changes or leaves out each question on its own', ()
     const { service } = aGroundsServiceWith([aWaitingQuestion()]);
     await expect(service.confirmQuestionForPerson('g1', 'userN', 'q1')).rejects.toThrow(/Only the person who runs this check-in/);
     await expect(service.declineQuestionForPerson('g1', 'userN', 'q1')).rejects.toThrow(/Only the person who runs this check-in/);
-    await expect(service.questionsForPeople('g1', 'userN')).rejects.toThrow(/are the lead's/);
+    await expect(service.questionsForPeople('g1', 'userN')).rejects.toThrow(/Only the person who runs this check-in can see or change the questions for people/);
   });
 });
 

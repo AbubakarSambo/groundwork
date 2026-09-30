@@ -116,6 +116,9 @@ describe('a document\'s numbers, said back through Ask Groundwork', () => {
     expect(said).toContain("Dayo Adebayo's target for Q3 sales is 45m.");
     expect(said).toContain('For everyone in this check-in, the target for New dealers is 12.');
     expect(said).toContain('Shall I record these numbers on this check-in?');
+    /* The yes also writes a note everyone reads, so it is said before the yes, and it is true. */
+    expect(said).toContain('If you say yes, I will also add a note that everyone on this check-in can read. The note will read “The numbers on this check-in come from a document the person running it added.”');
+    expect(said).not.toContain('when it was set up');
     /* A proposal block carries the same words, for the panel's yes/no. */
     expect(reply.blocks.some((b: any) => b.type === 'proposal')).toBe(true);
     /* Nothing written yet. */
@@ -135,6 +138,23 @@ describe('a document\'s numbers, said back through Ask Groundwork', () => {
     expect((reply.blocks[0] as any).body).toContain('I have recorded this from Q4 targets.xlsx.');
   });
 
+  it('a yes writes the very note the say-back showed, and names the file only when everyone may open it', async () => {
+    for (const [visibility, note] of [
+      ['OWN', 'The numbers on this check-in come from a document the person running it added.'],
+      ['OPEN', 'The numbers on this check-in come from Q4 targets.xlsx.'],
+    ] as const) {
+      const doc = { ...A_DOC, visibility };
+      const asked = svc({ docs: [doc] });
+      const said = ((await asked.service.respond('org-a', 'p1', "I've uploaded it")).blocks[0] as any).body as string;
+      expect(said).toContain(`The note will read “${note}”`);
+      const parked = { id: 'pr1', kind: 'document_numbers', payload: { documentId: 'doc-1', groundId: 'g1', fileName: 'Q4 targets.xlsx' } };
+      const yes = svc({ parked, docs: [doc], participants: [{ id: 'part-me', groundId: 'g1' }] });
+      await yes.service.respond('org-a', 'p1', 'yes');
+      const written = (yes.prisma.groundContextItem.create as jest.Mock).mock.calls.map((c: any[]) => c[0].data);
+      expect(written).toEqual([expect.objectContaining({ text: note, audience: 'EVERYONE' })]);
+    }
+  });
+
   it('a no writes nothing', async () => {
     const parked = { id: 'pr1', kind: 'document_numbers', payload: { documentId: 'doc-1', groundId: 'g1', fileName: 'Q4 targets.xlsx' } };
     const { service, prisma, created } = svc({ parked, docs: [A_DOC] });
@@ -142,7 +162,7 @@ describe('a document\'s numbers, said back through Ask Groundwork', () => {
 
     expect(created).toEqual([]);
     expect(prisma.groundObjective.createMany).not.toHaveBeenCalled();
-    expect((reply.blocks[0] as any).body).toBe('Left it. Nothing was recorded.');
+    expect((reply.blocks[0] as any).body).toBe('I have left it as it was. Nothing was recorded.');
     expect(prisma.assistantProposal.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ state: 'DECLINED' }) }),
     );

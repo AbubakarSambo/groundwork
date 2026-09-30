@@ -296,7 +296,7 @@ export class AdminController {
   }
 
   @Get('suggestion-thresholds')
-  @ApiOperation({ summary: 'The thresholds that let a suggestion be reached, one per verdict. Empty by default (decision 33): nothing is suggested until these are set.' })
+  @ApiOperation({ summary: 'The thresholds that let a suggestion be reached, one per verdict. Support is set from the start (decision 61); keep, reward, plan and exit are empty until set (decision 33). A labels object comes alongside the values with the plain words for each field.' })
   getSuggestionThresholds() {
     return this.adminService.getSuggestionThresholds();
   }

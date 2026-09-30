@@ -1,5 +1,6 @@
 import { PLAIN_WORDS, SPOKEN_TO_THE_READER } from '../conversation/plain-words';
 import { stillNeedsSomethingInWriting } from './what-the-documents-say';
+import { CADENCE_WORDS, CADENCES, type Cadence } from './what-the-context-chat-heard';
 /**
  * THE CONTEXT CHAT. G37 and G23, the last of the seven and the largest.
  *
@@ -332,4 +333,66 @@ export function contextChatPrompt(
     '',
     SPOKEN_TO_THE_READER,
   ].join('\n');
+}
+
+/**
+ * WHAT THIS CHECK-IN ALREADY HOLDS, WRITTEN BY THE PRODUCT, NOT ASKED OF THE MODEL. FIX 3.
+ *
+ * Driven live, item 15: a check-in that already had its length and rhythm set opened with "Hello,
+ * I'm here to help you set up your Groundwork check-in. First, tell me, what does doing well look
+ * like..." - a greeting, and not a word about what it already holds, even though the prompt's own
+ * "OPEN ON THAT, NOT ON A GREETING" rule only fires when `whatThisCheckInAlreadyHolds` has a target, a
+ * line, an action or a document to point at (see `hasList` in `contextChatPrompt`) - never for
+ * duration or cadence on their own, because those two never appeared in that list at all.
+ *
+ * So the length and the rhythm, when either is set, are said as a plain sentence by the product
+ * itself - "This check-in runs for 12 weeks and people check in once a week." - and it is PREPENDED
+ * to the model's reply on the opening turn, never asked of the model: a fact the ground's own columns
+ * already hold does not need a model call to say correctly, and a sentence written here cannot drift
+ * from what a re-run of the model would have said.
+ */
+export function openingLine(timelineDays: number | null, cadence: string | null): string | null {
+  const parts: string[] = [];
+  if (timelineDays && timelineDays > 0) {
+    const weeks = Math.round(timelineDays / 7);
+    parts.push(weeks >= 4 && timelineDays % 7 === 0 ? `runs for ${weeks} weeks` : `runs for ${timelineDays} days`);
+  }
+  const c = (cadence ?? '').toUpperCase().trim();
+  if (CADENCES.includes(c as Cadence)) {
+    parts.push(`people check in ${CADENCE_WORDS[c as Cadence]}`);
+  }
+  return parts.length ? `This check-in ${parts.join(' and ')}.` : null;
+}
+
+/**
+ * THE GREETING THE MODEL STILL ADDS, DROPPED FROM AN OPENING TURN.
+ *
+ * "OPEN ON THAT, NOT ON A GREETING" is a prompt instruction, and the model does not reliably keep it,
+ * particularly on the very first turn of a conversation where nothing in `hasList` gave it a reason
+ * not to introduce itself. Narrow on purpose: only a self-introduction sentence at the very START of
+ * the reply is dropped, never a "hello" that shows up mid-conversation answering something the lead
+ * said, which is a normal, polite reply and not this defect.
+ */
+const OPENING_GREETING = /^(?:(?:hi|hey|hello|hiya|greetings|welcome)\b[^.!?\n]*[.!?]+\s*|[^.!?\n]*\bi(?:'m| am)\s+here to help[^.!?\n]*[.!?]+\s*)/i;
+
+/**
+ * DRIVEN LIVE: A SINGLE STRIP LEFT A SECOND GREETING SENTENCE STANDING.
+ *
+ * `openingSentence.test(the-context-chat.spec.ts)` proved a single sentence was stripped; the live
+ * run (30 September 2026) showed the model writing TWO in a row - "Hello! I'm here to help you set
+ * up your check-in." - and `String.replace` with no `/g` flag, on a pattern already anchored to `^`,
+ * only ever removes the first match it finds at that position: "Hello! " went, and "I'm here to help
+ * you set up your check-in." was still the first thing the lead read. Looped rather than given a
+ * `/g` flag, because `/g` on a pattern anchored with `^` only ever matches once anyway - what is
+ * needed is repetition FROM THE NEW START of the string after each removal, which only a loop gives.
+ * Bounded to five passes so a reply that never stops matching cannot loop forever.
+ */
+export function withoutTheOpeningGreeting(reply: string): string {
+  let out = reply;
+  for (let i = 0; i < 5; i++) {
+    const stripped = out.replace(OPENING_GREETING, '');
+    if (stripped === out) break;
+    out = stripped;
+  }
+  return out;
 }

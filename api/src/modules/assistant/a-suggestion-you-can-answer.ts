@@ -169,7 +169,7 @@ export function acceptedNextStep(s: Suggestible): {
  * saying "not today" is actually saying "not this quarter".
  */
 export function declinedLine(coolingDays: number): string {
-  return `Left it. I will not raise this one again for ${coolingDays} days.`;
+  return `I have left it. I will not raise this one again for ${coolingDays} days.`;
 }
 
 /** For the comment above `daysLeft` to stay true if the life of a candidate ever changes. */

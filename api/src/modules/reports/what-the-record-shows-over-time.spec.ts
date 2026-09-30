@@ -28,6 +28,17 @@ describe('what the record shows over time', () => {
       expect(c.say).toBe('In session 1, Marcus Oyelaran said, "I will arrange meetings with the technical team". The time Marcus Oyelaran gave for it was "next week". Marcus Oyelaran said it again in sessions 2, 3 and 5. It has been open for 5 sessions, and nobody has said whether it happened.');
     });
 
+    it('says "you" in lower case in the middle of a sentence when the person is the reader (request 87)', () => {
+      const row = (over: Record<string, any> = {}) => commitmentsOverTime([{
+        participantId: 'you', text: 'call the client', whenSaid: 'on Wednesday 30 September', explicit: true,
+        status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], ...over,
+      }], () => 'You', 1)[0].say;
+      expect(row()).toBe('In session 1, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
+      expect(row({ source: 'PASTE', statedInSession: null })).toBe('In what the lead pasted in, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
+      expect(row({ status: 'DONE', settledBy: 'PROVEN' })).toContain('A document you added shows it was done.');
+      expect(row({ explicit: false, saidWordForWord: false })).toContain('the lead committed you to call the client');
+    });
+
     it('never says anything happened, because only a person says that', () => {
       const [c] = commitmentsOverTime([{
         participantId: 'marcus', text: 'I will call her', whenSaid: null, explicit: true,

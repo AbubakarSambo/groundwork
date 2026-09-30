@@ -20,10 +20,15 @@ describe('a private file is not named in the report, the board or anybody else\'
   });
 
   it('the note that reaches everybody\'s check-in names a file only when everybody may open it', () => {
-    const at = GROUNDS.indexOf('The numbers on this check-in come from');
-    const near = GROUNDS.slice(at - 200, at + 300);
-    expect(near).toMatch(/visibility === 'OPEN'/);
-    expect(near).toContain('a document that was attached when it was set up');
+    /* The write moved into one shared place on 30 September (58960b6d), called by the setup chat,
+       the check-in and Ask Groundwork, so the note is checked where it is now written. */
+    const WRITER = read('documents/write-a-documents-numbers.ts');
+    expect(WRITER).toContain('text: theNoteAboutWhereTheNumbersCameFrom(input.fileName, input.documentVisibility)');
+    /* Changed 30 September (request 92): the private wording said "attached when it was set up",
+       untrue for a document added later. The sentence is now one function, read as a person reads it. */
+    const { theNoteAboutWhereTheNumbersCameFrom } = jest.requireActual('../documents/the-note-about-where-numbers-came-from');
+    expect(theNoteAboutWhereTheNumbersCameFrom('team-plan.xlsx', 'OPEN')).toBe('The numbers on this check-in come from team-plan.xlsx.');
+    expect(theNoteAboutWhereTheNumbersCameFrom('team-plan.xlsx', 'OWN')).toBe('The numbers on this check-in come from a document the person running it added.');
   });
 
   it('the session report lists by name only the documents this reader may open', () => {

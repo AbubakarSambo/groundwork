@@ -14,6 +14,8 @@
 import { ContextItemKind, ContextNoteAudience } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { whatWasRecordedFromADocument } from './what-was-recorded-from-a-document';
+import { theNameWeUseFor } from './what-a-document-holds';
+import { theNoteAboutWhereTheNumbersCameFrom } from './the-note-about-where-numbers-came-from';
 
 export interface ADocumentsWaitingRow {
   name: string;
@@ -80,9 +82,7 @@ export async function writeADocumentsNumbers(prisma: PrismaService, input: Write
       data: {
         groundId: input.groundId,
         kind: ContextItemKind.NOTE,
-        text: input.documentVisibility === 'OPEN'
-          ? `The numbers on this check-in come from ${input.fileName}.`
-          : 'The numbers on this check-in come from a document that was attached when it was set up.',
+        text: theNoteAboutWhereTheNumbersCameFrom(input.fileName, input.documentVisibility),
         audience: ContextNoteAudience.EVERYONE,
         source: 'PASTE',
         authorUserId: input.authorUserId ?? undefined,
@@ -97,7 +97,25 @@ export async function writeADocumentsNumbers(prisma: PrismaService, input: Write
 
   const mine = rows.filter((r) => r.ownerParticipantId).length;
   const team = rows.length - mine;
+  /* WHOSE EACH NUMBER IS, by first name, and "you" for the reader's own: the sentence used to say
+     "the person it belongs to" and leave the lead to work out who that was. */
+  let owners: string[] | null = null;
+  try {
+    const ids = [...new Set(rows.map((r) => r.ownerParticipantId).filter((x): x is string => !!x))];
+    if (ids.length) {
+      const people = await prisma.groundParticipant.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+      });
+      const called = new Map(people.map((p) => [p.id, (theNameWeUseFor(p as any) ?? '').split(/\s+/)[0]]));
+      const named = rows.filter((r) => r.ownerParticipantId).map((r) => (r.ownerParticipantId === input.setByParticipantId ? 'you' : called.get(r.ownerParticipantId as string) ?? ''));
+      owners = named.every(Boolean) ? named : null;
+    }
+  } catch {
+    owners = null;
+  }
   return whatWasRecordedFromADocument({
+    owners,
     fileName: input.fileName,
     forAPerson: mine,
     forEveryone: team,

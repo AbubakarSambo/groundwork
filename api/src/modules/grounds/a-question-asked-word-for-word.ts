@@ -141,6 +141,44 @@ export function whyTheDraftDoesNotHold(
   return null;
 }
 
+const A_DIRECT_QUESTION = /^(?:what|which|who|whom|whose|how|why|when|where|have|has|had|do|does|did|is|are|was|were|can|could|will|would|should|shall|may|might)\b/i;
+const STARTS_WITH_AN_INSTRUCTION = /^(?:please\s+)?(?:ask|tell|find out|check|see|get|let me know)\b/i;
+
+/**
+ * THE LEAD'S OWN WORDS, WHERE SHE WROTE THE QUESTION TO THE PERSON (request 92, point 9).
+ *
+ * "Have the Kilimani shops paid their deposits yet?" was kept as "Do you know if the Kilimani shops
+ * have paid their deposits yet?": the drafter tidied a question that was already a question, and the
+ * lead was shown words she had not written. When the paste holds the question as a plain, direct
+ * question with no name, no "he" or "she" and no instruction in front of it, it is already asked of
+ * the person, so her words are kept exactly as she typed them. Only the handle saying who it is for
+ * and a capital letter are touched, as `plainQuestionFrom` does. Anything else is left to the drafter.
+ *
+ * The question is found in what she pasted by the words it shares with the question the paste was
+ * read as, so it is her own sentence and never one put together from the reading.
+ */
+export function theLeadsOwnQuestionIfAddressedToThem(
+  pasted: string | null | undefined,
+  readAs: string | null | undefined,
+  ctx: { name?: string | null; privateWords?: (string | null | undefined)[] },
+): string | null {
+  const wanted = contentWords(readAs);
+  if (!wanted.length) return null;
+  const segments = [...(pasted ?? '').matchAll(/[^.!?\n]*\?/g)].map((m) => m[0].replace(/^[\s\-\u2022*"\u201C\u2018']+/, '').replace(/["\u201D\u2019']+$/, '').trim());
+  let best: { text: string; score: number } | null = null;
+  for (const seg of segments) {
+    const words = contentWords(seg);
+    if (!words.length) continue;
+    const shared = wanted.filter((w) => words.some((x) => x === w || (x.length > 4 && w.length > 4 && x.slice(0, 5) === w.slice(0, 5)))).length;
+    const score = shared / wanted.length;
+    if (score >= 0.6 && (!best || score > best.score)) best = { text: seg, score };
+  }
+  if (!best) return null;
+  const candidate = plainQuestionFrom(best.text, ctx.name);
+  if (!candidate || STARTS_WITH_AN_INSTRUCTION.test(candidate) || !A_DIRECT_QUESTION.test(candidate)) return null;
+  return whyTheDraftDoesNotHold(candidate, { leadQuestion: candidate, name: ctx.name, privateWords: ctx.privateWords }) === null ? candidate : null;
+}
+
 /** The draft where it holds, and the lead's own question made a sentence where it does not. */
 export function theExactQuestion(
   draft: string | null | undefined,
@@ -227,18 +265,24 @@ export interface AQuestionForAPerson {
   confirmedAt: string | null;
   /** True for a line kept before 28 September, which had no exact sentence until now. */
   writtenBeforeConfirming: boolean;
-  /** The sentence to show under it where it was written before; null otherwise. */
+  /** The sentence to show under it where it was written before, or an admin confirmed it in the
+   *  lead's place (decision 63), or both, one under the other; null when neither applies. */
   note: string | null;
+  /** DECISION 63: set only when an admin confirmed or declined this in the lead's place, because the
+   *  lead had left the organisation - the plain sentence naming them. Null when the lead did it. */
+  confirmedByAdminNote: string | null;
 }
 
 /** The card for one stored line. An older line with no sentence is shown its words made a sentence. */
 export function aQuestionAsTheLeadReadsIt(
-  line: { id: string; text: string; aboutParticipantId?: string | null; exactQuestion?: string | null; questionConfirmedAt?: Date | string | null },
+  line: { id: string; text: string; aboutParticipantId?: string | null; exactQuestion?: string | null; questionConfirmedAt?: Date | string | null; confirmedByAdminNote?: string | null },
   who: string,
 ): AQuestionForAPerson {
   const stored = (line.exactQuestion ?? '').trim();
   const exactQuestion = stored || plainQuestionFrom(line.text, who);
   const confirmed = !!(stored && line.questionConfirmedAt);
+  const confirmedByAdminNote = (line.confirmedByAdminNote ?? '').trim() || null;
+  const writtenBeforeNote = stored ? null : WRITTEN_BEFORE_YOU_CONFIRMED_EACH_ONE;
   return {
     id: line.id,
     participantId: line.aboutParticipantId ?? null,
@@ -248,6 +292,7 @@ export function aQuestionAsTheLeadReadsIt(
     status: confirmed ? 'confirmed' : 'waiting',
     confirmedAt: confirmed ? new Date(line.questionConfirmedAt as any).toISOString() : null,
     writtenBeforeConfirming: !stored,
-    note: stored ? null : WRITTEN_BEFORE_YOU_CONFIRMED_EACH_ONE,
+    note: [writtenBeforeNote, confirmedByAdminNote].filter(Boolean).join(' ') || null,
+    confirmedByAdminNote,
   };
 }

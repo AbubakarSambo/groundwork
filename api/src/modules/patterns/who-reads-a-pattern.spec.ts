@@ -73,6 +73,10 @@ describe('who reads a pattern', () => {
       talkedAbout: false,
       /* Decision 57, item 4: never shown to the person it is about, only whoever runs the check-in. */
       secondReadNote: null,
+      /* Decision 67: the section it belongs in is the same for every reader; the coaching is the lead's alone. */
+      about: 'the work',
+      coachTowards: null,
+      oneStep: null,
     });
     const served = JSON.stringify(servedPatterns(ROWS, LEAD, on));
     for (const name of EVERY_INTERNAL_NAME) expect(served).not.toContain(name);

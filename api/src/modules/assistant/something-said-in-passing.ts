@@ -1,3 +1,4 @@
+import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 /**
  * NOTICING A COMMITMENT NOBODY TYPED A COMMAND FOR.
  *
@@ -89,5 +90,5 @@ export function resolveConfirmation(message: string): Resolution {
 
 /** What gets echoed back. Their words, so what they agree to is what goes on the record. */
 export function proposalSummary(c: Caught): string {
-  return `Shall I note that down: "${c.text}"?`;
+  return `Shall I write down ${quotedThenEnding(c.text, '?')}`;
 }

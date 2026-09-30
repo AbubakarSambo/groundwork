@@ -112,7 +112,8 @@ describe('what a document holds', () => {
 
   it('and every surface reads the same stored answer', () => {
     /* The card, so the Context tab says what the chat said. */
-    expect(DOCS).toContain('theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any) : null');
+    /* Now with who is reading, so a person's own number reads "Your target" (request 92, point 7). */
+    expect(DOCS).toContain('theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any, { reader: { participantId: viewerParticipantId } }) : null');
     expect(DOCS.match(/holds: true/g)!.length).toBeGreaterThanOrEqual(3);
     /* The chat, once: stamped as the words go out. */
     expect(CONVO).toContain('data: { holdsSaidAt: new Date() }');

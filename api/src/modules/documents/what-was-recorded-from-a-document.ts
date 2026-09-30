@@ -26,6 +26,11 @@ export interface WhatWasRecorded {
   forEveryone: number;
   /** When the person gave a new number on one line: that line, the number they gave, and the document's. */
   corrected?: { name: string; theirs: number; documents: number } | null;
+  /**
+   * Whose each of those numbers is, one entry to a number, where it is known: a first name, or
+   * "you" where the number is the reader's own. Said in place of "the person it belongs to".
+   */
+  owners?: string[] | null;
   /** 'check-in': said in a check-in. 'setup': said by the lead setting up a check-in, so the page is named. */
   reader: 'check-in' | 'setup';
 }
@@ -39,13 +44,29 @@ export function whatWasRecordedFromADocument(r: WhatWasRecorded): string {
     out.push(`For ${r.corrected.name}, I have written ${n(r.corrected.theirs)}, as you said, instead of the ${n(r.corrected.documents)} in the document.`);
   }
   if (r.forAPerson) {
-    out.push(r.forAPerson === 1
-      ? 'One number is now set for the person it belongs to.'
-      : `${aCount(r.forAPerson)} numbers are now set, each for the person it belongs to.`);
-    if (r.reader === 'setup') {
+    const owners = r.owners && r.owners.length === r.forAPerson ? r.owners : null;
+    const others = owners ? [...new Set(owners.filter((o) => o !== 'you'))] : [];
+    const onlyTheirOwn = !!owners && !others.length;
+    if (owners) {
+      const distinct = [...new Set(owners)];
       out.push(r.forAPerson === 1
-        ? 'It is marked as set by you, and that person has not seen it yet.'
-        : 'Each one is marked as set by you, and the person it belongs to has not seen it yet.');
+        ? `One number is now set for ${distinct[0]}.`
+        : `${aCount(r.forAPerson)} numbers are now set, for ${andList(distinct)}.`);
+    } else {
+      out.push(r.forAPerson === 1
+        ? 'One number is now set for the person it belongs to.'
+        : `${aCount(r.forAPerson)} numbers are now set, each for the person it belongs to.`);
+    }
+    if (r.reader === 'setup' && !onlyTheirOwn) {
+      if (owners) {
+        out.push(r.forAPerson === 1
+          ? `It is marked as set by you, and ${others[0]} has not seen it yet.`
+          : `Each one is marked as set by you, and ${andList(others)} ${others.length === 1 ? 'has' : 'have'} not seen ${others.length === 1 && r.forAPerson === 1 ? 'it' : 'them'} yet.`);
+      } else {
+        out.push(r.forAPerson === 1
+          ? 'It is marked as set by you, and that person has not seen it yet.'
+          : 'Each one is marked as set by you, and the person it belongs to has not seen it yet.');
+      }
     }
   }
   if (r.forEveryone) {
@@ -62,3 +83,5 @@ export function whatWasRecordedFromADocument(r: WhatWasRecorded): string {
   }
   return out.join(' ');
 }
+
+const andList = (xs: string[]): string => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);

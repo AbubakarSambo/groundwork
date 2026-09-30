@@ -94,7 +94,7 @@ import { everyLineIsReadBeforeItIsKept, AReader, REWRITE_THE_LINES, theLinesToRe
 import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
 import { everyQuoteFromTheRecord, theLinesAQuoteMayComeFrom, type ALabelAndAName } from './a-quote-is-what-they-said';
 import { whatAParticipantMayRead } from './the-judgement-is-the-leads';
-import { viewerIsTheSubjectOfAnEvaluationCheckIn } from './is-this-an-evaluation-check-in';
+import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from './is-this-an-evaluation-check-in';
 import { whatEachPersonSaidForTheSubject, deeplyWithoutColleaguesQuotesForTheSubject } from './colleagues-exact-words-stay-with-the-manager';
 import { theTableStaysWithTheEngine } from './the-table-is-for-the-engine';
 import { tallyInReport } from './counts-accounts';
@@ -2846,6 +2846,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
      */
     if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('Report not found');
     const viewerIsLead = isInitiator || isOrgAdmin;
+    /* DECISION 60 POINT 4, 30 September 2026: narrower than viewerIsLead (which counts every admin
+       of the organisation) - colleagues' exact words in an evaluation check-in (decision 4's
+       exception) go only to whoever runs this check-in: its lead, or the admin who set it up for
+       them. NEVER every admin of the organisation, the same access rule decision 58 gave patterns.
+       See patterns/who-reads-a-pattern, runsItForAPattern. */
+    const evaluationWordsRunsIt = runsItForAPattern(ground as any, requestingUserId);
     const released = !!ground.report?.releasedAt;
 
     /*
@@ -3153,16 +3159,23 @@ Close the report by framing - neutrally, without recommending one - the choice n
     /*
      * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being
      * reviewed reads the facts, never a colleague's exact words - those go only to the manager (an
-     * admin reads as the manager does). This is the one reader that changes for: see
-     * colleagues-exact-words-stay-with-the-manager.ts. A colleague giving a view, and everybody on
-     * every other kind of check-in, reads `whatEachPersonSaid` exactly as before.
+     * admin WITH access to this check-in reads as the manager does). This is the one reader that
+     * changes for: see colleagues-exact-words-stay-with-the-manager.ts. A colleague giving a view,
+     * and everybody on every other kind of check-in, reads `whatEachPersonSaid` exactly as before.
+     *
+     * DECISION 60 POINT 4, 30 September 2026: an admin WITHOUT access to this check-in reads no
+     * colleague's exact words here either - the same access rule decision 58 gave patterns
+     * (`evaluationWordsRunsIt`, above), never "every admin of the organisation". `isLead` here is
+     * deliberately narrower than `viewerIsLead`: an admin covering for this specific check-in is
+     * still read as the manager, and an admin who merely has decision 5's wider board-and-report
+     * access is not.
      */
     if (viewerIsTheSubjectOfAnEvaluationCheckIn({
       scenario: (ground as any).scenario,
-      isLead: viewerIsLead,
+      isLead: isInitiator || evaluationWordsRunsIt,
       viewerParticipantId: me?.id ?? null,
       participants: ground.participants as any,
-    })) {
+    }) || (isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario))) {
       shape.whatEachPersonSaid = whatEachPersonSaidForTheSubject(shape.whatEachPersonSaid as any[]) as any;
     }
 
@@ -6506,17 +6519,26 @@ happened, and what is in the way.`;
      * (a-quote-is-what-they-said runs before this is ever stored, and a-quote-built-at-the-read for
      * what is built now); this only decides whose, using the same matching rule
      * (theRecordAQuoteMayComeFromByParticipant), and fails closed - a quote is left alone only
-     * where it positively matches the SUBJECT's own record. A no-op for the lead, an admin (both
-     * count as `isLead` here, same as everywhere else in this method) and a colleague giving a view.
+     * where it positively matches the SUBJECT's own record. A no-op for the lead, an admin WITH
+     * access to this check-in (both read `isLead` here, same as everywhere else in this method) and
+     * a colleague giving a view.
+     *
+     * DECISION 60 POINT 4, 30 September 2026: an admin WITHOUT access to this check-in reads no
+     * colleague's exact words here either - `patternRunsIt` (decision 58's own access rule, above)
+     * decides "with access", never "every admin of the organisation". Such an admin has no record
+     * of their own on this check-in, so every quote is treated as not theirs and comes out, the same
+     * as it does for the subject.
      */
+    const evaluationWordsRunsIt = patternRunsIt;
+    const adminWithoutCheckInAccess = isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario);
     if (viewerIsTheSubjectOfAnEvaluationCheckIn({
       scenario: (ground as any).scenario,
-      isLead: isInitiator || isOrgAdmin,
+      isLead: isInitiator || evaluationWordsRunsIt,
       viewerParticipantId: participant?.id ?? null,
       participants: ground.participants as any,
-    })) {
+    }) || adminWithoutCheckInAccess) {
       const recordByParticipant = await theRecordAQuoteMayComeFromByParticipant(this.prisma as any, groundId).catch(() => new Map<string, string[]>());
-      const subjectRecord = recordByParticipant.get(participant!.id) ?? [];
+      const subjectRecord = participant?.id ? (recordByParticipant.get(participant.id) ?? []) : [];
       base.sharedPicture = deeplyWithoutColleaguesQuotesForTheSubject(base.sharedPicture, subjectRecord);
       base.theOpening = deeplyWithoutColleaguesQuotesForTheSubject(base.theOpening, subjectRecord);
       base.agreements = deeplyWithoutColleaguesQuotesForTheSubject(base.agreements, subjectRecord);

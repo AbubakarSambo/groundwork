@@ -19,7 +19,7 @@ import {
   CORRECTION_WINDOW_KEY, DEFAULT_CORRECTION_WINDOW_DAYS, MAX_CORRECTION_WINDOW_DAYS, isAWindow,
 } from '../conversation/the-window-for-correcting-a-record';
 import {
-  SUGGESTION_THRESHOLDS_KEY, DEFAULT_SUGGESTION_THRESHOLDS, isValidSuggestionThresholds,
+  SUGGESTION_THRESHOLDS_KEY, DEFAULT_SUGGESTION_THRESHOLDS, SUGGESTION_THRESHOLD_LABELS, isValidSuggestionThresholds,
   readSuggestionThresholds, type SuggestionThresholds,
 } from '../suggestions/thresholds';
 
@@ -163,12 +163,20 @@ export class AdminService implements OnApplicationBootstrap {
   }
 
   /**
-   * THE THRESHOLDS FOR A SUGGESTION (week 10, decision 33). Read the same defensive way suggestions
-   * itself reads them - a bad row means nothing set, never a guess.
+   * THE THRESHOLDS FOR A SUGGESTION (week 10, decision 33; decision 61). Read the same defensive
+   * way suggestions itself reads them - a bad row means nothing set, never a guess.
+   *
+   * `readSuggestionThresholds` never returns anything but an object, so `?? DEFAULT_...` never
+   * fired: a database with no row at all read back as `{}`, not the support default decision 61
+   * sets from day one. The migration `20260930110000_the_first_threshold_for_extra_support` writes
+   * the row so this should not happen in practice, but the read falls back properly too, only when
+   * the row itself is missing - a row that exists, even empty, is something an admin set and is
+   * read exactly as stored, never overwritten by a default here.
    */
-  async getSuggestionThresholds(): Promise<{ thresholds: SuggestionThresholds }> {
+  async getSuggestionThresholds(): Promise<{ thresholds: SuggestionThresholds; labels: typeof SUGGESTION_THRESHOLD_LABELS }> {
     const row = await this.prisma.platformSetting.findUnique({ where: { key: SUGGESTION_THRESHOLDS_KEY } }).catch(() => null);
-    return { thresholds: readSuggestionThresholds(row?.value) ?? DEFAULT_SUGGESTION_THRESHOLDS };
+    const thresholds = row ? readSuggestionThresholds(row.value) : DEFAULT_SUGGESTION_THRESHOLDS;
+    return { thresholds, labels: SUGGESTION_THRESHOLD_LABELS };
   }
 
   /**

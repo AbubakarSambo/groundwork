@@ -120,9 +120,19 @@ function sessionsOf(g: ListedCheckIn) {
   return (g.checkIns ?? []).filter((c) => !c.isSetup);
 }
 
+/**
+ * WHETHER A SESSION HAS OPENED FOR ITS PERSON (screens request 86). Its date has come, or somebody
+ * has already started it: a session that is under way or finished is open whatever its `availableFrom`
+ * still says, since that date only says when it was first offered. A started session with a later
+ * date was read as "not open yet", so Today dropped the session the person was in the middle of.
+ */
+function hasOpened(c: { status: string; availableFrom?: string | Date | null }, at: number): boolean {
+  return c.status === 'IN_PROGRESS' || c.status === 'COMPLETED' || (time(c.availableFrom) ?? 0) <= at;
+}
+
 /** The latest session that has opened. A session scheduled for later already has its rows. */
 function openSession(g: ListedCheckIn, now: number): number {
-  const open = sessionsOf(g).filter((c) => (time(c.availableFrom) ?? 0) <= now);
+  const open = sessionsOf(g).filter((c) => hasOpened(c, now));
   return open.length ? Math.max(...open.map((c) => c.sessionNumber)) : 0;
 }
 
@@ -178,7 +188,7 @@ export function whatNeedsYou(
     /* Your turn: the earliest open session of yours that is not done. Being two behind is one thing to do. */
     if (!over && me && !heldFromMyOwn) {
       const next = sessions
-        .filter((c) => c.participantId === me.id && c.status !== 'COMPLETED' && (time(c.availableFrom) ?? 0) <= at)
+        .filter((c) => c.participantId === me.id && c.status !== 'COMPLETED' && hasOpened(c, at))
         .sort((a, b) => a.sessionNumber - b.sessionNumber)[0];
       if (next) {
         const opened = time(next.availableFrom);
@@ -285,7 +295,8 @@ export function whatNeedsYou(
         .filter((c) => (me && c.participantId === me.id) || mayName)
         .filter((c) => {
           const t = time(c.availableFrom);
-          return t !== null && t > at && t <= at + AHEAD;
+          /* A session somebody has started has opened; it is not "coming up" (request 86). */
+          return t !== null && t > at && t <= at + AHEAD && c.status !== 'IN_PROGRESS' && c.status !== 'COMPLETED';
         })
         .sort((a, b) => (time(a.availableFrom) ?? 0) - (time(b.availableFrom) ?? 0))[0];
       if (future) {

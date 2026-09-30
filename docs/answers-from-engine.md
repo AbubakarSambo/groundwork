@@ -350,7 +350,7 @@ A reply is `{ "blocks": [...], "composedBy": "model" or "rules", "lane": "…" }
 
 - `{ "type": "text", "body": "…" }`: a paragraph. Show it as it is.
 - `{ "type": "proposal", "proposalId": "…", "summary": "…" }`: something said back that waits for the person. Show `summary` as it is, with two buttons, "Yes" and "No", which call `POST /ask/answer`. Nothing is saved until "Yes". Only the newest waiting proposal can be answered; an older one returns 409 with a plain sentence, which you show.
-- `{ "type": "next_step", "kind": "upload_a_document", "label": "Choose a file", "id": "<check-in id>", "context": { "groundId": "…", "label": "…" } }`: open the file picker and upload to that check-in with the upload route the Context and resources page already uses. The file arrives private to the person (`OWN`).
+- `{ "type": "next_step", "kind": "upload_a_document", "label": "Choose a file", "id": "<check-in id>", "context": { "groundId": "…", "label": "…" } }`: open the file picker and upload to that check-in with the upload route the Context and resources page already uses. The `id` is the check-in's own id, the same as `context.groundId`, and never the id of a session. It is offered to whoever runs the check-in chosen under "About", whether or not that person has a session of their own open, and to anyone else who has a session of their own open. The file arrives private to the person (`OWN`).
 
 **Three things said back are not yes or no.** For these, show the text and let the person type the answer; do not draw yes and no buttons, because `POST /ask/answer` refuses them:
 
@@ -404,3 +404,65 @@ The gap this closes: `DocumentsService.whatItHolds` reads a document and keeps t
 **What the screen should send after an upload finishes: nothing, automatically.** `whatItHolds` runs in the background after the file is stored (`readTheRestOfIt`), so `holds` is not on the row yet when the upload's own response comes back (`numbersWaiting` is always `0` at that moment, by design - see `documents.service.ts`, "AND THE TWO SLOW READS, AFTER THE ANSWER"). Sending "I've uploaded it" straight after the upload call returns will usually find nothing waiting and say nothing. The decision, so every screen does the same thing: **poll the document (or the Context page's own read) until `numbersWaiting` is greater than zero or a reasonable time has passed (the Context page already shows "still reading"), and only then send the message "I've uploaded it." to `POST /ask`.** That is the one sentence to standardise on; Ask Groundwork recognises it (and close variants - "I added it", "I attached the file") whichever of the two ways above triggered it.
 
 **Who this reaches.** The same rule as everywhere a document's numbers may be set (`docs/context-chat-inventory.md`, item 4): only the uploader's own numbers, and a number for somebody else only when the uploader is the lead - decided when the document is read, not here, so nothing about who may set whose number changes by asking through Ask Groundwork instead of the Context page.
+
+## 30 September, later: the suggestion threshold admin page should show a plain label, not the field name
+
+Decision 61 sets the first threshold, support, from the start: extra support is suggested once a person has kept fewer than half of their commitments (`keptBelow: 0.5`), with at least 6 settled, kept or not (`overPeriods: 6`). `GET /admin/suggestion-thresholds` now returns both the values and a `labels` object with the plain words for each field, for example:
+
+```json
+{
+  "thresholds": { "support": { "keptBelow": 0.5, "overPeriods": 6 } },
+  "labels": {
+    "keptBelow": "Suggest extra support when fewer than this share of commitments were kept",
+    "overPeriods": "At least this many settled commitments"
+  }
+}
+```
+
+`overPeriods` is the API field name the admin `PATCH` already uses, and it stays exactly as it is - it is not being renamed. The admin page should show `labels.overPeriods` ("At least this many settled commitments") beside that field's value instead of the field name itself, and the same for `labels.keptBelow`. The labels are the same for every verdict (keep, reward, support, plan, exit); there is one `labels` object, not one per verdict.
+
+## 30 September, later still: Ask Groundwork opened from inside a check-in knows which one (decision 65)
+
+The gap this closes: opening Ask Groundwork from inside a check-in's own Context and resources page or setup used to need the lead to type the word "context" (or one of a short list of close phrasings) before the setup conversation would start. Decision 65 removes that: the screen tells Ask Groundwork which check-in it was opened from, and the setup conversation opens straight away.
+
+**What to send.** `POST /ask`, with two extra things alongside the ordinary `message`:
+
+```json
+{ "message": "", "groundId": "g-tobi", "openedFrom": "check_in_setup" }
+```
+
+- `groundId` is the check-in's id - the same field the "About" picker already sends on an ordinary question.
+- `openedFrom: "check_in_setup"` is the one recognised value. Send it only when Ask Groundwork was opened from that check-in's own Context and resources page or setup, never on an ordinary question typed from the general Ask Groundwork panel.
+- `message` may be empty ("") for the very first message of that opening - Ask Groundwork reads that as "start", and opens on whatever the setup is still missing, the same way the old context chat opened with nothing typed. Every later message in the same conversation is typed normally, still sent with the same `groundId` and `openedFrom`.
+
+**What comes back.** The ordinary Ask Groundwork reply shape (`lane`, `composedBy`, `blocks`) - nothing new to parse. `lane` will be `"add_context"`. Draw it exactly as the setup conversation's replies are already drawn: text, and a "Yes"/"No" through `POST /ask/answer` when a block is a `proposal`.
+
+**Who this reaches.** Only somebody who may confirm setup on that check-in (decision 63): the lead who runs it, or, once the lead has left the organisation, an admin of it. Sent by anybody else - a participant, most often - `openedFrom` is quietly ignored and Ask Groundwork gives its ordinary answer to whatever was typed. There is no separate refusal to show: nothing about the reply says whether `openedFrom` was acted on, so do not build a screen that assumes it always was. If the screen only ever offers this opening from a place a participant cannot reach (the lead's own Context and resources page), this will not come up in practice.
+
+**Everything else about the setup conversation is unchanged**: it is not kept in the person's ordinary Ask Groundwork history (`GET /ask` will not show these turns), and a concrete change is said back and waits for a "Yes" before anything is saved, exactly as the table earlier in this document describes for the "context" keyword itself.
+
+## 30 September, evening: requests 82, 85, 86, 87, 88, 89 and 90
+
+Everything below is on the branch `wip/plain-reports`. The commit for each is in its row in `docs/requests-to-engine.md`.
+
+**Request 82 and decision 67: which part of "What keeps coming up" a pattern belongs in, and the coaching beside it.** Every pattern served on the board, on the check-in's own page and in a person's own record now carries three more fields.
+
+- `about` is `"the work"` or `"what is said against what happened"`. It is the same for every reader, because it says nothing about a person. Put a pattern under "About each person's work" or under "How what people say can run ahead of what happened" by it. The second part is exactly these nine patterns and no others, as Hafsah decided (decision 67): D1, D2, D3, D5, D8, B1, B2, B3 and E2. The list is fixed in `api/src/modules/patterns/what-a-pattern-is-about.ts`. No pattern was added, removed or changed.
+- `coachTowards` is what the lead coaches the person towards, the good version, in one sentence. It is for whoever runs the check-in only, and is `null` for the person it is about. Example, for B11: `"Coach them towards naming what the team itself can change when something goes wrong."` Where the person's role map pairs the behaviour with its good version, the role map's own words are used, for example in sales for K1: `"In sales and expansion, the good version is someone who spends the week in front of buyers, and does the admin around it."`
+- `oneStep` is one small, concrete step the person could take this week, in one sentence, also for the lead only and `null` for the person. Example, for B11: `"One step they could take this week is to name one thing in the team's own hands the next time a problem comes up."`
+
+Both sentences are fixed text in `api/src/modules/patterns/what-to-coach-towards.ts`, one pair for each pattern that has a plain name, so opening a board never calls a model. They carry no name; the page places them under the person the pattern is about, using `participantId`, as it already does. The lead's existing fields stay: the plain name is `heading`, the sentence about what happened is `whatHappened`, and the pattern's own question to open the conversation is `askThem`. The person reading their own pattern, a colleague and an admin who does not run the check-in never receive `coachTowards` or `oneStep`, and a colleague or such an admin receives no other person's pattern at all, as before (decisions 58 and 67). The screens decide nothing from any of this; it is wording for the lead to use in a conversation.
+
+I found no sentence "No patterns have repeated often enough to show yet." in the engine's board text. It is only drawn on the screen, so the change to it is yours.
+
+**Request 85: someone an admin did not let in.** Each row of `eachPerson` (and so of the lead's and the admin's "where each person is") now also carries `notLetIn` (true or false), `notLetInBy` (the decider's name, or null) and `notLetInAt`. Its `reason` is `"not let in"` (sorted last, and never shown as a label on the person) and `ask` is `null`. The row says `"Faraji Odhiambo was not let in by Juma Mwangi, so there is nobody to ask."` Nobody else receives `eachPerson`, so the decider's name goes only to whoever runs the check-in or an admin, the same rule as `GET /grounds/:id`.
+
+**Request 87: "You" in the middle of a sentence, and "1 sessions".** The sentence is now `"In session 1, you committed to call the client. The time you gave for it was on Wednesday 30 September."` `overTime` also carries `inSessions`: `"in 1 session"`, `"in 3 sessions"`, or `null` before any session. Use it for the heading: `"What people said they would do, in 1 session"`.
+
+**Request 88, wording.** `decisions[].owner` reads `"Nobody has been named to decide this."` where nobody is named. The "Blockers" tile of `quickRead` names the same blocker as `howItIsGoing.glance.inTheWay.oldest`. A participant's `howItIsGoing.latestSummary` opens `"People disagree on ..."` and not `"They disagree on ..."`. The `why` of a section Groundwork does not keep reads `"Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself."` for the helpdesk section and `"...such as payment records."` for a forecast.
+
+**Request 89: who said a record.** Each row of `workRecords[].rows[]` carries `saidBy` and `saidByParticipantId`. For a record a person said, `saidBy` is their first name, for example `"Baraka"`. Where this reader may not name them it is `"a colleague"` in lower case, to sit inside "In ...'s words", and `saidByParticipantId` is `null`. Both are `null` for a record the lead added.
+
+**Request 90: one form of number.** `howItIsGoing.latestSummary` counts in one form: `"Four of the six people have answered so far."` (words up to ten, figures after: `"12 of the 41 people have answered so far."`).
+
+**Request 86: a question, answered in `docs/requests-to-engine.md`.** A session that has been started is now read as open on Today, in the assistant and in a guest's answer, whatever `availableFrom` still says. `availableFrom` itself is unchanged; it only says when the session was first offered.

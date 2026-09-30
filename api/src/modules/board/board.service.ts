@@ -76,7 +76,8 @@ import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
-import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
+import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
+import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
@@ -92,7 +93,7 @@ import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-spli
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
-import { viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -149,6 +150,9 @@ export const inASentence = (phrase: string): string => {
   const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
   return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
 };
+
+/* What the Owner column says when nobody has been named, in a sentence (screens request 88). */
+const NOBODY_NAMED_TO_DECIDE = 'Nobody has been named to decide this.';
 
 @Injectable()
 export class BoardService {
@@ -260,7 +264,7 @@ export class BoardService {
             /* What the population rule reads: still holding a live invitation counts as expected. */
             invitedAt: true, inviteTokenExpiresAt: true,
             detectedFunction: true, detectedFunctionConfidence: true,
-            user: { select: { firstName: true, lastName: true } },
+            user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
           },
         },
         report: true,
@@ -1046,6 +1050,40 @@ export class BoardService {
           .filter((e) => hasANumberADateOrADocument({ text: cleanText(e.text ?? ''), anchoredDocumentId: e.anchoredDocumentId, documentSays: e.documentSays }))
           .map((e) => e.checkInId),
       );
+      /*
+       * WHO THE ORGANISATION DID NOT LET IN (screens request 85). Somebody an admin declined at the
+       * door cannot be asked to check in, so the row says what happened rather than asking the lead
+       * to chase them. Read the way the People page and the check-in's own roster read it: this
+       * organisation's latest request for each waiting person decides it. Only rows for whoever
+       * runs the check-in or an admin are built at all, so the decider's name goes no wider than
+       * the same rule in GET /grounds/:id.
+       */
+      const notLetInByUser = new Map<string, { by: string | null; at: Date | null }>();
+      const waitingUserIds = ground.participants
+        .filter((p: any) => !!p.userId && p.user?.awaitingOrgApproval)
+        .map((p: any) => p.userId as string);
+      if (waitingUserIds.length && (ground as any).organizationId) {
+        const requests: any[] = (await (this.prisma as any).membershipRequest?.findMany?.({
+          where: { organizationId: (ground as any).organizationId, userId: { in: waitingUserIds } },
+          orderBy: { createdAt: 'desc' },
+          select: { userId: true, status: true, decidedByUserId: true, decidedAt: true },
+        })) ?? [];
+        const seen = new Set<string>();
+        const deciderIds = new Set<string>();
+        const declined: any[] = [];
+        for (const r of requests) {
+          if (seen.has(r.userId)) continue;
+          seen.add(r.userId);
+          if (r.status === 'DECLINED') { declined.push(r); if (r.decidedByUserId) deciderIds.add(r.decidedByUserId); }
+        }
+        const deciders: any[] = deciderIds.size
+          ? (await (this.prisma as any).user.findMany({ where: { id: { in: [...deciderIds] } }, select: { id: true, firstName: true, lastName: true } })) ?? []
+          : [];
+        const deciderName = new Map(deciders.map((d) => [d.id, [d.firstName, d.lastName].filter(Boolean).join(' ').trim() || null]));
+        for (const r of declined) {
+          notLetInByUser.set(r.userId, { by: deciderName.get(r.decidedByUserId ?? '') ?? null, at: r.decidedAt ?? null });
+        }
+      }
       out.eachPerson = whereEachPersonIs(
         /*
          * AND THE MANAGER IS NOT IN THEIR OWN LIST.
@@ -1081,6 +1119,7 @@ export class BoardService {
               [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim()
               || ((p as any).nameGiven ?? '').trim()
             ),
+            notLetIn: p.userId && notLetInByUser.has(p.userId) ? { by: notLetInByUser.get(p.userId)!.by, at: notLetInByUser.get(p.userId)!.at } : undefined,
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
             answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,
@@ -1315,6 +1354,8 @@ export class BoardService {
           theWorry: held.theFirstWorry,
         });
       }
+      /* The same first blocker as the top line, from the one place that picks it (request 88). */
+      out.quickRead = theBlockersTileNamesThis(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.oldest ?? null);
     }
 
     // Loaded once and shared. It was fetched twice, running every one of these
@@ -1419,8 +1460,11 @@ export class BoardService {
      * and then only to the lead, whose leading it is about, and only once it has been seen in three
      * periods (decision 8), the setup gap included. Nobody else reads it: it has no answer box and no
      * clock of its own, so decision 39 (the person answers first) cannot be kept for anyone else.
+     * Access follows decision 58's rule, the same as any other pattern (runsItForAPattern): the lead,
+     * or an admin who set the check-in up for them - never a participant, never an admin without that
+     * access, even one who can otherwise read the rest of this board (decision 64).
      */
-    if (has('contribution') && PATTERNS_ARE_SERVED && isInitiator) {
+    if (has('contribution') && PATTERNS_ARE_SERVED && runsItForAPattern(ground as any, requestingUserId)) {
       // Only meaningful where someone actually manages someone: needs a manager
       // and at least one report, both with accounts on record.
       // The forbidden-name list is built from THIS ground's participants. See
@@ -1571,9 +1615,23 @@ export class BoardService {
         : [];
       const sourceIds = (items as any[]).map((i) => i.sourceEntryId).filter(Boolean);
       const sources = sourceIds.length
-        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true } }) as Promise<any[]>).catch(() => [] as any[])
+        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true, participantId: true } }) as Promise<any[]>).catch(() => [] as any[])
         : [];
       const lineOf = new Map((sources as any[]).map((l) => [l.id, l]));
+      /*
+       * WHO SAID THE LINE A RECORD CAME FROM (screens request 89), under the rule every other name on
+       * the board follows: a person this reader may not name is "a colleague" and their id is not
+       * served. The first name only, the way the board says a person in a sentence.
+       */
+      const whoSaidIt = (pid: string | null | undefined): { saidBy: string | null; saidByParticipantId: string | null } => {
+        const p = pid ? ground.participants.find((x: any) => x.id === pid) : null;
+        if (!p) return { saidBy: null, saidByParticipantId: null };
+        /* In lower case: the screen puts it inside "In ...'s words", so it is not the start of a sentence. */
+        const aColleagueMidSentence = noName.get(p.id) ?? 'a colleague';
+        if (hiddenFromThisReader(p.id)) return { saidBy: aColleagueMidSentence, saidByParticipantId: null };
+        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
+        return full ? { saidBy: theShortNameOf(full), saidByParticipantId: p.id } : { saidBy: aColleagueMidSentence, saidByParticipantId: p.id };
+      };
       const rows: AServedRecord[] = [];
       for (const i of items as any[]) {
         const line = i.sourceEntryId ? lineOf.get(i.sourceEntryId) : null;
@@ -1589,6 +1647,7 @@ export class BoardService {
           fields: plainFields(i.fields),
           from: i.sourceEntryId ? 'said' : 'lead',
           ...(line ? { said: cleanText(line.text) } : {}),
+          ...(line ? whoSaidIt(line.participantId) : { saidBy: null, saidByParticipantId: null }),
         });
       }
       out.workRecords = theRecordSections(kind, (ground as any).workStages, rows);
@@ -1600,6 +1659,19 @@ export class BoardService {
      * whole answer is one paragraph, and a section added later is walled by being added to it
      * rather than by whoever wrote it remembering.
      */
+    /*
+     * CONTRIBUTION AND COVERAGE ARE READ IN FULL ONLY BY WHOEVER RUNS THE CHECK-IN (screens request
+     * 88, decision 58). Everybody else, a participant or an admin who only reads, gets only their own
+     * row, and nothing when they have none, whether or not people see each other on this check-in.
+     * Decision 5 lets an admin read the board; decision 58 narrowed a pattern to the lead and the admin
+     * who set the check-in up, and these two sections name and describe each person the same way.
+     * (Narrowed the same way pending Hafsah's confirmation.)
+     */
+    if (!runsItForAPattern(ground as any, requestingUserId)) {
+      const onlyMine = (rows: any) => (Array.isArray(rows) ? rows.filter((r: any) => !!r.participantId && r.participantId === (me?.id ?? null)) : []);
+      if (out.contribution) out.contribution = onlyMine(out.contribution);
+      if (out.coverage) out.coverage = { ...(out.coverage as any), reads: onlyMine((out.coverage as any).reads) };
+    }
     if (whoMaySee.peersHidden) {
       out.contribution = onlyWhatThisReaderMaySee(out.contribution as any, whoMaySee);
       /*
@@ -1704,17 +1776,24 @@ export class BoardService {
       /*
        * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being
        * reviewed reads the facts on this board, never a colleague's exact words - those stay with
-       * the manager (an admin reads as the manager does). See
+       * the manager (an admin WITH access to this check-in reads as the manager does). See
        * colleagues-exact-words-stay-with-the-manager.ts. A colleague giving a view, and every
        * reader on every other kind of check-in, reads `whoOwnsWhat` and `divergence` exactly as
        * before - this is a no-op for them.
+       *
+       * DECISION 60 POINT 4, 30 September 2026: an admin WITHOUT access to this check-in reads no
+       * colleague's exact words here either - the SAME access rule decision 58 gave patterns
+       * (`runsItForAPattern`), never `runsThisGround`, which also counts every admin of the
+       * organisation (`adminHere`). `isLead` here is deliberately narrower than `runsThisGround`.
        */
+      const evaluationWordsRunsIt = runsItForAPattern(ground as any, requestingUserId);
+      const adminWithoutCheckInAccess = adminHere && !evaluationWordsRunsIt && isEvaluationCheckIn(ground.scenario);
       if (viewerIsTheSubjectOfAnEvaluationCheckIn({
         scenario: ground.scenario,
-        isLead: runsThisGround,
+        isLead: isInitiator || evaluationWordsRunsIt,
         viewerParticipantId: me?.id ?? null,
         participants: ground.participants as any,
-      })) {
+      }) || adminWithoutCheckInAccess) {
         if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = whoOwnsWhatForTheSubject(walled.whoOwnsWhat, me?.id ?? null);
         if (Array.isArray(walled.divergence?.items)) {
           walled.divergence = {
@@ -1779,7 +1858,7 @@ export class BoardService {
       .map((d) => ({
         question: `Somebody is waiting on ${inASentence(d.what)}, so it needs deciding.`,
         why: 'A hard blocker. Someone cannot move until this is decided.',
-        owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? 'Unassigned') : (d.onLabel ?? 'Unassigned'),
+        owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? NOBODY_NAMED_TO_DECIDE) : (d.onLabel ?? NOBODY_NAMED_TO_DECIDE),
         source: 'blocker' as const,
       }));
 

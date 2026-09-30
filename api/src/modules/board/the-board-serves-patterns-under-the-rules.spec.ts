@@ -218,6 +218,8 @@ describe('with the switch on, every reader reads patterns under the rules', () =
       whoSeesIt: 'You are seeing this first. Tunde will see it too, with anything you say about it. Nothing is decided from it.',
       /* Decision 57, item 2: never shown to the person it is about, however the lead marked it. */
       leadMark: null, talkedAbout: false, secondReadNote: null,
+      /* Decision 67: the coaching is the lead's alone, so the person reads none of it. */
+      about: 'what is said against what happened', coachTowards: null, oneStep: null,
     }]);
     /* And being shown it starts the clock on when Tunde may read it. */
     expect(served.writes.some((w) => w.where.id.in.includes('pd2') && w.data.shownToPersonAt)).toBe(true);
@@ -237,6 +239,10 @@ describe('with the switch on, every reader reads patterns under the rules', () =
       whoSeesIt: 'Ngozi saw this first and said what is behind it.',
       /* Decision 57, item 2: not yet marked. */
       leadMark: null, talkedAbout: false, secondReadNote: null,
+      /* Decision 67: what the lead reads beside every pattern, from fixed text. */
+      about: 'the work',
+      coachTowards: 'Coach them towards naming what the team itself can change when something goes wrong.',
+      oneStep: 'One step they could take this week is to name one thing in the team\'s own hands the next time a problem comes up.',
     }]);
     /* The lead reading is never the person being shown it. */
     expect(served.writes).toEqual([]);

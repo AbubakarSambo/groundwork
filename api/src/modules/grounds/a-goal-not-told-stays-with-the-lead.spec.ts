@@ -26,9 +26,9 @@ const LEADS_NOTE = 'I need to talk to Tobi about taking over the scheduling.';
 const TOLD = 'Lead the client conversations fully.';
 
 const people = () => [
-  { id: 'p-wanjiru', userId: WANJIRU, email: 'w@x.test', partyType: PartyType.INITIATOR, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly: true, invitedAt: new Date(), notifiedAt: new Date(), soloArtifactAt: null, soloArtifactShared: false, createdAt: new Date('2026-09-01'), user: { firstName: 'Wanjiru', lastName: 'Mwangi' } },
-  { id: 'p-tobi', userId: TOBI, email: 't@x.test', partyType: PartyType.PARTICIPANT, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly: false, invitedAt: new Date(), notifiedAt: new Date(), soloArtifactAt: null, soloArtifactShared: false, createdAt: new Date('2026-09-02'), user: { firstName: 'Tobi', lastName: 'Adewale' } },
-  { id: 'p-baraka', userId: BARAKA, email: 'b@x.test', partyType: PartyType.PARTICIPANT, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly: false, invitedAt: new Date(), notifiedAt: new Date(), soloArtifactAt: null, soloArtifactShared: false, createdAt: new Date('2026-09-03'), user: { firstName: 'Baraka', lastName: 'Kip' } },
+  { id: 'p-wanjiru', userId: WANJIRU, email: 'w@x.test', partyType: PartyType.INITIATOR, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly: true, invitedAt: new Date('2026-09-01T09:00:00Z'), notifiedAt: new Date('2026-09-01T09:05:00Z'), soloArtifactAt: null, soloArtifactShared: false, createdAt: new Date('2026-09-01'), user: { firstName: 'Wanjiru', lastName: 'Mwangi' } },
+  { id: 'p-tobi', userId: TOBI, email: 't@x.test', partyType: PartyType.PARTICIPANT, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly: false, invitedAt: new Date('2026-09-02T09:00:00Z'), notifiedAt: new Date('2026-09-02T09:05:00Z'), soloArtifactAt: null, soloArtifactShared: false, createdAt: new Date('2026-09-02'), user: { firstName: 'Tobi', lastName: 'Adewale' } },
+  { id: 'p-baraka', userId: BARAKA, email: 'b@x.test', partyType: PartyType.PARTICIPANT, roleAsDescribed: null, nameGiven: null, organisationGiven: null, managingOnly: false, invitedAt: new Date('2026-09-03T09:00:00Z'), notifiedAt: new Date('2026-09-03T09:05:00Z'), soloArtifactAt: null, soloArtifactShared: false, createdAt: new Date('2026-09-03'), user: { firstName: 'Baraka', lastName: 'Kip' } },
 ];
 /* Within the week, so the "always hidden" assertions below hold on any day this suite runs
    (decision 56, item 4 makes a NOT_TOLD goal start showing, plainly, after a week - covered in its
@@ -43,10 +43,13 @@ const PICTURE = `Tobi Adewale has started well. Wanjiru Mwangi expects Tobi Adew
 
 function contextFor(userId: string) {
   const ground: any = {
-    id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, createdAt: new Date(), timelineDays: null,
+    id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, createdAt: new Date('2026-09-20T09:00:00Z'), timelineDays: null,
     restrictExternalVisibility: true, peersVisibleToEachOther: true, whoSeesTargets: 'EVERYBODY',
     participants: people(), checkIns: [], resolution: null, patternDetections: [], objectives: [],
-    report: { id: 'r1', releasedAt: new Date(), sharedPicture: PICTURE, createdAt: new Date() },
+    /* Fixed, not wall-clock: a live new Date() here has previously been rendered somewhere in the
+       page text with its minute intact, and a run in minute :40 made unrelated assertions about the
+       number 40 pass or fail depending only on when the suite happened to run. */
+    report: { id: 'r1', releasedAt: new Date('2026-09-23T17:00:00Z'), sharedPicture: PICTURE, createdAt: new Date('2026-09-20T09:00:00Z') },
   };
   const prisma: any = {
     /* The You board reads the person's own patterns (29 September); none here. */
@@ -251,10 +254,15 @@ describe('a goal not told for a week (decision 56, item 4), on the Context page'
 
   function contextForWithOldGoal(userId: string) {
     const ground: any = {
-      id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, createdAt: new Date(), timelineDays: null,
+      /* Fixed, not wall-clock: see the comment on contextFor's own ground above - a live new Date()
+         rendered into the page text has previously carried its own minute into an unrelated
+         assertion about the number 40, and failed only when the suite happened to run in minute
+         :40. EIGHT_DAYS_AGO stays relative to Date.now(), which is what aWeekHasPassedSinceNotTold
+         is actually testing here; nothing else needs to move with the clock. */
+      id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, createdAt: new Date('2026-09-20T09:00:00Z'), timelineDays: null,
       restrictExternalVisibility: true, peersVisibleToEachOther: true, whoSeesTargets: 'EVERYBODY',
       participants: people(), checkIns: [], resolution: null, patternDetections: [], objectives: [],
-      report: { id: 'r1', releasedAt: new Date(), sharedPicture: '', createdAt: new Date() },
+      report: { id: 'r1', releasedAt: new Date('2026-09-23T17:00:00Z'), sharedPicture: '', createdAt: new Date('2026-09-20T09:00:00Z') },
     };
     const prisma: any = {
       groundBaseline: { findFirst: jest.fn(async () => null) },

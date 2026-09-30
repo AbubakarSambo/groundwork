@@ -1266,6 +1266,9 @@ model GroundBaseline {
   conditions       Json?
   // Why it changed, if they said. Never inferred, never invented.
   changeReason     String? @map("change_reason")
+  /// DECISION 63, 30 September 2026: set only when stating this version was done by an admin
+  /// standing in because the lead had left the organisation. See who-may-confirm-setup.ts.
+  confirmedByAdminNote String? @map("confirmed_by_admin_note") @db.Text
 
   // When this version took effect. Everything before it belongs to the last one.
   effectiveFrom DateTime @default(now()) @map("effective_from")
@@ -5137,6 +5140,9 @@ model LeadContextNote {
   /// See ContextNoteAudience. EVERYONE is always about the whole check-in - a shared note about one
   /// named person would be a public judgement of them, which is the one thing this product refuses.
   audience      ContextNoteAudience @default(LEAD_ONLY)
+  /// DECISION 63, 30 September 2026: set only when adding or sharing this note was done by an admin
+  /// standing in because the lead had left the organisation. See who-may-confirm-setup.ts.
+  confirmedByAdminNote String? @map("confirmed_by_admin_note") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -5216,6 +5222,11 @@ model GroundContextItem {
   /// When the lead confirmed `exactQuestion`. Null means it is not asked - never, by anybody - and
   /// the lead is shown it as waiting for them. Every line written before 28 September starts here.
   questionConfirmedAt DateTime? @map("question_confirmed_at")
+  /// DECISION 63, 30 September 2026: set only when this line, or this question's confirming or
+  /// declining, was done by an admin standing in because the lead had left the organisation - never
+  /// by the lead themselves. The plain sentence people on the check-in read, for example "Ngozi
+  /// Bello confirmed this because Tunde Ade has left the organisation." See who-may-confirm-setup.ts.
+  confirmedByAdminNote String? @map("confirmed_by_admin_note") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

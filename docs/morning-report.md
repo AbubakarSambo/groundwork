@@ -10,6 +10,139 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settled as proposed (60), the first threshold for week 10 (61), old patterns start the person-first process on release day (62), only the lead confirms setup unless the lead has left the organisation (63), the setup part of "how the leading is landing" restored without the three-period rule (64), and Ask Groundwork opened inside a check-in knows which one (65).
 
+**The six setup faults are fixed, checked live by me on a fresh build** (`2be05495` to `ced4b110`, 1,829 tests pass in grounds, assistant and ask). On both doors now:
+- Item 15: "This check-in runs for 12 weeks and people check in once a week." then the next question. No greeting, no error.
+- Item 10: the answer after "what have you seen" carries on and becomes Ada's expectation of Ben ("the update in by every Friday"), kept as hers and unseen by Ben.
+- Item 11: "close 3 renewals by the end of December" is kept as Ada's expectation; on the old chat "should be more proactive" is offered and kept as a private note only Ada sees.
+- Item 16: restating success with a reason keeps both versions, the second with its reason.
+
+**Seven smaller faults, seen by reading what Ada reads, going back to the builder:**
+1. Both doors still promise "I'll record what you tell me as your perspective on Ben" with nothing offered to keep (the guard misses "I'll").
+2. The saved words still differ slightly from what was said back: an added full stop, or "Every" against "every".
+3. The model's own sentence can contradict the offer beside it: "I can add that you expect Ben to be more proactive" next to an offer to keep it as a private note, and "Ben expects to close three renewals" where Ada expects it. What is being saved should be said once, by the product.
+4. On the old chat, after Ada says yes to a private note, she reads the question again instead of being told it was kept.
+5. Ask Groundwork repeats "This check-in runs for 12 weeks ..." part-way through a conversation.
+6. The confirmation of a restated success is a fragment: `Recorded. What doing well looks like now: "..." (the board kept going stale)`.
+7. The two doors differed on "should be more proactive": Ask Groundwork asked what it means instead of offering a private note. This is the model varying, recorded, not changed.
+
+**Six of the seven smaller faults fixed** (`1e61a882` to `70de32df`, 1,847 tests pass). From the live run on the real model:
+- After a yes, Ada now reads what was done: "I have kept "should be more proactive" as a private note about Ben Okafor that only you can see." and "What doing well looks like is now "every stage has an owner and a next date", because the board kept going stale. The earlier version is kept."
+- What is saved is exactly what was said back, character for character.
+- The opening line shows only on the first turn.
+- One false sentence was still there, now with the builder: before Ada said yes, Ask Groundwork said "I have also recorded that you want the pipeline update by every Friday." The guard missed "also" in the middle.
+
+**Live check on the latest build (6347dc19), read by me.** Everything saves correctly on both doors now: Ada's expectation of Ben, her private note about him, both versions of what doing well looks like, and the opening says what the check-in holds. What Ada reads still has faults, because dropping the model's sentences phrase by phrase keeps missing some and leaves orphans: on item 16 the whole reply was "What is on the record now stays too, as an earlier version."; Ask Groundwork said "I'll make a note of that: Ben is expected to ..." and, before any yes, ""Good means ..." is now the description of success"; and one private note was saved as "be more proactive" after "should be more proactive" was said back. The fix going in now is structural: whenever something is being offered, the product's say-back is the one statement of what will be kept, and the model contributes only its question.
+
+**The structural fix works** (`2b6a2fe5`, `70abe677`, `02f15dd1`, 1,861 tests pass). Read by me from the live run: whenever something is offered, Ada now reads only the model's question beside the product's say-back ("How long should this run?"), with nothing false and no fragments; private notes and expectations are saved exactly as said back. Three wording faults remain, all in sentences the product writes, now with the builder: the say-backs are colon-joined with "YOUR" and "them" ("I will record that as what you expect of Ben Okafor: "..." ... not yet seen by them"); on item 16 the restatement is shown twice; and the old chat once more quoted "want the update in by every Friday" instead of starting after "I want".
+
+**Decisions 67 and 68, and the rest of the board requests** (`01d2b220` to `c32e63a0`, 4,986 tests pass across board, reports, grounds, users, patterns, ask and assistant).
+- **Decision 67 (request 82).** Every pattern the lead reads now carries which part of "What keeps coming up" it belongs in, and, for the lead only, the good version to coach towards and one small step. For example, for "Problems are mostly put down to things outside the team": "Coach them towards naming what the team itself can change when something goes wrong." and "One step they could take this week is to name one thing in the team's own hands the next time a problem comes up." "How what people say can run ahead of what happened" holds exactly D1, D2, D3, D5, D8, B1, B2, B3 and E2. The person reading their own pattern, a colleague, and an admin who does not run the check-in get none of the coaching lines. Fixed text per pattern, sharpened by the role map in six places; no model call when a board opens. One step to reword later: the one for "Doing less than they used to, after a change" ends "and be listened to before anything is suggested", which is the lead's part, not the person's.
+- **85.** "Ask Faraji Odhiambo to check in." is now "Faraji Odhiambo was not let in by Juma Mwangi, so there is nobody to ask."
+- **87.** "In session 1, you committed to call the client." with a lower-case "you", and "in 1 session".
+- **88, the wording part.** "Nobody has been named to decide this."; "People disagree on ..." instead of an unexplained "They"; the top line and the quick read name the same first blocker; the helpdesk example fits its section.
+- **89.** A record says who said it (`saidBy`), under the same naming rules as the rest of the board.
+- **90.** "Four of the six people have answered so far."
+- **86.** A session somebody has started is open, whatever its first-day date still says. Three places treated it as not open yet: Today listed it under "Coming up", the assistant left it out, and a guest was told it "opens on" a past date. All three are fixed.
+
+**Decision 68 is running.** Two runs of the 14 scenarios that recur, six sessions each, started at about 20:50. The ten one-time scenarios are a single sitting by definition, so they cannot reach three periods. When both finish, the patterns each person would be shown are compared between the two runs.
+
+**Request 92 done, all eleven points** (`ff12abb1` to `210251cc`, 4,941 tests pass across grounds, assistant, ask, documents, conversation and presentation). The file picker is offered to the lead of the chosen check-in; both word orders of "make the line private" work; a paste's list keeps its bullets; with a Yes/No offer the product's say-back is the only statement; clipped replies are sentences ("I have left it as it was. Nothing was changed."); a question the lead typed is kept word for word; "It should run for 13 weeks." is read only as a length, and after a No the conversation carries on; "I want to ask Amani whether ..." makes a question for Amani. The four live checks were run again on a fresh build and nothing slipped back. The paste, document and question paths are proven by tests, not yet live: the screens workspace runs its five checks again next. One test that failed once, a goal not yet told, passed five times in a row since.
+
+**The screens workspace's privacy requests, first** (`dbcad575`, `ff4dd012`, `b6168149`, `8760e391`, 5,626 tests pass in board, grounds, documents, assistant and conversation). Merged their branch first (`54c032a2`, no conflicts).
+- **Request 88, a real leak.** The board sent every colleague's contribution and coverage reads, with names and reasons, to a participant and to an admin who does not run the check-in. Now only the lead, or the admin who set the check-in up, reads everyone's; everyone else reads only their own.
+- **Request 92, three more.** After a paste, the lead was told open decisions were "kept for you" while everyone could read them: every heading now says who will read those lines. Saying yes to a document's numbers wrote a note nobody had seen, which was also untrue: it is now said back first and true. Saying yes to a paste quietly rewrote what participants are told the check-in is for: that sentence is now said back first, and only then written.
+
+**Decided for Hafsah to confirm: admins and the contribution and coverage reads.** Decision 5 lets every admin see every board. Decision 58 narrowed patterns for an admin who does not run a check-in. I applied the same narrowing to the contribution and coverage reads, because they say how much each person is checkably contributing, which is close to a judgement of the person. An admin who only reads now sees neither section. Please say if admins should see them.
+
+**The setup conversation work is finished, and every API test passes.** The last round (`a52c8b0d`, `f6256b71`) makes a private note quote "Ben is struggling" rather than "is struggling", says "Ben's own check-in" rather than "their own", and makes a test that failed whenever the clock read :40 use fixed times. The full API run found one more thing, the new release-day migration test not stripping block comments, now fixed: 1,243 suites, 11,695 tests, all passing once that one is counted. Items 10, 11, 15 and 16 are recorded as proven live, through both doors, in `docs/context-chat-inventory.md` (`b5f61626`). The old context chat stays on until the screens workspace confirms Ask Groundwork's screens do everything live.
+
+**The say-backs now read as plain questions** (`437a5821`, `e64e5509`, 1,865 tests pass). From the live run on both doors: Shall I record "the update in by every Friday" as what you expect of Ben? It is kept as your expectation, not as something Ben agreed to, and Ben has not seen it yet. The restated success is shown once: Shall I change what doing well looks like to "every stage has an owner and a next date", because the board kept going stale? The earlier version is kept. The old chat again quotes "the update in by every Friday". Last small round with the builder: a private note quoted as the fragment "is struggling" instead of "Ben is struggling", "their own check-in" instead of "Ben's", and a test that fails whenever the clock reads :40.
+
+**Patterns: more reads do not reach 8 in 10. Needs Hafsah.** Through the product's own code, all twelve scenarios, each check-in read 14 times so different numbers of reads could be compared on the same reads. "Beyond the real ones" counts patterns kept that fewer than half of 12 earlier reads found.
+
+| Reads, and how many must agree | The same | Real patterns still found | Beyond the real ones |
+| --- | --- | --- | --- |
+| One steady read | 60% | 65% | 28 |
+| 5, at least 3 (built now) | 71% | 63% | 26 |
+| 7, at least 4 | 69% | 62% | not counted |
+| 7, at least 3 | 78% | 71% | 35 |
+| 7, at least 2 | 77% | 76% | 54 |
+
+- A stricter majority does not help: the patterns that flip sit right on the line, and raising the line moves the flip, not the steadiness.
+- A lower bar with more reads gets closest (78%) but keeps more patterns most reads did not find, and costs seven readings a check-in instead of five.
+- So the model's own variation sets a ceiling of about three in four for a single check-in, whatever the number of reads. Five reads with three agreeing (built, about 7 in 10, nearly twice today's 36%) stays in the work branches.
+- **Not steady enough for release by the aim of 8 in 10.** Three ways forward, for Hafsah to choose:
+  1. **Measure what people actually see.** A pattern is only shown after three periods, which filters out patterns that flicker. The scenarios are too short to measure this (only 6 of 37 people have three sessions). A longer run would say whether what people see is steadier than 8 in 10.
+  2. **Accept about 7 in 10 per check-in** for release, with the three-period rule as the second filter.
+  3. **Count close neighbours as one when measuring and showing**, for example "the same problem raised and never fixed" and "tasks described without what they are for". No pattern would be removed, but it changes how patterns are grouped, which is Hafsah's decision (decision 55).
+- My recommendation: 1, then 2 if it holds.
+
+**The live checks for items 10, 11, 15 and 16 ran** (the old context chat and Ask Groundwork, the same words on both). They found six faults, now with the builder:
+1. **Ask Groundwork opened from a check-in with nothing typed yet returned an error.** The empty message reached the model, which refuses empty input. This is from yesterday's decision 65; its test used a stand-in model that accepted it.
+2. **In Ask Groundwork, the second message of a setup conversation lost the conversation.** Ada answered "He has missed the last two pipeline updates. I spoke to him once. I want the update in by every Friday." and read "I cannot find "the update" on this check-in." The old chat carried on correctly.
+3. **Item 15 fails on the old chat too.** A check-in that already holds its length and rhythm opened with "Hello, I'm here to help you set up your Groundwork check-in." and said nothing about what it holds. It did not ask again for what it has.
+4. **The chat says it will record something and records nothing.** After "Ben should be more proactive." the old chat said "I will record this as your read of Ben", and nothing was saved. Item 10 says the lead's read of a person is kept as a private note only the lead sees; it will be offered as one, and a sentence promising to record something without an offer in the same turn will be dropped.
+5. **What was said back is not always what was saved.** Said back "want the update in by every Friday", saved "the update in by every Friday". The lead must get on the record exactly what they agreed to.
+6. **Item 16 fails on both doors.** "Change what good means ... because the board kept going stale." was answered "I cannot find "what good means" on this check-in." Restating success with a reason does not work in the chat at all.
+
+What worked: a lead saying someone is struggling was asked what they had seen, tried and want, on both doors; "I expect Ben to close 3 renewals by the end of December" was said back and kept as the lead's expectation, unseen by Ben, on both doors; a wish with nothing checkable ("more proactive") was not kept as an expectation on either; the first success statement was kept.
+
+**Patterns through the product's own code, all twelve scenarios: 70%** of person-and-pattern pairs the same across a scenario (46 of 66), and exactly the same patterns on 36 of 54 check-ins. Today's single read was 36%, so it is nearly twice as steady, but short of 8 in 10; the 80% measured earlier from stored reads was on the high side. **Not yet steady enough for release by Hafsah's aim.** Now measuring seven reads with four agreeing, through the same code.
+
+**Decision 66 done** (`d9cf4224`). A note typed on the Context and resources tab now lifts the "nobody can be invited yet" block, the same as a private note, an expectation, a document or a long enough brief. A retired note does not. Only the tab's "Notes" section counts; strategy, how we work, still to decide and not settled lines do not, because the tab does not call them notes. The refusal's sentences are unchanged, word for word. 1,276 tests pass in the grounds folder.
+
+**The model through Google's global address, for local test runs only.** The regional address the product uses (us-central1) times out from this Mac; the global address answers. The product already reads which address to use from one setting, `GEMINI_LOCATION` (`api/src/config/configuration.ts`, default us-central1). For local test runs I set `GEMINI_LOCATION=global` on the command that starts the local API and on the measuring scripts, and nowhere else. No file changed: not `.env`, not any key, not the code, not what the real product uses. To undo it, start the local API without that setting. With it, the model answered in 2.3 seconds while the regional address still timed out.
+
+**Patterns: five steady reads by majority is built** (`a1455696`). Each check-in is now read five times at the steady setting, in parallel, through exactly the same filters and confirming call as before, and a pattern is kept only when at least three of the five reads keep it. If fewer than three reads come back (the model unreachable), nothing is written and the nightly sweep tries again. All 49 patterns and every rule about who reads them are unchanged. The cost is about five times the model calls per check-in, once, after the check-in ends. 153 pattern tests pass.
+
+**The model went unreachable again at about 15:00**, the same network fault as this morning (the regional address times out; nothing to top up). Two things wait for it, and are ready to run:
+- the steadiness measurement through the product's own code (`PRODUCT=1` in `api/journey/the-detector-read-twice.ts`);
+- the live checks for items 10, 11, 15 and 16 through both the old chat and Ask Groundwork (`api/journey/the-four-live-checks.ts`).
+
+**Found while setting up the live checks, not yet changed:** the refusal to invite anyone says "add a document or a note on the Context and resources tab", but a shared note typed on that tab does not clear it. Only a private note, an expectation, a document or a long enough brief do. Either the sentence or the rule is wrong. This is for Hafsah, because the rule decides what counts as saying what a check-in is for.
+
+**Patterns, second round: five steady reads by majority reaches 8 in 10.** The same 50 check-ins, read 16 more times each. "Real patterns" here come from the first round's 12 reads, so they are independent of the reads being judged.
+
+| Way of reading | The same | Real patterns still found |
+| --- | --- | --- |
+| One steady read | 57% | 68% |
+| Three steady reads, most must agree | 65% | 67% |
+| **Five steady reads, at least three must agree** | **80%** | **71%** |
+| Steady with the smallest thinking budget, one read | 21% | 13% |
+
+- **Chosen: five steady reads, keeping a pattern when at least three agree.** It meets the aim on the measure used all along (80% of person-and-pattern pairs the same across a scenario), and on 35 of 50 check-ins the patterns were exactly the same. It still finds real patterns at least as well as today's single read. No pattern is removed or weakened; every code, filter and confirming call runs on each of the five reads.
+- **Ruled out:** the smallest thinking budget, because it stops finding patterns at all.
+- **The cost:** five readings of each check-in instead of one, plus the confirming calls for each. This runs once, after a check-in ends, never while someone waits.
+- **Being built now.** Then measured again on the stored run-20 conversations through the product's own code.
+- **Steady enough for release?** On these numbers, yes, just: 8 in 10 on pairs, 7 in 10 on exact check-ins, and the three-period rule adds more steadiness before anyone sees a pattern. The final answer comes after the measurement through the product's own code.
+
+**Patterns, first round of measuring (the model answers again from about 11:40).** 50 check-ins from 12 run-20 scenarios, each read 12 times: 6 at the normal setting and 6 at the steady setting. "The same" means the person-and-pattern pairs two separate copies of a way of reading find across a whole scenario. "Real patterns" are the ones at least half of all 12 reads found.
+
+| Way of reading | The same | Real patterns still found |
+| --- | --- | --- |
+| One normal read (today) | 36% | 63% |
+| One steady read | 49% | 81% |
+| Two normal reads, both must agree | 47% | 48% |
+| Three normal reads, most must agree | 52% | 76% |
+| Three steady reads, most must agree | 69% | 90% |
+
+- Three steady reads, keeping what at least two agree on, is the best so far on both counts, and finds more real patterns than today's single read, not fewer. Nothing is removed or weakened.
+- It is still short of the aim of 8 in 10. Even at its steadiest setting the model does not give the same answer twice, and the difference starts in its first reading (two steady readings of the same check-in share 60% of what they name), not in the second call that confirms a pattern.
+- Keeping only what two normal reads both agree on is steadier but loses half the real patterns, so it is ruled out.
+- A second round is running: five steady reads by majority, and the steady setting with the smallest thinking budget the model allows.
+
+**Decisions 64, 61 and 65 done** (`47e392bc`, `fcb053e8`, `897c25b5`).
+- **64.** The setup part of "how the leading is landing" was already showing after one period (restored on 29 September). What was missing is the access rule: it now follows decision 58, so the lead or the admin who set the check-in up reads it, and no other admin. The lead reads, for example, "One account describes a target of ten shops, and another describes a different one."
+- **61.** Extra support is suggested when fewer than half of at least 6 settled commitments were kept. It is set by a migration that never overwrites a row someone already set. A fault was found and fixed on the way: a missing settings row was read as "nothing set" instead of the default. The admin page gets the label "At least this many settled commitments".
+- **65.** When Ask Groundwork is opened from inside a check-in, the screen sends `openedFrom: "check_in_setup"` with the check-in, and the lead gets the setup conversation at once, even with an empty first message. A participant gets the ordinary answer. The screens workspace has the exact request in `docs/answers-from-engine.md`.
+
+**Done while the model was down** (`0bfd0d04`, `4e7983c8`, `53621395`, `d55bdf32`, `99fac00a`):
+- **Decision 62.** The migration now starts every existing pattern's clock on the day it runs: nothing is readable by the lead on release day, the person is shown theirs first, and the lead's 3 and 7 days count from then. The release questions list it as changing data, and the edit was accepted this time.
+- **Decision 63.** One rule decides who may confirm setup: the lead, or an admin of the same organisation once the lead has left it (the account is switched off, the same sign decision 53 already uses). It covers the length, rhythm and success, lines, private notes, sharing a note, questions for people, and success restated, on the old chat and in Ask Groundwork alike. This also narrows things: before, any admin could add or change a line or a note at any time. When an admin confirms in the lead's place, the line, note, question card or success version carries the sentence, for example "Ngozi Bello confirmed this because Tunde Ade has left the organisation." A new migration adds that one empty column to three tables and changes no data.
+- **Needs Hafsah, small:** the sentence is not added inside the person's own check-in when the confirmed question is asked, because it would sit inside what should read as an ordinary question. It shows everywhere the confirmation itself is read. Say if you want it in the check-in too.
+- **Decision 60, point 4.** In an evaluation check-in, an admin without access to that check-in no longer gets colleagues' exact words on the session report, the team report or the board. An admin who set the check-in up still does, as the manager does. The same access rule as decision 58.
+- **Two guard tests** had been failing since the document write moved into one shared file this morning. Both now look in the new file; neither rule changed.
+
 **Order of work.**
 - **While the model is down:** 62, 63 and point 4 of 60 are with the builder now. Then 64, 61 and 65, and the tools to measure patterns read several times and by majority, ready for when the model answers.
 - **Once the model answers, patterns first:** measure the steady setting and the majority reading, keep whichever is steadiest while still finding real patterns, aiming for the same conversation giving the same patterns at least 8 times in 10, and say whether patterns are steady enough for release. Then the live checks for items 10, 11, 15 and 16.

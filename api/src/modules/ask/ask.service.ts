@@ -344,11 +344,25 @@ export class AskService {
     throw new ForbiddenException(NOT_IN_IT);
   }
 
-  /** A question. The answer is the assistant's own, for the asker alone. */
-  async ask(asker: Asker, input: { message: string; groundId?: string }) {
+  /**
+   * A question. The answer is the assistant's own, for the asker alone.
+   *
+   * `openedFrom: 'check_in_setup'` (decision 65) is the screen telling Ask Groundwork which check-in
+   * it was opened from, so the setup conversation can start without the word "context". It only ever
+   * does anything together with `groundId`, and only for somebody who may confirm setup on THAT
+   * check-in - the same rule decision 63 already gives every other setup door
+   * (GroundsService.mayOpenSetupChatFor, which is `mayConfirmSetupOn` asked without throwing). A
+   * guest, a participant, or the lead's own message with no `groundId`, is answered exactly as
+   * before: `openedFrom` is read, found not to apply, and quietly ignored - never refused.
+   */
+  async ask(asker: Asker, input: { message: string; groundId?: string; openedFrom?: 'check_in_setup' }) {
     await this.checkTheCheckIn(asker, input.groundId);
     if (await this.isAGuest(asker)) return this.answerTheGuest(asker, input);
     const me = await this.whoIsAsking(asker);
+    if (input.openedFrom === 'check_in_setup' && input.groundId) {
+      const may = await this.grounds.mayOpenSetupChatFor(input.groundId, asker.userId, asker.organizationId);
+      if (may) return this.assistant.respond(asker.organizationId, me.id, input.message, input.groundId, true);
+    }
     /* `groundId` is read only by the `add_context` lane - see AssistantService.respond. */
     return this.assistant.respond(asker.organizationId, me.id, input.message, input.groundId);
   }

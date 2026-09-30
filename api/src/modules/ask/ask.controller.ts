@@ -1,17 +1,45 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength, ValidateIf } from 'class-validator';
 import { CurrentUser, CurrentUserData } from '../../common';
-import { AMessageIntoACheckInDto } from '../../common/dto/a-message-into-a-check-in.dto';
+import { A_MESSAGE_MAX } from '../../common/dto/a-message-into-a-check-in.dto';
 import { Asker, AskService } from './ask.service';
 
-/** A question to Ask Groundwork: the same checks as every other door into a conversation. */
-export class AQuestionDto extends AMessageIntoACheckInDto {
+/** How the screen names asking from inside a check-in's setup (decision 65). */
+export const OPENED_FROM_CHECK_IN_SETUP = 'check_in_setup' as const;
+
+/**
+ * A question to Ask Groundwork: the same checks as every other door into a conversation
+ * (a-message-into-a-check-in.dto.ts), with one difference. Opened from inside a check-in's own
+ * Context and resources page or setup (decision 65), the screen sends `groundId` and
+ * `openedFrom: "check_in_setup"` together, and the first message may be empty - it means "start",
+ * the same way opening the old context chat needed nothing typed. Every other caller, with no
+ * `openedFrom`, keeps the ordinary rule: a message has to say something.
+ */
+export class AQuestionDto {
+  @ValidateIf((o: AQuestionDto) => o.openedFrom !== OPENED_FROM_CHECK_IN_SETUP)
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/\S/, { message: 'a message has to say something' })
+  @MaxLength(A_MESSAGE_MAX)
+  message: string;
+
   /** The check-in the question is about, chosen under "About". Optional. */
   @IsOptional()
   @IsString()
   @MaxLength(64)
   groundId?: string;
+
+  /**
+   * Set only when Ask Groundwork is opened from inside a check-in (decision 65). Together with
+   * `groundId`, and only for somebody who may confirm setup on that check-in (decision 63), this
+   * opens the setup conversation directly rather than waiting for the word "context". Sent by
+   * anybody else - a participant, or the lead's own message with no `groundId` - it is read as
+   * asked, unchanged; ignored, not refused.
+   */
+  @IsOptional()
+  @IsIn([OPENED_FROM_CHECK_IN_SETUP])
+  openedFrom?: typeof OPENED_FROM_CHECK_IN_SETUP;
 }
 
 /** A yes or a no to one request Ask Groundwork said back. */
@@ -55,9 +83,14 @@ export class AskController {
 
   @Post()
   @HttpCode(200)
-  @ApiOperation({ summary: 'Ask Groundwork a question. The answer is for you alone.' })
+  @ApiOperation({
+    summary:
+      'Ask Groundwork a question. The answer is for you alone. Send groundId and openedFrom: "check_in_setup" '
+      + 'together, from inside a check-in, to open its setup conversation directly (decision 65); message may be '
+      + 'empty for the opening turn. Ignored, never refused, for anybody who may not confirm setup on that check-in.',
+  })
   async question(@CurrentUser() user: CurrentUserData, @Body() dto: AQuestionDto) {
-    return this.ask.ask(this.asker(user), { message: dto.message, groundId: dto.groundId });
+    return this.ask.ask(this.asker(user), { message: dto.message ?? '', groundId: dto.groundId, openedFrom: dto.openedFrom });
   }
 
   @Post('answer')

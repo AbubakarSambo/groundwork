@@ -42,7 +42,7 @@ function svc(opts: {
     { id: 'q1', who: 'Ben', exactQuestion: 'How is the Lagos pitch going?', status: 'waiting' },
   ]);
   const confirmQuestionForPerson = opts.confirmQuestionForPerson ?? jest.fn(async () => ({ id: 'q1', say: 'Confirmed. Groundwork will ask Ben "How is the Lagos pitch going?" in their next check-in, word for word.' }));
-  const declineQuestionForPerson = opts.declineQuestionForPerson ?? jest.fn(async () => ({ id: 'q1', status: 'left out', say: 'Left out. Groundwork will not ask Ben this question.' }));
+  const declineQuestionForPerson = opts.declineQuestionForPerson ?? jest.fn(async () => ({ id: 'q1', status: 'left out', say: 'I have left it out. Groundwork will not ask Ben this question.' }));
 
   const prisma: any = {
     person: {

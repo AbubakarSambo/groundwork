@@ -36,8 +36,31 @@ export type SuggestionThresholds = Partial<Record<Verdict, AThreshold>>;
 
 export const SUGGESTION_THRESHOLDS_KEY = 'suggestions.thresholds';
 
-/** Decision 33: nothing is set until Hafsah sets it. With nothing set, no suggestion is reached. */
-export const DEFAULT_SUGGESTION_THRESHOLDS: SuggestionThresholds = {};
+/**
+ * Decision 61 (30 September 2026): the first threshold is set from the start, not left for Hafsah
+ * to switch on later. Extra support is suggested once a person has kept fewer than half of their
+ * commitments, with at least 6 settled (kept or not). Keep, reward, a plan and exit stay empty
+ * until each has its own reading of the record, built and tested - decision 33 still governs them.
+ *
+ * This is the value the migration `20260930110000_the_first_threshold_for_extra_support` writes
+ * into the `suggestions.thresholds` row when that row does not already exist, and the value the
+ * admin read (admin.service.ts, getSuggestionThresholds) falls back to if the row is ever missing.
+ * It is never used to overwrite a row somebody has already set.
+ */
+export const DEFAULT_SUGGESTION_THRESHOLDS: SuggestionThresholds = {
+  support: { keptBelow: 0.5, overPeriods: 6 },
+};
+
+/**
+ * Plain labels for the admin page (decision 61: "'over periods' is called 'at least this many
+ * settled commitments'"). `overPeriods` itself is an API contract the screens already use, so the
+ * field name stays; this is served alongside the values so the admin page can show the plain words
+ * instead of the field name.
+ */
+export const SUGGESTION_THRESHOLD_LABELS: Record<keyof AThreshold, string> = {
+  keptBelow: 'Suggest extra support when fewer than this share of commitments were kept',
+  overPeriods: 'At least this many settled commitments',
+};
 
 function isAThreshold(v: unknown): v is AThreshold {
   const t = v as AThreshold;

@@ -155,7 +155,8 @@ export function answerAGuest(
       return rules(lane, text(`There is no check-in waiting for you on ${label} now. ${sofar}`));
     }
     const opens = waiting.availableFrom ? new Date(waiting.availableFrom) : null;
-    if (opens && opens.getTime() > now.getTime()) {
+    /* A check-in already started is open, whatever date it was first offered for (request 86). */
+    if (opens && opens.getTime() > now.getTime() && waiting.status !== 'IN_PROGRESS') {
       return rules(lane, text(`Your next check-in on ${label} opens on ${whenItWas(opens, 'weekdayAndDay')}.`));
     }
     return rules(lane, text(waiting.status === 'IN_PROGRESS'

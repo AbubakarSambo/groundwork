@@ -175,3 +175,35 @@ describe('small cases in the sentence about who has checked in', () => {
     expect(whatNeedsYou([{ ...sales, status: 'CLOSED' }], reader, [], NOW)).toMatchObject({ needs: [], line: null, comingUp: [] });
   });
 });
+
+/*
+ * SCREENS REQUEST 86. A session somebody has started is open, whatever date it was first offered for.
+ * Amani's own session 2 is under way while its `availableFrom` still says a week on, the same date
+ * Neema's not-yet-started session 2 carries.
+ */
+describe('Today, for a session that was started before its own date', () => {
+  const started: ListedCheckIn = {
+    id: 'g-early', label: 'Sales team, Q3', status: 'ACTIVE', organizationId: 'org', initiatorId: WAIRIMU,
+    participants: [person('p-w5', WAIRIMU, 'Wairimu'), person('p-am', AMANI, 'Amani'), person('p-ne', 'u-neema', 'Neema')],
+    checkIns: [
+      { id: 'e1', participantId: 'p-am', sessionNumber: 1, status: 'COMPLETED', availableFrom: ago(200), completedAt: ago(190) },
+      { id: 'e2', participantId: 'p-ne', sessionNumber: 1, status: 'COMPLETED', availableFrom: ago(200), completedAt: ago(190) },
+      { id: 'e3', participantId: 'p-am', sessionNumber: 2, status: 'IN_PROGRESS', availableFrom: ahead(150) },
+      { id: 'e4', participantId: 'p-ne', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: ahead(150) },
+    ],
+    glance: { progress: { roundsDone: 1, roundsPlanned: 12 } },
+  };
+
+  it('Amani, who is in the middle of it, is told to carry on, and is not told it opens later', () => {
+    const r = whatNeedsYou([started], { userId: AMANI, role: 'MEMBER', organizationId: 'org' }, [], NOW);
+    expect(titles(r)).toEqual(['Your own check-in for Sales team, Q3']);
+    expect(r.needs[0].action).toEqual({ label: 'Start it', to: '/checkin/e3' });
+    expect(r.comingUp).toEqual([]);
+  });
+
+  it('Neema, who has not started, is still told that it opens later, and is offered nothing yet', () => {
+    const r = whatNeedsYou([started], { userId: 'u-neema', role: 'MEMBER', organizationId: 'org' }, [], NOW);
+    expect(titles(r)).toEqual([]);
+    expect(r.comingUp).toEqual([{ at: ahead(150), what: 'Session 2 of Sales team, Q3 opens.', to: '/grounds/g-early' }]);
+  });
+});

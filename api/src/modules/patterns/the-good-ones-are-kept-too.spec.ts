@@ -47,12 +47,16 @@ describe('the good ones are detected and kept, the same as the bad ones', () => 
   it('the service keeps them instead of dropping them on the floor', () => {
     const src = readFileSync(join(__dirname, 'patterns.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    /* The line that used to throw every non-bad-faith code away now has the good ones taken out
-       in front of it, and routed to the method that was already there for them. The cap grew from
-       600 to 750 when decision 57 item 4 added a call in this block to check the number-based rule
-       before a positive code is written, which is a few more real characters, not new dropping. */
-    expect(src).toMatch(/if \(isPositiveCode\(d\.code\)\) \{[\s\S]{0,750}observePositive\(/);
+    /*
+     * Since the five-reads build (30 September 2026), one read (whatOneReadKeeps) decides what it
+     * would keep - isPositiveCode(d.code) is taken out in front of the bad-faith drop, the same as
+     * before, but it now pushes to `kept` rather than writing straight away. observePositive() is
+     * called once per check-in, after the five reads are counted, by the write loop that follows.
+     * Both halves of that journey are checked here.
+     */
+    expect(src).toMatch(/if \(isPositiveCode\(d\.code\)\) \{[\s\S]{0,750}kept\.push\(/);
     expect(src.indexOf('isPositiveCode(d.code)')).toBeLessThan(src.indexOf('if (!isBadFaithCode(d.code)) continue;'));
+    expect(src).toMatch(/if \(isPositiveCode\(code\)\) \{[\s\S]{0,200}observePositive\(/);
   });
 
   it('they surface immediately, which is the product’s own written rule for good news', () => {
@@ -134,9 +138,21 @@ describe('carrying is its own thing, neither a good sign nor a fault', () => {
   });
 
   it('it takes the three-period rule, because one hard week is not carrying the place', () => {
+    /*
+     * Since the five-reads build (30 September 2026), a single read no longer writes anything -
+     * whatOneReadKeeps only decides what one read would keep, and analyzeCheckIn writes once a
+     * code is kept by three of the five. A carrying code is never routed through
+     * observePositive (that stays for the isPositiveCode branch only), so it lands in the same
+     * write path as a bad-faith code - this.observe(), which is where the three-period rule
+     * lives. That is what this test checks now, in two parts.
+     */
     const src = readFileSync(join(__dirname, 'patterns.service.ts'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    expect(src).toMatch(/if \(isCarryingCode\(d\.code\)\) \{[\s\S]{0,200}this\.observe\(/);
+    // The carrying branch keeps the code (for the vote) without surfacing it immediately.
+    expect(src).toMatch(/if \(isCarryingCode\(d\.code\)\) \{[\s\S]{0,120}kept\.push\(/);
+    // And the write loop only calls observePositive for a positive code - everything else,
+    // carrying included, goes through this.observe(), which is where THREE_PERIOD_RULE lives.
+    expect(src).toMatch(/if \(isPositiveCode\(code\)\) \{[\s\S]{0,200}observePositive\([\s\S]{0,200}\} else \{[\s\S]{0,150}this\.observe\(/);
   });
 
   it('but skips the confirming call, which is there to slow an accusation down', () => {

@@ -114,7 +114,7 @@ describe('point 1: the say-back sentences are full sentences, never clipped or c
     const { service } = svc();
     const r = await service.respond('org-a', 'p1', 'leave out the question for Ben', 'g1');
     const said = (r.blocks[0] as any).body as string;
-    expect(said).toBe('Shall I leave out the question for Ben, "How is the Lagos pitch going?"?');
+    expect(said).toBe('Shall I leave out the question for Ben, "How is the Lagos pitch going?"');
   });
 });
 

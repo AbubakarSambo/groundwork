@@ -57,10 +57,13 @@ if (!/localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL ?? '') || !/gw_/.tes
 
 const STEADY = process.env.STEADY === '1';
 const RECALL = process.env.RECALL === '1';
+/* MANY=1: every check-in read 6 times at the default setting and 6 times at the steady setting, all kept
+   to many-reads.json for comparing single reads, the steady setting and majority reading (30 Sep 2026). */
+const MANY = process.env.MANY === '1';
 const ONLY_SCENARIOS = process.env.SCENARIOS ? new Set(process.env.SCENARIOS.split(',').map((s) => s.trim()).filter(Boolean)) : null;
 
 interface ARead { raw: Set<string>; kept: Set<string> }
-type AnOptions = { temperature?: number; seed?: number };
+type AnOptions = { temperature?: number; seed?: number; thinkingBudget?: number };
 
 async function main() {
   const folder = path.resolve(__dirname, process.argv[2] ?? 'all-24/run-20');
@@ -126,6 +129,101 @@ async function main() {
       select: { onParticipantId: true, status: true, what: true },
     });
     return { content, block, statedGoals, lastPeriod, deps };
+  }
+
+  if (process.env.PRODUCT === '1') {
+    /* Through the product's own code (a1455696): whatOneReadKeeps is exactly what analyzeCheckIn runs five
+       times. Ten reads per check-in make two separate five-read majorities to compare. Nothing is written. */
+    /* PER=5 AGREE=3 is what the product does today; other numbers try more reads. */
+    const PER = Number(process.env.PER ?? 5), AGREE = Number(process.env.AGREE ?? 3);
+    const pairsA: Record<string, Set<string>> = {}, pairsB: Record<string, Set<string>> = {};
+    let same = 0, total = 0;
+    const dump: any[] = [];
+    const most = (reads: string[][]) => {
+      const n: Record<string, number> = {};
+      reads.forEach((r) => new Set(r).forEach((c) => { n[c] = (n[c] ?? 0) + 1; }));
+      return new Set(Object.keys(n).filter((c) => n[c] >= AGREE));
+    };
+    for (const s of scenarios) {
+      const checkIns = await prisma.checkIn.findMany({
+        where: { groundId: s.groundId, patternsAnalyzedAt: { not: null } },
+        select: { id: true, groundId: true, participantId: true, sessionNumber: true, completedAt: true, startedAt: true, createdAt: true,
+          ground: { select: { cadence: true } }, participant: { select: { user: { select: { email: true } } } } },
+      });
+      await Promise.all(checkIns.map(async (checkIn: any) => {
+        const ctx = await contextFor(checkIn);
+        if (!ctx) return;
+        const getInput = () => patterns.buildDetectionInputForParticipant(checkIn.participantId);
+        const reads = await Promise.all(Array.from({ length: 2 * PER }, () =>
+          patterns.whatOneReadKeeps(checkIn.id, ctx.content, ctx.block, ctx.lastPeriod, ctx.statedGoals, ctx.deps, getInput)
+            .then((k: { code: string }[]) => k.map((x) => x.code)).catch((e: any) => { process.stderr.write(`read failed: ${String(e?.message ?? e).slice(0, 160)}\n`); return null; })));
+        const okReads = reads.filter((r): r is string[] => !!r);
+        if (okReads.length < 2 * PER) { process.stderr.write(`check-in ${checkIn.id}: only ${okReads.length} of ${2 * PER} reads came back\n`); return; }
+        dump.push({ scenario: s.name, checkInId: checkIn.id, person: (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0], reads: okReads });
+        const a = most(okReads.slice(0, PER)), b = most(okReads.slice(PER));
+        const person = (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0];
+        total++; if ([...a].sort().join() === [...b].sort().join()) same++;
+        (pairsA[s.name] ??= new Set()); (pairsB[s.name] ??= new Set());
+        a.forEach((c) => pairsA[s.name].add(`${person}::${c}`)); b.forEach((c) => pairsB[s.name].add(`${person}::${c}`));
+      }));
+      process.stderr.write(`product-read ${s.name}\n`);
+    }
+    let sh = 0, un = 0;
+    for (const k of new Set([...Object.keys(pairsA), ...Object.keys(pairsB)])) {
+      const A = pairsA[k] ?? new Set<string>(), B = pairsB[k] ?? new Set<string>();
+      sh += [...A].filter((x) => B.has(x)).length; un += new Set([...A, ...B]).size;
+    }
+    fs.writeFileSync(path.join(folder, `product-reads-${PER}.json`), JSON.stringify(dump));
+    console.log(`Through the product's own code, two separate majorities of ${PER} reads (at least ${AGREE} agreeing): ${sh} of ${un} person-and-pattern pairs the same (${un ? Math.round(100 * sh / un) : 100}%); exactly the same patterns on ${same} of ${total} check-ins.`);
+    await app.close();
+    process.exit(0);
+  }
+
+  if (MANY) {
+    const out: any[] = [];
+    for (const s of scenarios) {
+      const checkIns = await prisma.checkIn.findMany({
+        where: { groundId: s.groundId, patternsAnalyzedAt: { not: null } },
+        select: {
+          id: true, groundId: true, participantId: true, sessionNumber: true, completedAt: true, startedAt: true, createdAt: true,
+          ground: { select: { cadence: true } }, participant: { select: { user: { select: { email: true } } } },
+        },
+        orderBy: { sessionNumber: 'asc' },
+      });
+      await Promise.all(checkIns.map(async (checkIn: any) => {
+        try {
+          const ctx = await contextFor(checkIn);
+          if (!ctx) return;
+          const { content, block, statedGoals, lastPeriod, deps } = ctx;
+          const one = (o: AnOptions) => readOnce(checkIn, content, block, statedGoals, lastPeriod, deps, o)
+            .then((r) => ({ raw: [...r.raw], kept: [...r.kept] }))
+            .catch((err: any) => ({ failed: String(err?.message ?? err).slice(0, 80) }));
+          const person = (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0];
+          if (process.env.MANY_MORE === '1') {
+            /* The second round: ten steady reads (two copies of five, for most of five agreeing),
+               and six steady reads with the smallest thinking budget the model allows. */
+            const reads = await Promise.all([
+              ...Array.from({ length: 10 }, () => one(PATTERN_DETECTION_STEADY_OPTIONS)),
+              ...Array.from({ length: 6 }, () => one({ ...PATTERN_DETECTION_STEADY_OPTIONS, thinkingBudget: 128 } as any)),
+            ]);
+            out.push({ scenario: s.name, person, session: checkIn.sessionNumber, checkInId: checkIn.id, steady: reads.slice(0, 10), steadyLittleThinking: reads.slice(10) });
+            return;
+          }
+          const reads = await Promise.all([
+            ...Array.from({ length: 6 }, () => one({})),
+            ...Array.from({ length: 6 }, () => one(PATTERN_DETECTION_STEADY_OPTIONS)),
+          ]);
+          out.push({ scenario: s.name, person, session: checkIn.sessionNumber, checkInId: checkIn.id, normal: reads.slice(0, 6), steady: reads.slice(6) });
+        } catch (err: any) {
+          process.stderr.write(`skipped ${s.name}/${checkIn.id}: ${err?.message ?? err}\n`);
+        }
+      }));
+      fs.writeFileSync(path.join(folder, process.env.MANY_MORE === '1' ? 'many-reads-2.json' : 'many-reads.json'), JSON.stringify(out, null, 1));
+      process.stderr.write(`many-read ${s.name}\n`);
+    }
+    console.log(`MANY mode done: ${out.length} check-ins, 12 reads each, kept in many-reads.json.`);
+    await app.close();
+    process.exit(0);
   }
 
   if (RECALL) {
