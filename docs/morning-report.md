@@ -31,6 +31,24 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Decision 55: every place the protected parts were switched off, hidden, simplified or removed
+
+A builder searched the code and the history since 15 September across patterns, coaching, role maps, role detection, board reads and the check-in's questions. **Nothing is still switched off, hidden, simplified or removed.**
+
+| What | How it was off | Now |
+| --- | --- | --- |
+| Patterns | One constant, `PATTERNS_ARE_SERVED`, set off on 27 September until the names were approved | On (`19cdf9b0`), with every rule kept |
+| "Setup never said" | The board applied the three-period rule again to a reading that only ever has one period, so it never reached a board | Restored for the lead (`eea057c8`) |
+| Coaching | A missing setting read as off, so coaching was dark on every new database | On by default, and an admin can pause it (`b2d6395f`) |
+| Confirming a low-confidence role | Built, but not wired, and with nowhere to store the answer | Finished (`25c2761a`, `daa83475`) |
+
+Allowed, because they keep the feature (decision 55's own exception):
+- E4 and F5 are never named to either person.
+- The coaching note no longer repeats the lead's words to the person.
+- The reading of how the check-in is led goes to the lead only.
+
+The ten patterns with no number-based rule are found by the model, by design. That is not switched off. The document setting `CONTEXT_ENABLED` is not one of the four protected parts.
+
 ### One chat: Ask Groundwork takes over the context chat, piece 1 (decision 50)
 
 Built in `f978d3cf`. **The old context chat still works, untouched, and stays until every item is proven.**
