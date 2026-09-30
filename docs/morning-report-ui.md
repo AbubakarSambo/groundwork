@@ -6853,4 +6853,13 @@ For you to decide, and on the list: the prototype's "Add your own" and "Build yo
 
 Not yet pictured: the page after API access is approved. No organisation on this Mac has approved access, and I did not add any to the database to force it. The approved page is checked by the page's own tests instead.
 
+**Group 1's review sent it back (30 September, night).** The background was right on every page for all three readers. Nothing scrolled sideways on a phone, and the button rules held. Every action the old pages had is still there. The API refuses a participant every admin route, checked from the server itself. The faults it found, most serious first:
+- A participant opening Connections, WhatsApp or the developer page was told "Adding people is something your organisation's admins do", which is about the wrong thing.
+- The example pictures on Connections and the developer page showed your name and Coamana's CRM to every organisation, under a caption saying they were that organisation's own console.
+- Developer notes such as "Not on the prototype's own screen" would show to customers once API access is approved, and several lines there were jargon.
+- "Your data" on Settings said "28 things you wrote, across 13 check-ins, on 7 grounds:".
+- Smaller wording and layout differences from the prototype on Settings, Plan and billing, Connections, WhatsApp and More.
+
+A builder is fixing all of them now. The review's pictures are in the scratchpad's `pictures/review-g1/`.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
