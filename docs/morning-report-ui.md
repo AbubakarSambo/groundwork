@@ -306,6 +306,12 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **30 September, later: the parts first, because every screen is built from them.** The screens are still heavy and do not follow the prototype's design: too many buttons, and button and page styles that differ from it. Group 1 is paused after its current step, and:
+  1. Every shared part is compared with the prototype's own stylesheet (`docs/prototype/source/app.css`), value by value: size, padding, corner radius, font size and weight, colours and borders. The prototype has four kinds of button (`.btn.pri` navy, `.btn.sec` white with a thin outline, `.btn.quiet` plain text, `.btn.danger` solid red) and two sizes (`.big`, `.sm`).
+  2. Two rules are added to the guard, checked on every screen: at most one primary (navy) button per screen, and no more buttons than the prototype's own version of that screen has. Everything else is secondary or quiet, as in the prototype.
+  3. The screens already rebuilt (the check-in pages and the people group) are gone over again and fixed wherever they break these rules, each with a 1440-pixel picture check against the prototype.
+  4. Then group 1 carries on.
+- **30 September: the joiner's email domain (item 11).** It starts as the domain of the organisation's founding email address and is shown on the People page, where an admin can change it. With a public address such as gmail.com, no domain is set until an admin names one.
 - **30 September: three answers from Hafsah.**
   1. Patterns (item 0-pat2): an admin who does not run a check-in does not see anyone's pattern or their answer, unless given access to that check-in, the same as performance plans. Only the person and the check-in's lead see it. The screens stay as they are. (Sent to the engine for the server side, request 84.)
   2. The pattern switch (item 0-pat): patterns stay on in the work branches and on this Mac, for testing. Hafsah decides before release.
@@ -6797,4 +6803,4 @@ Run on the local test check-in "Sales team, Q3" only, as Rukia (the lead), Amani
 
 The whole screen suite passes (3,658 tests), both type checks are clean, and every API test the builder touched passes (55). I rebuilt and restarted the local API.
 
-**For you to confirm:** whether a joiner's email is matched against the domain of the organisation's founding email address (as built), or against a domain an admin names on the People page ("Anyone with an @… email").
+**Answered by you on 30 September:** the domain starts as the founding email address's domain, is shown on the People page, and an admin can change it; with a public address, no domain is set until an admin names one. Being built with the People page's parts fix.
