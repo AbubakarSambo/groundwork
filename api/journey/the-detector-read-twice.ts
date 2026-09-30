@@ -159,7 +159,7 @@ async function main() {
             .then((k: { code: string }[]) => k.map((x) => x.code)).catch((e: any) => { process.stderr.write(`read failed: ${String(e?.message ?? e).slice(0, 160)}\n`); return null; })));
         const okReads = reads.filter((r): r is string[] => !!r);
         if (okReads.length < 2 * PER) { process.stderr.write(`check-in ${checkIn.id}: only ${okReads.length} of ${2 * PER} reads came back\n`); return; }
-        dump.push({ scenario: s.name, checkInId: checkIn.id, person: (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0], reads: okReads });
+        dump.push({ scenario: s.name, checkInId: checkIn.id, period: periodOf({ sessionNumber: checkIn.sessionNumber, when: checkIn.completedAt ?? checkIn.startedAt ?? checkIn.createdAt }, checkIn.ground), person: (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0], reads: okReads });
         const a = most(okReads.slice(0, PER)), b = most(okReads.slice(PER));
         const person = (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0];
         total++; if ([...a].sort().join() === [...b].sort().join()) same++;
