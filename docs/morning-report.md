@@ -10,6 +10,25 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settled as proposed (60), the first threshold for week 10 (61), old patterns start the person-first process on release day (62), only the lead confirms setup unless the lead has left the organisation (63), the setup part of "how the leading is landing" restored without the three-period rule (64), and Ask Groundwork opened inside a check-in knows which one (65).
 
+**Patterns: more reads do not reach 8 in 10. Needs Hafsah.** Through the product's own code, all twelve scenarios, each check-in read 14 times so different numbers of reads could be compared on the same reads. "Beyond the real ones" counts patterns kept that fewer than half of 12 earlier reads found.
+
+| Reads, and how many must agree | The same | Real patterns still found | Beyond the real ones |
+| --- | --- | --- | --- |
+| One steady read | 60% | 65% | 28 |
+| 5, at least 3 (built now) | 71% | 63% | 26 |
+| 7, at least 4 | 69% | 62% | not counted |
+| 7, at least 3 | 78% | 71% | 35 |
+| 7, at least 2 | 77% | 76% | 54 |
+
+- A stricter majority does not help: the patterns that flip sit right on the line, and raising the line moves the flip, not the steadiness.
+- A lower bar with more reads gets closest (78%) but keeps more patterns most reads did not find, and costs seven readings a check-in instead of five.
+- So the model's own variation sets a ceiling of about three in four for a single check-in, whatever the number of reads. Five reads with three agreeing (built, about 7 in 10, nearly twice today's 36%) stays in the work branches.
+- **Not steady enough for release by the aim of 8 in 10.** Three ways forward, for Hafsah to choose:
+  1. **Measure what people actually see.** A pattern is only shown after three periods, which filters out patterns that flicker. The scenarios are too short to measure this (only 6 of 37 people have three sessions). A longer run would say whether what people see is steadier than 8 in 10.
+  2. **Accept about 7 in 10 per check-in** for release, with the three-period rule as the second filter.
+  3. **Count close neighbours as one when measuring and showing**, for example "the same problem raised and never fixed" and "tasks described without what they are for". No pattern would be removed, but it changes how patterns are grouped, which is Hafsah's decision (decision 55).
+- My recommendation: 1, then 2 if it holds.
+
 **The live checks for items 10, 11, 15 and 16 ran** (the old context chat and Ask Groundwork, the same words on both). They found six faults, now with the builder:
 1. **Ask Groundwork opened from a check-in with nothing typed yet returned an error.** The empty message reached the model, which refuses empty input. This is from yesterday's decision 65; its test used a stand-in model that accepted it.
 2. **In Ask Groundwork, the second message of a setup conversation lost the conversation.** Ada answered "He has missed the last two pipeline updates. I spoke to him once. I want the update in by every Friday." and read "I cannot find "the update" on this check-in." The old chat carried on correctly.
