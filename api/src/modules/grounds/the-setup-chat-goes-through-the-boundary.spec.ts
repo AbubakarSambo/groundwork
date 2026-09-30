@@ -43,12 +43,26 @@ describe('the setup chat goes through the boundary', () => {
      */
     expect(CHAT).toContain('const withoutFalsePromises = changeSay ?? whatTheModelsReplyShows(reply, proposal.kind !== \'none\');');
     expect(CHAT).toContain('const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;');
-    expect(CHAT).toContain('reply: forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply)');
+    expect(CHAT).toContain('let replyText = forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply);');
   });
 
-  /** The proposal is said to a person too - "I will set this to run for 90 days" - so it does as well. */
+  /**
+   * The proposal is said to a person too - "I will set this to run for 90 days" - so it does as
+   * well.
+   *
+   * FOUND LIVE, 30 September 2026, on the four live checks (item 16): the reply and `proposal.say`
+   * used to be built from the same source and shown twice on the one turn - once as the reply, again
+   * underneath it as the say-back. `sayBack` is computed once, through `forHumans`, and the reply is
+   * checked against it so a lead is never shown the same sentence twice on one turn - see the
+   * "shown once, not shown twice" test below.
+   */
   it('and so does the proposal it asks you to confirm', () => {
-    expect(CHAT).toContain('say: forHumans(proposal.say)');
+    expect(CHAT).toContain("const sayBack = proposal.kind === 'none' ? null : forHumans(proposal.say);");
+    expect(CHAT).toContain('say: sayBack as string,');
+  });
+
+  it('the reply never repeats the say-back word for word', () => {
+    expect(CHAT).toContain('if (sayBack && (replyText === sayBack || replyText.includes(sayBack))) {');
   });
 
   /** The hardcoded reply beside it carried the same word, and no boundary can fix a literal. */

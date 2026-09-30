@@ -3042,14 +3042,28 @@ export class GroundsService {
      */
     const withoutFalsePromises = changeSay ?? whatTheModelsReplyShows(reply, proposal.kind !== 'none');
     const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;
+    /*
+     * WHAT THE LEAD IS SHOWN, NOT SHOWN TWICE. Item 16, found live, the four live checks, 30
+     * September 2026: `changeSay` is threaded into BOTH the reply and `proposal.say` (it IS
+     * `proposal.say`, built once in the restate_success and change branches above), so the lead read
+     * the same restatement twice on the one turn - once as the reply, word for word again underneath
+     * it as "[said back]". A person is told a thing once. Where the reply would repeat what the
+     * say-back already states, the say-back is what stays; the reply carries only what is left over
+     * (the opening line, when this is the first turn).
+     */
+    const sayBack = proposal.kind === 'none' ? null : forHumans(proposal.say);
+    let replyText = forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply);
+    if (sayBack && (replyText === sayBack || replyText.includes(sayBack))) {
+      replyText = openedOn ? forHumans(openedOn) : '';
+    }
     return {
-      reply: forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply),
+      reply: replyText,
       gaps: gaps.map((g: { key: string }) => g.key),
       done: gaps.length === 0,
       /** Present only when there is something concrete to confirm. Same boundary: it is said to a person. */
       proposal: proposal.kind === 'none' ? null : {
         gap: proposal.kind,
-        say: forHumans(proposal.say),
+        say: sayBack as string,
         /*
          * EACH QUESTION FOR A PERSON, AS IT WILL BE ASKED. Not written yet, so no id: the yes to this
          * list keeps them, and each one is then confirmed, changed or left out on its own through
