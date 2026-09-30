@@ -31,6 +31,36 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### Run-20, today's one full run: nothing worse than the baseline, with three things to watch
+
+All 24 scenarios, in 92 minutes, on `d1f7fa74`. **The scorer's verdict is "nothing got worse than the baseline".**
+
+| Number | Baseline | Run-19 | Run-20 |
+| --- | --- | --- | --- |
+| Every problem count | 734 and more | 0 | 0 |
+| Proof asked for | 42 | 47 | 51 |
+| Past words brought back | 25 | 33 | 31 |
+| Specific detail asked for | 88 | 105 | 85 |
+| Blocker checked | 37 | 45 | 39 |
+| Agreements found | 56 | 66 | 71 |
+| Commitments recorded | 33 | 49 | 70 |
+| Patterns found | 100 | 112 | 100 |
+| Judgement present | 21 | 29 | 29 |
+| Turns asking two questions | 37 | 0 | 2 |
+| Jargon in Groundwork's turns | 42 | 21 | 28 |
+| Jargon in reports and boards | 511 | 126 | 141 |
+
+Three things to watch, not hidden:
+- **Specific detail asked for is 85**, against 88 at the baseline. It is inside the range this number moved on the same build in the re-checks (74 to 105), and the scorer passes it.
+- **Two turns asked two questions** (run-19 had none). Both are closing turns: the model's reply still asked a question, and the prototype's close was added after it. For example: "What will you do about getting those bank statements, and by when? That's all for today. Below is what I wrote down…". This is a fault from tonight's close fix, and it is being fixed now.
+- **Jargon in reports and boards is 141,** above the bar of 128 set in task 1.4. Most of it last time was people's own words said back to them (decision 41), which the scorer cannot tell apart. It needs a look.
+
+**Quick checks:**
+- **Quotes: 598 of 604 are word for word. 6 are not.** All six are in the lead's commitments over time. Tonight's new sentences for how a commitment was settled put the model's own write-up of the commitment in quote marks, as if it were the person's words. One was not even a time: "lead that review with the team". This is being fixed now.
+- **The lead's private words:** the only flag is seniorhire's shared sentence, the same one found earlier. It is not a leak.
+
+**Pattern steadiness, run-19 against run-20, all 24 scenarios: 15%.** Only 26 of 143 person-and-pattern findings appeared in both runs. The steadiest were seniorhire (44%), shock (43%) and realign (40%). Seven scenarios had none in common. This confirms the finding from the smaller runs: patterns change a lot from run to run.
+
 ### Decision 55: every place the protected parts were switched off, hidden, simplified or removed
 
 A builder searched the code and the history since 15 September across patterns, coaching, role maps, role detection, board reads and the check-in's questions. **Nothing is still switched off, hidden, simplified or removed.**
