@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
-import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
+import { theDomainOf, effectiveJoinDomain } from '../../common/an-email-domain';
 
 /**
  * THE ORGANISATION'S OWN INVITE LINK (A3 #/j/baridi and A4 "Baridi's invite link"; U.3).
@@ -20,14 +20,22 @@ import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
  *
  * A STRANGER'S DOMAIN WAITS FOR AN ADMIN (Hafsah, 29 September, item 11; no DNS proof for now, as
  * decided). The link is meant for this organisation's own people, but it can be forwarded or found.
- * Someone joining through it whose email domain does not match the organisation's own (the domain of
- * `Organization.email`, the founding admin's address) is not made a member on the spot: a
- * `MembershipRequest` is raised, the same queue the check-in invitation flow already uses
- * (`nobody-joins-your-company-by-being-invited-to-a-check-in.ts`), and an admin has to let them in
- * (`WhoIsWaitingAtTheDoorService.approve`). Skipped when the organisation's own address is on a
- * public mail domain (`mayBeJoinedBy`) - there is no real domain to compare against, so nobody
- * waits for want of one. This is client-visible as `queuedForApproval` on the join response, the
- * same shape the invite page already reads for the check-in flow.
+ * Someone joining through it whose email domain does not match the organisation's own is not made a
+ * member on the spot: a `MembershipRequest` is raised, the same queue the check-in invitation flow
+ * already uses (`nobody-joins-your-company-by-being-invited-to-a-check-in.ts`), and an admin has to
+ * let them in (`WhoIsWaitingAtTheDoorService.approve`).
+ *
+ * "THE ORGANISATION'S OWN" DOMAIN (30 September, item 3): `effectiveJoinDomain`
+ * (`common/an-email-domain.ts`), the same one shown on the People page's "Who can join" - the
+ * domain of `Organization.email` (the founding address) until an admin names a different one
+ * (`UsersService.changeJoinDomain`). This check is independent of the domain-JOIN switch
+ * (`UsersService.joiningByDomain`'s `on`): the switch decides whether anyone with that domain may
+ * join WITHOUT an invitation; this decides whether somebody arriving WITH the invite link, but
+ * from a different domain, still waits for an admin. Skipped only when there is no such domain at
+ * all - the founding address is on a public mail service and nobody has named one - because then
+ * there is no real domain to compare against, so nobody waits for want of one. This is
+ * client-visible as `queuedForApproval` on the join response, the same shape the invite page
+ * already reads for the check-in flow.
  */
 const ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 
@@ -85,7 +93,7 @@ export class TheOrganisationInviteLinkService {
   /** "Join <organisation>": as "Takes part", through the plan's seat check, then into it. */
   async join(code: string, userId: string, via: any = 'password') {
     const org = code
-      ? await this.prisma.organization.findUnique({ where: { inviteLinkCode: code }, select: { id: true, name: true, email: true } })
+      ? await this.prisma.organization.findUnique({ where: { inviteLinkCode: code }, select: { id: true, name: true, email: true, joinDomain: true } })
       : null;
     if (!org) throw new ForbiddenException('That invite link is not open any more. Ask whoever sent it for the new one.');
     const already = await this.prisma.organizationMembership.findUnique({
@@ -100,10 +108,16 @@ export class TheOrganisationInviteLinkService {
       return { queuedForApproval: true as const, organisationName: org.name };
     }
 
-    /* SOMEONE FROM OUTSIDE THE DOMAIN WAITS FOR AN ADMIN (item 11): see the class comment. */
+    /*
+     * SOMEONE FROM OUTSIDE THE DOMAIN WAITS FOR AN ADMIN (item 11): see the class comment.
+     *
+     * THE SAME DOMAIN "WHO CAN JOIN" MEANS (30 September, item 3): `effectiveJoinDomain`, not a
+     * fresh read of `org.email`'s own domain - so an admin who has named or changed the domain on
+     * the People page changes what the invite link checks too, not only the domain-join switch.
+     */
     const joiner = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-    const orgDomain = theDomainOf(org.email);
-    const orgHasARealDomain = !!orgDomain && mayBeJoinedBy(orgDomain);
+    const orgDomain = effectiveJoinDomain(org);
+    const orgHasARealDomain = !!orgDomain;
     const matchesTheDomain = !orgHasARealDomain || orgDomain === theDomainOf(joiner?.email);
     if (!matchesTheDomain) {
       await this.prisma.membershipRequest.upsert({

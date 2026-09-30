@@ -50,6 +50,26 @@ export function mayBeJoinedBy(domain: string | null | undefined): boolean {
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) && !isAPublicMailDomain(d);
 }
 
+/**
+ * THE ONE DOMAIN "WHO CAN JOIN" MEANS (Hafsah, 30 September, item 3).
+ *
+ * It starts as the domain of the organisation's own founding email address (`Organization.email`,
+ * set when the organisation was created) - so long as that is a real company domain, never a public
+ * one. An admin can change it (`Organization.joinDomain`, `UsersService.changeJoinDomain`); once
+ * they have, their choice is what this returns, whatever the founding address was. With a public
+ * founding address, there is no domain until an admin names one - this returns null, not a guess.
+ *
+ * BOTH THE INVITE LINK AND JOINING BY DOMAIN READ THIS SAME VALUE, so an admin who changes it
+ * changes what both mean by "this organisation's people": the invite link's own domain check
+ * (`TheOrganisationInviteLinkService.join`) and the domain join switch (`UsersService.joiningByDomain`)
+ * call this rather than each reading `Organization.email` or `Organization.joinDomain` on its own.
+ */
+export function effectiveJoinDomain(org: { email: string | null | undefined; joinDomain: string | null | undefined }): string | null {
+  if (org.joinDomain) return org.joinDomain;
+  const founding = theDomainOf(org.email);
+  return founding && mayBeJoinedBy(founding) ? founding : null;
+}
+
 /** "hafsah@coamana.com" gives "Coamana"; "sam@blue-river.co.uk" gives "Blue River"; a Gmail address gives null. */
 export function aNameFromAnEmailAddress(email: string): string | null {
   const domain = theDomainOf(email);

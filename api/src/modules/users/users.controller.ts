@@ -154,19 +154,32 @@ export class UsersController {
   @Get('organization/joining')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Whether anyone with the organisation\'s email domain can join, and which domain' })
-  async joining(@CurrentUser('organizationId') organizationId: string, @CurrentUser('id') userId: string) {
-    return this.usersService.joiningByDomain(organizationId, userId);
+  async joining(@CurrentUser('organizationId') organizationId: string) {
+    return this.usersService.joiningByDomain(organizationId);
   }
 
   @Patch('organization/joining')
   @Roles(Role.ADMIN)
-  @ApiOperation({ summary: 'Let anyone with your own email domain join, or stop it' })
+  @ApiOperation({ summary: 'Let anyone with the organisation\'s email domain join, or stop it' })
   async setJoining(
     @CurrentUser('organizationId') organizationId: string,
-    @CurrentUser('id') userId: string,
     @Body() dto: JoiningByDomainDto,
   ) {
-    return this.usersService.setJoiningByDomain(organizationId, userId, dto.on);
+    return this.usersService.setJoiningByDomain(organizationId, dto.on);
+  }
+
+  /**
+   * AN ADMIN NAMES OR CHANGES THE DOMAIN (Hafsah, 30 September, item 3). The new domain is always
+   * the requesting admin's own confirmed address's domain - see `UsersService.changeJoinDomain`.
+   */
+  @Patch('organization/joining/domain')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Name or change the domain people can join this organisation by, using your own confirmed address' })
+  async changeJoiningDomain(
+    @CurrentUser('organizationId') organizationId: string,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.usersService.changeJoinDomain(organizationId, userId);
   }
 
   @Get('organization/check-ins')
