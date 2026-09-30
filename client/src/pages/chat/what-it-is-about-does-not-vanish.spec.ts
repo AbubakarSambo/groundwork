@@ -57,7 +57,9 @@ describe('what this check-in is about', () => {
     expect(body).toMatch(/\.\.\.WHAT_THE_BRIEF_IS_READ_FROM/)
     const shape = SERVICE.split('const WHAT_THE_BRIEF_IS_READ_FROM = {')[1]?.split('} as const;')[0] ?? ''
     expect(shape).toContain('brief: true')
-    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true \}/)
+    /* The engine may read more about each objective (it added isADecisionAboutAPerson on 29
+       September); what matters here is that these three are read. */
+    expect(shape).toMatch(/objectives: \{ select: \{ name: true, target: true, ownerParticipantId: true[^}]*\}/)
   })
 
   it('is declared on the response the client reads', () => {
