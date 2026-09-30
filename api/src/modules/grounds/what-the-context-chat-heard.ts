@@ -403,7 +403,13 @@ export function confirmedSay(proposal: Proposal): string {
     case 'cadence':
       return `I have set people to check in ${CADENCE_WORDS[proposal.cadence]}.`;
     case 'success':
-      return `I have recorded that as what doing well looks like: "${proposal.text}"`;
+      /*
+       * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: a colon joining two clauses
+       * together rather than a sentence - "I have recorded that as what doing well looks like:
+       * '...'" See `nothing-proposed-that-nobody-said.ts` and the confirmations for every other kind
+       * here, none of which are colon-joined: the quote sits inside the sentence as its own clause.
+       */
+      return `I have recorded "${proposal.text}" as what doing well looks like.`;
     case 'expectation':
       return `I have recorded "${proposal.text}" as what you expect of ${proposal.personLabel}. `
         + 'It goes down as YOUR expectation, not as agreed, and is not yet seen by them.';

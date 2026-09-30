@@ -172,9 +172,17 @@ describe('what is saved is exactly what was said back, character for character (
     expect(confirmedSay({ kind: 'timeline' as const, days: 90, say: 'unused' })).toBe('I have set this to run for 90 days.');
   });
 
-  it('confirmedSay: a success write says it was recorded, quoting the same text that was saved', () => {
+  /*
+   * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: this used to assert the colon-
+   * joined form - `I have recorded that as what doing well looks like: "..."` - two clauses glued
+   * together rather than a sentence, exactly the shape CLAUDE.md's wording rule refuses ("no pieces
+   * joined with colons"). The quote now sits inside the sentence as its own clause, matching every
+   * other kind's confirmation here.
+   */
+  it('confirmedSay: a success write says it was recorded, quoting the same text that was saved, as one sentence with no colon', () => {
     const p = { kind: 'success' as const, text: 'every pipeline stage has an owner', say: 'unused' };
-    expect(confirmedSay(p)).toBe('I have recorded that as what doing well looks like: "every pipeline stage has an owner"');
+    expect(confirmedSay(p)).toBe('I have recorded "every pipeline stage has an owner" as what doing well looks like.');
+    expect(confirmedSay(p)).not.toContain(':');
   });
 
   it('verbatimQuote itself: drops a trailing full stop the candidate had that the source does not need, and matches case from the source', () => {
