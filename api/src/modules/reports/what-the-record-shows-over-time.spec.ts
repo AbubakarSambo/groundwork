@@ -50,7 +50,7 @@ describe('what the record shows over time', () => {
         participantId: 'marcus', text: 'get the MOU signed', whenSaid: null, explicit: false,
         status: 'UNKNOWN', source: 'PASTE', statedInSession: null, saidAgainIn: [], saidWordForWord: false,
       }], labelOf, 3);
-      expect(c.say).toBe('The lead committed Marcus Oyelaran to this. Get the MOU signed. Marcus Oyelaran did not say it. Nobody has said yet whether it happened.');
+      expect(c.say).toBe('The lead committed Marcus Oyelaran to get the MOU signed. Marcus Oyelaran did not say it. Nobody has said yet whether it happened.');
       expect(c.say).not.toContain('"');
     });
 
@@ -77,7 +77,7 @@ describe('what the record shows over time', () => {
         participantId: 'marcus', text: 'lead that review with the team', whenSaid: null, explicit: true,
         status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 2, saidAgainIn: [], saidWordForWord: false,
       }], labelOf, 2);
-      expect(c.say).toBe('In session 2, Marcus Oyelaran committed to this. Lead that review with the team. Nobody has said yet whether it happened.');
+      expect(c.say).toBe('In session 2, Marcus Oyelaran committed to lead that review with the team. Nobody has said yet whether it happened.');
       expect(c.say).not.toContain('"');
     });
 
@@ -88,10 +88,46 @@ describe('what the record shows over time', () => {
         statedInSession: 1, saidAgainIn: [], saidWordForWord: false, whenSaidWordForWord: false,
       }], labelOf, 1);
       expect(c.say).toBe(
-        'In session 1, Marcus Oyelaran committed to this. I\'ll reach out to the InfoSec team to push the security review forward. '
+        'In session 1, Marcus Oyelaran committed to reach out to the InfoSec team to push the security review forward. '
         + 'The time Marcus Oyelaran gave for it was as soon as the 29th arrives. Nobody has said yet whether it happened.',
       );
       expect(c.say).not.toContain('"');
+    });
+
+    /*
+     * ONE SENTENCE, IN THE PRODUCT'S OWN VOICE, NEVER A CLIPPED INSTRUCTION OR SOMEBODY ELSE'S "I".
+     *
+     * A first pass at this fix read "Priti Sharma committed to this. I'll reach out to the InfoSec
+     * team..." - a clipped instruction for "lead that review with the team", and, worse, "I" left in
+     * the product's own sentence belonging to nobody the reader is reading about. The leading
+     * first-person frame ("I'll", "I will", ...) comes off and the rest becomes the object of
+     * "committed to"; the exact strings from run 20 are checked here.
+     */
+    it("puts a commitment's own words into the product's sentence, in our voice, not theirs", () => {
+      const priti = (id: string | null) => (id === 'priti' ? 'Priti Sharma' : 'a party');
+      const [c1] = commitmentsOverTime([{
+        participantId: 'marcus', text: 'lead that review with the team', whenSaid: null, explicit: true,
+        status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 2, saidAgainIn: [], saidWordForWord: false,
+      }], labelOf, 2);
+      expect(c1.say).toContain('In session 2, Marcus Oyelaran committed to lead that review with the team.');
+
+      const [c2] = commitmentsOverTime([{
+        participantId: 'priti', text: "I'll reach out to the InfoSec team to push the security review forward.",
+        whenSaid: null, explicit: true, status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [],
+        saidWordForWord: false,
+      }], priti, 1);
+      expect(c2.say).toContain('In session 1, Priti Sharma committed to reach out to the InfoSec team to push the security review forward.');
+
+      /* A first-person word left deeper in the sentence cannot be said safely in our voice. */
+      const [c3] = commitmentsOverTime([{
+        participantId: 'priti', text: 'I will get my documents sorted out.', whenSaid: null, explicit: true,
+        status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], saidWordForWord: false,
+      }], priti, 1);
+      expect(c3.say).toContain('In session 1, Priti Sharma made a commitment, which is in the record.');
+      for (const say of [c1.say, c2.say, c3.say]) {
+        expect(say).not.toContain('"');
+        expect(say).not.toMatch(/\bmy\b|\bI\b|\bI'll\b|\bme\b|\bour\b/);
+      }
     });
 
     it('leaves the time out altogether when it does not read as a time or a date at all', () => {

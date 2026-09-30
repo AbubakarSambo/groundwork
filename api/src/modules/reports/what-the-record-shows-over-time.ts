@@ -181,12 +181,33 @@ export function looksLikeATimeOrADate(s: string): boolean {
   return A_TIME_OR_DATE.test(s);
 }
 
-/** A fragment made into its own sentence: capitalised, and ending on a full stop. Their words, unchanged. */
-function asASentence(text: string): string {
-  const t = text.trim();
-  if (!t) return t;
-  const capped = t[0].toUpperCase() + t.slice(1);
-  return /[.!?]$/.test(capped) ? capped : `${capped}.`;
+/**
+ * A COMMITMENT'S TEXT, MADE PART OF THE PRODUCT'S OWN SENTENCE, so it never reads as a clipped
+ * instruction ("committed to this. Lead that review with the team.") or as first-person words put
+ * into a sentence that is not that person's own ("Priti Sharma committed to this. I'll reach out to
+ * the InfoSec team...", "I" belonging to nobody the reader is reading about).
+ *
+ * A commitment is usually written first person - "I will do X", "I'll do X" - because that is how the
+ * person said it. Said in our own voice, that becomes "{who} committed to do X": the leading
+ * first-person frame comes off, and the verb after it is lower-cased since it is now the middle of a
+ * sentence, not its start. A fragment that never had a first-person frame ("lead that review with the
+ * team", the lead's own shorthand for what somebody would do) already reads as the object of
+ * "committed to" once it is lower-cased, so nothing else changes.
+ *
+ * AND WHERE A FIRST-PERSON WORD IS LEFT AFTER THAT - "my", "me", "I", "our", deeper in the sentence
+ * than the opening frame - IT CANNOT BE SAID SAFELY IN OUR VOICE, because whoever it belongs to is
+ * not the "I" of this sentence any more. Null tells the caller to fall back to a sentence with no
+ * text in it at all.
+ */
+const FIRST_PERSON_FRAME = /^(?:i will|i'll|i am going to|i'm going to|i plan to|we will|we'll)\s+/i;
+const FIRST_PERSON_WORD = /\b(?:i|me|my|mine|myself|we|us|our|ours|ourselves)\b/i;
+export function inOurVoice(what: string | null | undefined): string | null {
+  const trimmed = String(what ?? '').trim();
+  if (!trimmed) return null;
+  const frame = FIRST_PERSON_FRAME.exec(trimmed);
+  const rest = (frame ? trimmed.slice(frame[0].length) : trimmed).trim().replace(/[.!?]+$/, '');
+  if (!rest || FIRST_PERSON_WORD.test(rest)) return null;
+  return rest[0].toLowerCase() + rest.slice(1);
 }
 
 /**
@@ -227,22 +248,33 @@ export function aCommitmentSaid(
   const quoteWhat = c.saidWordForWord === true;
   const quoteWhen = c.whenSaidWordForWord === true;
 
+  const clause = inOurVoice(c.what);
+
   if (!c.theySaidIt) {
-    out.push(quoteWhat
-      ? (stated !== null
+    if (quoteWhat) {
+      out.push(stated !== null
         ? `In session ${stated}, the lead said that ${who} would do this, "${c.what}"`
-        : `The lead said that ${who} would do this, "${c.what}"`)
-      : (stated !== null
-        ? `In session ${stated}, the lead committed ${who} to this. ${asASentence(c.what)}`
-        : `The lead committed ${who} to this. ${asASentence(c.what)}`));
+        : `The lead said that ${who} would do this, "${c.what}"`);
+    } else if (clause) {
+      out.push(stated !== null
+        ? `In session ${stated}, the lead committed ${who} to ${clause}.`
+        : `The lead committed ${who} to ${clause}.`);
+    } else {
+      out.push(stated !== null
+        ? `In session ${stated}, the lead committed ${who} to something, which is in the record.`
+        : `The lead committed ${who} to something, which is in the record.`);
+    }
     out.push(`${who} did not say it.`);
   } else if (quoteWhat) {
     if (stated !== null) out.push(`In session ${stated}, ${who} said, "${c.what}"`);
     else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} is down to do this, "${c.what}"`);
     else out.push(`${who} said, "${c.what}"`);
-  } else if (stated !== null) out.push(`In session ${stated}, ${who} committed to this. ${asASentence(c.what)}`);
-  else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} is down to do this. ${asASentence(c.what)}`);
-  else out.push(`${who} committed to this. ${asASentence(c.what)}`);
+  } else if (clause) {
+    if (stated !== null) out.push(`In session ${stated}, ${who} committed to ${clause}.`);
+    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} committed to ${clause}.`);
+    else out.push(`${who} committed to ${clause}.`);
+  } else if (stated !== null) out.push(`In session ${stated}, ${who} made a commitment, which is in the record.`);
+  else out.push(`${who} made a commitment, which is in the record.`);
   if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was "${c.when}".`);
   else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
