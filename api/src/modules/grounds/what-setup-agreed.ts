@@ -63,6 +63,25 @@ function theExpectationItself(text: string): string {
 }
 
 /**
+ * THE LEAD'S FRAMING, STRIPPED, CASE KEPT. FIX 5, inventory item 11's say-back.
+ *
+ * `theExpectationItself` above exists only to compare against `TOO_THIN`, and lowercases everything
+ * for that. This is the same strip, kept in the lead's own case, for the text that is actually QUOTED
+ * back and SAVED - so "I want the update in by every Friday" reads as "the update in by every Friday"
+ * wherever it is used, rather than depending on the model to have already dropped "I want" itself,
+ * which it does inconsistently between one model call and the next (propose and confirm are two
+ * separate calls - see applyContextProposal's own comment on why). Driven live: propose's own sentence
+ * quoted "want the update in by every Friday" - a fragment clipped mid-clause, missing the "I " that
+ * would have made "want" read as part of a full sentence - while confirm's independent extraction
+ * came back "the update in by every Friday". Stripping the same framing deterministically, in code,
+ * on both sides, means both calls converge on the same clean text far more often than leaving each
+ * one to decide on its own where the lead's sentence actually starts.
+ */
+export function withoutFraming(text: string): string {
+  return (text ?? '').trim().replace(FRAMING, '').trim();
+}
+
+/**
  * WHAT MAKES AN EXPECTATION WORTH RECORDING.
  *
  * A sentence with nothing checkable in it - "do a good job", "be more proactive" - is worse than no

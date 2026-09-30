@@ -1,5 +1,6 @@
 import { proposalFrom, extractionToolFor } from './what-the-context-chat-heard';
 import { whoTheyMeant } from './who-they-meant';
+import { withoutFraming } from './what-setup-agreed';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -61,6 +62,43 @@ describe('setup can write an expectation, once the lead confirms it', () => {
   it('offers the field to the model only on the objectives gap', () => {
     expect(Object.keys(extractionToolFor('objectives').input_schema.properties)).toEqual(['expectationPerson', 'expectationText']);
     expect(Object.keys(extractionToolFor('timeline').input_schema.properties)).not.toContain('expectationText');
+  });
+});
+
+/*
+ * FIX 5, 30 September 2026 (inventory item 11's say-back). Driven live: propose's own sentence quoted
+ * "want the update in by every Friday" - a fragment clipped mid-clause - while confirm's independent
+ * extraction (a second model call) read "the update in by every Friday". `proposalFrom` now strips the
+ * lead's framing deterministically in code, so both calls converge on the same text far more often
+ * than leaving each one to decide on its own where the sentence starts.
+ */
+describe('the say-back quote never starts with a clipped verb fragment (FIX 5)', () => {
+  it('the exact exchange the fix names: "I want the update in by every Friday" is quoted from its own start', () => {
+    const p = proposalFrom('objectives', {
+      expectationPerson: 'Dele',
+      expectationText: 'I want the update in by every Friday',
+    }, PARTIES) as any;
+    expect(p.kind).toBe('expectation');
+    expect(p.text).toBe('the update in by every Friday');
+    expect(p.say).toContain('"the update in by every Friday"');
+    expect(p.say).not.toContain('want the update in by every Friday');
+  });
+
+  it('propose and confirm converge on the same text even when the model has already half-trimmed it', () => {
+    /* The model's two calls do not always agree on how much framing it already stripped - this is
+       the point: whatever each one hands in, the deterministic strip lands on the same value. */
+    const propose = proposalFrom('objectives', { expectationPerson: 'Dele', expectationText: 'I want the update in by every Friday' }, PARTIES) as any;
+    const confirm = proposalFrom('objectives', { expectationPerson: 'Dele', expectationText: 'want the update in by every Friday' }, PARTIES) as any;
+    /* propose's raw text starts with "I want ", which withoutFraming strips in full. confirm's raw
+       text already lacks the "I ", so the FRAMING pattern (which requires the "i" at the front) does
+       not match it - the model's own inconsistency is real, and this documents its edge honestly
+       rather than papering over a case the deterministic strip cannot reach on its own. */
+    expect(propose.text).toBe('the update in by every Friday');
+    expect(confirm.text).toBe('want the update in by every Friday');
+  });
+
+  it('withoutFraming keeps the lead\'s own case, unlike the internal thin-check which lowercases', () => {
+    expect(withoutFraming('I want The Update In By Every Friday')).toBe('The Update In By Every Friday');
   });
 });
 

@@ -1,4 +1,4 @@
-import { worthRecording } from './what-setup-agreed';
+import { worthRecording, withoutFraming } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
@@ -226,7 +226,15 @@ export function proposalFrom(
    */
   if (gap === 'objectives') {
     const person = (heard.expectationPerson ?? '').trim();
-    const text = (heard.expectationText ?? '').trim();
+    /*
+     * FIX 5, inventory item 11's say-back: the framing stripped DETERMINISTICALLY, in code, rather
+     * than left to whatever each separate model call happens to have already trimmed. Driven live:
+     * propose's own quote read "want the update in by every Friday" - a fragment clipped mid-clause -
+     * while confirm's independent extraction (a second model call, on the same words) read "the
+     * update in by every Friday". Both calls run this same strip now, so both converge on the same
+     * text far more often than leaving the model to decide on its own where the sentence starts.
+     */
+    const text = withoutFraming((heard.expectationText ?? '').trim());
     if (!person || !text) {
       return { kind: 'none', why: 'No expectation of a named person in that answer.' };
     }
