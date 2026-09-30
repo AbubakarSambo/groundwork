@@ -2130,6 +2130,30 @@ export class AssistantService {
         history: payload.history,
       });
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+      /*
+       * FOUND LIVE, 30 September 2026, on the four live checks: after a lead confirmed what doing
+       * well looks like, the very next reply opened with "This check-in runs for 12 weeks and people
+       * check in once a week." again - the product's own opening line, which `contextChat` only ever
+       * adds on the FIRST reply of a conversation (`isOpeningTurn`, in grounds.service.ts). This was
+       * the first reply of a conversation, as far as `contextChat` could tell: nothing here carried
+       * the fact that an assistant turn had already happened forward to the next message, the way
+       * `runContextChat`'s "still gathering" branch below already does. Parked the same way, as a
+       * `context_turn`, so the next message reaches `contextChat` with this confirmation in its own
+       * history and `isOpeningTurn` reads false, exactly as it would on the old route's client-held
+       * history.
+       */
+      await this.prisma.assistantProposal.create({
+        data: {
+          organizationId,
+          personExternalId: who,
+          kind: 'context_turn',
+          summary: applied.say,
+          payload: {
+            groundId: payload.groundId,
+            history: [...payload.history, { role: 'assistant' as const, content: applied.say }],
+          } as never,
+        },
+      });
       return rules('add_context', text(applied.say));
     } catch (err: any) {
       /*

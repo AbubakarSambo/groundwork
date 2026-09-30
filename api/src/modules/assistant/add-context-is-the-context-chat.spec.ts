@@ -222,6 +222,55 @@ describe('say-back and confirm before saving (inventory item 5), by calling the 
     await service.respond('org-a', 'p1', 'no');
     expect(applyContextProposal).not.toHaveBeenCalled();
   });
+
+  /*
+   * FOUND LIVE, 30 September 2026, on the four live checks: after a lead confirmed what doing well
+   * looks like through Ask Groundwork, the very next reply opened with the product's own opening
+   * line again - "This check-in runs for 12 weeks and people check in once a week." -
+   * `contextChat` (grounds.service.ts) only adds that on the FIRST reply of a conversation
+   * (`isOpeningTurn`, true when no turn in `history` has `role: 'assistant'`), and nothing here used
+   * to carry the fact that a turn had already happened forward to the next message: confirming
+   * through `resolveParkedContext` wrote the row and replied, and parked nothing, so the next message
+   * reached `contextChat` with a fresh one-turn history and no assistant turn in it at all.
+   */
+  it('confirming parks the exchange forward as a context_turn, so the next message does not read as the opening turn', async () => {
+    const parked = {
+      id: 'pr1',
+      kind: 'context',
+      payload: { groundId: 'g1', said: 'twelve weeks', history: [{ role: 'user', content: 'twelve weeks' }] },
+    };
+    const applyContextProposal = jest.fn(async () => ({ changed: 'timeline', say: 'Set to twelve weeks.' }));
+    const { service, proposals } = svc({ parked, applyContextProposal });
+    await service.respond('org-a', 'p1', 'yes');
+    const carried = proposals.find((p) => p.kind === 'context_turn');
+    expect(carried).toBeDefined();
+    expect(carried.payload.groundId).toBe('g1');
+    /* The confirmation itself is now an ASSISTANT turn in the carried history - the one thing
+       `isOpeningTurn` checks for. */
+    expect(carried.payload.history).toEqual([
+      { role: 'user', content: 'twelve weeks' },
+      { role: 'assistant', content: 'Set to twelve weeks.' },
+    ]);
+  });
+
+  it('and the next message reaches contextChat with that assistant turn already in its history', async () => {
+    const afterConfirm = {
+      id: 'pr2',
+      kind: 'context_turn',
+      payload: {
+        groundId: 'g1',
+        history: [{ role: 'user', content: 'twelve weeks' }, { role: 'assistant', content: 'Set to twelve weeks.' }],
+      },
+    };
+    const contextChat = jest.fn(async () => ({ reply: 'What does doing well look like?', gaps: ['success'], done: false, proposal: null }));
+    const { service } = svc({ parked: afterConfirm, contextChat });
+    await service.respond('org-a', 'p1', 'Good means every stage has an owner.');
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [
+      { role: 'user', content: 'twelve weeks' },
+      { role: 'assistant', content: 'Set to twelve weeks.' },
+      { role: 'user', content: 'Good means every stage has an owner.' },
+    ]);
+  });
 });
 
 /**
