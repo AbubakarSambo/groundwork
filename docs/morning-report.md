@@ -6,6 +6,76 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## SUMMARY OF THE NIGHT, 29 TO 30 SEPTEMBER (read this first)
+
+**Every decision Hafsah sent tonight is recorded in `docs/decisions-merged.md`, as decisions 44 to 57.** Clarifications were also added to decisions 4, 5, 6, 9, 12, 17, 21 and 27.
+
+### Finished and pushed
+
+- **The warm-up runs once** (decision 44), proven live. The board warmed 9 times for nine check-ins, where it used to warm 18 times.
+- **Screens request 77.** A person's own words are never removed by the hidden-target filter. Only a private file's name is hidden.
+- **Screens request 76.** Each check-in stores its kind of work, and each kind gets its own records on the board: deals and stages, releases, tickets, deadlines and so on.
+- **The pattern names are approved and patterns are switched on** (decisions 52 and 55).
+  - Every rule holds live: three periods, the person first, no colleague sees another person's, and E4 and F5 reach nobody.
+  - The wording around each pattern is fixed in place.
+  - Nothing protected is still switched off, hidden or simplified.
+- **The provisional decisions confirmed, with Hafsah's four changes:**
+  - An admin can share the report if the lead has left.
+  - An admin who cannot see a target reads only "has checked in".
+  - A decision about a person is a field the lead sets.
+  - Week 10 is done the more private way: the person sees the suggestion first, and the manager gets a line with no count. It needs a threshold before any suggestion is reached, and none is set.
+- **An untold goal follows the prototype** (decision 56).
+  - The lead sees "Not told yet" and is nudged.
+  - The model asks about the area of work, never the number.
+  - After a week the person is told a goal exists.
+  - Checked twice: the number never reached the person.
+- **Evaluation check-ins.** The person being reviewed sees the facts and the decision, never a colleague's exact words.
+- **Decision 57, all nine points:**
+  - a period is at least a week;
+  - the lead marks a pattern right, wrong or not sure, is nudged once, and marks "we talked about it";
+  - the number-based rules are a second source of evidence;
+  - a role guessed with low confidence is confirmed first;
+  - coaching is on by default;
+  - "setup never said" is back;
+  - later check-ins count periods;
+  - self-learning is added early, as week 8b.
+- **One chat.** Ask Groundwork can now do everything the context chat does, by calling the context chat's own code.
+- **Privacy fixes found along the way:**
+  - Ask Groundwork could hand back a colleague's hidden target.
+  - An admin could read the lead's private description inside the judgement.
+  - A person's own role, typed at joining or in a check-in, was written into the lead's private field.
+  - A quote could be the model's words rather than the person's.
+- **The screens workspace is told** what they will receive, in `docs/answers-from-engine.md`.
+
+### Tests and runs
+
+- **The whole API suite passed at the end of each finished piece.** The last full count was 1,229 files and 11,426 tests.
+- **Run-20, today's one full run: nothing worse than the baseline.**
+  - Every problem count is 0.
+  - Commitments recorded: 70, against 33 at the baseline.
+  - Agreements found: 71, against 56.
+  - Proof asked for: 51, against 42.
+- **Watch:**
+  - specific detail asked for is 85, against 88, inside its usual swing;
+  - jargon in reports and boards is 141, above the bar of 128.
+- **Quick checks after every run:**
+  - quotes are word for word, after tonight's fix;
+  - none of the lead's private words reach anyone, apart from one false alarm, which is explained;
+  - the reports match the database.
+
+### The most important finding
+
+**Patterns are not steady from run to run.** Across all 24 scenarios, only 15% of the person-and-pattern findings in run-19 appeared again in run-20. The lead's marks and self-learning are built to work on this, but the detector itself, and what the test personas say, should be looked at before patterns reach anyone live.
+
+### Needs Hafsah
+
+1. **Switching off the old context chat.** Everything the doors decide matches in the live proof. Two differences remain, both the model reading a success statement differently. On your word it is switched off.
+2. **The six disagreements between decisions**, listed under Hafsah's second set of answers, each with how it is being handled.
+3. **The release questions** in `docs/ready-to-deploy.md`. The safety check refused my edit because of a name in the command. The corrected content is in this report.
+4. **Week 10's thresholds** are empty, so no suggestion is reached until you set them.
+
+---
+
 ## HOW THE ENGINE WORK RUNS NOW (Hafsah, 29 September, evening)
 
 Hafsah wants the engine work done much faster. Every session keeps to this:
@@ -163,6 +233,7 @@ Built in `f978d3cf`. **The old context chat still works, untouched, and stays un
 - **Scores:**
   - Sales stored 9 commitments. Run-20 stored 23, but across ten runs sales has stored between 5 and 23, so this is normal.
   - "Specific detail asked for" in sales was 19. That is below anything sales has had before (22 to 36), which is borderline, so under the working rules sales is being run a second time before the fix is counted as kept.
+- **The second sales run settles it:** specific detail asked for is 29, inside its normal range, so 19 was a low draw. No closing turn asked a question, and 12 commitments were stored. **Both fixes are kept.**
 
 ### Decision 57, part C: steadiness, a second source of evidence, and confirming a role
 
