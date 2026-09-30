@@ -66,13 +66,13 @@ import {
 
 const SCOPES: { key: string; label: string; sub: string }[] = [
   { key: 'graph:write', label: 'Send people', sub: 'Who works here and who reports to whom' },
-  { key: 'graph:read', label: 'Read back the shape', sub: 'The roles configured here, so a system can check what it sent arrived' },
+  { key: 'graph:read', label: 'Read back your roles', sub: 'The roles configured here, so a system can check what it sent arrived' },
   { key: 'subjects:write', label: 'Send objectives', sub: 'Objectives, projects and decisions, with their measures and owners' },
   { key: 'knowledge:write', label: 'Send your handbook', sub: 'Documents people can then ask in plain words' },
   { key: 'grounds:write', label: 'Open check-ins', sub: 'Start one from your own system' },
-  { key: 'checkins:write', label: 'Link a check-in', sub: 'Attach an existing one to an objective. Smaller than opening one' },
-  { key: 'findings:read', label: 'Read findings', sub: 'What is missing, unowned, or described two ways' },
-  { key: 'handovers:read', label: 'Read one person’s desk', sub: 'A handover brief, and what a lead should read before a conversation' },
+  { key: 'checkins:write', label: 'Link a check-in', sub: 'Attach an existing one to an objective. This does less than opening one.' },
+  { key: 'findings:read', label: 'Read findings', sub: 'Read what Groundwork found missing, with no owner, or described two different ways' },
+  { key: 'handovers:read', label: 'Read the brief about one person', sub: 'A handover brief, and what a lead should read before a conversation' },
   { key: 'reports:read', label: 'Read reports', sub: 'Everybody’s account of a period, once released' },
   { key: 'proposals:read', label: 'Read proposed changes', sub: 'Changes Groundwork suggests to an objective' },
   { key: 'proposals:write', label: 'Resolve proposed changes', sub: 'Accept or decline them from your side' },
@@ -176,7 +176,7 @@ export function IntegrationsPage() {
   const register = useMutation({
     mutationFn: () => integrationsApi.registerEndpoint(hookUrl, hookEvents),
     onSuccess: e => { setFreshHookSecret(e.secret); setHookUrl(''); qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }) },
-    onError: (e: any) => toast.error(e?.message ?? 'Could not register that endpoint.'),
+    onError: (e: any) => toast.error(e?.message ?? 'That address could not be added. Check it and try again.'),
   })
   const rotate = useMutation({
     mutationFn: integrationsApi.rotateSecret,
@@ -185,7 +185,7 @@ export function IntegrationsPage() {
   })
   const reactivate = useMutation({
     mutationFn: integrationsApi.reactivateEndpoint,
-    onSuccess: () => { toast.success('Switched back on. New events flow to it again.'); qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }) },
+    onSuccess: () => { toast.success('Switched back on. New updates are sent to it again.'); qc.invalidateQueries({ queryKey: ['integrations', 'endpoints'] }) },
     onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Could not switch it back on.'),
   })
   const removeEndpoint = useMutation({
@@ -212,7 +212,7 @@ export function IntegrationsPage() {
       outOfScopeDepartments: embedOutOfScope.split(',').map(d => d.trim()).filter(Boolean),
     }),
     onSuccess: (r) => { setEmbedSecret(r.signingSecret); qc.invalidateQueries({ queryKey: ['integrations', 'embed'] }); toast.success('Saved. Copy the signing secret now. It is shown once.') },
-    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not save the embed setup.'),
+    onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Your settings for showing Groundwork inside your tool were not saved.'),
   })
 
   async function copyText(text: string, done?: string) {
@@ -255,9 +255,9 @@ export function IntegrationsPage() {
             <Stack gap={12}>
               <p className="gwui-panel-text-muted">
                 Your people can check in from inside your own system, in a panel on your own page or
-                on screens your developer builds. It is asked for rather than bought: say what you
-                want to build, somebody here reads it, and the keys appear on this page once it is
-                approved.
+                on screens your developer builds. You ask for it rather than buy it. Say what you
+                want to build. Someone at Groundwork reads it, and the keys appear on this page once
+                it is approved.
                 {access.data?.status === 'PENDING' && ' You have asked and we have not answered yet.'}
                 {access.data?.status === 'DECLINED' && ' This was declined. Ask again, saying what has changed.'}
                 {access.data?.status === 'WITHDRAWN' && ' This was approved and has since been withdrawn.'}
@@ -357,7 +357,7 @@ export function IntegrationsPage() {
                 </div>
               )}
 
-              {creds.data && creds.data.length === 0 && <p className="gwui-panel-text-muted">No keys yet. Create one above for the system you are connecting; it is shown once.</p>}
+              {creds.data && creds.data.length === 0 && <p className="gwui-panel-text-muted">No keys yet. Create one above for the system you are connecting. It is shown only once.</p>}
               {(creds.data ?? []).map(c => (
                 <div key={c.id}>
                   <div className="gwui-sentence-row">
@@ -447,7 +447,7 @@ export function IntegrationsPage() {
                           </p>
                         ))}
                         {!!(jobDetail.data?.failures ?? []).length && (
-                          <p className="gwui-panel-text-muted">Everything else in this batch was stored. Fix these and send them again; re-sending the whole batch is safe, because each row updates what is already there rather than adding a second copy.</p>
+                          <p className="gwui-panel-text-muted">Everything else in this batch was stored. Fix these and send them again. Re-sending the whole batch is safe, because each row updates what is already there rather than adding a second copy.</p>
                         )}
                       </Stack>
                     )}
@@ -471,7 +471,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
   "about": "Nyama Choma Palace",
   "source": "Invoice INV-2291, paid"
 }`}</pre>
-            <p className="gwui-fine">The shape of a request, for illustration. The exact address and fields are in the developer docs, which open from a link that expires after a short while.</p>
+            <p className="gwui-fine">This shows what a request looks like. The exact address and fields are in the developer docs, which open from a link that expires after a short while.</p>
           </Stack>
         </Section>
 
@@ -536,7 +536,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
                     </div>
                   </div>
                   {sure.isArmed(`rotate:${e.id}`) && (
-                    <Confirm saying={`Rotate the signing secret for ${e.url}? The old one keeps working until the next rotation; the new one is shown once.`} confirmLabel="Rotate it" keepLabel="Keep the current one" pending={rotate.isPending} pendingLabel="Rotating…" onConfirm={() => rotate.mutate(e.id)} onKeep={sure.disarm} />
+                    <Confirm saying={`Rotate the signing secret for ${e.url}? The old one keeps working until you replace it again. The new one is shown only once.`} confirmLabel="Rotate it" keepLabel="Keep the current one" pending={rotate.isPending} pendingLabel="Rotating…" onConfirm={() => rotate.mutate(e.id)} onKeep={sure.disarm} />
                   )}
                   {sure.isArmed(`remove:${e.id}`) && (
                     <Confirm saying={`Remove ${e.url}? Nothing more is delivered to it, and its delivery log stays.`} confirmLabel="Remove it" keepLabel="Keep it" pending={removeEndpoint.isPending} pendingLabel="Removing…" onConfirm={() => removeEndpoint.mutate(e.id)} onKeep={sure.disarm} />
@@ -607,7 +607,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
                 <p className="gwui-field-help">One address per line. People see only what they’d see here, signed in as themselves.</p>
               </div>
 
-              <Folded summary="More options" note="Where it sits, and who never sees it">
+              <Folded summary="More options" note="Choose where it appears, and who never sees it.">
                 <Stack gap={10}>
                   <div>
                     <FieldLabel htmlFor="tools-embed-placement">Where it sits</FieldLabel>
@@ -618,7 +618,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
                   </div>
                   <div>
                     <FieldLabel htmlFor="tools-embed-out">Departments that should see nothing at all</FieldLabel>
-                    <TextField id="tools-embed-out" placeholder={embed.data?.outOfScopeDepartments.join(', ') || 'Optional, comma-separated'} value={embedOutOfScope} onChange={e => setEmbedOutOfScope(e.target.value)} />
+                    <TextField id="tools-embed-out" placeholder={embed.data?.outOfScopeDepartments.join(', ') || 'You can leave this empty. Put a comma between names.'} value={embedOutOfScope} onChange={e => setEmbedOutOfScope(e.target.value)} />
                   </div>
                 </Stack>
               </Folded>
@@ -668,7 +668,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
 
         <Folded summary="For your engineer" note="The calls your developer can send directly, if this page’s own buttons are not enough">
           <Stack gap={12}>
-            <p className="gwui-panel-text-muted">Two requests. The first swaps your key for a token that lasts an hour; the second uses it.</p>
+            <p className="gwui-panel-text-muted">Your developer sends two requests. The first swaps your key for a pass that lasts an hour, and the second uses it.</p>
             <pre className="gwui-code-block-light">{`curl -X POST ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/oauth/token \\
   -H 'content-type: application/json' \\
   -d '{"grant_type":"client_credentials",

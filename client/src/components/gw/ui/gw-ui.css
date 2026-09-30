@@ -331,15 +331,19 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-invite-link-address { font-size: 14.5px; color: var(--gw-text); overflow-wrap: anywhere; }
 .gwui-two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
 /*
- * GROUP 1 RE-REVIEW, FAULT C: a grid row stretches every card to the tallest one in it (CSS
- * Grid's own default), so a shorter illustration's card grew to match a taller one beside it -
- * but its own `<figure>` did not grow with it, leaving a blank gap between the illustration and
- * its caption at the bottom of the card. Filling the card's height with the figure itself, and
- * pinning the caption to the figure's own bottom, means the two cards' captions line up exactly,
- * with nothing empty hanging beneath the shorter illustration instead.
+ * GROUP 1'S THIRD REVIEW: pinning each caption to the bottom of a card stretched to match its
+ * taller neighbour (the previous fix, for the gap that used to sit AFTER the shorter caption)
+ * just moved the same empty gap to BEFORE the caption instead - the illustration itself still
+ * only took its own natural height, now with dead space between it and the pinned-down caption.
+ * A card with a `<figure>` in it no longer stretches to match its neighbour at all
+ * (`align-self: start`, scoped to exactly the cards this page's illustrations sit in via `:has()`,
+ * so ordinary card grids elsewhere - "More you can connect", the People page - keep stretching to
+ * match each other as before). Each caption now sits directly under its own illustration, with
+ * nothing empty above or below it; the two captions no longer force-align when the illustrations
+ * are genuinely different heights, which is honest rather than papering over the difference.
  */
-.gwui-two-up > .gwui-panel > figure { display: flex; flex-direction: column; height: 100%; margin: 0; }
-.gwui-two-up > .gwui-panel > figure > figcaption { margin-top: auto; }
+.gwui-two-up > .gwui-panel:has(figure) { align-self: start; }
+.gwui-two-up > .gwui-panel > figure { margin: 0; }
 
 /* ── PANEL ROW (more than one fact inside one Panel(pad=false), a line between each -
    "Who can join": the domain switch and the invite link, in one white panel) ─────────────────── */

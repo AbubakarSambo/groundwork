@@ -14,8 +14,10 @@ describe('empty sections', () => {
   })
   it('the keys list says when there are none, as the deliveries list beside it does', () => {
     /* UPDATED (30 September, the shared-parts rebuild): "Issue" became "Create", the button's own
-       word (tools.txt: "Create a key") - the empty line now agrees with the button beside it. */
-    expect(read('org/IntegrationsPage.tsx')).toContain('No keys yet. Create one above for the system you are connecting; it is shown once.')
+       word (tools.txt: "Create a key") - the empty line now agrees with the button beside it.
+       UPDATED AGAIN (group 1's third review): the semicolon join became a full sentence,
+       "it is shown once" became "it is shown only once". */
+    expect(read('org/IntegrationsPage.tsx')).toContain('No keys yet. Create one above for the system you are connecting. It is shown only once.')
   })
   it('the "About this check-in" heading is gated with the brief it heads', () => {
     const chat = read('../components/gw/GroundChat.tsx')

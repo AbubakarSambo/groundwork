@@ -127,8 +127,10 @@ describe('a skipped row can be found and fixed', () => {
 
   it('says the fix is safe to re-send, because it is', () => {
     /* Every row is an upsert on the customer's own key. Without saying so, the honest thing for a
-       cautious admin to do is nothing. */
-    expect(SRC).toMatch(/re-sending the whole batch is safe/)
+       cautious admin to do is nothing.
+       UPDATED (group 1's third review): split into two sentences, so "Re-sending" now starts one
+       capitalised, where it used to sit lowercase after a semicolon. */
+    expect(SRC).toMatch(/Re-sending the whole batch is safe/)
   })
 
   it('explains a quiet period rather than leaving the product silent', () => {
