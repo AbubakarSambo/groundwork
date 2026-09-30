@@ -1603,6 +1603,19 @@ export class BoardService {
      * whole answer is one paragraph, and a section added later is walled by being added to it
      * rather than by whoever wrote it remembering.
      */
+    /*
+     * CONTRIBUTION AND COVERAGE ARE READ IN FULL ONLY BY WHOEVER RUNS THE CHECK-IN (screens request
+     * 88, decision 58). Everybody else, a participant or an admin who only reads, gets only their own
+     * row, and nothing when they have none, whether or not people see each other on this check-in.
+     * Decision 5 lets an admin read the board; decision 58 narrowed a pattern to the lead and the admin
+     * who set the check-in up, and these two sections name and describe each person the same way.
+     * (Narrowed the same way pending Hafsah's confirmation.)
+     */
+    if (!runsItForAPattern(ground as any, requestingUserId)) {
+      const onlyMine = (rows: any) => (Array.isArray(rows) ? rows.filter((r: any) => !!r.participantId && r.participantId === (me?.id ?? null)) : []);
+      if (out.contribution) out.contribution = onlyMine(out.contribution);
+      if (out.coverage) out.coverage = { ...(out.coverage as any), reads: onlyMine((out.coverage as any).reads) };
+    }
     if (whoMaySee.peersHidden) {
       out.contribution = onlyWhatThisReaderMaySee(out.contribution as any, whoMaySee);
       /*
