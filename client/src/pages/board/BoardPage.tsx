@@ -1054,6 +1054,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <WorkRecordsSections
           groundId={id!}
+          kindOfWork={(b as any).kindOfWork ?? null}
           sections={b.workRecords}
           participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
           leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
