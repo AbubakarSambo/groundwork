@@ -74,7 +74,9 @@ describe('U.10 re-review round 4', () => {
   it('item 4: the session strip says what is true, never "today" for a round that only opened days ago', async () => {
     renderBoard()
     await screen.findByRole('heading', { name: 'Sales team, Q3' })
-    expect(screen.getByText('Session 1 opened on 27 Sept.')).toBeTruthy()
+    /* Board review, 30 September, item 9 (second pass): "27 Sept." beside "Tuesday 29 September"
+       elsewhere on the same board was two date forms for one page - now the same long form. */
+    expect(screen.getByText('Session 1 opened on 27 September.')).toBeTruthy()
     expect(screen.getByText('Session 2 has not opened yet.')).toBeTruthy()
     expect(screen.queryByText(/is today/)).toBeNull()
   })

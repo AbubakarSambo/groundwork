@@ -93,8 +93,12 @@ import { KindOfWorkBanner, WorkRecordsSections } from './WorkRecords'
  */
 
 
+/* Board review, 30 September, item 9 (second pass): this read "27 Sept." on the session pill
+   while the line above it reads "Tuesday 29 September at 3:47pm" - two forms for the same date
+   on the same page. Now 'dayAndMonthLong' ("27 September"), matching the long form used
+   everywhere else the board writes a date. */
 const dshort = (iso?: string | null) =>
-  iso ? whenItWas(iso, 'dayAndMonth') : ' - '
+  iso ? whenItWas(iso, 'dayAndMonthLong') : ' - '
 
 /**
  * U.10 RE-REVIEW ITEM B: A SESSION PILL, AS A SENTENCE ITS OWN READER CAN FOLLOW.
