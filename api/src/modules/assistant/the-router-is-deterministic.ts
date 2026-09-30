@@ -44,6 +44,8 @@ export type Lane =
   | 'context_line'
   | 'lead_note'
   | 'questions_for_people'
+  /** Time off said in chat: said back, and sent through the leave suite on a yes (week 20). */
+  | 'ask_for_leave'
   | 'unplaced';
 
 export interface Routed {

@@ -108,7 +108,9 @@ describe('and the service writes only after a yes', () => {
     /* `history` joined `said` so a pronoun can be resolved - "give her 3,000 units" names nobody on
        its own, and the target was being lost. What the rule is really about is unchanged and is
        what is checked: sentences go in, no id and no value. */
-    expect(apply).toMatch(/dto: \{ said: string; history\?: \{ role: 'user' \| 'assistant'; content: string \}\[\] \}/);
+    /* Week 20: `offerId` (which question was put to the lead, never a value) and `leave` (a flag: the
+       days are read again from `said`) joined them. Still no value from the client, which the next line pins. */
+    expect(apply).toMatch(/dto: \{ said: string; history\?: \{ role: 'user' \| 'assistant'; content: string \}\[\]; offerId\?: string; leave\?: boolean \}/);
     expect(apply).not.toMatch(/dto\.(timelineDays|cadence|participantId|target)\b/);
     expect(apply).toMatch(/extractionToolFor\(openGap\)/);
     /*

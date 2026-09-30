@@ -143,6 +143,8 @@ import { whenTheyMeant } from './when-words-mean-a-date';
 import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA, THEY_SAY_HAPPENED_PROMPT, THEY_SAY_HAPPENED_SCHEMA } from './prompt-library';
 import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-they-say-happened';
 import { KnowledgeService } from '../knowledge/knowledge.service';
+import { keptForTheOrganisation, MOST_KEPT_IN_A_PROMPT } from '../knowledge/organisation-memory';
+import { whatTheOrganisationKeepsBlock } from '../knowledge/what-the-organisation-keeps';
 import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
@@ -3939,7 +3941,13 @@ export class ConversationService {
           .covering(ground.organizationId, lookUp)
           .catch(() => [])
       : [];
-    const howWeDoIt = howThisCompanyDoesIt(companyCards);
+    /*
+     * AND WHAT THE ORGANISATION'S LEAD CONFIRMED IS TRUE OF THE WHOLE COMPANY (week 20). Context to
+     * understand people with, in the same place as the written process and never mixed into it: it is
+     * not something a person's account is compared with, and it is not quoted to anybody.
+     */
+    const keptForTheOrg = await keptForTheOrganisation(this.prisma, ground.organizationId, MOST_KEPT_IN_A_PROMPT).catch(() => []);
+    const howWeDoIt = [howThisCompanyDoesIt(companyCards), whatTheOrganisationKeepsBlock(keptForTheOrg)].filter(Boolean).join('\n\n');
 
     /*
      * BOUNDED, AND HONEST ABOUT THE BOUND.
