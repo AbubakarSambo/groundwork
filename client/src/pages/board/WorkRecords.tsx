@@ -354,9 +354,9 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
       <div>
         <div className="gwui-ink-text gwui-fs-14-5" style={{fontWeight: 700}}>{row.name}</div>
         {fieldEntries.map(([label, value]) => (
-          <div key={label} className="gwui-fs-12-5 gwui-ink-sub gwui-mt-2">{label} {value}</div>
+          <div key={label} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{label} {value}</div>
         ))}
-        {dueSentence(row.due) && <div className="gwui-fs-12-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
+        {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
       </div>
       <div className="gwui-fs-13 gwui-ink-text">
         {row.owner ?? <span className="gwui-ink-muted">Nobody named yet.</span>}
@@ -364,7 +364,7 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
       <div aria-label="Stage now">
         {row.stage
           ? <Tag tone="plain">{row.stage}</Tag>
-          : <span className="gwui-fs-12-5 gwui-ink-muted">No stage said yet.</span>}
+          : <span className="gwui-fs-13-5 gwui-ink-muted">No stage said yet.</span>}
       </div>
       <div>
         <WhatShowsIt row={row} leadFirstName={leadFirstName} />
@@ -381,7 +381,7 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
 /** The column headings above the rows - the item's own noun, the kind's own word for whose it is. */
 function WorkTableHead({ itemNoun, ownerLabel, canEdit }: { itemNoun: string; ownerLabel: string; canEdit: boolean }) {
   return (
-    <div className="gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-12-5 gwui-ink-sub" style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto'}} role="row">
+    <div className="gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13-5 gwui-ink-sub" style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto'}} role="row">
       <span>{itemNoun}</span>
       <span>{ownerLabel}</span>
       <span>Stage now</span>
@@ -489,7 +489,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   if (section.state === 'not-known') {
     return (
       <Section heading={heading}>
-        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-12-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{section.why}</p>
+        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{section.why}</p>
       </Section>
     )
   }

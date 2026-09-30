@@ -95,7 +95,7 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
             {/* The number, where they have one. A person with no target of their own still has a
                 row: what to do about them does not depend on somebody having set them a figure. */}
             {r.target != null && (
-              <div className="gwui-fs-12-5 gwui-ink-sub" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <div className="gwui-fs-13-5 gwui-ink-sub" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {r.count} of {r.target}
               </div>
             )}
@@ -103,12 +103,12 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
             {/* `ask` and `finding`, kept as one quiet line rather than dropped - not in the
                 prototype's table, but the whole point of a row for a lead who can act on it. */}
             {(r.ask || r.finding) && (
-              <div className={`gwui-fs-12 gwui-mt-4 ${r.hasGap ? 'gwui-ink-amber' : 'gwui-ink-muted'}`} style={{ lineHeight: 1.5 }}>
+              <div className={`gwui-fs-13-5 gwui-mt-4 ${r.hasGap ? 'gwui-ink-amber' : 'gwui-ink-muted'}`} style={{ lineHeight: 1.5 }}>
                 {[r.ask, r.finding].filter(Boolean).join(' ')}
               </div>
             )}
             {r.keepsComingUp && (
-              <div className="gwui-fs-12 gwui-ink-muted gwui-mt-4" style={{ lineHeight: 1.5 }}>{r.keepsComingUp}</div>
+              <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-4" style={{ lineHeight: 1.5 }}>{r.keepsComingUp}</div>
             )}
           </div>
           <Tag tone={TONE[r.reason]}>{LABEL[r.reason]}</Tag>
