@@ -20,6 +20,7 @@ import { ParticipantsModule } from './modules/participants';
 import { ConversationModule } from './modules/conversation';
 import { ReportsModule } from './modules/reports';
 import { PatternsModule } from './modules/patterns';
+import { LearningModule } from './modules/learning/learning.module';
 import { BoardModule } from './modules/board';
 import { ResolutionModule } from './modules/resolution';
 import { SuggestionsModule } from './modules/suggestions';
@@ -78,6 +79,7 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     WhatsAppModule,
     ReportsModule,
     PatternsModule,
+    LearningModule,
     BoardModule,
     ResolutionModule,
     SuggestionsModule,
