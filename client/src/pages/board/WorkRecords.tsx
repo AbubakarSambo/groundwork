@@ -347,7 +347,7 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
   const fieldEntries = Object.entries(row.fields ?? {})
   return (
     <div
-      className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto', alignItems: 'start'}}
+      className="gwui-work-row gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top"
       role="row"
       aria-label={row.name}
     >
@@ -381,7 +381,7 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
 /** The column headings above the rows - the item's own noun, the kind's own word for whose it is. */
 function WorkTableHead({ itemNoun, ownerLabel, canEdit }: { itemNoun: string; ownerLabel: string; canEdit: boolean }) {
   return (
-    <div className="gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub" style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto'}} role="row">
+    <div className="gwui-work-head gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub" role="row">
       <span>{itemNoun}</span>
       <span>{ownerLabel}</span>
       <span>Stage now</span>

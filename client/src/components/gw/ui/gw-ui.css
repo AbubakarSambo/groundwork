@@ -234,6 +234,18 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   .gwui-person-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
 }
 
+/* ── WORK RECORDS TABLE (board's kind-of-work table, WorkRecords.tsx) ────
+   U.10 (g), HER REVIEW: reads cramped at 375px with its fixed grid columns. The same answer as
+   PeopleTable above - at phone width each row becomes a small stack of its own cells, and the
+   column-heading row (meaningless once nothing lines up in columns) is hidden. The base
+   template lives in a class, not inline, because only a class can carry the media query. */
+.gwui-work-head { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.8fr auto; }
+.gwui-work-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.8fr auto; align-items: start; }
+@media (max-width: 640px) {
+  .gwui-work-head { display: none; }
+  .gwui-work-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
+}
+
 /* ── FOLDED PANEL (prototype: "Who reports to whom", a closed .panel) ───── */
 .gwui-folded { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
 .gwui-folded-summary {

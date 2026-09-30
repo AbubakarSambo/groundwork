@@ -65,7 +65,7 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
     <div>
       {/* The gap, in the largest type on the board, because it is the one thing they will remember. */}
       {it.theGap && (
-        <div className="gwui-rule-blue gwui-pt-14 gwui-pr-16 gwui-pb-14 gwui-pl-16 gwui-mb-4" style={{ background: 'var(--gw-blue-bg)', borderRadius: 10 }}>
+        <div className="gwui-rule-blue gwui-panel-pad gwui-mb-4" style={{ background: 'var(--gw-blue-bg)', borderRadius: 10 }}>
           <div className="gwui-fs-13-5 gwui-ink-navy gwui-mb-5" style={{ fontWeight: 700, letterSpacing: '.4px' }}>The gap</div>
           <div className="gwui-fs-16 gwui-ink-text" style={{ lineHeight: 1.55, fontWeight: 600 }}>{it.theGap}</div>
         </div>
