@@ -648,7 +648,15 @@ export function GroundParticipantPage() {
         </div>
       )}
 
-      <div style={{ maxWidth: 600, margin: '0 auto', width: '100%', padding: '16px 16px 48px' }}>
+      {/* READING WIDTH, EXCEPT WHERE THE PAGE ISN'T PROSE (see the-dashboard-uses-the-screen.spec.ts).
+          "Report" and "Context and resources" are read, so they keep the 600px measure the
+          conversation itself uses. "My work" is not: my-record.jpg draws it as two columns side by
+          side (the stat tiles and any deals beside the pattern, commitments and reports), the same
+          shape GroundAdminPage.tsx already gives "People and setup" for the same reason - a settings
+          or overview page, not a column of prose - so `record` widens the same way `settings`
+          already does on the lead's own page, rather than folding that two-column layout down to
+          one. */}
+      <div style={{ maxWidth: (tab === 'settings' || tab === 'record') ? 1150 : 600, margin: (tab === 'settings' || tab === 'record') ? '0' : '0 auto', width: '100%', padding: '16px 16px 48px' }}>
 
         {/**
           * "MY WORK" IS ONE FLAT PAGE NOW, NOT TWO SUB-TABS.

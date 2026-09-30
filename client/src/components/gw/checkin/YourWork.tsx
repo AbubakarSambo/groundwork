@@ -180,45 +180,16 @@ export function YourWork({
   const patterns = (((myRecord as any)?.insightsLocked ? [] : ((myRecord as any)?.patterns ?? [])) as ServedPattern[])
     .filter((p) => p.yours !== false)
 
-  return (
+  /* THE PROTOTYPE'S OWN SHAPE (my-record.jpg): "Your work" (the stat tiles, and any deals) sits in
+     a left column, with "Something that keeps coming up", "What you said you'd do" and "Your
+     reports" beside it in a right column - not stacked the full height of the page underneath one
+     another. `auto-fit, minmax(320px, 1fr)` matches the grid already used for this kind of
+     side-by-side pair elsewhere (BoardPage's own card rows): two columns wherever both have
+     something to show, one full-width column when only one side does, and a single stacked column
+     once the page is too narrow for 320px twice - the same rule this page already follows for
+     its own responsive rows, not a new one invented for this fix. */
+  const sideColumn = (patterns.length > 0 || myCommitments.length > 0 || myFinishedSessions.length > 0) && (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div>
-        <PageTitle
-          eyebrow={ground?.label}
-          title="Your work"
-          subtitle={
-            patterns.length > 0
-              ? 'Everything you’ve said, and what the proof shows. Only you see this page, apart from the pattern below.'
-              : 'Everything you’ve said, and what the proof shows. Only you see this page.'
-          }
-        />
-        {/* THE NUMBER TILES THE SERVED DATA SUPPORTS. my-record.jpg shows a row of three; this
-            check-in's own scenario decides how many of them mean anything here. */}
-        {(totalSessions != null || keptThisMonth) && (
-          <Panel>
-            <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
-              {totalSessions != null && (
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{completedCount} of {totalSessions}</div>
-                  {/* RE-REVIEW: "check-ins of 12" repeated the number already above it and read as
-                      a clipped fragment rather than a caption. "Check-ins so far" says what the
-                      number is without saying it twice. */}
-                  <div className="gwui-panel-text-muted">check-ins so far</div>
-                </div>
-              )}
-              {keptThisMonth && (
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{keptThisMonth.kept}/{keptThisMonth.of}</div>
-                  <div className="gwui-panel-text-muted">promises kept this month</div>
-                </div>
-              )}
-            </div>
-          </Panel>
-        )}
-      </div>
-
-      {/* "YOUR OPEN DEALS" IS NOT SERVED - see the comment at the top of this file. Not drawn. */}
-
       {patterns.length > 0 && (
         <Section heading="Something that keeps coming up">
           {patterns.map((p) => (
@@ -288,6 +259,51 @@ export function YourWork({
           </Panel>
         </Section>
       )}
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <PageTitle
+        eyebrow={ground?.label}
+        title="Your work"
+        subtitle={
+          patterns.length > 0
+            ? 'Everything you’ve said, and what the proof shows. Only you see this page, apart from the pattern below.'
+            : 'Everything you’ve said, and what the proof shows. Only you see this page.'
+        }
+      />
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20, alignItems: 'start' }}>
+        <div>
+          {/* THE NUMBER TILES THE SERVED DATA SUPPORTS. my-record.jpg shows a row of three; this
+              check-in's own scenario decides how many of them mean anything here. */}
+          {(totalSessions != null || keptThisMonth) && (
+            <Panel>
+              <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+                {totalSessions != null && (
+                  <div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{completedCount} of {totalSessions}</div>
+                    {/* RE-REVIEW: "check-ins of 12" repeated the number already above it and read as
+                        a clipped fragment rather than a caption. "Check-ins so far" says what the
+                        number is without saying it twice. */}
+                    <div className="gwui-panel-text-muted">check-ins so far</div>
+                  </div>
+                )}
+                {keptThisMonth && (
+                  <div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)' }}>{keptThisMonth.kept}/{keptThisMonth.of}</div>
+                    <div className="gwui-panel-text-muted">promises kept this month</div>
+                  </div>
+                )}
+              </div>
+            </Panel>
+          )}
+          {/* "YOUR OPEN DEALS" IS NOT SERVED - see the comment at the top of this file. Not drawn. */}
+        </div>
+
+        {sideColumn}
+      </div>
 
       <WhatYouAreCarryingForward
         groundId={groundId}

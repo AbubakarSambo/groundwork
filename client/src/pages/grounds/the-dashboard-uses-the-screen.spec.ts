@@ -41,16 +41,24 @@ describe('the dashboard uses the screen it is given', () => {
   })
 
   it('and the pages that ARE reading keep theirs', () => {
-    /* The point is not "wider everywhere". A check-in and a party's own account are read, not
-       scanned, and 600 is right for them.
+    /* The point is not "wider everywhere". A check-in, a report and a party's own documents are
+       read, not scanned, and 600 is right for them.
        UPDATED 29 SEPT, PEOPLE AND SETUP REBUILD: GroundAdminPage.tsx's own conversation, sessions
        list, documents and report tabs still cap at 600 - only "People and setup" (a settings page,
        not a column of prose) now widens to the shared Page frame's own maximum, 1150 (see the next
        test). This still proves the reading tabs keep 600; it no longer requires the literal
        `maxWidth: 600` substring, which the settings-only ternary broke without changing what any
-       tab actually does. */
+       tab actually does.
+       UPDATED 30 SEPT, THE SIDE-BY-SIDE STYLE CHECK OF B3-THE-CHECK-IN: the same was true of
+       GroundParticipantPage.tsx's "My work" tab, and the picture check found it - my-record.jpg
+       draws "Your work" and "Something that keeps coming up"/"What you said you'd do"/"Your
+       reports" as two columns side by side, not a single 600px column of prose, the same shape
+       "People and setup" already gets on the lead's own page for the same reason (a page of tiles
+       and lists, not paragraphs to read top to bottom). `record` now widens the same way
+       `settings` already does, on this page; `report` and `docs` (Context and resources) are
+       unchanged and still cap at 600, since nothing in this round found those two to be wrong. */
     expect(CHECK_IN).toMatch(/maxWidth: tab === 'settings' \? \d+ : 600/)
-    expect(PARTY).toMatch(/maxWidth: 600/)
+    expect(PARTY).toMatch(/maxWidth: \(tab === 'settings' \|\| tab === 'record'\) \? \d+ : 600/)
   })
 
   it("and People and setup is the one exception - a settings page, not a reading column", () => {
@@ -65,6 +73,13 @@ describe('the dashboard uses the screen it is given', () => {
      */
     expect(CHECK_IN).toMatch(/tab === 'settings' \? 1150 : 600/)
     expect(CHECK_IN).toMatch(/from '@\/components\/gw\/ui\/Page'/)
+  })
+
+  it("and on the party's page, My work is now the same exception, beside People and setup", () => {
+    /* 30 SEPTEMBER, THE SIDE-BY-SIDE STYLE CHECK: see the comment above. Both settings pages this
+       page has - Setup and My work - now widen to 1150; only the conversation, the report and
+       Context and resources stay at the reading width. */
+    expect(PARTY).toMatch(/\(tab === 'settings' \|\| tab === 'record'\) \? 1150 : 600/)
   })
 
   it('it is a cap, not a fixed width, so it still fits a narrow screen', () => {
