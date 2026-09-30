@@ -6741,3 +6741,11 @@ The reviewer read the running board again as a lead, a participant and an admin 
 **Still open with the engine, and first:** request 88 (colleagues' contribution and coverage sent to a participant and an admin who only reads) with request 84 (patterns to an admin who only reads), and request 89 (who said a record). The story's mixed number forms are request 90.
 
 **The reviewer's one refusal.** The safety check refused one of its commands (a search of the saved board text, and a read of an earlier capture), naming it as changing shared resources. It did not retry, and worked from its pictures and a live look instead.
+
+## The board group is done (30 September)
+
+The board for every kind of work is rebuilt from the shared parts, reviewed, re-reviewed and fixed. The last points, checked on the running product as Rukia and Juma: Rukia reads "Your own target", and "Waiting on you" in place of "Nothing to do" beside people waiting on her; both kinds' sentences are free of the example company's name; the record form asks "What is it called?" and "Which stage is it at?"; someone who is not in the check-in is no longer told they have a report of their own; and the screens no longer name a "Setup tab". The whole screen suite passes (3,627 tests in 521 files), the type check is clean, and the page-colour test passes for the participant, the lead and the admin.
+
+**Still open with the engine, and to be done first:** requests 88 and 84 (the server sends colleagues' contribution and coverage reads, and patterns, to people the screen hides them from, so that privacy lives on the screen alone until they are done), 89 (who said a record), 90 (the story's number forms) and 75 (the "What success looks like" sentence still names the "Setup tab", and should speak to the lead as "you").
+
+**Next:** the Context and resources module (Hafsah's decision of 29 September: the Context tab and page renamed, read-only, with the prototype's Resources panel), then settings and every other screen still built from old parts, and the screen work from Hafsah's answers on item 11 (the invitation, the welcome card, joining, and more than one organisation).
