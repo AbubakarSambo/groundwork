@@ -41,6 +41,6 @@ describe("a person's own row on the session report", () => {
   it('somebody who really said nothing still reads the plain line', () => {
     const r = report([{ who: 'Femi Bello', isYou: true }, { who: 'Ngozi Eze', isYou: false }], 'Femi Bello');
     const ngozi = r.whatEachPersonSaid.find((p: any) => p.who === 'Ngozi Eze')!;
-    expect((ngozi as any).saying).toBe('Answered, and nothing specific enough to record came out of it.');
+    expect((ngozi as any).saying).toBe('This person has answered, and nothing specific enough to record came out of it.');
   });
 });

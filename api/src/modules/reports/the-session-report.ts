@@ -588,7 +588,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
          specific enough to record came out of it" beside twenty-three names whose lines he was not yet entitled
          to (run 10, 21 Sep 2026). The wall says so; it does not claim the person said nothing. */
       ...(lines.length === 0
-        ? { saying: !input.closed && !p.isYou ? 'Answered. What they said opens to you when the report releases.' : 'Answered, and nothing specific enough to record came out of it.' }
+        ? { saying: !input.closed && !p.isYou ? 'This person has answered, and what they said opens to you when the report is released.' : 'This person has answered, and nothing specific enough to record came out of it.' }
         : {}),
     };
   });

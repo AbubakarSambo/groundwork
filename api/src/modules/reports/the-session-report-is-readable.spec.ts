@@ -145,7 +145,7 @@ describe('what each person said they did', () => {
       closed: false,
       answeredThisSession: [{ who: 'Ellie', isYou: false }],
     });
-    expect(out.whatEachPersonSaid[0].saying).toContain('opens to you when the report releases');
+    expect(out.whatEachPersonSaid[0].saying).toContain('opens to you when the report is released');
   });
 });
 

@@ -52,7 +52,7 @@ const FEMI_LINES = ['Shipped the price list to Harbor Foods.', 'Still waiting on
 const MIRIAM_LINES = ['Called Westgate Deli and they want January.'];
 const PIP_LINES = ['PIP-FEMI-LINE: I missed the July target.'];
 const YEMI_LINES = ['YEMI-OPEN-LINE: the Kilimani shop is not ready.'];
-const WALL = 'Answered. What they said opens to you when the report releases.';
+const WALL = 'This person has answered, and what they said opens to you when the report is released.';
 
 /** Who each reader is called for, so a test can say the report was only ever read AS the asker. */
 const readsMadeFor: { groundId: string; sessionNumber: number; userId: string }[] = [];
