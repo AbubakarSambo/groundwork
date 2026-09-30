@@ -425,22 +425,15 @@ describe('a rebuilt page never falls back to the old parts', () => {
    * AT MOST ONE PRIMARY BUTTON. See `primaryButtonCount` above for what counts and how a page
    * marks a genuine either/or pair as not-really-two.
    *
-   * NOT FIXED YET (Hafsah, 30 September, item 3: "Run the new e2e test once and report which
-   * screens break each rule today... Do not fix the screens yet; that is the next step"). The
-   * list below is today's count, taken from this same check, for every listed page that has more
-   * than one and carries no marker - so this test passes today by naming the problem precisely,
-   * fails the moment a NEW page joins it (or an existing one gets worse), and fails just the same
-   * if an entry is deleted from the list without the page actually being fixed to one primary
-   * button or marked. Shrinking this list is the next task's job, not this one's.
+   * SHRUNK TO EMPTY (Hafsah, 30 September, item 1 of the follow-up task): every page this list once
+   * named is now either down to one primary button (`pages/org/OrgMembersPage.tsx`,
+   * `pages/org/InvitePeople.tsx`, `pages/grounds/CheckInPeopleAndSetup.tsx`,
+   * `pages/billing/BillingPage.tsx` - see each file's own comment for which button stayed primary
+   * and why) or carries a `PRIMARY-BUTTONS-NEVER-TOGETHER` marker for a genuine either/or
+   * (`pages/invite/InvitePage.tsx`, `components/gw/Suggestions.tsx`). A page added here again means
+   * an actual regression, not a backlog item.
    */
-  const PAGES_WITH_MORE_THAN_ONE_PRIMARY_BUTTON_TODAY: Record<string, number> = {
-    'pages/invite/InvitePage.tsx': 2,
-    'pages/org/OrgMembersPage.tsx': 2,
-    'pages/org/InvitePeople.tsx': 2,
-    'pages/grounds/CheckInPeopleAndSetup.tsx': 5,
-    'components/gw/Suggestions.tsx': 4,
-    'pages/billing/BillingPage.tsx': 7,
-  }
+  const PAGES_WITH_MORE_THAN_ONE_PRIMARY_BUTTON_TODAY: Record<string, number> = {}
   it('no listed page writes more than one primary button beyond what is already named as not fixed yet', () => {
     const offenders: string[] = []
     for (const relPath of REBUILT_PAGES) {
