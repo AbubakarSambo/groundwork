@@ -20,6 +20,12 @@ import {
  * `FieldRows`/`FieldRow` for "Your name", "Email" and "WhatsApp", `SwitchRow` for "What we send
  * you", `Steps`/`Step` for the password checklist, and the standard `Button`/`TextField`/`Note`.
  *
+ * NO PRIMARY (NAVY) BUTTON ON THIS PAGE (Hafsah, 30 September, item 2: "at most one primary
+ * button per screen"). The prototype's own settings screen draws every "Change"/"Save" here as a
+ * small quiet button (`own-settings.txt`; `setShell`'s `srow(...)`, `"btn quiet sm"` throughout) -
+ * there is no navy anywhere on this screen. "Change password", and each field's own "Save", were
+ * `kind="primary"` here; all four are `kind="secondary"` now, to match.
+ *
  * PASSWORD, AS THE PRODUCT ACTUALLY WORKS (a gap against the prototype, kept honest rather than
  * hidden): the prototype's form asks for the current password, then a new one twice. Nothing signs
  * a person in with a password they type here to prove who they are - most people never set one, and
@@ -86,7 +92,7 @@ function ChangePassword({ email }: { email?: string | null }) {
               {rules.map(r => <Step key={r.text} done={r.met}>{r.text}</Step>)}
             </Steps>
             <div className="gwui-invite-actions">
-              <Button kind="primary" onClick={() => change.mutate()} disabled={!met || change.isPending}>
+              <Button kind="secondary" onClick={() => change.mutate()} disabled={!met || change.isPending}>
                 {change.isPending ? 'Saving…' : 'Change password'}
               </Button>
               <Button kind="quiet" onClick={() => { setOpen(false); setPassword(''); setConfirm('') }}>Cancel</Button>
@@ -194,7 +200,7 @@ export function SettingsPage() {
                   <Stack gap={10}>
                     <TextField value={orgName2} onChange={e => setOrgName2(e.target.value)} placeholder={orgName || 'Organisation name'} aria-label="Organisation name" />
                     <div className="gwui-invite-actions">
-                      <Button kind="primary" size="small" onClick={() => renameOrgMut.mutate(orgName2.trim())} disabled={orgName2.trim().length < 2 || orgName2.trim() === orgName || renameOrgMut.isPending}>
+                      <Button kind="secondary" size="small" onClick={() => renameOrgMut.mutate(orgName2.trim())} disabled={orgName2.trim().length < 2 || orgName2.trim() === orgName || renameOrgMut.isPending}>
                         {renameOrgMut.isPending ? 'Saving…' : 'Save'}
                       </Button>
                       <Button kind="quiet" size="small" onClick={() => { setEditingOrgName(false); setOrgName2(orgName) }}>Cancel</Button>
@@ -230,7 +236,7 @@ export function SettingsPage() {
                     <TextField value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" aria-label="Last name" />
                   </div>
                   <div className="gwui-invite-actions">
-                    <Button kind="primary" size="small" onClick={() => saveName.mutate()} disabled={!nameChanged || !firstName.trim() || saveName.isPending}>
+                    <Button kind="secondary" size="small" onClick={() => saveName.mutate()} disabled={!nameChanged || !firstName.trim() || saveName.isPending}>
                       {saveName.isPending ? 'Saving…' : 'Save'}
                     </Button>
                     <Button kind="quiet" size="small" onClick={() => { setEditingName(false); setFirstName(user?.firstName ?? ''); setLastName(user?.lastName ?? '') }}>Cancel</Button>
@@ -255,7 +261,7 @@ export function SettingsPage() {
                   <Stack gap={10}>
                     <TextField value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="+254 712 345 678" aria-label="Your WhatsApp number" />
                     <div className="gwui-invite-actions">
-                      <Button kind="primary" size="small" onClick={() => savePhone.mutate(phoneNumber || null)} disabled={savePhone.isPending}>
+                      <Button kind="secondary" size="small" onClick={() => savePhone.mutate(phoneNumber || null)} disabled={savePhone.isPending}>
                         {savePhone.isPending ? 'Saving…' : 'Save'}
                       </Button>
                       <Button kind="quiet" size="small" onClick={() => { setEditingPhone(false); setPhoneNumber(user?.phoneNumber ?? '') }}>Cancel</Button>
