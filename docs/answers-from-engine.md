@@ -840,3 +840,21 @@ Phrasings that start each: "move X to Tuesday", "push X back to Friday", "change
 Moving a deadline also moves the check-in's own record of it where the commitment came from a check-in, so the two never disagree. Not done this week: moving the date of a target that lives on the company's targets page (there is no route for it yet), and a route in the panel API to move a deadline (adding and marking done already share their writer with Ask Groundwork).
 
 Code: `api/src/modules/assistant/a-change-said-back-first.ts` (reading and wording), `a-commitment-has-one-writer.ts` (the one writer, also used by `/commitments`), the lanes in `assistant.service.ts`. Tests: `changing-things-by-talking-is-said-back-first.spec.ts`.
+
+## Week 25: the lead is told while the report is still being written
+
+The lead's read of the report (`GET /reports/:groundId`) carries a new field, `beingWritten`, for as long as a new report of that check-in is being written, and only then:
+
+```
+beingWritten: {
+  since: "2026-10-01T10:00:00.000Z",
+  sentence: "The report is being written with what Amani and Baraka said. It will include everyone in a few minutes."
+}
+```
+
+- It is there only for the person who runs the check-in. Nobody else reads it, and it is absent (not null) when nothing is being written.
+- The sentence is ready to show as it is. The names go through the same naming wrapper as every other line of the report, so a person the lead may not see named reads as "a colleague". With more than three people answered it reads "with what Amani, Baraka, Chidi and others said". With nobody answered yet it reads "The report is being written. It will include everyone in a few minutes."
+- It is removed by the engine when the report is finished. Screens should show it above the report and stop showing it when the field is gone; reading again after a minute or two is enough. Opening a report never starts one being written.
+- Until the very first report of a check-in exists, the read still answers "there is no report yet" with its reason, as before.
+
+Code: `api/src/modules/reports/the-report-is-being-written.ts`, `withBeingWritten` in `reports.service.ts`. Tests: `the-report-is-written-in-parallel.spec.ts`.
