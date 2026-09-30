@@ -121,7 +121,7 @@ It needs week 8's marks, and week 9's kept and missed commitments, to have signa
 
 **Week 19. Brainstorm.** *Built 1 October (`f2998808`): options with what each assumes, nothing chosen for the lead, nothing written.* A "think it through" mode lays out options, targets and what each assumes before anything is written. Nothing is decided for the lead (decision 13).
 
-**Week 20. Memory that lasts beyond one check-in.** What a lead tells the context chat that is true of the whole company, such as a client's rules or names, can be kept for the organisation after the lead confirms it. Ask Groundwork and the next check-ins can then use it. Leave dates said in chat go to the leave suite, not to the record.
+**Week 20. Memory that lasts beyond one check-in.** *Built 1 October (`81e22cb0`): kept only on the lead's yes, used as context, leave dates go to the leave suite.* What a lead tells the context chat that is true of the whole company, such as a client's rules or names, can be kept for the organisation after the lead confirms it. Ask Groundwork and the next check-ins can then use it. Leave dates said in chat go to the leave suite, not to the record.
 - **Needs Hafsah first:** what may move from one check-in to the whole company, and who confirms it.
 
 **Week 21. Leave and hours through chat.** "I need leave from 12 to 16 October" and "I did 6 hours on Atlas today" are said back with the real dates, the days left and who else is off, then sent to the right approver after a yes. The approver is told on Today. This is screens requests 21 and 22.
