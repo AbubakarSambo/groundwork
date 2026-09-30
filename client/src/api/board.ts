@@ -142,7 +142,7 @@ export type BoardPresent = {
   } | null
   whatTheRoomIsAboutNote?: string
   whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: { id: string; type: string; text: string; sessionNumber: number | null }[] }[]
-  dependencies?: { id: string; from: string | null; what: string; on: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null }[]
+  dependencies?: { id: string; from: string | null; fromParticipantId?: string | null; what: string; on: string | null; onParticipantId?: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null }[]
   checkInGrid?: { sessions: number[]; rows: { participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string> }[] }
 
   /**

@@ -53,7 +53,7 @@ import { whenTheBoardLastChanged } from './when-the-board-last-changed'
 import { SuggestionsForTheLead } from '@/components/gw/Suggestions'
 import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
-import { EVERY_SESSION, sessionDay, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
+import { EVERY_SESSION, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
 import { Page, CheckInHeader, Section, Panel, Tag, type TagTone, Button as UIButton, PeopleTable, PersonRow, EdgeRow, EdgeList } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
@@ -563,7 +563,22 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      the section below shows that person's pattern. */
   const patternHeadingByParticipant = new Map<string, string>()
   for (const p of visiblePatterns) if (p.participantId && p.heading && !patternHeadingByParticipant.has(p.participantId)) patternHeadingByParticipant.set(p.participantId, p.heading)
-  const eachPersonRows = (b.eachPerson ?? []).map((r) => ({ ...r, keepsComingUp: keepsComingUpByParticipant.get(r.participantId) ?? patternHeadingByParticipant.get(r.participantId) ?? null }))
+  /* Re-review, 30 September: "Nothing to do" beside somebody the "Waiting on" section already
+     says is waiting on the reader - see where-each-person-is.tsx's `waitingOnReader`. */
+  const readerIsOnThisDependency = (d: { on: string | null; onParticipantId?: string | null }) =>
+    b.myParticipantId ? d.onParticipantId === b.myParticipantId : !!myName && d.on === myName
+  const waitingOnReaderParticipantIds = new Set(
+    (b.dependencies ?? []).filter(readerIsOnThisDependency).map((d) => d.fromParticipantId).filter((id): id is string => !!id),
+  )
+  /* Re-review, 30 September: "0 of 4" read as a bare fragment - what the number counts, from the
+     matching objective's own name (e.g. "shops in Westlands"), so it reads as a sentence. */
+  const targetNameByParticipant = new Map((b.objectives ?? []).filter((o) => o.ownerParticipantId).map((o) => [o.ownerParticipantId as string, o.name]))
+  const eachPersonRows = (b.eachPerson ?? []).map((r) => ({
+    ...r,
+    keepsComingUp: keepsComingUpByParticipant.get(r.participantId) ?? patternHeadingByParticipant.get(r.participantId) ?? null,
+    waitingOnReader: waitingOnReaderParticipantIds.has(r.participantId),
+    targetName: targetNameByParticipant.get(r.participantId) ?? null,
+  }))
 
   /*
    * WHAT KEEPS COMING UP, THE SECTION (board-as-lead.txt). The server already serves only what this
@@ -955,7 +970,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           space in the text itself. Said as a plain sentence below the name instead.
                         */}
                         {o.owner && (
-                          <div className="gwui-ink-sub gwui-fs-13-5 gwui-mt-2" style={{fontWeight: 400}}>{o.owner}’s own target</div>
+                          /* Re-review, 30 September: to Rukia herself this read "Rukia Otieno's
+                             own target" - the reader is "you" here too. */
+                          <div className="gwui-ink-sub gwui-fs-13-5 gwui-mt-2" style={{fontWeight: 400}}>
+                            {o.ownerParticipantId && o.ownerParticipantId === b.myParticipantId ? 'Your own target' : `${o.owner}’s own target`}
+                          </div>
                         )}
                         {/*
                           A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, AND THE ROW SAYS SO.
@@ -1473,8 +1492,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <div className="gwui-ink-dark gwui-fs-16" style={{fontWeight: 600}}>{d.question}</div>
                       <div className="gwui-fs-15 gwui-ink-muted gwui-mt-2">{d.why}</div>
                     </div>
-                    {/* U.10: a name, not a verdict - the owner is who this is for, not a label on them. */}
-                    <span className="gwui-fs-13-5 gwui-ink-sub" style={{whiteSpace: 'nowrap'}}>{d.owner}</span>
+                    {/* U.10: a name, not a verdict - the owner is who this is for, not a label on
+                        them. Re-review, 30 September: to that person themselves it is "You". */}
+                    <span className="gwui-fs-13-5 gwui-ink-sub" style={{whiteSpace: 'nowrap'}}>{myName && d.owner === myName ? 'You' : d.owner}</span>
                   </div>
                 </div>
               ))}
@@ -1568,8 +1588,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                      Rukia Otieno." to Amani himself, and "Waiting on: Rukia Otieno" to Rukia
                      herself - the reader is "you" here too, on whichever side of the handoff they
                      are on. */
-                  const readerIsFrom = !!myName && d.from === myName
-                  const readerIsOnWhom = !!myName && onWhom === myName
+                  const readerIsFrom = b.myParticipantId ? d.fromParticipantId === b.myParticipantId : !!myName && d.from === myName
+                  const readerIsOnWhom = b.myParticipantId ? d.onParticipantId === b.myParticipantId : !!myName && onWhom === myName
                   const fromWord = readerIsFrom ? 'You' : d.from
                   const needsWord = readerIsFrom ? 'need' : 'needs'
                   const onWhomInSentence = readerIsOnWhom ? 'you' : onWhom
@@ -1725,6 +1745,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
               ) : b.contribution.filter((c) => c.name || c.remitDefined).map((c) => {
                 const displayName = nameOnTheBoard(b, c.participantId, c.name)
+                /* Re-review, 30 September: `displayName` is always the person's real name (this
+                   card's own heading, same as everyone else's), never "You" - so checking it
+                   against 'You' never matched, and Rukia read "Nobody has said what Rukia's role
+                   covers yet." about her own card. The heading stays the name; only the sentence
+                   below it, about her own role, reads "your". */
+                const isReader = !!b.myParticipantId && c.participantId === b.myParticipantId
                 return (
                 <div key={c.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
                   <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
@@ -1734,7 +1760,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       ? (b.canEditFrame && c.remit ? <span data-leads-note className="gwui-fs-13-5 gwui-ink-sub">{theLeadsNote(c.remit)}</span> : null)
                       /* Board review, 30 September, item 7: "role not clearly defined" beside a
                          name is a tag, not a sentence about that person. */
-                      : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>{displayName === 'You' ? "Nobody has said what your role covers yet." : `Nobody has said what ${(displayName ?? 'their').split(' ')[0]}'s role covers yet.`}</span>}
+                      : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>{isReader ? 'Nobody has said what your role covers yet.' : `Nobody has said what ${(displayName ?? 'their').split(' ')[0]}'s role covers yet.`}</span>}
 
                   </div>
 
@@ -2156,13 +2182,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.checkInGrid && sessionRows.length > 0 && (
           <Section
             heading="Reports"
-            /* Board review, 30 September, item 1: only the lead shares a session's report, so
-               "once you share it" said to a participant was simply wrong - they cannot share
-               anything here. The lead keeps the prototype's own words; a participant reads who
-               actually does the sharing. */
+            /* Board review, 30 September, item 1, then re-review item 7: only the lead shares a
+               session's report, so "once you share it" said to a participant was simply wrong -
+               they cannot share anything here. The lead keeps the prototype's own words; a
+               participant has their own report too, so they read who shares the team's; a reader
+               who is not a participant at all (an admin reading, not running, this check-in) has
+               no report of their own here, so they read only about the team's. */
             note={viewerRunsThisCheckIn
               ? "Every session has two: each person's own, and the team's once you share it."
-              : `Each session has two reports, your own and the team's, once ${(groundForSignals as any)?.leadFirstName ?? 'the person running this check-in'} shares it.`}
+              : isAParty
+                ? `Each session has two reports, your own and the team's, once ${(groundForSignals as any)?.leadFirstName ?? 'the person running this check-in'} shares it.`
+                : `Each session has a team report, once ${(groundForSignals as any)?.leadFirstName ?? 'the person running this check-in'} shares it.`}
           >
             {/*
               U.10 (c2): FROM THE SHARED PARTS - the prototype's own list shape (board-as-lead.jpg:
@@ -2176,7 +2206,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 <EdgeRow
                   key={r.sessionNumber}
                   kind={r.closed ? 'ready' : 'decide'}
-                  title={`Session ${r.sessionNumber}${r.opened ? `, ${sessionDay(r.opened)}` : ''}`}
+                  /* Re-review, 30 September, item 8: `sessionDay` already returns "Sun, 27 Sept"
+                     (weekday, comma, date) - wrapped in another ", " here it read "Session 1,
+                     Sun, 27 Sept", two commas doing the work of one. The prototype's own Reports
+                     row (board-as-lead.txt: "Today, 23 Sep") is a label, a comma, a short date -
+                     one comma, so this drops the weekday and keeps the short date. */
+                  title={`Session ${r.sessionNumber}${r.opened ? `, ${whenItWas(r.opened, 'dayAndMonth')}` : ''}`}
                   detail={checkedIn(r.answered, r.total)}
                   actions={(
                     <>
