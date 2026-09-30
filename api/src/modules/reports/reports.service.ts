@@ -1,4 +1,5 @@
 import { notToldYet, withoutGoalsNotToldIn } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goal-not-told';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
@@ -6106,6 +6107,19 @@ happened, and what is in the way.`;
     );
   }
 
+  /** The lead's untold goals with the first name of the person each is about (decision 56, point 3). */
+  private async goalsNotToldByName(groundId: string, participants: any[]): Promise<{ name: string; goal: string }[]> {
+    const rows = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { participantId: true, text: true, awareness: true, authoredBy: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    return (rows as any[]).filter(notToldYet).map((r) => {
+      const p = (participants ?? []).find((x: any) => x.id === r.participantId);
+      const name = (p?.user?.firstName ?? p?.nameGiven ?? '').toString().trim().split(/\s+/)[0] ?? '';
+      return { name, goal: String(r.text ?? '') };
+    }).filter((u) => u.name);
+  }
+
   private async getAsBuilt(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
@@ -6237,6 +6251,9 @@ happened, and what is in the way.`;
        * keeps `theJudgement` in full under decision 5, but not a sentence built from the lead's
        * private description of somebody. See deeplyWithoutTheLeadsDescriptionOfAnyone.
        */
+      if (isInitiator && formingBase.theJudgement) {
+        formingBase.theJudgement = theJudgementWithItsConversationPoints(formingBase.theJudgement, await this.goalsNotToldByName(groundId, ground.participants as any[]));
+      }
       if (!isInitiator && 'theJudgement' in formingBase) {
         const theDescriptions = (ground.participants as any[]).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]);
         const shareable = await theShareableTextFor(this.prisma as any, ground as any).catch(() => [] as string[]);
@@ -6487,6 +6504,9 @@ happened, and what is in the way.`;
      * way on both run 19 and goals-1, and stays for Tobi; a private phrase found nowhere shareable
      * still comes out. See theShareableTextFor and withoutTheLeadsDescriptionOfAnyone.
      */
+    if (isInitiator && base.theJudgement) {
+      base.theJudgement = theJudgementWithItsConversationPoints(base.theJudgement, await this.goalsNotToldByName(groundId, ground.participants as any[]));
+    }
     if (!isInitiator) {
       const theDescriptions = (ground.participants as any[]).flatMap((p) => [p.roleAsDescribed, p.remitAsGiven]);
       const shareable = await theShareableTextFor(this.prisma as any, ground as any).catch(() => [] as string[]);
