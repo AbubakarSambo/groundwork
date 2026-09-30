@@ -85,7 +85,7 @@ describe('Today, as the lead who runs the sales team', () => {
   });
 
   it('tells her who has checked in to the check-in she runs, by name', () => {
-    expect(r.line).toBe('In Sales team, Q3, 2 of 3 have checked in for session 2; Omar hasn’t yet.');
+    expect(r.line).toBe('In Sales team, Q3, 2 of 3 have checked in for the second check-in. Omar has not checked in yet.');
   });
 
   it('says what is coming up, as moments the screen puts in her own time', () => {
@@ -134,7 +134,7 @@ describe('Today, as an admin of the organisation', () => {
   });
 
   it('sees who has checked in, as the check-in’s own page shows an admin', () => {
-    expect(r.line).toBe('In Sales team, Q3, 2 of 3 have checked in for session 2; Omar hasn’t yet.');
+    expect(r.line).toBe('In Sales team, Q3, 2 of 3 have checked in for the second check-in. Omar has not checked in yet.');
   });
 });
 
@@ -151,7 +151,7 @@ describe('one count for one session (U.5 review)', () => {
     /* Three rows, but Brian has not joined, so the check-in waits on two people: "1 of 2 answered". */
     const g = { ...sales, glance: { progress: { roundsDone: 1, roundsPlanned: 12, answeredThisRound: 1, ofPeople: 2, waitingOn: ['p-o'] } } };
     const r = whatNeedsYou([g], { userId: WAIRIMU, role: 'MEMBER', organizationId: 'org' }, [], NOW);
-    expect(r.line).toBe('In Sales team, Q3, 1 of 2 have checked in for session 2; Omar hasn’t yet.');
+    expect(r.line).toBe('In Sales team, Q3, 1 of 2 have checked in for the second check-in. Omar has not checked in yet.');
   });
 });
 
@@ -159,17 +159,17 @@ describe('small cases in the sentence about who has checked in', () => {
   const reader = { userId: WAIRIMU, role: 'MEMBER', organizationId: 'org' };
   it('says nobody, when nobody has', () => {
     const none = { ...sales, checkIns: sales.checkIns!.filter((c) => c.sessionNumber === 2).map((c) => ({ ...c, status: 'NOT_STARTED' })) };
-    expect(whatNeedsYou([none], reader, [], NOW).line).toBe('In Sales team, Q3, nobody has checked in for session 2 yet.');
+    expect(whatNeedsYou([none], reader, [], NOW).line).toBe('In Sales team, Q3, nobody has checked in for the second check-in yet.');
   });
   it('counts people rather than listing three names', () => {
     const three = { ...sales, checkIns: sales.checkIns!.filter((c) => c.sessionNumber === 2).map((c) => ({ ...c, status: c.id === 'c4' ? 'COMPLETED' : 'NOT_STARTED' })) };
     three.checkIns.push({ id: 'cw', participantId: 'p-w', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: ago(5) });
-    expect(whatNeedsYou([three], reader, [], NOW).line).toBe('In Sales team, Q3, 1 of 4 have checked in for session 2; 3 people haven’t yet.');
+    expect(whatNeedsYou([three], reader, [], NOW).line).toBe('In Sales team, Q3, 1 of 4 have checked in for the second check-in. 3 people have not checked in yet.');
   });
   it('says "you" rather than the reader’s own name', () => {
     const withMe = { ...sales, checkIns: sales.checkIns!.filter((c) => c.sessionNumber === 2 && c.id !== 'c5') };
     withMe.checkIns.push({ id: 'cw', participantId: 'p-w', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: ago(5) });
-    expect(whatNeedsYou([withMe], reader, [], NOW).line).toBe('In Sales team, Q3, 2 of 3 have checked in for session 2; you haven’t yet.');
+    expect(whatNeedsYou([withMe], reader, [], NOW).line).toBe('In Sales team, Q3, 2 of 3 have checked in for the second check-in. You have not checked in yet.');
   });
   it('says nothing about a check-in that has ended', () => {
     expect(whatNeedsYou([{ ...sales, status: 'CLOSED' }], reader, [], NOW)).toMatchObject({ needs: [], line: null, comingUp: [] });

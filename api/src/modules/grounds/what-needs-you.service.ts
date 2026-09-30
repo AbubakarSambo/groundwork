@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { whoAnAdminDidNotLetIn } from './who-an-admin-did-not-let-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { whatNeedsYou, type WhatNeedsYou } from './what-needs-you';
@@ -35,6 +36,16 @@ export class WhatNeedsYouService {
      * "N new" on Choose an organisation. Another organisation's needs are counted there, not here.
      */
     const here = (list as any[]).filter((g) => g.organizationId === organizationId);
+    /*
+     * SOMEBODY AN ADMIN DID NOT LET IN IS NEITHER COUNTED NOR NAMED (screens request 95). The same
+     * rule the board reads (request 85): of the people still waiting for approval, those whose latest
+     * request to this organisation was declined.
+     */
+    const waitingIds = [...new Set(here.flatMap((g) => (g.participants ?? []).filter((p: any) => !!p.userId && p.user?.awaitingOrgApproval).map((p: any) => p.userId as string)))];
+    const declined = await whoAnAdminDidNotLetIn(this.prisma, organizationId, waitingIds);
+    if (declined.size) {
+      for (const g of here) g.participants = (g.participants ?? []).map((p: any) => (p.userId && declined.has(p.userId) ? { ...p, notLetIn: true } : p));
+    }
     const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval }, waiting.map((w) => ({ ...w, organizationId })));
     /* A net: no address stands in for a name in any sentence on Today (week 12c). */
     const called = new Map<string, string>();

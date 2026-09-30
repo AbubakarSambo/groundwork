@@ -1,4 +1,5 @@
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
@@ -1069,25 +1070,14 @@ export class BoardService {
         .filter((p: any) => !!p.userId && p.user?.awaitingOrgApproval)
         .map((p: any) => p.userId as string);
       if (waitingUserIds.length && (ground as any).organizationId) {
-        const requests: any[] = (await (this.prisma as any).membershipRequest?.findMany?.({
-          where: { organizationId: (ground as any).organizationId, userId: { in: waitingUserIds } },
-          orderBy: { createdAt: 'desc' },
-          select: { userId: true, status: true, decidedByUserId: true, decidedAt: true },
-        })) ?? [];
-        const seen = new Set<string>();
-        const deciderIds = new Set<string>();
-        const declined: any[] = [];
-        for (const r of requests) {
-          if (seen.has(r.userId)) continue;
-          seen.add(r.userId);
-          if (r.status === 'DECLINED') { declined.push(r); if (r.decidedByUserId) deciderIds.add(r.decidedByUserId); }
-        }
+        const declined = await whoAnAdminDidNotLetIn(this.prisma, (ground as any).organizationId, waitingUserIds);
+        const deciderIds = new Set([...declined.values()].map((d) => d.decidedByUserId).filter((x): x is string => !!x));
         const deciders: any[] = deciderIds.size
           ? (await (this.prisma as any).user.findMany({ where: { id: { in: [...deciderIds] } }, select: { id: true, firstName: true, lastName: true } })) ?? []
           : [];
         const deciderName = new Map(deciders.map((d) => [d.id, [d.firstName, d.lastName].filter(Boolean).join(' ').trim() || null]));
-        for (const r of declined) {
-          notLetInByUser.set(r.userId, { by: deciderName.get(r.decidedByUserId ?? '') ?? null, at: r.decidedAt ?? null });
+        for (const [userId, d] of declined) {
+          notLetInByUser.set(userId, { by: deciderName.get(d.decidedByUserId ?? '') ?? null, at: d.decidedAt ?? null });
         }
       }
       out.eachPerson = whereEachPersonIs(
