@@ -105,7 +105,7 @@ export class UsersService {
       domain,
       /* Why nobody can join by domain yet, in a sentence, or null when they can (or could, once
          switched on). */
-      whyNot: domain ? null : 'Your organisation’s email address is at a public mail service, so there is no company domain for people to join by, until an admin names one.',
+      whyNot: domain ? null : 'No domain is set yet. Your organisation’s email address is on a public mail service. An admin can name the company domain here.',
     };
   }
 
@@ -121,7 +121,7 @@ export class UsersService {
     const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { email: true, joinDomain: true } });
     const domain = effectiveJoinDomain(org ?? { email: null, joinDomain: null });
     if (!domain) {
-      throw new BadRequestException('Your organisation’s email address is at a public mail service, so there is no company domain for people to join by, until an admin names one.');
+      throw new BadRequestException('No domain is set yet. Your organisation’s email address is on a public mail service. An admin can name the company domain here.');
     }
     /* One organisation per domain (`Organization.joinDomain` is unique) - checked here, in a
        sentence, rather than left to the database's own constraint error. Two organisations can

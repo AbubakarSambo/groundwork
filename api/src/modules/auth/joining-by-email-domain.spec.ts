@@ -40,7 +40,7 @@ describe('the admin\'s switch', () => {
   it('never a public mail provider, and nothing to switch on until an admin names one', async () => {
     const { users, updates } = make({ orgEmail: 'admin@gmail.com' });
     expect((await users.joiningByDomain('o1')).domain).toBeNull();
-    expect((await users.joiningByDomain('o1')).whyNot).toBe('Your organisation’s email address is at a public mail service, so there is no company domain for people to join by, until an admin names one.');
+    expect((await users.joiningByDomain('o1')).whyNot).toBe('No domain is set yet. Your organisation’s email address is on a public mail service. An admin can name the company domain here.');
     await expect(users.setJoiningByDomain('o1', true)).rejects.toThrow('public mail service');
     expect(updates).toHaveLength(0);
   });
