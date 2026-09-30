@@ -44,6 +44,24 @@ Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settl
 - **90.** "Four of the six people have answered so far."
 - **86.** A session somebody has started is open, whatever its first-day date still says. Three places treated it as not open yet: Today listed it under "Coming up", the assistant left it out, and a guest was told it "opens on" a past date. All three are fixed.
 
+**Patterns: the detector now reads the person's own earlier record** (`2be5446e` and the commit before it). It is given this person's own record from the last two periods (never a colleague's words) and a plain "counts, does not count" line for the twelve patterns that wavered most. No pattern, name, family, reader or the three-period rule changed. Measured on stored conversations:
+
+| Measure | Before | After |
+| --- | --- | --- |
+| The same check-in gives the same patterns (run-20, 12 scenarios) | 70% | 80% |
+| Real patterns still found (of 63) | 40 | 39 |
+| What people are shown after three periods (same six-session conversations, read twice) | 22 of 30 (73%) | 26 of 38 (68%) |
+
+- One check-in now reaches the aim of 8 in 10, and finds as many real patterns.
+- What people are shown did not improve: 68% against 73%, which is within the five points that identical runs move by, on a small set. More patterns now reach three periods (38 against 30), because the detector can see that a problem was raised before.
+- Every remaining difference sits on the three-period line: a pattern seen in exactly two periods in one reading and three in the other. More reads or clearer lines cannot move a pattern that sits on the line; only more periods of evidence can.
+- Four wordings were measured; one that raised the six-session number lost real patterns, so it was not kept.
+- **Not steady enough for release yet by the aim of 8 in 10 on what people are shown.** My recommendation for Hafsah: judge it on a longer, larger run (more people reaching three periods), because on 30 to 40 shown patterns one flip moves the number by three points.
+
+**Request 17 built, parts (a) to (d): the company-wide picture** (`eb82ddef` to `c4e0afcd`, 6,929 tests pass in six folders). How each priority is moving ("Nobody owns this priority yet and no check-in feeds it."), where the strategy is not reaching the work ("Priority 3 has no owner and nothing underneath it." / "Who owns priority 3, Build a stronger organisation?"), something named by more than one team, and what leadership says against where the check-ins go. People appear only as counts; nothing is quoted; nothing is ranked; each reader gets only what rests on check-ins they may open; performance plans, promotions and renewals are left out entirely. Written once when the record changes, never on opening. Less than the prototype in places, because the record does not hold the figures (for example "6 in 10 sales visits"); said in the answers file. Part (e) belongs to week 20; (f) and (g) wait for Hafsah.
+
+**The local database stopped answering twice tonight.** The cause was two test runs left behind by finished helpers, which held the computer at a load of 38 for over an hour. Stopped; the database answers again. Helpers are now told to leave nothing running.
+
 **Request 18 done: links between check-ins** (`d6abc666` to `65bb81ab`; 2,772 tests pass in board and reports, plus the new specs).
 - A handoff now knows which other check-in it waits on, but only when the words said name exactly one other check-in in the organisation ("Finance" matches "Finance, Q3"); otherwise it stays empty rather than guess.
 - Each handoff says when it is due in the person's own words, and where it stands in one plain sentence ("The Mombasa depot's count is due Friday.", "Not decided yet.").
