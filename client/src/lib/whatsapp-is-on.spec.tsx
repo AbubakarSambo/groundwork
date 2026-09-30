@@ -41,6 +41,11 @@ describe('whether WhatsApp is mentioned', () => {
     /* U.4: the number box moved to one person's page. */
     const people = readFileSync(join(__dirname, '../pages/org/OnePersonPage.tsx'), 'utf8')
     expect(settings).toMatch(/\{whatsappOn && <section[^>]*>\s*<Sec title="WhatsApp" \/>/)
-    expect(people).toMatch(/\{whatsappOn && \(\s*<div className="gw-one-field">\s*<span className="gw-one-label">WhatsApp<\/span>/)
+    /*
+     * REBUILT (design-audit.md item 9): the number now sits behind the same "Change" every other
+     * field on this page uses, in `EditableField`, not the old always-editable `gw-one-field` /
+     * `gw-one-label` box - those classes are gone from the page entirely.
+     */
+    expect(people).toMatch(/\{whatsappOn && \(\s*<EditableField\s*\n\s*label="WhatsApp"/)
   })
 })

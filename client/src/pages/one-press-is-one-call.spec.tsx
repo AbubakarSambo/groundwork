@@ -31,11 +31,28 @@ describe('guarded submits', () => {
     expect(chat).toMatch(/uploadDoc\.isPending \? 'Adding…' : 'Add it'/)
   })
   it('the five setup writes go through useMutation and are disabled while pending', () => {
+    /*
+     * REPOINTED (People and setup rebuild, 29 Sept): these writes moved out of
+     * GroundAdminPage.tsx's `tab === 'settings'` branch into CheckInPeopleAndSetup.tsx, which is
+     * what this now reads. "Who can corroborate whom" is a shared `SwitchRow` now (`onChange`, with
+     * `disabled` wired to `setWorkTogether.isPending`) rather than the old hand-built radio cards'
+     * `onClick={() => { if (!x.isPending) x.mutate(o.v) }}`, so the literal `setWorkTogether.mutate(o.v)`
+     * this pinned is gone with that markup - the mutation is still one `useMutation`, still called
+     * through `.mutate(`, and still disabled while pending, which is what the test's name proves.
+     *
+     * COUNT DROPPED FROM 4 TO 3 (U.4 review, item 10, 30 Sept): "Situation" no longer offers
+     * `saveSetup.mutate({ scenario: ... })` - the update route takes no `scenario` field, so
+     * pressing Change and saving used to say "Updated" and silently change nothing. It is a plain
+     * row now, until the server can take it (docs/requests-to-engine.md), which removes one call,
+     * not the guard this test is about.
+     */
     const admin = read('grounds/GroundAdminPage.tsx')
+    const page = read('grounds/CheckInPeopleAndSetup.tsx')
     expect(admin).not.toMatch(/onClick=\{\(\) => groundsApi\.update\(/)
     expect(admin).not.toMatch(/onClick=\{\(\) => groundsApi\.setPeopleWorkTogether\(/)
-    expect(admin.match(/saveSetup\.mutate\(/g)?.length).toBe(4)
-    expect(admin).toContain('setWorkTogether.mutate(o.v)')
+    expect(page.match(/saveSetup\.mutate\(/g)?.length).toBe(3)
+    expect(page).toContain('onChange={(on) => props.setWorkTogether.mutate(on)}')
+    expect(page).toMatch(/disabled=\{!canEditRunOrAdmin \|\| props\.setWorkTogether\.isPending\}/)
   })
   it('the add-admin form clears only when the promotion happened', () => {
     const dash = read('admin/AdminDashboardPage.tsx')

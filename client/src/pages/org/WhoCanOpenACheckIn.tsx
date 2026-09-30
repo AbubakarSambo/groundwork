@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { apiClient } from '@/api/client'
+import { Section, Stack, FieldRows, FieldRow, Choices, SwitchRow } from '@/components/gw/ui'
 import { A_FAILURE } from './people-here'
 
 /**
@@ -11,6 +12,10 @@ import { A_FAILURE } from './people-here'
  * reads (grounds/who-may-open-a-check-in.ts), so what this says and what happens cannot come apart.
  * Before the server answers it shows the stricter of each, never the permissive one: a switch that
  * reads "off" while the server says "on" is worse than a moment's wait.
+ *
+ * REBUILT FROM THE SHARED PARTS: the summary is `FieldRows`, the two ways of answering "who may
+ * open one" are `Choices`, and "Check-ins wait for an admin" is a `SwitchRow`, so its heading (16px
+ * bold) reads bigger than the sentence under it (14.5px), never the other way round (item 15).
  */
 type WhoMayOpen = 'NAMED_LEADS' | 'EVERYONE'
 interface HowCheckInsWork { whoMayOpen: WhoMayOpen; needsApproval: boolean }
@@ -35,55 +40,39 @@ export function WhoCanOpenACheckIn({ orgName }: { orgName: string }) {
   ]
 
   return (
-    <section className="gw-people-sec" aria-labelledby="who-opens-h">
-      <h2 id="who-opens-h">Who can open a check-in</h2>
-      <dl className="gw-people-facts">
-        <div>
-          <dt>Opening check-ins</dt>
-          <dd>{how.whoMayOpen === 'EVERYONE'
-            ? `Anyone at ${orgName} can start a check-in.`
-            : 'Only the people you choose. Everyone else takes part in the ones they’re invited to.'}</dd>
-        </div>
-        <div>
-          <dt>New check-ins</dt>
-          <dd>{how.needsApproval
-            ? 'Each new check-in waits for an admin before invitations go out.'
-            : 'Start straight away. Turn this on to review each one before invitations go out.'}</dd>
-        </div>
-      </dl>
-      <div role="radiogroup" aria-label="Who can open a check-in" className="gw-people-choices">
-        {OPTIONS.map(([value, title, body]) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={how.whoMayOpen === value}
-            className={how.whoMayOpen === value ? 'on' : ''}
-            disabled={set.isPending}
-            onClick={() => how.whoMayOpen !== value && set.mutate({ whoMayOpen: value })}
-          >
-            <b>{title}</b>
-            <span>{body}</span>
-          </button>
-        ))}
-      </div>
-      <div className="gw-who-can-join-row" style={{ marginTop: 16 }}>
-        <div>
-          <b id="wait-for-an-admin-label">Check-ins wait for an admin</b>
-          <p>Each new check-in waits for an admin before invitations go out.</p>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={how.needsApproval}
-          aria-labelledby="wait-for-an-admin-label"
-          className={`gw-switch${how.needsApproval ? ' on' : ''}`}
+    <Section heading="Who can open a check-in">
+      <Stack gap={18}>
+        <FieldRows flush>
+          <FieldRow
+            label="Opening check-ins"
+            value={how.whoMayOpen === 'EVERYONE'
+              ? `Anyone at ${orgName} can start a check-in.`
+              : 'Only the people you choose. Everyone else takes part in the ones they’re invited to.'}
+          />
+          <FieldRow
+            label="New check-ins"
+            value={how.needsApproval
+              ? 'Each new check-in waits for an admin before invitations go out.'
+              : 'Start straight away. Turn this on to review each one before invitations go out.'}
+          />
+        </FieldRows>
+
+        <Choices
+          label="Who can open a check-in"
+          stacked
+          value={how.whoMayOpen}
+          onChange={(key) => key !== how.whoMayOpen && set.mutate({ whoMayOpen: key as WhoMayOpen })}
+          options={OPTIONS.map(([key, label, description]) => ({ key, label, description }))}
+        />
+
+        <SwitchRow
+          title="Check-ins wait for an admin"
+          detail="Each new check-in waits for an admin before invitations go out."
+          on={how.needsApproval}
+          onChange={() => set.mutate({ needsApproval: !how.needsApproval })}
           disabled={set.isPending}
-          onClick={() => set.mutate({ needsApproval: !how.needsApproval })}
-        >
-          <span aria-hidden />
-        </button>
-      </div>
-    </section>
+        />
+      </Stack>
+    </Section>
   )
 }

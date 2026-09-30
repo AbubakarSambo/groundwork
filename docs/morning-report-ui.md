@@ -21,7 +21,7 @@ same file.
 
 **One refusal.** The safety check refused a command of mine because it contained the words "merge-base". I was only asking git whether a commit had arrived in an earlier merge. I did not retry it or ask the same question in another way. Instead I restarted the API and read the board again, which showed the fix running.
 
-**Decided for you to confirm.** I took each of these as the option closest to the prototype and to your own decisions:
+**Decided for you to confirm.** All 16 below were confirmed by you on 29 September (see "Hafsah's decisions"). I took each of these as the option closest to the prototype and to your own decisions:
 
 - The check-in's "Board" tab is back on every check-in page, as in the prototype's five tabs. An earlier decision had said the board is never a tab (`one-door-per-place.spec.ts`); the prototype and the instruction to put the header on every page point the other way.
 - Report, Sessions and What I shared are sub-tabs under My work, and Setup is "People and setup", following the prototype's five tabs.
@@ -243,9 +243,9 @@ whoever holds the organisation's developer key. The developer API must keep work
 that one is yours to decide (item 27.4).
 
 **What needs you most, in order:**
-1. Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.
+1. ~~Item 11, conflicts A and B: what the invitation and the new admin's card say about who reads what.~~ Answered by you on 29 September, and closed.
 2. Item 20.1: should the lead hold the team's report until they share it? (a privacy question)
-3. Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?
+3. ~~Item 15.1: should admins be kept out of performance plans unless given access, as rule 5 says?~~ Answered by you on 29 September: yes, and promotions and renewals too.
 4. Item 17.5: in a new check-in, do invitations go before or after the lead's own first check-in?
 5. Item 21.1: should a participant read the board's read on each colleague? (a privacy question)
 6. Item 22.1: the handover page, because the prototype's page and the product's handover are two
@@ -306,6 +306,31 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **30 September: three answers from Hafsah.**
+  1. Patterns (item 0-pat2): an admin who does not run a check-in does not see anyone's pattern or their answer, unless given access to that check-in, the same as performance plans. Only the person and the check-in's lead see it. The screens stay as they are. (Sent to the engine for the server side, request 84.)
+  2. The pattern switch (item 0-pat): patterns stay on in the work branches and on this Mac, for testing. Hafsah decides before release.
+  3. Email addresses: kept as it is. On a check-in's pages, admins follow the lead's "Hide email addresses between participants" setting. They still see emails on the organisation's People page, to manage the organisation.
+- **29 September: patterns, role behaviour, coaching strategies and the probe structure are protected.** They are the most powerful part of the product. No screen for them is ever removed, hidden or simplified to solve a problem. If something is wrong, it is fixed in place, or shown only to the most private reader, and Hafsah is told in this report. Every place where a screen for these was removed, hidden or simplified so far is listed below, under "The protected screens: what was removed, hidden or simplified", and restored.
+- **29 September: answers to "Decided for you to confirm" and to item 11, which is now closed.**
+  1. All 16 decisions in "Decided for you to confirm" are confirmed. Where two disagree, the later one wins: My work follows the prototype's single "Your work" page, with no sub-tabs.
+  2. The three newer ones: the People page keeps the product's own true invitation sentences (email only, no WhatsApp or Guest); the no-seat warning keeps its buttons, drawn the prototype's way; someone declined at the door reads "Not let in", shown to admins only.
+  3. Conflict A, the invitation: keep the prototype's first line. Drop "Nobody else reads your answers." and "Wairimu reads the report, not your words." Build the rest from the check-in's real settings, so it is always true. On an ordinary check-in: "The people in this check-in, including your manager, can see what you say in it. Admins in your organisation can read every check-in. Your own report and your questions to Ask Groundwork stay private." On a performance plan, promotion or renewal, leave out the line about admins. Replace today's "Nobody you work with reads it" panel.
+  4. Admins: `docs/decisions.md` rule 5 is the rule. Admins can read every board and report, including people's exact words, but never a performance plan, promotion or renewal unless given access to that check-in. The older A4 line in `docs/modules.md` is corrected to match, and the engine workspace is told (request 78) that promotions and renewals are now protected from admins like performance plans. This also answers item 15.1.
+  5. Conflict B, the welcome card: "You can see every board and report, including what people said in them. You never see anyone's questions to Ask Groundwork, anyone's own report, or a lead's private notes, and never a performance plan, promotion or renewal unless given access to that check-in."
+  6. The rest of item 11: no DNS proof for domain joining for now. The invite link is random, not guessable; someone whose email doesn't match the domain waits for an admin. Before being let in, name one admin, as in the prototype; remove "27 people there" and "and text". Leave out your own web address and logo entirely until they're built. "All 38 of your check-ins" counts real check-ins, not sessions.
+  7. A person can create more than one organisation, each with its own plan, as already decided on 26 September: lift the one-organisation limit.
+  8. On helpers: every builder brief starts with "You may not start any helper or sub-agent. If you need research, stop and ask." If a builder starts one again, that builder is stopped and a fresh one started.
+  (The safety check refused my attempt to also save these rules in Claude's own memory folder, outside the project. I did not retry it; the rules live here, in this report, which every session reads.)
+- **29 September, later: build the screens much faster.**
+  1. The API tests are not run for screen-only changes. They run only after merging the engine's work, or when an API file changed.
+  2. Screens are built in groups (for example all the people screens). For each screen, only my own 1440-pixel picture check against the prototype and the privacy tests. The full screen suite, the page-colour test and the reviewer run once, at the end of each group.
+  3. When a screen is rebuilt from the shared parts, tests that only checked how the old code was written may be removed, and are listed in the report. Every test of what a screen does, and every privacy test, stays.
+  4. Sonnet 5 for the builder, Opus 5.5 for the reviewer. One helper at a time, and a helper never starts helpers of its own.
+- **29 September: one chat, Ask Groundwork, for everything, and the Context module after the people screens.**
+  1. There is no separate context chat. Ask Groundwork becomes the one chat for everything: questions, telling Groundwork how the team works, the lead's setup things, and adding documents. The engine workspace is moving the context chat's work into Ask Groundwork and proving every piece first. The old context chat screen keeps working until the engine says in `docs/answers-from-engine.md` that every item is proven. Only then is it removed.
+  2. In Ask Groundwork, people can add documents and see what Groundwork pulled out of them (targets and context), to confirm before it is saved, the same as the context chat does today. It is built from the engine's answer and checked live before the reviewer: the same documents added through the old context chat and through Ask Groundwork must end in the same saved targets and context.
+  3. The Context tab and page are renamed "Context and resources", because documents are there too. The page is read-only. It shows what Groundwork has been told and agreed, and the prototype's Resources panel for documents, with no chat of its own. The tab name must fit at phone width.
+  4. Hafsah's rulings on requests 76 and 77 are added to `docs/requests-to-engine.md` (done, commit `8b787525`). No engine code is changed here.
 - **29 September: all eleven kinds of board stay fully in the product.** Whenever a real check-in fits one of them, its board shows the sections the switchboard gives its situation, filled the way that kind of work needs, and it must match the prototype's example for that kind. Nothing about the boards is removed or hidden. What is not added is made-up sample check-ins: a new organisation starts empty, with the welcome card and checklist, as in the prototype. (`docs/modules.md` G1 now says the same.) For comparing boards, one local test check-in of each kind is made, each with a note of how it was made, so an empty section can be told apart from a missing one.
 - **29 September: to go faster.** While a helper works, I prepare the next piece myself (read the prototype's source, take its 1440-pixel pictures, write down what the rebuilt screen needs), only reading and taking pictures, never editing a file the helper might edit. The local servers stay running for the whole of a module and stop at its end. Every picture a check needs is taken in one script run, every state, as every reader. While working, only the tests for changed files run; the full suites run once at the end of each module. The builder and tester run on Sonnet 5, the reviewer on Opus 5.5. One helper at a time, and a helper never starts helpers of its own.
 - **28 September: yes to rebuilding from the prototype's own parts.** The shared parts are built first, from the prototype's exact values, then each screen is rebuilt from those parts, never by restyling an old page. A test stops rebuilt pages from using the old parts. Every privacy rule the design audit lists is kept, and board and report text that comes from the engine is never changed. The order after the shared parts: the invitation, then the check-in page and chat, then the board and reports, then the people and one-person screens, then the check-in's People and setup, then everything else. Each screen gets my own 1440-pixel picture check against the prototype, for every situation the switchboard covers where it applies, before the reviewer sees it.
@@ -379,6 +404,14 @@ Then the reviews run one module at a time, oldest first, and U.20 starts after t
    in each person's own menu and on "More".
 
 ## Needs Hafsah
+
+### 0-pat2. ANSWERED 30 September: an admin who does not run a check-in does not see anyone's pattern or answer, unless given access, like performance plans. Only the person and the lead. (Was: should an admin who does not run a check-in read a person's pattern?)
+
+The review found that Amani is told "Rukia Otieno will see it too, with anything you say about it", but Juma, an admin of the organisation who does not run the check-in, is also served her pattern once she has answered. The engine's rule counts an admin among the people who run a check-in; rule 5 lets admins read every board and report, including what people said. But the person is not told, and the server even gives Juma her words on one route and withholds them on another. **Please decide:** may an admin who does not run a check-in read a person's pattern and their answer? If yes, the person's sentence must name the admins too. If no, the server must stop sending it to them. Until you decide I took the more private option: the screens show another person's pattern only to the person who runs the check-in, and I asked the engine for one rule on the server (request 84).
+
+### 0-pat. ANSWERED 30 September: patterns stay on in the work branches and on this Mac, for testing; Hafsah decides before release. (Was: the engine switched patterns on, though you said the switch stays off)
+
+At 21:50 on 29 September the engine workspace switched patterns on (`19cdf9b0`, "Switch patterns on now that the plain names are approved"), taking your approval of the 49 names as the go-ahead ("decision 52"). Your later message to this workspace says the switch stays off until you understand how patterns work. The switch is the engine's code, so I have not touched it. It is on in both `wip/` branches and on this Mac's local product only; nothing has been deployed anywhere. **Please tell the engine workspace whether to switch it back off.** Until you do, the screens built tonight show patterns wherever the engine serves them, under the engine's rules (below).
 
 ### 0. The lead's private description of a person could reach that person's invitation, in the live product
 
@@ -848,7 +881,7 @@ it. The page shows the address if the server ever sends it, and leaves it out ot
 **My suggestion:** leave the address out. The person already knows which account they asked to reset,
 and the link could be forwarded to someone else.
 
-### 11. Organisations and joining (U.3): nine decisions (answered, two parts held)
+### 11. Organisations and joining (U.3): nine decisions (CLOSED: answered in full by you on 29 September; see "Hafsah's decisions")
 
 **Answered by you on 26 September, with the prototype's exact wording wherever it has it:**
 1. The invitation uses the prototype's wording, says what the person will see, and never says or
@@ -6460,3 +6493,191 @@ spec, `whose-words-the-brief-is.spec.ts`, and every other spec in `grounds.servi
 Full scorer/scenario run not re-run this pass (no engine-owned code changed by these fixes; the one
 backend change with scoring relevance, item 7, is a privacy fix with its own dedicated spec, not a
 change to what any report says).
+
+## The people screens: the admin's People page, rebuilt from the parts (29 September, evening)
+
+The builder rebuilt `/org/members` from the shared parts, closing the design audit's 17 items for this page. My 1440-pixel picture check against the prototype found seven more things, and all seven are now fixed:
+
+- **A real bug.** Three people's rows showed only a name and email. The shared people table forced every row to be as wide as its text laid out on one line, so a person on many check-ins pushed their team, role, status and "Open" thousands of pixels off the side of the table. The old page did not have this fault; the new shared part did. It is fixed at its source in the shared part, and a test now checks that an admin, a lead, a member and someone waiting each get every cell.
+- "Invite people", "Who can join" and "Help your team get started" now sit in white panels, as in the prototype. Labels that were bold are now regular. The two choices under "Who can open a check-in" are stacked, each the full width. "Who reports to whom" has its small arrow.
+
+**One case where the prototype's wording was not used, on purpose.** The prototype says people can be invited by WhatsApp number, and offers "Guest" when inviting. The product can only invite by email, and inviting someone straight in as a guest is refused on purpose (a guest is added to one check-in by its lead). So the page keeps the product's own true sentences: "One per line: a name and an email. Or paste a list from a spreadsheet." and "They'll get an email with a link to set themselves up."
+
+**A helper pressed a button on the local test data.** While checking the page in its browser, the builder pressed "Don't let them in" on Faraji, the one person waiting on the local test organisation, and did not say so. Only the local database on this Mac was changed. The email to Rukia went to this Mac's own mail catcher or nowhere, never to a real inbox. I put Faraji's request back to waiting, so the review sees the page as it should. Every helper is now told not to press anything that changes data.
+
+**Found on the way, for you to decide.** Once an admin declines someone at the door, their account stays and still cannot check in, on purpose, so as not to take their work elsewhere with it. But the People table then still calls them "Waiting to be let in", which is no longer true. The prototype has no wording for someone who was not let in. Listed under "Decided for Hafsah to confirm" once the review has read it.
+
+**The one-person page, rebuilt from the parts (29 September, evening).** The builder rebuilt `/org/members/<person>` from the shared parts, closing the audit's items for this page except the row height (the shared row part is a little shorter than the prototype's; left for the review). My picture check found six layout differences, now with the builder. What it adds, because the API already does it: the WhatsApp number with its Change, and "Remove from <organisation>", which asks first and shows the server's refusal in plain words. Left out, because the product cannot do them: Region, and "Free this seat" for one person.
+
+Three of the prototype's sentences are kept shorter, because the full sentence would be untrue:
+- "Across check-ins" stops before "they choose who else sees it", since nothing lets a person share their load yet.
+- "What an admin can see" stops after "You don't see anyone's private notes." The rest, "and what someone writes in their own check-in stays theirs", contradicts rule 5, which you confirmed today: admins can read what people said.
+- The role note says "Changes apply straight away." without "and are noted with your name", since nothing records who changed a role yet.
+
+**For you to confirm: Guest is offered on the one-person page.** The prototype shows four roles, Guest among them. The builder read the API and found that an admin can already change an existing member into a guest (the server accepts it), though inviting someone new straight in as a guest is refused on purpose. Nothing seems to have decided this either way, so I followed the prototype and offer Guest. A guest sees only the check-ins they're invited to, so this gives the person less access, never more.
+
+**A mistake of mine in the history.** Commit `4ff009df`, whose message says it only records the protected memory folder in this report, also carries the builder's unfinished one-person page edits, because I committed with `git commit -a` while the builder was working. The content is correct and every test passes at that commit, but its message does not describe it. It is already pushed, and I did not rewrite pushed history. From now on I and every helper commit only named files.
+
+**The one-person page: the six layout fixes are done and pictured.** The email now sits beside the avatar, "Across check-ins" has its title inside its panel, the rows of "Where they sit", "Status" and "Check-ins" are flat on the page, the Team field sits beside Save, and Remove is an ordinary button beside its sentence. The People list, which shares the page title, is unchanged. The people pages' tests and every screen privacy test pass (801 tests in 83 files). One small difference is left for the review: in the check-ins list, "Checks in" sits next to the name rather than just before "Open".
+
+**One refusal.** I chained the push onto a test run in one command, which the rules forbid, and the safety check refused it. I then ran the tests on their own and the push on its own, which is the form the check's own message allows.
+
+## The protected screens: what was removed, hidden or simplified (29 September)
+
+You decided today that patterns, role behaviour, coaching strategies and the probe structure are protected: no screen for them is ever removed, hidden or simplified to solve a problem. I searched the screens' code and their history for every such place. Here is what I found, and what I did about each.
+
+**Restored today.**
+1. **"How the leading is landing"** on the board (a pattern about how the team is being led). The screens hid it whenever patterns were off, because its line "seen across 2 sessions" could appear after only one session (commit `70fccc66`, 28 September). It is now always drawn for the person who runs the check-in, and only for them. The count is fixed in place: it says "Seen across 3 sessions." only when that many sessions have really happened, and otherwise leaves the count out. Tests check that the lead reads it with patterns off, and that a participant and an admin who only reads never do. I could not see it on the running product, because the local test check-in has no such data yet.
+
+**Kept, because it follows your rule: shown only to the most private reader.**
+2. **"Contribution against role" and "Where work is landing"** on the board are drawn only for the person who runs the check-in (commit `8ed0146a`), because the prototype never shows a participant a colleague's contribution or coverage. They are not hidden from the lead.
+3. **The lead's probe list** ("What to probe each person on") and **the coaching note** ("What to work on next") are on the session report, for the lead and for each person respectively, as before. The check-in rebuild did not drop them from anywhere: I compared every page that used them before 28 September with today.
+
+**Still not shown, and needing work to restore.**
+4. **Patterns themselves** (the board's Patterns section, and "Something that keeps coming up" on My work). The screens draw them, but the engine serves none, because its one switch is off (`PATTERNS_ARE_SERVED = false`, `api/src/modules/patterns/patterns-are-served.ts`). The engine's own note says it stays off until two things happen:
+   - you approve the plain names in `docs/pattern-names.md` (your decision 19);
+   - the screens can show the new pattern shape and the "Say what's behind it" answer box, where the person answers first.
+
+   The second is this workspace's work, and it has been waiting. I have put it at the top of the task list, ahead of the rest of the old screens. **Please say whether to switch patterns on for the most private reader (each person's own, and the lead's) before you have approved every name, or wait for the names.** Until you do, the switch stays as it is, since it is the engine's.
+5. **Coaching on the board** ("Coaching: one thing to do better, for each person", in the prototype's switchboard). The board has no place drawing it, because the engine does not serve it on the board yet (request 70 lists it among the switchboard sections with no data). The coaching note itself exists on the session report. I asked the engine workspace to serve it on the board too (request 79).
+
+**Not a removal: the switchboard.** The prototype's own table (G2), which you approved on 28 September, turns Patterns off on purpose for one situation, and makes it optional in others. That is the prototype's design for each situation, not something hidden to solve a problem. It stays as it is.
+
+**Found nothing else.** No screen file about patterns, role behaviour, coaching or probes was deleted in September. Only old test files were, in the product's own history before this workspace began.
+
+**Which situation the switchboard turns patterns off for, and why (29 September, you asked).** Only one: **"Take the pulse of the team"** (the SNAPSHOT situation, a one-time read of the team). The prototype gives its own reason, twice, in its source (`docs/prototype/source/data.js`): "A one-time read. No plan and no patterns, so none are shown." and, for the patterns switch itself, "One read has no pattern over time." In other words, a pattern means something that keeps happening across check-ins, and a check-in that runs once cannot have one. It is unchanged, as you asked. In six other situations patterns are optional rather than on ("Build a workplan and budget", "Start an advisor or board relationship", "Work out where to focus", "Check how an agreement is going", "Check in before a renewal", "Help someone get back on track"). The switchboard does not say what makes an optional section appear; the screens draw it whenever the engine serves it.
+
+**Your decisions of 29 September on patterns.** You approved the 49 plain pattern names, with eight reworded, but the engine's switch stays off until you understand how patterns work. The pattern screens are built now anyway, ahead of the rest of the people group: the new pattern shape, "Something that keeps coming up" on My work, the board's Patterns section, and the "Say what's behind it" answer box. The person sees their own pattern first and can answer before the lead sees it, and no colleague ever sees another person's pattern. They are tested with the switch turned on locally only, as the person, the lead and a colleague, and the switch is then put back exactly as it was.
+
+**The engine's work, merged again (29 September, night).** 43 commits. Two answers matter for the screens:
+- **Request 77 is done.** Rukia's two lines disappeared from Juma's board because of the rule that hides a target from people who may not see it, not because of the private-file rule. Her target was in the lines' words. The engine fixed it (`7eb0aed1`), following your ruling that a person's own words are never removed for looking like something private.
+- **Request 76 is done.** The board now says the kind of work (`kindOfWork`, one of the eleven kinds or none), set during setup, and serves each kind's records. So the board rebuild for every kind of work is no longer blocked. It follows the pattern screens and the people group.
+
+After the merge I applied the engine's one new database change (the kind of work) to the local database only, rebuilt the local API and restarted it, still on 127.0.0.1 only. The API tests: 11,169 of 11,170 pass. The one that fails is in the engine's new board code, a name that a test cannot tell apart from a database field. I sent it to the engine as request 80 and did not touch it.
+
+**"Not let in" is built.** The server now works out, for each person waiting at the door, whether their latest request to this organisation was declined, and the People page says "Not let in" for them, in a red tag, admins only (the list is served only to admins). Tests on the server and the screen.
+
+**The check-in's People and setup was started and then put back**, when you moved the pattern screens to the front. Nothing half-done was left. The builder's notes are kept, so it can be picked up quickly. One thing found on the way: on the old tab, a few settings looked changeable to anyone who could reach it. I checked the server: every one of them is refused unless you run the check-in (or, for two of them, are an admin), so nothing leaked. The rebuilt tab will show each setting as changeable only to the people the server allows.
+
+
+## The pattern screens, built and tested live (29 September, night)
+
+The builder built the pattern screens to the engine's new shape, from the shared parts: one shared pattern panel, used on "Your work" ("Something that keeps coming up"), on the board ("What keeps coming up", with each person's pattern under their name, and each person's line under "The team today"), and on the You page. The "Say what's behind it" box appears only when the person may answer, and after they answer it shows their own words back.
+
+**Tested live on this Mac.** The switch was already on after the merge (see "Needs Hafsah", item 0-pat), so I did not need to change it, and I did not. I added one test pattern for Amani on "Sales team, Q3" to the local database, then read every page as each person:
+- **Amani, the person:** saw it first, on Your work, the board and her You page, with "You are seeing this first. Rukia Otieno will see it too, with anything you say about it. Nothing is decided from it." She answered, on the test pattern only, and saw her own words back.
+- **Rukia, the lead:** did not see it at all before Amani answered. After, she saw it with "Amani saw this first and said what is behind it." and Amani's words.
+- **Neema, a colleague:** never saw it, on the board or her You page, before or after.
+- **Juma, an admin who only reads:** saw it after Amani answered, like the lead. The engine's rule counts an organisation's admin among the people who run a check-in, which matches rule 5.
+
+Then I deleted the test pattern. The switch file was never changed by me.
+
+**Found by the live test (the first two now fixed; screen and privacy tests pass, 866 in 91 files):**
+1. Before Amani answered, Rukia's board said "No patterns have repeated often enough to show yet." That is untrue while someone is having their turn. It now reads "Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.", which is true either way and tells the lead nothing.
+2. "In your own words:", "In their own words:" and "Ask them:" were labels joined to text with colons. They now read, for example, "Amani Wekesa said this about it." with her words quoted, and "A question you could ask Amani Wekesa, to hear their side." I wrote these sentences myself, since the prototype has none for them.
+3. The prototype's second part of "What keeps coming up", "How what people say can run ahead of what happened", has no data from the engine, so nothing is drawn for it. Under your rule that these screens are never simplified, I asked the engine to serve it (request 82).
+
+Tests the builder changed, and why: the switchboard's and the You board's tests carried the old pattern shape, which the engine no longer sends; they now carry the new one. One engine test reads the board's source for the old wording; the builder asked the engine to update it (request 81) and did not touch it.
+
+## The check-in's People and setup, rebuilt from the parts (29 September, night)
+
+The old tab's eleven numbered folds are now the prototype's named sections, in their own file (`CheckInPeopleAndSetup.tsx`), with "Who's in it" and "Roles in this check-in" as parts of their own. Every old fold has a place, and nothing it did was dropped: the add-people form, the seat warning, the invite link and QR code, the access code, the change log, and every setting. "Roles in this check-in" is new, from the prototype, with each person's role as described, which the lead or the person can edit. Reminders are new on this tab too: the server could already set them, but no screen did.
+
+**Who sees what, checked as each person.** Rukia, the lead, sees every section, with Change on the settings she may change. Juma, an admin who does not run it, sees it too, and may change only the settings the server lets an admin change. Amani, a participant, still gets her own short view (who is in it, and her own part), with no settings and no roles table. The server refuses every setting change from anyone it does not allow, so nothing depends on the screen.
+
+**Kept in the product's own words, because the prototype's would be untrue:**
+- "Ending it": no one can end a check-in themselves yet, so the page keeps asking us to end it, and keeps "Delete this check-in" for one that was only a test.
+- "Who else can see it" (giving one person access): nothing in the product does this yet, so it is left out.
+- "Remind Grace": a lead cannot remind someone else's admin, so the strip says what is true and links to People.
+- "The team's report": this tab cannot share it, so it says whether it has been shared, and when.
+
+**Kept, though the prototype has no place for them here, for you to confirm:** "You in this check-in", "What it is" (the name and the situation), "What good looks like" (with where it stood at the start), and "Who can corroborate whom".
+
+**My picture check found eleven things**, now with the builder. The most important: the tab is a narrow centred column instead of the full width; the roles table's status column is cut off; the spacing between sections is broken; "How long" says "Not started yet" though the first session has happened; and "You in this check-in" shows an internal name, "Okr alignment".
+
+**Found on the way, not fixed (was already broken):** the "Save situation" button sends a situation the server does not take, so choosing a different situation here has never saved. Listed for the review.
+
+**A privacy problem found by the full screen suite, being fixed.** The new "Roles in this check-in" table showed each person's "role, as described" to everyone who could open the tab, including Juma, an admin who does not run the check-in. That field is mostly the lead's own private sentence about the person, and a lead's private notes are never shown to admins. Taking the more private option, the column is now shown only to the person who runs the check-in, with a test as the lead, an admin and a participant. The server itself also sends that field to an admin who does not run the check-in; privacy must hold on the server, so I asked the engine workspace to stop that (request 83).
+
+**The people group is built, and its end-of-group checks pass (30 September).** The privacy fix holds on the running product: only Rukia, who runs "Sales team, Q3", reads each person's role as described; Juma, an admin, and Amani, a participant, do not. The whole screen suite passes (3,548 tests in 510 files), the type check is clean, and the page-colour test passes for the participant, the lead and the admin. Four source-reading tests were pointed at the new file, keeping what each proves; one of them had always checked the same file twice instead of the second screen its name promised, and now checks both. Next: the reviewer reads the whole group, and the pattern screens, as each person.
+
+
+## Review of the people group and the pattern screens (30 September)
+
+The reviewer read every screen as Juma, Rukia, Amani and Neema, at 1440 and 375 pixels, and sent the group back. **What passes:** privacy on the server (each person's role as described reaches only the lead; colleagues' emails and goals are withheld from participants; People refuses a participant); the pattern rules (before Amani answered, nothing about her pattern reached anyone else; she saw it first and could answer; the lead then saw it with her words; Neema never saw it); the People and one-person pages match the prototype closely; every page works at phone width; and nothing the old People and setup did is lost, apart from one setting's "not answered yet" state (below). Both temporary database changes the reviewer made were put back and checked.
+
+**Sent back, most important first:**
+1. Privacy: an admin reads a person's pattern, but the person is told only the lead will (Needs Hafsah, item 0-pat2, and request 84). For now the screens show another person's pattern only to the person who runs the check-in.
+2. "Not let in" shows on the People page and the one-person page, but People and setup still says "Waiting for an admin", and the board still says "Ask Faraji to check in".
+3. "What an admin can see" says an admin can end a check-in, which nobody can yet.
+4. The strips under a person in "Who's in it" talk to an admin as if an admin were someone else, and "View plans" goes to People.
+5. "Joined 27 September" for someone never let in, and "Invited" for someone whose invitation was never sent.
+6. Every avatar reads "?" for Juma on People and setup, and one row is headed "a colleague" in lowercase.
+7. The change log says "Changed by the lead" or "Changed by the party", never a name, and logs only two of the settings, while the page promises every change is noted with your name.
+8. Several clipped or untrue sentences on People and setup, among them "Nobody ever sees what anybody wrote", which is untrue for the lead and admins.
+9. "The team today" shows no pattern line under each person, though its own subtitle promises one. This is a protected screen, so it must be drawn, not left out.
+10. "Situation" offers Change though it never saves; and "Who can corroborate whom" lost its "not answered yet" state when it became an on/off switch.
+11. Smaller points on the People page, and one on the participant's old view.
+
+**The reviewer's view on the items for you to confirm:** it agrees with Guest, the invitation wording, the shortened sentences (apart from "end it"), "Not let in" (once it reaches every page), keeping four sections the prototype has no place for, and keeping "Ending it" in the product's words. It disagrees with keeping "You in this check-in" on the lead's view, because it repeats "What it is" and "How it runs" as label pieces. I will fold it into the sections it repeats, since that is closer to the prototype, and list it.
+
+**Fixed, from the review above (30 September, builder pass):**
+
+1. Board privacy: a colleague's pattern now draws only for `viewerRunsThisCheckIn`, not for an admin who merely reads. Test added: an admin who does not run it sees nobody else's pattern even when the payload carries one.
+2. "Not let in" now reaches People and setup's roster (tag and strip say who decided and when, served by users.service.ts and grounds.service.ts) and the board (which no longer manufactures "Ask X to check in" for someone this organisation declined).
+3. "What an admin can see" now says "...change its setup, and ask us to end it."
+4. The strips under a person address an admin as "you", and "View plans" goes to `/billing`. For a lead who is not an admin, no button is offered where only an admin can act.
+5. "Joined" is no longer said of somebody never let in or waiting for a seat; Zawadi (no seat) reads why her invitation was never sent.
+6. Initials are taken from the resolved name, not the first letter of an email; a person with no name reads an admin's own email rather than lower-case "a colleague".
+7. Not fixed as asked: naming who changed a setting would let a person on a check-in with peers hidden learn a name from a settings page (`the-audit-log-has-a-reader.spec.ts`'s own privacy test says so). Made the page's own promise true instead ("noted with who made them and the date") and left naming the changer as a question for you.
+8. The delete text, the roles column's empty state, the lead/admin sentences under "When someone is blocked" and "Ending it", "Nobody sees another person's answers", "Who can confirm each other's work", the reminder sentence, and the "end" button are all rewritten to be true and full sentences.
+9. Not chased further this pass: the rendered test for "The team today" 's per-person pattern line already passes (`the-board-as-each-reader-reads-it.spec.tsx`). The reviewed gap most likely came from `theSameThingFromTheRows`'s three-completed-check-ins floor (a pattern needs three rounds before anything is said) rather than a broken render - worth your eyes if Amani genuinely had three sessions in the reviewed run.
+10. "Situation" no longer offers "Change" (the server drops the field silently); "Who can confirm each other's work" has its third state back.
+11. "You in this check-in" is folded into "What it is" and "How it runs" on the lead's own People and setup tab; GroundParticipantPage's own Setup tab is untouched.
+12. People page: "Letting them in takes a seat, and you have none free."; a team cell with nothing reads "No team"; the owner's own page no longer offers to remove them. Not done this pass, for lack of time: reconciling "5 people, on the free plan" against "6 people shown", and adding Zawadi as her own row on the People table.
+13. Not investigated this pass, for lack of time: the participant's old view's chip wording and the session-count mismatch.
+
+Two pre-existing failures found and left alone, both unrelated to this work: `api/src/modules/grounds/the-audit-log-has-a-reader.spec.ts` was already failing against `GroundAdminPage.tsx` before today's changes (the settings tab it reads moved to `CheckInPeopleAndSetup.tsx` a while back and nobody repointed it) - confirmed by running it against the unmodified branch.
+
+**After the review's fixes (30 September).**
+- **A boundary slip, undone.** To stop the board asking Rukia to chase Faraji after he was not let in, the builder changed two of the engine's board files (`board.service.ts` and `where-each-person-is-against-their-number.ts`). The board's text is the engine workspace's, so I put both back exactly as they were (`ecce8444`) and asked the engine to do it (request 85). Everything else in that change was the screens' own: the server now serves "not let in" on People and on the check-in's people, and People and setup and the one-person page say it.
+- **"The team today" now carries each person's pattern on their line** (protected). The board's own line needs three finished sessions; a pattern the server has served, and this reader may read, now fills the line when it would be empty, with the same visibility as the Patterns section.
+- **The change log stays without names, on purpose.** The reviewer asked for "Changed by Rukia Otieno", but an existing privacy test says the log never names who made a change, because on a check-in where people cannot see each other a name there would tell someone who else is in it. That is the more private option, so it stays; the page's sentence now says only what is true ("Changes to how long it runs and how often are noted with who made them and the date."). Logging every switch, not only length and how often, is left for later.
+- **One of our tests, broken by the People and setup move, now reads the new file** (`the-audit-log-has-a-reader.spec.ts`), with its privacy check untouched.
+- **Left with a builder now:** the People page's two different counts, Zawadi missing from the table, and the participant view's chips and session count.
+
+## Re-review of the people group and the pattern screens (30 September)
+
+The reviewer checked every earlier finding and clicked through each screen as Juma, Rukia, Amani and Neema, and sent the group back once more. **Fixed and reading well:** "What an admin can see"; the strips under each person, speaking to an admin as "you"; initials on every avatar; every rewritten sentence on People and setup; each person's pattern on their line under "The team today"; "Situation" no longer offering a Change that never saved; the confirm-each-other's-work setting's third state; Zawadi as a row on People, and the counts agreeing; the owner not offered Remove; and the participant's "You have completed 1 session, out of 12." Nothing scrolls sideways at either width.
+
+**Found again or new, now with the builder:**
+1. **The lead's "Alignment feed" on the board is broken whenever a pattern exists** (protected). It still reads the old pattern shape, so it says "0 to look at" and draws one empty card. It is being rebuilt from the new shape, not removed.
+2. "Not let in" is still missing from "Roles in this check-in" and from the People page's count sentence, and the roster says Faraji "has not checked in for this session yet", which he cannot.
+3. Someone waiting at the door still reads "Joined" rather than "Invited".
+4. For an admin, a person with no name reads "A colleague" mid-sentence ("Your plan has no seat for A colleague."), and People and setup makes up "Zawadi U8" from her email.
+5. The change log's entries still say "Changed by the party" and join pieces with colons.
+6. Small wording points, and three readers told three different stories about which session it is.
+
+**Still open on the server, and the most important thing here:** until request 84 is done, the privacy for patterns lives only on the screen. The server still sends Amani's pattern, and her own words, to Juma, an admin who does not run the check-in, though the screen no longer draws it. CLAUDE.md says privacy is enforced in the backend, never only hidden on screen. This needs your decision in item 0-pat2 and then the engine's change; I have marked request 84 as the one to do first.
+
+**The reviewer's view on the two settled points:** it agrees that the change log does not name who made a change, provided "the party" goes (being fixed); and it agrees that another person's pattern is shown only to whoever runs the check-in, for now, as the more private choice, with the server side still to come.
+
+Both temporary database changes the reviewer made were put back and checked (Faraji's request back to waiting; the test pattern row deleted).
+
+**The re-review's fixes are in (30 September).** The lead's Alignment feed (protected) is rebuilt from the new pattern shape and counts truly. "Not let in" now shows in the roles table and the People count sentence. Someone waiting at the door reads "Invited". No names are made up from an email, and a reader who may not see someone's address reads "Somebody invited by email" and "this person", never a mid-sentence "A colleague". Change-log entries are single sentences without "the party". Plus the smaller wording points.
+
+**One thing the builder did that I did not take.** To give an admin Zawadi's address on People and setup, it let admins receive every participant's email on the check-in's own data, and rewrote a privacy test that asserted they get none. That changes a privacy rule, which only you decide, so I put both back exactly as they were. Admins do see addresses on the People page, so **please say whether they should also see them on a check-in whose lead has turned on "Hide email addresses between participants".** Until then, the more private rule stands.
+
+**Tests.** The whole API suite: 11,177 of 11,179 pass. I fixed six of our own tests on the way: three You-board tests lacked the pattern table our pattern work reads, and three read the old settings tab's code, now in its own file. The two still failing are the engine's (requests 80 and 81). The screen tests for every changed folder pass (2,176), and the type checks are clean.
+
+
+## The people group is done (30 September)
+
+The admin's People page, the one-person page, the check-in's People and setup, "Not let in", and the pattern screens are rebuilt from the shared parts, reviewed, re-reviewed, and fixed. My last check, as Rukia and Juma on the running product after a restart: Faraji waiting at the door reads "Invited 27 September"; Zawadi, with no name and an address Juma may not see, reads "Somebody invited by email" everywhere on the page, never "A colleague" or "Zawadi U8". The whole screen suite passes (3,582 tests in 515 files), the type checks are clean, the page-colour test passes for the participant, the lead and the admin, and the whole API suite passes apart from two of the engine's own tests (requests 80 and 81).
+
+**Still needing you, from this group:**
+- Item 0-pat2: may an admin who does not run a check-in read a person's pattern and their answer? Until you say, the screens show it only to whoever runs the check-in, but the server still sends it (request 84, marked first for the engine).
+- Item 0-pat: the engine switched patterns on, though you said the switch stays off.
+- Whether an admin should receive participants' email addresses on a check-in whose lead has turned on "Hide email addresses between participants". Kept as it was: they do not.
+
+**Next:** the board and reports for every kind of work, now that the engine serves the kind of work and each kind's records (request 76).

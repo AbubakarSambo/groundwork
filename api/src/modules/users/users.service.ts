@@ -8,7 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { PaginationDto } from '../../common';
-import { TokenType, CompanyStage } from '@prisma/client';
+import { TokenType, CompanyStage, MembershipRequestStatus } from '@prisma/client';
 import { setRole, RoleWrite } from './a-role-is-stored-twice';
 import { BillingService } from '../billing/billing.service';
 import { AuthService } from '../auth/auth.service';
@@ -448,6 +448,50 @@ export class UsersService {
       if (!list.some((c) => c.id === m.ground.id)) list.push({ id: m.ground.id, label: m.ground.label, runsIt: m.partyType === 'INITIATOR' });
       theirCheckIns.set(who, list);
     }
+    /*
+     * "WAITING TO BE LET IN" READS UNTRUE ONCE AN ADMIN HAS SAID NO.
+     *
+     * decline() (who-is-waiting-at-the-door.service.ts) deliberately leaves `awaitingOrgApproval`
+     * set - the account keeps working for a company that did let them in, so the flag cannot simply
+     * be cleared. What changed is this organisation's own answer, so it is read here, from this
+     * organisation's own requests, not from the flag alone. Their latest request to THIS
+     * organisation decides it: declined reads "Not let in"; anything else still reads "waiting".
+     */
+    const awaitingIds = users.filter((u) => u.awaitingOrgApproval).map((u) => u.id);
+    const notLetInIds = new Set<string>();
+    /** Who declined them, and when - so "Not let in" can say who decided (U.4, request 84). */
+    const notLetInDecidedBy = new Map<string, { userId: string; decidedAt: Date | null }>();
+    if (awaitingIds.length) {
+      const requests = await this.prisma.membershipRequest.findMany({
+        where: { organizationId, userId: { in: awaitingIds } },
+        orderBy: { createdAt: 'desc' },
+        select: { userId: true, status: true, decidedByUserId: true, decidedAt: true },
+      });
+      const decided = new Set<string>();
+      for (const r of requests) {
+        if (decided.has(r.userId)) continue;
+        decided.add(r.userId);
+        if (r.status === MembershipRequestStatus.DECLINED) {
+          notLetInIds.add(r.userId);
+          if (r.decidedByUserId) notLetInDecidedBy.set(r.userId, { userId: r.decidedByUserId, decidedAt: r.decidedAt });
+        }
+      }
+    }
+    const decidersById = new Map<string, { firstName: string | null; lastName: string | null }>();
+    if (notLetInDecidedBy.size) {
+      const deciders = await this.prisma.user.findMany({
+        where: { id: { in: [...new Set([...notLetInDecidedBy.values()].map((d) => d.userId))] } },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      for (const d of deciders) decidersById.set(d.id, d);
+    }
+    const nameOfDecider = (userId: string): string | null => {
+      const d = decidersById.get(userId);
+      if (!d) return null;
+      const full = [d.firstName, d.lastName].filter(Boolean).join(' ').trim();
+      return full || null;
+    };
+
     const sits = await this.whereTheySit(organizationId, ids);
     const hasFinished = new Set([...answeredCount.keys()]);
     /*
@@ -477,8 +521,58 @@ export class UsersService {
       return first != null && first < new Date(u.createdAt).getTime();
     };
 
+    /*
+     * SOMEBODY ON A CHECK-IN WITH NO SEAT FOR THEM WAS NOT A ROW HERE AT ALL (U.4 people-group
+     * review, item 2). They have no account and no membership - "added, and not yet written to" -
+     * so the query above, which reads memberships, never sees them. The prototype (people.txt) lists
+     * them anyway, as "No seat on your plan"; "Somebody is on a check-in with no seat for them"
+     * already names their email and who added them, so a row here says nothing new. Only page 1,
+     * so an admin paging through a large roster is never shown the same held email twice.
+     */
+    const held = page === 1
+      ? await this.prisma.groundParticipant.findMany({
+        where: { awaitingSeat: true, ground: { organizationId } },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, email: true, createdAt: true, ground: { select: { id: true, label: true } } },
+      })
+      : [];
+    const heldByEmail = new Map<string, { id: string; email: string; createdAt: Date; checkIns: { id: string; label: string | null; runsIt: boolean }[] }>();
+    for (const h of held) {
+      const key = (h.email ?? '').toLowerCase();
+      if (!key || idByEmail.has(key)) continue; // already a real row (an account exists after all)
+      const row = heldByEmail.get(key) ?? { id: h.id, email: h.email!, createdAt: h.createdAt, checkIns: [] };
+      if (!row.checkIns.some((c) => c.id === h.ground.id)) row.checkIns.push({ id: h.ground.id, label: h.ground.label, runsIt: false });
+      heldByEmail.set(key, row);
+    }
+    const heldRows = [...heldByEmail.values()].map((h) => ({
+      id: `held:${h.id}`,
+      email: h.email,
+      firstName: null,
+      lastName: null,
+      role: null as string | null,
+      isActive: true,
+      isEmailVerified: false,
+      createdAt: h.createdAt,
+      phoneNumber: null,
+      state: 'invited' as const,
+      checkInsOn: h.checkIns.length,
+      checkInsAnswered: 0,
+      checkInsNotOpened: h.checkIns.length,
+      arrivedThroughACheckIn: true,
+      notLetIn: false,
+      notLetInBy: null,
+      notLetInAt: null,
+      heldForASeat: true,
+      /* No account exists yet, so there is nowhere for "Open" to go. */
+      noAccountYet: true,
+      level: null,
+      team: null,
+      reportsTo: null,
+      checkIns: h.checkIns,
+    }));
+
     return {
-      data: users.map((u) => ({
+      data: [...users.map((u) => ({
         ...u,
         /*
          * Named for what is true, not for what is missing. "Never checked in" on somebody who
@@ -493,12 +587,17 @@ export class UsersService {
         /** How many of those they were added to and have not opened the invitation for yet. */
         checkInsNotOpened: notOpenedCount.get(u.id) ?? 0,
         arrivedThroughACheckIn: arrivedThroughACheckIn(u),
+        /** This organisation said no; the account still exists but stays out of this one. */
+        notLetIn: notLetInIds.has(u.id),
+        /** Who decided that, and when - null when the decider's name is not known. */
+        notLetInBy: notLetInIds.has(u.id) ? nameOfDecider(notLetInDecidedBy.get(u.id)?.userId ?? '') : null,
+        notLetInAt: notLetInIds.has(u.id) ? (notLetInDecidedBy.get(u.id)?.decidedAt ?? null) : null,
         /* Where they sit here (U.4). Describes the organisation; grants nothing. */
         ...(sits.get(u.id) ?? { level: null, team: null, reportsTo: null }),
         /* Which of this organisation's check-ins they are on, and whether they run it. */
         checkIns: theirCheckIns.get(u.id) ?? [],
-      })),
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      })), ...heldRows],
+      meta: { page, limit, total: total + heldRows.length, totalPages: Math.ceil((total + heldRows.length) / limit) },
     };
   }
 

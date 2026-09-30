@@ -80,13 +80,20 @@ export function PersonCell({ initials, name, level, email }: {
   level?: string
   email?: string
 }) {
+  /*
+   * NEVER THE SAME EMAIL TWICE (U.4 re-review, item 4). With no real name on record, several
+   * callers now put the person's own address in the name slot itself (rather than a name guessed
+   * out of it); this used to still be handed here as `email` too, and Zawadi's row read her address
+   * once as the name and once again underneath it.
+   */
+  const showEmail = email && email !== name
   return (
     <div className="gwui-person-cell">
       <Avatar initials={initials} size={34} />
       <div style={{ minWidth: 0 }}>
         <div className="gwui-person-name">{name}</div>
         {level && <div className="gwui-person-level">{level}</div>}
-        {email && <div className="gwui-person-email">{email}</div>}
+        {showEmail && <div className="gwui-person-email">{email}</div>}
       </div>
     </div>
   )

@@ -31,6 +31,8 @@ import { plainWordsByPerson, atTheStart } from '@/lib/a-colleague'
 import { theLeadsNote } from '@/lib/the-leads-note'
 import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 import { tileSentence } from '@/components/gw/TheSessionsReport'
+import { PatternPanel } from '@/components/gw/ui'
+import type { ServedPattern } from '@/api/patterns'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -146,6 +148,17 @@ export function whoSeesThisDifferently(positions: { who?: string }[] | undefined
   return `${say(who[0])} and ${say(who[1])} see this differently.`
 }
 
+/**
+ * "Seen across 3 sessions", only when it is true: never more sessions than this check-in has had,
+ * never a count of one or none as if it were a pattern. `sessionNow` is the session number the
+ * board is on; a count above it is the engine's claim running ahead of the record, and is left out.
+ */
+export function seenAcross(periods: number | null | undefined, sessionNow: number | null): string | null {
+  if (!periods || periods < 2) return null
+  if (sessionNow == null || periods > sessionNow) return null
+  return `Seen across ${periods} sessions.`
+}
+
 /** What each record type under "Who owns what" is, in a sentence rather than a bare tag. */
 /**
  * THE WORDS OF ONE LINE UNDER "WHO OWNS WHAT", OR NOTHING. The server leaves a line's words out when
@@ -183,23 +196,6 @@ const HOW_TO_READ_KEY = 'gw-board-how-to-read'
  * So the route is the DEFAULT and not the only source. `/grounds/:id/board` passes nothing and is
  * byte-for-byte what it was; the boards page passes the tab somebody picked.
  */
-/*
- * THE THREE BADGES ON THE ALIGNMENT FEED.
- *
- * Good sign is green, a pattern to look at is amber, and carrying is neither: somebody holding
- * together what nobody else picked up has done nothing wrong and nothing to celebrate. Green would
- * congratulate them for absorbing a failure and amber would read as a mark against them, so it
- * gets the neutral blue the rest of the product uses for "here is a fact".
- *
- * A type this does not know falls to amber, which is where an unlabelled signal used to land
- * anyway - and a badge saying nothing is worse than one saying the cautious thing.
- */
-function badgeColoursFor(type: string): { background: string; color: string } {
-  if (type === 'Good sign') return { background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }
-  if (type === 'Carrying') return { background: 'var(--gw-blue-bg)', color: 'var(--gw-blue-t)' }
-  return { background: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
-}
-
 /**
  * WHERE THE RUN IS, counted from sessions everybody has finished (moved here from the foot of the
  * board so the top and the foot read the same answer).
@@ -509,6 +505,41 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
       return { key: s, state: upcoming ? 'upcoming' : checkedIn ? 'done' : 'empty' }
     })
   }
+
+  /* "The team today", with what keeps coming up under each person's own line, where the record has
+     found something (board-as-lead.txt). `eachPersonToday` carries the same rows as `eachPerson`
+     with that one sentence added; merged here rather than in two places the row could drift apart. */
+  const visiblePatterns = (b.patterns ?? []).filter((p) => viewerRunsThisCheckIn || p.yours)
+  const keepsComingUpByParticipant = new Map((b.eachPersonToday ?? []).map((r) => [r.participantId, r.keepsComingUp ?? null]))
+  /* PROTECTED (Hafsah, 29 September): "The team today" promises "what keeps coming up" on each
+     person's line. The board's own line needs three finished sessions of rows; a pattern the
+     server has served, and this reader may read, says it too, so the line never sits empty while
+     the section below shows that person's pattern. */
+  const patternHeadingByParticipant = new Map<string, string>()
+  for (const p of visiblePatterns) if (p.participantId && p.heading && !patternHeadingByParticipant.has(p.participantId)) patternHeadingByParticipant.set(p.participantId, p.heading)
+  const eachPersonRows = (b.eachPerson ?? []).map((r) => ({ ...r, keepsComingUp: keepsComingUpByParticipant.get(r.participantId) ?? patternHeadingByParticipant.get(r.participantId) ?? null }))
+
+  /*
+   * WHAT KEEPS COMING UP, THE SECTION (board-as-lead.txt). The server already serves only what this
+   * reader may read (api/src/modules/patterns/who-reads-a-pattern.ts): a colleague's own pattern
+   * only, everybody's for whoever runs the check-in - its lead, whoever set it up, or an admin of
+   * its organisation (`runsIt`, the same test `board.service.ts` calls `runsThisGround`). `eachPerson`
+   * is served under that exact same test (`has('checkInGrid') && runsThisGround`), so its presence
+   * used to stand in for "this reader runs it" here too - which wrongly drew another person's
+   * pattern for an admin who only reads the board and does not run it.
+   *
+   * U.4 REVIEW, ITEM 1: THE MORE PRIVATE OPTION, UNTIL HAFSAH DECIDES (Needs Hafsah 0-pat2, request
+   * 84). An admin who only reads is told, on their own report and elsewhere, that a colleague's
+   * pattern reaches only the person who runs the check-in - so drawing it for that same admin here
+   * made the promise untrue. Until she answers, a colleague's pattern is drawn only for
+   * `viewerRunsThisCheckIn` (the lead, or whoever set this check-in up), never for an admin who
+   * merely has read access to it. `.yours` is kept here too, so a colleague's board never draws
+   * another person's pattern even if this page is ever handed one by mistake - the rule this file
+   * must never be the one to weaken.
+   */
+  const nameByParticipantId = new Map((b.participants ?? []).map((p) => [p.id, p.name]))
+  const patternPersonName = (participantId: string, yours: boolean) =>
+    (participantId === b.myParticipantId ? 'You' : nameByParticipantId.get(participantId)) || (yours ? 'You' : 'A colleague')
 
   return (
     <div style={{ background: 'var(--gw-page)', minHeight: '100vh' }}>
@@ -1301,7 +1332,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               ordering is unchanged, only the heading now reads as the prototype's screen does.
             */}
             <Sec size="board" title="The team today" src="Each person’s line, their last 10 check-ins, and what keeps coming up." />
-            <WhereEachPersonIs rows={b.eachPerson!} squaresFor={squaresFor} />
+            <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
           </>
         )}
 
@@ -1737,15 +1768,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {/*
-         * MANAGER ALIGNMENT IS A PATTERN CLAIM. Its pattern code is SETUP_NEVER_SAID and it says
-         * "seen across 2 sessions" from one, which is exactly what PATTERNS_ARE_SERVED being off is
-         * meant to stop the board from doing (see api/src/modules/patterns/patterns-are-served.ts).
-         * The server still sends this field on its own, outside `sections`, so the screen checks
-         * `has('patterns')` - the same flag the server itself uses to decide whether the `patterns`
-         * section belongs in `sections` - as its own guard, and draws nothing here while it is off.
-         * The data is kept (nothing is deleted); only the drawing stops.
+         * HOW THE LEADING IS LANDING: PROTECTED (Hafsah, 29 September). Patterns, role behaviour,
+         * coaching and the probe structure are never removed, hidden or simplified to solve a
+         * problem; something wrong is fixed in place, or shown only to the most private reader. This
+         * used to be hidden whenever patterns were off, because its count said "seen across 2
+         * sessions" after one. It is now always drawn for the person who runs the check-in, and only
+         * for them, and the count is fixed in place: `seenAcross` says it only when that many
+         * sessions have actually happened here.
          */}
-        {has('patterns') && viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
+        {viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
           <>
             <Sec size="board" title="How the leading is landing" src="Two sides of the same leadership." />
             <Card>
@@ -1764,9 +1795,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         {m.pole === 'CONTROL' ? 'nobody else gets to own it' : 'nobody is being held to it'}
                       </Pill>
                     )}
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 'auto' }}>
-                      seen across {m.periods} sessions
-                    </span>
+                    {seenAcross(m.periods, b.phaseSpine?.currentSession ?? null) && (
+                      <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 'auto' }}>
+                        {seenAcross(m.periods, b.phaseSpine?.currentSession ?? null)}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 12.5, color: 'var(--gw-text)', marginTop: 4, lineHeight: 1.45 }}>{m.gap}</div>
                   <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{m.note}</div>
@@ -1812,37 +1845,33 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.patterns && b.patterns && (
           <>
-            <Sec size="board" title="Patterns this phase" src="Patterns about the work only." />
+            {/*
+              WHAT KEEPS COMING UP (board-as-lead.txt). Named after three check-ins in a row, never
+              after one, and each one describes the work - never a label joined to a name (see
+              api/src/modules/patterns/who-reads-a-pattern.ts, the one place that decides who reads
+              a pattern and in what words). `visiblePatterns` is filtered again here for a colleague,
+              on top of what the server already withheld: see the comment on `visiblePatterns` above.
+            */}
+            <Sec size="board" title="What keeps coming up" src="Named after three check-ins in a row, never after one. Each describes the work." />
             <Card>
-              {b.patterns.length === 0 ? (
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No patterns have repeated often enough to show yet. A pattern needs three periods before it appears here.</div></Row>
-              ) : b.patterns.map((p, i) => (
-                <Row key={i} first={i === 0}>
-                  <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
-                    {p.label && <Pill tone="info">{p.label}</Pill>}
-                    <span style={{ flex: 1, fontSize: 12.5 }}>{p.text}</span>
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', flexShrink: 0 }}>{p.periods} periods</span>
-                  </div>
-                  {/*
-                    AND WHAT TO DO ABOUT IT.
-
-                    "i would expect a coaching line or an assessment after, what do i do with this" -
-                    about "Direct questions about deliverables were met with unrelated statements
-                    about needs and blockers." An observation with no next move is a dead end on the
-                    one board somebody opens to decide something.
-
-                    The library has carried the question for every pattern since it was written; the
-                    server now sends it. A QUESTION and not a verdict, because a pattern is a thing
-                    the record has noticed more than once, and the next move is asking the person.
-                  */}
-                  {(p as any).askThem && (
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 6, paddingLeft: 11, borderLeft: '2px solid var(--gw-border)' }}>
-                      <span style={{ color: 'var(--gw-muted)' }}>Ask them: </span>
-                      {(p as any).askThem}
-                    </div>
-                  )}
-                </Row>
-              ))}
+              {visiblePatterns.length === 0 ? (
+                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></Row>
+              ) : (
+                <>
+                  <Row first>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>About each person’s work</div>
+                  </Row>
+                  {visiblePatterns.map((p) => (
+                    <Row key={p.id}>
+                      <PatternPanel
+                        pattern={p}
+                        invalidateKey={['board', id]}
+                        name={patternPersonName(p.participantId, p.yours)}
+                      />
+                    </Row>
+                  ))}
+                </>
+              )}
               <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 0', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
                 Patterns about the work only. Anything that would read as a judgement about a person stays in the lead's private report and never appears here.
               </div>
@@ -1944,45 +1973,62 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           the tab about who has answered and when - where it competed with the session grid and had
           nothing to do with it. What it actually is: convergences and divergences accumulating
           across the run, which is the board's subject exactly.
+
+          REBUILT FOR THE ENGINE'S NEW PATTERN SHAPE (AServedPattern, patterns/who-reads-a-pattern.ts).
+          `groundForSignals.signals` is the very same `servedPatterns(...)` call as `b.patterns` above
+          - one call, on the same ground, for the same reader - so whenever "What keeps coming up" is
+          drawn (`shown.patterns`), every item here is already on the page. Drawing it twice would say
+          the same thing twice in different words, so this says once, truly, how many there are and
+          points at where they already are. Only when that section is not shown at all (the family or
+          the scenario hides it) does this draw the panels itself, with the shared `PatternPanel` so a
+          pattern never reads differently in two places. Kept for whoever runs the check-in only, as
+          before: nobody else's pattern is served here in the first place, but `viewerRunsThisCheckIn`
+          is kept too so a participant's own single pattern never turns into a feed of one.
         */}
-                {viewerRunsThisCheckIn && (((groundForSignals as any)?.signals ?? [])).length > 0 && (() => {
-                  const sigs = ((groundForSignals as any)?.signals ?? [])
-                  /* Every row is the library's own sentence for a surfaced pattern. The badge is a
-                     count: good signs against patterns to look at, never a verdict word. */
-                  const convergences = sigs.filter((s: any) => s.type === 'Good sign').length
-                  const divergences = sigs.filter((s: any) => s.type === 'Pattern').length
-                  /* A third kind, and it is neither. Somebody holding together what nobody else
-                     picked up is not a good sign and is not a problem with them; counted as either
-                     it says something untrue, and left out of both counts it vanishes off a badge
-                     that claims to say how many there are. */
-                  const carrying = sigs.filter((s: any) => s.type === 'Carrying').length
-                  const trendLabel = [
-                    `${divergences} to look at`,
-                    `${convergences} good sign${convergences === 1 ? '' : 's'}`,
-                    ...(carrying ? [`${carrying} carrying`] : []),
-                  ].join(' · ')
-                  const trendColor = divergences === 0 ? 'var(--gw-green-t)' : 'var(--gw-amber-t)'
-                  const trendBg = divergences === 0 ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)'
-                  return (
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>Alignment feed</span>
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: trendBg, color: trendColor }}>{trendLabel}</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {sigs.map((sig: any) => (
-                          <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, ...badgeColoursFor(sig.type) }}>{sig.type}</span>
-                              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Seen across {sig.periodsObserved ?? sig.sessionNum} session{(sig.periodsObserved ?? sig.sessionNum) === 1 ? '' : 's'}</span>
-                            </div>
-                            <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
-                          </div>
-                        ))}
-                      </div>
+        {viewerRunsThisCheckIn && (() => {
+          const sigs: ServedPattern[] = ((groundForSignals as any)?.signals ?? [])
+          if (sigs.length === 0) return null
+          if (shown.patterns) {
+            return (
+              <>
+                <Sec size="board" title="Alignment feed" />
+                <Card>
+                  <Row first>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>
+                      {sigs.length === 1
+                        ? 'One pattern has come up so far. It is shown above, under What keeps coming up.'
+                        : `${sigs.length} patterns have come up so far. They are shown above, under What keeps coming up.`}
                     </div>
-                  )
-                })()}
+                  </Row>
+                </Card>
+              </>
+            )
+          }
+          const good = sigs.filter((s) => s.kind === 'good').length
+          const attention = sigs.filter((s) => s.kind === 'attention').length
+          const carrying = sigs.filter((s) => s.kind === 'carrying').length
+          const parts = [
+            good === 1 ? '1 good sign' : `${good} good signs`,
+            attention === 1 ? '1 pattern to look at' : `${attention} patterns to look at`,
+            ...(carrying ? [carrying === 1 ? '1 pattern of somebody carrying something' : `${carrying} patterns of somebody carrying something`] : []),
+          ]
+          return (
+            <>
+              <Sec size="board" title="Alignment feed" src={`${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}.`} />
+              <Card>
+                {sigs.map((sig, i) => (
+                  <Row key={sig.id} first={i === 0}>
+                    <PatternPanel
+                      pattern={sig}
+                      invalidateKey={['ground', id]}
+                      name={patternPersonName(sig.participantId, sig.yours)}
+                    />
+                  </Row>
+                ))}
+              </Card>
+            </>
+          )
+        })()}
 
         {/*
           U.10 ITEM 7: "REPORTS", THE PROTOTYPE'S WHITE TABLE (board-as-lead.jpg/.txt).

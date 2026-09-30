@@ -123,6 +123,9 @@ describe('the People list', () => {
           return [{ userId: 'miriam', createdAt: new Date('2026-07-02'), partyType: 'PARTICIPANT', ground: { id: 'g1', label: 'Sales team, Q3' }, checkIns: [{ id: 'c1' }] }];
         }),
       },
+      membershipRequest: {
+        findMany: jest.fn(async () => []),
+      },
     };
     return { service: new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any), asked };
   }
@@ -178,5 +181,64 @@ describe('the People list', () => {
       checkIns: [{ id: 'g1', label: 'Sales team, Q3', runsIt: false }],
       checkInsOn: 1, checkInsAnswered: 1,
     });
+  });
+});
+
+describe('"Not let in" (Hafsah, 29 September)', () => {
+  /*
+   * decline() (who-is-waiting-at-the-door.service.ts) leaves awaitingOrgApproval set on purpose,
+   * because the account may still belong somewhere else. So this organisation's own answer has to
+   * be read from ITS OWN latest request, not from that flag alone: declined reads "not let in";
+   * still pending reads "waiting".
+   */
+  const accounts: any = {
+    grace: { id: 'grace', email: 'grace@outside.co.ke', firstName: 'Grace', lastName: 'N', organizationId: 'baridi', role: 'MEMBER', isActive: true, isEmailVerified: true, createdAt: new Date('2026-09-20'), phoneNumber: null, awaitingOrgApproval: true, deletedAt: null },
+    faraji: { id: 'faraji', email: 'faraji@outside.co.ke', firstName: 'Faraji', lastName: 'M', organizationId: 'baridi', role: 'MEMBER', isActive: true, isEmailVerified: true, createdAt: new Date('2026-09-21'), phoneNumber: null, awaitingOrgApproval: true, deletedAt: null },
+  };
+  const memberships = [
+    { userId: 'grace', organizationId: 'baridi', role: 'MEMBER', level: null, team: null, reportsToUserId: null },
+    { userId: 'faraji', organizationId: 'baridi', role: 'MEMBER', level: null, team: null, reportsToUserId: null },
+  ];
+  function aService(requests: { userId: string; status: string; createdAt: Date }[]) {
+    const prisma: any = {
+      organizationMembership: {
+        findMany: jest.fn(async (args: any) => {
+          const mine = memberships.filter((m) => m.organizationId === args.where.organizationId);
+          if (args.select?.user) return mine.map((m) => ({ role: m.role, user: accounts[m.userId] }));
+          return mine;
+        }),
+        count: jest.fn(async () => memberships.length),
+      },
+      user: { findMany: jest.fn(async () => []) },
+      groundParticipant: { findMany: jest.fn(async () => []) },
+      membershipRequest: {
+        /* Latest first, as the real query orders it; the service keeps only the first it sees per person. */
+        findMany: jest.fn(async (args: any) => requests
+          .filter((r) => args.where.userId.in.includes(r.userId))
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())),
+      },
+    };
+    return new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any);
+  }
+
+  it('a declined person comes back as not let in', async () => {
+    const service = aService([{ userId: 'grace', status: 'DECLINED', createdAt: new Date('2026-09-20') }]);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    expect(data.find((p: any) => p.id === 'grace')).toMatchObject({ notLetIn: true });
+  });
+
+  it('a person still waiting on an answer comes back as waiting, not not-let-in', async () => {
+    const service = aService([{ userId: 'faraji', status: 'PENDING', createdAt: new Date('2026-09-21') }]);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    expect(data.find((p: any) => p.id === 'faraji')).toMatchObject({ notLetIn: false, awaitingOrgApproval: true });
+  });
+
+  it('only their latest request to this organisation decides it, not an older declined one', async () => {
+    const service = aService([
+      { userId: 'grace', status: 'DECLINED', createdAt: new Date('2026-09-10') },
+      { userId: 'grace', status: 'PENDING', createdAt: new Date('2026-09-20') },
+    ]);
+    const { data } = await service.findAll('baridi', { page: 1, limit: 100 } as any);
+    expect(data.find((p: any) => p.id === 'grace')).toMatchObject({ notLetIn: false });
   });
 });

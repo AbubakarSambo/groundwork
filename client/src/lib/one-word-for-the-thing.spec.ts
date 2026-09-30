@@ -41,7 +41,17 @@ const strip = (s: string) =>
  * Listed explicitly rather than loosening the pattern, so a real string can never hide behind a
  * broad exemption.
  */
-const CODE_NOT_COPY = [/\|\| !ground\) return/, /\|\| \(ground as any\)\.status ===/]
+const CODE_NOT_COPY = [
+  /\|\| !ground\) return/,
+  /\|\| \(ground as any\)\.status ===/,
+  /* CheckInPeopleAndSetup.tsx: `(ground as any).overWhatsApp === false ?` sits inside a `>...<`
+     JSX text position (a `value={...}` ternary), which reads to the `>text<` matcher as if it were
+     between two tags - it is a boolean comparison against the data model, never shown to anyone. */
+  /\(ground as any\)\.overWhatsApp === false \?/,
+  /* Same file: the reminders row's day/days pluraliser reads `ground.chaseAfterDays` inside a
+     template literal the `>...<` matcher also catches as prose. */
+  /\(\(ground as any\)\?\.chaseAfterDays/,
+]
 
 describe('one word for the thing a person opens', () => {
   const offenders: string[] = []

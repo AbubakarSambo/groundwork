@@ -1,14 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { apiClient } from '@/api/client'
-import { Button } from '@/components/gw/kit'
+import { Button, SwitchRow, Note } from '@/components/gw/ui'
 
 /**
  * "BARIDI'S INVITE LINK" ON THE PEOPLE PAGE (A4 people.txt, lines 239 to 241; U.3).
  *
- * The prototype shows the link and "Copy". Hafsah decided an admin can turn it off, which makes a new
- * link when it is turned on again, so there is a switch; the sentence under it is ours, because the
- * prototype does not draw the switch.
+ * The prototype shows the link and "Copy" (design-audit.md item 13). Hafsah decided an admin can
+ * turn it off, which makes a new link when it is turned on again, so there is a switch; the
+ * sentence under it when it is off is ours, because the prototype does not draw the switch.
+ *
+ * REBUILT FROM THE SHARED PARTS: `SwitchRow` for the row itself, and the small `Copy` button is the
+ * standard `Button` (kind="secondary" size="small"), not kit.tsx's old one.
  */
 interface State { on: boolean; code: string | null }
 
@@ -30,12 +33,12 @@ export function TheInviteLink({ orgName }: { orgName: string }) {
   const address = data.code ? `${window.location.host}/j/${data.code}` : null
 
   return (
-    <div className="gw-who-can-join-row" style={{ marginTop: 16 }}>
-      <div style={{ minWidth: 0 }}>
-        <b id="invite-link-label">{`The invite link for ${orgName}`}</b>
-        {address ? (
-          <p style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ color: 'var(--gw-text)', overflowWrap: 'anywhere' }}>{address}</span>
+    <div>
+      <SwitchRow
+        title={`The invite link for ${orgName}`}
+        detail={address ? (
+          <span className="gwui-invite-link-row">
+            <span className="gwui-invite-link-address">{address}</span>
             <Button
               kind="secondary"
               size="small"
@@ -43,24 +46,14 @@ export function TheInviteLink({ orgName }: { orgName: string }) {
             >
               {copied ? 'Copied' : 'Copy'}
             </Button>
-          </p>
-        ) : (
-          <p>The link is off. Turning it on makes a new link, so any old one stays closed.</p>
-        )}
-        {address && <p>Anyone with this link can join as “Takes part”. Turning it off closes it at once.</p>}
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={data.on}
-        aria-labelledby="invite-link-label"
-        className={`gw-switch${data.on ? ' on' : ''}`}
-        onClick={() => set.mutate(!data.on)}
+          </span>
+        ) : 'The link is off. Turning it on makes a new link, so any old one stays closed.'}
+        on={data.on}
+        onChange={() => set.mutate(!data.on)}
         disabled={set.isPending}
-      >
-        <span aria-hidden />
-      </button>
-      {problem && <p className="gw-auth-error" role="alert">{problem}</p>}
+      />
+      {address && <p className="gwui-switch-row-detail">Anyone with this link can join as “Takes part”. Turning it off closes it at once.</p>}
+      {problem && <Note tone="error">{problem}</Note>}
     </div>
   )
 }

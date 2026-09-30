@@ -2,6 +2,7 @@ import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said'
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 import { aStepSaidToYou } from './a-step-said-to-you';
+import type { AServedPattern } from '../patterns/who-reads-a-pattern';
 
 /**
  * THE YOU BOARD (C2, U.12): WHAT IS YOURS, ACROSS YOUR CHECK-INS, FOR YOUR EYES ONLY.
@@ -25,8 +26,15 @@ import { aStepSaidToYou } from './a-step-said-to-you';
  * WHAT IT NEVER HOLDS. How anybody's answers were rated (no specificity, no confidence, no
  * severity), a label on anybody, anybody else's anything, a lead's private notes, and questions to
  * Ask Groundwork. The engine's own text for this page (where you stand, what Groundwork noticed,
- * coaching followed over time, what you contributed, what keeps coming up) is the engine's to write
- * (docs/requests-to-engine.md, request 14); until it is served, the page shows none of it.
+ * coaching followed over time, what you contributed) is the engine's to write (docs/
+ * requests-to-engine.md, request 14); until it is served, the page shows none of it.
+ *
+ * "SOMETHING THAT KEEPS COMING UP" IS DIFFERENT: it goes through the one rule for a pattern
+ * (api/src/modules/patterns/who-reads-a-pattern.ts, `servedPatterns`), which the board and the
+ * check-in's own record already use, so it is built here rather than waited for. Only this
+ * person's own patterns, across every check-in they are in - never a colleague's, and never before
+ * three check-ins. See `YourBoardService.forReader`, which selects each check-in's own
+ * `patternDetection` rows and serves them through that rule.
  *
  * The sentences are written here, once. Dates are not: the screen says them in the reader's time.
  */
@@ -125,6 +133,11 @@ export interface YourReport {
   to: string;
 }
 
+/** A served pattern (`AServedPattern`), with which of the reader's check-ins it came from. */
+export interface YourPattern extends AServedPattern {
+  checkIn: string;
+}
+
 export interface YourBoard {
   checkIns: YourCheckIn[];
   turns: Pick<Need, 'key' | 'title' | 'detail' | 'action'>[];
@@ -135,6 +148,8 @@ export interface YourBoard {
   ownReports: YourReport[];
   /** Left null when nothing of yours was settled in the last four weeks. */
   keptLately: KeptLately | null;
+  /** "Something that keeps coming up": your own patterns, and nobody else's. Left off when there are none. */
+  patterns?: YourPattern[];
 }
 
 export interface BoardReader {

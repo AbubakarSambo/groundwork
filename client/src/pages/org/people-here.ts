@@ -24,8 +24,16 @@ export interface OrgMember {
   checkInsNotOpened?: number
   arrivedThroughACheckIn?: boolean
   awaitingOrgApproval?: boolean
+  /** This organisation's own admin said no to their latest request to join it. */
+  notLetIn?: boolean
+  /** Who decided that, when known. */
+  notLetInBy?: string | null
+  /** When that decision was made. */
+  notLetInAt?: string | null
   /** A guest added when the plan had no seat for them: holds none, and is not offered the check-in yet. */
   heldForASeat?: boolean
+  /** Held for a seat, and nothing has been written for them yet: there is no account to open. */
+  noAccountYet?: boolean
   /** Where they sit here. Describes the organisation; grants nothing. */
   level?: string | null
   team?: string | null
@@ -61,8 +69,16 @@ export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): 
   return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email
 }
 
+/**
+ * THE FIRST WORD, NEVER THE WHOLE FIELD (U.4 re-review, item 7). Some accounts, Rukia's own owner
+ * account among them, hold a full name in the `firstName` field alone ("Rukia Otieno", `lastName`
+ * empty) - a record of how the account was created, not of what her first name is. Reading the
+ * field whole read "What Rukia Otieno can do..." and "Rukia Otieno owns this organisation..." where
+ * every other person on the same page reads their first name alone ("What Faraji can do...").
+ */
 export function firstNameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): string {
-  return (m.firstName ?? '').trim() || nameOf(m)
+  const whole = (m.firstName ?? '').trim() || nameOf(m)
+  return whole.split(/\s+/)[0] || whole
 }
 
 export function initialsOf(name: string): string {
@@ -79,9 +95,12 @@ export function roleWord(m: Pick<OrgMember, 'id' | 'role'>, ownerId: string | nu
 /**
  * Where they got to. "Checking in", "Signed in, not on a check-in", "Invited, not opened" and
  * "Waiting to be let in" are the prototype's. "Not answered yet" is ours: somebody on a check-in who
- * has not answered one, which the prototype has no word for and an admin rolling out needs.
+ * has not answered one, which the prototype has no word for and an admin rolling out needs. "Not let
+ * in" is Hafsah's decision of 29 September: once this organisation's own admin has said no, "waiting"
+ * is no longer true.
  */
 export function statusWord(m: OrgMember): string {
+  if (m.notLetIn) return 'Not let in'
   if (m.awaitingOrgApproval) return 'Waiting to be let in'
   if (m.heldForASeat) return 'No seat on your plan'
   if (m.state === 'invited') return 'Invited, not opened'
@@ -93,7 +112,7 @@ export function statusWord(m: OrgMember): string {
 }
 
 export function needsSomething(m: OrgMember): boolean {
-  return ['Waiting to be let in', 'No seat on your plan', 'Invited, not opened', 'Not answered yet'].includes(statusWord(m))
+  return ['Waiting to be let in', 'Not let in', 'No seat on your plan', 'Invited, not opened', 'Not answered yet'].includes(statusWord(m))
 }
 
 /** "Sales rep, reports to Wairimu Kamau", or either half on its own, or nothing. */

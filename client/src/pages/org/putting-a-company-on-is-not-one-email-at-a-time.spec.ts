@@ -81,7 +81,13 @@ describe('what somebody is here', () => {
   })
 
   it('offers no change on your own role or the owner\'s: the server refuses both', () => {
-    expect(ONE).toContain('const locked = isOwner || isMe ||')
+    /*
+     * REBUILT (design-audit.md section 3, "One person"): the per-button `locked` variable is gone -
+     * the role choice is now the shared `ChoiceCards`, which takes one group-level `disabled` and
+     * locks every card but the chosen one. The rule itself (nobody may change their own role or the
+     * owner's) is unchanged, only where it is written.
+     */
+    expect(ONE).toContain('disabled={isOwner || isMe ||')
   })
 
   it('and the owner reads as "Owner" in the list', () => {

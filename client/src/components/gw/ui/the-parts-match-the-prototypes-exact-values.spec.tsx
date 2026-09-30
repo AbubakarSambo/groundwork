@@ -14,6 +14,8 @@ import { Toggle } from './Toggle'
 import { Choices } from './Choices'
 import { ChoiceCards } from './ChoiceCards'
 import { FieldRows, FieldRow } from './FieldRow'
+import { Folded } from './Folded'
+import { SwitchRow } from './SwitchRow'
 import { Toast } from './Toast'
 import { PeopleTable, PeopleTableHead, PersonRow } from './PeopleTable'
 
@@ -286,6 +288,26 @@ describe('ChoiceCards', () => {
     expect(CSS).toMatch(/\.gwui-choice-card \{[^}]*background: var\(--gw-card\)/)
     expect(CSS).toMatch(/\.gwui-choice-card-on \{[^}]*box-shadow: inset 0 0 0 2px var\(--gw-text\)/)
   })
+
+  it('a locked group still shows the chosen card as chosen, but nothing in it can be clicked away from it (one person\'s own role)', () => {
+    const onChange = vi.fn()
+    render(
+      <ChoiceCards
+        label="Role"
+        value="admin"
+        onChange={onChange}
+        disabled
+        options={[{ key: 'member', title: 'Member' }, { key: 'admin', title: 'Admin' }]}
+      />,
+    )
+    const admin = screen.getByRole('radio', { name: 'Admin' })
+    const member = screen.getByRole('radio', { name: 'Member' })
+    expect(admin).toHaveClass('gwui-choice-card-on')
+    expect(admin).not.toBeDisabled()
+    expect(member).toBeDisabled()
+    fireEvent.click(member)
+    expect(onChange).not.toHaveBeenCalled()
+  })
 })
 
 describe('FieldRow', () => {
@@ -314,6 +336,42 @@ describe('FieldRow', () => {
    */
   it('carries the panel\'s own 22px side padding itself, not just 14px top and bottom', () => {
     expect(CSS).toMatch(/\.gwui-field-row \{[^}]*padding: 14px 22px/)
+  })
+})
+
+describe('Folded', () => {
+  it('opens with no script, starting closed', () => {
+    const { container } = render(
+      <Folded summary="Who reports to whom" note="Level and reporting lines describe the organisation; what someone can do still comes from their role">
+        <p>Amani Njoroge</p>
+      </Folded>,
+    )
+    const details = container.querySelector('details') as HTMLDetailsElement
+    expect(details.open).toBe(false)
+    fireEvent.click(screen.getByText('Who reports to whom'))
+    expect(details.open).toBe(true)
+  })
+
+  it('is a Panel-shaped 12px-corner box, 20 by 22px inside, closed', () => {
+    expect(CSS).toMatch(/\.gwui-folded \{[^}]*border-radius: 12px/)
+    expect(CSS).toMatch(/\.gwui-folded-summary \{[^}]*padding: 20px 22px/)
+  })
+})
+
+describe('SwitchRow', () => {
+  it('the title reads bigger than its own sentence, never the other way round (design-audit.md item 15)', () => {
+    render(<SwitchRow title="Check-ins wait for an admin" detail="Each new check-in waits for an admin before invitations go out." on onChange={() => {}} />)
+    expect(screen.getByText('Check-ins wait for an admin')).toHaveClass('gwui-switch-row-title')
+    expect(screen.getByText('Each new check-in waits for an admin before invitations go out.')).toHaveClass('gwui-switch-row-detail')
+    expect(CSS).toMatch(/\.gwui-switch-row-title \{[^}]*font-size: 16px/)
+    expect(CSS).toMatch(/\.gwui-switch-row-detail \{[^}]*font-size: 14\.5px/)
+  })
+
+  it('carries a real Toggle, named after its own title', () => {
+    const onChange = vi.fn()
+    render(<SwitchRow title="Reminders" on={false} onChange={onChange} />)
+    fireEvent.click(screen.getByRole('switch', { name: 'Reminders' }))
+    expect(onChange).toHaveBeenCalledWith(true)
   })
 })
 

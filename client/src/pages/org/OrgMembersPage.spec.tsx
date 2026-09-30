@@ -11,6 +11,11 @@ import { howManyHere } from './EveryoneHere'
 /**
  * THE PEOPLE PAGE, AS GRACE (AN ADMIN) READS IT, against A4 people.txt. And as anybody else, who
  * is told they need admin access (the server refuses the reads too: GET /users is admin only).
+ *
+ * UPDATED (design-audit.md section 3, "People", rebuilt from components/gw/ui): a person's name in
+ * the table is the shared `PersonCell`'s `.gwui-person-name` div, bold at 16px by its own CSS, not a
+ * semantic `<b>` tag - so every `{ selector: 'b' }` below is now `{ selector: '.gwui-person-name' }`.
+ * What each test checks (the row's own content, filters, counts, no label on anybody) is unchanged.
  */
 let me: any = { id: 'grace', role: 'ADMIN', organizationName: 'Baridi Appliances' }
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel?: any) => (sel ? sel({ user: me }) : { user: me }) }))
@@ -62,7 +67,9 @@ describe('waiting to be let in', () => {
     expect(await screen.findByRole('heading', { name: 'Waiting to be let in' })).toBeTruthy()
     expect(screen.getByText('People from outside Baridi Appliances, invited to a check-in')).toBeTruthy()
     expect(screen.getByText('Peter Ouma, peter@ouma-agencies.co.ke')).toBeTruthy()
-    expect(await screen.findByText('Wairimu invited them to Sales team, Q3, yesterday. They take a seat; you have 73 free.')).toBeTruthy()
+    /* U.4 review, item 12 (30 Sept): the semicolon joined two facts as if they were one clause, and
+       "you have 0 free" would have read as a number nobody would say out loud. */
+    expect(await screen.findByText('Wairimu invited them to Sales team, Q3, yesterday. Letting them in takes a seat, and you have 73 free.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Don’t let them in' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Let them in' })).toBeTruthy()
     expect(screen.getByText('Letting someone in tells them straight away, and tells whoever invited them.')).toBeTruthy()
@@ -78,7 +85,12 @@ describe('waiting to be let in', () => {
 
   it('with no plan cap, and nobody named', () => {
     expect(whoAskedForThem({ id: 'x', email: 'a@b.co', name: null, addedBy: null, forCheckIn: null }, null))
-      .toBe('Someone who is no longer here invited them. They take a seat.')
+      .toBe('Someone who is no longer here invited them. Letting them in takes a seat.')
+  })
+
+  it('says "none free" rather than "0 free" (U.4 review, item 12)', () => {
+    expect(whoAskedForThem({ id: 'x', email: 'a@b.co', name: null, addedBy: null, forCheckIn: null }, 0))
+      .toBe('Someone who is no longer here invited them. Letting them in takes a seat, and you have none free.')
   })
 })
 
@@ -90,7 +102,7 @@ describe('everyone at Baridi', () => {
     /* U.19: Peter is a guest from outside, listed here, and billing does not count him. */
     /* The prototype's rule (U.4 re-review): a guest with an account takes a seat. */
     expect(screen.getByText('Guests with no account don’t take a seat.')).toBeTruthy()
-    const miriam = screen.getByText('Miriam Wanjiku', { selector: 'b' }).closest('[role="row"]') as HTMLElement
+    const miriam = screen.getByText('Miriam Wanjiku', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement
     const row = within(miriam)
     expect(row.getByText('Sales rep, reports to Wairimu Kamau')).toBeTruthy()
     expect(row.getByText('miriam@baridi.co.ke')).toBeTruthy()
@@ -99,31 +111,118 @@ describe('everyone at Baridi', () => {
     expect(row.getByText('Checking in')).toBeTruthy()
     expect(row.getByText('Sales team, Q3')).toBeTruthy()
     /* The owner is one field, and reads as "Owner". */
-    expect(within(screen.getByText('Amani Njoroge', { selector: 'b' }).closest('[role="row"]') as HTMLElement).getByText('Owner')).toBeTruthy()
-    expect(within(screen.getByText('Lina Mutua', { selector: 'b' }).closest('[role="row"]') as HTMLElement).getByText('Signed in, not on a check-in')).toBeTruthy()
-    expect(within(screen.getByText('Lucy Wairimu', { selector: 'b' }).closest('[role="row"]') as HTMLElement).getByText('Invited, not opened')).toBeTruthy()
-    const peter = within(screen.getByText('Peter Ouma', { selector: 'b' }).closest('[role="row"]') as HTMLElement)
+    expect(within(screen.getByText('Amani Njoroge', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Owner')).toBeTruthy()
+    expect(within(screen.getByText('Lina Mutua', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Signed in, not on a check-in')).toBeTruthy()
+    expect(within(screen.getByText('Lucy Wairimu', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Invited, not opened')).toBeTruthy()
+    const peter = within(screen.getByText('Peter Ouma', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
     expect(peter.getByText('Guest')).toBeTruthy()
-    expect(peter.getByText('None')).toBeTruthy()
+    /* U.4 review, item 12 (30 Sept): a bare "None" read as an orphaned word at phone width, where
+       the column name it belonged to had already collapsed away. The team cell now says "No team". */
+    expect(peter.getByText('No team')).toBeTruthy()
   })
 
   it('shows no label on anybody: no score, no rating, nothing but what they are and where they got to', async () => {
     const { container } = open()
-    await screen.findByText('Miriam Wanjiku', { selector: 'b' })
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(container.textContent).not.toMatch(/\bscore\b|\brating\b|at risk|\bPIP\b/i)
   })
 
   it('filters by role, by team, and by who needs something, and says how many are shown', async () => {
+    /* The role filters are the shared `Choices` (design-audit.md item 7): a radiogroup of radios,
+       40px tall, not plain buttons - so each one is found by its radio role now. */
     open()
-    await screen.findByText('Miriam Wanjiku', { selector: 'b' })
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(screen.getByText('7 people shown.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Can open check-ins' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Can open check-ins' }))
     expect(screen.getByText('2 people shown.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Needs something' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Needs something' }))
     expect(screen.getByText('2 people shown.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Everyone' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Everyone' }))
     fireEvent.change(screen.getByLabelText('Team'), { target: { value: 'Sales' } })
     expect(screen.getByText('2 people shown.')).toBeTruthy()
+  })
+
+  it('every row keeps all six cells - a team, a role, a status, its check-ins and Open - whatever the role or how many check-ins (regression: min-width: max-content)', async () => {
+    /*
+     * THE BUG (a picture check against the running product, U.4/People re-review): the shared
+     * PersonRow/PeopleTable CSS forced the whole row to size itself as if none of its text ever
+     * wrapped (`min-width: max-content`). A person on many check-ins - joined into one long,
+     * unbroken sentence - blew the row out to several thousand pixels wide, pushing Team, Role,
+     * Status and Open off the visible table for an admin, a lead and the owner, while a member on
+     * one short check-in read fine. jsdom does not lay out CSS grid, so this cannot be caught by
+     * asserting pixel positions here; what it CAN catch, and what regresses first if the fix is
+     * ever undone by trimming the row's children for some rows, is that every one of the six cells
+     * is still present in the row for every kind of person, including one with a long list of
+     * check-ins.
+     */
+    const withAllRoles = [
+      { id: 'an-admin', email: 'admin@baridi.co.ke', firstName: 'Ada', lastName: 'Admin', role: 'ADMIN', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, team: 'Leadership', checkIns: [{ id: 'c1', label: 'Leadership, Q3', runsIt: true }] },
+      { id: 'a-lead', email: 'lead@baridi.co.ke', firstName: 'Lena', lastName: 'Lead', role: 'LEAD', isEmailVerified: true, state: 'checked in', checkInsOn: 6, checkInsAnswered: 5, team: 'Sales', checkIns: [{ id: 'c1', label: 'Sales team, Q3', runsIt: true }, { id: 'c2', label: 'MarketView, where next, test', runsIt: false }, { id: 'c3', label: 'Kasarani Foods v Pwani Mills, test', runsIt: false }, { id: 'c4', label: 'Asset loans, cohort 3, test', runsIt: false }, { id: 'c5', label: 'Help a new hire get started', runsIt: false }, { id: 'c6', label: 'Check how the same role is going', runsIt: false }] },
+      { id: 'a-member', email: 'member@baridi.co.ke', firstName: 'Mona', lastName: 'Member', role: 'MEMBER', isEmailVerified: true, state: 'checked in', checkInsOn: 1, checkInsAnswered: 1, team: 'Sales', checkIns: [{ id: 'c1', label: 'Sales team, Q3', runsIt: false }] },
+      { id: 'a-waiter', email: 'waiting@baridi.co.ke', firstName: 'Wanda', lastName: 'Waiting', role: 'MEMBER', isEmailVerified: false, awaitingOrgApproval: true, state: 'signed in', checkInsOn: 0, checkInsAnswered: 0, team: null, checkIns: [] },
+    ]
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: withAllRoles, meta: { total: withAllRoles.length } } } as any
+      if (url === '/billing/status') return { data: { people: { count: 4, cap: 10 }, subscription: { plan: 'GROWTH' } } } as any
+      return { data: [] } as any
+    })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { EveryoneHere } = await import('./EveryoneHere')
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter><EveryoneHere orgName="Baridi Appliances" ownerId={null} /></MemoryRouter>
+      </QueryClientProvider>,
+    )
+    await screen.findByText('Mona Member', { selector: '.gwui-person-name' })
+    const cases: [string, string, string][] = [
+      ['Ada Admin', 'Admin', 'Checking in'],
+      ['Lena Lead', 'Can open check-ins', 'Checking in'],
+      ['Mona Member', 'Takes part', 'Checking in'],
+      ['Wanda Waiting', 'Takes part', 'Waiting to be let in'],
+    ]
+    for (const [name, roleTag, statusTag] of cases) {
+      const row = within(screen.getByText(name, { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
+      expect(row.getByText(roleTag)).toBeTruthy()
+      expect(row.getByText(statusTag)).toBeTruthy()
+      expect(row.getByRole('button', { name: `Open ${name}` })).toBeTruthy()
+    }
+    /* Team: "Leadership" for Ada, "Sales" for Lena and Mona, "No team" for Wanda (no team set). */
+    expect(within(screen.getByText('Ada Admin', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Leadership')).toBeTruthy()
+    /*
+     * U.4 review, item 12 (30 Sept): the team cell's bare "None" read as an orphaned word at phone
+     * width, where the column name it belonged to had already collapsed away - so it is "No team"
+     * now, and only the check-ins cell (which names what it is missing nowhere on the page) still
+     * says "None".
+     */
+    const wandaRow = within(screen.getByText('Wanda Waiting', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
+    expect(wandaRow.getByText('No team')).toBeTruthy()
+    expect(wandaRow.getByText('None')).toBeTruthy()
+    /* Lena's six check-ins are all still there, not truncated or dropped because the list is long. */
+    const lenaRow = within(screen.getByText('Lena Lead', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
+    expect(lenaRow.getByText(/Sales team, Q3, MarketView, where next, test, Kasarani Foods v Pwani Mills, test/)).toBeTruthy()
+  })
+
+  it('someone declined at the door reads "Not let in", not "Waiting to be let in" (Hafsah, 29 September)', async () => {
+    const withADecline = [
+      ...people,
+      { id: 'grace-declined', email: 'grace@outside.co.ke', firstName: 'Grace', lastName: 'Outside', role: 'MEMBER', isEmailVerified: false, awaitingOrgApproval: true, notLetIn: true, state: 'signed in', checkInsOn: 0, checkInsAnswered: 0, level: null, team: null, reportsTo: null, checkIns: [] },
+    ]
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: withADecline, meta: { total: withADecline.length } } } as any
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+      if (url === '/billing/status') return { data: { people: { count: 8, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+      return { data: [] } as any
+    })
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const { EveryoneHere } = await import('./EveryoneHere')
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter><EveryoneHere orgName="Baridi Appliances" ownerId={null} /></MemoryRouter>
+      </QueryClientProvider>,
+    )
+    const row = within((await screen.findByText('Grace Outside', { selector: '.gwui-person-name' })).closest('[role="row"]') as HTMLElement)
+    expect(row.getByText('Not let in')).toBeTruthy()
+    expect(row.getByText('Not let in').className).toMatch(/gwui-tag-concern/)
   })
 
   it('"Open" goes to that person\'s own page', async () => {
@@ -134,7 +233,7 @@ describe('everyone at Baridi', () => {
 
   it('who reports to whom, under its line', async () => {
     open()
-    await screen.findByText('Miriam Wanjiku', { selector: 'b' })
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(screen.getByText('Who reports to whom')).toBeTruthy()
     expect(screen.getByText('Level and reporting lines describe the organisation; what someone can do still comes from their role')).toBeTruthy()
   })
@@ -157,7 +256,7 @@ describe('the rest of the page, in the prototype\'s order and words', () => {
 
   it('nothing on the page joins pieces with a dash', async () => {
     const { container } = open()
-    await screen.findByText('Miriam Wanjiku', { selector: 'b' })
+    await screen.findByText('Miriam Wanjiku', { selector: '.gwui-person-name' })
     expect(container.textContent).not.toMatch(/ - /)
   })
 })
@@ -182,6 +281,83 @@ describe('the head count', () => {
     expect(howManyHere(27, 'GROWTH', 100)).toBe('27 people, on the Growth plan, which is for up to 100.')
     expect(howManyHere(3, null, 5)).toBe('3 people, on the free plan, which is for up to 5.')
     expect(howManyHere(1, 'ENTERPRISE', null)).toBe('1 person.')
+  })
+
+  /*
+   * "5 people, on the free plan..." and "6 people shown" used to sit on the page together with no
+   * word for why they differed (U.4 people-group review, item 1): the seat count leaves out somebody
+   * waiting to be let in, or on a check-in with no seat for them, who the table shows anyway so an
+   * admin can act on them. Named here, not just counted, when there are few enough to name.
+   */
+  it('names who the seat count leaves out, so it never just disagrees with the table', () => {
+    expect(howManyHere(5, null, 5, ['Faraji'])).toBe('5 people, on the free plan, which is for up to 5. Faraji is waiting to be let in.')
+    expect(howManyHere(5, null, 5, ['Faraji', 'Zawadi'])).toBe('5 people, on the free plan, which is for up to 5. Faraji and Zawadi are waiting to be let in.')
+    expect(howManyHere(5, null, 5, [], ['Zawadi'])).toBe('5 people, on the free plan, which is for up to 5. Zawadi is on a check-in with no seat for them.')
+    expect(howManyHere(5, null, 5, ['Faraji'], ['Zawadi']))
+      .toBe('5 people, on the free plan, which is for up to 5. Faraji is waiting to be let in. Zawadi is on a check-in with no seat for them.')
+    expect(howManyHere(5, null, 5, ['A', 'B', 'C', 'D'])).toBe('5 people, on the free plan, which is for up to 5. 4 more are waiting to be let in.')
+  })
+
+  it('says nothing extra when the count and the table already agree', async () => {
+    open({ people: { count: 7, cap: 100 }, subscription: { plan: 'GROWTH' } })
+    await screen.findByText('7 people, on the Growth plan, which is for up to 100.')
+  })
+
+  /*
+   * U.4 RE-REVIEW, ITEM 2B: "FARAJI WAS NOT LET IN", NOT "FARAJI IS WAITING TO BE LET IN".
+   *
+   * Once an admin has said no, `awaitingOrgApproval` alone said the person was still waiting - which
+   * an admin's decision does not clear - while the row right below read "Not let in", the two
+   * sentences on the same page disagreeing about the same person.
+   */
+  it('says somebody an admin has declined was not let in, never that they are waiting', () => {
+    expect(howManyHere(5, null, 5, [], [], ['Faraji'])).toBe('5 people, on the free plan, which is for up to 5. Faraji was not let in.')
+    expect(howManyHere(5, null, 5, [], [], ['Faraji', 'Zawadi'])).toBe('5 people, on the free plan, which is for up to 5. Faraji and Zawadi were not let in.')
+    expect(howManyHere(5, null, 5, ['Peter'], [], ['Faraji']))
+      .toBe('5 people, on the free plan, which is for up to 5. Peter is waiting to be let in. Faraji was not let in.')
+  })
+})
+
+describe('somebody held for a seat, with no account of their own', () => {
+  /*
+   * Zawadi (on "Sales team, Q3", no seat for her) was not a row on "Everyone at Baridi Appliances"
+   * at all (U.4 people-group review, item 2), though the prototype lists such people with the status
+   * "No seat on your plan". `findAll` (the server, users.service.ts) now sends one such row per held
+   * email; this checks the page draws it with nothing beyond what the warning already says about her
+   * (her email and the check-in), and no "Open" link, since there is no account to open.
+   */
+  it('is a row, named only by email, with no "Open" and no place in the reporting tree', async () => {
+    const zawadi = {
+      id: 'held:gp-1', email: 'zawadi.u8@example.test', firstName: null, lastName: null,
+      role: null, isEmailVerified: false, state: 'invited', checkInsOn: 1, checkInsAnswered: 0,
+      heldForASeat: true, noAccountYet: true, level: null, team: null, reportsTo: null,
+      checkIns: [{ id: 'sales', label: 'Sales team, Q3', runsIt: false }],
+    }
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url: string) => {
+      if (url.startsWith('/users?')) return { data: { data: [...people, zawadi], meta: { total: people.length + 1 } } } as any
+      if (url === '/users/organization/owner') return { data: { ownerUserId: 'amani' } } as any
+      if (url === '/billing/status') return { data: { people: { count: 7, cap: 100 }, subscription: { plan: 'GROWTH' } } } as any
+      if (url === '/users/organization/check-ins') return { data: { whoMayOpen: 'NAMED_LEADS', needsApproval: false } } as any
+      if (url === '/users/organization/joining') return { data: { on: false, domain: 'baridi.co.ke', whyNot: null } } as any
+      if (url === '/users/organization/invite-link') return { data: { on: false, code: null } } as any
+      return { data: [] } as any
+    })
+    vi.spyOn(authApi, 'whoIsWaiting').mockResolvedValue([] as any)
+    vi.spyOn(authApi, 'waitingForASeat').mockResolvedValue([] as any)
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/org/members']}>
+          <Routes>
+            <Route path="/org/members" element={<OrgMembersPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+    expect((await screen.findAllByText('zawadi.u8@example.test')).length).toBeGreaterThan(0)
+    expect(screen.getByText('No seat on your plan')).toBeTruthy()
+    expect(screen.getByText('7 people, on the Growth plan, which is for up to 100. zawadi.u8@example.test is on a check-in with no seat for them.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Open zawadi/i })).toBeNull()
   })
 })
 
@@ -262,7 +438,7 @@ describe('somebody who left (U.4 fourth review)', () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(<QueryClientProvider client={qc}><MemoryRouter><OrgMembersPage /></MemoryRouter></QueryClientProvider>)
     expect((await screen.findAllByText('7 people shown.')).length).toBeGreaterThan(0)
-    expect(screen.queryByText('Pendo Mwita', { selector: 'b' })).toBeNull()
+    expect(screen.queryByText('Pendo Mwita', { selector: '.gwui-person-name' })).toBeNull()
   })
 })
 

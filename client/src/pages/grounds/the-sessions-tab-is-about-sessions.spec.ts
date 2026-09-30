@@ -60,11 +60,17 @@ describe('the sessions tab', () => {
 })
 
 describe('where they went', () => {
-  it('the ways in are together in Setup band 1', () => {
-    const bandOne = SETUP_TAB.slice(SETUP_TAB.indexOf('title="Who is in it"'), SETUP_TAB.indexOf('</Fold>'))
-    expect(bandOne).toContain('Add a person to this check-in')
-    expect(bandOne).toContain('Or share an access code instead')
-    expect(bandOne).toContain('<ShareSection')
+  it('the ways in are together, in "Who\'s in it"', () => {
+    /*
+     * REPOINTED (People and setup rebuild, 29 Sept): Setup's numbered "band 1" is gone with the
+     * rest of that accordion (see setup-asks-one-question-at-a-time.spec.ts); the add-person form,
+     * the access code and the link/QR share are together now in WhosInItRoster.tsx, which
+     * CheckInPeopleAndSetup.tsx renders under its own "Who's in it" heading.
+     */
+    const ROSTER = strip(readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'WhosInItRoster.tsx'), 'utf8'))
+    expect(ROSTER).toContain('Add a person to this check-in')
+    expect(ROSTER).toContain('Or share an access code instead')
+    expect(ROSTER).toContain('<ShareSection')
   })
 
   it('and the alignment feed is on the board, for whoever runs the check-in only', () => {

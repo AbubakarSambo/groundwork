@@ -12,10 +12,28 @@
  * is now `Page narrow` with the small `Mark`, `PageTitle` in Literata, the standard `Button`, and
  * (where the prototype has one) `Callout`/`Panel`/`Section`/`Steps` - no `Arrival`, no `AuthCard`,
  * no old CSS class.
+ *
+ * PEOPLE (design-audit.md section 3, "People (the admin's list)") is the second entry: the admin's
+ * list at `/org/members`, `OrgMembersPage.tsx` plus every section it is built from - the no-seat
+ * warning, "Waiting to be let in", "Everyone at <organisation>" with its folded "Who reports to
+ * whom", "Invite people", "Who can join" with the invite link, "Who can open a check-in", and "Help
+ * your team get started".
+ *
+ * ONE PERSON (design-audit.md section 3, "One person (the admin's view)") is the third entry:
+ * `OnePersonPage.tsx`, at `/org/members/:id`.
  */
 export const REBUILT_PAGES: string[] = [
   'pages/invite/InvitePage.tsx',
   'pages/invite/InvitationExpired.tsx',
   'pages/join/WaitingForAnAdminPage.tsx',
   'pages/grounds/OutOfTime.tsx',
+  'pages/org/OrgMembersPage.tsx',
+  'pages/org/WaitingToBeLetIn.tsx',
+  'pages/org/EveryoneHere.tsx',
+  'pages/org/InvitePeople.tsx',
+  'pages/org/WhoCanJoin.tsx',
+  'pages/org/TheInviteLink.tsx',
+  'pages/org/WhoCanOpenACheckIn.tsx',
+  'pages/org/OnePersonPage.tsx',
+  'pages/grounds/CheckInPeopleAndSetup.tsx',
 ]

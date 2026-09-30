@@ -4,12 +4,16 @@ import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
-import { yourBoard, type YourBoard } from './your-board';
+import { yourBoard, type YourBoard, type YourPattern } from './your-board';
 import { isShut } from './a-ground-that-has-ended';
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import { askedOfYou, type AskedOfYou } from './asked-of-you';
+import {
+  PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson,
+  type APatternRow,
+} from '../patterns/who-reads-a-pattern';
 
 /** Said to anybody who asks for a You board that is not their own. */
 export const NOT_YOURS = 'Only the person whose page this is can read it.';
@@ -47,7 +51,7 @@ export class YourBoardService {
     const participantIds = mine.flatMap((g) => (g.participants ?? []).filter((p: any) => p.userId === reader.userId).map((p: any) => p.id));
 
     const none = Promise.resolve([] as any[]);
-    const [objectives, ownedTargets, commitments, coaching, todos, onYou] = await Promise.all([
+    const [objectives, ownedTargets, commitments, coaching, todos, onYou, patternRows] = await Promise.all([
       participantIds.length
         ? this.prisma.personObjective.findMany({
             where: { groundId: { in: groundIds }, participantId: { in: participantIds } },
@@ -109,6 +113,33 @@ export class YourBoardService {
             orderBy: { createdAt: 'asc' },
           })
         : none,
+      /*
+       * "SOMETHING THAT KEEPS COMING UP", ACROSS EVERY CHECK-IN YOU ARE IN. Your own participant
+       * rows only (`participantIds` is already narrowed to this reader's own place in each of
+       * their check-ins), so every row this selects is already this reader's own - `servedPatterns`
+       * below still runs it through the one rule (patterns/who-reads-a-pattern.ts) rather than
+       * trusting that, so three check-ins and a plain name are still required.
+       */
+      participantIds.length
+        ? this.prisma.patternDetection.findMany({
+            where: { participantId: { in: participantIds } },
+            select: {
+              ...PATTERN_ROW_SELECT,
+              participant: {
+                select: {
+                  groundId: true,
+                  ground: {
+                    select: {
+                      label: true,
+                      initiatorId: true,
+                      participants: { select: { id: true, userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+                    },
+                  },
+                },
+              },
+            },
+          })
+        : none,
     ]);
 
     /* Groundwork's suggestions about you, in the shape the person it is about may read (facts and
@@ -125,11 +156,51 @@ export class YourBoardService {
     /* Only the check-ins still running: a request in a check-in that has ended, or not begun, is not on you now. */
     const running = new Set(mine.filter((g) => !isShut(g.status) && !['AWAITING_APPROVAL', 'DECLINED'].includes(g.status) && !g.closedAt && !g.resolvedAt).map((g) => g.id));
     const asked = askedOfYou(onYou as any, reader, { groundIds: running, participantIds: new Set(participantIds) });
+    const patterns = await this.servedPatternsAcrossGrounds(patternRows as any[]);
     return {
       ...board,
       ...(aboutYou.length ? { suggestionsAboutYou: aboutYou } : {}),
       ...(asked ? { askedOfYou: asked } : {}),
+      ...(patterns.length ? { patterns } : {}),
     };
+  }
+
+  /**
+   * "SOMETHING THAT KEEPS COMING UP", BUILT PER CHECK-IN SO THE ONE RULE (who-reads-a-pattern.ts)
+   * SEES ONE CHECK-IN'S OWN LEAD AND PARTICIPANTS AT A TIME - the sentence naming who else sees it
+   * needs that check-in's own lead, and a person can be in several check-ins with different leads.
+   * Every row here already belongs to this reader's own participant id (see the query above), so
+   * `reader.participantId` for each group is simply that group's own rows' participantId.
+   */
+  private async servedPatternsAcrossGrounds(rows: (APatternRow & {
+    participant: { groundId: string; ground: { label: string; initiatorId: string | null; participants: any[] } };
+  })[]): Promise<YourPattern[]> {
+    const byGround = new Map<string, { label: string; initiatorId: string | null; participants: any[]; rows: APatternRow[] }>();
+    for (const row of rows ?? []) {
+      const groundId = row.participant.groundId;
+      if (!byGround.has(groundId)) {
+        byGround.set(groundId, {
+          label: row.participant.ground.label,
+          initiatorId: row.participant.ground.initiatorId,
+          participants: row.participant.ground.participants,
+          rows: [],
+        });
+      }
+      byGround.get(groundId)!.rows.push(row);
+    }
+
+    const list: YourPattern[] = [];
+    const shownIds: string[] = [];
+    for (const g of byGround.values()) {
+      const participantId = g.rows[0]?.participantId;
+      if (!participantId) continue;
+      const served = servedPatterns(g.rows, { participantId, runsIt: false }, whoIsWhoIn(g.participants, g.initiatorId));
+      shownIds.push(...theOnesTheyAreSeeingFirst(g.rows, served));
+      for (const p of served) list.push({ ...p, checkIn: g.label });
+    }
+    /* The person reading their own for the first time starts the clock on when the lead may read it. */
+    await markShownToThePerson(this.prisma as any, shownIds);
+    return list;
   }
 
   /**

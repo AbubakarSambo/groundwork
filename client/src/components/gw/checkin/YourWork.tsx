@@ -11,11 +11,12 @@ import { WhatYouAreCarryingForward } from '../WhatYouAreCarryingForward'
 import { WhatYourRecordCanSupport } from '../WhatYourRecordCanSupport'
 import { TheFiveThingsThatMakeItCheckable } from '../TheFiveThingsThatMakeItCheckable'
 import { MyRecord } from '../MyRecord'
+import { PatternPanel } from '@/components/gw/ui'
+import type { ServedPattern } from '@/api/patterns'
 import { MyCheckInSessions } from '../MyCheckInSessions'
 import { WhatToWalkInWith } from '../WhatToWalkInWith'
 import { DeliveredPanel } from '../DeliveredPanel'
 import { WhatSuccessLooksLikeFor } from '../WhatSuccessLooksLike'
-import { useAskStore } from '@/stores/ask'
 
 /**
  * "YOUR WORK" (B3, docs/prototype/screens/B3-the-check-in/my-record.jpg/.txt).
@@ -28,10 +29,11 @@ import { useAskStore } from '@/stores/ask'
  * - "Your open deals" is not served anywhere today (no per-deal stage-ladder data reaches the
  *   client outside a scenario's own report synthesis) - left out rather than invented. Flagged to
  *   the engine workspace is a future step, not this one.
- * - "Something that keeps coming up" draws only when `myRecord.patterns` actually holds something -
- *   patterns are off everywhere right now (`PATTERNS_ARE_SERVED = false`, api/src/modules/patterns),
- *   so this section does not appear at all today, which is the instruction ("patterns off: not
- *   drawn"), not a bug.
+ * - "Something that keeps coming up" draws only when `myRecord.patterns` holds something (my-record
+ *   .txt: the pattern's own sentence, how often, who else sees it, and "Say what's behind it" -
+ *   see api/src/modules/patterns/who-reads-a-pattern.ts, `AServedPattern`). `getMyRecord` serves
+ *   only this reader's own patterns, never a colleague's; `.filter(p => p.yours)` below is this
+ *   page's own check on top of that, not instead of it. Nothing draws while patterns are off.
  * - The stats tiles show only what a check-in of ANY scenario can support: check-ins answered of
  *   those opened, and commitments kept this month (once `settledAt` exists on a commitment - added
  *   to the server's select in this same round). The prototype's "4 sales, 3 paid" is a sales-only
@@ -159,8 +161,6 @@ export function YourWork({
   totalSessions, completedCount, myFinishedSessions, sessionDots, myParticipant, leadFirstName,
   otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster,
 }: YourWorkProps) {
-  const showWith = useAskStore(s => s.showWith)
-
   const myCommitments = ((ground?.commitments ?? []) as any[]).filter((c) => c.participantId === myParticipant?.id)
 
   /* "Promises kept this month": of the commitments settled this calendar month, how many were
@@ -177,7 +177,8 @@ export function YourWork({
     return { kept: settled.filter((c) => c.status === 'DONE').length, of: settled.length }
   })()
 
-  const patterns = ((myRecord as any)?.insightsLocked ? [] : ((myRecord as any)?.patterns ?? [])) as { observation: string; sessionNumber: number | null }[]
+  const patterns = (((myRecord as any)?.insightsLocked ? [] : ((myRecord as any)?.patterns ?? [])) as ServedPattern[])
+    .filter((p) => p.yours !== false)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -220,15 +221,10 @@ export function YourWork({
 
       {patterns.length > 0 && (
         <Section heading="Something that keeps coming up">
-          {patterns.map((p, i) => (
-            <Panel key={i} style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', marginBottom: 8 }}>
-              <p className="gwui-panel-text">{p.observation}</p>
-              <div style={{ marginTop: 10 }}>
-                <Button kind="secondary" size="small" onClick={() => showWith(`This keeps coming up: ${p.observation}. What is behind it is that `)}>
-                  Say what’s behind it
-                </Button>
-              </div>
-            </Panel>
+          {patterns.map((p) => (
+            <div key={p.id} style={{ marginBottom: 8 }}>
+              <PatternPanel pattern={p} invalidateKey={['my-record', groundId]} />
+            </div>
           ))}
         </Section>
       )}

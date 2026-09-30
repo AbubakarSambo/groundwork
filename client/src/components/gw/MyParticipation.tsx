@@ -15,6 +15,35 @@
  * facts about their own participation, rather than sending them to a second page for them.
  */
 import { whatThisStatusMeans } from './what-a-status-means-to-the-person-in-it'
+import { SCENARIO_LABELS } from '@/lib/scenario-catalog'
+
+/**
+ * STILL RENDERED THROUGH `whatThisStatusMeans` (a-status-is-a-sentence.spec.ts pins that - the
+ * database's enum must never reach the screen raw), but read next to "Check-in" and "Situation" its
+ * short label read as a clipped, dash-joined fragment rather than a sentence about the check-in
+ * (picture check, 29 Sept: "Open - waiting on people to check in"). This turns that same label into
+ * one full sentence, without a second, parallel copy of what each status means.
+ */
+export function statusSentence(label: string): string {
+  if (label.startsWith('The report')) return `${label}.`
+  const joined = label.replace(' - ', ', and ')
+  return `This check-in is ${joined.charAt(0).toLowerCase()}${joined.slice(1)}.`
+}
+
+/**
+ * "SESSIONS COMPLETED" READ AS A LABEL AND A BARE NUMBER, NOT A SENTENCE (U.4 people-group review,
+ * item 3): "Sessions completed" over "1 of 12" is a stat tile, the wording rule this page keeps to
+ * everywhere else rules out. It is also easy to misread next to the header's "This is your session 2
+ * of 12" as though the two disagreed, when they are simply two different counts (how many are done, and
+ * which one is open now) - saying both in one sentence, with the words "completed" and "open", keeps
+ * them from reading as a contradiction.
+ */
+export function sessionsCompletedSentence(completedCount: number, totalSessions: number | null): string {
+  const done = completedCount === 1 ? '1 session' : `${completedCount} sessions`
+  /* No total means no total: "3 of" with nothing after it is not a count. */
+  if (totalSessions == null) return `You have completed ${done}.`
+  return `You have completed ${done}, out of ${totalSessions}.`
+}
 
 export interface MyParticipationProps {
   /** Who is reading: their name, initial and email. */
@@ -54,8 +83,11 @@ export function MyParticipation({
               <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.label}</div>
             </div>
             <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--gw-bg)' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Scenario</div>
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{ground.scenario?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Situation</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>
+                {SCENARIO_LABELS[ground.scenario as keyof typeof SCENARIO_LABELS]
+                  ?? ground.scenario?.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c: string) => c.toUpperCase())}
+              </div>
             </div>
             {/*
               THE ROW IS ONLY THERE WHEN THERE IS A ROLE.
@@ -80,12 +112,11 @@ export function MyParticipation({
                 Zainab's own Setup tab - the database's word for the row, leaving her to guess which
                 parties and whether she was one of them.
               */}
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{whatThisStatusMeans(ground.status)}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{statusSentence(whatThisStatusMeans(ground.status))}</div>
             </div>
             <div style={{ padding: '13px 16px' }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Sessions completed</div>
-              {/* No total means no total: "3 of" with nothing after it is not a count. */}
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{completedCount}{totalSessions != null ? ` of ${totalSessions}` : ''}</div>
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{sessionsCompletedSentence(completedCount, totalSessions)}</div>
             </div>
           </div>
 

@@ -25,7 +25,10 @@ import { join } from 'path';
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const CLIENT = join(__dirname, '..', '..', '..', '..', 'client', 'src');
 const CHAT = strip(readFileSync(join(CLIENT, 'components', 'gw', 'GroundChat.tsx'), 'utf8'));
-const LEAD = strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8'));
+/* The settings tab moved into CheckInPeopleAndSetup.tsx (29 September); its sentences can wrap
+   across lines there, so the two files are read together with their spaces collapsed. */
+const LEAD = (strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundAdminPage.tsx'), 'utf8')) + '\n'
+  + strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'CheckInPeopleAndSetup.tsx'), 'utf8')).replace(/props\./g, '')).replace(/\s+/g, ' ');
 const PARTY = strip(readFileSync(join(CLIENT, 'pages', 'grounds', 'GroundParticipantPage.tsx'), 'utf8'));
 
 describe('waiting for the next session', () => {

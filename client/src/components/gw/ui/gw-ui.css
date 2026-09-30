@@ -72,6 +72,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-pt-crumb .gwui-pt-sep { margin: 0 6px; }
 .gwui-pt-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
 .gwui-pt-head { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.gwui-pt-headtext { min-width: 0; }
 .gwui-pt-title {
   font-family: var(--gw-font-name); font-size: 30px; line-height: 1.18; font-weight: 500;
   color: var(--gw-text); margin: 0;
@@ -150,6 +151,8 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
   color: var(--gw-text); margin: 0;
 }
 .gwui-section-note { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-section-action { display: flex; gap: 10px; flex-wrap: wrap; }
+.gwui-section-h:has(.gwui-section-action) { align-items: center; }
 .gwui-section-body { margin-top: 14px; }
 .gwui-section-foot { margin-top: 14px; font-size: 13.5px; color: var(--gw-sub); }
 
@@ -178,15 +181,27 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
   .gwui-edge-acts { grid-column: 2; }
 }
 
-/* ── PEOPLE TABLE / PERSON ROW (prototype: .panel + .row, table headers) ── */
+/* ── PEOPLE TABLE / PERSON ROW (prototype: .panel + .row, table headers) ──
+   BUG (a picture check against the running product, U.4/People re-review): `min-width: max-content`
+   here forced the WHOLE row to be as wide as its content laid out on one line with no wrapping at
+   all. Every column is already given its own floor through `minmax(240px, 1.2fr)` /
+   `minmax(200px, 1fr)` /fixed pixel tracks, which is what should make the row refuse to shrink
+   below a sensible width and scroll sideways under about 900px - `min-width: max-content` on top
+   of that was redundant for a short row, and ruinous for a long one: Rukia's ten check-ins, joined
+   into one unbroken line and measured as if nothing ever wraps, forced the 1fr name and check-ins
+   tracks to balloon in proportion (to several thousand pixels), pushing Team, Role, Status and
+   Open off the visible table entirely for anyone with a long enough check-ins list - not a missing
+   cell, a cell scrolled thousands of pixels out of view. Removed; the explicit per-column minimums
+   still make the table scroll sideways on a narrow screen, and text inside a column now wraps
+   within it instead of refusing to wrap at all. */
 .gwui-people-table { overflow-x: auto; }
 .gwui-people-head {
   display: grid; padding: 10px 18px; font-size: 13px; color: var(--gw-sub);
-  border-bottom: 1px solid var(--gw-border); min-width: max-content; justify-items: start;
+  border-bottom: 1px solid var(--gw-border); justify-items: start;
 }
 .gwui-person-row {
   display: grid; padding: 12px 18px; border-top: 1px solid var(--gw-border); align-items: center;
-  min-width: max-content; text-decoration: none; color: inherit;
+  text-decoration: none; color: inherit;
   /* A Tag or a short line keeps its own natural width - the grid must not stretch it across the
      whole column, which is what made a role tag fill its column edge to edge. */
   justify-items: start;
@@ -215,6 +230,72 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   .gwui-person-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
 }
 
+/* ── FOLDED PANEL (prototype: "Who reports to whom", a closed .panel) ───── */
+.gwui-folded { background: var(--gw-card); border: 1px solid var(--gw-border); border-radius: 12px; }
+.gwui-folded-summary {
+  list-style: none; cursor: pointer; padding: 20px 22px; display: flex; align-items: baseline;
+  gap: 10px; flex-wrap: wrap; min-height: 26px;
+}
+.gwui-folded-summary::-webkit-details-marker { display: none; }
+/* The prototype's small ▶ before the title, since this opens - a picture check found the marker
+   simply hidden with nothing put in its place. It points right closed, down once open. */
+.gwui-folded-summary::before {
+  content: '▶'; display: inline-block; font-size: 10px; color: var(--gw-sub);
+  transition: transform .15s ease; flex: none;
+}
+.gwui-folded[open] .gwui-folded-summary::before { transform: rotate(90deg); }
+.gwui-folded-summary b { font-size: 16px; color: var(--gw-text); }
+.gwui-folded-note { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-folded[open] .gwui-folded-summary { border-bottom: 1px solid var(--gw-border); }
+.gwui-folded-body { padding: 16px 22px 20px; }
+
+/* ── SWITCH ROW (a heading and its sentence, sized so the heading reads bigger; a Toggle
+   on the right - "Anyone with an @domain email", "Baridi's invite link", "Check-ins wait for an
+   admin") ─────────────────────────────────────────────────────────────── */
+.gwui-switch-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.gwui-switch-row-title { font-size: 16px; font-weight: 700; color: var(--gw-text); }
+.gwui-switch-row-detail { font-size: 14.5px; color: var(--gw-sub); margin-top: 4px; }
+
+/* ── PEOPLE PAGE LAYOUT HELPERS (search, team, and the folded tree's level line) ──────────── */
+.gwui-filters-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* Regular weight, not bold (a picture check found "Team", "Role" and "All teams" bold when the
+   prototype has them as an ordinary label, the same weight as the field beside them). */
+.gwui-inline-label { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 400; color: var(--gw-text); }
+.gwui-tree { margin: 0; padding-left: 18px; font-size: 15px; color: var(--gw-text); }
+.gwui-tree ul { padding-left: 18px; }
+.gwui-tree-level { font-size: 13px; color: var(--gw-sub); }
+.gwui-open-link {
+  font-size: 14.5px; font-weight: 400; color: var(--gw-navy); background: none; border: 0;
+  padding: 0; cursor: pointer; font-family: inherit; text-decoration: none;
+}
+.gwui-open-link:hover { text-decoration: underline; }
+.gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.gwui-invite-answer { margin-top: 16px; }
+.gwui-invite-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--gw-border); }
+.gwui-invite-link-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.gwui-invite-link-address { font-size: 14.5px; color: var(--gw-text); overflow-wrap: anywhere; }
+.gwui-two-up { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+
+/* ── PANEL ROW (more than one fact inside one Panel(pad=false), a line between each -
+   "Who can join": the domain switch and the invite link, in one white panel) ─────────────────── */
+.gwui-panel-row { padding: 20px 22px; }
+.gwui-panel-row + .gwui-panel-row { border-top: 1px solid var(--gw-border); }
+
+/* ── SENTENCE ROW (a fact and one button, side by side, inside a Panel - one-person.txt's
+   "Remove from Baridi": the sentence on the left, "Remove" on the right, one line) ───────────── */
+.gwui-sentence-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+/* ── A NARROW FIELD BESIDE ITS BUTTON (one-person.txt's "Team": a 260px field, "Save" beside it
+   on the same line, inside a Panel - not the field's own default full width). Doubled class: the
+   same specificity as `.gwui-input`'s own `width: 100%` (defined later in this file), which would
+   otherwise win the cascade by source order and put Save back underneath a full-width field. ──── */
+.gwui-narrow-field.gwui-narrow-field { width: 260px; max-width: 100%; }
+
+/* ── FLUSH FIELD ROWS (a FieldRows not sitting inside a Panel - "Who can open a check-in"'s
+   "Opening check-ins"/"New check-ins" facts, which the prototype starts at the page's own left
+   edge, not indented the 22px FieldRow carries for sitting inside a panel) ───────────────────── */
+.gwui-field-rows-flush.gwui-field-rows-flush .gwui-field-row { padding-left: 0; padding-right: 0; }
+
 /* ── AVATAR (prototype: .av) ─────────────────────────────────────────────── */
 .gwui-avatar {
   border-radius: 50%; background: var(--gw-blue-bg); color: var(--gw-navy);
@@ -226,6 +307,10 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    the panel's own inside space itself (22px at the sides, matching `.pad`), so it never sits flush
    against the panel's border the way an un-padded row would. */
 .gwui-field-rows { border-top: 1px solid var(--gw-border); }
+/* A SwitchRow standing in a list of FieldRows (People and setup's "Who sees what": several toggles
+   and a plain fact, read as one list) takes the same row line and inset the FieldRows around it
+   carry, rather than sitting with no line between one row and the next. */
+.gwui-field-rows > .gwui-switch-row { padding: 14px 22px; border-bottom: 1px solid var(--gw-border); }
 .gwui-field-row {
   display: grid; grid-template-columns: var(--gwui-field-label-w, 200px) minmax(0, 1fr) auto;
   gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--gw-border); align-items: center;
@@ -238,6 +323,11 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 
 /* ── CHOICES (prototype: .seg, .seg button) ───────────────────────────────── */
 .gwui-choices { display: flex; gap: 6px; flex-wrap: wrap; }
+/* BUG (a picture check, "Who can open a check-in"): `stacked` used to change each button's own
+   inside layout (title above description) without changing the CONTAINER's - so two "stacked"
+   choices still sat side by side, each only as wide as its own text, instead of full-width rows
+   one above the other, which is what the prototype and the name "stacked" both mean. */
+.gwui-choices-stacked { flex-direction: column; }
 .gwui-choice {
   min-height: 40px; padding: 0 14px; border-radius: 8px; border: 0;
   box-shadow: inset 0 0 0 1.5px var(--gw-rule-2); background: var(--gw-card);
@@ -246,6 +336,7 @@ a.gwui-person-row:hover { background: var(--gw-page); }
 .gwui-choice-on { background: var(--gw-navy); color: #fff; box-shadow: none; font-weight: 700; }
 .gwui-choice-stacked {
   min-height: 0; height: auto; text-align: left; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px;
+  width: 100%;
 }
 .gwui-choice-stacked .gwui-choice-title { font-weight: 700; font-size: 15px; }
 .gwui-choice-stacked .gwui-choice-desc { font-size: 14.5px; color: var(--gw-sub); }

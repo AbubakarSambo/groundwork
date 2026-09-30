@@ -1,5 +1,6 @@
 import { apiClient } from './client'
 import type { Ground } from '@/types'
+import type { ServedPattern } from './patterns'
 
 export interface Delivery {
   id: string
@@ -156,6 +157,17 @@ export const groundsApi = {
   setExternalVisibility: (id: string, restrict: boolean) =>
     apiClient.patch<{ id: string; restrictExternalVisibility: boolean }>(`/grounds/${id}/external-visibility`, { restrict }).then(r => r.data),
 
+  /**
+   * REMINDERS (People and setup, "How it runs"). `PATCH /grounds/:id/chasing` has existed since the
+   * chasing cron read `chaseAfterDays`/`chasingStopped`/`tellTheLead`, and nothing on any screen ever
+   * wrote to it - so whether this check-in reminds people, on which day, and whether the lead hears
+   * who never started, could not be set from the product. Whoever set the check-in up only.
+   */
+  setChasing: (id: string, body: { days?: number[]; stopped?: boolean; tellTheLead?: boolean }) =>
+    apiClient
+      .patch<{ days: number[]; stopped: boolean; tellTheLead: boolean }>(`/grounds/${id}/chasing`, body)
+      .then(r => r.data),
+
   /*
    * `create` USED TO SIT HERE, and it went with the flow that called it.
    *
@@ -282,7 +294,8 @@ export const groundsApi = {
       sessions: { sessionNumber: number; completedAt: string | null; status: string }[]
       specificity: { scores: number[]; avg: number; label: string } | null
       confidence: { score: number; label: string; description: string } | null
-      patterns: { observation: string; sessionNumber: number | null }[] | null
+      /** Your own patterns, and nobody else's. See api/src/modules/patterns/who-reads-a-pattern.ts. */
+      patterns: ServedPattern[] | null
       insightsLocked: boolean
     }>(`/grounds/${groundId}/my-record`).then(r => r.data),
 

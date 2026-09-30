@@ -120,6 +120,15 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/invite/InvitationExpired.tsx',
       'pages/join/WaitingForAnAdminPage.tsx',
       'pages/grounds/OutOfTime.tsx',
+      'pages/org/OrgMembersPage.tsx',
+      'pages/org/WaitingToBeLetIn.tsx',
+      'pages/org/EveryoneHere.tsx',
+      'pages/org/InvitePeople.tsx',
+      'pages/org/WhoCanJoin.tsx',
+      'pages/org/TheInviteLink.tsx',
+      'pages/org/WhoCanOpenACheckIn.tsx',
+      'pages/org/OnePersonPage.tsx',
+      'pages/grounds/CheckInPeopleAndSetup.tsx',
     ])
   })
 

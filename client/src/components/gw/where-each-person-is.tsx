@@ -34,6 +34,8 @@ export interface Row {
   /** The product's finding for this person, written from the record. See the-finding-per-person on the API. */
   finding?: string | null
   hasGap?: boolean
+  /** What keeps coming up about this person's work, one plain sentence (board-as-lead.txt, "The team today"). */
+  keepsComingUp?: string | null
 }
 
 /** The pill's label for each reason, sentence case throughout - not just "Nothing checkable". */
@@ -59,9 +61,9 @@ export type Square = { key: number; state: 'done' | 'empty' | 'upcoming' }
  * U.10: "THE TEAM TODAY", THE PROTOTYPE'S WHITE TABLE (board-as-lead.jpg).
  *
  * Name, a one-line summary, a reason pill, then ten small navy squares for the last ten
- * check-ins. The prototype's rightmost column - "what keeps coming up" - is left out here: it
- * needs pattern detection, which is off while patterns are off (see `shown.patterns` on the
- * board), so nothing is faked in its place.
+ * check-ins. The prototype's rightmost column - "what keeps coming up" ("Same leads, 3
+ * check-ins running") - is `keepsComingUp`, one quiet line under the summary; it is left off a
+ * row with nothing to add, and there is nothing there at all while patterns are off.
  *
  * PICTURE-CHECK ROUND 6, ITEM C: ONE COMPACT ROW, NOT A STACKED CARD. The first pass drew each
  * person as a tall card (name, pill, says, squares, ask, a quoted finding, each on its own line) -
@@ -111,6 +113,9 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
               <div style={{ fontSize: 12, color: r.hasGap ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 4, lineHeight: 1.5 }}>
                 {[r.ask, r.finding].filter(Boolean).join(' ')}
               </div>
+            )}
+            {r.keepsComingUp && (
+              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4, lineHeight: 1.5 }}>{r.keepsComingUp}</div>
             )}
           </div>
           <div style={{ flexShrink: 0 }}>

@@ -12,7 +12,10 @@ import { workingDaysOf, theNextDayTheyWork, isAWorkingDay } from './which-days-t
  */
 const SERVICE = readFileSync(join(__dirname, 'grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const CONTROLLER = readFileSync(join(__dirname, 'grounds.controller.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const ADMIN_PAGE = readFileSync(join(__dirname, '../../../../client/src/pages/grounds/GroundAdminPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+/* The settings tab moved into its own file (People and setup, rebuilt from the shared parts on
+   29 September); GroundAdminPage keeps the drafts and passes them in as props. Both are read. */
+const readClient = (f: string) => readFileSync(join(__dirname, '../../../../client/src/pages/grounds', f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+const ADMIN_PAGE = readClient('GroundAdminPage.tsx') + '\n' + readClient('CheckInPeopleAndSetup.tsx').replace(/props\./g, '');
 
 describe('the days a team works, after the check-in exists', () => {
   it('are accepted where the rhythm is changed', () => {

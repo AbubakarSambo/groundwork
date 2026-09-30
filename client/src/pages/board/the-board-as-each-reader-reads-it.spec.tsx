@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BoardPage } from './BoardPage'
+import { BoardPage, seenAcross } from './BoardPage'
 import { boardApi } from '@/api/board'
+vi.mock('@/api/patterns', () => ({ patternsApi: { answer: vi.fn() } }))
+import { patternsApi } from '@/api/patterns'
 
 /**
  * U.10: THE BOARD, AS THE LEAD, A PARTICIPANT AND AN ADMIN READ IT.
@@ -17,6 +19,7 @@ let me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: me }) }))
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn().mockResolvedValue({ initiatorId: 'u-wairimu' }) } }))
+import { groundsApi } from '@/api/grounds'
 vi.mock('@/api/today', () => ({
   todayApi: {
     get: vi.fn().mockResolvedValue({
@@ -131,26 +134,44 @@ describe('the board, as each reader reads it', () => {
   })
 
   /*
-   * U.10 REVIEW ITEM 10: MANAGER ALIGNMENT IS A PATTERN CLAIM. Its own text says "seen across 2
-   * sessions" after one, which is exactly what PATTERNS_ARE_SERVED being off exists to stop. The
-   * server can still send `managerAlignment` outside `sections` (that gate is the engine's, not
-   * this screen's), so the board checks `sections.includes('patterns')` itself and draws nothing
-   * here while patterns are off - even though the data arrived.
+   * HOW THE LEADING IS LANDING IS PROTECTED (Hafsah, 29 September): never hidden to solve a
+   * problem. It used to vanish whenever patterns were off, because its count said "seen across 2
+   * sessions" after one. Now the lead always reads it, and the count is said only when true.
    */
-  it('never draws How the leading is landing while patterns are off, even if the server sent it', async () => {
+  const ALIGNMENT = [{
+    managerParticipantId: 'p-lead', managerName: 'Wairimu Kamau', pattern: 'SETUP_NEVER_SAID',
+    pole: 'NEITHER', label: 'Setup, never said', gap: 'Two sessions read this differently.',
+    note: 'Neither read is called wrong.', periods: 2,
+  }]
+  it('the lead reads How the leading is landing while patterns are off, with no count the record cannot bear', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
-    renderBoard({
-      ...AS_THE_LEAD,
-      sections: ['objectives'],
-      managerAlignment: [{
-        managerParticipantId: 'p-lead', managerName: 'Wairimu Kamau', pattern: 'SETUP_NEVER_SAID',
-        pole: 'NEITHER', label: 'Setup, never said', gap: 'Two sessions read this differently.',
-        note: 'Neither read is called wrong.', periods: 2,
-      }],
-    })
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives'], phaseSpine: { ...(AS_THE_LEAD as any).phaseSpine, currentSession: 1 }, managerAlignment: ALIGNMENT })
+    await screen.findByText(LAST_UPDATED)
+    expect(screen.getByText('How the leading is landing')).toBeTruthy()
+    expect(screen.getByText('Two sessions read this differently.')).toBeTruthy()
+    expect(screen.queryByText(/seen across/i)).toBeNull()
+  })
+  it('a participant never reads How the leading is landing, patterns on or off', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard({ ...AS_MIRIAM, sections: ['objectives', 'patterns'], managerAlignment: ALIGNMENT })
     await screen.findByText(LAST_UPDATED)
     expect(screen.queryByText('How the leading is landing')).toBeNull()
-    expect(screen.queryByText(/seen across/)).toBeNull()
+    expect(screen.queryByText('Two sessions read this differently.')).toBeNull()
+  })
+  it('an admin who only reads never reads it either', async () => {
+    me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
+    renderBoard({ ...AS_AN_ADMIN, sections: ['objectives', 'patterns'], managerAlignment: ALIGNMENT })
+    await screen.findByText(LAST_UPDATED)
+    expect(screen.queryByText('How the leading is landing')).toBeNull()
+  })
+})
+
+describe('seenAcross', () => {
+  it('says the count only when that many sessions have happened', () => {
+    expect(seenAcross(2, 1)).toBeNull()
+    expect(seenAcross(1, 5)).toBeNull()
+    expect(seenAcross(3, null)).toBeNull()
+    expect(seenAcross(3, 4)).toBe('Seen across 3 sessions.')
   })
 })
 
@@ -172,5 +193,202 @@ describe('where people see it differently', () => {
     expect(screen.getAllByText('Miriam Wanjiku').length).toBeGreaterThan(0)
     expect(screen.getByText('A colleague')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/Participant [AB]/)
+  })
+})
+
+/**
+ * WHAT KEEPS COMING UP (board-as-lead.txt), IN THE SERVED SHAPE (docs/answers-from-engine.md,
+ * "Patterns have a new shape"): `heading`, `whatHappened`, `howOften`, `whoSeesIt`, `theirWords`,
+ * `canAnswer`, `askThem`, `participantId` - no `label`, `code`, `text` or `periods`.
+ */
+/** `Sec`/`Card` are siblings, not nested in a `<section>`: the card is the heading's next sibling. */
+function cardAfter(headingText: string): HTMLElement {
+  const heading = screen.getByText(headingText)
+  return heading.parentElement!.nextElementSibling as HTMLElement
+}
+
+describe('what keeps coming up', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const miriamsPattern = {
+    id: 'pat-miriam', participantId: 'p-miriam', yours: false,
+    heading: 'Her qualified deals often don’t have a buying date', whatHappened: null,
+    howOften: '3 of 5, for three weeks running.', askThem: 'What would get a date on the deal?',
+    theirWords: null, canAnswer: false,
+    whoSeesIt: 'Miriam Wanjiku has not seen this yet, and has not answered yet.',
+  }
+  const aishasPattern = {
+    id: 'pat-aisha', participantId: 'p-aisha', yours: false,
+    heading: 'Leads the team on buying dates', whatHappened: null,
+    howOften: '3 of 5, for three weeks running.', askThem: null,
+    theirWords: null, canAnswer: false,
+    whoSeesIt: 'Aisha Otieno saw this first and has not answered yet.',
+  }
+
+  it('Wairimu, who runs it, reads what keeps coming up about each person’s work, under their name', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [miriamsPattern, aishasPattern] })
+    await screen.findByText('What keeps coming up')
+    const card = cardAfter('What keeps coming up')
+    expect(within(card).getByText('About each person’s work')).toBeTruthy()
+    expect(within(card).getByText('Miriam Wanjiku')).toBeTruthy()
+    expect(within(card).getByText('Aisha Otieno')).toBeTruthy()
+    expect(within(card).getByText('Her qualified deals often don’t have a buying date')).toBeTruthy()
+    expect(within(card).getByText('Leads the team on buying dates')).toBeTruthy()
+    expect(within(card).getByText(/What would get a date on the deal\?/)).toBeTruthy()
+    /* Never a label joined to a name: the sentence names the work, not "Miriam: qualified deals". */
+    expect(document.body.textContent).not.toMatch(/Miriam Wanjiku:/)
+  })
+
+  it('Miriam reads her own, can answer it, and never a colleague’s - even one the payload carried', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard({
+      ...AS_MIRIAM, sections: ['objectives', 'patterns'],
+      patterns: [{ ...miriamsPattern, yours: true, canAnswer: true, whoSeesIt: 'Wairimu can see this too, once you answer or three days pass.' }, aishasPattern],
+    })
+    expect(await screen.findByText('What keeps coming up')).toBeTruthy()
+    expect(screen.getByText('Her qualified deals often don’t have a buying date')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Say what’s behind it' })).toBeTruthy()
+    /* Aisha's pattern was in the payload and must never draw on Miriam's own board. */
+    expect(screen.queryByText('Leads the team on buying dates')).toBeNull()
+    expect(screen.queryByText('Aisha Otieno')).toBeNull()
+  })
+
+  it('Miriam can say what’s behind it, and her own words show back next to the pattern', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    ;(patternsApi.answer as any).mockResolvedValue({ ...miriamsPattern, yours: true, canAnswer: true, theirWords: 'The buyer keeps delaying.' })
+    renderBoard({
+      ...AS_MIRIAM, sections: ['objectives', 'patterns'],
+      patterns: [{ ...miriamsPattern, yours: true, canAnswer: true }],
+    })
+    await screen.findByText('What keeps coming up')
+    const card = cardAfter('What keeps coming up')
+    fireEvent.click(within(card).getByRole('button', { name: 'Say what’s behind it' }))
+    fireEvent.change(within(card).getByRole('textbox'), { target: { value: 'The buyer keeps delaying.' } })
+    fireEvent.click(within(card).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(within(card).getByText(/The buyer keeps delaying\./)).toBeTruthy())
+  })
+
+  /*
+   * UPDATED, U.4 REVIEW ROUND (30 Sept), ITEM 1: THE MORE PRIVATE OPTION, UNTIL HAFSAH DECIDES
+   * (Needs Hafsah 0-pat2, request 84).
+   *
+   * This used to assert an admin who only reads sees everybody's pattern, "the same as the lead" -
+   * because the server serves `eachPerson` under the same test as `patterns`, whoever runs the
+   * check-in, admin included. But a colleague's own report and screens tell them their pattern
+   * reaches only the person who RUNS the check-in - not every admin who can merely read it - so
+   * drawing it here for a reading admin made that promise false. Until Hafsah answers, the board
+   * itself is the more private of the two readings: `viewerRunsThisCheckIn` gates a colleague's
+   * pattern, not the wider `eachPerson` signal. An admin who runs nothing here now reads nobody
+   * else's pattern, the same as any other reader who is not running it.
+   */
+  it('an admin who only reads sees nobody else’s pattern, even though the payload carries one', async () => {
+    me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
+    renderBoard({ ...AS_AN_ADMIN, sections: ['objectives', 'patterns'], patterns: [miriamsPattern, aishasPattern], eachPerson: AS_THE_LEAD.eachPerson })
+    await screen.findByText('What keeps coming up')
+    const card = cardAfter('What keeps coming up')
+    expect(within(card).queryByText('Miriam Wanjiku')).toBeNull()
+    expect(within(card).queryByText('Aisha Otieno')).toBeNull()
+  })
+
+  it('“The team today” carries what keeps coming up under each person’s own line, lead only', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({
+      ...AS_THE_LEAD, sections: ['objectives'],
+      eachPersonToday: [
+        { participantId: 'p-aisha', who: 'Aisha Otieno', line: 'Deals moving', keepsComingUp: 'Leads the team on buying dates' },
+        { participantId: 'p-miriam', who: 'Miriam Wanjiku', line: 'Deals moving', keepsComingUp: 'Qualified deals often lack a date' },
+      ],
+    })
+    await screen.findByText('The team today')
+    expect(screen.getByText('Qualified deals often lack a date')).toBeTruthy()
+    expect(screen.getByText('Leads the team on buying dates')).toBeTruthy()
+  })
+
+  /* PROTECTED (Hafsah, 29 September). Found by the review: after Amani answered her pattern, her
+     line under "The team today" said nothing, because the board's own line needs three finished
+     sessions of rows. A pattern the lead may read now says it on the person's line too. */
+  it('a person’s line carries their served pattern when the board’s own line has nothing yet', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard({
+      ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [miriamsPattern],
+      eachPersonToday: [{ participantId: 'p-miriam', who: 'Miriam Wanjiku', line: 'Deals moving', keepsComingUp: null }],
+    })
+    await screen.findByText('The team today')
+    const card = cardAfter('The team today')
+    expect(within(card).getByText(miriamsPattern.heading)).toBeTruthy()
+  })
+})
+
+/**
+ * THE ALIGNMENT FEED, REBUILT FROM THE ENGINE'S SERVED PATTERN SHAPE.
+ *
+ * It used to read the old shape (`sig.type`, `sig.text`, `sig.periodsObserved`), which the server no
+ * longer sends, so with one pattern it said "0 to look at · 0 good signs" and drew one empty card
+ * that only said "Seen across sessions". `groundsApi.get`'s `signals` is the very same
+ * `servedPatterns(...)` call as the board's own `patterns`, so whenever "What keeps coming up" is
+ * already on the page, the feed says once, truly, that the same pattern is shown there - it never
+ * draws the pattern a second time. Only lead only, and only when "What keeps coming up" is not shown
+ * at all, does it draw the pattern itself, with the shared `PatternPanel`.
+ */
+describe('the alignment feed', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const feedPattern = {
+    id: 'pat-feed', participantId: 'p-miriam', yours: false, kind: 'attention',
+    heading: 'Her qualified deals often don’t have a buying date', whatHappened: null,
+    howOften: '3 of 5, for three weeks running.', askThem: 'What would get a date on the deal?',
+    theirWords: null, canAnswer: false,
+    whoSeesIt: 'Miriam Wanjiku has not seen this yet, and has not answered yet.',
+  }
+
+  it('Wairimu, who runs it, reads a single true sentence, never the pattern a second time, when it is already shown above', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [feedPattern] })
+    await screen.findByText('What keeps coming up')
+    await screen.findByText('Alignment feed')
+    const feedCard = cardAfter('Alignment feed')
+    expect(within(feedCard).getByText('One pattern has come up so far. It is shown above, under What keeps coming up.')).toBeTruthy()
+    /* The pattern is not drawn a second time inside the alignment feed's own card. */
+    expect(within(feedCard).queryByText(feedPattern.heading)).toBeNull()
+    expect(within(feedCard).queryByRole('button', { name: /Say what/ })).toBeNull()
+  })
+
+  it('counts more than one truly, when they are already shown above', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    const second = { ...feedPattern, id: 'pat-feed-2', participantId: 'p-aisha', kind: 'good', heading: 'Leads the team on buying dates' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern, second] })
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [feedPattern, second] })
+    await screen.findByText('What keeps coming up')
+    const feedCard = await (async () => { await screen.findByText('Alignment feed'); return cardAfter('Alignment feed') })()
+    expect(within(feedCard).getByText('2 patterns have come up so far. They are shown above, under What keeps coming up.')).toBeTruthy()
+  })
+
+  it('draws the pattern itself, with the shared panel, when "What keeps coming up" is not shown at all', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives'] })
+    expect(screen.queryByText('What keeps coming up')).toBeNull()
+    await screen.findByText('Alignment feed')
+    const feedCard = cardAfter('Alignment feed')
+    expect(within(feedCard).getByText(feedPattern.heading)).toBeTruthy()
+    expect(within(feedCard).getByText(/What would get a date on the deal\?/)).toBeTruthy()
+  })
+
+  it('Miriam, a participant who does not run it, never reads an alignment feed', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
+    renderBoard({ ...AS_MIRIAM, sections: ['objectives'] })
+    await screen.findByText('Sales team, Q3')
+    expect(screen.queryByText('Alignment feed')).toBeNull()
+  })
+
+  it('Grace, an admin who only reads and does not run it, never reads an alignment feed', async () => {
+    me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
+    renderBoard({ ...AS_AN_ADMIN, sections: ['objectives'] })
+    await screen.findByText('Sales team, Q3')
+    expect(screen.queryByText('Alignment feed')).toBeNull()
   })
 })

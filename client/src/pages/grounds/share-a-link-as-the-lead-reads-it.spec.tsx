@@ -28,8 +28,14 @@ describe('share a link, as the lead reads it', () => {
 
 describe('where people answer, on the same Setup', () => {
   it('is only offered while WhatsApp is switched on, as well as connected', () => {
-    const src = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
-    expect(src).toContain('const whatsAppIsOn = useWhatsAppIsOn()')
-    expect(src).toContain('{whatsAppIsOn && (ground as any)?.orgHasWhatsApp && (')
+    /*
+     * REPOINTED (People and setup rebuild, 29 Sept): GroundAdminPage.tsx still reads whether
+     * WhatsApp is switched on (`useWhatsAppIsOn`) and hands it to CheckInPeopleAndSetup.tsx as
+     * `whatsAppIsOn`, which is where the "Where people answer" row's own gate now lives.
+     */
+    const admin = readFileSync(join(__dirname, 'GroundAdminPage.tsx'), 'utf8')
+    const page = readFileSync(join(__dirname, 'CheckInPeopleAndSetup.tsx'), 'utf8')
+    expect(admin).toContain('const whatsAppIsOn = useWhatsAppIsOn()')
+    expect(page).toContain('props.whatsAppIsOn && (ground as any)?.orgHasWhatsApp && (')
   })
 })
