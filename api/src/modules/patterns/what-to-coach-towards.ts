@@ -43,7 +43,7 @@ export const COACHING_FOR_EACH_PATTERN: Readonly<Record<string, ACoachingLine>> 
   /* Carrying. The good version is to share the load, so the extra work is not one person's. */
   A1: { towards: 'sharing out the coordinating, so it is not one person\'s extra work', step: 'ask someone else to take one piece of the coordinating for a month' },
   A2: { towards: 'catching problems early, so nobody has to step in at the last moment', step: 'say the next time they step in, and what would have let someone else catch it sooner' },
-  A3: { towards: 'getting back to the level of work they did before the change', step: 'say what has got in their way since the change, and be listened to before anything is suggested' },
+  A3: { towards: 'getting back to the level of work they did before the change, after listening first to what has got in their way', step: 'say what has got in their way since the change' },
 
   /* Worth the lead's attention. Each asks for the good opposite of what the record shows. */
   D1: { towards: 'saying something is finished only when the team who receives it has confirmed it works', step: 'get a yes from the receiving team before the next piece of work is called finished' },
