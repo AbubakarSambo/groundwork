@@ -127,7 +127,7 @@ describe('a sales check-in: deals and their stages', () => {
       section: 'Forecast',
       holds: 'where the sales numbers are likely to end up',
       state: 'not-known',
-      why: 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records or a helpdesk.',
+      why: 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records.',
     });
   });
 
@@ -269,7 +269,7 @@ describe('a check-in whose kind of work nobody knows', () => {
   it('a kind Groundwork keeps records for, with none yet, is none-yet rather than not known', () => {
     expect(theRecordSections('support desk', null, [])).toEqual([
       { section: 'Deal grid', holds: 'tickets', state: 'none-yet', rows: [] },
-      { section: 'Themes', holds: 'ticket volume and causes from the helpdesk', state: 'not-known', why: 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records or a helpdesk.' },
+      { section: 'Themes', holds: 'ticket volume and causes from the helpdesk', state: 'not-known', why: 'Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself.' },
     ]);
   });
 });

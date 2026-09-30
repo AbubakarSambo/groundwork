@@ -76,7 +76,7 @@ import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
-import { whatThisSessionHolds, atAGlanceTiles } from '../reports/what-this-session-holds';
+import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
@@ -149,6 +149,9 @@ export const inASentence = (phrase: string): string => {
   const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
   return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
 };
+
+/* What the Owner column says when nobody has been named, in a sentence (screens request 88). */
+const NOBODY_NAMED_TO_DECIDE = 'Nobody has been named to decide this.';
 
 @Injectable()
 export class BoardService {
@@ -1350,6 +1353,8 @@ export class BoardService {
           theWorry: held.theFirstWorry,
         });
       }
+      /* The same first blocker as the top line, from the one place that picks it (request 88). */
+      out.quickRead = theBlockersTileNamesThis(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.oldest ?? null);
     }
 
     // Loaded once and shared. It was fetched twice, running every one of these
@@ -1837,7 +1842,7 @@ export class BoardService {
       .map((d) => ({
         question: `Somebody is waiting on ${inASentence(d.what)}, so it needs deciding.`,
         why: 'A hard blocker. Someone cannot move until this is decided.',
-        owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? 'Unassigned') : (d.onLabel ?? 'Unassigned'),
+        owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? NOBODY_NAMED_TO_DECIDE) : (d.onLabel ?? NOBODY_NAMED_TO_DECIDE),
         source: 'blocker' as const,
       }));
 

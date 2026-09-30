@@ -65,7 +65,14 @@ export interface ARecordSection {
   whyNotKnown?: string;
 }
 
-const FROM_ANOTHER_SYSTEM = 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records or a helpdesk.';
+/*
+ * THE EXAMPLE FITS ITS OWN SECTION (screens request 88). One sentence said "such as payment records or
+ * a helpdesk" under the helpdesk's own section, which read oddly: the example named the very thing the
+ * section was about. Each section now names the kind of system that would hold its numbers.
+ */
+const FROM_ANOTHER_SYSTEM = 'Groundwork does not keep this yet. It needs numbers from another system.';
+const FROM_PAYMENT_RECORDS = 'Groundwork does not keep this yet. It needs numbers from another system, such as payment records.';
+const FROM_THE_HELPDESK = 'Groundwork does not keep this yet. It needs the ticket counts from the helpdesk itself.';
 
 /**
  * EACH KIND'S RECORDS, FROM ITS PROTOTYPE EXAMPLE. The sections a kind fills, what each holds and,
@@ -75,14 +82,14 @@ const FROM_ANOTHER_SYSTEM = 'Groundwork does not keep this yet. It needs numbers
 export const RECORDS_FOR_EACH_KIND: Record<KindOfWork, ARecordSection[]> = {
   'sales org': [
     { section: 'Deal grid', holds: 'deals', itemKinds: ['deal'], stages: ['Contacted', 'Need established', 'Pitched', 'Qualified', 'Quoted', 'Won'] },
-    { section: 'Forecast', holds: 'where the sales numbers are likely to end up', itemKinds: [], whyNotKnown: FROM_ANOTHER_SYSTEM },
+    { section: 'Forecast', holds: 'where the sales numbers are likely to end up', itemKinds: [], whyNotKnown: FROM_PAYMENT_RECORDS },
   ],
   'engineering release': [
     { section: 'Deal grid', holds: 'releases and tasks', itemKinds: ['release', 'task'], stages: ['Worked on', 'Written', 'Merged', 'Tested', 'Deployed', 'Used'] },
   ],
   'support desk': [
     { section: 'Deal grid', holds: 'tickets', itemKinds: ['ticket'] },
-    { section: 'Themes', holds: 'ticket volume and causes from the helpdesk', itemKinds: [], whyNotKnown: FROM_ANOTHER_SYSTEM },
+    { section: 'Themes', holds: 'ticket volume and causes from the helpdesk', itemKinds: [], whyNotKnown: FROM_THE_HELPDESK },
   ],
   'distribution operations': [
     { section: 'Deal grid', holds: 'incidents', itemKinds: ['incident'] },
@@ -101,7 +108,7 @@ export const RECORDS_FOR_EACH_KIND: Record<KindOfWork, ARecordSection[]> = {
   ],
   'MarketView Q4': [
     { section: 'Deal grid', holds: 'subscriptions', itemKinds: ['subscription'], stages: ['Said', 'Paid'] },
-    { section: 'Forecast', holds: 'where paying subscribers are likely to end up', itemKinds: [], whyNotKnown: FROM_ANOTHER_SYSTEM },
+    { section: 'Forecast', holds: 'where paying subscribers are likely to end up', itemKinds: [], whyNotKnown: FROM_PAYMENT_RECORDS },
   ],
   'a law firm matter': [
     { section: 'Timeline', holds: 'deadlines', itemKinds: ['deadline'] },

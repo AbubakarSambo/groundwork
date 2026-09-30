@@ -301,3 +301,28 @@ export function atAGlanceTiles(a: {
     },
   ];
 }
+
+/**
+ * THE TOP LINE AND THE QUICK READ NAME THE SAME BLOCKER (screens request 88).
+ *
+ * On the government programme the top line said "the approval for Machakos's second tranche" while
+ * the quick read, on the same board, said "the fuel allowance for October". The top line takes the
+ * longest-standing blocker anybody named (`atAGlance`, in how-a-check-in-is-going); the tile took the
+ * first one raised in the open round. Two picks for one thing. The board now gives the tile the
+ * top line's blocker, from that one place, and keeps the tile's own count beside it.
+ *
+ * Only a Blockers tile that already names something is changed: one that says nobody named anything,
+ * or that counts worries, is left as it is.
+ */
+export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string | null | undefined): AGlanceRead[] {
+  const named = theFirstSentenceThatFits(blocker ?? null);
+  const name = named ? named.replace(/[.?!]+$/, '') : '';
+  if (!name) return tiles;
+  return tiles.map((t) => {
+    if (t.label !== 'Blockers') return t;
+    const hard = /^(\d+)$/.exec(String(t.value));
+    if (hard) return { ...t, sub: `${name}${Number(hard[1]) > 1 ? `, and ${Number(hard[1]) - 1} more` : ''}` };
+    if (/^\d+ waiting$/.test(String(t.value))) return { ...t, sub: `${name}, nothing hard-blocked` };
+    return t;
+  });
+}

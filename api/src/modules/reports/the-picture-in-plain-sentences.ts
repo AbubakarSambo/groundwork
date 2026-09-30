@@ -77,7 +77,7 @@ saying the target was five, that they have done six, and that somebody says they
 picture with the explanation cut out of it. Say the other number, and say plainly that it was never
 written down or given to them. Open with this sentence, exactly as it is: "${howManyAnsweredInWords(a.peopleAnswered, a.peopleExpected)}"
 ${a.differenceTopics.length
-    ? `They disagree on ${a.differenceTopics.length}: ${a.differenceTopics.join('; ')}.`
+    ? `People disagree on ${a.differenceTopics.length}: ${a.differenceTopics.join('; ')}.`
     : 'Nothing in the record yet shows one account disagreeing with another, so say that plainly.'}
 
 Never write a sentence claiming the accounts do not contradict each other. Say what the accounts
@@ -283,4 +283,16 @@ export function inOneFormOfNumber(text: string): string {
     if (inWords && startsASentence) first = `${first[0].toUpperCase()}${first.slice(1)}`;
     return `${first}${of}${inWords ? COUNT_WORDS[nb] : String(nb)}`;
   });
+}
+
+/**
+ * A STORY THAT OPENS WITH "They" HAS NOBODY FOR "They" TO POINT TO (screens request 88).
+ *
+ * The participant's story opened "They disagree on ..." because the count sentence that came before
+ * it is not the participant's to read, so the sentence that was second became first. Where the story
+ * starts with "They" and a verb about people together, it says "People" instead. Anywhere after the
+ * first sentence "They" has its people to point to and is left as it is.
+ */
+export function theStoryHasSomeoneToPointTo(text: string): string {
+  return text ? text.replace(/^(\s*)They (disagree|differ|agree|both|all|each)\b/, (_m, lead: string, verb: string) => `${lead}People ${verb}`) : text;
 }
