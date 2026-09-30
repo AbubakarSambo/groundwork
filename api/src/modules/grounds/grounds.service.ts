@@ -4627,11 +4627,23 @@ export class GroundsService {
      * An expectation counts too. It is the strongest form of the thing this gate is asking for -
      * somebody named, and what is wanted of them - and setup can now record one.
      *
+     * DECISION 66, 30 SEPTEMBER 2026: A NOTE TYPED ON THE CONTEXT AND RESOURCES TAB COUNTS TOO,
+     * SHARED OR PRIVATE, THE SAME AS THE OLDER leadContextNote ROW ABOVE.
+     *
+     * That tab now writes lines into groundContextItem, sorted into five buckets: the strategy, how
+     * we work, still to decide, not settled, and notes. Only the last of those is called a note on
+     * the tab itself - the other four are titled by what they are ("The strategy", "How we work",
+     * "Still to decide", "Not settled"), never "note". So only kind NOTE counts here; a line about
+     * the strategy or a still-open decision says something about the work, but it is not what "a
+     * note" means to the person reading this refusal, and stretching the word past what the tab
+     * calls it would make the fix as confusing as the bug it replaces. A retired line (closedAt set)
+     * does not count - it is no longer live, and neither is what it once said.
+     *
      * WHAT STILL DOES NOT COUNT: adding a person. The gate exists so that nobody opens their first
      * session and answers into a vacuum, and the act of inviting somebody says nothing about what
      * the check-in is for. A gate cleared by the action it guards is not a gate.
      */
-    const [documents, notes, ground, expectations] = await Promise.all([
+    const [documents, notes, ground, expectations, contextNotes] = await Promise.all([
       this.prisma.groundDocument.count({ where: { groundId } }),
       this.prisma.leadContextNote.count({ where: { groundId } }),
       this.prisma.ground.findUnique({
@@ -4639,8 +4651,11 @@ export class GroundsService {
         select: { brief: true, scenario: true },
       }),
       this.prisma.personObjective.count({ where: { groundId } }),
+      this.prisma.groundContextItem.count({
+        where: { groundId, kind: ContextItemKind.NOTE, closedAt: null },
+      }),
     ]);
-    if (documents > 0 || notes > 0 || expectations > 0) return;
+    if (documents > 0 || notes > 0 || expectations > 0 || contextNotes > 0) return;
     if ((ground?.brief ?? '').trim().length >= GroundsService.MEANS_SOMETHING) return;
 
     /**
