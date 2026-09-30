@@ -816,3 +816,27 @@ A model may reword these answers, but the engine refuses the reworded version, a
 A guest is still answered only about their own check-in (decision 36). "What did Femi say last week?" gets the plain list of what they can ask; "What should I do next?" gets their own commitments from their own check-in and nothing of anyone else's.
 
 Code: `api/src/modules/assistant/what-they-said-that-you-may-read.ts`, `what-to-do-next.ts`, `a-source-says-where-it-came-from.ts`, the `source` block in `a-reply-is-a-payload-not-a-string.ts`, the two lanes in `the-router-is-deterministic.ts`. Tests: `what-they-said-and-what-is-next-as-each-reader-reads-it.spec.ts`.
+
+## Week 18: Ask Groundwork changes things by talking, after a yes
+
+Three changes, each said back as a yes or no question and written only when the person answers yes through `POST /ask/answer` (the answer for the proposal block the reply carries, exactly as for adding a to-do). A no writes nothing. The question and the sentence after the yes are the product's own words. A model is never asked to word them, so there is nothing for the screen to reword either.
+
+**Who may change what.** A person changes only their own commitments and to-dos. A lead may also move the deadline of a commitment the lead made for somebody, on a check-in the lead runs. Nobody marks somebody else's commitment done, lead or not. The rule is checked again at the moment of the yes, not only when the question was asked.
+
+What a person reads, where the day is read in code (a day that cannot be read is asked for, and a day that has passed is asked about again):
+
+- Moving your own: "Shall I move "Send the Westgate price list" from Friday 2 October to Tuesday 6 October?" After a yes: "I have moved "Send the Westgate price list" to Tuesday 6 October."
+- A lead moving one they set for somebody: "Shall I move "Call the Kisumu depot", which you set for Baraka, from Monday 5 October to Wednesday 7 October?" After a yes: "I have moved "Call the Kisumu depot" to Wednesday 7 October."
+- With no day yet: "Shall I set "X" to be done by Tuesday 6 October?" and "I have set "X" to be done by Tuesday 6 October."
+- Adding one (always the asker's own): "Shall I add "Book the room for the launch" as something you will do by Friday 2 October?" After a yes: "I have added "Book the room for the launch" as something you will do by Friday 2 October." With no day said, none is made up: "Shall I add "Call the Naivasha depot" as something you will do?"
+- Marking done, now said back first for a to-do and for your own commitment: "Shall I mark "Call the Kisumu depot" as done?" After a yes: "I have marked "Call the Kisumu depot" as done."
+- On a no, for all three: "I have left it as it was. Nothing was changed."
+- A date that cannot be read: "I could not read a date from "next sprint". Which day do you mean? For example, Tuesday 7 October." A date that has passed: "Wednesday 2 September has already passed. Which day do you mean?" A day in another year carries the year.
+- Somebody else's, when the asker names them: "Only Baraka can change what Baraka said they would do." It is said only when the asker typed the name, so it tells them nothing they did not say.
+- If the lead has left the check-in by the time of the yes: "Only Baraka can change what Baraka said they would do. You can no longer move it for them, so I have changed nothing."
+
+Phrasings that start each: "move X to Tuesday", "push X back to Friday", "change the deadline on X to 7 October"; "add a commitment: X by Friday", "commit me to X"; "mark X as done", "tick off X", "done: X". The proposal kinds are `move_deadline`, `add_commitment` and `tick_off`, and the reply's `lane` is `move_a_deadline`, `add_a_commitment` or `tick_off_a_to_do`.
+
+Moving a deadline also moves the check-in's own record of it where the commitment came from a check-in, so the two never disagree. Not done this week: moving the date of a target that lives on the company's targets page (there is no route for it yet), and a route in the panel API to move a deadline (adding and marking done already share their writer with Ask Groundwork).
+
+Code: `api/src/modules/assistant/a-change-said-back-first.ts` (reading and wording), `a-commitment-has-one-writer.ts` (the one writer, also used by `/commitments`), the lanes in `assistant.service.ts`. Tests: `changing-things-by-talking-is-said-back-first.spec.ts`.
