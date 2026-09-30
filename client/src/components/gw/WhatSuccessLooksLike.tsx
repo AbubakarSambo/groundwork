@@ -216,20 +216,23 @@ export function WhatSuccessLooksLike({
               /*
                * RE-REVIEW: A NAME, A COLON, A LINE READS AS A LABEL, NOT A SENTENCE - "Rukia
                * Otieno: Twelve signed supply contracts..." is a transcript excerpt, not a plain
-               * sentence a person reads. "You" keeps its own voice ("You say..."); a named
-               * colleague gets a plain sentence that says who is speaking.
+               * sentence a person reads. "You"/a named colleague gets a plain sentence that says
+               * who is speaking.
+               *
+               * SECOND REVIEW, 30 SEPTEMBER: "You say I want us to sign 12 shops." mixed the
+               * reader's own voice into the middle of somebody's words, with no quotation marks -
+               * lower-casing the first letter (the earlier fix for "I" becoming "i") was itself
+               * the wrong repair, because a person's own words are never rewritten at all, not
+               * even by one letter. What somebody said now stays exactly as said, in quotation
+               * marks, and the lead-in is always past tense ("said"), whether it introduces "You"
+               * or a colleague - a report reads what happened, not what somebody is saying right
+               * now. "You said, "I want us to sign 12 shops."" / "Amani Wekesa said, "I am aiming
+               * for 3 shops in Kilimani.""
                */
-              /* Board review, 30 September, item 1: lower-casing the first letter turned "I" (and
-                 "I'm", "I've"...) into "i" - never a real word, and never what a person typed.
-                 The pronoun, like a name, keeps its own capital; everything else still joins the
-                 "You say"/"Rukia said" lead-in as a plain sentence. */
-              const text = d.text && !/^I(?=[\s'’]|$)/.test(d.text)
-                ? d.text.charAt(0).toLowerCase() + d.text.slice(1)
-                : d.text
               return (
                 <div key={i} className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.55 }}>
                   <span className="gwui-ink-text" style={{ fontWeight: 600 }}>{who}</span>{' '}
-                  {who === 'You' ? 'say' : 'said'} {text}
+                  said, “{d.text}”
                 </div>
               )
             })}

@@ -49,13 +49,23 @@ function roundsSentence(progress: Glance['progress']): string {
   return `${spellOne(roundsDone)} ${roundsDone === 1 ? 'round is' : 'rounds are'} done.`
 }
 
-/** Same fix, for "answered this round": the person count agrees with itself, and "people" becomes
-    "person" when there is only the one to answer. */
+/**
+ * "ANSWERED THIS ROUND", READ NATURALLY (board review, 30 September, second pass). "1 of 1 people
+ * have answered" was wrong twice over - "people" for one person, and "have" for a single "1" - and
+ * simply making the numbers agree with each other still left "1 of 6 people has answered", which
+ * nobody would actually say. Five shapes, the way a person reading the board would say each one:
+ *  - nobody yet:            "Nobody has answered this round yet."
+ *  - the only person, done: "The one person in this round has answered."
+ *  - one of several, done:  "1 of 6 people has answered this round." ("has": the subject is "1")
+ *  - several of several:    "4 of 6 people have answered this round."
+ *  - everybody, more than one: "Everybody has answered this round."
+ */
 function answeredSentence(progress: Glance['progress']): string {
-  const { answeredThisRound, ofPeople } = progress
-  const verb = answeredThisRound === 1 ? 'has' : 'have'
-  const noun = ofPeople === 1 ? 'person' : 'people'
-  return `${spellOne(answeredThisRound)} of ${ofPeople} ${noun} ${verb} answered this round.`
+  const { answeredThisRound: a, ofPeople: n } = progress
+  if (a === 0) return 'Nobody has answered this round yet.'
+  if (n === 1) return 'The one person in this round has answered.'
+  if (a === n) return 'Everybody has answered this round.'
+  return `${a} of ${n} people ${a === 1 ? 'has' : 'have'} answered this round.`
 }
 
 /**
