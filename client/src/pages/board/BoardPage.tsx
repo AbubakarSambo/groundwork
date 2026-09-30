@@ -1045,7 +1045,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             aria-label={`One more: ${o.name}`}
                           >Raise</UIButton>
                           <UIButton
-                            kind="quiet" danger size="small"
+                            kind="quiet" size="small"
                             onClick={() => sureAboutTarget.arm(o.id)}
                             disabled={removeObjective.isPending}
                             aria-label={`Remove target: ${o.name}`}

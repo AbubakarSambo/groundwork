@@ -45,9 +45,19 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'End this check-in' })).toHaveClass('gwui-btn-danger')
   })
 
-  it('the danger kind can be the filled red, for a pop-up\'s final "Remove"', () => {
-    render(<Button kind="danger" dangerSolid>Remove</Button>)
-    expect(screen.getByRole('button', { name: 'Remove' })).toHaveClass('gwui-btn-danger-solid')
+  /*
+   * 30 September (Hafsah): the prototype has exactly one danger style, solid red
+   * (app.css: `.btn.danger{background:var(--con);color:#fff}`) - not an outline plus a second
+   * "filled" variant behind a flag. `kind="danger"` is always that one style now, whatever it is
+   * used for, so this also checks the outline and "quiet danger" classes it replaced are gone
+   * from the stylesheet entirely, not just unused.
+   */
+  it('the danger kind is always the prototype\'s one solid red, never an outline or a red-text quiet button', () => {
+    render(<Button kind="danger">Remove</Button>)
+    expect(screen.getByRole('button', { name: 'Remove' })).toHaveClass('gwui-btn-danger')
+    expect(CSS).toMatch(/\.gwui-btn-danger \{[^}]*background: var\(--gw-red-t\)[^}]*color: #fff/)
+    expect(CSS).not.toMatch(/gwui-btn-danger-solid/)
+    expect(CSS).not.toMatch(/gwui-btn-quiet-danger/)
   })
 
   it('is at least a thumb tall (44px), and its text is never smaller than 16px', () => {

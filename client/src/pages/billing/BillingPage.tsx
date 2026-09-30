@@ -323,7 +323,7 @@ export function BillingPage() {
                 ) : (
                   <div className="gwui-invite-actions">
                     <Button kind="secondary" disabled={pauseSubscriptionMut.isPending} onClick={() => setConfirming('pause')}>Pause</Button>
-                    <Button kind="quiet" danger disabled={cancelSubscriptionMut.isPending} onClick={() => setConfirming('cancel')}>Cancel</Button>
+                    <Button kind="quiet" disabled={cancelSubscriptionMut.isPending} onClick={() => setConfirming('cancel')}>Cancel</Button>
                   </div>
                 )}
               </div>

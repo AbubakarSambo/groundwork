@@ -3,33 +3,29 @@ import { Link } from 'react-router-dom'
 import './gw-ui.css'
 
 /**
- * BUTTON (prototype: .btn / .btn.pri / .btn.sec / .btn.quiet / .btn.danger, app.css).
+ * BUTTON (prototype: .btn / .btn.pri / .btn.sec / .btn.quiet / .btn.danger, app.css lines 64-68).
  *
  * Brought over from kit.tsx's `Button`, which already copied the prototype's values (A1, 26
- * September). The one addition design-audit.md item 15 asks for is the `danger` kind: a secondary
- * button with red text and a red line, for "End this check-in" and "Remove" - plus `dangerSolid`,
- * the filled red for a pop-up's final confirmation.
+ * September). The prototype has exactly four kinds - primary (navy), secondary (white, thin
+ * outline), quiet (plain text) and danger (solid red, `background:var(--con);color:#fff`) - and
+ * two sizes, `big` and `sm`. 30 September (Hafsah): the product had grown a fifth and sixth
+ * "kind" the prototype does not have - an outlined red danger and a "quiet danger" red-text
+ * variant - so every danger button read a different weight depending on which call site wrote it.
+ * Removed. `kind="danger"` is now always the prototype's one solid red, whatever it is used for;
+ * a call site that wanted a quieter red before a confirmation now uses plain `kind="quiet"`
+ * (navy, same as everywhere else quiet is used) and relies on the confirmation step itself, not a
+ * tinted trigger button, to signal the action is destructive.
  *
- * Four sizes: the normal 44px minimum, `big` (54px), `small` (36px, 40px on a phone).
+ * Three sizes: the normal 44px minimum, `big` (54px), `small` (36px, 40px on a phone).
  */
 export type ButtonKind = 'primary' | 'secondary' | 'quiet' | 'danger'
 
 export function Button({
-  kind = 'primary', size, wide, dangerSolid, danger, to, onClick, type = 'button', disabled, children, ...rest
+  kind = 'primary', size, wide, to, onClick, type = 'button', disabled, children, ...rest
 }: {
   kind?: ButtonKind
   size?: 'big' | 'small'
   wide?: boolean
-  /** Only meaningful with kind="danger": the filled red, for a pop-up's final "Remove". */
-  dangerSolid?: boolean
-  /**
-   * Only meaningful with kind="quiet": red text instead of navy, for a row where a bordered
-   * danger button would read heavier than the thing it sits beside - a target's own Remove
-   * (board-as-lead.jpg), asked to be "much heavier than the prototype" and confirmed first the
-   * same way a bordered one is. Still asks first (`Confirm`, the caller's own job); this only
-   * changes the colour of the ask.
-   */
-  danger?: boolean
   to?: string
   onClick?: () => void
   type?: 'button' | 'submit'
@@ -39,9 +35,7 @@ export function Button({
 }) {
   const className = [
     'gwui-btn',
-    kind === 'danger' && dangerSolid ? 'gwui-btn-danger-solid'
-      : kind === 'quiet' && danger ? 'gwui-btn-quiet-danger'
-      : `gwui-btn-${kind}`,
+    `gwui-btn-${kind}`,
     size && `gwui-btn-${size}`,
     wide && 'gwui-btn-wide',
   ].filter(Boolean).join(' ')

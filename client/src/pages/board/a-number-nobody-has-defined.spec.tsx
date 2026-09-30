@@ -75,8 +75,14 @@ describe('a number nobody has defined', () => {
 /**
  * U.10 (c1), HER REVIEW: "each target has three full-size buttons... much heavier than the
  * prototype". Lower and Raise are the shared Button's small secondary size; Remove is small AND
- * quiet-danger (red text, no box), so the row reads as the target and its number, not as three
- * buttons. Still asks first - `Confirm` is unchanged.
+ * quiet, so the row reads as the target and its number, not as three buttons. Still asks first -
+ * `Confirm` is unchanged.
+ *
+ * 30 September (Hafsah): Remove used to be the small "quiet danger" red-text tone - a fifth
+ * button kind the prototype does not have. That tone is gone; the shared Button now has only the
+ * prototype's four kinds (primary, secondary, quiet, danger - the last always solid red), so
+ * Remove is plain `quiet` (navy) like every other quiet button, and relies on the confirmation
+ * step, not a tinted trigger, to signal the action is destructive.
  */
 describe('a target row\'s own buttons, not three buttons', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -92,7 +98,7 @@ describe('a target row\'s own buttons, not three buttons', () => {
       expect(b.className).toContain('gwui-btn-small')
     }
     for (const b of remove) {
-      expect(b.className).toContain('gwui-btn-quiet-danger')
+      expect(b.className).toContain('gwui-btn-quiet')
       expect(b.className).toContain('gwui-btn-small')
       expect(b.className.endsWith('gwui-btn-danger')).toBe(false)
     }

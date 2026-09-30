@@ -40,7 +40,7 @@ export default function PartsSamplePage() {
           <Button kind="secondary">Read it</Button>
           <Button kind="quiet">Not now</Button>
           <Button kind="danger">End this check-in</Button>
-          <Button kind="danger" dangerSolid>Remove</Button>
+          <Button kind="danger">Remove</Button>
           <Button kind="primary" size="big">Answer today's check-in now</Button>
           <Button kind="secondary" size="small">Copy</Button>
           <Button kind="primary" disabled>Disabled</Button>
@@ -264,7 +264,7 @@ export default function PartsSamplePage() {
             <p style={{ margin: 0, fontSize: 16, color: 'var(--gw-sub)' }}>He will no longer be part of this check-in.</p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <Button kind="quiet" onClick={() => setShowModal(false)}>Don't remove him</Button>
-              <Button kind="danger" dangerSolid onClick={() => setShowModal(false)}>Remove</Button>
+              <Button kind="danger" onClick={() => setShowModal(false)}>Remove</Button>
             </div>
           </Modal>
         )}

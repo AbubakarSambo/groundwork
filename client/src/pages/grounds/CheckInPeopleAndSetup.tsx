@@ -549,7 +549,7 @@ export function CheckInPeopleAndSetup(props: {
             {props.confirmDelete ? (
               <div style={{ display: 'flex', flexWrap: 'wrap' }}>
                 <span>Delete "{ground.label}" for good?</span>
-                <Button kind="danger" dangerSolid disabled={props.removeGround.isPending} onClick={() => props.removeGround.mutate()}>
+                <Button kind="danger" disabled={props.removeGround.isPending} onClick={() => props.removeGround.mutate()}>
                   {props.removeGround.isPending ? 'Deleting…' : 'Yes, delete it'}
                 </Button>
                 <Button kind="secondary" onClick={() => { props.setConfirmDelete(false); props.setDeleteError(null) }}>Keep it</Button>

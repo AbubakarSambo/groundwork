@@ -308,7 +308,7 @@ export function SettingsPage() {
               </div>
               <div className="gwui-invite-actions">
                 <Button kind="secondary" onClick={downloadMyData}>Download all of it</Button>
-                {!showEraseConfirm && <Button kind="quiet" danger onClick={() => setShowEraseConfirm(true)}>Erase it</Button>}
+                {!showEraseConfirm && <Button kind="quiet" onClick={() => setShowEraseConfirm(true)}>Erase it</Button>}
               </div>
               {showEraseConfirm && (
                 <Stack gap={10}>
@@ -319,7 +319,7 @@ export function SettingsPage() {
                     you want one.
                   </p>
                   <div className="gwui-invite-actions">
-                    <Button kind="danger" dangerSolid onClick={() => eraseMyData.mutate()} disabled={eraseMyData.isPending}>
+                    <Button kind="danger" onClick={() => eraseMyData.mutate()} disabled={eraseMyData.isPending}>
                       {eraseMyData.isPending ? 'Erasing…' : 'Yes, erase it'}
                     </Button>
                     <Button kind="quiet" onClick={() => setShowEraseConfirm(false)}>Cancel</Button>
@@ -346,7 +346,7 @@ export function SettingsPage() {
                 You will lose access to {orgName} immediately. Your contributions to existing check-ins stay on record.
               </p>
               <div className="gwui-invite-actions">
-                <Button kind="danger" dangerSolid onClick={() => leaveOrg.mutate()} disabled={leaveOrg.isPending}>
+                <Button kind="danger" onClick={() => leaveOrg.mutate()} disabled={leaveOrg.isPending}>
                   {leaveOrg.isPending ? 'Leaving…' : 'Yes, leave'}
                 </Button>
                 <Button kind="quiet" onClick={() => setShowLeaveConfirm(false)}>Cancel</Button>

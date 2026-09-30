@@ -243,7 +243,7 @@ function WhatsAppSection({ orgName, glance }: { orgName: string; glance: { peopl
               {!testing && <Button kind="secondary" size="small" onClick={() => setTesting(true)}>Send a test message</Button>}
               <Button kind="quiet" size="small" to="/settings/whatsapp">Reminder messages</Button>
               <Button kind="quiet" size="small" to="/settings/whatsapp">Change the number</Button>
-              <Button kind="quiet" size="small" danger onClick={() => setSure(true)}>Disconnect</Button>
+              <Button kind="quiet" size="small" onClick={() => setSure(true)}>Disconnect</Button>
             </div>
             {sure && (
               <Confirm
