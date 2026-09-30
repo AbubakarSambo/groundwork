@@ -314,6 +314,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
   /* A second press before a target is gone. See a-second-press-before-it-is-gone.tsx. */
   const sureAboutTarget = useAreYouSure<string>()
+  /*
+   * ONE QUIET "CHANGE" PER TARGET, NOT THREE BUTTONS ALWAYS ON SCREEN (Hafsah, 30 September, item 2:
+   * "fewer controls on the face"). Lower, Raise and Remove used to sit open beside every target, all
+   * the time - three buttons per row, on every board with a target, whether anyone was about to
+   * touch it or not. They still do exactly what they did; they only show once this row's own
+   * "Change" is pressed, the same fold `SettingsPage.tsx` already gives its own fields.
+   */
+  const [editingTargetId, setEditingTargetId] = useState<string | null>(null)
   const removeObjective = useMutation({
     mutationFn: (objectiveId: string) => boardApi.deleteObjective(id!, objectiveId),
     onSuccess: invalidate,
@@ -1039,26 +1047,31 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         as a word a sighted person can read.
                       */}
                       {b.canEditFrame && (
-                        <span className="gwui-gap-6" style={{display: 'flex', alignItems: 'center'}}>
-                          <UIButton
-                            kind="secondary" size="small"
-                            onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
-                            disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
-                            aria-label={`One fewer: ${o.name}`}
-                          >Lower</UIButton>
-                          <UIButton
-                            kind="secondary" size="small"
-                            onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
-                            disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
-                            aria-label={`One more: ${o.name}`}
-                          >Raise</UIButton>
-                          <UIButton
-                            kind="quiet" size="small"
-                            onClick={() => sureAboutTarget.arm(o.id)}
-                            disabled={removeObjective.isPending}
-                            aria-label={`Remove target: ${o.name}`}
-                          >Remove</UIButton>
-                        </span>
+                        editingTargetId === o.id ? (
+                          <span className="gwui-gap-6" style={{display: 'flex', alignItems: 'center'}}>
+                            <UIButton
+                              kind="secondary" size="small"
+                              onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
+                              disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
+                              aria-label={`One fewer: ${o.name}`}
+                            >Lower</UIButton>
+                            <UIButton
+                              kind="secondary" size="small"
+                              onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
+                              disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
+                              aria-label={`One more: ${o.name}`}
+                            >Raise</UIButton>
+                            <UIButton
+                              kind="quiet" size="small"
+                              onClick={() => sureAboutTarget.arm(o.id)}
+                              disabled={removeObjective.isPending}
+                              aria-label={`Remove target: ${o.name}`}
+                            >Remove</UIButton>
+                            <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(null)}>Done</UIButton>
+                          </span>
+                        ) : (
+                          <UIButton kind="quiet" size="small" onClick={() => setEditingTargetId(o.id)} aria-label={`Change target: ${o.name}`}>Change</UIButton>
+                        )
                       )}
                       {sureAboutTarget.isArmed(o.id) && (
                         <Confirm
@@ -1835,13 +1848,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 Rising is the early warning, often before targets are missed, because the work still gets done, by someone else.
               </div>
 
-              {/* Both variants ship so the "does a bar read as a verdict" question
-                  gets answered by real use rather than a guess. */}
-              <div className="gwui-gap-6 gwui-mt-8 gwui-mr-0 gwui-mb-4 gwui-ml-0" style={{display: 'flex', alignItems: 'center'}}>
-                <span className="gwui-fs-13 gwui-ink-muted" style={{fontWeight: 700, letterSpacing: '.1px'}}>Showing</span>
-                {(['text', 'bar'] as CoverageVariant[]).map((v) => (
-                  <button key={v} onClick={() => setVariant(v)} className={`gwui-fs-13 gwui-pt-3 gwui-pr-10 gwui-pb-3 gwui-pl-10 ${b.coverageVariant === v ? 'gwui-toggle-chip-on' : 'gwui-toggle-chip-off'}`} style={{fontWeight: 700, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit'}}>{v === 'text' ? 'words only' : 'with a bar'}</button>
-                ))}
+              {/*
+                ONE QUIET CHOICE, NOT TWO TOGGLE CHIPS (Hafsah, 30 September, item 2). Both variants
+                still ship - "does a bar read as a verdict" is still answered by real use - but a
+                reader chooses between them with one control, the same "Show"/"Hide" shape "Over
+                time" already uses below, rather than two chips that say the same thing twice.
+              */}
+              <div className="gwui-mt-8 gwui-mb-4">
+                <button
+                  onClick={() => setVariant(b.coverageVariant === 'bar' ? 'text' : 'bar')}
+                  className="gwui-fs-13 gwui-ink-navy gwui-rule-none" style={{background: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline'}}
+                >
+                  {b.coverageVariant === 'bar' ? 'Show as words only' : 'Show with a bar'}
+                </button>
               </div>
 
               {b.coverage.reads.filter((r) => r.shown !== false).map((r) => (
