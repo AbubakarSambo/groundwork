@@ -96,8 +96,17 @@ export class CustomersService {
         orderBy: { happenedAt: 'desc' },
       }),
     ]);
+    /* The latest for each customer, whatever order the rows came in. */
     const standingOf = new Map<string, string>();
-    for (const s of standings) if (s.says.trim() && !standingOf.has(s.counterpartyExternalId)) standingOf.set(s.counterpartyExternalId, s.says.trim());
+    const standingAt = new Map<string, number>();
+    for (const s of standings) {
+      if (!s.says.trim()) continue;
+      const t = new Date(s.createdAt).getTime();
+      if (!standingAt.has(s.counterpartyExternalId) || t > standingAt.get(s.counterpartyExternalId)!) {
+        standingAt.set(s.counterpartyExternalId, t);
+        standingOf.set(s.counterpartyExternalId, s.says.trim());
+      }
+    }
     const lastOf = new Map<string, Date>();
     for (const c of contacts) {
       const k = c.counterpartyExternalId as string;

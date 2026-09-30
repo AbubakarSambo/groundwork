@@ -1,5 +1,6 @@
 import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY } from './where-the-blocker-started';
 import { COMPANY_PICTURE_PROMPT, COMPANY_PICTURE_PROMPT_KEY } from '../grounds/the-company-picture';
+import { CUSTOMER_STANDING_PROMPT, CUSTOMER_STANDING_PROMPT_KEY } from '../suites/the-customer-standing';
 import { alreadyEstablished } from './setup-already-asked-this';
 import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
@@ -5069,6 +5070,8 @@ export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: BLOCKER_TRACE_PROMPT_KEY, content: BLOCKER_TRACE_PROMPT },
   /* The company page's company-wide picture (request 17): the version stored here is the one that runs. */
   { key: COMPANY_PICTURE_PROMPT_KEY, content: COMPANY_PICTURE_PROMPT },
+  /* Where a customer stands, from a sales check-in (request 28): the version stored here is the one that runs. */
+  { key: CUSTOMER_STANDING_PROMPT_KEY, content: CUSTOMER_STANDING_PROMPT },
   ...buildPartySeeds(),
 ];
 

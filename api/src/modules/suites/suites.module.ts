@@ -11,10 +11,12 @@ import { SpendingService } from './the-spending.service';
 import { TodosService } from './the-todos.service';
 import { CustomersService } from './the-customers.service';
 import { EquipmentService } from './the-equipment.service';
+import { CustomerStandingService } from './the-customer-standing.service';
+import { AnthropicService } from '../conversation/anthropic.service';
 
 @Module({
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService],
   exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, SpendingService, EquipmentService],
 })
 export class SuitesModule {}
