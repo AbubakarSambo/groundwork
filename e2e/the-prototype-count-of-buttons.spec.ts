@@ -211,6 +211,9 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
     const root = document.querySelector('#main') ?? document.body;
     const nodes = Array.from(root.querySelectorAll('button, a')).filter((e) => {
       if (e.closest('#dev, #devshow')) return false; // the prototype's own dev bar, not the screen
+      /* An on/off switch is a setting, not a button, on both sides (ours is a button with
+         role="switch", the prototype's a checkbox); like a chosen chip, it is not counted. */
+      if (e.getAttribute('role') === 'switch' || e.getAttribute('role') === 'checkbox') return false;
       const cs = getComputedStyle(e);
       const looksLikeAButton = e.tagName === 'BUTTON' || cs.display.includes('flex') || cs.display.includes('inline-flex') || e.className.toString().includes('btn');
       return looksLikeAButton && isVisible(e);
