@@ -11,7 +11,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { OnlyAnAdmin } from '@/pages/connections/ConnectionsPage'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Folded, Steps, Step,
-  Button, Tag, TextField, TextArea, Select, FieldLabel, Note,
+  Button, Tag, TextField, TextArea, Select, FieldLabel, Note, OpsConsoleExample,
 } from '@/components/gw/ui'
 
 /**
@@ -561,20 +561,28 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
 
       {/* SHOWN WHETHER OR NOT ACCESS IS APPROVED, like the same section on Connections: this is what
           the product already does, not a call to make against the API. */}
-      <Section heading="How it looks inside your tool" note={`An example: ${orgName || 'your organisation'}’s own operations console`}>
+      <Section heading="How it looks inside your tool" note="An example: Baridi’s own operations console">
         <div className="gwui-two-up">
-          {[
-            { src: '/connect/panel.png', title: 'The panel on your own page' },
-            { src: '/connect/ops-panel.png', title: 'An organisation’s own panel in its back office' },
-            { src: '/connect/whatsapp.png', title: 'A check-in over WhatsApp' },
-          ].filter(c => whatsappOn || c.src !== '/connect/whatsapp.png').map(c => (
-            <Panel key={c.src} pad={false}>
+          <Panel pad={false}>
+            <figure>
+              <img src="/connect/panel.png" alt="The panel on your own page" />
+              <figcaption className="gwui-panel-row"><b>The panel on your own page</b></figcaption>
+            </figure>
+          </Panel>
+          <Panel pad={false}>
+            <figure>
+              <div className="gwui-console-frame"><OpsConsoleExample /></div>
+              <figcaption className="gwui-panel-row"><b>A panel inside an organisation’s own office system</b></figcaption>
+            </figure>
+          </Panel>
+          {whatsappOn && (
+            <Panel pad={false}>
               <figure>
-                <img src={c.src} alt={c.title} />
-                <figcaption className="gwui-panel-row"><b>{c.title}</b></figcaption>
+                <img src="/connect/whatsapp.png" alt="A check-in over WhatsApp" />
+                <figcaption className="gwui-panel-row"><b>A check-in over WhatsApp</b></figcaption>
               </figure>
             </Panel>
-          ))}
+          )}
         </div>
       </Section>
 

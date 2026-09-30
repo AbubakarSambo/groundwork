@@ -828,3 +828,44 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-numstep-title { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
 .gwui-numstep-title-btn { background: none; border: none; padding: 0; font: inherit; font-size: 16px; font-weight: 700; color: var(--gw-text); cursor: pointer; text-align: left; }
 .gwui-numstep-content { margin-top: 12px; }
+
+/* ── OPS CONSOLE EXAMPLE (F1-connections/tools.jpg, connections.jpg: "How it looks inside your
+   tool" / "Inside your own tool"). Drawn in markup, from the prototype's own made-up company and
+   people (Baridi Ops Console, Grace Achieng, Eastside Foods and the rest) - never a screenshot of
+   a real person's or a real organisation's own tool, and never the reader's own organisation
+   name, because the same illustration is shown to every organisation. */
+.gwui-console { border: 1px solid var(--gw-border); border-radius: 12px; overflow: hidden; background: #fff; }
+.gwui-console-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--gw-navy); color: #fff; padding: 12px 16px; font-size: 14.5px; font-weight: 700;
+}
+.gwui-console-body { display: flex; min-height: 0; }
+.gwui-console-nav {
+  width: 128px; flex-shrink: 0; background: var(--gw-bg); border-right: 1px solid var(--gw-border);
+  padding: 10px 0; display: flex; flex-direction: column;
+}
+.gwui-console-nav-item { padding: 9px 14px; font-size: 13.5px; color: var(--gw-sub); }
+.gwui-console-nav-item-active { background: #fff; color: var(--gw-text); font-weight: 700; border-right: 2px solid var(--gw-navy); }
+.gwui-console-main { flex: 1; min-width: 0; padding: 16px 18px; }
+.gwui-console-main-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gwui-console-main-title { font-size: 15px; font-weight: 700; color: var(--gw-text); margin: 0; }
+.gwui-console-main-from { font-size: 13px; color: var(--gw-sub); }
+.gwui-console-main-sub { font-size: 13.5px; color: var(--gw-sub); margin: 4px 0 14px; }
+.gwui-console-deal { padding: 12px 0; border-top: 1px solid var(--gw-border); }
+.gwui-console-deal:first-of-type { border-top: none; padding-top: 0; }
+.gwui-console-deal-company { font-size: 14.5px; font-weight: 700; color: var(--gw-text); }
+.gwui-console-deal-person { font-size: 13px; color: var(--gw-sub); margin: 0 0 8px; }
+.gwui-console-dots { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; }
+.gwui-console-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gw-border); flex-shrink: 0; }
+.gwui-console-dot-on { background: var(--gw-green-t); }
+.gwui-console-dot-line { flex: 1; height: 2px; background: var(--gw-border); }
+.gwui-console-dot-line-on { background: var(--gw-green-t); }
+.gwui-console-stage-names { display: flex; justify-content: space-between; gap: 4px; }
+.gwui-console-stage-name { font-size: 13px; color: var(--gw-sub); flex: 1; text-align: center; }
+.gwui-console-foot { font-size: 13px; color: var(--gw-sub); padding: 12px 16px; border-top: 1px solid var(--gw-border); }
+.gwui-console-frame { padding: 20px; }
+@media (max-width: 640px) {
+  .gwui-console-body { flex-direction: column; }
+  .gwui-console-nav { width: auto; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--gw-border); }
+  .gwui-console-nav-item-active { border-right: none; border-bottom: 2px solid var(--gw-navy); }
+}

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
 import {
-  Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note,
+  Page, PageTitle, Section, Panel, Stack, SubHeading, FieldRows, FieldRow, Button, Tag, TextField, Note, OpsConsoleExample,
 } from '@/components/gw/ui'
 
 /**
@@ -185,7 +185,7 @@ export function ConnectionsPage() {
           )}
           <Panel pad={false}>
             <figure>
-              <img src="/connect/ops-panel.png" alt="Groundwork inside an organisation’s own tool" />
+              <div className="gwui-console-frame"><OpsConsoleExample /></div>
               <figcaption className="gwui-panel-row"><b>Inside your own tool</b></figcaption>
             </figure>
           </Panel>
