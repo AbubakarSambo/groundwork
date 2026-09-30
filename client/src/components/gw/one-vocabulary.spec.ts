@@ -187,17 +187,22 @@ describe('the pages are built from the kit, not from inline styles', () => {
     expect(S).not.toMatch(/background: 'white', border: '0\.5px solid var\(--gw-border\)', borderRadius: 10/)
   })
 
-  it('and the panel holding one block says so', () => {
+  it('and "You" is one FieldRows, not several one-off panels', () => {
     /**
-     * UPDATED, GROUP 1 REBUILD: the WhatsApp field now sits inside "You"'s single `FieldRows` panel,
-     * inset by `FieldRow`'s own padding (gw-ui.css), rather than a separate `Card pad="block"` of
-     * its own - so every row in that panel is inset the same way by construction, not by each
-     * caller remembering to ask for it.
+     * UPDATED, GROUP 1 REBUILD: the WhatsApp field sits inside "You"'s single `FieldRows` list,
+     * rather than a separate `Card pad="block"` of its own - so every row in that list is inset the
+     * same way by construction, not by each caller remembering to ask for it.
+     *
+     * CHANGED AGAIN (Hafsah, 30 September, the setting row, item 2): this used to also require a
+     * `<Panel pad={false}>` wrapping that `FieldRows` - which was itself the defect this task fixed.
+     * `srow` (docs/prototype/source/s5.js) has no side padding and sits flat on the page, under the
+     * section heading, never inside a white box - see FieldRow.tsx's own updated comment. "You" no
+     * longer wraps its `FieldRows` in a `Panel`, so this test no longer looks for one.
      */
     const S = strip(readFileSync(join(SRC, 'pages/settings/SettingsPage.tsx'), 'utf8'))
     const you = S.slice(S.indexOf('<Section heading="You">'), S.indexOf('<Section heading="What we send you">'))
-    expect(you).toMatch(/<Panel pad=\{false\}>/)
     expect(you).toMatch(/<FieldRows>/)
+    expect(you).not.toMatch(/<Panel/)
   })
 
   it('Card has the one-block case, so a panel is never padded for rows it does not have', () => {

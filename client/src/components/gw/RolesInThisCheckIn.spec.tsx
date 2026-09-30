@@ -60,6 +60,34 @@ describe('the role-as-described column is the lead\'s to read', () => {
 })
 
 /**
+ * ADDED (Hafsah, 30 September, the setting row): check-in-people-and-setup.jpg draws a header row
+ * over this table - "Person", "In this check-in", "Their role, as described", "Status" - and
+ * "Runs it" as a blue tag, not the plain grey one "Checks in" gets. Neither had ever been checked.
+ */
+describe('the header row, and "Runs it" as a blue tag', () => {
+  it('as the lead, all four column headings are there', () => {
+    renderTable(true)
+    expect(screen.getByText('Person')).toBeTruthy()
+    expect(screen.getByText('In this check-in')).toBeTruthy()
+    expect(screen.getByText('Their role, as described')).toBeTruthy()
+    expect(screen.getAllByText('Status').length).toBeGreaterThan(0)
+  })
+
+  it('for anyone else, the role column heading is left out along with the column itself', () => {
+    renderTable(false)
+    expect(screen.getByText('Person')).toBeTruthy()
+    expect(screen.getByText('In this check-in')).toBeTruthy()
+    expect(screen.queryByText('Their role, as described')).toBeNull()
+  })
+
+  it('"Runs it" is the blue tag; "Checks in" stays the plain one', () => {
+    renderTable(false)
+    expect(screen.getByText('Runs it')).toHaveClass('gwui-tag-action')
+    expect(screen.getByText('Checks in')).toHaveClass('gwui-tag-plain')
+  })
+})
+
+/**
  * U.4 RE-REVIEW, ITEM 2A: SOMEBODY DECLINED READS "NOT LET IN" HERE TOO.
  *
  * With Faraji declined by an admin, this table kept saying "Waiting for an admin" - the state he was

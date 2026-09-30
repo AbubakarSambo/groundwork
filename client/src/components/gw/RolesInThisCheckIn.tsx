@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PeopleTable, PersonRow, Tag, Button, TextField, type TagTone } from '@/components/gw/ui'
+import { PeopleTable, PeopleTableHead, PersonRow, Tag, Button, TextField, type TagTone } from '@/components/gw/ui'
 import { personLabel as onePersonsLabel, atTheStart, hasARealName } from '@/lib/utils'
 import { theLeadsNote } from '@/lib/the-leads-note'
 import { initialsOf } from '@/pages/org/people-here'
@@ -49,9 +49,15 @@ export function RolesInThisCheckIn({
 
   const rows = leadRow ? [leadRow, ...participants.filter((p) => p !== leadRow)] : participants
 
+  const extraColumns = isInitiator ? '110px minmax(180px, 1fr) 150px' : '110px 150px'
+  const headLabels = isInitiator
+    ? ['Person', 'In this check-in', 'Their role, as described', 'Status']
+    : ['Person', 'In this check-in', 'Status']
+
   return (
     <div>
       <PeopleTable>
+        <PeopleTableHead extraColumns={extraColumns} labels={headLabels} />
         {rows.map((p: any) => {
           const isLead = p.userId === ground.initiatorId
           const status = statusFor(p)
@@ -64,10 +70,12 @@ export function RolesInThisCheckIn({
           return (
             <PersonRow
               key={p.id}
-              extraColumns={isInitiator ? '110px minmax(180px, 1fr) 150px' : '110px 150px'}
+              extraColumns={extraColumns}
               person={{ initials: initialsOf(name), name, email: p.email }}
             >
-              <Tag tone="plain">{isLead ? 'Runs it' : 'Checks in'}</Tag>
+              {/* "Runs it" is a blue tag in the prototype (check-in-people-and-setup.jpg); "Checks
+                  in" is not called out the same way, so it stays the plain tag. */}
+              <Tag tone={isLead ? 'action' : 'plain'}>{isLead ? 'Runs it' : 'Checks in'}</Tag>
               {isInitiator && (
                 editingId === p.id ? (
                   <span style={{ display: 'inline-flex' }}>

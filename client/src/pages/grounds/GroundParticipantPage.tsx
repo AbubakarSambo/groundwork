@@ -10,6 +10,7 @@ import { groundsApi } from '@/api/grounds'
 import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
+import { Page } from '@/components/gw/ui/Page'
 import { cadenceLabel } from '@/lib/cadence'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -445,10 +446,9 @@ export function GroundParticipantPage() {
       {/*
         U.10 PICTURE-CHECK ROUND 7, ITEM 2 (CHECK-IN REBUILD): THE SAME HEADER PLACEMENT AS THE
         BOARD, NOT A STICKY BEIGE BAND. The admin page's header sits in a plain, non-sticky column
-        (`maxWidth: 1060, margin: '0 auto'`) on the page's own cream; this used to keep its own
-        `position: sticky` wrapper on `var(--gw-paper-2)` (the beige the design audit flagged) -
-        the one place round 7 never reached. Matched here now, so both views place their header the
-        same way.
+        on the page's own cream; this used to keep its own `position: sticky` wrapper on
+        `var(--gw-paper-2)` (the beige the design audit flagged) - the one place round 7 never
+        reached. Matched here now, so both views place their header the same way.
 
         ROUND 2, ITEM F: AND THE WHOLE PAGE BEHIND IT WAS THE SAME DARKER BEIGE
         (`var(--gw-paper-2)`, #FAF5EA - "the prototype's lighter cream, for a band above the page",
@@ -456,8 +456,14 @@ export function GroundParticipantPage() {
         `#FDFBF6` for a participant exactly as they do for a lead - `var(--gw-page)`, the token the
         lead's page already used. Switched here too, on every state (loading, not-found, out of
         time, and the page itself), so the two pages share one background, not two.
+
+        HAFSAH, 30 SEPTEMBER, THE SETTING ROW, ITEM 3: `Page` ITSELF, NOT A SECOND COPY OF ITS
+        NUMBERS. This wrapped the header in its own `maxWidth: 1060, margin: '0 auto'` div - the
+        same narrower, shifted frame GroundAdminPage.tsx had (see the matching note there) - rather
+        than the real shared `Page` (components/gw/ui/Page.tsx) the board itself uses. Fixed the
+        same way here.
       */}
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 0', width: '100%' }}>
+      <Page>
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: ground.label }]}
           title={ground.label}
@@ -590,7 +596,7 @@ export function GroundParticipantPage() {
             </>
           )}
         </div>
-      </div>
+      </Page>
 
       {/*
         THE CHAT GETS THE WHOLE SPACE, LIKE A CHAT.

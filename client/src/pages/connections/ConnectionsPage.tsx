@@ -109,31 +109,31 @@ export function ConnectionsPage() {
 
       {showWhatsApp && <WhatsAppSection orgName={orgName} glance={glance.data?.whatsapp ?? null} />}
 
+      {/* FIELDROWS SIT FLAT (Hafsah, 30 September, the setting row): `srow` in the prototype has
+          no side padding and sits on the page, not inside a white Panel - see FieldRow.tsx. */}
       <Section heading="Your numbers" note="So what people say is checked against where the work shows up">
-        <Panel pad={false}>
-          <FieldRows>
-            <FieldRow
-              label="Your own product sends its numbers"
-              value={<span>Usage numbers, sent by your own product.</span>}
-              action={(
-                <span className="gwui-invite-actions">
-                  <Tag tone={glance.data?.figures.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures.fromYourProduct ? 'Connected' : 'Not set up'}</Tag>
-                  <Button kind="secondary" size="small" to="/settings/tools">Set it up</Button>
-                </span>
-              )}
-            />
-            <FieldRow
-              label="Accounting or sales tools"
-              value={<span>Invoices paid, deals won.</span>}
-              action={(
-                <span className="gwui-invite-actions">
-                  {!hasAKeyFor(creds.data, SCOPE_FOR.figures) && <Tag tone="plain">Needs a key</Tag>}
-                  <Button kind="secondary" size="small" to="/settings/tools">Connect</Button>
-                </span>
-              )}
-            />
-          </FieldRows>
-        </Panel>
+        <FieldRows>
+          <FieldRow
+            label="Your own product sends its numbers"
+            value={<span>Usage numbers, sent by your own product.</span>}
+            action={(
+              <span className="gwui-invite-actions">
+                <Tag tone={glance.data?.figures.fromYourProduct ? 'proven' : 'plain'}>{glance.data?.figures.fromYourProduct ? 'Connected' : 'Not set up'}</Tag>
+                <Button kind="secondary" size="small" to="/settings/tools">Set it up</Button>
+              </span>
+            )}
+          />
+          <FieldRow
+            label="Accounting or sales tools"
+            value={<span>Invoices paid, deals won.</span>}
+            action={(
+              <span className="gwui-invite-actions">
+                {!hasAKeyFor(creds.data, SCOPE_FOR.figures) && <Tag tone="plain">Needs a key</Tag>}
+                <Button kind="secondary" size="small" to="/settings/tools">Connect</Button>
+              </span>
+            )}
+          />
+        </FieldRows>
       </Section>
 
       <NoticesSection notifiers={notifiers.data ?? []} />

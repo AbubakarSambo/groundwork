@@ -332,20 +332,20 @@ describe('FieldRow', () => {
     expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument()
   })
 
-  it('the label column is 200px by default, 16px label and value, a line between rows', () => {
-    expect(CSS).toContain('var(--gwui-field-label-w, 200px)')
-    expect(CSS).toMatch(/\.gwui-field-row-label \{[^}]*font-size: 16px/)
-    expect(CSS).toMatch(/\.gwui-field-row \{[^}]*border-bottom: 1px solid var\(--gw-border\)/)
-  })
-
   /**
-   * FIX: the row used to sit flush against a panel's left border (padding: 14px 0, no sides), so
-   * inside a pad={false} Panel - the way PeopleTable's own rows already work - the label had no
-   * air around it at all. The row now carries the panel's own inside space itself, 22px at the
-   * sides, matching Panel's `.pad` (20px top/bottom, 22px sides).
+   * CHANGED (Hafsah, 30 September, the setting row): this used to assert this part's OWN invented
+   * numbers - a 200px label column, a border-BOTTOM, and 22px of side padding meant to sit inside a
+   * `Panel(pad={false})` - because nobody had read the prototype's own row before. `srow`
+   * (docs/prototype/source/s5.js, on `.row` in app.css) is `220px minmax(0,1fr) auto`, gap 18px,
+   * padding `14px 0` with NO side padding, and a border-TOP (so the first row's own line reads as
+   * the line under the section heading) - sitting flat on the page, never inside a white Panel.
+   * This test now checks the prototype's real values, not our own prior guess.
    */
-  it('carries the panel\'s own 22px side padding itself, not just 14px top and bottom', () => {
-    expect(CSS).toMatch(/\.gwui-field-row \{[^}]*padding: 14px 22px/)
+  it('the label column is 220px by default, 16px label and value, a line on top of each row, no side padding', () => {
+    expect(CSS).toContain('var(--gwui-field-label-w, 220px)')
+    expect(CSS).toMatch(/\.gwui-field-row-label \{[^}]*font-size: 16px/)
+    expect(CSS).toMatch(/\.gwui-field-row \{[^}]*border-top: 1px solid var\(--gw-border\)/)
+    expect(CSS).toMatch(/\.gwui-field-row \{[^}]*padding: 14px 0/)
   })
 })
 

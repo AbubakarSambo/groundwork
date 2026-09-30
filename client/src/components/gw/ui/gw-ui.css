@@ -109,9 +109,13 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── FOOT DIVIDER (a "not right now"/decline footer, set off by a rule above it) ─────────── */
 .gwui-foot-divider { padding-top: 18px; border-top: 1px solid var(--gw-border); text-align: center; }
 
-/* ── FIELD PAIR / HELP / FORM ACTIONS (a labelled pair of fields, its help line, its button) ── */
+/* ── FIELD PAIR / HELP / FORM ACTIONS (a labelled pair of fields, its help line, its button) ──
+   HELP TEXT SITS ON ITS OWN LINE (Hafsah, 30 September, the setting row): the prototype's `srow`
+   writes a value's explanation as its own `<div class="t-small mut">`, under the value, not
+   trailing it on the same line - `display: block` here does the same, since the caller passes
+   this as a `<span>` next to the value's own text. */
 .gwui-field-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
-.gwui-field-help { font-size: 13.5px; color: var(--gw-sub); margin: 8px 0 0; }
+.gwui-field-help { display: block; font-size: 14.5px; color: var(--gw-sub); margin: 2px 0 0; }
 .gwui-form-actions { margin-top: 20px; }
 
 /* ── STEPS (a numbered list of what has and has not happened yet, join-waiting.jpg) ───────────
@@ -336,9 +340,9 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    otherwise win the cascade by source order and put Save back underneath a full-width field. ──── */
 .gwui-narrow-field.gwui-narrow-field { width: 260px; max-width: 100%; }
 
-/* ── FLUSH FIELD ROWS (a FieldRows not sitting inside a Panel - "Who can open a check-in"'s
-   "Opening check-ins"/"New check-ins" facts, which the prototype starts at the page's own left
-   edge, not indented the 22px FieldRow carries for sitting inside a panel) ───────────────────── */
+/* ── FLUSH FIELD ROWS: no longer needed for spacing (every FieldRow sits flush now, `srow` has no
+   side padding at all - see FIELD ROW below), kept as a harmless no-op so the `flush` prop on
+   existing callers keeps compiling rather than forcing an unrelated edit everywhere it's used. ── */
 .gwui-field-rows-flush.gwui-field-rows-flush .gwui-field-row { padding-left: 0; padding-right: 0; }
 
 /* ── AVATAR (prototype: .av) ─────────────────────────────────────────────── */
@@ -347,18 +351,20 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   display: inline-flex; align-items: center; justify-content: center; font-weight: 700; flex: none;
 }
 
-/* ── FIELD ROW (prototype: a label/value row, e.g. one person's page) ──────
-   Meant to sit inside a Panel with pad={false}, the same way PeopleTable does: the row carries
-   the panel's own inside space itself (22px at the sides, matching `.pad`), so it never sits flush
-   against the panel's border the way an un-padded row would. */
-.gwui-field-rows { border-top: 1px solid var(--gw-border); }
-/* A SwitchRow standing in a list of FieldRows (People and setup's "Who sees what": several toggles
-   and a plain fact, read as one list) takes the same row line and inset the FieldRows around it
-   carry, rather than sitting with no line between one row and the next. */
-.gwui-field-rows > .gwui-switch-row { padding: 14px 22px; border-bottom: 1px solid var(--gw-border); }
+/* ── FIELD ROW (prototype: `srow`, s5.js/s20.js/s21.js/s38.js - `<div class="row" style=
+   "grid-template-columns:220px minmax(0,1fr) auto">`, on `.row` in app.css: `display:grid;
+   gap:18px;padding:14px 0;border-top:1px solid var(--rule);align-items:center`) ─────────────────
+   FIXED (Hafsah, 30 September, the setting row): this used to carry its own 22px side padding and
+   a 200px label column, built to sit inside a `Panel(pad={false})` because nothing had read `srow`
+   itself. The prototype's row has NO side padding at all - it sits flat on the page under the
+   section heading, at the row's own left edge, with only a top-and-bottom rule and an 18px gap. A
+   FieldRows is no longer wrapped in a Panel anywhere; see each page for the Panel that was removed. */
+/* No border on the container itself: like the prototype's bare wrapping `<div>`, the FIRST row's
+   own border-top is what draws the line under the section heading. */
+.gwui-field-rows > .gwui-switch-row { padding: 14px 0; border-top: 1px solid var(--gw-border); }
 .gwui-field-row {
-  display: grid; grid-template-columns: var(--gwui-field-label-w, 200px) minmax(0, 1fr) auto;
-  gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--gw-border); align-items: center;
+  display: grid; grid-template-columns: var(--gwui-field-label-w, 220px) minmax(0, 1fr) auto;
+  gap: 18px; padding: 14px 0; border-top: 1px solid var(--gw-border); align-items: center;
 }
 .gwui-field-row-label { font-size: 16px; font-weight: 700; color: var(--gw-text); }
 .gwui-field-row-value { font-size: 16px; color: var(--gw-text); min-width: 0; }
@@ -750,10 +756,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-stat-num { font-family: var(--gw-font-name); font-size: 26px; color: var(--gw-text); margin: 0; }
 .gwui-stat-label { font-size: 13.5px; color: var(--gw-sub); margin: 2px 0 0; }
 
-/* The plan cards on Plan and billing. */
-.gwui-plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+/* The plan cards on Plan and billing (prototype: `.g3`, `PLANS.map` in s20.js/s21.js - three cards
+   to a row, not five; the chosen plan's card carries the navy outline and a "Your plan" tag; the
+   Enterprise card alone sits on the warm chat-colour fill, `var(--band)`/`var(--chat)`, not white). */
+.gwui-plan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 980px) { .gwui-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .gwui-plan-grid { grid-template-columns: 1fr; } }
 .gwui-plan-card { display: flex; flex-direction: column; gap: 10px; }
 .gwui-plan-card-mine { box-shadow: inset 0 0 0 2px var(--gw-navy); }
+.gwui-plan-card-enterprise { background: var(--gw-bg); }
 .gwui-plan-name { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
 .gwui-plan-price { font-family: var(--gw-font-name); font-size: 24px; color: var(--gw-text); margin: 0; }
 .gwui-plan-price span { font-size: 14.5px; color: var(--gw-sub); font-family: var(--gw-font-ui); }
