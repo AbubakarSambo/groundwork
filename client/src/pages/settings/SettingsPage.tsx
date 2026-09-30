@@ -336,7 +336,7 @@ export function SettingsPage() {
               </Button>
             </div>
             <p className="gwui-panel-text-muted">
-              Every answer, which check-in it came from, and nothing anyone else wrote. As a file you can open.
+              The file holds every answer you gave and which check-in it came from, and nothing anyone else wrote. You can open it on any computer.
             </p>
             {/*
              * "Saved. ..." (fault E): confirms the file actually saved, then states what it holds,
