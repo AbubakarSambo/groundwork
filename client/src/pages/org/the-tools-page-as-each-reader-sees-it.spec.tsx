@@ -158,6 +158,32 @@ describe('the approved state, with keys, webhooks, deliveries, embed and retenti
   })
 })
 
+/**
+ * GROUP 1 FIX: BEFORE APPROVAL. The old sentence said "your own build against the API" (jargon)
+ * and the terms checkbox showed the version number on screen, which nobody reading it needs.
+ */
+describe('before access is approved', () => {
+  beforeEach(() => {
+    served.myApiAccess = { status: null, approved: false, whatFor: null, requestedAt: null, decidedAt: null, note: null, says: '' }
+    served.apiTerms = { version: '3', title: '', says: '', terms: [{ heading: 'Privacy', body: 'Everything stays private.' }] }
+  })
+
+  it('says people can check in from a panel on your own page or on screens your developer builds, never "the API"', async () => {
+    const { container } = open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
+    await screen.findByText('Put check-ins inside your own product')
+    expect(screen.getByText(/Your people can check in from inside your own system, in a panel on your own page or on screens your developer builds\./)).toBeTruthy()
+    expect(container.textContent).not.toMatch(/against the API/)
+  })
+
+  it('accepts the terms for connecting your own tools, with no version number shown on screen', async () => {
+    const { container } = open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
+    await screen.findByText('Put check-ins inside your own product')
+    expect(screen.getByText(/I accept the terms for connecting your own tools\./)).toBeTruthy()
+    expect(container.textContent).not.toMatch(/\(version/)
+    expect(screen.getByRole('button', { name: 'Read them' })).toBeTruthy()
+  })
+})
+
 describe('a lead, a member and a guest', () => {
   for (const role of ['LEAD', 'MEMBER', 'GUEST']) {
     it(`as ${role}, reads only that an admin sets this up, and nothing is fetched`, () => {

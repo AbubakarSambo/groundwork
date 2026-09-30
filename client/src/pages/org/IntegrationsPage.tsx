@@ -248,9 +248,10 @@ export function IntegrationsPage() {
           <Panel>
             <Stack gap={12}>
               <p className="gwui-panel-text-muted">
-                Your people check in from inside your own system - a panel on your page, or your own
-                build against the API. It is asked for rather than bought: say what you want to
-                build, somebody here reads it, and the keys appear on this page once it is approved.
+                Your people can check in from inside your own system, in a panel on your own page or
+                on screens your developer builds. It is asked for rather than bought: say what you
+                want to build, somebody here reads it, and the keys appear on this page once it is
+                approved.
                 {access.data?.status === 'PENDING' && ' You have asked and we have not answered yet.'}
                 {access.data?.status === 'DECLINED' && ' This was declined. Ask again, saying what has changed.'}
                 {access.data?.status === 'WITHDRAWN' && ' This was approved and has since been withdrawn.'}
@@ -266,9 +267,9 @@ export function IntegrationsPage() {
                       rows={3}
                     />
                     <label className="gwui-check-row">
-                      <input type="checkbox" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} aria-label="I accept the API terms" />
+                      <input type="checkbox" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} aria-label="I accept the terms for connecting your own tools" />
                       <span>
-                        I accept the API terms{terms.data ? ` (version ${terms.data.version})` : ''}.{' '}
+                        I accept the terms for connecting your own tools.{' '}
                         <button type="button" className="gwui-plain-link" onClick={() => setTermsOpen(o => !o)}>{termsOpen ? 'Hide them' : 'Read them'}</button>
                       </span>
                     </label>
