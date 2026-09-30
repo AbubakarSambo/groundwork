@@ -21,7 +21,17 @@ export interface GroundDocument {
     forEverybody: { what: string; target: number; kind?: string | null; by?: string | null }[]
     dates: { what: string; when: string }[]
     unmatched: string[]
+    /** The numbers still waiting on a yes before anything is written. Ask Groundwork's own upload
+        step polls this (via `numbersWaiting` below) so it knows when to say "I've uploaded it." */
+    waiting?: { name: string; target: number; ownerParticipantId: string | null }[]
   } | null
+  /**
+   * `holds.waiting.length`. Only the upload response carries this ready-made, and it is always `0`
+   * there (the read has not landed yet) - see `documents.service.ts`, "AND THE TWO SLOW READS,
+   * AFTER THE ANSWER". Reading the list again later, `holds.waiting` is what tells you the real
+   * count; this field is absent there and `waiting.length` is read directly instead.
+   */
+  numbersWaiting?: number
   theContextWeHave?: string | null
   /**
    * Who can read it. Absent on deployments with CONTEXT_ENABLED off, where every
