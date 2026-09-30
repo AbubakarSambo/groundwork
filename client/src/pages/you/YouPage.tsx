@@ -5,7 +5,7 @@ import { youApi, type YourBoard, type YourCheckIn } from '@/api/you'
 import { myDataApi } from '@/api/my-data'
 import { useAuthStore } from '@/stores/auth'
 import {
-  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, EdgeList, EdgeRow, RowList, Row,
+  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row,
 } from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
@@ -25,10 +25,12 @@ import { PatternPanel } from '@/components/gw/ui'
  *
  * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` for the frame, `Section` for every heading with
  * an optional note or trailing sentence, `Panel` (now `as="section"`, `heading`) for each titled
- * card in place of the page's own `Card`, `EdgeList`/`EdgeRow` for "Your turn" (the same shared row
- * "What needs you" already uses), and the new `RowList`/`Row` for the four plain row-lists
+ * card in place of the page's own `Card`, and the new `RowList`/`Row` for the four plain row-lists
  * ("Everything asked of you this week", "What you said you'd do", "Your own reports", "Your work in
- * each"). `PatternPanel` is unchanged - it already was a shared part, and patterns are protected:
+ * each"). "Your turn" draws the prototype's own card (`gwui-welcome-card`, the same drawing as
+ * Today's admin card) with the first "Start it" navy and the rest white, not the striped `EdgeRow`
+ * list "What needs you" uses - see the comment above that block. `PatternPanel` is unchanged - it
+ * already was a shared part, and patterns are protected:
  * every field the server serves for this reader's own pattern (`heading`, `whatHappened`,
  * `howOften`, `askThem`, `theirWords`, `canAnswer`, `whoSeesIt`) is still drawn, exactly as before.
  * A pattern's `coachTowards`/`oneStep` are for whoever runs the check-in, never the person it is
@@ -157,20 +159,30 @@ function TheBoard({ b }: { b: YourBoard }) {
         )}
 
         {b.turns.length > 0 && (
-          <EdgeList label="Your turn">
-            {b.turns.map(t => (
-              <EdgeRow
-                key={t.key}
-                kind="decide"
-                title={t.title}
-                detail={t.detail ?? undefined}
-                /* Not primary: an admin or a lead can have more than one turn waiting at once (a
-                   picture check, Juma with two "Start it" rows, found two navy buttons on screen
-                   together), and "at most one primary button per screen" holds here too. */
-                actions={<Button kind="secondary" size="small" to={t.action.to}>{t.action.label}</Button>}
-              />
+          <section className="gwui-first-run" aria-label="Your turn">
+            {/* THE PROTOTYPE'S OWN CARD (you-board-miriam.jpg: "Your sales check-in closes at 6pm /
+                About two minutes." in its own box, a dark 2px inset edge, navy "Start it") - the
+                same drawing as Today's admin card (an-admin-lands-on-a-check-in-list.tsx,
+                `gwui-welcome-card`), not the striped `EdgeRow` list "What needs you" uses.
+                ONE NAVY BUTTON (Hafsah, 30 September; TodayPage.tsx, "only the first 'Start it' is
+                navy"): with more than one turn open, only the first "Start it" stays navy - the
+                rest are white, the same rule Today applies to its own repeated "Start it". */}
+            {b.turns.map((t, i) => (
+              <div key={t.key} className="gwui-welcome-card">
+                <div className="gwui-welcome-card-head">
+                  <span className="gwui-edge-h">{t.title}</span>
+                  <Button
+                    kind={t.action.label === 'Start it' && i === b.turns.findIndex(m => m.action.label === 'Start it') ? 'primary' : 'secondary'}
+                    size="small"
+                    to={t.action.to}
+                  >
+                    {t.action.label}
+                  </Button>
+                </div>
+                {t.detail && <p className="gwui-welcome-card-line">{t.detail}</p>}
+              </div>
             ))}
-          </EdgeList>
+          </section>
         )}
       </Section>
 
@@ -278,8 +290,13 @@ function YourData() {
   }
   return (
     <Panel as="section" aria-label="Your data">
-      <p className="gwui-panel-text">Everything you’ve written, in every check-in, as one file.</p>
-      <Button kind="secondary" onClick={download} disabled={busy}>Download it</Button>
+      {/* THE PROTOTYPE'S OWN LINE (you-board-miriam.jpg): the sentence and "Download it" sit on one
+          line, the button on the right, at 1440 - `gwui-sentence-row` (already shared, SettingsPage's
+          "Sign out"), which wraps to its own line on a phone rather than a fixed side-by-side. */}
+      <div className="gwui-sentence-row">
+        <p className="gwui-panel-text">Everything you’ve written, in every check-in, as one file.</p>
+        <Button kind="secondary" onClick={download} disabled={busy}>Download it</Button>
+      </div>
       {failed && <p role="alert" className="gwui-panel-text-muted">Your file did not download. Try again.</p>}
     </Panel>
   )
