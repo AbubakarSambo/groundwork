@@ -19,14 +19,14 @@ describe('the suggested weights are stored and applied by nothing', () => {
   it('no source file outside the learning folder reads the counts table or asks for a weight', () => {
     const offenders = walk(SRC)
       .filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts') && !f.includes(`${path.sep}learning${path.sep}`))
-      .filter((f) => /learningSignalCount|theWeightToApply|suggestedWeight|LearningService/.test(fs.readFileSync(f, 'utf8')))
+      .filter((f) => /learningSignalCount|theWeightToApply|suggestedWeight|LearningService/.test(fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')))
       .map((f) => path.relative(SRC, f));
     expect(offenders).toEqual([]);
   });
 
   it('inside the learning folder only the service, the plain reader and the switch touch them', () => {
     const dir = __dirname;
-    const users = fs.readdirSync(dir).filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts')).filter((f) => /theWeightToApply/.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+    const users = fs.readdirSync(dir).filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts')).filter((f) => /theWeightToApply/.test(fs.readFileSync(path.join(dir, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')));
     expect(users).toEqual(['a-suggested-weight.ts']);
   });
 });

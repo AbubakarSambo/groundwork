@@ -300,7 +300,7 @@ describe('a check-in that runs until the lead ends it', () => {
   });
 
   describe('creating one', () => {
-    const SERVICE = require('fs').readFileSync(require('path').join(__dirname, '../grounds/grounds.service.ts'), 'utf8') as string;
+    const SERVICE = require('fs').readFileSync(require('path').join(__dirname, '../grounds/grounds.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '') as string;
     it('both ways of creating a check-in store the flag and no length when asked', () => {
       expect(SERVICE.match(/runsUntilEnded: dto\.runsUntilEnded === true,/g)).toHaveLength(2);
       expect(SERVICE).toMatch(/if \(dto\.runsUntilEnded === true\) return 0;/);

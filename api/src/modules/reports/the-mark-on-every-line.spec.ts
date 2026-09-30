@@ -328,7 +328,7 @@ describe('the board carries the same marks on the report’s lines', () => {
 });
 
 describe('when the marks are worked out', () => {
-  const src = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8');
+  const src = readFileSync(join(__dirname, 'reports.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   it('at the build, before the report is stored, and never at the read', () => {
     const build = src.indexOf('theMarksOfAReport(');
     const upsert = src.indexOf('const report = await this.prisma.report.upsert(');

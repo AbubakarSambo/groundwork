@@ -155,7 +155,7 @@ describe('(c) named by more than one team', () => {
     expect(g[0].teams.find((t) => t.team === 'Sales')!.says).toBe('Sales raised this in 1 check-in, with 1 open handoff.');
   });
   it('orders groups by their title and teams by their name, never by how many people or how much', () => {
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'the-company-picture.ts'), 'utf8');
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'the-company-picture.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).toMatch(/localeCompare/);
     expect(src).not.toMatch(/\.sort\(\(a, b\) => b\./);
   });
@@ -389,7 +389,7 @@ describe('as each reader reads it', () => {
     const page = await read('grace', null);
     expect(page.priorities.every((p) => p.reading === null)).toBe(true);
     expect([page.notReaching, page.namedByTeams, page.saidAndShown]).toEqual([[], [], []]);
-    const src = require('fs').readFileSync(require('path').join(__dirname, 'company.service.ts'), 'utf8');
+    const src = require('fs').readFileSync(require('path').join(__dirname, 'company.service.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     expect(src).not.toMatch(/anthropic|buildPicture|\.upsert\(/i);
   });
 
