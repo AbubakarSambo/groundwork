@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { OutOfTime } from './OutOfTime'
+import { OutOfTime, theirAnswersAreKept } from './OutOfTime'
 import { groundsApi } from '@/api/grounds'
 
 /**
@@ -12,7 +12,7 @@ import { groundsApi } from '@/api/grounds'
  */
 vi.mock('@/api/grounds', () => ({ groundsApi: { moreTime: vi.fn(), askForMoreTime: vi.fn() } }))
 
-const STANDING = { outOfTime: true, checkInName: 'Sales team, Q3', leadFirstName: 'Wairimu', ranUntil: '2026-09-30T00:00:00.000Z', askedAt: null }
+const STANDING = { outOfTime: true, checkInName: 'Sales team, Q3', leadFirstName: 'Wairimu', ranUntil: '2026-09-30T00:00:00.000Z', askedAt: null, checkInsCount: 38 }
 
 function open(onOpenMyWork = vi.fn()) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -23,18 +23,19 @@ function open(onOpenMyWork = vi.fn()) {
 beforeEach(() => { vi.clearAllMocks() })
 
 describe('out of time', () => {
-  it('reads as the prototype\'s card, without the session count', async () => {
+  /* UPDATED 29 September, item 11: "All 38 of your check-ins" is back, reading the server's own
+     count of check-ins (Grounds), never sessions - see theirAnswersAreKept below. */
+  it('reads as the prototype\'s card, with the server\'s own check-in count', async () => {
     ;(groundsApi.moreTime as any).mockResolvedValue(STANDING)
     open()
     expect(await screen.findByText('It ran until 30 September. Nothing new can be added until Wairimu gives it more time.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'This check-in reached its end date' })).toBeTruthy()
     expect(screen.getByText('Out of time')).toBeTruthy()
     expect(screen.getByText('Your answers are kept')).toBeTruthy()
-    expect(screen.getByText('Your answers and your history stay as they are.')).toBeTruthy()
+    expect(screen.getByText('All 38 of your check-ins and your history stay as they are.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Ask Wairimu for more time' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Open my work' })).toBeTruthy()
     expect(screen.getByText('Wairimu gets your request with one button to extend it.')).toBeTruthy()
-    expect(document.body.textContent).not.toMatch(/\d+ of your check-ins/)
   })
 
   it('asking sends once and says the lead has it', async () => {
@@ -122,5 +123,19 @@ describe('the floating feedback button', () => {
   it('gw-ui.css hides the feedback button while the cover is open', () => {
     const css = readFileSync(join(__dirname, '..', '..', 'components', 'gw', 'ui', 'gw-ui.css'), 'utf8')
     expect(css).toMatch(/body\.gwui-cover-open \.gw-feedback-btn \{[^}]*display: none/)
+  })
+})
+
+describe('"All 38 of your check-ins" counts check-ins, never sessions (item 11)', () => {
+  it('the prototype\'s own sentence, with the count', () => {
+    expect(theirAnswersAreKept(38)).toBe('All 38 of your check-ins and your history stay as they are.')
+  })
+
+  it('one check-in reads as a full sentence, not "All 1 of your check-ins"', () => {
+    expect(theirAnswersAreKept(1)).toBe('Your check-in and your history stay as they are.')
+  })
+
+  it('falls back to the count-free sentence while it has not loaded', () => {
+    expect(theirAnswersAreKept(undefined)).toBe('Your answers and your history stay as they are.')
   })
 })

@@ -89,6 +89,9 @@ export interface MoreTimeStanding {
   ranUntil: string | null
   /** Set when they already asked today. */
   askedAt: string | null
+  /** "All 38 of your check-ins" (item 11): check-ins (Grounds) this person has ever been part of,
+      never sessions (CheckIn rounds) within them. */
+  checkInsCount: number
 }
 
 export const groundsApi = {
