@@ -260,7 +260,7 @@ export class BoardService {
             /* What the population rule reads: still holding a live invitation counts as expected. */
             invitedAt: true, inviteTokenExpiresAt: true,
             detectedFunction: true, detectedFunctionConfidence: true,
-            user: { select: { firstName: true, lastName: true } },
+            user: { select: { firstName: true, lastName: true, awaitingOrgApproval: true } },
           },
         },
         report: true,
@@ -1046,6 +1046,40 @@ export class BoardService {
           .filter((e) => hasANumberADateOrADocument({ text: cleanText(e.text ?? ''), anchoredDocumentId: e.anchoredDocumentId, documentSays: e.documentSays }))
           .map((e) => e.checkInId),
       );
+      /*
+       * WHO THE ORGANISATION DID NOT LET IN (screens request 85). Somebody an admin declined at the
+       * door cannot be asked to check in, so the row says what happened rather than asking the lead
+       * to chase them. Read the way the People page and the check-in's own roster read it: this
+       * organisation's latest request for each waiting person decides it. Only rows for whoever
+       * runs the check-in or an admin are built at all, so the decider's name goes no wider than
+       * the same rule in GET /grounds/:id.
+       */
+      const notLetInByUser = new Map<string, { by: string | null; at: Date | null }>();
+      const waitingUserIds = ground.participants
+        .filter((p: any) => !!p.userId && p.user?.awaitingOrgApproval)
+        .map((p: any) => p.userId as string);
+      if (waitingUserIds.length && (ground as any).organizationId) {
+        const requests: any[] = (await (this.prisma as any).membershipRequest?.findMany?.({
+          where: { organizationId: (ground as any).organizationId, userId: { in: waitingUserIds } },
+          orderBy: { createdAt: 'desc' },
+          select: { userId: true, status: true, decidedByUserId: true, decidedAt: true },
+        })) ?? [];
+        const seen = new Set<string>();
+        const deciderIds = new Set<string>();
+        const declined: any[] = [];
+        for (const r of requests) {
+          if (seen.has(r.userId)) continue;
+          seen.add(r.userId);
+          if (r.status === 'DECLINED') { declined.push(r); if (r.decidedByUserId) deciderIds.add(r.decidedByUserId); }
+        }
+        const deciders: any[] = deciderIds.size
+          ? (await (this.prisma as any).user.findMany({ where: { id: { in: [...deciderIds] } }, select: { id: true, firstName: true, lastName: true } })) ?? []
+          : [];
+        const deciderName = new Map(deciders.map((d) => [d.id, [d.firstName, d.lastName].filter(Boolean).join(' ').trim() || null]));
+        for (const r of declined) {
+          notLetInByUser.set(r.userId, { by: deciderName.get(r.decidedByUserId ?? '') ?? null, at: r.decidedAt ?? null });
+        }
+      }
       out.eachPerson = whereEachPersonIs(
         /*
          * AND THE MANAGER IS NOT IN THEIR OWN LIST.
@@ -1081,6 +1115,7 @@ export class BoardService {
               [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim()
               || ((p as any).nameGiven ?? '').trim()
             ),
+            notLetIn: p.userId && notLetInByUser.has(p.userId) ? { by: notLetInByUser.get(p.userId)!.by, at: notLetInByUser.get(p.userId)!.at } : undefined,
             target: theirs?.target ?? null,
             count: theirs?.count ?? 0,
             answeredThisRound: thisRound?.status === CheckInStatus.COMPLETED,

@@ -77,6 +77,13 @@ export interface PersonRow {
    * reader reads only that the person has checked in.
    */
   targetHiddenFromReader?: boolean;
+  /**
+   * SET WHERE AN ADMIN DID NOT LET THIS PERSON INTO THE ORGANISATION (screens request 85).
+   * There is nobody to ask to check in, so the row says what happened and asks for nothing. `by` is
+   * the decider's name; the board builds this row only for whoever runs the check-in or an admin,
+   * the same readers who may see the decider on GET /grounds/:id.
+   */
+  notLetIn?: { by: string | null; at: Date | null };
 }
 
 /**
@@ -90,10 +97,11 @@ export type Reason =
   | 'stuck and not chasing'
   | 'behind the pace'
   | 'nothing checkable'
-  | 'nothing to do';
+  | 'nothing to do'
+  | 'not let in';
 
 /** Ordered worst first. The order IS the product; a manager reads down until it stops mattering. */
-const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind the pace', 'nothing checkable', 'nothing to do'];
+const ORDER: Reason[] = ['has not answered', 'stuck and not chasing', 'behind the pace', 'nothing checkable', 'nothing to do', 'not let in'];
 
 /**
  * A NUMBER, A DATE OR A DOCUMENT, READ OFF ONE LINE OF THE RECORD.
@@ -139,6 +147,7 @@ function sittingUnchased(row: PersonRow) {
 }
 
 export function whyThisRow(row: PersonRow, roundsPlanned: number | null): Reason {
+  if (row.notLetIn) return 'not let in';
   if (!row.answeredThisRound) return 'has not answered';
   if (sittingUnchased(row).length) return 'stuck and not chasing';
   if (behindThePace(row, roundsPlanned)) return 'behind the pace';
@@ -180,6 +189,10 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
   const start = subjectFor(row, true);
   const mid = subjectFor(row, false);
   switch (reason) {
+    case 'not let in':
+      return row.notLetIn?.by
+        ? `${start} was not let in by ${row.notLetIn.by}, so there is nobody to ask.`
+        : `${start} was not let in, so there is nobody to ask.`;
     case 'has not answered':
       return `${start} has not checked in for this round yet.`;
     case 'stuck and not chasing': {
@@ -230,6 +243,10 @@ export interface Ranked {
   says: string;
   /** What the manager can ask them to do. Null where there is nothing to ask for. */
   ask: string | null;
+  /** Whether an admin did not let this person in, who decided and when (request 85). Null where not. */
+  notLetIn: boolean;
+  notLetInBy: string | null;
+  notLetInAt: Date | null;
 }
 
 /**
@@ -266,6 +283,8 @@ export function whatToAskFor(row: PersonRow, alreadySaid = false): string | null
   const start = subjectFor(row, true);
   /* "Ask a colleague to check in" would mean anybody; the row is about one person, so "this colleague". */
   const them = subjectFor(row, false).replace(/^(?:a|an|one|another)\s+(?:[a-z]+\s+)?colleague$/, 'this colleague');
+  /* Somebody an admin did not let in cannot be asked to do anything (screens request 85). */
+  if (row.notLetIn) return null;
   if (!row.answeredThisRound) return `Ask ${them} to check in.`;
   const worst = [...row.inTheWay]
     .filter((b) => b.tried !== 'escalated' && b.tried !== 'went-around')
@@ -330,6 +349,9 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
           ? `${subjectFor(r, true)} has checked in.`
           : whatHappened(r, reason, roundsPlanned),
         ask,
+        notLetIn: !!r.notLetIn,
+        notLetInBy: r.notLetIn?.by ?? null,
+        notLetInAt: r.notLetIn?.at ?? null,
       };
     })
     .sort((a, b) => {
