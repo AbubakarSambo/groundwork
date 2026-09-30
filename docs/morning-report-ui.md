@@ -6935,4 +6935,16 @@ Two findings for the engine, both in request 95:
 
 The pictures are in the scratchpad's `pictures/g2a/`, before and after. Group 2's review comes once all four pieces are done.
 
+**Group 2, second piece: the You page is rebuilt from the shared parts (1 October).**
+- It keeps every section the server sends, and every pattern and coaching piece, unchanged.
+- The line under "You" now changes with the reader, as in the prototype's four versions.
+- The next check-in is the prototype's dark-edged card, with the page's one navy "Start it".
+- "Download it" sits beside its sentence.
+- Today had the same double navy fault: with two check-ins to start, only the first "Start it" is now navy.
+- The privacy tests for You pass (58 of 58), and so does the button test.
+
+One fault in the data, not the page: "What you said you'd do" lists each promise twice, short and in full, so four promises show as eight. That is request 96.
+
+The pictures are in the scratchpad's `pictures/g2b/`.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
