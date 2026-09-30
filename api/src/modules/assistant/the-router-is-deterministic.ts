@@ -22,6 +22,8 @@ export type Lane =
   | 'what_did_i_commit_to'
   | 'how_we_work'
   | 'what_did_i_say'
+  | 'what_did_they_say'
+  | 'what_next'
   | 'how_am_i_doing'
   | 'where_am_i_needed'
   | 'what_is_stuck'
@@ -169,6 +171,18 @@ const RULES = [
     /\bhelp\s+(?:me|us)\s+(?:to\s+)?(?:set|write|agree|work\s+out)\b.*\b(?:objectives?|okrs?|goals?|targets?)\b/i,
     /\b(?:objective|okr|goal)\s+setting\b/i,
   ]),
+  rule('what_next', [
+    /*
+     * "WHAT SHOULD I DO NEXT" (week 17): one thing, from the reader's own commitments, to-dos and
+     * what is waiting on them. Above `where_am_i_needed`, whose "what should I do this week" is a
+     * question about where to spend attention across people; this one is a single next action.
+     * Narrow: it needs the word next, now or first beside "what should I do".
+     */
+    /\bwhat\s+(?:should|shall|do|can)\s+i\s+do\s+(?:next|now|first)\b/i,
+    /\bwhat(?:'s| is)\s+next\s+for\s+me\b/i,
+    /\bwhat(?:'s| is)\s+my\s+next\s+(?:step|move|thing)\b/i,
+    /^\s*what\s+next\s*\??\s*$/i,
+  ]),
   rule('where_am_i_up_to', [
     /*
      * Above the handoff and coaching lanes. "What am I meant to be doing" from somebody in their
@@ -275,6 +289,14 @@ const RULES = [
     /\bi'?m\s+stuck\b/i,
     /\bhow\s+do\s+i\s+get\s+better\b/i,
     /\bwhat\s+should\s+i\s+(?:work on|focus on)\b/i,
+  ]),
+  rule('what_did_they_say', [
+    /*
+     * WHAT SOMEBODY ELSE SAID (week 17). Above `what_did_i_say`, which owns the first person; the
+     * name is refused the pronouns so "what did I say" and "what did we agree" never land here. The
+     * name is one or two words. It is answered only from what the asker may already read.
+     */
+    /\bwhat\s+(?:did|has|have|does)\s+(?!(?:i|we|you|they|he|she|it|the|our|my|everyone|everybody|anyone|anybody|people|someone|somebody)\b)([A-Za-z][\w'’-]*(?:\s+[A-Za-z][\w'’-]*)?)\s+(?:say|said|tell|told|mention(?:ed)?|write|wrote|report(?:ed)?)\b/i,
   ]),
   rule('what_did_i_say', [
     /*

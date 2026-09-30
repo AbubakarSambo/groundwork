@@ -762,3 +762,57 @@ There is one sentence per person and no sentence compares two people, so the scr
 When it is worked out. When a check-in comes in, and stored without names (by the report's labels; names go in when it is served). Opening the page builds nothing. The product writes the sentence from the record, so no model and no prompt version are involved.
 
 Code: `api/src/modules/reports/the-weekly-sentence-about-each-person.ts`, `the-weekly-report.service.ts`, `the-weekly-report.controller.ts`. Tests: `the-weekly-sentence-about-each-person.spec.ts`.
+
+## Week 17: Ask Groundwork answers "What should I do next?", "What did Femi say last week?", and says where every answer came from
+
+### A new block, `source`
+
+Every reply is still `{ blocks, composedBy, lane }`. There is one new block type, `source`, which is a link-like block saying which record an answer was built from:
+
+```
+{ "type": "source",
+  "label": "Femi's check-in of 24 September on Sales team, Q3",
+  "says": "This is from Femi's check-in of 24 September on Sales team, Q3.",
+  "href": "/grounds/<groundId>/session/2",
+  "kind": "check_in" | "report" | "to_dos" | "commitments" | "today",
+  "id": "<groundId>"            // only where the record is on a check-in
+}
+```
+
+- The same sentence (`says`) is already the last line of the text block, so a screen that draws only the text still tells the reader where it came from. Draw `label` as the link and do not print `says` a second time.
+- `href` is a path within Groundwork, relative on purpose, as for `next_step`. The four paths are the round's report (`/grounds/:id/session/:n`), the report on a check-in (`/grounds/:id/report`), your to-do list (`/suite/todos`), your commitments (`/you`) and Today (`/today`).
+- An answer can carry more than one `source` block, in the same order as the parts of the text, when it draws on more than one check-in.
+- The older answers that read a record now carry one too: "What is on my list?" (kind `to_dos`), "What did I commit to?" (`commitments`), "Where am I needed?" (`today`) and "What came of it?" (`report`). An answer with nothing behind it (an empty list, "I cannot show you that.") carries none.
+
+### "What should I do next?" (lane `what_next`)
+
+One thing first, with why, and the rest counted, never listed. Built only from the reader's own open commitments, their own to-dos, and what is waiting on them (what Today reads). The order is: a commitment whose date has passed, then somebody waiting on you, then the to-do with the nearest date (or the oldest), then the open commitment with the nearest date. What a person reads, for example:
+
+> Start with "Send the Westgate price list". You said you would do it by Friday, and the date you gave has passed, so whoever is counting on it is still waiting. Either do it, or tell them when it will happen. After that, one more thing is open. Ask me what is on your list, or where you are needed, to see them.
+>
+> This is from the commitments you have made in your check-ins.
+
+Or, when somebody is waiting on you: "Start with Femi. Femi is waiting on you for the discount approval, and has been for 6 days. Nobody else can clear this one." When nothing is open: "I have nothing to put first. You have no open commitments or to-dos, and nobody is waiting on you in the record. That can also mean something has been said somewhere I cannot see."
+
+### "What did Femi say last week?" (lane `what_did_they_say`)
+
+Answered only with what the asker may already read of Femi's words. The engine lists the check-ins the asker may read at all (the same rule as everywhere else, so an admin with no access to a performance plan, a promotion or a renewal gets nothing from it), and reads the newest round of each as the asker. So Femi's lines come word for word only where the report serves them to the asker; before a round is released a colleague gets the wall's own sentence instead; in an evaluation check-in the person being reviewed gets the facts sentence. Femi's own report, the questions anybody asked Ask Groundwork, a lead's private notes and anybody's load are never opened.
+
+What a person reads:
+
+> Here is what Femi said in their check-in of 24 September on Sales team, Q3.
+> - "Shipped the price list to Harbor Foods."
+> - "Still waiting on finance for the Green Mart terms."
+> This is from Femi's check-in of 24 September on Sales team, Q3.
+
+When the words are not served to the asker: "I cannot show you Yemi's words from their check-in of 30 September on Kilimani launch. Answered. What they said opens to you when the report releases." When there is nothing the asker may read: "I cannot show you that. I have nothing from Femi in the check-ins you can read." That sentence is the same whether Femi said nothing or said something the asker may not read, on purpose. When the asker named a time and nothing fits it, the answer says so ("I cannot find anything Femi said today in a check-in you can read. The most recent I can show you is below.") and gives the most recent, dated. Up to three check-ins are read out, newest first, each with its own source. A person's own words are read back as "you" and "your check-in".
+
+### The wording of the answers
+
+A model may reword these answers, but the engine refuses the reworded version, and sends its own words, if any name, number, date or quoted line is not exactly as the record gave it. The quoted-line check is new and applies to every answer Ask Groundwork words, not only these.
+
+### A guest
+
+A guest is still answered only about their own check-in (decision 36). "What did Femi say last week?" gets the plain list of what they can ask; "What should I do next?" gets their own commitments from their own check-in and nothing of anyone else's.
+
+Code: `api/src/modules/assistant/what-they-said-that-you-may-read.ts`, `what-to-do-next.ts`, `a-source-says-where-it-came-from.ts`, the `source` block in `a-reply-is-a-payload-not-a-string.ts`, the two lanes in `the-router-is-deterministic.ts`. Tests: `what-they-said-and-what-is-next-as-each-reader-reads-it.spec.ts`.

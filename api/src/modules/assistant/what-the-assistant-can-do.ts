@@ -192,6 +192,24 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     refuses: ['how does the freeze work', 'what should we talk about'],
   },
   {
+    key: 'what_next',
+    does: 'The one thing to do next, from your own commitments, to-dos and what is waiting on you, and why it is first',
+    writes: 'nothing',
+    ordered:
+      'Above where_am_i_needed. "What should I do this week" is where to spend attention across people; this is one next action, and needs the word next, now or first.',
+    owns: ['what should I do next?', 'what do I do next', 'what is next for me'],
+    refuses: ['what should I do this week', 'what is on my list?', 'what am I on'],
+  },
+  {
+    key: 'what_did_they_say',
+    does: 'What a named colleague said, only as much of it as you may already read, and which check-in it is from',
+    writes: 'nothing',
+    ordered:
+      'Above what_did_i_say, which owns the first person. The name cannot be I, we, the or any other pronoun, so "what did we agree" stays with what_came_of_it.',
+    owns: ['what did Femi say last week?', 'what has Femi said', 'what did Femi Adeyemi tell me yesterday'],
+    refuses: ['what did I say about pricing', 'what did we agree', 'what did the last check-in say'],
+  },
+  {
     key: 'what_did_i_say',
     does: 'Something this person said before, in their own words',
     writes: 'nothing',

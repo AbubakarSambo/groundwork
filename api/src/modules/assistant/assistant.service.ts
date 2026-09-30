@@ -1,9 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { DependencyStatus } from '@prisma/client';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
-import { Reply, rules, text, picker } from './a-reply-is-a-payload-not-a-string';
+import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
+import { ReportsService } from '../reports/reports.service';
+import { whatSomeoneSaid } from './what-they-said-that-you-may-read';
+import { theOneToDoFirst, whatMustSurviveIn } from './what-to-do-next';
+import { aReportSource, YOUR_TO_DOS_SOURCE, YOUR_COMMITMENTS_SOURCE, WHAT_NEEDS_YOU_SOURCE } from './a-source-says-where-it-came-from';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -148,6 +152,13 @@ export class AssistantService {
     private readonly reader: ReadItIfWeCanService,
     private readonly email: EmailService,
     private readonly grounds: GroundsService,
+    /*
+     * THE REPORT AS IT IS SERVED TO ONE READER (week 17). Asked only as the person asking, for "what
+     * did Femi say", so a colleague's words reach this assistant only as far as that read serves
+     * them. Optional so the many tests that build the assistant without it still do; with it
+     * missing, that question is answered "I cannot show you that".
+     */
+    @Optional() private readonly reports?: ReportsService,
   ) {}
 
   /**
@@ -320,6 +331,10 @@ export class AssistantService {
         return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
         return this.compose(await this.howAmIDoing(organizationId, who));
+      case 'what_next':
+        return this.whatNext(organizationId, who);
+      case 'what_did_they_say':
+        return this.whatTheySaid(organizationId, userId ?? null, routed.subject, message);
       case 'what_did_i_say':
         return this.compose(await this.whatDidISay(organizationId, who, routed.subject ?? message));
       case 'how_we_work':
@@ -472,7 +487,7 @@ export class AssistantService {
 
     /* Never trimmed away when the list is long. A long list is when it matters most. */
     parts.push(week.whatThisIsNot.join(' '));
-    return rules('where_am_i_needed', text(parts.join('\n\n')));
+    return this.withItsSource(rules('where_am_i_needed', text(parts.join('\n\n'))), WHAT_NEEDS_YOU_SOURCE);
   }
 
   private async whatIsStuck(organizationId: string, who: string | null, question = ''): Promise<Reply> {
@@ -648,6 +663,53 @@ export class AssistantService {
       wins: bankedWins(load, unblocked._sum.weight ?? 0, since),
     });
     return said ? `\n\n${said}` : '';
+  }
+
+  /**
+   * ONE THING FIRST, AND WHY (week 17). Read as the person asking and nobody else: their own
+   * commitments and to-dos, and what is waiting on them. See what-to-do-next.ts.
+   */
+  private async whatNext(organizationId: string, who: string | null): Promise<Reply> {
+    if (!who) return rules('what_next', text('I cannot see you in your organisation records, so I have nothing to put first.'));
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true } });
+    const [commitments, toDos] = await Promise.all([
+      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }),
+      this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
+    ]);
+    const key = person?.email?.toLowerCase() ?? null;
+    const week = key ? await this.board.whoNeedsYouThisWeek(organizationId, key) : { buckets: [] as any[] };
+    const waitingOnYou = (week.buckets as any[]).filter((b) => b.kind === 'WAITING_ON_YOU').flatMap((b) => b.needs as any[]);
+    const reply = theOneToDoFirst({ commitments: commitments as any, toDos: toDos as any, waitingOnYou, now: new Date() });
+    return this.compose(reply, whatMustSurviveIn(reply));
+  }
+
+  /**
+   * WHAT SOMEBODY ELSE SAID, AS MUCH AS THIS READER MAY ALREADY READ (week 17). See
+   * what-they-said-that-you-may-read.ts: nothing about a person is read here, only the report of each
+   * check-in as the asker is served it. Their exact lines survive any rewording.
+   */
+  private async whatTheySaid(organizationId: string, userId: string | null, subject: string | undefined, message: string): Promise<Reply> {
+    const membership = userId
+      ? await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } })
+      : null;
+    const reply = await whatSomeoneSaid(
+      { db: this.prisma as any, reports: this.reports as any },
+      { userId, organizationId, role: membership?.role ?? null },
+      subject,
+      message,
+    );
+    const first = reply.blocks[0];
+    const keep = first && first.type === 'text'
+      ? first.body.split('\n').filter((l) => l.startsWith('- "')).map((l) => l.slice(2))
+      : [];
+    return this.compose(reply, keep);
+  }
+
+  /** The answer, then where it came from, in a sentence and as a block. Used by every lane that reads a record. */
+  private withItsSource(reply: Reply, source: SourceBlock): Reply {
+    const first = reply.blocks[0];
+    if (!first || first.type !== 'text') return reply;
+    return { ...reply, blocks: [text(`${first.body}\n\n${source.says}`), ...reply.blocks.slice(1), source] };
   }
 
   /**
@@ -1810,6 +1872,7 @@ export class AssistantService {
         id: true,
         ground: {
           select: {
+            id: true,
             label: true,
             initiatorId: true,
             /*
@@ -1884,7 +1947,11 @@ export class AssistantService {
       body.push(`${finished.length - ROUNDS_RECALLED} earlier check-ins are on your check-ins page.`);
     }
 
-    return rules('what_came_of_it', text(body.join('\n').trim()));
+    const newest = finished[0];
+    return this.withItsSource(
+      rules('what_came_of_it', text(body.join('\n').trim())),
+      aReportSource({ on: newest.ground.report.releasedAt, label: newest.ground.label, groundId: (newest.ground as any).id }),
+    );
   }
 
   /** The running history, scoped to one person and never anybody else's turns. */
@@ -3003,7 +3070,8 @@ export class AssistantService {
       where: { organizationId, personExternalId: who, state: 'OPEN' },
       orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }],
     });
-    return rules('my_to_dos', text(listToDos(open)));
+    const listed = rules('my_to_dos', text(listToDos(open)));
+    return open.length ? this.withItsSource(listed, YOUR_TO_DOS_SOURCE) : listed;
   }
 
   private async tickOffAToDo(organizationId: string, who: string | null, said: string): Promise<Reply> {
@@ -3041,7 +3109,7 @@ export class AssistantService {
     if (late.length) {
       parts.push(`\n${late.length} of those ${late.length === 1 ? 'is' : 'are'} past the date you gave. That is worth saying out loud in your next check-in rather than letting it sit.`);
     }
-    return rules('what_did_i_commit_to', text(parts.join('\n')));
+    return this.withItsSource(rules('what_did_i_commit_to', text(parts.join('\n'))), YOUR_COMMITMENTS_SOURCE);
   }
 
   private async whatICanSee(organizationId: string): Promise<Reply> {
