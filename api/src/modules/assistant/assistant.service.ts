@@ -802,7 +802,7 @@ export class AssistantService {
     organizationId: string,
     personId: string,
     groundId?: string,
-  ): Promise<{ documentId: string; groundId: string; fileName: string; holds: WhatLanded } | null> {
+  ): Promise<{ documentId: string; groundId: string; fileName: string; holds: WhatLanded; visibility: string | null } | null> {
     const person = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
       select: { linkedUserId: true },
@@ -818,13 +818,13 @@ export class AssistantService {
       where: { participantId: { in: participants.map((p) => p.id) }, NOT: { holds: { equals: null as any } } },
       orderBy: { createdAt: 'desc' },
       take: 5,
-      select: { id: true, fileName: true, holds: true, groundId: true },
+      select: { id: true, fileName: true, holds: true, groundId: true, visibility: true },
     });
     for (const d of docs) {
       const holds = (d.holds ?? {}) as any;
       const waiting: { name: string; target: number; ownerParticipantId: string | null }[] = Array.isArray(holds.waiting) ? holds.waiting : [];
       if (holds.takenAt || !waiting.length) continue;
-      return { documentId: d.id, groundId: d.groundId, fileName: d.fileName, holds };
+      return { documentId: d.id, groundId: d.groundId, fileName: d.fileName, holds, visibility: (d as any).visibility ?? null };
     }
     return null;
   }
@@ -839,9 +839,10 @@ export class AssistantService {
   private async proposeDocumentNumbers(
     organizationId: string,
     who: string,
-    waiting: { documentId: string; groundId: string; fileName: string; holds: WhatLanded },
+    waiting: { documentId: string; groundId: string; fileName: string; holds: WhatLanded; visibility?: string | null },
   ): Promise<Reply> {
-    const said = theContextWeHave(waiting.holds);
+    /* The yes writes a note everyone reads (writeADocumentsNumbers, addNote), so it is said here first. */
+    const said = theContextWeHave(waiting.holds, { willNoteIt: { visibility: waiting.visibility } });
     /* Cannot happen in practice - `waitingDocumentFor` only returns a document whose `waiting` array
        is non-empty, and that is exactly what makes `theContextWeHave` return something. Guarded
        anyway rather than trusting that link never breaks. */

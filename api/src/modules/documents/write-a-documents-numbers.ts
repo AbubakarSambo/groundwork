@@ -14,6 +14,7 @@
 import { ContextItemKind, ContextNoteAudience } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { whatWasRecordedFromADocument } from './what-was-recorded-from-a-document';
+import { theNoteAboutWhereTheNumbersCameFrom } from './the-note-about-where-numbers-came-from';
 
 export interface ADocumentsWaitingRow {
   name: string;
@@ -80,9 +81,7 @@ export async function writeADocumentsNumbers(prisma: PrismaService, input: Write
       data: {
         groundId: input.groundId,
         kind: ContextItemKind.NOTE,
-        text: input.documentVisibility === 'OPEN'
-          ? `The numbers on this check-in come from ${input.fileName}.`
-          : 'The numbers on this check-in come from a document that was attached when it was set up.',
+        text: theNoteAboutWhereTheNumbersCameFrom(input.fileName, input.documentVisibility),
         audience: ContextNoteAudience.EVERYONE,
         source: 'PASTE',
         authorUserId: input.authorUserId ?? undefined,

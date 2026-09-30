@@ -1,3 +1,4 @@
+import { aboutTheNoteBeforeTheYes } from './the-note-about-where-numbers-came-from';
 /**
  * WHAT A DOCUMENT HOLDS, READ ONCE, AND SAID BACK IN THE PRODUCT'S OWN WORDS.
  *
@@ -164,7 +165,7 @@ export const BANK_DETAILS_LEFT_OUT = { what: 'Bank account details', why: 'Never
  * `asking` adds the question at the end, which the chat wants and a page does not: a page is a
  * statement of what is on record, and a question on a page is a question nobody can answer.
  */
-export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean } = {}): string | null {
+export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; willNoteIt?: { visibility?: string | null } } = {}): string | null {
   const something = held.forOnePerson.length || held.forEverybody.length || held.dates.length || held.unmatched.length;
   if (!something) return null;
   /*
@@ -201,6 +202,10 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean } = 
   }
   if (held.leftOut?.some((l) => l.what === BANK_DETAILS_LEFT_OUT.what)) {
     lines.push('', 'It also held bank account details. Those are never kept, in any document.');
+  }
+  /* The yes also writes a note everyone reads. Said here, before the yes, where it will be written. */
+  if (opts.willNoteIt && held.forEverybody.length + held.forOnePerson.length) {
+    lines.push('', aboutTheNoteBeforeTheYes(held.fileName, opts.willNoteIt.visibility));
   }
   if (opts.asking) lines.push('', 'Is that right?');
   return lines.join('\n');

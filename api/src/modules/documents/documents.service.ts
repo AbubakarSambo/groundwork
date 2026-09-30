@@ -130,7 +130,7 @@ function toDocShape(
     holds: doc.holds ?? null,
     theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any) : null,
     /* The same sentence with the question on it, for the conversation that is waiting on the read. */
-    askingAboutIt: doc.holds ? theContextWeHave(doc.holds as any, { asking: true }) : null,
+    askingAboutIt: doc.holds ? theContextWeHave(doc.holds as any, { asking: true, willNoteIt: { visibility: (doc as any).visibility } }) : null,
     /* ITEM BY ITEM, WITH PAGES (week 14, request 6c): what it took, and what it left out and why.
        Served on the same rows as `holds`, so to exactly the people who may see this document. */
     read: aDocumentReadItemByItem(doc.holds as any),
@@ -494,7 +494,7 @@ export class DocumentsService {
        * documents" - a filing receipt. The check-in chat had said what the sheet held and asked
        * whether it was right; the lead's own tab, where the numbers are set, said nothing at all.
        */
-      askingAboutIt: held ? theContextWeHave(held, { asking: true }) : null,
+      askingAboutIt: held ? theContextWeHave(held, { asking: true, willNoteIt: { visibility: (doc as any).visibility } }) : null,
       numbersWaiting: (held as any)?.waiting?.length ?? 0,
     };
   }
