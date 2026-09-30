@@ -20,9 +20,13 @@ describe('a private file is not named in the report, the board or anybody else\'
   });
 
   it('the note that reaches everybody\'s check-in names a file only when everybody may open it', () => {
-    const at = GROUNDS.indexOf('The numbers on this check-in come from');
-    const near = GROUNDS.slice(at - 200, at + 300);
-    expect(near).toMatch(/visibility === 'OPEN'/);
+    /* The write moved into one shared place on 30 September (58960b6d), called by the setup chat,
+       the check-in and Ask Groundwork, so the note is checked where it is now written. */
+    const WRITER = read('documents/write-a-documents-numbers.ts');
+    const at = WRITER.indexOf('The numbers on this check-in come from');
+    expect(at).toBeGreaterThan(-1);
+    const near = WRITER.slice(at - 200, at + 300);
+    expect(near).toMatch(/[vV]isibility === 'OPEN'/);
     expect(near).toContain('a document that was attached when it was set up');
   });
 

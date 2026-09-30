@@ -69,6 +69,8 @@ describe('every surface that hands out whose number it is', () => {
     'modules/board/the-kind-of-work.ts': 'the owner of a record of the kind of work, such as a deal or a deadline, not of a target',
     'modules/documents/documents.service.ts': 'writes owners when a document of targets is read',
     'modules/documents/what-a-document-holds.ts': 'the shape a document is read into, before anybody reads it',
+    /* 30 September (58960b6d): the one write, on a yes, of the owners a document's read already resolved. */
+    'modules/documents/write-a-documents-numbers.ts': 'writes the owners a document read resolved, once somebody says yes',
     /* Week 13: the one place it names an owner is the goal it writes when the lead confirms a
        proposal from their own plan. Every proposal route is the lead's alone (403 for everyone else). */
     /* Ask Groundwork's recall (f25e97d9) selects each target's owner only to hand it to
