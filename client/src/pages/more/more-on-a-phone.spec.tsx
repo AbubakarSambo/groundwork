@@ -158,10 +158,16 @@ describe('switching organisation and signing out on a phone', () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
 
-  /* U.3: "Start my own workspace" opens "Create an organisation" (#/org-new), which asks the name
-     first, instead of making one straight away after a confirm box. Storing (user, token) the right
-     way round is now tested on that page (pages/org/OrgNewPage.spec.tsx). */
-  it('"Start my own workspace" opens "Create an organisation"', async () => {
+  /*
+   * U.3: "Create an organisation" opens the create-organisation page (#/org-new), which asks the
+   * name first, instead of making one straight away after a confirm box. Storing (user, token)
+   * the right way round is now tested on that page (pages/org/OrgNewPage.spec.tsx).
+   *
+   * RENAMED FROM "Start my own workspace" (group 1 review): "workspace" is not a word this product
+   * uses anywhere else, and the button only ever creates a new organisation - it never offers to
+   * join one - so it says exactly what it does.
+   */
+  it('"Create an organisation" opens the create-organisation page', async () => {
     useAuthStore.setState({ user: PARTICIPANT, token: 't', isAuthenticated: true } as any)
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
     qc.setQueryData(['grounds'], [])
@@ -176,7 +182,7 @@ describe('switching organisation and signing out on a phone', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    fireEvent.click(within(main()).getByRole('button', { name: 'Start my own workspace' }))
+    fireEvent.click(within(main()).getByRole('button', { name: 'Create an organisation' }))
     expect(await screen.findByText('The create page')).toBeInTheDocument()
   })
 })

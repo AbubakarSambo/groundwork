@@ -15,8 +15,9 @@ import { Button } from '@/components/gw/kit'
  *
  * TWO WAYS HERE, ONE CARD.
  *
- *   - Making a new one, from "Start my own workspace" or an old /org/setup link. It makes the
- *     organisation, makes you its owner and moves you into it.
+ *   - Making a new one, from "Create an organisation" (renamed from "Start my own workspace",
+ *     group 1 review - "workspace" is not a word this product uses anywhere else) or an old
+ *     /org/setup link. It makes the organisation, makes you its owner and moves you into it.
  *   - Naming the one a first Google sign-in has just made (`?naming=1`). Google has already proved
  *     the address, so the server made an organisation straight away; this names it rather than
  *     making a second one. "Cancel" keeps the name it was given.

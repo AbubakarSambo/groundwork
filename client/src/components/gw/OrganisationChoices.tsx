@@ -48,8 +48,15 @@ export function OrganisationChoices() {
       {onlyOneNotChosen && (
         <div className="gw-rl-menu-note">
           {whyYouAreIn(myOrgs[0], user?.email) && <p>{whyYouAreIn(myOrgs[0], user?.email)}</p>}
+          {/*
+           * "CREATE AN ORGANISATION", NEVER "START MY OWN WORKSPACE" (group 1 review): "workspace"
+           * is not a word this product uses anywhere else, and `startMyOwnWorkspace` only ever
+           * navigates to /org-new, which makes a new organisation - it never offers to join one -
+           * so the button says exactly what it does, the way "Join or create an organisation"
+           * above it says what THAT link does.
+           */}
           <button type="button" className="gw-b gw-b-secondary gw-b-small gw-b-wide" onClick={startMyOwnWorkspace}>
-            Start my own workspace
+            Create an organisation
           </button>
         </div>
       )}

@@ -250,6 +250,11 @@ describe('Suites in the sidebar (E, U.17), as the prototype draws it for each re
   })
 })
 
+/*
+ * RENAMED (group 1 review): "Start my own workspace" is now "Create an organisation" -
+ * `startMyOwnWorkspace` only ever navigates to /org-new, which makes a new organisation and never
+ * offers to join one, and "workspace" is not a word this product uses anywhere else.
+ */
 describe('why you are in the one organisation you did not make (U.3 review)', () => {
   const PERSON = { ...LEAD, email: 'ama@coamana.test' }
   const note = (rail: HTMLElement) => {
@@ -260,22 +265,22 @@ describe('why you are in the one organisation you did not make (U.3 review)', ()
 
   it('on its list of people', () => {
     const { rail } = shell(PERSON, [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true, joinedHow: 'list' }])
-    expect(reads(note(rail))).toBe('You are in Coamana because your email address was on its list of people.Start my own workspace')
+    expect(reads(note(rail))).toBe('You are in Coamana because your email address was on its list of people.Create an organisation')
   })
 
   it('by email domain', () => {
     const { rail } = shell(PERSON, [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true, joinedHow: 'domain' }])
-    expect(reads(note(rail))).toBe('You are in Coamana because anyone with an @coamana.test email can join it.Start my own workspace')
+    expect(reads(note(rail))).toBe('You are in Coamana because anyone with an @coamana.test email can join it.Create an organisation')
   })
 
   it('by the invite link', () => {
     const { rail } = shell(PERSON, [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true, joinedHow: 'link' }])
-    expect(reads(note(rail))).toBe('You are in Coamana because you joined through its invite link.Start my own workspace')
+    expect(reads(note(rail))).toBe('You are in Coamana because you joined through its invite link.Create an organisation')
   })
 
   it('with no reason from the server, no reason is given', () => {
     const { rail } = shell(PERSON, [{ id: 'o1', name: 'Coamana', role: 'MEMBER', active: true, joinedHow: null }])
-    expect(reads(note(rail))).toBe('Start my own workspace')
+    expect(reads(note(rail))).toBe('Create an organisation')
     expect(rail).not.toHaveTextContent(/because/)
   })
 })
