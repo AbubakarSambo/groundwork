@@ -9,7 +9,11 @@ import { join } from 'path'
  * check-ins somebody is in; the nav item below it said the same word and went to a page of the same
  * thing. The page is not redundant - it holds what the rail does not show - but the name was.
  */
-const SHELL = readFileSync(join(__dirname, 'AppShell.tsx'), 'utf8')
+/* NAV_ITEMS moved out of AppShell.tsx into nav-items.tsx (group 1 rebuild), so a rebuilt page
+   (MorePage.tsx) can read `navItemsFor` without pulling in the rest of AppShell's own rendering -
+   see the-rebuilt-pages-use-only-the-new-parts.spec.ts. Behaviour is unchanged; only where the nav
+   item list itself is written moved, so this reads it there now. */
+const SHELL = readFileSync(join(__dirname, 'nav-items.tsx'), 'utf8')
 
 describe('two things are not both called check-ins', () => {
   it('the nav item says which check-ins it means', () => {

@@ -4,6 +4,11 @@ import * as path from 'path'
 
 const SRC = fs.readFileSync(path.join(__dirname, 'AppShell.tsx'), 'utf8')
 const SETTINGS = fs.readFileSync(path.join(__dirname, '..', '..', 'pages', 'settings', 'SettingsPage.tsx'), 'utf8')
+/* NAV_ITEMS and navItemsFor moved out of AppShell.tsx into nav-items.tsx (group 1 rebuild), so a
+   rebuilt page (MorePage.tsx) can read `navItemsFor` without pulling in the rest of AppShell's own
+   rendering - see the-rebuilt-pages-use-only-the-new-parts.spec.ts. AppShell.tsx still imports and
+   re-exports it, so behaviour is unchanged; only where the nav item list itself is written moved. */
+const NAV_ITEMS_SRC = fs.readFileSync(path.join(__dirname, 'nav-items.tsx'), 'utf8')
 
 /*
  * COLLAPSING THE RAIL USED TO THROW AWAY THE ONE THING IT IS FOR. Seven nav icons and nothing about
@@ -49,8 +54,8 @@ describe('a phone can sign out', () => {
   })
 
   it('and settings is a route everybody has, so the mobile bar carries it', () => {
-    expect(SRC).toMatch(/label: 'Settings'/)
-    const settingsItem = SRC.slice(SRC.indexOf("label: 'Settings'"), SRC.indexOf("label: 'Settings'") + 220)
+    expect(NAV_ITEMS_SRC).toMatch(/label: 'Settings'/)
+    const settingsItem = NAV_ITEMS_SRC.slice(NAV_ITEMS_SRC.indexOf("label: 'Settings'"), NAV_ITEMS_SRC.indexOf("label: 'Settings'") + 220)
     expect(settingsItem).not.toMatch(/adminOnly|platformAdminOnly/)
   })
 })
