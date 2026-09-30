@@ -31,6 +31,24 @@ All recorded in `docs/decisions-merged.md` (`2dfec86f`):
 - **Decision 54:** existing check-ins are not reopened by a migration.
 - **Clarifications** to decisions 4, 5, 6, 9, 12, 17, 21 and 27, where the old and new decisions disagreed. Each is marked "clarified 29 September".
 
+### One chat: Ask Groundwork takes over the context chat, piece 1 (decision 50)
+
+Built in `f978d3cf`. **The old context chat still works, untouched, and stays until every item is proven.**
+- **Ask Groundwork has a lane for adding context to a check-in.** It calls the context chat's own code, not a copy, so the rules are the same by construction:
+  - what is pulled out is said back and confirmed before it is saved;
+  - hidden targets and private documents stay private;
+  - bank details are hidden.
+- **Who may use it is unchanged.** The lead or an admin may hold the conversation, but only the lead may confirm a change. The test the inventory said was missing now pins this. A participant, a guest, or an admin of another organisation never reaches the lane.
+- **Which check-in:** it uses the one chosen, the one named, or the only one the person may set up. If it cannot tell, it asks.
+- **What is said in this lane is not kept in the person's private Ask Groundwork history.** The context chat keeps none today either.
+- **A gap found and fixed:** Ask Groundwork worked out which check-in a question was about, then never passed it on.
+- **Proven so far** (see "Comparison, item by item" in `docs/context-chat-inventory.md`): 3 items with new tests, and 12 by construction. That is not yet the live proof Hafsah asked for.
+- **Piece 2 is being built:**
+  - the exact question for a person, the lead's private notes, and typing a context line, through Ask Groundwork;
+  - carrying on a setup conversation over several turns;
+  - "Context and resources" in the engine's own sentences;
+  - a script that puts the same documents and messages through both and compares everything saved. It runs after run-20, because the API is busy.
+
 ### Decision 57, part C: steadiness, a second source of evidence, and confirming a role
 
 **How steady patterns are: not steady.** This is the most important finding tonight. A new read-only script, `api/journey/pattern-steadiness.ts` (`e9e6edae`), compares which person got which pattern across two runs of the same scenarios:
