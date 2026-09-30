@@ -68,7 +68,7 @@ import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant }
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
 import {
-  A_CHANGE_PROMPT, A_CHANGE_SCHEMA, whatChanged, whatTheyMeant, whatWillChange, whichOneDoYouMean,
+  A_CHANGE_PROMPT, A_CHANGE_SCHEMA, changeAnswersThisTurn, whatChanged, whatTheyMeant, whatWillChange, whichOneDoYouMean,
   type AChangeHeard, type AThingOnRecord, type WhatTheyWant,
 } from './what-the-lead-wants-changed';
 import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-second-organisation';
@@ -2870,7 +2870,25 @@ export class GroundsService {
     let changeSay: string | null = null;
     if (!fromAPaste && lastFromLead) {
       const wants = await this.whatTheyWantChanged(groundId, lastFromLead).catch(() => null);
-      if (wants) {
+      /*
+       * A CONFIDENT CHANGE WINS WHATEVER IS OPEN; AN AMBIGUOUS ONE DOES NOT SWALLOW AN ANSWER.
+       *
+       * Driven live: a lead was asked what they had seen of Ben, and answered "He has missed the last
+       * two pipeline updates. I spoke to him once. I want the update in by every Friday." - an answer
+       * to the open `objectives` question, naming an expectation. `whatTheyWantChanged` read "I want
+       * the update..." as an attempt to change something called "the update", found nothing on the
+       * check-in that matches, and answered "I cannot find 'the update' on this check-in" - which
+       * swallowed the whole turn before the open-gap extraction below ever ran.
+       *
+       * "Drop the 30-day rule" still has to win under an open gap (item 7's own rule: a change is
+       * answered whatever question was underneath it) - but that case is CONFIDENT: `wants.apply` is
+       * set because exactly one thing on the record matched. What is refused here is only the
+       * AMBIGUOUS case - `wants.apply` is null because nothing or more than one thing matched - while a
+       * gap is open and could still be what the message was actually answering. With nothing open, the
+       * ambiguous "which one do you mean" is still the right reply, because there is no competing
+       * question this message could be an answer to instead.
+       */
+      if (wants && changeAnswersThisTurn(wants, openGap)) {
         changeSay = wants.say;
         /*
          * A change they asked for is the whole of this turn, whether it can be placed or not. The
