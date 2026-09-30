@@ -15,7 +15,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
-import { Sec, Card, Row, Pill, btn, miniBtn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
+import { Card, Row, Pill, btn, miniBtn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
 import { todayApi, type Need } from '@/api/today'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
@@ -56,7 +56,9 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, sessionDay, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { TheCheckInHeader } from '@/components/gw/TheCheckInHeader'
+import { Page, CheckInHeader, Section } from '@/components/gw/ui'
+import { cadenceLabel } from '@/lib/cadence'
+import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { KindOfWorkBanner, WorkRecordsSections } from './WorkRecords'
 
 /**
@@ -243,6 +245,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     enabled: !!id,
   })
   const user = useAuthStore((st) => st.user)
+  const showAsk = useAskStore((s) => s.show)
   const [searchParams] = useSearchParams()
   const justAnswered = searchParams.get('done') === '1'
   /* Whether to build the attendance grid as a grid at all. See the component it chooses. */
@@ -407,6 +410,36 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   /* Whether the check-in is over, so the board stops drawing a clock. See lib/a-ground-that-has-ended. */
   const groundEnded = hasEnded((b as any)?.groundStatus)
   const endedSaying = howItEnded({ status: (b as any)?.groundStatus, endState: (b as any)?.endState })
+  /*
+   * U.10 (a): THE HEADER'S OWN CADENCE LINE, THE PROTOTYPE'S ONE SENTENCE.
+   * board-as-lead.txt puts the cadence, the round count and the end date on one line under the
+   * title ("Daily on weekdays, from 4pm. Session 38 of 65. Runs until 30 September."). Built here,
+   * once ended replaced by the plain fact of how it ended, rather than left to the shared
+   * CheckInHeader (which other pages use with a cadence-only subtitle) to guess at.
+   */
+  const cadenceWords = (groundForSignals as any)?.cadence ? cadenceLabel((groundForSignals as any).cadence) : null
+  const spineWords = phaseSpineSentence(
+    b.phaseSpine?.currentSession ? { startsAt: null, endsAt: b.phaseSpine?.endsAt ?? null, currentSession: b.phaseSpine.currentSession } : null,
+    plannedSessions ?? null,
+  )
+  const cadenceLine = endedSaying ?? [cadenceWords ? `${cadenceWords}.` : null, spineWords].filter(Boolean).join(' ')
+  /*
+   * U.10 (a): THE SAME FIVE TABS, READ-ONLY FILTERED THE SAME WAY (an-admin-who-only-reads-has-no-
+   * check-in-tab.spec.tsx pinned this against the old TheCheckInHeader; the-board-as-each-reader-
+   * reads-it.spec.tsx now pins the same rule here). An admin who neither runs this check-in nor
+   * takes part in it gets the prototype's read-only three tabs (read-only-view.txt): Board, Context,
+   * People and setup - no Check-in (nothing of theirs to answer), no My work (nothing of theirs to
+   * carry).
+   */
+  const isAParty = !!b.myParticipantId
+  const myWorkTab = viewerRunsThisCheckIn ? 'sessions' : 'record'
+  const headerTabs = [
+    { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
+    ...(viewerRunsThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
+    { key: 'context', label: 'Context', to: `/grounds/${id}?tab=context` },
+    ...(viewerRunsThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
+    { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
+  ]
   const has = (s: string) => b.sections.includes(s as any)
   /* Said once, at the top - and the divergence card below stays short rather than repeating it. */
   /*
@@ -550,19 +583,28 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     (participantId === b.myParticipantId ? 'You' : nameByParticipantId.get(participantId)) || (yours ? 'You' : 'A colleague')
 
   return (
-    <div style={{ background: 'var(--gw-page)', minHeight: '100vh' }}>
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 80px' }}>
-
+    <Page>
+      {/*
+        U.10 (a): ONE PLAIN WRAPPER, SO THE SHARED PAGE FRAME'S OWN CHILD-TO-CHILD SPACING (30px,
+        for a page built from a handful of sections) DOES NOT REACH IN AND RE-SPACE THE BOARD'S OWN
+        SECTIONS, each of which already sets its own margin to match the prototype's own pixels
+        (picture-checked across every kind of board). Sole child of the Page frame, so nothing here
+        is touched by it; everything below is exactly as it was before this pass, apart from the
+        header itself.
+      */}
+      <div>
         {/* Somebody who has just answered from a link lands here with ?done=1: their answer landed, and where the report goes. */}
         {justAnswered && <ThatIsOnTheRecord groundId={id!} />}
 
         {/*
-          U.10 ITEM 2: THE PROTOTYPE'S HEADER AND TABS (board-as-lead.jpg), NOT THE DARK NAVY CARD.
+          U.10 (a): THE PROTOTYPE'S HEADER AND TABS (board-as-lead.jpg), NOT THE DARK NAVY CARD.
           "← Back to the check-in" and a dark header of the board's own invention are gone; every
-          check-in page now has one shared shell (TheCheckInHeader.tsx) for the breadcrumb, the
-          serif title, the cadence line, "Your check-in", "Ask" and the tab bar - built to be reused
-          by GroundAdminPage.tsx and GroundParticipantPage.tsx too (see that file for what is and is
-          not wired in this pass).
+          check-in page now shares the same header (components/gw/ui/CheckInHeader.tsx, as
+          GroundAdminPage.tsx and GroundParticipantPage.tsx already use it) for the breadcrumb, the
+          serif title, the cadence line, "Your check-in", "Ask" and the tab bar - drawn here inside
+          the shared Page frame (components/gw/ui/Page.tsx), not a bespoke wrapper of the board's
+          own. The old components/gw/TheCheckInHeader.tsx is retired from this page (it still runs
+          the report pages, which this task does not touch).
 
           THE OTHER BOARDS, BESIDE THE NAME OF THIS ONE (picture-check round 6, item A). A board was
           a page you arrived at from one check-in and left the same way - read one, back to the
@@ -575,17 +617,36 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           light ground. NOT WHEN THE BOARDS PAGE IS ALREADY SWITCHING: on /boards the tabs above do
           this job, and two switchers is a reader asking which of them is the real one.
         */}
-        <TheCheckInHeader
-          id={id!}
+        <CheckInHeader
+          crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: b.title }]}
           title={b.title}
-          cadence={(groundForSignals as any)?.cadence ?? null}
-          plannedSessions={plannedSessions}
-          currentSession={b.phaseSpine?.currentSession ?? null}
-          endsAt={b.phaseSpine?.endsAt ?? null}
-          endedSaying={endedSaying}
-          canRunThisCheckIn={viewerRunsThisCheckIn}
-          isAParty={!!b.myParticipantId}
+          subtitle={cadenceLine || undefined}
+          action={(
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+              {/*
+                THE PROTOTYPE USES TWO DIFFERENT WORDS HERE. The lead's own board says "Your
+                check-in" (board-as-lead.txt); a party's says "Start my check-in"
+                (board-as-participant.txt). Both go to the same place - the Check-in tab.
+              */}
+              {(viewerRunsThisCheckIn || isAParty) && (
+                <Link
+                  to={`/grounds/${id}`}
+                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
+                >
+                  {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={showAsk}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+              >
+                Ask
+              </button>
+            </div>
+          )}
           active="board"
+          tabs={headerTabs}
           trailing={!groundId ? <TheOtherBoardsYouAreIn groundId={id!} /> : undefined}
         />
 
@@ -849,7 +910,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.objectives && b.objectives && (
           <>
-            <Sec size="board" title="What we are aiming for" src="The lead sets these targets." />
+            <Section heading="What we are aiming for" note="The lead sets these targets." />
             {/* The privacy setting is on and some numbers still have nobody's name on them, so
                 everybody can read those. Said to the only person who can fix it. */}
             {/* One total, ten people, from the export they already have. Above the form, because
@@ -1068,7 +1129,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             the only block here that no check-in can revise. */}
         {shown.startingState && b.startingState && (
           <>
-            <Sec size="board" title="What was agreed at the start" src="Set when this was opened, before any check-in." />
+            <Section heading="What was agreed at the start" note="Set when this was opened, before any check-in." />
             <Card>
               <Row first>
                 <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
@@ -1091,7 +1152,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {shown.divergence && b.divergence && (
           <>
-            <Sec size="board" title="Where people differ" src="Built from what each person said in their check-in." />
+            <Section heading="Where people differ" note="Built from what each person said in their check-in." />
             <Card>
               {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
                 /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
@@ -1200,7 +1261,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.whatTheRoomIsAbout && (
           <>
-            <Sec size="board" title="What people are after, and where" src="Built from what everybody said." />
+            <Section heading="What people are after, and where" note="Built from what everybody said." />
             {b.whatTheRoomIsAboutNote && (
               <Card><div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{b.whatTheRoomIsAboutNote}</div></Card>
             )}
@@ -1259,7 +1320,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.quickRead && b.quickRead && (
           <>
-            <Sec size="board" title="The quick read" src="How much the team agrees, and how much the report can rely on." />
+            <Section heading="The quick read" note="How much the team agrees, and how much the report can rely on." />
             {/*
               FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
 
@@ -1341,7 +1402,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {(b as any).overTime && (
           <>
-            <Sec size="board" title="What the record shows" src="Read across every session so far." />
+            <Section heading="What the record shows" note="Read across every session so far." />
             <WhatTheRecordShows it={(b as any).overTime} />
           </>
         )}
@@ -1356,7 +1417,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               and what it cannot tell you - which is the thing a reader opens a board for. A summary
               above the detail, the way every other read on this page is arranged.
             */}
-            <Sec size="board" title="What the answers say" src="Built from everybody who has answered so far." />
+            <Section heading="What the answers say" note="Built from everybody who has answered so far." />
             <TheJudgement it={(b as any).theJudgement} />
             {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
           </>
@@ -1369,7 +1430,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               The rows are still ordered by what needs the lead first, not listed by name - that
               ordering is unchanged, only the heading now reads as the prototype's screen does.
             */}
-            <Sec size="board" title="The team today" src="Each person’s line, their last 10 check-ins, and what keeps coming up." />
+            <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up." />
             <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
           </>
         )}
@@ -1384,7 +1445,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {!!b.stillUnanswered?.length && (
           <>
-            <Sec size="board" title="Asked for, not answered" src="The check-in asked twice, then stopped." />
+            <Section heading="Asked for, not answered" note="The check-in asked twice, then stopped." />
             <Card>
               {b.stillUnanswered.map((g, i) => (
                 <Row key={`${g.who}-${g.what}`} first={i === 0}>
@@ -1410,7 +1471,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.decisions && b.decisions && (
           <>
-            <Sec size="board" title="Decisions needed" src="Raised by what people see differently, or what is stuck." />
+            <Section heading="Decisions needed" note="Raised by what people see differently, or what is stuck." />
             <Card>
               {b.decisions.map((d, i) => (
                 <Row key={i} first={i === 0}>
@@ -1442,8 +1503,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <>
             {/* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */}
             {b.family === 'UPDATE'
-              ? <Sec size="board" title="What each person said" src="Their own answers to the question, in their words." />
-              : <Sec size="board" title="Who owns what" src="Read from what people said in their check-ins." />}
+              ? <Section heading="What each person said" note="Their own answers to the question, in their words." />
+              : <Section heading="Who owns what" note="Read from what people said in their check-ins." />}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 14 }}>
               {b.whoOwnsWhat.map((p) => (
                 <Card key={p.participantId} pad={false}>
@@ -1485,7 +1546,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.dependencies && b.dependencies && (
           <>
-            <Sec size="board" title="Waiting on" src="Handoffs between people, read from their check-ins." />
+            <Section heading="Waiting on" note="Handoffs between people, read from their check-ins." />
             {/*
               U.10: ONE CARD PER BLOCKER, THE PROTOTYPE'S LAYOUT (board-as-lead.jpg, "Blockers").
               Each blocker there is its own white card: a bold title, an outlined status pill top
@@ -1562,7 +1623,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
            */
           return (
           <>
-            <Sec size="board" title="Who checked in" src="The last 10 sessions, one row each." />
+            <Section heading="Who checked in" note="The last 10 sessions, one row each." />
             <Card>
               {/*
                 A GRID OF PEOPLE BY SESSIONS IS THE RIGHT SHAPE UNTIL THE SCREEN IS NARROWER THAN
@@ -1642,7 +1703,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.contribution && b.contribution && (
           <>
-            <Sec size="board" title="Contribution against role" src="Measured against each person’s own role." />
+            <Section heading="Contribution against role" note="Measured against each person’s own role." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Is the role clear, and what does the record actually hold for each person, read in their own function's terms.
@@ -1721,7 +1782,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
         {shown.coverage && b.coverage && (
           <>
-            <Sec size="board" title="Where work is landing" src="Whose work is landing where." />
+            <Section heading="Where work is landing" note="Whose work is landing where." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 A drop in ownership shows up as your responsibilities landing more and more in what other people describe as theirs.
@@ -1816,7 +1877,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
          */}
         {viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
           <>
-            <Sec size="board" title="How the leading is landing" src="Two sides of the same leadership." />
+            <Section heading="How the leading is landing" note="Two sides of the same leadership." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
                 Where one person's read of how this team is being led differs from another's. Neither is called wrong.
@@ -1865,7 +1926,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {shown.hiddenContributors && b.hiddenContributors && (
           <>
-            <Sec size="board" title="Named here, and not in this check-in" src="Built from what people said." />
+            <Section heading="Named here, and not in this check-in" note="Built from what people said." />
             <Card>
               {b.hiddenContributors.rows.map((r, i) => (
                 <Row key={r.label + i} first={i === 0}>
@@ -1890,7 +1951,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               a pattern and in what words). `visiblePatterns` is filtered again here for a colleague,
               on top of what the server already withheld: see the comment on `visiblePatterns` above.
             */}
-            <Sec size="board" title="What keeps coming up" src="Named after three check-ins in a row, never after one. Each describes the work." />
+            <Section heading="What keeps coming up" note="Named after three check-ins in a row, never after one. Each describes the work." />
             <Card>
               {visiblePatterns.length === 0 ? (
                 <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></Row>
@@ -1920,7 +1981,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {/* ---------------------------------------------- logistics */}
         {has('poll') && (
           <>
-            <Sec size="board" title="Find a time" src={b.canEditFrame ? 'The only thing on this board you set up yourself.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`} />
+            <Section heading="Find a time" note={b.canEditFrame ? 'The only thing on this board you set up yourself.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`} />
             <Card>
               {b.canEditFrame && (
                 <div style={{ padding: '8px 0', borderBottom: b.poll ? '1px solid var(--gw-border)' : 'none' }}>
@@ -2029,7 +2090,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           if (shown.patterns) {
             return (
               <>
-                <Sec size="board" title="Alignment feed" />
+                <Section heading="Alignment feed" />
                 <Card>
                   <Row first>
                     <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>
@@ -2052,7 +2113,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           ]
           return (
             <>
-              <Sec size="board" title="Alignment feed" src={`${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}.`} />
+              <Section heading="Alignment feed" note={`${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}.`} />
               <Card>
                 {sigs.map((sig, i) => (
                   <Row key={sig.id} first={i === 0}>
@@ -2092,7 +2153,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         {shown.checkInGrid && sessionRows.length > 0 && (
           <>
-            <Sec size="board" title="Reports" src="Every session has two: each person's own, and the team's once you share it." />
+            <Section heading="Reports" note="Every session has two: each person's own, and the team's once you share it." />
             <Card>
               {sessionRows.slice(0, 5).map((r, i) => (
                 <Row key={r.sessionNumber} first={i === 0}>
@@ -2267,7 +2328,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         */}
         <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} />
       </div>
-    </div>
+    </Page>
   )
 }
 
