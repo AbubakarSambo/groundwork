@@ -8142,3 +8142,29 @@ model BlockerTrace {
   @@index([organizationId])
   @@map("blocker_traces")
 }
+
+/// THE COMPANY PAGE'S COMPANY-WIDE PICTURE (request 17, D2): how each priority is moving, where the
+/// strategy is not reaching the work, what more than one team named, and what leadership says next
+/// to what the check-ins show. Written once when the record changes, never when the page opens.
+/// One row per organisation. Every item keeps `restsOn`, the ids of the check-ins it was built
+/// from, and a reader is served an item only if they may open every one of them. No names are
+/// stored here: people appear as counts, and an owner is held as the customer's own id.
+model CompanyPicture {
+  id              String   @id @default(uuid())
+  organizationId  String   @unique @map("organization_id")
+  /// [{ priorityId, number, tag, says, restsOn: [groundId] }]
+  readings        Json
+  /// [{ id, observation, question, forWhom: { kind: 'leadership' | 'owner', externalId? }, restsOn }]
+  notReaching     Json     @map("not_reaching")
+  /// [{ id, title, touches, teams: [{ team, says }], restsOn }]
+  namedByTeams    Json     @map("named_by_teams")
+  /// [{ id, area, youSaid, checkInsShow, restsOn }]
+  saidAndShown    Json     @map("said_and_shown")
+  /// What it was built from. The same record again means no second model call.
+  inputKey        String   @map("input_key")
+  promptVersionId String?  @map("prompt_version_id")
+  builtAt         DateTime @default(now()) @map("built_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("company_pictures")
+}
