@@ -150,6 +150,55 @@ describe('dropsAPromiseWithNothingToKeep: nothing says it will be recorded unles
     )).toBe('');
   });
 
+  /*
+   * FOUND LIVE AGAIN, 30 September 2026, on the four live checks (output line 74): before the lead
+   * had said yes to anything, Ask Groundwork said, in one reply -
+   *   "I have also recorded that you want the pipeline update by every Friday. This will be marked
+   *   as your expectation for him, and when he checks in, he will be asked in his own words what he
+   *   understands about his pipeline updates. What else have you tried with Ben, or what else have
+   *   you observed that makes him difficult to work with?"
+   * Nothing had been recorded yet, so the first sentence was false; the second restated what would
+   * be kept beside the product's own say-back, which already says it. Only the model's question
+   * should survive.
+   */
+  it('drops "I have also recorded..." - an adverb between the modal and the verb, exactly as said live', () => {
+    expect(dropsAPromiseWithNothingToKeep(
+      'I have also recorded that you want the pipeline update by every Friday.', true,
+    )).toBe('');
+  });
+
+  it('drops "This will be marked as your expectation..." - a subjectless passive promise, exactly as said live', () => {
+    expect(dropsAPromiseWithNothingToKeep(
+      'This will be marked as your expectation for him, and when he checks in, he will be asked in his own words what he understands about his pipeline updates.',
+      true,
+    )).toBe('');
+  });
+
+  it('drops both sentences together and keeps only the model\'s question, exactly as the live reply read', () => {
+    const text =
+      'I have also recorded that you want the pipeline update by every Friday. This will be marked ' +
+      'as your expectation for him, and when he checks in, he will be asked in his own words what he ' +
+      'understands about his pipeline updates. What else have you tried with Ben, or what else have ' +
+      'you observed that makes him difficult to work with?';
+    expect(dropsAPromiseWithNothingToKeep(text, true)).toBe(
+      'What else have you tried with Ben, or what else have you observed that makes him difficult to work with?',
+    );
+  });
+
+  it('catches other adverbs in the same gap: "already", "now", "just", "gone ahead and"', () => {
+    expect(dropsAPromiseWithNothingToKeep("I've already noted that Ben missed his last check-in.", false)).toBe('');
+    expect(dropsAPromiseWithNothingToKeep('I will now record that as your expectation.', false)).toBe('');
+    expect(dropsAPromiseWithNothingToKeep("I'll just add that to his notes.", false)).toBe('');
+    expect(dropsAPromiseWithNothingToKeep('I have gone ahead and recorded that.', false)).toBe('');
+  });
+
+  it('two sentences that must survive untouched: a genuine follow-up question and a plain observation', () => {
+    expect(dropsAPromiseWithNothingToKeep('What else have you tried with Ben?', false))
+      .toBe('What else have you tried with Ben?');
+    expect(dropsAPromiseWithNothingToKeep('I hear that Ben is struggling.', false))
+      .toBe('I hear that Ben is struggling.');
+  });
+
   it('a genuine question from the model survives, because nothing here matches a question', () => {
     expect(dropsAPromiseWithNothingToKeep('Should I record that as well?', true)).toBe('Should I record that as well?');
     expect(dropsAPromiseWithNothingToKeep('Should I record that as well?', false)).toBe('Should I record that as well?');

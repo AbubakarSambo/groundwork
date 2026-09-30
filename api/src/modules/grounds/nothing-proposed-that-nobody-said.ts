@@ -128,11 +128,25 @@ export function traceableToWhatTheySaid(value: string | null | undefined, said: 
  * either way, so one piece of grammar covers it rather than a second copy of it.
  */
 const SUBJECT_AND_MODAL = "(?:i|we)(?:'ll|'m|'ve|\\s+will|\\s+am|\\s+have|\\s+are|\\s+can)";
-const RECORD_VERB = '(?:record(?:ing|ed)?|keep(?:ing)?|kept|sav(?:e|ing|ed)|not(?:e|ing|ed)|log(?:ging|ged)|add(?:ing)?|write (?:that|this|it) down)';
+const RECORD_VERB = '(?:record(?:ing|ed)?|mark(?:ing|ed)?|keep(?:ing)?|kept|sav(?:e|ing|ed)|not(?:e|ing|ed)|log(?:ging|ged)|add(?:ing)?|write (?:that|this|it) down)';
+/*
+ * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: a fifth phrasing slipped through
+ * every door above, with a proposal attached that turn -
+ *   "I have ALSO recorded that you want the pipeline update by every Friday."
+ * one adverb sitting between the modal and the verb was enough to break the old
+ * `SUBJECT_AND_MODAL ... RECORD_VERB` match, which only allowed "going to" and "be" in that gap. The
+ * same run also had a second, subjectless false promise right after it -
+ *   "This will be marked as your expectation for him..."
+ * - "marked" was not in the passive-verb list at all, so it slipped through untouched even though the
+ * exact shape ("will be X as your expectation") is the one this file exists to catch. Both sentences
+ * describe what proposal.say already says, or say something that never happened - either way they are
+ * dropped, same as every phrasing above them.
+ */
+const RECORDING_ADVERB = '(?:also|already|now|just|gone ahead and)';
 const PROMISES_TO_RECORD = new RegExp(
-  `\\b${SUBJECT_AND_MODAL}\\b\\s*(?:going to\\s+)?(?:be\\s+)?${RECORD_VERB}` +
-    '|\\b(?:record|records|recording|recorded|note|notes|noting|noted|keep|keeps|keeping|kept)\\b(?:(?!\\.).){0,80}\\bas your (?:perspective|read|expectation)\\b' +
-    '|(?:will be|has been|have been|is being) (?:recorded|kept|saved|noted|logged)\\b' +
+  `\\b${SUBJECT_AND_MODAL}\\b\\s*(?:going to\\s+)?(?:be\\s+)?(?:${RECORDING_ADVERB}\\s+){0,2}${RECORD_VERB}` +
+    '|\\b(?:record|records|recording|recorded|mark|marks|marking|marked|note|notes|noting|noted|keep|keeps|keeping|kept)\\b(?:(?!\\.).){0,80}\\bas your (?:perspective|read|expectation|note)\\b' +
+    '|(?:will be|has been|have been|is being) (?:recorded|marked|kept|saved|noted|logged)\\b' +
     '|recording (?:that|this|it) as|keeping (?:that|this|it) as',
   'i',
 );
