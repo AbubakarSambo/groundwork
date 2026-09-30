@@ -1,4 +1,4 @@
-import { worthRecording, verbatimQuote, verbatimExpectation } from './what-setup-agreed';
+import { worthRecording, verbatimQuote, verbatimExpectation, readablePhrase } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
@@ -273,14 +273,23 @@ export function proposalFrom(
      * real person FIRST, so the note lands on the right row.
      */
     if (!worthRecording(text)) {
+      /*
+       * FIX (found live, the four live checks, 30 September 2026, item 10): a readable phrase, not a
+       * clipped verb left without its subject - see readablePhrase's own comment. "Ben is struggling
+       * and honestly he is difficult to work with" used to be said back and saved as "is struggling";
+       * now it is "Ben is struggling", still a literal substring of what the lead typed.
+       */
+      const readable = readablePhrase(text, said, match.firstName);
       return {
         kind: 'lead_read',
         participantId: match.id,
         personLabel: match.label,
         firstName: match.firstName,
-        text,
-        say: `Shall I keep "${text}" as a private note about ${match.firstName} that only you can see? `
-          + `It guides how this check-in is run and is never quoted to ${match.firstName} or put into their own check-in.`,
+        text: readable,
+        /* FIX, same item: "their own check-in" named nobody. Now it is the person's own first name,
+           how the rest of the product names somebody, so the sentence says whose check-in it is. */
+        say: `Shall I keep "${readable}" as a private note about ${match.firstName} that only you can see? `
+          + `It guides how this check-in is run and is never quoted to ${match.firstName} or put into ${match.firstName}'s own check-in.`,
       };
     }
     /*
@@ -441,8 +450,9 @@ export function confirmedSay(proposal: Proposal): string {
       return `I have recorded "${proposal.text}" as what you expect of ${proposal.firstName}. It is kept as `
         + `your expectation, not as something ${proposal.firstName} agreed to, and ${proposal.firstName} has not seen it yet.`;
     case 'lead_read':
+      /* FIX, same item: "their own check-in" named nobody; now it is the person's own first name. */
       return `I have kept "${proposal.text}" as a private note about ${proposal.firstName} that only you can see. `
-        + `It guides how this check-in is run and is never quoted to ${proposal.firstName} or put into their own check-in.`;
+        + `It guides how this check-in is run and is never quoted to ${proposal.firstName} or put into ${proposal.firstName}'s own check-in.`;
     case 'targets':
       /* Already a done statement ("Set N measures ..."), with nothing to ask - returned as it is. */
       return proposal.say;

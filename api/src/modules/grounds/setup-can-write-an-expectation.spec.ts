@@ -65,6 +65,34 @@ describe('setup can write an expectation, once the lead confirms it', () => {
     expect((p as any).say).toContain('never quoted');
   });
 
+  /*
+   * FIX (found live, the four live checks, 30 September 2026, item 10). Driven live, the exact
+   * sentence: "Ben is struggling and honestly he is difficult to work with." The private note that
+   * was said back and saved read "is struggling" - a bare verb, no subject, meaningless read on its
+   * own - because the extractor's candidate started on the verb and the quote was located from
+   * there. It is a readable phrase now: "Ben is struggling", the person's name pulled in from the
+   * lead's own sentence because that sentence starts with it, still a literal substring of what the
+   * lead typed, identical in the say-back and in what would be saved. And "their own check-in" -
+   * which named nobody - is now Ben's own check-in, by his first name.
+   */
+  it('a lead_read quote reads as a phrase, with the person\'s name, not a clipped verb - the exact live sentence', () => {
+    const PARTIES_WITH_BEN = [...PARTIES, { id: 'p3', email: 'ben@acme.test', name: 'Ben Okafor' }];
+    const said = 'Ben is struggling and honestly he is difficult to work with.';
+    const p = proposalFrom('objectives', { expectationPerson: 'Ben', expectationText: 'is struggling' }, PARTIES_WITH_BEN, said) as any;
+    expect(p.kind).toBe('lead_read');
+    expect(p.text).toBe('Ben is struggling');
+    expect(p.text).not.toMatch(/^is /);
+    /* A literal substring of what the lead typed. */
+    expect(said).toContain(p.text);
+    expect(p.say).toBe(
+      'Shall I keep "Ben is struggling" as a private note about Ben that only you can see? '
+      + "It guides how this check-in is run and is never quoted to Ben or put into Ben's own check-in.",
+    );
+    expect(p.say).not.toContain('their own check-in');
+    /* Say-back and saved text are the same string. */
+    expect(p.say).toContain(`"${p.text}"`);
+  });
+
   it('refuses a name that matches nobody, rather than picking somebody', () => {
     const p = proposalFrom('objectives', {
       expectationPerson: 'Tunde', expectationText: 'Own the renewals for the quiet accounts',
@@ -193,14 +221,21 @@ describe('what is saved is exactly what was said back, character for character (
    * FOUND LIVE AGAIN, 30 September 2026: the full name "Ben Okafor" is now Ben's first name, how the
    * rest of the product names somebody in a sentence a person reads.
    */
+  /*
+   * UPDATED, found live again on the four live checks, 30 September 2026, item 10: "their own
+   * check-in" named nobody - Ben's own check-in is Ben's, not "theirs". This test's expected string
+   * is changed to match; the behaviour it checks (a past-tense statement, never the question again,
+   * never the full name) is unchanged.
+   */
   it('confirmedSay: a lead_read write says it was kept, not the question that was already answered', () => {
     const p = { kind: 'lead_read' as const, participantId: 'p1', personLabel: 'Ben Okafor', firstName: 'Ben', text: 'should be more proactive', say: 'unused' };
     expect(confirmedSay(p)).toBe(
       'I have kept "should be more proactive" as a private note about Ben that only you can see. '
-      + 'It guides how this check-in is run and is never quoted to Ben or put into their own check-in.',
+      + "It guides how this check-in is run and is never quoted to Ben or put into Ben's own check-in.",
     );
     expect(confirmedSay(p)).not.toContain('Shall I');
     expect(confirmedSay(p)).not.toContain('Ben Okafor');
+    expect(confirmedSay(p)).not.toContain('their own check-in');
   });
 
   /*

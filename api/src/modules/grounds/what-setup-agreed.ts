@@ -188,6 +188,44 @@ export function verbatimExpectation(candidate: string, said: string): string {
  *
  * An expectation says what somebody is to DO or REACH. These say what somebody IS.
  */
+/**
+ * A READABLE PHRASE, NOT A CLIPPED VERB LEFT WITHOUT ITS SUBJECT. FIX (found live, the four live
+ * checks, 30 September 2026, item 10): the lead typed "Ben is struggling and honestly he is
+ * difficult to work with", and the private note that was kept and said back read "is struggling" -
+ * a verb with nothing in front of it, meaningless read on its own days later, when what the lead
+ * actually said was "Ben is struggling".
+ *
+ * `verbatimExpectation` correctly locates the candidate inside `said` and returns it verbatim, but a
+ * candidate that starts on a bare verb ("is ...", "was ...", "should ...") is one word short of the
+ * phrase the lead actually said, the same way "want the update ..." was one word short of "I want
+ * the update ..." (see `verbatimExpectation`'s own comment). Where the lead's own sentence names the
+ * person immediately before that verb, with nothing but whitespace between, the quote is pulled back
+ * to start on their name - so the note reads "Ben is struggling", not "is struggling" - and the
+ * result stays a literal substring of `said`, exactly like every other quote this file produces.
+ *
+ * A name that is NOT immediately before the verb (the lead named Ben earlier in a different
+ * sentence, then said "he is struggling") leaves the text as it was: there is nothing here to pull
+ * back to that is still a contiguous substring of what they said.
+ */
+const CLIPPED_VERB = /^(is|are|was|were|seems?|appears?|has been|have been|keeps|kept|should|must|will|does not|doesn't|do not|don't)\b/i;
+
+export function readablePhrase(text: string, said: string, name: string): string {
+  const trimmed = (text ?? '').trim();
+  const nameLower = (name ?? '').trim().toLowerCase();
+  if (!trimmed || !nameLower || !CLIPPED_VERB.test(trimmed)) return trimmed;
+  const source = said ?? '';
+  const idx = source.toLowerCase().indexOf(trimmed.toLowerCase());
+  if (idx === -1) return trimmed;
+  const before = source.slice(0, idx);
+  const beforeTrimmed = before.replace(/\s+$/, '');
+  if (!beforeTrimmed.toLowerCase().endsWith(nameLower)) return trimmed;
+  const nameStart = beforeTrimmed.length - nameLower.length;
+  /* Only the name and whitespace sit between the quote's new start and its old one - never reach
+     back across an earlier word that happens to end the same way. */
+  if (before.slice(nameStart + nameLower.length).trim() !== '') return trimmed;
+  return source.slice(nameStart, idx + trimmed.length);
+}
+
 export function readsAsAJudgement(text: string): boolean {
   const t = ` ${(text ?? '').toLowerCase().trim()} `;
   return /\b(is|are|seems?|appears?|has been|have been|keeps|kept|was|were)\s+(really\s+|quite\s+|very\s+|a bit\s+|not\s+|never\s+)*(struggling|slipping|failing|underperforming|difficult|the problem|a problem|weak|lazy|slow|behind|disengaged|checked out|not (coping|delivering|performing|pulling)|doing (well|badly|fine|poorly)|great|excellent|strong|unreliable|reliable)\b/.test(t)
