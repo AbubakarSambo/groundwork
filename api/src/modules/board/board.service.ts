@@ -95,7 +95,7 @@ import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
-import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
+import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -1742,6 +1742,8 @@ export class BoardService {
          for every other row; on an evaluation one, only the lead and the admin who set it up (decision 58). */
       const mayReadEveryone = runsIt || (runsThisGround && !evaluation);
       const adminWithoutAccess = adminHere && !runsIt && evaluation;
+      /* On an evaluation check-in people never read each other's things, whatever was chosen about seeing each other (request 78, part 3). */
+      const peersWalled = whoMaySee.peersHidden || evaluation;
       const reader: WhoIsReading = {
         meId: me?.id ?? null,
         mayReadEveryone,
@@ -1749,18 +1751,18 @@ export class BoardService {
         personMayBeRead: (pid) => {
           if (adminWithoutAccess) return false;
           if (mayReadEveryone) return true;
-          if (!pid) return !whoMaySee.peersHidden;
-          return pid === me?.id || pid === theLeadsRow || !whoMaySee.peersHidden;
+          if (!pid) return !peersWalled;
+          return pid === me?.id || pid === theLeadsRow || !peersWalled;
         },
         handoffMayBeRead: (d) => {
           if (adminWithoutAccess) return false;
-          if (mayReadEveryone || !whoMaySee.peersHidden) return true;
+          if (mayReadEveryone || !peersWalled) return true;
           return !!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id);
         },
         nameOf: (pid) => nameOf(pid),
         aColleague: (pid) => aColleague(pid),
       };
-      const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId);
+      const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId, checkIns as any[]);
       const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup }));
       const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
       const handoffs = (ground.dependencies ?? []) as any[];
@@ -1774,6 +1776,12 @@ export class BoardService {
       if (personHistory.length) out.personHistory = personHistory;
       const blockerCheck = theBlockerCheck(handoffs, reader);
       if (blockerCheck.length) out.blockerCheck = blockerCheck;
+      /* Their words, so only for those whose words this reader may read: their own, or everybody's where people see each other or the reader runs it. */
+      const evidenceIndex = theEvidenceIndex(
+        mine.lines.map((l) => ({ ...l, wordsMayBeRead: mayReadEveryone || l.participantId === me?.id || !peersWalled })),
+        reader,
+      );
+      if (evidenceIndex.length) out.evidenceIndex = evidenceIndex;
     }
 
     /*
@@ -1883,9 +1891,29 @@ export class BoardService {
    * new is detected here - it is a view over things already established.
    */
   /** The rows the switchboard's own sections read, as stored. Read only: opening a board writes nothing. */
-  private async theRecordTheSwitchboardsSectionsRead(groundId: string): Promise<{ commitments: ACommitment[] }> {
+  private async theRecordTheSwitchboardsSectionsRead(groundId: string, checkIns: { id: string; sessionNumber: number }[]): Promise<{
+    commitments: ACommitment[];
+    lines: { id: string; participantId: string | null; text: string; mark: string; sessionNumber: number | null }[];
+  }> {
     const commitments = await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => []);
-    return { commitments: commitments as ACommitment[] };
+    /* Only lines somebody has not disputed, marked by the same rule as the reports (how-a-line-is-known). */
+    const entries = await (this.prisma.recordEntry.findMany({
+      where: { disputedAt: null, participant: { groundId } },
+      select: { id: true, participantId: true, type: true, text: true, checkInId: true, ...WHAT_A_MARK_READS },
+      orderBy: { createdAt: 'asc' },
+    }) as Promise<any[]>).catch(() => [] as any[]);
+    const whoAdded = await whoAddedEachBackingDocument(this.prisma, entries as any[]).catch(() => new Map<string, string | null>());
+    const lines = (entries as any[]).map((e) => {
+      const text = cleanText(e.text);
+      return {
+        id: e.id,
+        participantId: e.participantId ?? null,
+        text,
+        mark: theMarkOf({ ...e, text }, whoAdded),
+        sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
+      };
+    });
+    return { commitments: commitments as ACommitment[], lines };
   }
 
   /**
