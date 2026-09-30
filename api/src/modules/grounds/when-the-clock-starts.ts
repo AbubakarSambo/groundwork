@@ -18,6 +18,8 @@ export interface HasAClock {
   createdAt: Date;
   startsAt?: Date | null;
   timelineDays?: number | null;
+  /** Runs until the lead ends it (request 37): there is no deadline, so nothing can be out of time. */
+  runsUntilEnded?: boolean | null;
   /** The end the lead chose, when there is one. It is the deadline (U.6 review). */
   endsAt?: Date | null;
 }
@@ -25,6 +27,7 @@ export interface HasAClock {
 export const clockStartsAt = (g: HasAClock): Date => g.startsAt ?? g.createdAt;
 
 export function deadlineOf(g: HasAClock): Date | null {
+  if (g.runsUntilEnded) return null;
   if (g.endsAt) return new Date(g.endsAt);
   if (!g.timelineDays || g.timelineDays <= 0) return null;
   /* No start date AND no creation date is a row nobody has a clock for, and "1 January 1970 plus

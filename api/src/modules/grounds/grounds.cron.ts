@@ -168,7 +168,7 @@ export class GroundsCron {
           stallWarningSentAt: null,
         },
         select: {
-          id: true, label: true, createdAt: true, startsAt: true, timelineDays: true,
+          id: true, label: true, createdAt: true, startsAt: true, timelineDays: true, runsUntilEnded: true,
           initiator: { select: { email: true } },
         },
       });
@@ -221,7 +221,7 @@ export class GroundsCron {
           status: { notIn: [...TERMINAL, ...HELD, ...STOPPED] },
           stallWarningSentAt: { not: null },
         },
-        select: { id: true, createdAt: true, startsAt: true, timelineDays: true, status: true },
+        select: { id: true, createdAt: true, startsAt: true, timelineDays: true, runsUntilEnded: true, status: true },
       });
 
       const staleIds = candidates
