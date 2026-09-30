@@ -77,9 +77,19 @@ describe('a person with no name, read as each reader', () => {
     svc.isAnAdminOf = async () => role === 'ADMIN';
     const served = await svc.whatTheLeadHasNotShared('g-1', userId, 'org-1', { ...PLANTED, updatedAt: new Date('2026-09-23T15:02:00Z') });
     expect(sentencesIn(served).filter((s) => NO_ADDRESS.test(s))).toEqual([]);
-    expect(served.sharedPicture).toMatch(/^Start with (a|another) colleague\. (A|Another) colleague has not answered, and (a|another) colleague was asked twice\.$/);
+    expect(served.sharedPicture).toMatch(/^Start with (a|one) colleague\. The same colleague has not answered, and the same colleague was asked twice\.$/);
   });
 
+  it('the same unnamed person twice is "the same colleague", and two different ones still read as two', () => {
+    const other = person('p-baraka', null, null, PartyType.PARTICIPANT, 'baraka.k3@example.test', '2026-09-01T12:00:00Z');
+    const called = whatEachLabelIsCalled([LEAD, AISHA, ZAWADI, other] as any, { viewerParticipantId: null, viewerIsLead: true, peersAreNamed: true });
+    expect(withoutAddressesAsNames(`${ADDRESS} has not answered, and zawadi.u8 was asked twice.`, called))
+      .toMatch(/^(A|One) colleague has not answered, and the same colleague was asked twice\.$/);
+    const two = withoutAddressesAsNames(`Ask ${ADDRESS} first, then baraka.k3@example.test, then ${ADDRESS} again.`, called);
+    expect(two).toMatch(/^Ask (a|one|another) colleague first, then (a|one|another) colleague, then (the same|that other) colleague again\.$/);
+    const [, one, two2] = two.match(/^Ask (\w+ colleague) first, then (\w+ colleague)/)!;
+    expect(one).not.toBe(two2);
+  });
   it('the address stays in its own field, and only there', () => {
     const called = whatEachLabelIsCalled([LEAD, AISHA, ZAWADI] as any, { viewerParticipantId: null, viewerIsLead: true, peersAreNamed: true });
     const out: any = withoutInternalLabelsIn({ roster: [{ name: 'a colleague', email: ADDRESS, says: `Start with ${ADDRESS}.` }] }, called);

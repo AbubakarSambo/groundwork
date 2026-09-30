@@ -67,22 +67,37 @@ const AN_ADDRESS = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 /** A participant's address where a name belongs becomes what this reader may call them. Any other address is left. */
 export function withoutAddressesAsNames(text: string, called: Map<string, string>): string {
   if (!text) return text;
+  /* Each replacement is held as a marker first, so the repeats are decided in the order they are read. */
+  const held: string[] = [];
+  const hold = (said: string) => { held.push(said); return `\u0001${held.length - 1}\u0002`; };
   let out = text;
   if (text.includes('@')) {
-    out = out.replace(AN_ADDRESS, (addr, offset: number, whole: string) => {
+    out = out.replace(AN_ADDRESS, (addr) => {
       const said = called.get(`@${addr.toLowerCase()}`);
-      if (!said) return addr;
-      return startsASentence(whole, offset) ? withACapital(said) : said;
+      return said ? hold(said) : addr;
     });
   }
   /* The front of an address on its own, in any case: "zawadi.u8", "Zawadi.u8". */
   for (const [k, said] of called) {
     if (k[0] !== '~') continue;
     const local = k.slice(1).replace(/[.+*?^${}()|[\]\\]/g, '\\$&');
-    out = out.replace(new RegExp(`(?<![\\w.@+-])${local}(?![\\w@])`, 'gi'), (m, offset: number, whole: string) =>
-      startsASentence(whole, offset) ? withACapital(said) : said);
+    out = out.replace(new RegExp(`(?<![\\w.@+-])${local}(?![\\w@])`, 'gi'), () => hold(said));
   }
-  return out;
+  if (!held.length) return out;
+  /* The same unnamed person twice in one text is "the same colleague" the second time, never "another"
+     (which only ever means somebody else). A named person is simply named again. */
+  const seen = new Set<string>();
+  return out.replace(/\u0001(\d+)\u0002/g, (_m, i: string, offset: number, whole: string) => {
+    let said = held[Number(i)];
+    if (/colleague$/i.test(said)) {
+      if (seen.has(said.toLowerCase())) {
+        const m = said.match(/^(a|one|another|a (?:\w+)) colleague$/i);
+        said = !m ? said : /^(a|one)$/i.test(m[1]) ? 'the same colleague' : /^another$/i.test(m[1]) ? 'that other colleague' : `that ${m[1].slice(2)} colleague`;
+      }
+      seen.add(held[Number(i)].toLowerCase());
+    }
+    return startsASentence(whole, offset) ? withACapital(said) : said;
+  });
 }
 
 /** One string with every label in it said the way this reader may read it. */
