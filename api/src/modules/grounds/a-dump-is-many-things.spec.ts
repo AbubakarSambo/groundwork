@@ -94,8 +94,11 @@ describe('a dump is many things at once', () => {
        22 September 2026 - exact names let one paste read twice write two rows for one number. */
     expect(w).toContain("alreadyHeld(p.participantId, t.name)");
     expect(w).toContain("alreadyHeld('team', t.name)");
-    /* And the team's own About box is written again from what the paste settled. */
-    expect(w).toContain('await this.tellParticipantsAboutThis(groundId, fromTheContext');
+    /* CHANGED 30 September 2026 (request 92, point 3): the team's About box used to be rewritten
+       silently on every yes. It is now written only with the sentence the list showed before the yes
+       (got.toldToParticipants); this test pinned the silent rewrite. */
+    expect(w).toContain('data: { toldToParticipants: got.toldToParticipants }');
+    expect(w).not.toContain('tellParticipantsAboutThis');
   });
 });
 

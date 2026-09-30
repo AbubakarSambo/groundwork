@@ -78,3 +78,53 @@ describe('the paste says who reads each line, and means it', () => {
     expect(text).toContain('Between two people, so it sits with neither of them alone. Only you will see these.');
   });
 });
+
+/**
+ * REQUEST 92, POINT 3. "YES" ON A PASTE REWRITES WHAT PARTICIPANTS ARE TOLD ONLY WITH THE SENTENCE
+ * THE LIST SHOWED BEFORE THE YES.
+ */
+import { theTellingInTheList, THE_LIST_OPENS_WITH } from './a-dump-is-many-things';
+
+describe('what participants are told is said back before the yes, and only that is written', () => {
+  const TOLD = 'This check-in is about how the Kisumu shops are doing this quarter.';
+
+  it('the list before the yes shows the sentence, and the confirmation says it has been told', () => {
+    const before = whatWeTookFromThat(EVERY_KIND, { asking: true, told: TOLD })!;
+    expect(before).toContain(`People taking part will be told this about the check-in, and I will write it when you say yes:\n“${TOLD}”`);
+    const after = whatWeTookFromThat(EVERY_KIND, { told: TOLD })!;
+    expect(after).toContain(`People taking part have now been told this about the check-in:\n“${TOLD}”`);
+  });
+
+  it('the yes reads the very sentence out of the list it is answering', () => {
+    const list = whatWeTookFromThat(EVERY_KIND, { asking: true, told: TOLD })!;
+    expect(list.startsWith(THE_LIST_OPENS_WITH)).toBe(true);
+    const history = [{ role: 'user' as const, content: 'x'.repeat(500) }, { role: 'assistant' as const, content: list }];
+    expect(theTellingInTheList(history)).toBe(TOLD);
+  });
+
+  it('a list that showed no sentence carries none, so nothing is written', () => {
+    const list = whatWeTookFromThat(EVERY_KIND, { asking: true })!;
+    expect(list).not.toContain('People taking part will be told');
+    expect(theTellingInTheList([{ role: 'assistant', content: list }])).toBeNull();
+    /* And a sentence tucked into some other turn is not taken. */
+    expect(theTellingInTheList([{ role: 'assistant', content: `Something else.\n\nPeople taking part will be told this about the check-in, and I will write it when you say yes:\n“${TOLD}”` }])).toBeNull();
+  });
+
+  function serviceThatUpdates() {
+    const updates: any[] = [];
+    const { service } = serviceThatSaves();
+    const prisma = (service as any).prisma;
+    prisma.ground.update = jest.fn(async (a: any) => { updates.push(a); return {}; });
+    return { service, updates };
+  }
+
+  it('the writer writes the sentence it was given, and writes nothing about it when it was given none', async () => {
+    const withIt = serviceThatUpdates();
+    await (withIt.service as any).writeWhatThePasteGave('g1', { ...EVERY_KIND, toldToParticipants: TOLD });
+    expect(withIt.updates).toEqual([expect.objectContaining({ data: { toldToParticipants: TOLD } })]);
+
+    const without = serviceThatUpdates();
+    await (without.service as any).writeWhatThePasteGave('g1', EVERY_KIND);
+    expect(without.updates).toEqual([]);
+  });
+});

@@ -80,7 +80,7 @@ import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-thi
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
+import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
@@ -528,32 +528,38 @@ export class GroundsService {
    * an empty rewrite leaves the column null and the read falls back to the filtered brief.
    */
   async tellParticipantsAboutThis(groundId: string, brief: string | null | undefined): Promise<void> {
-    /* The model is handed the situation only, never the answers setup put together from the lead's
-       conversation: those are the lead's instructions about people, not something to retell to them
-       (request 41). A brief that is nothing but those answers leaves nothing to tell. */
-    const text = withoutTheSetupAnswers(brief);
     try {
-      if (!text) {
-        await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: null } as any });
-        return;
-      }
-      const people = await this.prisma.groundParticipant.findMany({ where: { groundId }, select: { user: { select: { firstName: true, lastName: true } } } });
-      const otherNames = people.flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '']).filter((n) => n.trim().length >= 3);
-      /* The subject as the lead named it, so the rewrite can be checked for naming it - see theTellingHolds. */
-      const named = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true, timelineDays: true, cadence: true } as any }).catch(() => null);
-      const label = (named as any)?.label ?? '';
-      /* One round or many, so the telling cannot promise a person a habit they were never signed up to. */
-      const rounds = totalSessionsFor((named as any)?.timelineDays, (named as any)?.cadence) ?? null;
-      const raw = await Promise.race([
-        this.anthropic.respond(THE_TELLING_PROMPT, [{ role: 'user', content: `What this check-in is called: ${label || 'not named'}\nHow many times these people will be asked: ${rounds == null ? 'not set' : rounds <= 1 ? 'once, and only once' : `${rounds} times`}\n\nWhat the person who set this up wrote:\n\n${text}` }] as any),
-        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('the telling took too long')), 12_000)),
-      ]);
-      const told = theTellingHolds(raw, { otherNames, about: `${label} ${text}`, rounds });
+      const told = await this.composeWhatParticipantsAreTold(groundId, brief);
       await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: told } as any });
       this.logger.log(`Ground ${groundId}: what participants are told ${told ? 'written' : 'left to the filtered brief'}.`);
     } catch (err: any) {
       this.logger.warn(`Ground ${groundId}: what participants are told could not be written: ${err?.message}`);
     }
+  }
+
+  /**
+   * WHAT PARTICIPANTS WOULD BE TOLD, COMPOSED AND CHECKED BUT NOT WRITTEN. Null where there is nothing
+   * to tell. Throws where the model fails, which callers treat as "nothing to offer". The paste's
+   * say-back shows this sentence before the yes, and the yes writes exactly that one (request 92).
+   */
+  async composeWhatParticipantsAreTold(groundId: string, brief: string | null | undefined): Promise<string | null> {
+    /* The model is handed the situation only, never the answers setup put together from the lead's
+       conversation: those are the lead's instructions about people, not something to retell to them
+       (request 41). A brief that is nothing but those answers leaves nothing to tell. */
+    const text = withoutTheSetupAnswers(brief);
+    if (!text) return null;
+    const people = await this.prisma.groundParticipant.findMany({ where: { groundId }, select: { user: { select: { firstName: true, lastName: true } } } });
+    const otherNames = people.flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '']).filter((n) => n.trim().length >= 3);
+    /* The subject as the lead named it, so the rewrite can be checked for naming it - see theTellingHolds. */
+    const named = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { label: true, timelineDays: true, cadence: true } as any }).catch(() => null);
+    const label = (named as any)?.label ?? '';
+    /* One round or many, so the telling cannot promise a person a habit they were never signed up to. */
+    const rounds = totalSessionsFor((named as any)?.timelineDays, (named as any)?.cadence) ?? null;
+    const raw = await Promise.race([
+      this.anthropic.respond(THE_TELLING_PROMPT, [{ role: 'user', content: `What this check-in is called: ${label || 'not named'}\nHow many times these people will be asked: ${rounds == null ? 'not set' : rounds <= 1 ? 'once, and only once' : `${rounds} times`}\n\nWhat the person who set this up wrote:\n\n${text}` }] as any),
+      new Promise<string>((_, reject) => setTimeout(() => reject(new Error('the telling took too long')), 12_000)),
+    ]);
+    return theTellingHolds(raw, { otherNames, about: `${label} ${text}`, rounds });
   }
 
   async create(organizationId: string, initiatorId: string, dto: CreateGroundDto, creatorRole?: string) {
@@ -2857,7 +2863,9 @@ export class GroundsService {
         })
       : null;
     if (fromAPaste) {
-      const say = whatWeTookFromThat(fromAPaste, { asking: true });
+      /* What participants would be told, worked out now so it can be said back before the yes. */
+      const told = await this.theTellingAPasteWouldWrite(groundId, fromAPaste).catch(() => null);
+      const say = whatWeTookFromThat(fromAPaste, { asking: true, told });
       if (say) proposal = { kind: 'everything', say } as any;
     }
     /*
@@ -3448,6 +3456,13 @@ export class GroundsService {
     return out.exactQuestion;
   }
 
+  /** The brief and the success sentence a yes to this paste would tell participants from. One place, so the say-back and the write agree. */
+  private async theTellingAPasteWouldWrite(groundId: string, got: WhatAPasteGives): Promise<string | null> {
+    const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { brief: true } });
+    const fromTheContext = [g?.brief?.trim(), got.success ? `What doing well looks like: ${got.success}` : null].filter(Boolean).join('\n\n');
+    return this.composeWhatParticipantsAreTold(groundId, fromTheContext || g?.brief || null);
+  }
+
   private async whatAPasteGives(groundId: string, pasted: string): Promise<WhatAPasteGives | null> {
     const read = await this.anthropic.extract<ADumpRead>(
       A_DUMP_PROMPT,
@@ -3750,6 +3765,8 @@ export class GroundsService {
         return { changed: 'nothing new', say: 'That is already on the record, exactly as you sent it. Nothing was written twice.' };
       }
       const read = await this.whatAPasteGives(groundId, thePaste).catch(() => null);
+      /* What participants are told is written only if the list the lead is answering said it. */
+      if (read) read.toldToParticipants = theTellingInTheList(dto.history as any);
       let got = read;
       /*
        * "YES, BUT NOT THE 12M" TAKES THE REST AND LEAVES THAT.
@@ -3767,7 +3784,7 @@ export class GroundsService {
         got = withoutWhatTheyLeftOut(got, leaves);
         const left = [...leaves.teamTargets, ...leaves.people, ...leaves.commitments];
         const wroteSome = await this.writeWhatThePasteGave(groundId, got, confirmedByAdminNote);
-        const say = `${whatWeTookFromThat(got) ?? 'Recorded.'}\n\nLeft out, as you said: ${left.join('; ')}.`;
+        const say = `${whatWeTookFromThat(got, { told: got.toldToParticipants }) ?? 'Recorded.'}\n\nLeft out, as you said: ${left.join('; ')}.`;
         const questionsForPeople = got.questionsForPeople.length ? await this.theQuestionsForPeople(groundId).catch(() => []) : undefined;
         return { changed: wroteSome ? 'everything but what you left out' : 'nothing new', say, ...(questionsForPeople ? { questionsForPeople } : {}) };
       }
@@ -3777,7 +3794,7 @@ export class GroundsService {
         await (this.prisma.groundPaste?.create?.({ data: { groundId, hash } }) ?? Promise.resolve(null)).catch(() => null);
         /* And the questions it kept, each waiting for its own yes. See confirmQuestionForPerson. */
         const questionsForPeople = got.questionsForPeople.length ? await this.theQuestionsForPeople(groundId).catch(() => []) : undefined;
-        if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got) ?? 'Recorded.', ...(questionsForPeople ? { questionsForPeople } : {}) };
+        if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got, { told: got.toldToParticipants }) ?? 'Recorded.', ...(questionsForPeople ? { questionsForPeople } : {}) };
         /* Nothing new to write means it is already on the record, which is not a failure to report as
            one: saying yes twice to the same list used to fall through to one-gap-at-a-time. */
         return { changed: 'nothing new', say: 'That is already on the record. Nothing was written twice.' };
@@ -4153,12 +4170,14 @@ export class GroundsService {
     }
 
     if (wrote) {
-      /* Told from what the paste settled, not from the brief it was set up with: the team's own "About
-         this check-in" is the point of taking a paste at all. The numbers are appended to it by
-         whatAParticipantIsToldAboutThis, each person seeing the shared ones and their own. */
-      const g = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { brief: true } });
-      const fromTheContext = [g?.brief?.trim(), got.success ? `What doing well looks like: ${got.success}` : null].filter(Boolean).join('\n\n');
-      await this.tellParticipantsAboutThis(groundId, fromTheContext || g?.brief || null).catch((err: any) => this.logger.warn(`Could not tell the team about ${groundId}: ${err?.message}`));
+      /* What participants are told is rewritten only with the sentence the lead was shown before the
+         yes (request 92, point 3). A list that did not show one leaves it as it was. The numbers are
+         appended to it by whatAParticipantIsToldAboutThis, each person seeing the shared ones and
+         their own. */
+      if (got.toldToParticipants) {
+        await this.prisma.ground.update({ where: { id: groundId }, data: { toldToParticipants: got.toldToParticipants } as any })
+          .catch((err: any) => this.logger.warn(`Could not tell the team about ${groundId}: ${err?.message}`));
+      }
       this.logger.log(`Ground ${groundId}: took a paste whole - ${got.teamTargets.length} team number(s), ${got.forPeople.length} person(s), success ${got.success ? 'set' : 'unchanged'}.`);
     }
     return wrote;

@@ -271,11 +271,14 @@ describe('the board, as each reader is served it', () => {
     expect(row.remit).toBe(DESCRIPTION);
   });
 
-  it('and a peer is still told a role was given, with nothing of what it says', async () => {
-    const row = ((await boardFor('u-aisha')).contribution ?? []).find((r: any) => r.participantId === 'p-noname');
-    expect(row).toBeDefined();
-    expect(row.remit).toBeNull();
-    expect(row.remitDefined).toBe(true);
+  /* CHANGED 30 September 2026 (request 88): a peer used to be served a colleague's contribution row,
+     with "a role was given" and no words. A colleague's row is no longer served to a peer at all, so
+     this now holds the stronger thing: no row for the colleague, and none of the lead's words anywhere. */
+  it('and a peer is served no row for that colleague, and none of what the description says', async () => {
+    const board = await boardFor('u-aisha');
+    const row = (board.contribution ?? []).find((r: any) => r.participantId === 'p-noname');
+    expect(row).toBeUndefined();
+    expect(JSON.stringify([board.contribution, board.coverage])).not.toContain(DESCRIPTION);
   });
 
   it('nobody but the lead is given the description as the role either', async () => {

@@ -209,6 +209,11 @@ export interface WhatAPasteGives {
   questionsForPeople: { who: string; participantId: string; question: string; exactQuestion?: string | null }[];
   /** Something between two of them, which is neither person's alone. */
   betweenPeople: { who: string[]; participantIds: string[]; issue: string }[];
+  /**
+   * The sentence participants will be told this check-in is for. Offered in the say-back, and carried
+   * back from that list by the yes: if the list did not show it, it is absent and nothing is written.
+   */
+  toldToParticipants?: string | null;
 }
 
 /**
