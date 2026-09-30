@@ -19,6 +19,7 @@ function open(preview: any, signedIn = false, google = false) {
         <Routes>
           <Route path="/j/:code" element={<JoinByLinkPage />} />
           <Route path="/auth" element={<p>The sign-up</p>} />
+          <Route path="/join/waiting" element={<p>Almost in - the waiting page</p>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -28,6 +29,7 @@ const OPEN = { open: true, organisationName: 'Baridi Appliances', inviterName: '
 const assign = vi.fn()
 beforeEach(() => {
   vi.restoreAllMocks()
+  assign.mockClear()
   Object.defineProperty(window, 'location', { value: { ...window.location, assign, host: 'localhost:5173' }, writable: true })
 })
 
@@ -65,6 +67,19 @@ describe('the link, for somebody signed in', () => {
     await waitFor(() => expect(setAuth).toHaveBeenCalledWith({ id: 'u1' }, 'tok'))
     expect(assign).toHaveBeenCalledWith('/today')
     expect(screen.queryByRole('button', { name: 'I already have an account' })).toBeNull()
+  })
+
+  /* Item 11, 29 September: an email domain that does not match the organisation's own does not
+     join on the spot - the server raises a request instead, with no user or token to sign in
+     with, and sends them to the same "Almost in" page a check-in invitation would. */
+  it('"Join", from an outside domain, waits for an admin instead of signing in', async () => {
+    open(OPEN, true)
+    vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { success: true, data: { queuedForApproval: true, organisationName: 'Baridi Appliances' } } } as any)
+    const setAuth = vi.fn(); useAuthStore.setState({ setAuth } as any)
+    fireEvent.click(await screen.findByRole('button', { name: 'Join Baridi Appliances' }))
+    await screen.findByText('Almost in - the waiting page')
+    expect(setAuth).not.toHaveBeenCalled()
+    expect(assign).not.toHaveBeenCalled()
   })
 })
 

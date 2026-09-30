@@ -35,10 +35,26 @@ describe('who can join', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Another organisation on Groundwork already lets people with an @baridi.co.ke email join it')
   })
 
-  it('an admin at a public mail service is told why there is no switch', async () => {
-    open({ on: false, domain: null, whyNot: 'Your email address is at a public mail service, so there is no company domain for people to join by.' })
-    expect(await screen.findByText('Your email address is at a public mail service, so there is no company domain for people to join by.')).toBeTruthy()
+  it('an admin at a public mail service is told why there is no switch, and can name one', async () => {
+    open({ on: false, domain: null, whyNot: 'Your organisation’s email address is at a public mail service, so there is no company domain for people to join by, until an admin names one.' })
+    expect(await screen.findByText('Your organisation’s email address is at a public mail service, so there is no company domain for people to join by, until an admin names one.')).toBeTruthy()
     expect(screen.queryByRole('switch', { name: /Anyone with/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Name it' })).toBeTruthy()
+  })
+
+  it('an admin can change the domain to their own confirmed address\'s', async () => {
+    open({ on: true, domain: 'baridi.co.ke', whyNot: null })
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: { success: true, data: { on: true, domain: 'newco.com', whyNot: null } } } as any)
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }))
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/users/organization/joining/domain', {}))
+    expect(await screen.findByText('Anyone with an @newco.com email')).toBeTruthy()
+  })
+
+  it('naming a domain is the server\'s own refusal, in a sentence', async () => {
+    open({ on: false, domain: null, whyNot: 'Your organisation’s email address is at a public mail service, so there is no company domain for people to join by, until an admin names one.' })
+    vi.spyOn(apiClient, 'patch').mockRejectedValue({ response: { data: { message: 'Your email address is at a public mail service, so it cannot be the domain people join by.' } } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Name it' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your email address is at a public mail service, so it cannot be the domain people join by.')
   })
 })
 

@@ -37,10 +37,16 @@ describe('every page says what it is', () => {
   })
 
   it('the two that rendered a div as their title now render a heading', () => {
-    for (const f of ['billing/BillingPage.tsx', 'notfound/NotFoundPage.tsx']) {
-      const src = strip(readFileSync(join(PAGES, f), 'utf8'))
-      expect(src, f).toMatch(/<h1[\s>]/)
-    }
+    /*
+     * UPDATED, GROUP 1 REBUILD: BillingPage.tsx no longer writes `<h1` itself - it is rebuilt from
+     * components/gw/ui, and its heading is `PageTitle`, whose own `<h1 className="gwui-pt-title">`
+     * (PageTitle.tsx) is the real heading a screen reader lands on. This still checks the original
+     * guarantee (a real `<h1>`, not a div standing in for one) in the vocabulary the page now uses.
+     */
+    const billing = strip(readFileSync(join(PAGES, 'billing/BillingPage.tsx'), 'utf8'))
+    expect(billing).toMatch(/<PageTitle[\s\S]{0,80}title="Plan and billing"/)
+    const notFound = strip(readFileSync(join(PAGES, 'notfound/NotFoundPage.tsx'), 'utf8'))
+    expect(notFound).toMatch(/<h1[\s>]/)
   })
 
   it('the check-in list names its section with a heading, not a div that looks like one', () => {

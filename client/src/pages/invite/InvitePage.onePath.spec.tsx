@@ -86,15 +86,23 @@ describe('ONE-PATH: invite accept lands in the real engine', () => {
      U.20 fifth review (Hafsah, pictured at 1440px): "What happens to what you write" no longer
      prints in full on the page (it made the page twice the prototype's length, which has none of
      it) - it is a plain link that opens the same four claims in the shared Modal, so this test now
-     opens it before checking the words are still there. */
+     opens it before checking the words are still there.
+
+     UPDATED 29 September, item 11 conflict A: the callout is now built from the check-in's own
+     scenario (`whoCanReadThis`), not a fixed sentence, and the two held sentences ("Nobody else
+     reads your answers.", "Wairimu reads the report, not your words.") are dropped for good, not
+     just held - they are not true once admins and the people in a check-in can read it (decision 1).
+     NEW_PROJECT is not a performance plan, a promotion or a renewal, so the admins sentence is
+     included. The old "Nobody you work with reads it" panel said the opposite of decision 1 and is
+     replaced by "Who can read what you write", carrying the same true sentence as the callout. */
   it('keeps the privacy panel once, reachable from a link, and says what the prototype says', async () => {
     renderInvite()
     await screen.findByText('Sarah invited you to “Groundwork project”')
-    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Your questions to Ask\s+Groundwork stay private\./)).toBeTruthy()
+    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Admins in your organisation can read every check-in\. Your own report and your questions to Ask\s+Groundwork stay private\./)).toBeTruthy()
     expect(screen.queryByText('Nobody you work with reads it')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'What happens to what you write' }))
-    expect(screen.getAllByText(/Anything you say about somebody else never does/i).length).toBe(1)
-    expect(screen.getByText('Nobody you work with reads it')).toBeTruthy()
+    expect(screen.getByText('Who can read what you write')).toBeTruthy()
+    expect(screen.getAllByText(/Admins in your organisation can read every check-in\./).length).toBe(2)
     expect(screen.queryByText(/Nobody else reads your answers/i)).toBeNull()
     expect(screen.queryByText(/reads the report, not your words/i)).toBeNull()
     expect(screen.getByText('About two minutes. You make your account afterwards.')).toBeTruthy()

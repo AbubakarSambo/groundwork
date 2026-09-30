@@ -53,15 +53,15 @@ describe('what the check-in still needs', () => {
     expect(BLOCK).toContain('When does this start?')
     expect(BLOCK).toContain('How long does it run?')
     /* Both send you to the one control that already exists rather than growing a second one here. */
-    expect(BLOCK).toContain('Set a start date on Setup')
+    expect(BLOCK).toContain('Set a start date on People and setup')
   })
 
   it('says the rhythm is a default rather than a decision', () => {
     expect(BLOCK).toContain('Nobody has set this, so it is every two weeks by default')
   })
 
-  it('and gets the word Setup onto a screen that never said it', () => {
-    expect(BLOCK).toContain('Set it on Setup')
+  it('and gets the name of the People and setup tab onto a screen that never said it', () => {
+    expect(BLOCK).toContain('Set it on People and setup')
   })
 
   it('and is a slot on the end screen, not markup inside it', () => {

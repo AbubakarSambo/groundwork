@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { PLAN_LABELS, type SubscriptionPlan } from '@/api/billing'
@@ -134,7 +134,6 @@ function TheTree({ people }: { people: OrgMember[] }) {
 }
 
 export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: string | null }) {
-  const navigate = useNavigate()
   const { data, isLoading, isError } = useQuery({ queryKey: ['org-members'], queryFn: fetchMembers })
   const status = useQuery({
     queryKey: ['billing-status-people'],
@@ -250,9 +249,13 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
                       <span>{checkInsWord(m)}</span>
                       {/* Nothing has been written for them yet, so there is no page to open (U.4
                           people-group review, item 2: Zawadi's row, held for a seat). */}
+                      {/* HAFSAH, 30 SEPTEMBER, ITEM 2: A PLAIN LINK, NOT A BUTTON. The prototype
+                          draws each row's "Open" (people.txt) as a plain link to the person's own
+                          page, not a button - so this is now a real `<a>`, styled the same way, not
+                          a `<button>` with a click handler standing in for one. */}
                       {m.noAccountYet
                         ? <span />
-                        : <button type="button" className="gwui-open-link" aria-label={`Open ${name}`} onClick={() => navigate(`/org/members/${m.id}`)}>Open</button>}
+                        : <Link className="gwui-open-link" aria-label={`Open ${name}`} to={`/org/members/${m.id}`}>Open</Link>}
                     </PersonRow>
                   )
                 }}

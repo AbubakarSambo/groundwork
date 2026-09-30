@@ -51,6 +51,14 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * same information with no controls at all - the read-only view
  * (docs/prototype/screens/A4-people-roles-and-access/read-only-view.txt) shows this tab still on an
  * admin's own nav, with nothing to press.
+ *
+ * ONE PRIMARY BUTTON: "ADD PEOPLE" (Hafsah, 30 September), matching check-in-people-and-setup.jpg,
+ * where "Add people" is the only navy button on the whole screen and every "Change" is a plain
+ * link. The four "Save …" buttons this tab opens under a "Change" - name, start date, timeframe,
+ * reminder days - are `kind="secondary"` for the same reason `SettingsPage.tsx` gives its own
+ * "Save"-after-"Change" buttons secondary weight: a lead could have "Add people" and one of these
+ * edit panels open at once, and two navy buttons on screen at the same time is exactly what this
+ * rule forbids.
  */
 /**
  * THE REMINDER SCHEDULE, AS ONE SENTENCE (U.4 review, item 8). Every day in `chaseAfterDays` is
@@ -260,6 +268,7 @@ export function CheckInPeopleAndSetup(props: {
             <FieldLabel htmlFor="ground-name">Name</FieldLabel>
             <TextField id="ground-name" value={props.groundLabel} onChange={(e) => props.setGroundLabel(e.target.value)} />
             <Button
+              kind="secondary"
               size="small"
               disabled={!props.groundLabel.trim() || props.groundLabel === ground.label}
               onClick={() => props.saveSetup.mutate({ label: props.groundLabel.trim() })}
@@ -330,6 +339,7 @@ export function CheckInPeopleAndSetup(props: {
                   empty to open the check-in as soon as people are added.
                 </Note>
                 <Button
+                  kind="secondary"
                   size="small"
                   disabled={props.startsAtDraft === props.startsAtOnRecord || props.saveSetup.isPending}
                   onClick={() => props.saveSetup.mutate({ startsAt: props.startsAtDraft || undefined })}
@@ -365,6 +375,7 @@ export function CheckInPeopleAndSetup(props: {
               how this should close, and it ends on the answer you agree.
             </Note>
             <Button
+              kind="secondary"
               size="small"
               disabled={!props.theTimeframeChanged || props.saveSetup.isPending}
               onClick={() => props.saveSetup.mutate({ timelineDays: props.timelineDaysDraft, cadence: props.cadenceDraft, workingDays: props.workingDaysDraft })}
@@ -407,6 +418,7 @@ export function CheckInPeopleAndSetup(props: {
               placeholder="1"
             />
             <Button
+              kind="secondary"
               size="small"
               disabled={props.setChasing.isPending}
               onClick={() => {
@@ -470,7 +482,7 @@ export function CheckInPeopleAndSetup(props: {
           title="Who can confirm each other's work"
           detail={ground.peopleWorkTogether == null
             ? "Nobody has said yet whether these people see each other's work day to day, so it is assumed from the kind of check-in. If they do, they can confirm what each other says."
-            : "Whether these people see each other's work day to day. If they cannot, nobody here is in a position to confirm what anyone else said, and the board says so rather than reading somebody being quiet as work going missing."}
+            : "People who see each other's work day to day can confirm what each other says. The board says so when they cannot, and does not read somebody being quiet as work going missing."}
           on={!!ground.peopleWorkTogether}
           onChange={(on) => props.setWorkTogether.mutate(on)}
           disabled={!canEditRunOrAdmin || props.setWorkTogether.isPending}
@@ -549,7 +561,7 @@ export function CheckInPeopleAndSetup(props: {
             {props.confirmDelete ? (
               <div style={{ display: 'flex', flexWrap: 'wrap' }}>
                 <span>Delete "{ground.label}" for good?</span>
-                <Button kind="danger" dangerSolid disabled={props.removeGround.isPending} onClick={() => props.removeGround.mutate()}>
+                <Button kind="danger" disabled={props.removeGround.isPending} onClick={() => props.removeGround.mutate()}>
                   {props.removeGround.isPending ? 'Deleting…' : 'Yes, delete it'}
                 </Button>
                 <Button kind="secondary" onClick={() => { props.setConfirmDelete(false); props.setDeleteError(null) }}>Keep it</Button>

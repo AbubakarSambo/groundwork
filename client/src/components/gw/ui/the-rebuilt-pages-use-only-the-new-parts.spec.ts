@@ -107,6 +107,180 @@ export function bannedInlineStyleProps(stripped: string): string[] {
   return inlineStylePropNames(stripped).filter(p => BANNED_STYLE_PROPS.test(p))
 }
 
+/** Scans forward from `start` (the char after an opening `{`) to its matching `}`, honouring
+    strings and nested braces. Returns the index just past that closing `}`. */
+function matchBrace(src: string, start: number): number {
+  let depth = 1
+  let inStr: string | null = null
+  let j = start
+  while (j < src.length && depth > 0) {
+    const c = src[j]
+    if (inStr) {
+      if (c === '\\') { j += 2; continue }
+      if (c === inStr) inStr = null
+      j++; continue
+    }
+    if (c === "'" || c === '"' || c === '`') { inStr = c; j++; continue }
+    if (c === '{') depth++
+    else if (c === '}') depth--
+    j++
+  }
+  return j
+}
+
+/** Every `style={ ... }` expression's raw text (the part between the outer braces), whatever it
+    is - a literal object, a ternary between two, an identifier, or a spread. */
+export function styleExprs(stripped: string): string[] {
+  const found: string[] = []
+  const marker = 'style={'
+  let i = 0
+  while (true) {
+    const idx = stripped.indexOf(marker, i)
+    if (idx === -1) break
+    const start = idx + marker.length
+    const end = matchBrace(stripped, start)
+    found.push(stripped.slice(start, end - 1))
+    i = end
+  }
+  return found
+}
+
+/** Every top-level `{ ... }` chunk inside a string (brace-balanced, not just up to the first `}` -
+    a ternary's two branches, say), each chunk's own inner text. */
+function topLevelBraceChunks(s: string): string[] {
+  const found: string[] = []
+  let i = 0
+  while (i < s.length) {
+    const idx = s.indexOf('{', i)
+    if (idx === -1) break
+    const end = matchBrace(s, idx + 1)
+    found.push(s.slice(idx + 1, end - 1))
+    i = end
+  }
+  return found
+}
+
+/** `const NAME = { ... }` / `const NAME: React.CSSProperties = { ... }`, name -> its own body text,
+    read from the whole file (a style constant a listed page, or something it imports, defines and
+    then passes as `style={NAME}` or spreads into one - see `bannedStyleReferenceProps`). */
+export function localObjectConstants(stripped: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  const re = /const\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*\{/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(stripped))) {
+    const start = m.index + m[0].length
+    const end = matchBrace(stripped, start)
+    out[m[1]] = stripped.slice(start, end - 1)
+  }
+  return out
+}
+
+/**
+ * U.10 (g), HER REVIEW: "style={SOME_CONSTANT} (and style={someObject}, or a spread) is not
+ * caught, only style={{ }}." `bannedInlineStyleProps` only ever matched a `style={{` immediately
+ * followed by `{` - a ternary between two object literals (`style={cond ? {...} : {...}}`), a
+ * bare reference to a `const` object (`style={CARD}`), or a spread of one into a literal
+ * (`style={{...CARD, cursor: 'pointer'}}`) all read the expression as starting with something
+ * other than `{{`, so none of them were ever inspected. This resolves every `style={...}` that
+ * ISN'T a plain literal: any object literal branch written directly inside it (a ternary's two
+ * sides), and any bare identifier in it that names a local `const` object, checked against that
+ * object's own definition wherever it sits in the file.
+ */
+export function bannedStyleReferenceProps(stripped: string): string[] {
+  const consts = localObjectConstants(stripped)
+  const bannedKeysIn = (body: string) => (body.match(/[A-Za-z]+(?=\s*:)/g) ?? []).filter(p => BANNED_STYLE_PROPS.test(p))
+  const found: string[] = []
+  for (const expr of styleExprs(stripped)) {
+    const trimmed = expr.trim()
+    const chunks = topLevelBraceChunks(expr)
+    /* A single plain literal - the whole expression is exactly one `{ ... }`, nothing else beside
+       it (no ternary, no spread) - is what `style={{ }}` already means, and `bannedInlineStyleProps`
+       above already checks it directly on every LISTED page. Re-flagging it here too would widen
+       the one-level-deep check (which this function feeds) to cover every ordinary inline style in
+       every file a listed page imports - far beyond the gap HER REVIEW named (a style CONSTANT,
+       OBJECT reference, ternary or spread standing in for one). So a lone literal with no spread is
+       skipped here; a ternary between two literals, a bare identifier, or a spread is not - none of
+       those read as a single plain `{ ... }` covering the whole expression. */
+    const isSinglePlainLiteral = chunks.length === 1 && trimmed === `{${chunks[0]}}` && !trimmed.includes('...')
+    if (!isSinglePlainLiteral) {
+      for (const chunk of chunks) found.push(...bannedKeysIn(chunk))
+    }
+    for (const ident of expr.match(/[A-Za-z_$][\w$]*/g) ?? []) {
+      if (consts[ident]) found.push(...bannedKeysIn(consts[ident]))
+    }
+  }
+  return found
+}
+
+/**
+ * U.10 (e), HER REVIEW: "moving the old sizes into classes named after their pixel values
+ * satisfies the guard's letter, not its purpose... nothing smaller than 13 pixels." Every
+ * `font-size` a rebuilt page's source names - inline (already banned above, whatever its value)
+ * or as CSS text of its own - and every one gw-ui.css itself declares, must be at least 13px, the
+ * prototype's own floor (`t-tiny`, "only for table column names and a person's level").
+ */
+export function tooSmallFontSizes(stripped: string): number[] {
+  const found: number[] = []
+  const re = /font-size:\s*([\d.]+)px/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(stripped))) {
+    const px = parseFloat(m[1])
+    if (px < 13) found.push(px)
+  }
+  return found
+}
+
+/**
+ * AT MOST ONE PRIMARY (NAVY) BUTTON PER SCREEN (Hafsah, 30 September: "at most one primary
+ * button per screen... no more buttons than the prototype's own version of that screen has").
+ * The e2e test (e2e/the-prototype-count-of-buttons.spec.ts) checks this live, as each reader,
+ * against what actually renders - but it can only run against the screens it opens. This is the
+ * cheap, always-on half: a static count of every `<Button`/`<UIButton` OPENING TAG a listed
+ * page's own source writes, over `kind="primary"` or no `kind` at all (the shared Button's
+ * default, `Button.tsx`: `kind = 'primary'`).
+ *
+ * A page may still WRITE more than one - two branches of an `if`/ternary that never render
+ * together (a "before" and "after" state of the same row) are not two buttons on screen at once.
+ * Rather than try to prove that from the source, a file that means this marks it, once, with a
+ * plain comment containing the literal text `PRIMARY-BUTTONS-NEVER-TOGETHER:` followed by which
+ * ones and why - the marker is the file's own claim, checked by whoever reviews it, not by this
+ * script. A file with no such marker must never write more than one.
+ */
+export function primaryButtonOpenTags(rawSource: string): string[] {
+  const stripped = stripComments(rawSource)
+  const found: string[] = []
+  const re = /<(Button|UIButton)\b/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(stripped))) {
+    const start = m.index
+    let j = m.index + m[0].length
+    let depth = 0
+    let inStr: string | null = null
+    while (j < stripped.length) {
+      const c = stripped[j]
+      if (inStr) {
+        if (c === '\\') { j += 2; continue }
+        if (c === inStr) inStr = null
+        j++; continue
+      }
+      if (c === "'" || c === '"' || c === '`') { inStr = c; j++; continue }
+      if (c === '{') { depth++; j++; continue }
+      if (c === '}') { depth--; j++; continue }
+      if (c === '>' && depth === 0) { j++; break }
+      j++
+    }
+    found.push(stripped.slice(start, j))
+  }
+  return found
+}
+
+export function primaryButtonCount(rawSource: string): number {
+  return primaryButtonOpenTags(rawSource).filter((tag) => {
+    if (/kind\s*=\s*["']primary["']/.test(tag)) return true
+    return !/kind\s*=/.test(tag)
+  }).length
+}
+
 describe('a rebuilt page never falls back to the old parts', () => {
   /*
    * WAS: "the rebuilt-pages list starts empty, and this task adds no page to it" - true of the
@@ -129,6 +303,28 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/org/WhoCanOpenACheckIn.tsx',
       'pages/org/OnePersonPage.tsx',
       'pages/grounds/CheckInPeopleAndSetup.tsx',
+      'pages/board/BoardPage.tsx',
+      'pages/board/WorkRecords.tsx',
+      'components/gw/where-each-person-is.tsx',
+      'components/gw/WhatTheRecordShows.tsx',
+      'components/gw/TheJudgement.tsx',
+      'components/gw/WhatTheNetworkSaid.tsx',
+      'components/gw/HowThisHasMoved.tsx',
+      'components/gw/ResolutionPanel.tsx',
+      'components/gw/TheSessionsReport.tsx',
+      'components/gw/split-one-total-across-people.tsx',
+      'components/gw/WhatSuccessLooksLike.tsx',
+      'components/gw/TargetsBand.tsx',
+      'components/gw/Suggestions.tsx',
+      'components/gw/how-it-is-going.tsx',
+      'components/gw/what-to-settle-together.tsx',
+      'components/gw/a-second-press-before-it-is-gone.tsx',
+      'components/gw/TheOtherBoardsYouAreIn.tsx',
+      'pages/settings/SettingsPage.tsx',
+      'pages/more/MorePage.tsx',
+      'pages/connections/WhatsAppSetupPage.tsx',
+      'pages/connections/ConnectionsPage.tsx',
+      'pages/billing/BillingPage.tsx',
     ])
   })
 
@@ -168,6 +364,12 @@ describe('a rebuilt page never falls back to the old parts', () => {
         if (badClasses.length > 0) {
           offenders.push(`${relPath} imports ${importedRel}, which uses old class(es) ${badClasses.join(', ')}`)
         }
+        /* U.10 (g): the style-reference gap applies one level deep too - a listed page can pass a
+           `const` object it imports straight through as another component's `style={}`. */
+        const badStyleRefs = bannedStyleReferenceProps(importedStripped)
+        if (badStyleRefs.length > 0) {
+          offenders.push(`${relPath} imports ${importedRel}, which sets ${[...new Set(badStyleRefs)].join(', ')} through a style reference`)
+        }
       }
     }
     expect(offenders).toEqual([])
@@ -181,6 +383,81 @@ describe('a rebuilt page never falls back to the old parts', () => {
       if (bad.length > 0) offenders.push(`${relPath}: inline style(s) ${[...new Set(bad)].join(', ')}`)
     }
     expect(offenders).toEqual([])
+  })
+
+  /**
+   * U.10 (g), HER REVIEW: THE SAME RULE, FOR A STYLE THAT IS NOT A PLAIN `{{ }}` LITERAL. A
+   * `const` object passed as `style={NAME}`, a ternary between two object literals, or one
+   * spread into another (`style={{...NAME, cursor: 'pointer'}}`) can all carry the very same
+   * banned properties the test above catches for a plain literal - and none of them were being
+   * read at all. See `bannedStyleReferenceProps`.
+   */
+  it('no listed page sets font size, colour, margin, padding or gap through a style constant, object, ternary or spread either', () => {
+    const offenders: string[] = []
+    for (const relPath of REBUILT_PAGES) {
+      const stripped = stripComments(readFileSync(join(SRC_ROOT, relPath), 'utf8'))
+      const bad = bannedStyleReferenceProps(stripped)
+      if (bad.length > 0) offenders.push(`${relPath}: style reference(s) carrying ${[...new Set(bad)].join(', ')}`)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * U.10 (e): NOTHING SMALLER THAN 13 PIXELS, ANYWHERE A LISTED PAGE'S OWN TEXT SIZE IS SET.
+   * Her review: a page can move its old, too-small sizes into named classes and still read as
+   * dense as it did before - the guard's letter satisfied, its purpose (a rebuilt page reads like
+   * the prototype) missed entirely. A listed page's inline `fontSize` is already banned outright
+   * above, whatever its value; this also refuses any `font-size` CSS text the page carries below
+   * the prototype's own floor (`t-tiny`, 13px - "only for table column names and a person's
+   * level"), so a future class name that happens to hide a smaller number cannot pass either.
+   */
+  it('no listed page sets a text size smaller than 13 pixels', () => {
+    const offenders: string[] = []
+    for (const relPath of REBUILT_PAGES) {
+      const stripped = stripComments(readFileSync(join(SRC_ROOT, relPath), 'utf8'))
+      const small = tooSmallFontSizes(stripped)
+      if (small.length > 0) offenders.push(`${relPath}: font-size(s) below 13px: ${[...new Set(small)].join(', ')}`)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * AT MOST ONE PRIMARY BUTTON. See `primaryButtonCount` above for what counts and how a page
+   * marks a genuine either/or pair as not-really-two.
+   *
+   * SHRUNK TO EMPTY (Hafsah, 30 September, item 1 of the follow-up task): every page this list once
+   * named is now either down to one primary button (`pages/org/OrgMembersPage.tsx`,
+   * `pages/org/InvitePeople.tsx`, `pages/grounds/CheckInPeopleAndSetup.tsx`,
+   * `pages/billing/BillingPage.tsx` - see each file's own comment for which button stayed primary
+   * and why) or carries a `PRIMARY-BUTTONS-NEVER-TOGETHER` marker for a genuine either/or
+   * (`pages/invite/InvitePage.tsx`, `components/gw/Suggestions.tsx`). A page added here again means
+   * an actual regression, not a backlog item.
+   */
+  const PAGES_WITH_MORE_THAN_ONE_PRIMARY_BUTTON_TODAY: Record<string, number> = {}
+  it('no listed page writes more than one primary button beyond what is already named as not fixed yet', () => {
+    const offenders: string[] = []
+    for (const relPath of REBUILT_PAGES) {
+      const raw = readFileSync(join(SRC_ROOT, relPath), 'utf8')
+      const count = primaryButtonCount(raw)
+      const knownToday = PAGES_WITH_MORE_THAN_ONE_PRIMARY_BUTTON_TODAY[relPath]
+      if (count <= 1 || raw.includes('PRIMARY-BUTTONS-NEVER-TOGETHER:')) continue
+      if (knownToday === undefined) {
+        offenders.push(`${relPath}: ${count} primary buttons - a NEW offender, not on today's list`)
+      } else if (count !== knownToday) {
+        offenders.push(`${relPath}: ${count} primary buttons, but the list says ${knownToday} - update the list only by fixing or marking the page`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * NOR DOES THE SHARED STYLESHEET ITSELF. Every rebuilt page's own sizes ultimately live in
+   * gw-ui.css (the utility scale, and every shared part's own class) - so the floor has to hold
+   * there too, or a page could stay "clean" by naming a class that gw-ui.css quietly sets small.
+   */
+  it('gw-ui.css itself sets no text size smaller than 13 pixels', () => {
+    const css = readFileSync(join(SRC_ROOT, 'components/gw/ui/gw-ui.css'), 'utf8')
+    expect(tooSmallFontSizes(css)).toEqual([])
   })
 })
 
@@ -207,6 +484,12 @@ describe('the detection itself catches a real offender, not only an empty list',
     expect(oldClassesUsed('<button className="gwui-btn gwui-btn-primary">Go</button>')).toEqual([])
   })
 
+  it('catches a text size below 13px, wherever it is written, and passes anything 13 or above', () => {
+    expect(tooSmallFontSizes('.gwui-fs-12 { font-size: 12px; }')).toEqual([12])
+    expect(tooSmallFontSizes('style={{fontSize: 10.5}}; .x { font-size: 10.5px; }')).toEqual([10.5])
+    expect(tooSmallFontSizes('.gwui-fs-13 { font-size: 13px; } .gwui-fs-21 { font-size: 21px; }')).toEqual([])
+  })
+
   it('catches the newly-added old classes too', () => {
     expect(oldClassesUsed('<div className="gw-er">')).toContain('gw-er')
     expect(oldClassesUsed('<p className="gw-sub-t">')).toContain('gw-sub-t')
@@ -226,5 +509,25 @@ describe('the detection itself catches a real offender, not only an empty list',
     expect(bannedInlineStyleProps('<div style={{ paddingTop: 14, borderTop: \'1px solid red\' }}>'))
       .toEqual(['paddingTop', 'borderTop'])
     expect(bannedInlineStyleProps('<div style={{ display: \'grid\', gap: 14 }}>')).toEqual(['gap'])
+  })
+
+  it('catches a style constant, a ternary between two literals, and a spread - never a plain literal', () => {
+    const constUse = `
+      const CARD = { fontSize: 13, color: 'var(--gw-sub)' }
+      const X = <div style={CARD}>hi</div>
+    `
+    expect(bannedStyleReferenceProps(stripComments(constUse))).toEqual(expect.arrayContaining(['fontSize', 'color']))
+
+    const ternary = `const X = <div style={cond ? { padding: 4 } : { margin: 6 }}>hi</div>`
+    expect(bannedStyleReferenceProps(stripComments(ternary))).toEqual(expect.arrayContaining(['padding', 'margin']))
+
+    const spread = `
+      const BASE = { border: '1px solid red' }
+      const X = <div style={{...BASE, cursor: 'pointer'}}>hi</div>
+    `
+    expect(bannedStyleReferenceProps(stripComments(spread))).toEqual(['border'])
+
+    const plainLiteral = `const X = <div style={{ textAlign: 'center' }}>hi</div>`
+    expect(bannedStyleReferenceProps(stripComments(plainLiteral))).toEqual([])
   })
 })

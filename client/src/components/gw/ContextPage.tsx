@@ -752,7 +752,15 @@ export function ContextPage({
               is the list" was genuinely nowhere, and on one with several the box still came first.
               The count is in the heading now and the box below it is one row.
             */}
-            <Sec n={band()} title="Documents" />
+            {/*
+              RENAMED "DOCUMENTS" TO "RESOURCES", IN THE PROTOTYPE'S SHAPE (docs/prototype/screens/
+              B2-context/company-context.txt, "Resources / Shared, read, and what each checks"). The
+              same panel this page already had - upload, cards, controls - carries the heading and
+              note the prototype gives the company-level Resources panel, one level down: a shared
+              document, who reads it, what the check-in read from it, and what that read is used to
+              check. Nothing here is invented - a line is only drawn where the server sends it.
+            */}
+            <Sec n={band()} title="Resources" src="Shared, read, and what each checks" />
             {documentsAreNotOpenToYou && (
               <div data-gw-documents-not-open style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, maxWidth: 620 }}>
                 Documents here are shared by the people in this check-in, so you cannot open them from here.
@@ -836,42 +844,65 @@ export function ContextPage({
                       <span style={{ marginLeft: 7, fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)' }}>photo</span>
                     )}
                   </div>
-                  {/* WHAT IT IS FOR, in the uploader's words, as the prototype's card has it ("Checks price
-                      objections"). The server sends it to the uploader alone (usedFor). */}
+                  {/*
+                    "WHAT WE READ FROM IT" AND "USED TO CHECK", THE COMPANY-LEVEL RESOURCES ROW,
+                    ONE LEVEL DOWN (company-context.txt, "Strategy v2.pdf / Everyone / What we read
+                    from it / ... / Used to check / ..."). Each line is drawn only where the server
+                    sends it - a summary the read produced, or the note the uploader wrote - and
+                    left out rather than guessed where it did not.
+
+                    "Used to check" IS THE UPLOADER'S OWN "WHAT IT IS FOR" (usedFor), in the
+                    prototype's words for the row. The server sends it to the uploader alone, so a
+                    shared document does not carry somebody else's private instruction to anyone
+                    else who can read it.
+                  */}
                   {doc.usedFor && (
-                    <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 3 }}>{doc.usedFor}</div>
+                    <div style={{ marginTop: 5 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-sub)' }}>Used to check</div>
+                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{doc.usedFor}</div>
+                    </div>
                   )}
                   {/*
-                    WHAT GROUNDWORK TOOK FROM IT, FOLDED UNDER THE CARD (U.7 review).
-
-                    The card is the prototype's: the file, what it is for, and who can read it. What
-                    the read found ("Read from it", the numbers and dates it holds) was printed on the
-                    card's face in pieces joined with colons and dashes. It is still here, one click
-                    away, because a card that says a file was read and not what it gave is a file
-                    locker. The words of the second part are the engine's (what-a-document-holds.ts);
-                    asked to be full sentences in request 40.
+                    "WHAT WE READ FROM IT", ON THE FACE RATHER THAN FOLDED (U.7 review kept the raw
+                    item-by-item read folded away below - it still is, in "What Groundwork took from
+                    it" - but the prototype's Resources row states the summary plainly, and a summary
+                    a person actually wrote (assessment.suggests) reads as a sentence rather than the
+                    dashes and colons U.7 was written to keep off the card's face).
                   */}
-                  {((Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0) || doc.theContextWeHave) && (
+                  {(() => {
+                    const suggests = Array.isArray((doc as any).assessment?.suggests) ? (doc as any).assessment.suggests : []
+                    const whatWeRead = suggests.length > 0
+                      ? suggests.join(' ')
+                      : (doc.theContextWeHave ? doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '').trim() : null)
+                    if (!whatWeRead) return null
+                    return (
+                      <div style={{ marginTop: 5 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-sub)' }}>What we read from it</div>
+                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{whatWeRead}</div>
+                      </div>
+                    )
+                  })()}
+                  {/*
+                    WHAT GROUNDWORK TOOK FROM IT, ITEM BY ITEM, STILL FOLDED (U.7 review).
+
+                    The face now carries the summary line above. This keeps the fuller, itemised read
+                    - the numbers and dates it holds, in the engine's own words (what-a-document-
+                    holds.ts) - one click away rather than printed a second time.
+                  */}
+                  {doc.theContextWeHave && (
                     <details data-gw-document-took style={{ marginTop: 6 }}>
                       <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>What Groundwork took from it</summary>
                       {doc.uploadedAt && (
                         <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5 }}>Added on {whenItWas(doc.uploadedAt, 'day')}.</div>
                       )}
-                      {Array.isArray((doc as any).assessment?.suggests) && (doc as any).assessment.suggests.length > 0 && (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 5 }}>
-                          {(doc as any).assessment.suggests.slice(0, 2).join(' ')}
-                        </div>
-                      )}
-                      {doc.theContextWeHave && (
-                        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                          {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
-                          {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
-                            <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
-                              These are on the board and in the report, against the people who hold them.
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
+                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                        {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
+                        {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
+                          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
+                            These are on the board and in the report, against the people who hold them.
+                          </div>
+                        ) : null}
+                      </div>
                     </details>
                   )}
                 </div>

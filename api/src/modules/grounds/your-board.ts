@@ -1,8 +1,8 @@
 import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
-import { aStepSaidToYou } from './a-step-said-to-you';
 import type { AServedPattern } from '../patterns/who-reads-a-pattern';
+import { aStepSaidToYou } from './a-step-said-to-you';
 
 /**
  * THE YOU BOARD (C2, U.12): WHAT IS YOURS, ACROSS YOUR CHECK-INS, FOR YOUR EYES ONLY.

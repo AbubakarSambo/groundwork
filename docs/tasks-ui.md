@@ -34,15 +34,15 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. If a task is s
 - [x] **U.7** B2 Context *(Passed its fifth review on 27 September. The engine's parts wait on requests 6, 39, 40, 41 and 42, and some choices wait for Hafsah in items 18 and 31.)* (including a plan turned into proposals, and what a target assumes)
   - [ ] **U.7b, after the people screens (Hafsah, 29 September):** rename the Context tab and page to "Context and resources"; make the page read-only, showing what Groundwork has been told and agreed, with the prototype's Resources panel for documents and no chat of its own; check the tab name fits at phone width. Add documents in Ask Groundwork, with what it pulled out shown to confirm before saving, built from the engine's answer. Check live that the same documents give the same saved targets and context through both chats. Keep the old context chat until the engine says in `docs/answers-from-engine.md` that every item is proven; only then remove it. Full wording in `docs/morning-report-ui.md`, "Hafsah's decisions".
 - [ ] **FIRST after the people group (protected, Hafsah 29 September): the screens for the engine's new pattern shape and the "Say what's behind it" answer box**, so patterns can be switched on. Built from the engine's answer to request 79 (c). Patterns, role behaviour, coaching strategies and the probe structure are never removed, hidden or simplified; see the morning report, "The protected screens".
-- [ ] **From Hafsah's answers of 29 September (item 11, closed).** Full wording in `docs/morning-report-ui.md`, "Hafsah's decisions".
+- [x] **From Hafsah's answers of 29 September (item 11, closed).** *(Done 30 September; see the morning report.)* Full wording in `docs/morning-report-ui.md`, "Hafsah's decisions".
   - [x] People page (this group): someone declined at the door reads "Not let in", shown to admins only. *(Done 30 September, and on People and setup, the one-person page and the roles table too.)*
-  - [ ] The invitation: the prototype's first line; drop the two held sentences; the rest built from the check-in's real settings; the admins line left out on a performance plan, promotion or renewal (the field comes from the engine, request 78); today's "Nobody you work with reads it" panel replaced.
-  - [ ] The new admin's welcome card, in Hafsah's exact sentence.
-  - [ ] Joining: the invite link is random, not guessable; someone whose email does not match the domain waits for an admin; no DNS proof for now.
-  - [ ] Before being let in: name one admin, as in the prototype; remove "27 people there" and "and text".
-  - [ ] Leave out your own web address and logo entirely until they are built.
-  - [ ] "All 38 of your check-ins" counts real check-ins, not sessions.
-  - [ ] Lift the one-organisation limit: a person can create more than one organisation, each with its own plan.
+  - [x] The invitation: the prototype's first line; drop the two held sentences; the rest built from the check-in's real settings; the admins line left out on a performance plan, promotion or renewal (the field comes from the engine, request 78); today's "Nobody you work with reads it" panel replaced.
+  - [x] The new admin's welcome card, in Hafsah's exact sentence.
+  - [x] Joining: the invite link is random, not guessable; someone whose email does not match the domain waits for an admin; no DNS proof for now.
+  - [x] Before being let in: name one admin, as in the prototype; remove "27 people there" and "and text".
+  - [x] Leave out your own web address and logo entirely until they are built.
+  - [x] "All 38 of your check-ins" counts real check-ins, not sessions.
+  - [x] Lift the one-organisation limit: a person can create more than one organisation, each with its own plan.
 - [x] **U.8** B3 The check-in screens *(Passed its sixth review on 28 September. The engine's parts wait on requests 2, 7, 43, 45, 47, 49 and 50, and some choices wait for Hafsah in items 0c, 0d and 19.)*: the header, pause, suggested answers, the + button for proof, the end card, the Done page (show the engine's current output; request suggested answers and marks)
 - [ ] **U.9** B4 Reports and sharing *(Passed its review on 28 September, on the fifth round. Not ticked: one engine test, the-order-is-the-order-on-screen.spec.ts, fails on one heading until the engine changes its label to the prototype's (request 62). The engine's text waits on requests 9 and 51 to 61.)* (the screens; request any report changes)
 - [ ] **U.10** B5 The board *(Built and tested on 27 September, apart from the engine's text (request 11) and what waits for Hafsah (item 21). Not ticked: the review could not sign in; see item 14.)*, including the switchboard's sections (every section's data comes from the record, the latest report, or another system, and none may go stale between reports)
@@ -59,3 +59,12 @@ Tick each box (`[x]`) when it passes the tester and the reviewer. If a task is s
 - [ ] **U.21** F5 Groundwork staff
 
 F3, the public site, is a separate project. Leave it.
+
+
+## Every screen still built from old parts (counted 30 September: 96 pages)
+
+Rebuilt from the shared parts in four groups, each with a picture check per screen, and the full screen suite, the page-colour test and the reviewer once per group.
+- [ ] **Group 1, settings and account:** Settings (SettingsPage), Plan and billing (BillingPage and settings/billing), Connections (ConnectionsPage, WhatsAppSetupPage), the developer page (IntegrationsPage), More (MorePage).
+- [ ] **Group 2, your own pages:** Today, You, Company and company context, Suites and each suite's board (review, leaving, spending, equipment, time sheets, leave, reviews, onboarding), the check-ins list (GroundsListPage).
+- [ ] **Group 3, check-ins and signing in:** the rest of GroundAdminPage, ChatPage, CreateGroundPage, EntryChatPage and SaveCard, ReportPage and SessionReportPage, the sign-in pages (AuthPage, auth-kit, MagicVerifyPage), JoinPage.
+- [ ] **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages.

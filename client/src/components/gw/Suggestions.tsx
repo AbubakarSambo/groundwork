@@ -19,41 +19,49 @@ import { Button } from '@/components/gw/kit'
  * under U.13.
  *
  * No label is ever drawn on a person, and the verdict is never sent to this screen at all.
+ *
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: this file writes four primary buttons - "Agree"
+ * (`ASuggestionForTheLead`, deciding, mode 'none'), "Save my decision" (the same component, mode
+ * not 'none' - the two are alternate states of one `mode` value, never rendered together), "Save"
+ * or "Send my appeal" (`WhereYouStand`, the person's own board), and "Save" (`AnAppealToDecide`,
+ * an admin's Today page). The last three each belong to a different reader on a different page -
+ * a lead's board, a participant's You board, an admin's Today - so no two of this file's primary
+ * buttons ever appear on the same screen at once.
  */
 
-const card: React.CSSProperties = {
-  background: 'white', border: '2px solid var(--gw-text)', borderRadius: 12, padding: '16px 18px',
-  margin: '0 0 18px', lineHeight: 1.6, fontSize: 13.5, color: 'var(--gw-text)',
-}
-const h3: React.CSSProperties = { fontSize: 16, fontWeight: 800, margin: '0 0 8px' }
-const sub: React.CSSProperties = { fontSize: 13, fontWeight: 700, margin: '12px 0 2px' }
-const quiet: React.CSSProperties = { fontSize: 12.5, color: 'var(--gw-sub)', margin: '4px 0' }
-const quote: React.CSSProperties = { background: 'var(--gw-bg)', borderRadius: 10, padding: '10px 14px', margin: '10px 0' }
-const field: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 8, border: '1px solid var(--gw-border)',
-  fontFamily: 'inherit', fontSize: 13, lineHeight: 1.5, marginTop: 4,
-}
-const row: React.CSSProperties = { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }
+const cardClass = 'gwui-fs-13-5 gwui-ink-text gwui-pt-16 gwui-pr-18 gwui-pb-16 gwui-pl-18 gwui-mb-18'
+const cardStyle: React.CSSProperties = { background: 'white', borderRadius: 12, lineHeight: 1.6, borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }
+const h3Class = 'gwui-fs-16 gwui-mb-8'
+const h3Style: React.CSSProperties = { fontWeight: 800 }
+const subClass = 'gwui-fs-13 gwui-mt-12 gwui-mb-2'
+const subStyle: React.CSSProperties = { fontWeight: 700 }
+const quietClass = 'gwui-fs-13 gwui-ink-sub gwui-mt-4 gwui-mb-4'
+const quoteClass = 'gwui-pt-10 gwui-pr-14 gwui-pb-10 gwui-pl-14 gwui-mt-10 gwui-mb-10'
+const quoteStyle: React.CSSProperties = { background: 'var(--gw-bg)', borderRadius: 10 }
+const fieldClass = 'gwui-rule gwui-fs-13 gwui-pt-9 gwui-pr-11 gwui-pb-9 gwui-pl-11 gwui-mt-4'
+const fieldStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', borderRadius: 8, fontFamily: 'inherit', lineHeight: 1.5 }
+const rowClass = 'gwui-gap-8 gwui-mt-10'
+const rowStyle: React.CSSProperties = { display: 'flex', flexWrap: 'wrap' }
 
 function Said({ who, children }: { who: string; children: React.ReactNode }) {
   return (
-    <div style={quote}>
-      <div style={quiet}>{who}</div>
-      <p style={{ margin: '4px 0 0' }}>“{children}”</p>
+    <div className={quoteClass} style={quoteStyle}>
+      <div className={quietClass}>{who}</div>
+      <div className="gwui-mt-4">“{children}”</div>
     </div>
   )
 }
 
 function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
-  return <p style={{ margin: '6px 0' }}><b>{label}</b> {children}</p>
+  return <div className="gwui-mt-6 gwui-mb-6"><b>{label}</b> {children}</div>
 }
 
 function TheAppealOutcome({ d, yours }: { d: TheAppealDecision; yours?: boolean }) {
   return (
     <>
-      <p style={{ margin: '12px 0 2px' }}><b>{d.by} decided {yours ? 'your' : 'the'} appeal.</b> {d.says}</p>
-      <div style={sub}>{d.by}’s reasons</div>
-      <p style={{ margin: 0 }}>{d.reasons}</p>
+      <div className="gwui-mt-12 gwui-mb-2"><b>{d.by} decided {yours ? 'your' : 'the'} appeal.</b> {d.says}</div>
+      <div className={subClass} style={subStyle}>{d.by}’s reasons</div>
+      <div>{d.reasons}</div>
     </>
   )
 }
@@ -113,19 +121,19 @@ function ASuggestionForTheLead({ s, groundId }: { s: SuggestionForTheLead; groun
   }
 
   return (
-    <section style={card} aria-label={s.headline}>
-      <h3 style={h3}>{s.headline}</h3>
+    <section className={cardClass} style={cardStyle} aria-label={s.headline}>
+      <h3 className={h3Class} style={h3Style}>{s.headline}</h3>
       <Labelled label="Why:">{s.why}</Labelled>
       {s.whatWouldChangeIt && <Labelled label="What would change this:">{s.whatWouldChangeIt}</Labelled>}
       {s.theirOwnAnswer && <Said who={`${who}’s own answer.`}>{s.theirOwnAnswer}</Said>}
 
       {s.decision && !changing && (
         <>
-          <div style={sub}>Your decision</div>
-          <p style={{ margin: 0 }}>{s.decision.says}</p>
-          <div style={sub}>Your reasons</div>
-          <p style={{ margin: 0 }}>{s.decision.reasons}</p>
-          <p style={quiet}>{who} sees your decision and your reasons, and can appeal.</p>
+          <div className={subClass} style={subStyle}>Your decision</div>
+          <div>{s.decision.says}</div>
+          <div className={subClass} style={subStyle}>Your reasons</div>
+          <div>{s.decision.reasons}</div>
+          <div className={quietClass}>{who} sees your decision and your reasons, and can appeal.</div>
         </>
       )}
 
@@ -134,16 +142,16 @@ function ASuggestionForTheLead({ s, groundId }: { s: SuggestionForTheLead; groun
       {s.appeal && !s.appealDecision && (
         <>
           <Said who={`${who} has appealed`}>{s.appeal.says}</Said>
-          <p style={quiet}>An admin decides the appeal.</p>
+          <div className={quietClass}>An admin decides the appeal.</div>
         </>
       )}
       {s.appealDecision && <TheAppealOutcome d={s.appealDecision} />}
 
       {deciding && mode === 'none' && (
         <>
-          <div style={sub}>Your decision</div>
-          <p style={{ margin: 0 }}>This is only a suggestion. You decide, and {who} sees your reasons.</p>
-          <div style={row}>
+          <div className={subClass} style={subStyle}>Your decision</div>
+          <div>This is only a suggestion. You decide, and {who} sees your reasons.</div>
+          <div className={rowClass} style={rowStyle}>
             <Button onClick={() => open('agree')}>Agree</Button>
             <Button kind="secondary" onClick={() => open('else')}>Choose something else</Button>
             {changing && <Button kind="quiet" onClick={() => setChanging(false)}>Not yet</Button>}
@@ -154,40 +162,40 @@ function ASuggestionForTheLead({ s, groundId }: { s: SuggestionForTheLead; groun
       {deciding && mode !== 'none' && (
         <form
           onSubmit={(e) => { e.preventDefault(); if (chosen && reasons.trim()) save.mutate({ decision: chosen, reasons: reasons.trim() }) }}
-          style={{ marginTop: 12 }}
+          className="gwui-mt-12"
         >
           {mode === 'else' && s.otherChoices.length > 0 && (
-            <fieldset style={{ border: 0, padding: 0, margin: '0 0 8px' }}>
-              <legend style={sub}>Your decision</legend>
+            <fieldset className="gwui-rule-none gwui-p-0 gwui-mb-8">
+              <legend className={subClass} style={subStyle}>Your decision</legend>
               {[...s.otherChoices, SOMETHING_ELSE].map(c => (
-                <label key={c} style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '4px 0' }}>
+                <label key={c} className="gwui-gap-8 gwui-mt-4" style={{ display: 'flex', alignItems: 'center' }}>
                   <input type="radio" name={`choice-${s.id}`} value={c} checked={choice === c} onChange={() => setChoice(c)} /> {c}
                 </label>
               ))}
             </fieldset>
           )}
           {(mode === 'agree' || choice === SOMETHING_ELSE || !s.otherChoices.length) && (
-            <label style={{ display: 'block', margin: '0 0 8px' }}>
-              <span style={sub}>{mode === 'else' && s.otherChoices.length ? 'What you decided' : 'Your decision'}</span>
-              <input value={decision} onChange={(e) => setDecision(e.target.value)} maxLength={1000} style={field} />
+            <label className="gwui-mb-8" style={{ display: 'block' }}>
+              <span className={subClass} style={subStyle}>{mode === 'else' && s.otherChoices.length ? 'What you decided' : 'Your decision'}</span>
+              <input value={decision} onChange={(e) => setDecision(e.target.value)} maxLength={1000} className={fieldClass} style={fieldStyle} />
             </label>
           )}
           <label style={{ display: 'block' }}>
-            <span style={sub}>Your reasons, in a sentence or two</span>
-            <textarea value={reasons} onChange={(e) => setReasons(e.target.value)} rows={3} maxLength={2000} style={field} />
+            <span className={subClass} style={subStyle}>Your reasons, in a sentence or two</span>
+            <textarea value={reasons} onChange={(e) => setReasons(e.target.value)} rows={3} maxLength={2000} className={fieldClass} style={fieldStyle} />
           </label>
-          <div style={row}>
+          <div className={rowClass} style={rowStyle}>
             <Button type="submit" disabled={!chosen || !reasons.trim() || save.isPending}>
               {save.isPending ? 'Saving…' : 'Save my decision'}
             </Button>
             <Button kind="quiet" onClick={() => { setMode('none'); setChanging(false) }}>Not yet</Button>
           </div>
-          {failed && <p role="alert" style={quiet}>{DIDNT_SAVE}</p>}
+          {failed && <div role="alert" className={quietClass}>{DIDNT_SAVE}</div>}
         </form>
       )}
 
       {s.decision && !changing && s.mayChangeTheDecision && (
-        <div style={row}><Button kind="quiet" size="small" onClick={() => setChanging(true)}>Change my decision</Button></div>
+        <div className={rowClass} style={rowStyle}><Button kind="quiet" size="small" onClick={() => setChanging(true)}>Change my decision</Button></div>
       )}
     </section>
   )
@@ -218,29 +226,29 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
   const busy = side.isPending || appeal.isPending
 
   return (
-    <section className="gw-you-card" aria-label="Where you stand" style={{ border: '2px solid var(--gw-text)' }}>
+    <section className="gw-you-card" aria-label="Where you stand" style={{ borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }}>
       <h3 className="gw-t-h3">Where you stand</h3>
-      <p className="gw-you-quiet">About your work in {s.checkIn.label}.</p>
-      <p>{s.facts}</p>
-      {s.whatWouldChangeIt && <p><b>What would change this:</b> {s.whatWouldChangeIt}</p>}
+      <div className="gw-you-quiet">About your work in {s.checkIn.label}.</div>
+      <div>{s.facts}</div>
+      {s.whatWouldChangeIt && <div><b>What would change this:</b> {s.whatWouldChangeIt}</div>}
 
       {s.decision ? (
-        <div style={quote}>
+        <div className={quoteClass} style={quoteStyle}>
           <div style={{ fontWeight: 700 }}>{lead}’s decision</div>
-          <p style={{ margin: '2px 0 8px' }}>{s.decision.says}</p>
+          <div className="gwui-mt-2 gwui-mb-8">{s.decision.says}</div>
           <div style={{ fontWeight: 700 }}>{lead}’s reasons</div>
-          <p style={{ margin: '2px 0 0' }}>{s.decision.reasons}</p>
+          <div className="gwui-mt-2">{s.decision.reasons}</div>
         </div>
       ) : (
-        <p className="gw-you-quiet">{lead} has not decided anything yet. You will see the decision and the reasons here.</p>
+        <div className="gw-you-quiet">{lead} has not decided anything yet. You will see the decision and the reasons here.</div>
       )}
 
       {s.yourSide && <Said who="Your side">{s.yourSide}</Said>}
-      {s.yourAppeal && !s.appealDecision && <p><b>You appealed.</b> An admin decides. You will see the answer here.</p>}
+      {s.yourAppeal && !s.appealDecision && <div><b>You appealed.</b> An admin decides. You will see the answer here.</div>}
       {s.appealDecision && <TheAppealOutcome d={s.appealDecision} yours />}
 
       {writing === 'none' && (
-        <div style={row}>
+        <div className={rowClass} style={rowStyle}>
           <Button kind="secondary" size="small" onClick={() => { setWriting('side'); setText(s.yourSide ?? '') }}>
             {s.yourSide ? 'Change my side' : 'Add my side'}
           </Button>
@@ -251,23 +259,23 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
       {writing !== 'none' && (
         <form
           onSubmit={(e) => { e.preventDefault(); if (text.trim()) (writing === 'side' ? side : appeal).mutate(text.trim()) }}
-          style={{ marginTop: 10 }}
+          className="gwui-mt-10"
         >
           {writing === 'appeal' && (
-            <p style={{ margin: '0 0 6px' }}>An admin looks at the decision, the facts and your reasons, and decides. {lead} sees that you appealed.</p>
+            <div className="gwui-mb-6">An admin looks at the decision, the facts and your reasons, and decides. {lead} sees that you appealed.</div>
           )}
-          {writing === 'side' && <p style={{ margin: '0 0 6px' }}>{lead} sees this next to the facts.</p>}
+          {writing === 'side' && <div className="gwui-mb-6">{lead} sees this next to the facts.</div>}
           <label style={{ display: 'block' }}>
-            <span style={sub}>{writing === 'side' ? 'Your side' : 'Why do you disagree?'}</span>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} maxLength={4000} style={field} />
+            <span className={subClass} style={subStyle}>{writing === 'side' ? 'Your side' : 'Why do you disagree?'}</span>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} maxLength={4000} className={fieldClass} style={fieldStyle} />
           </label>
-          <div style={row}>
+          <div className={rowClass} style={rowStyle}>
             <Button type="submit" size="small" disabled={!text.trim() || busy}>
               {busy ? 'Saving…' : writing === 'side' ? 'Save' : 'Send my appeal'}
             </Button>
             <Button kind="quiet" size="small" onClick={() => { setWriting('none'); setText('') }}>Not yet</Button>
           </div>
-          {failed && <p role="alert" className="gw-you-quiet">{DIDNT_SAVE}</p>}
+          {failed && <div role="alert" className="gw-you-quiet">{DIDNT_SAVE}</div>}
         </form>
       )}
     </section>
@@ -300,44 +308,44 @@ function AnAppealToDecide({ a }: { a: AppealForAnAdmin }) {
     onSuccess: () => { setFailed(false); qc.invalidateQueries({ queryKey: ['appeals'] }) },
   })
   return (
-    <div style={{ ...card, border: '1px solid var(--gw-border)', marginTop: 10 }}>
-      <h3 style={h3}>{a.aboutName} appealed {a.leadName}’s decision</h3>
-      <p style={quiet}>In {a.checkIn.label}.</p>
-      <p style={{ margin: '6px 0' }}>{a.headline}</p>
+    <div className={`${cardClass} gwui-rule gwui-mt-10`} style={{ background: cardStyle.background, borderRadius: cardStyle.borderRadius, lineHeight: cardStyle.lineHeight }}>
+      <h3 className={h3Class} style={h3Style}>{a.aboutName} appealed {a.leadName}’s decision</h3>
+      <div className={quietClass}>In {a.checkIn.label}.</div>
+      <div className="gwui-mt-6 gwui-mb-6">{a.headline}</div>
       <Labelled label="Why:">{a.why}</Labelled>
       {a.whatWouldChangeIt && <Labelled label="What would change this:">{a.whatWouldChangeIt}</Labelled>}
       {a.theirOwnAnswer && <Said who={`${a.aboutName}’s own answer.`}>{a.theirOwnAnswer}</Said>}
       {a.decision && (
         <>
-          <div style={sub}>{a.leadName}’s decision</div>
-          <p style={{ margin: 0 }}>{a.decision.says}</p>
-          <div style={sub}>{a.leadName}’s reasons</div>
-          <p style={{ margin: 0 }}>{a.decision.reasons}</p>
+          <div className={subClass} style={subStyle}>{a.leadName}’s decision</div>
+          <div>{a.decision.says}</div>
+          <div className={subClass} style={subStyle}>{a.leadName}’s reasons</div>
+          <div>{a.decision.reasons}</div>
         </>
       )}
       {a.theirSide && <Said who={`${a.aboutName}’s side`}>{a.theirSide}</Said>}
       <Said who={`${a.aboutName}’s appeal`}>{a.appeal.says}</Said>
 
-      {!a.mayDecide && <p style={quiet}>You made this decision, so another admin decides the appeal.</p>}
+      {!a.mayDecide && <div className={quietClass}>You made this decision, so another admin decides the appeal.</div>}
       {a.mayDecide && !outcome && (
-        <div style={row}>
+        <div className={rowClass} style={rowStyle}>
           <Button kind="secondary" size="small" onClick={() => setOutcome('stands')}>Keep the decision</Button>
           <Button kind="quiet" size="small" onClick={() => setOutcome('changed')}>Change the decision</Button>
         </div>
       )}
       {a.mayDecide && outcome && (
-        <form onSubmit={(e) => { e.preventDefault(); if (reasons.trim()) save.mutate() }} style={{ marginTop: 10 }}>
-          <div style={sub}>{outcome === 'stands' ? 'Keep the decision' : 'Change the decision'}</div>
-          <p style={{ margin: '0 0 6px' }}>{a.aboutName} and {a.leadName} both read your reasons.</p>
+        <form onSubmit={(e) => { e.preventDefault(); if (reasons.trim()) save.mutate() }} className="gwui-mt-10">
+          <div className={subClass} style={subStyle}>{outcome === 'stands' ? 'Keep the decision' : 'Change the decision'}</div>
+          <div className="gwui-mb-6">{a.aboutName} and {a.leadName} both read your reasons.</div>
           <label style={{ display: 'block' }}>
-            <span style={sub}>Your reasons</span>
-            <textarea value={reasons} onChange={(e) => setReasons(e.target.value)} rows={3} maxLength={2000} style={field} />
+            <span className={subClass} style={subStyle}>Your reasons</span>
+            <textarea value={reasons} onChange={(e) => setReasons(e.target.value)} rows={3} maxLength={2000} className={fieldClass} style={fieldStyle} />
           </label>
-          <div style={row}>
+          <div className={rowClass} style={rowStyle}>
             <Button type="submit" size="small" disabled={!reasons.trim() || save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</Button>
             <Button kind="quiet" size="small" onClick={() => { setOutcome(null); setReasons('') }}>Not yet</Button>
           </div>
-          {failed && <p role="alert" style={quiet}>{DIDNT_SAVE}</p>}
+          {failed && <div role="alert" className={quietClass}>{DIDNT_SAVE}</div>}
         </form>
       )}
     </div>

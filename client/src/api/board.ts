@@ -142,7 +142,7 @@ export type BoardPresent = {
   } | null
   whatTheRoomIsAboutNote?: string
   whoOwnsWhat?: { participantId: string; name: string | null; role: string | null; items: { id: string; type: string; text: string; sessionNumber: number | null }[] }[]
-  dependencies?: { id: string; from: string | null; what: string; on: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null }[]
+  dependencies?: { id: string; from: string | null; fromParticipantId?: string | null; what: string; on: string | null; onParticipantId?: string | null; status: 'BLOCKING' | 'WAITING' | 'CLEARED'; then: string | null }[]
   checkInGrid?: { sessions: number[]; rows: { participantId: string; name: string | null; role: string | null; managingOnly: boolean; cells: Record<string, string> }[] }
 
   /**
@@ -233,9 +233,72 @@ export type BoardPresent = {
   patterns?: ServedPattern[]
   decisions?: { question: string; why: string; owner: string; source: 'blocker' | 'divergence' }[]
   poll?: { id: string; question: string; options: { id: string; label: string; who: (string | null)[]; whoIds: string[]; count: number }[] } | null
+
+  /**
+   * THE KIND OF WORK THIS CHECK-IN IS ABOUT (request 76). One of the eleven names in
+   * `KIND_OF_WORK_OPTIONS` below, exactly as the server writes it, or `null` when nobody has said.
+   * Read from the lead's own words at setup; the lead, or an admin of the organisation, can change
+   * it with `groundsApi.setKindOfWork`. A later read never overwrites the lead's own choice.
+   */
+  kindOfWork?: KindOfWork | null
+  /**
+   * THE RECORDS THE KIND OF WORK KEEPS: deals and their stages, releases, tickets, a matter's
+   * deadlines and parties, and so on - one section per name in the switchboard (`section`, e.g.
+   * "Deal grid"). Each section says what it holds, in plain words, and whether it is filled, has
+   * none yet, or is not something Groundwork keeps for this kind ("not-known", with `why`). Only
+   * the lead can add, change or remove a row, with `boardApi.addWorkItem` / `updateWorkItem` /
+   * `deleteWorkItem`. Who sees which rows is already decided by the server.
+   */
+  workRecords?: AServedWorkSection[]
 }
 
 export type BoardResponse = BoardAbsent | BoardWithheld | BoardPresent
+
+/** The eleven kinds of work Groundwork's board can draw records for, exactly as the server writes them. */
+export const KIND_OF_WORK_OPTIONS = [
+  'sales org',
+  'engineering release',
+  'support desk',
+  'distribution operations',
+  'trader training programme',
+  "founder's own check-in",
+  'asset loans',
+  'MarketView where next',
+  'MarketView Q4',
+  'a law firm matter',
+  'a government programme',
+] as const
+
+export type KindOfWork = (typeof KIND_OF_WORK_OPTIONS)[number]
+
+/** One row of a kind of work's record: a deal, a release, a ticket, a deadline, a party, and so on. */
+export interface AServedWorkRow {
+  id: string
+  kind: string
+  name: string
+  stage: string | null
+  owner: string | null
+  ownerParticipantId: string | null
+  due: string | null
+  fields: Record<string, string>
+  /** "said": read from somebody's check-in, with `said` holding their words exactly. "lead": added by the lead. */
+  from: 'said' | 'lead'
+  said?: string
+}
+
+export type AServedWorkSection =
+  | { section: string; holds: string; state: 'not-known'; why: string }
+  | { section: string; holds: string; state: 'none-yet' | 'filled'; stages?: string[]; rows: AServedWorkRow[] }
+
+/** What the lead sends to add or change a record of the kind of work. */
+export interface WorkItemInput {
+  kind?: string
+  name?: string
+  stage?: string | null
+  ownerParticipantId?: string | null
+  due?: string | null
+  fields?: Record<string, string>
+}
 
 export const boardApi = {
   get: (groundId: string, coverage?: CoverageVariant) =>
@@ -268,6 +331,18 @@ export const boardApi = {
 
   deleteObjective: (groundId: string, objectiveId: string) =>
     apiClient.delete(`/grounds/${groundId}/board/objectives/${objectiveId}`).then((r) => r.data),
+
+  /** Lead only: add a record of the kind of work (a deal, a release, a deadline). Every refusal is a plain sentence. */
+  addWorkItem: (groundId: string, dto: WorkItemInput) =>
+    apiClient.post<AServedWorkRow>(`/grounds/${groundId}/board/work-items`, dto).then((r) => r.data),
+
+  /** Lead only: change a record, or move its stage on. */
+  updateWorkItem: (groundId: string, itemId: string, dto: WorkItemInput) =>
+    apiClient.patch<AServedWorkRow>(`/grounds/${groundId}/board/work-items/${itemId}`, dto).then((r) => r.data),
+
+  /** Lead only: remove a record. */
+  deleteWorkItem: (groundId: string, itemId: string) =>
+    apiClient.delete<{ deleted: true }>(`/grounds/${groundId}/board/work-items/${itemId}`).then((r) => r.data),
 
   /** Initiator only: set the availability question and the times. */
   upsertPoll: (groundId: string, dto: { question: string; options: string[] }) =>

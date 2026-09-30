@@ -161,7 +161,10 @@ describe('one word for the thing a person opens', () => {
 })
 
 describe('and the two words stay distinct', () => {
-  const shell = readFileSync(join(SRC, 'components/gw/AppShell.tsx'), 'utf8')
+  /* NAV_ITEMS moved out of AppShell.tsx into nav-items.tsx (group 1 rebuild) - see
+     the-rebuilt-pages-use-only-the-new-parts.spec.ts. Behaviour is unchanged; only where the nav
+     item list itself is written moved. */
+  const shell = readFileSync(join(SRC, 'components/gw/nav-items.tsx'), 'utf8')
 
   it('the nav names the object', () => {
     /* Renamed to "All check-ins": the rail above it is already a list of check-ins, so the item

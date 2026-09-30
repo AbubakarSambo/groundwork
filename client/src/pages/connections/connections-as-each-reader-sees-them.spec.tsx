@@ -173,15 +173,16 @@ describe('Grace, an admin, reads Connections', () => {
     expect(nums.textContent).not.toMatch(/Paystack|Flutterwave|M-Pesa|spreadsheet|Upload|MarketView/)
   })
 
-  it('"Your own address" is not set up, with nothing to press, as Hafsah decided it comes later', async () => {
+  /* UPDATED 29 September, item 11: "Your own address" used to stay on the page as "Not set up",
+     with nothing to press, on the reasoning that it "comes later". Hafsah's answer on item 11 asks
+     for your own web address and logo to be left out entirely until they are built, so the section
+     is gone rather than shown unset. */
+  it('leaves out "Your own address" entirely - it is not built yet (item 11)', async () => {
     serve()
     open(GRACE)
-    const addr = await screen.findByRole('region', { name: 'Your own address' })
-    expect(within(addr).getByText('Not set up')).toBeTruthy()
-    expect(addr.textContent).toContain('Put Groundwork at an address on your own domain. Invitations, reminders and sign-in links then use it.')
-    expect(within(addr).queryAllByRole('button')).toHaveLength(0)
-    expect(within(addr).queryAllByRole('textbox')).toHaveLength(0)
-    expect(document.body.textContent).not.toMatch(/Claude Code|Copy link|baridi\.co\.ke/)
+    await screen.findByRole('region', { name: 'Your numbers' })
+    expect(screen.queryByRole('region', { name: 'Your own address' })).toBeNull()
+    expect(document.body.textContent).not.toMatch(/Your own address|Put Groundwork at an address on your own domain|Claude Code|Copy link|baridi\.co\.ke/)
   })
 
   it('notices in Slack or Teams: never what anyone said, arriving switched off, with the kind read from the address', async () => {
@@ -264,8 +265,16 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     expect(screen.getByText(/A Meta Business account, a WhatsApp Business number on it, and a Meta app with WhatsApp added\./)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'How to get these' })).toBeTruthy()
     expect(screen.queryByText('Done')).toBeNull()
+    /*
+     * A STEP STILL TO COME IS PLAIN TEXT, NOT A BUTTON (Hafsah, 30 September, item 2: "no more
+     * buttons than the prototype's own version of that screen has"). This used to render these
+     * as a `<button>` that let somebody peek at a later step's body early - which the prototype's
+     * own screen (whatsapp.txt) does not offer, and which put this page over the prototype's own
+     * button count. Updated together with the fix, in WhatsAppSetupPage.tsx.
+     */
     for (const later of ['Tell Meta where to send replies', 'Send yourself a test', 'Approve the reminder messages', 'Turn it on, and choose who uses it']) {
-      expect(screen.getByRole('button', { name: later })).toBeTruthy()
+      expect(screen.getByText(later)).toBeTruthy()
+      expect(screen.queryByRole('button', { name: later })).toBeNull()
     }
     expect(screen.getByText('Keep your number on your own system instead')).toBeTruthy()
     expect(screen.getByText('If your WhatsApp number already runs through your own customer system, it can pass check-in messages to us and send our replies back. Nothing moves to Meta. Whoever runs your systems sets this up with a key.')).toBeTruthy()

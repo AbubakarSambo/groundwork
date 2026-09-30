@@ -24,7 +24,9 @@ import { Tabs } from '@/components/gw/ui/Tabs'
 const THE_FIVE = [
   { key: 'board', label: 'Board' },
   { key: 'checkin', label: 'Check-in' },
-  { key: 'context', label: 'Context' },
+  /* Renamed to "Context and resources" (docs/tasks-ui.md, "one chat, Ask Groundwork, for
+     everything"), so the Resources panel it now carries has a name that says so. */
+  { key: 'context', label: 'Context and resources' },
   { key: 'mywork', label: 'My work' },
   { key: 'people', label: 'People and setup' },
 ]

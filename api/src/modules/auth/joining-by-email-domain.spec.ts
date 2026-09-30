@@ -2,56 +2,91 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 
 /**
- * JOINING BY EMAIL DOMAIN (U.3, Hafsah, 26 September), BY BEHAVIOUR.
+ * JOINING BY EMAIL DOMAIN (U.3, Hafsah, 26 September; changed 30 September, item 3), BY BEHAVIOUR.
  *
- * The admin's switch: "Anyone with an @baridi.co.ke email". Only the admin's own confirmed domain,
- * never a public mail provider, one organisation per domain. Somebody who signs up with that domain
- * is offered it on "Where do you work?", only once their address is confirmed, and joins as "Takes
- * part", through the seat check.
+ * The domain starts as the organisation's own FOUNDING email address's domain (`Organization.email`
+ * - never whichever admin happens to be looking), and is never a public mail provider. Somebody who
+ * signs up with that domain is offered it on "Where do you work?", only once their address is
+ * confirmed, and joins as "Takes part", through the seat check. An admin can also name or change
+ * the domain outright (`changeJoinDomain`), which always has to be their own confirmed address's
+ * domain, so nobody can name a company they are not at.
  */
 describe('the admin\'s switch', () => {
-  function make(o: { email?: string; verified?: boolean; taken?: boolean; on?: string | null } = {}) {
+  function make(o: { orgEmail?: string | null; joinDomain?: string | null; taken?: boolean } = {}) {
     const updates: any[] = [];
     const prisma: any = {
       organization: {
-        findUnique: jest.fn(async () => ({ joinDomain: o.on ?? null })),
+        findUnique: jest.fn(async () => ({ email: o.orgEmail === undefined ? 'admin@baridi.co.ke' : o.orgEmail, joinDomain: o.joinDomain ?? null })),
         findFirst: jest.fn(async () => (o.taken ? { id: 'other' } : null)),
         update: jest.fn(async (a: any) => { updates.push(a); return {}; }),
       },
-      user: { findUnique: jest.fn(async () => ({ email: o.email ?? 'grace@baridi.co.ke', isEmailVerified: o.verified ?? true })) },
     };
     return { users: new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any), updates };
   }
 
-  it('offers the admin\'s own domain', async () => {
+  it('offers the organisation\'s own founding domain, before anybody has switched it on', async () => {
     const { users } = make();
-    expect(await users.joiningByDomain('o1', 'u1')).toEqual({ on: false, domain: 'baridi.co.ke', whyNot: null });
+    expect(await users.joiningByDomain('o1')).toEqual({ on: false, domain: 'baridi.co.ke', whyNot: null });
   });
 
   it('switching it on sets that domain, and off clears it', async () => {
     const { users, updates } = make();
-    await users.setJoiningByDomain('o1', 'u1', true);
+    await users.setJoiningByDomain('o1', true);
     expect(updates[0]).toEqual({ where: { id: 'o1' }, data: { joinDomain: 'baridi.co.ke' } });
-    await users.setJoiningByDomain('o1', 'u1', false);
+    await users.setJoiningByDomain('o1', false);
     expect(updates[1]).toEqual({ where: { id: 'o1' }, data: { joinDomain: null } });
   });
 
-  it('never a public mail provider', async () => {
-    const { users, updates } = make({ email: 'grace@gmail.com' });
-    expect((await users.joiningByDomain('o1', 'u1')).whyNot).toBe('Your email address is at a public mail service, so there is no company domain for people to join by.');
-    await expect(users.setJoiningByDomain('o1', 'u1', true)).rejects.toThrow('public mail service');
-    expect(updates).toHaveLength(0);
-  });
-
-  it('never before the admin\'s own address is confirmed', async () => {
-    const { users, updates } = make({ verified: false });
-    await expect(users.setJoiningByDomain('o1', 'u1', true)).rejects.toThrow('Your own email address has to be confirmed before people can join by its domain.');
+  it('never a public mail provider, and nothing to switch on until an admin names one', async () => {
+    const { users, updates } = make({ orgEmail: 'admin@gmail.com' });
+    expect((await users.joiningByDomain('o1')).domain).toBeNull();
+    expect((await users.joiningByDomain('o1')).whyNot).toBe('No domain is set yet. Your organisation’s email address is on a public mail service. An admin can name the company domain here.');
+    await expect(users.setJoiningByDomain('o1', true)).rejects.toThrow('public mail service');
     expect(updates).toHaveLength(0);
   });
 
   it('one organisation per domain', async () => {
     const { users, updates } = make({ taken: true });
-    await expect(users.setJoiningByDomain('o1', 'u1', true)).rejects.toThrow('Another organisation on Groundwork already lets people with an @baridi.co.ke email join it, so this one cannot.');
+    await expect(users.setJoiningByDomain('o1', true)).rejects.toThrow('Another organisation on Groundwork already lets people with an @baridi.co.ke email join it, so this one cannot.');
+    expect(updates).toHaveLength(0);
+  });
+});
+
+describe('an admin names or changes the domain', () => {
+  function make(o: { email?: string; verified?: boolean; taken?: boolean } = {}) {
+    const updates: any[] = [];
+    const prisma: any = {
+      organization: {
+        findUnique: jest.fn(async () => ({ email: 'founder@baridi.co.ke', joinDomain: 'baridi.co.ke' })),
+        findFirst: jest.fn(async () => (o.taken ? { id: 'other' } : null)),
+        update: jest.fn(async (a: any) => { updates.push(a); return {}; }),
+      },
+      user: { findUnique: jest.fn(async () => ({ email: o.email ?? 'grace@newco.com', isEmailVerified: o.verified ?? true })) },
+    };
+    return { users: new UsersService(prisma, {} as any, {} as any, {} as any, { emit: () => undefined } as any), updates };
+  }
+
+  it('sets it to the requesting admin\'s own confirmed domain', async () => {
+    const { users, updates } = make();
+    expect(await users.changeJoinDomain('o1', 'u1')).toEqual({ on: true, domain: 'baridi.co.ke', whyNot: null });
+    expect(updates[0]).toEqual({ where: { id: 'o1' }, data: { joinDomain: 'newco.com' } });
+  });
+
+  it('never a public mail provider', async () => {
+    const { users, updates } = make({ email: 'grace@gmail.com' });
+    await expect(users.changeJoinDomain('o1', 'u1')).rejects.toThrow('public mail service');
+    expect(updates).toHaveLength(0);
+  });
+
+  it('never before the admin\'s own address is confirmed', async () => {
+    const { users, updates } = make({ verified: false });
+    await expect(users.changeJoinDomain('o1', 'u1')).rejects.toThrow('Your own email address has to be confirmed before you can name the domain people join by.');
+    expect(updates).toHaveLength(0);
+  });
+
+  it('one organisation per domain', async () => {
+    const { users, updates } = make({ taken: true });
+    await expect(users.changeJoinDomain('o1', 'u1')).rejects.toThrow('Another organisation on Groundwork already lets people with an @newco.com email join it, so this one cannot.');
     expect(updates).toHaveLength(0);
   });
 });

@@ -8,7 +8,10 @@ import { useAuthStore } from '@/stores/auth'
 
 /**
  * A NEW ORGANISATION'S WELCOME CARD AND "GET <ORGANISATION> GOING" (U.3), AS EACH READER SEES THEM.
- * The held sentence ("You can see every board and report. They never see ...") is not shown.
+ * Item 11 conflict B, answered 29 September: Hafsah's exact sentence ("You can see every board and
+ * report, including what people said in them. ... and never a performance plan, promotion or
+ * renewal unless given access to that check-in.") replaces the old held sentence, which pointed
+ * "They" at nobody.
  */
 const NEW = { people: 1, admins: 1, checkIns: 0, paying: false, connected: false, whatsappOn: false, whatsappConnected: false, welcomeCardSeen: false }
 
@@ -36,7 +39,9 @@ describe('the new admin', () => {
     expect(screen.getAllByRole('link', { name: 'Do it' }).map(a => a.getAttribute('href'))).toEqual(['/org/members', '/org/members', '/start'])
     const text = document.body.textContent ?? ''
     expect(text).not.toMatch(/WhatsApp/)
-    expect(text).not.toMatch(/You can see every board and report|They never see/)
+    expect(screen.getByText(
+      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Groundwork, anyone’s own report, or a lead’s private notes, and never a performance plan, promotion or renewal unless given access to that check-in.',
+    )).toBeTruthy()
   })
 
   /* U.17: the Suites door came with the Suites page, in the prototype's place and words. */

@@ -1,22 +1,27 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth'
 import { useHelpStore } from '@/stores/help'
 import { useFeedbackStore } from '@/stores/feedback'
-import { navItemsFor } from '@/components/gw/AppShell'
+import { navItemsFor } from '@/components/gw/nav-items'
 import { OrganisationChoices } from '@/components/gw/OrganisationChoices'
-import { Button } from '@/components/gw/kit'
 import { useJumpStore } from '@/stores/jump'
+import { Page, PageTitle, Section, Panel, Button } from '@/components/gw/ui'
 
 /**
- * "MORE", ON A PHONE (A1, docs/prototype/screens/A1-look-and-layout/more-menu-phone.txt).
+ * "MORE", ON A PHONE (A1, docs/prototype/screens/A1-look-and-layout/more-menu-phone.txt; group 1 of
+ * the screens rebuilt from the shared parts).
  *
  * Everything the phone's bottom bar has no room for: the pages across check-ins, your settings,
  * help, feedback, the organisation's own pages for an admin, switching organisation, and signing
- * out. Phones had no way to switch organisation or sign out before this page.
+ * out. Every door comes out of `navItemsFor`, the same gate the sidebar uses, so a phone offers
+ * exactly the pages a computer does to the same person.
  *
- * Every door comes out of `navItemsFor`, the same gate the sidebar uses, so a phone offers exactly
- * the pages a computer does to the same person. You is on it since U.12, and Company since U.15;
- * "Join or create an organisation" joins it when that flow exists (A3).
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` for the frame, `Section` for "Organisations",
+ * and each list - Boards/Company/You/settings/help/feedback, the organisation's own pages, and the
+ * organisations themselves - is one white `Panel` with a line between its rows, as the prototype
+ * draws it, in place of the old `gw-more-item` rows. `OrganisationChoices` (the switcher shared with
+ * the sidebar) sits inside that same panel unchanged; it carries none of the classes the guard
+ * checks for, so nothing there needed touching for this task.
  */
 export function MorePage() {
   const user = useAuthStore(s => s.user)
@@ -29,56 +34,56 @@ export function MorePage() {
   const pages = items.filter(i => !(i as { adminOnly?: boolean }).adminOnly && !(i as { platformAdminOnly?: boolean }).platformAdminOnly && i.to !== '/grounds' && i.to !== '/settings' && i.to !== '/today')  /* Today is in the phone's bar */
   const adminItems = items.filter(i => (i as { adminOnly?: boolean }).adminOnly)
   const staffItems = items.filter(i => (i as { platformAdminOnly?: boolean }).platformAdminOnly)
-  /* Never a name that isn't the organisation's own (U.8 review): see AppShell.tsx's orgName for
-     why an absent organizationName means "not known yet", not "none". */
   const orgName = user?.organizationName ?? ''
 
   return (
-    <div className="gw-more">
-      <h1 className="gw-t-title gw-more-h1">More</h1>
+    <Page narrow>
+      <PageTitle title="More" />
 
-      <ul className="gw-more-list" aria-label="More">
-        {/* "Jump to", which the sidebar carries on a computer. The phone's bar has no room for it. */}
-        <li><button type="button" className="gw-more-item" onClick={openJump}><MoreIcon d="jump" /><b>Jump to…</b></button></li>
-        {pages.map(item => (
-          <li key={item.to}>
-            <NavLink to={item.to} className="gw-more-item">{item.icon(false)}<b>{item.label}</b></NavLink>
-          </li>
-        ))}
-        <li><NavLink to="/settings" className="gw-more-item"><MoreIcon d="settings" /><b>Your settings</b></NavLink></li>
-        <li><button type="button" className="gw-more-item" onClick={() => showHelp(0)}><MoreIcon d="help" /><b>Help</b></button></li>
-        <li><NavLink to="/talk-to-us" className="gw-more-item"><MoreIcon d="talk" /><b>Talk to us</b></NavLink></li>
-        <li><button type="button" className="gw-more-item" onClick={showFeedback}><MoreIcon d="feedback" /><b>Send feedback</b></button></li>
-        {staffItems.map(item => (
-          <li key={item.to}>
-            <NavLink to={item.to} className="gw-more-item">{item.icon(false)}<b>{item.label}</b></NavLink>
-          </li>
-        ))}
-      </ul>
+      <Panel pad={false}>
+        <ul className="gwui-more-list" aria-label="More">
+          <li><button type="button" className="gwui-more-row" onClick={openJump}><MoreIcon d="jump" /><b>Jump to…</b></button></li>
+          {pages.map(item => (
+            <li key={item.to}>
+              <Link to={item.to} className="gwui-more-row">{item.icon(false)}<b>{item.label}</b></Link>
+            </li>
+          ))}
+          <li><Link to="/settings" className="gwui-more-row"><MoreIcon d="settings" /><b>Your settings</b></Link></li>
+          <li><button type="button" className="gwui-more-row" onClick={() => showHelp(0)}><MoreIcon d="help" /><b>Help</b></button></li>
+          <li><Link to="/talk-to-us" className="gwui-more-row"><MoreIcon d="talk" /><b>Talk to us</b></Link></li>
+          <li><button type="button" className="gwui-more-row" onClick={showFeedback}><MoreIcon d="feedback" /><b>Send feedback</b></button></li>
+          {staffItems.map(item => (
+            <li key={item.to}>
+              <Link to={item.to} className="gwui-more-row">{item.icon(false)}<b>{item.label}</b></Link>
+            </li>
+          ))}
+        </ul>
+      </Panel>
 
-      {/* The organisation's own pages, for an admin, under its name as in the sidebar. */}
       {adminItems.length > 0 && (
-        <>
-          <h2 className="gw-t-h3 gw-more-h2">{orgName}</h2>
-          <ul className="gw-more-list" aria-label={orgName}>
-            {adminItems.map(item => (
-              <li key={item.to}>
-                <NavLink to={item.to} className="gw-more-item">{item.icon(false)}<b>{item.label}</b></NavLink>
-              </li>
-            ))}
-          </ul>
-        </>
+        <Section heading={orgName}>
+          <Panel pad={false}>
+            <ul className="gwui-more-list" aria-label={orgName}>
+              {adminItems.map(item => (
+                <li key={item.to}>
+                  <Link to={item.to} className="gwui-more-row">{item.icon(false)}<b>{item.label}</b></Link>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        </Section>
       )}
 
-      <h2 className="gw-t-h3 gw-more-h2">Organisations</h2>
-      <div className="gw-more-list gw-more-orgs">
-        <OrganisationChoices />
-      </div>
+      <Section heading="Organisations">
+        <Panel pad={false}>
+          <div className="gwui-more-list">
+            <OrganisationChoices />
+          </div>
+        </Panel>
+      </Section>
 
-      <div style={{ marginTop: 20 }}>
-        <Button kind="secondary" onClick={() => navigate('/signout', { replace: true })}>Sign out</Button>
-      </div>
-    </div>
+      <Button kind="secondary" onClick={() => navigate('/signout', { replace: true })}>Sign out</Button>
+    </Page>
   )
 }
 

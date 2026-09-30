@@ -48,7 +48,20 @@ export class AskingForMoreTimeService {
       leadFirstName: (ground.initiator?.firstName ?? '').trim() || null,
       ranUntil: ground.endsAt ? ground.endsAt.toISOString() : null,
       askedAt: askedRecently ? party.moreTimeAskedAt!.toISOString() : null,
+      /* "All 38 of your check-ins" (item 11, 29 September): the CHECK-INS this person has ever been
+         part of (Ground rows), never the SESSIONS inside them (CheckIn rows). `distinct` on
+         `groundId` counts each check-in once, however many rounds it ran. */
+      checkInsCount: await this.checkInsCount(userId),
     };
+  }
+
+  private async checkInsCount(userId: string): Promise<number> {
+    const rows = await this.prisma.groundParticipant.findMany({
+      where: { userId },
+      distinct: ['groundId'],
+      select: { groundId: true },
+    });
+    return rows.length;
   }
 
   async ask(groundId: string, userId: string, now: Date = new Date()) {

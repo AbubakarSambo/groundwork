@@ -184,7 +184,7 @@ describe('everyone at Baridi', () => {
       const row = within(screen.getByText(name, { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement)
       expect(row.getByText(roleTag)).toBeTruthy()
       expect(row.getByText(statusTag)).toBeTruthy()
-      expect(row.getByRole('button', { name: `Open ${name}` })).toBeTruthy()
+      expect(row.getByRole('link', { name: `Open ${name}` })).toBeTruthy()
     }
     /* Team: "Leadership" for Ada, "Sales" for Lena and Mona, "No team" for Wanda (no team set). */
     expect(within(screen.getByText('Ada Admin', { selector: '.gwui-person-name' }).closest('[role="row"]') as HTMLElement).getByText('Leadership')).toBeTruthy()
@@ -227,7 +227,7 @@ describe('everyone at Baridi', () => {
 
   it('"Open" goes to that person\'s own page', async () => {
     open()
-    fireEvent.click(await screen.findByRole('button', { name: 'Open Miriam Wanjiku' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Open Miriam Wanjiku' }))
     expect(await screen.findByText('One person')).toBeTruthy()
   })
 
@@ -357,7 +357,7 @@ describe('somebody held for a seat, with no account of their own', () => {
     expect((await screen.findAllByText('zawadi.u8@example.test')).length).toBeGreaterThan(0)
     expect(screen.getByText('No seat on your plan')).toBeTruthy()
     expect(screen.getByText('7 people, on the Growth plan, which is for up to 100. zawadi.u8@example.test is on a check-in with no seat for them.')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /^Open zawadi/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Open zawadi/i })).toBeNull()
   })
 })
 

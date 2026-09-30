@@ -20,15 +20,17 @@ describe('the numbers show before somebody pays, not after', () => {
    * in plan-and-billing-as-each-reader-sees-it.spec.tsx; this keeps the two things the old checks
    * were for.
    */
+  /* UPDATED, GROUP 1 REBUILD: each row is the shared `FieldRow` now (components/gw/ui), whose
+     label is `label="Plan"` / `label="So far"` rather than kit.tsx's `<b>Plan</b>`. */
   it('the plan line, with people against the cap, is not gated on already having a subscription', () => {
-    const row = code.slice(code.indexOf('<b>Plan</b>') - 200, code.indexOf('<b>Plan</b>') + 400)
+    const row = code.slice(code.indexOf('label="Plan"') - 200, code.indexOf('label="Plan"') + 400)
     expect(row).toContain('thePlanLine(billingStatus, livePricing, freeGrounds)')
-    expect(code.slice(code.indexOf('<b>Plan</b>') - 300, code.indexOf('<b>Plan</b>'))).not.toMatch(/isSubscribed \|\| isPaused\) &&/)
+    expect(code.slice(code.indexOf('label="Plan"') - 300, code.indexOf('label="Plan"'))).not.toMatch(/isSubscribed \|\| isPaused\) &&/)
   })
 
   it('shows what the account has actually done, not only what it costs', () => {
     /* An admin asked to pay for a year has to be able to say what was got for it. */
-    const usage = code.slice(code.indexOf('<b>So far</b>'), code.indexOf('<b>So far</b>') + 700)
+    const usage = code.slice(code.indexOf('label="So far"'), code.indexOf('label="So far"') + 700)
     expect(usage).toContain('usage.checkIns')
     expect(usage).toContain('reportsReleased')
     expect(usage).toContain('peopleTakingPart')

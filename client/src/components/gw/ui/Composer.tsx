@@ -19,7 +19,7 @@ export function Composer({
   value, onChange, onKeyDown, onSend, onPlus, plusOpen, plusMenu,
   disabled, sendDisabled, plusDisabled, plusLabel = 'Add a photo, a document or some text',
   sendLabel = 'Send',
-  inputRef, placeholder = 'Type, or hold to speak',
+  inputRef, placeholder = 'Type, or hold to speak', ariaLabel = 'Your answer', maxLength,
 }: {
   value: string
   onChange: (value: string) => void
@@ -41,6 +41,8 @@ export function Composer({
   sendLabel?: string
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
   placeholder?: string
+  ariaLabel?: string
+  maxLength?: number
 }) {
   return (
     <div style={{ padding: '12px 16px', borderTop: '1px solid var(--gw-border)', display: 'flex', gap: 8, alignItems: 'center', background: 'var(--gw-page)', position: 'relative' }}>
@@ -80,7 +82,8 @@ export function Composer({
         onKeyDown={onKeyDown}
         disabled={disabled}
         placeholder={placeholder}
-        aria-label="Your answer"
+        aria-label={ariaLabel}
+        maxLength={maxLength}
         rows={1}
         style={{
           flex: 1, minWidth: 0, resize: 'none', outline: 'none',

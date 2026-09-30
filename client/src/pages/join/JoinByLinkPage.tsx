@@ -38,7 +38,15 @@ export function JoinByLinkPage() {
 
   const join = useMutation({
     mutationFn: () => apiClient.post(`/join-links/${encodeURIComponent(code)}/join`).then(r => r.data.data ?? r.data),
-    onSuccess: (res: any) => { setAuth(res.user, res.accessToken); window.location.assign('/today') },
+    onSuccess: (res: any) => {
+      /* Somebody whose email domain does not match the organisation's own is not joined on the
+         spot (item 11, 29 September): the server raises a request instead and there is no
+         `user`/`accessToken` to sign in with here. "Almost in" (join/waiting.tsx) is the same page
+         a check-in invitation sends somebody to while they wait for an admin. */
+      if (res.queuedForApproval) { navigate('/join/waiting', { replace: true }); return }
+      setAuth(res.user, res.accessToken)
+      window.location.assign('/today')
+    },
     onError: (e: any) => setProblem(e?.response?.data?.message ?? 'That did not work, and you have not joined. Try again.'),
   })
 

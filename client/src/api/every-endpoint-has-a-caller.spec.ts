@@ -34,8 +34,6 @@ const KNOWN: Record<string, string> = {
     'Org-level "activate billing without payment". With Stripe unwired this is the only way to put a customer on a paid footing, and it has no surface at either end. Awaiting her call on who gets codes and where it is entered.',
   'authApi.memberSignin':
     'Magic sign-in link for an existing member. The sign-in page offers password and forgot-password only, so a member with no password has no self-serve way in. Small, real, undecided.',
-  'authApi.requestPasswordSetup':
-    'Lets a signed-in person generate their own password-setup token, which is the only route for somebody who signed in with Google and has no password. Left alone deliberately: whether setPassword is safe for an account that ALREADY has one needs checking before this ships as a change-password flow.',
   // ── Found by this guard, not by the hand sweep it replaced ──────────────────
   'pricingAdminApi.get':
     'THE SECOND ADMIN PRICING API. `/billing/admin/pricing` (get/update/reset) sits beside `adminApi` on `/admin/pricing`, which is the one the ops page uses. Two route families for the thing that must never disagree - what we charge. `reset` has no equivalent in the one we use. Needs collapsing onto one; which survives is a call, so it is not being guessed at.',

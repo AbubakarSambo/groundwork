@@ -5,13 +5,16 @@ import { AskingForMoreTimeService } from './asking-for-more-time.service';
  */
 const A_DAY = 24 * 60 * 60 * 1000;
 
-function make(opts: { status?: string; askedAt?: Date | null; notInIt?: boolean } = {}) {
+function make(opts: { status?: string; askedAt?: Date | null; notInIt?: boolean; groundIds?: string[] } = {}) {
   const sent: any[] = [];
   const updates: any[] = [];
   const prisma: any = {
     groundParticipant: {
       findFirst: jest.fn(async ({ where }: any) => (opts.notInIt || where.partyType !== 'PARTICIPANT' ? null : { id: 'p1', email: 'miriam@baridi.test', moreTimeAskedAt: opts.askedAt ?? null, nameGiven: null })),
       update: jest.fn(async (a: any) => { updates.push(a); return {}; }),
+      /* "All 38 of your check-ins" (item 11): distinct Grounds this person has ever been part of,
+         never the sessions inside them. */
+      findMany: jest.fn(async () => (opts.groundIds ?? ['g1']).map((groundId) => ({ groundId }))),
     },
     ground: {
       findUnique: jest.fn(async () => ({
@@ -26,11 +29,20 @@ function make(opts: { status?: string; askedAt?: Date | null; notInIt?: boolean 
 }
 
 describe('asking for more time', () => {
-  it('says whose it is, until when it ran, and that they have not asked', async () => {
-    const { s } = make();
+  it('says whose it is, until when it ran, that they have not asked, and how many check-ins are theirs', async () => {
+    const { s } = make({ groundIds: ['g1', 'g2', 'g3'] });
     expect(await s.whereItStands('g1', 'u1')).toEqual({
       outOfTime: true, checkInName: 'Sales team, Q3', leadFirstName: 'Wairimu', ranUntil: '2026-09-30T00:00:00.000Z', askedAt: null,
+      checkInsCount: 3,
     });
+  });
+
+  it('counts each check-in once, distinct on the ground - never the sessions inside it', async () => {
+    /* A real query would never repeat a groundId here (that is what `distinct` guarantees), but the
+       count this returns must still be of CHECK-INS, not of however many session rows a ground has -
+       that is the whole point of reading groundId rather than counting CheckIn rows. */
+    const { s } = make({ groundIds: ['g1'] });
+    expect((await s.whereItStands('g1', 'u1')).checkInsCount).toBe(1);
   });
 
   it('sends the lead the request, with who asked and which check-in', async () => {

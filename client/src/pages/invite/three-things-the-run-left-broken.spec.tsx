@@ -101,9 +101,16 @@ describe('an invited person reads the disclosure before they commit, once', () =
     /**
      * It used to arrive on the NEXT screen, after "Add my version" - a disclosure shown after
      * the decision it is meant to inform.
+     *
+     * UPDATED 29 September, item 11 conflict A: "Nobody you work with reads it" said no manager
+     * and no admin ever saw a person's words, which decision 1 in CLAUDE.md's privacy rules makes
+     * untrue for every check-in. It is replaced by "Who can read what you write", built from the
+     * check-in's own settings (`whoCanReadThis`) so it can never say something the server does not
+     * actually do.
      */
     expect(INVITE).toMatch(/What happens to what you write/)
-    expect(INVITE).toMatch(/Nobody you work with reads it/)
+    expect(INVITE).toMatch(/Who can read what you write/)
+    expect(INVITE).not.toMatch(/Nobody you work with reads it/)
     expect(INVITE).toMatch(/Nothing here trains a model/)
   })
 

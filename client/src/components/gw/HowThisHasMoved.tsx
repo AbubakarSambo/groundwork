@@ -29,16 +29,16 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
   if (!moved.length) return null
 
   return (
-    <div style={{ marginTop: 26 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 2 }}>
+    <div className="gwui-mt-22">
+      <div className="gwui-fs-14-5 gwui-ink-navy gwui-mb-2" style={{ fontWeight: 700 }}>
         How this has moved
       </div>
-      <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.55, marginBottom: 12, maxWidth: 560 }}>
+      <div className="gwui-fs-13-5 gwui-ink-muted gwui-mb-12" style={{ lineHeight: 1.55, maxWidth: 560 }}>
         What the report said at the end of each session, as it stood then. Nothing here has been
         rewritten since.
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="gwui-gap-8" style={{ display: 'flex', flexDirection: 'column' }}>
         {moved.map(m => {
           /*
            * U.9 RE-REVIEW: THE FIELD THE SERVER ACTUALLY SENDS IS `sessionNumber`, NOT `round`.
@@ -63,12 +63,10 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
           return (
           <div
             key={m.sessionNumber ?? m.takenAt}
-            style={{
-              border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-card)',
-              padding: '11px 14px',
-            }}
+            className="gwui-rule gwui-pt-11 gwui-pr-14 gwui-pb-11 gwui-pl-14"
+            style={{ borderRadius: 10, background: 'white' }}
           >
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 3 }}>
+            <div className="gwui-fs-14 gwui-ink-navy gwui-mb-3" style={{ fontWeight: 700 }}>
               {sawDifferently}
             </div>
             {/*
@@ -80,10 +78,10 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
              * this check-in and says nothing here for anybody else.
              */}
             {viewerRunsThisCheckIn && (
-              <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.6 }}>{m.says}</div>
+              <div className="gwui-fs-14-5 gwui-ink-text" style={{ lineHeight: 1.6 }}>{m.says}</div>
             )}
             {m.amended && (
-              <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', lineHeight: 1.5, marginTop: 5 }}>
+              <div className="gwui-fs-13-5 gwui-ink-amber gwui-mt-5" style={{ lineHeight: 1.5 }}>
                 {m.amended}
               </div>
             )}

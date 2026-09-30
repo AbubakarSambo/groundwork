@@ -16,13 +16,19 @@ import './gw-ui.css'
  * setup (check-in-people-and-setup.txt): a secondary "Copy an invite link" and a primary
  * "Add people" sit beside that heading, not under it. Separate from `note`, which is a sentence,
  * not a control.
+ *
+ * `children` IS OPTIONAL (U.10 (b)): the board (BoardPage.tsx) draws a heading, then its content as
+ * plain siblings built from `Card`/`Row` further down the same switchboard - rebuilding that content
+ * into this component's own body is the next piece of that task, not this one. With no children,
+ * only the heading row is drawn: no empty body div, so a heading-only call costs nothing beyond the
+ * heading itself, same as the old `Sec size="board"` it replaces.
  */
 export function Section({ heading, note, action, foot, children }: {
   heading: string
   note?: string
   action?: React.ReactNode
   foot?: string
-  children: React.ReactNode
+  children?: React.ReactNode
 }) {
   const headingId = useId()
   return (
@@ -32,7 +38,7 @@ export function Section({ heading, note, action, foot, children }: {
         {note && <span className="gwui-section-note">{note}</span>}
         {action && <span className="gwui-section-action">{action}</span>}
       </div>
-      <div className="gwui-section-body">{children}</div>
+      {children !== undefined && <div className="gwui-section-body">{children}</div>}
       {foot && <p className="gwui-section-foot">{foot}</p>}
     </section>
   )

@@ -15,7 +15,7 @@ import { AuthService } from '../auth/auth.service';
 import { addressesIn, namesIn, planFor, summarise, MOST_IN_ONE_PASTE, Row } from './putting-a-whole-company-on';
 import { RolloutFacts } from './where-a-rollout-has-got-to';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { theDomainOf, mayBeJoinedBy } from '../../common/an-email-domain';
+import { theDomainOf, mayBeJoinedBy, effectiveJoinDomain } from '../../common/an-email-domain';
 import { isCovered } from '../../common/subscription';
 import { HOW_A_NEW_ORG_WORKS } from '../grounds/who-may-open-a-check-in';
 import { mayChange, mayHandOver } from './the-person-who-set-this-up';
@@ -86,46 +86,77 @@ export class UsersService {
   }
 
   /**
-   * "WHO CAN JOIN": "Anyone with an @baridi.co.ke email" (A4 people.txt; U.3, Hafsah, 26 September).
+   * "WHO CAN JOIN": "Anyone with an @baridi.co.ke email" (A4 people.txt; U.3, Hafsah, 26 September;
+   * changed 30 September, item 3, to read from `effectiveJoinDomain` rather than the current
+   * admin's own address).
    *
-   * The domain is always the admin's own confirmed address's, so nobody can switch it on for a
-   * company they are not at, and never a public mail provider. One organisation per domain.
+   * The domain SHOWN here, and the one the invite link itself checks a joiner's address against
+   * (`TheOrganisationInviteLinkService`), starts as the domain of the organisation's own founding
+   * email address - never whichever admin happens to be looking at this page - and stays that way
+   * until an admin changes it (`changeJoinDomain`). Turning it on and off (this method's `on`) is
+   * a separate decision from what the domain IS: an admin can see and change the domain before
+   * ever switching joining-by-domain on.
    */
-  async joiningByDomain(organizationId: string, adminId: string) {
-    const [org, admin] = await Promise.all([
-      this.prisma.organization.findUnique({ where: { id: organizationId }, select: { joinDomain: true } }),
-      this.prisma.user.findUnique({ where: { id: adminId }, select: { email: true, isEmailVerified: true } }),
-    ]);
-    const domain = theDomainOf(admin?.email);
+  async joiningByDomain(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { email: true, joinDomain: true } });
+    const domain = effectiveJoinDomain(org ?? { email: null, joinDomain: null });
     return {
       on: !!org?.joinDomain,
-      domain: org?.joinDomain ?? (domain && mayBeJoinedBy(domain) ? domain : null),
-      /* Why it cannot be switched on, in a sentence, or null when it can. */
-      whyNot: org?.joinDomain ? null : this.whyNoDomain(domain, !!admin?.isEmailVerified),
+      domain,
+      /* Why nobody can join by domain yet, in a sentence, or null when they can (or could, once
+         switched on). */
+      whyNot: domain ? null : 'No domain is set yet. Your organisation’s email address is on a public mail service. An admin can name the company domain here.',
     };
   }
 
-  private whyNoDomain(domain: string | null, verified: boolean): string | null {
-    if (!domain || !verified) return 'Your own email address has to be confirmed before people can join by its domain.';
-    if (!mayBeJoinedBy(domain)) return 'Your email address is at a public mail service, so there is no company domain for people to join by.';
-    return null;
-  }
-
-  async setJoiningByDomain(organizationId: string, adminId: string, on: boolean) {
+  async setJoiningByDomain(organizationId: string, on: boolean) {
     if (!on) {
+      /* Off clears the domain itself too - this used to keep the domain and only null out
+         whether it was active, but that meant a domain nobody chose (defaulted from the founding
+         address) reappeared, active again, the moment somebody switched it back on with no say in
+         what it would be. Clearing it means switching back on asks again. */
       await this.prisma.organization.update({ where: { id: organizationId }, data: { joinDomain: null } });
-      return this.joiningByDomain(organizationId, adminId);
+      return this.joiningByDomain(organizationId);
     }
-    const admin = await this.prisma.user.findUnique({ where: { id: adminId }, select: { email: true, isEmailVerified: true } });
-    const domain = theDomainOf(admin?.email);
-    const why = this.whyNoDomain(domain, !!admin?.isEmailVerified);
-    if (why) throw new BadRequestException(why);
-    const taken = await this.prisma.organization.findFirst({ where: { joinDomain: domain!, id: { not: organizationId } }, select: { id: true } });
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { email: true, joinDomain: true } });
+    const domain = effectiveJoinDomain(org ?? { email: null, joinDomain: null });
+    if (!domain) {
+      throw new BadRequestException('No domain is set yet. Your organisation’s email address is on a public mail service. An admin can name the company domain here.');
+    }
+    /* One organisation per domain (`Organization.joinDomain` is unique) - checked here, in a
+       sentence, rather than left to the database's own constraint error. Two organisations can
+       share a founding email's domain without either ever having named it explicitly; only the
+       first to switch on, or to name a domain (`changeJoinDomain`), gets it. */
+    const taken = await this.prisma.organization.findFirst({ where: { joinDomain: domain, id: { not: organizationId } }, select: { id: true } });
     if (taken) {
       throw new ConflictException(`Another organisation on Groundwork already lets people with an @${domain} email join it, so this one cannot. Talk to us if it is your company's domain.`);
     }
-    await this.prisma.organization.update({ where: { id: organizationId }, data: { joinDomain: domain! } });
-    return this.joiningByDomain(organizationId, adminId);
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { joinDomain: domain } });
+    return this.joiningByDomain(organizationId);
+  }
+
+  /**
+   * AN ADMIN NAMES OR CHANGES THE DOMAIN (Hafsah, 30 September, item 3: "where an admin can change
+   * it"). The new domain has to be the requesting admin's own confirmed address's domain, so nobody
+   * can name a company they are not at, and never a public mail provider - the same guarantee the
+   * old toggle gave, now available whether or not joining-by-domain is switched on, and whatever
+   * the organisation's founding address was.
+   */
+  async changeJoinDomain(organizationId: string, adminId: string) {
+    const admin = await this.prisma.user.findUnique({ where: { id: adminId }, select: { email: true, isEmailVerified: true } });
+    const domain = theDomainOf(admin?.email);
+    if (!domain || !admin?.isEmailVerified) {
+      throw new BadRequestException('Your own email address has to be confirmed before you can name the domain people join by.');
+    }
+    if (!mayBeJoinedBy(domain)) {
+      throw new BadRequestException('Your email address is at a public mail service, so it cannot be the domain people join by.');
+    }
+    const taken = await this.prisma.organization.findFirst({ where: { joinDomain: domain, id: { not: organizationId } }, select: { id: true } });
+    if (taken) {
+      throw new ConflictException(`Another organisation on Groundwork already lets people with an @${domain} email join it, so this one cannot. Talk to us if it is your company's domain.`);
+    }
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { joinDomain: domain } });
+    return this.joiningByDomain(organizationId);
   }
 
   /** "Got it" on the new admin's welcome card (U.3). Their own row only. */

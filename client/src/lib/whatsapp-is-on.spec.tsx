@@ -40,7 +40,10 @@ describe('whether WhatsApp is mentioned', () => {
     const settings = readFileSync(join(__dirname, '../pages/settings/SettingsPage.tsx'), 'utf8')
     /* U.4: the number box moved to one person's page. */
     const people = readFileSync(join(__dirname, '../pages/org/OnePersonPage.tsx'), 'utf8')
-    expect(settings).toMatch(/\{whatsappOn && <section[^>]*>\s*<Sec title="WhatsApp" \/>/)
+    /* UPDATED, GROUP 1 REBUILD: the WhatsApp field is a `FieldRow` inside "You"'s panel now, not
+       its own `<section>` with kit.tsx's `Sec` - the same gate (`whatsappOn &&`), on the row that
+       carries the number. */
+    expect(settings).toMatch(/\{whatsappOn && \(\s*<FieldRow\s*\n\s*label="WhatsApp"/)
     /*
      * REBUILT (design-audit.md item 9): the number now sits behind the same "Change" every other
      * field on this page uses, in `EditableField`, not the old always-editable `gw-one-field` /

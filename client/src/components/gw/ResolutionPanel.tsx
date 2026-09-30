@@ -113,10 +113,13 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
 
   const label = (v: string | null) => options.find(o => o.value === v)?.label ?? v ?? ''
 
-  const card = { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '16px 18px', marginBottom: 12 } as const
-  const heading = { fontSize: 16, fontWeight: 800, color: 'var(--gw-text)', marginBottom: 8 } as const
-  const para = { fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 12 } as const
-  const subheading = { fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', margin: '14px 0 6px' } as const
+  const cardClass = 'gwui-rule gwui-pt-16 gwui-pr-18 gwui-pb-16 gwui-pl-18 gwui-mb-12'
+  const cardStyle = { background: 'white', borderRadius: 10 } as const
+  const headingClass = 'gwui-fs-16 gwui-ink-text gwui-mb-8'
+  const paraClass = 'gwui-fs-13 gwui-ink-sub gwui-mb-12'
+  const paraStyle = { lineHeight: 1.6 } as const
+  const subheadingClass = 'gwui-fs-13 gwui-ink-text gwui-mt-14 gwui-mb-6'
+  const subheadingStyle = { fontWeight: 700 } as const
 
   /* What a participant reads while it is open. The lead is shown the same words, word for word. */
   const whatTheyRead = viewerIsParty
@@ -125,10 +128,10 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
 
   /* ------------------------------------------------------------------ how it ended, for everyone */
   const howItEnded = closed && resolution && (
-    <div style={card}>
-      <div style={heading}>How this ended</div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-green-t)' }}>{label(resolution.endState)}</div>
-      <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 4 }}>
+    <div className={cardClass} style={cardStyle}>
+      <div className={headingClass}>How this ended</div>
+      <div className="gwui-fs-15 gwui-ink-green" style={{ fontWeight: 700 }}>{label(resolution.endState)}</div>
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mt-4">
         {viewerIsLead
           ? `You decided this on ${onTheDay(resolution.closedAt!)}.`
           : leadName
@@ -137,12 +140,12 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
       </div>
       {resolution.reason && (
         <>
-          <div style={subheading}>{viewerIsLead ? 'Your reason' : leadName ? possessive(leadName) + ' reason' : 'The reason'}</div>
-          <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{resolution.reason}</div>
+          <div className={subheadingClass} style={subheadingStyle}>{viewerIsLead ? 'Your reason' : leadName ? possessive(leadName) + ' reason' : 'The reason'}</div>
+          <div className="gwui-fs-13-5 gwui-ink-text" style={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{resolution.reason}</div>
         </>
       )}
       {!viewerIsLead && viewerIsParty && (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 12 }}>
+        <div className="gwui-fs-13 gwui-ink-sub gwui-mt-12">
           Your account is kept, and you can still correct it.
         </div>
       )}
@@ -154,12 +157,13 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
     /* "The last session is done. It’s yours to decide how this ends." The lead only, near the end. */
     if (!viewerIsLead || nearTheEnd === false) return null
     return (
-      <div style={card}>
-        {lastSessionDone && <div style={heading}>The last session is done</div>}
-        <div style={para}>It’s yours to decide how this ends.</div>
+      <div className={cardClass} style={cardStyle}>
+        {lastSessionDone && <div className={headingClass}>The last session is done</div>}
+        <div className={paraClass} style={paraStyle}>It’s yours to decide how this ends.</div>
         <Link
           to={`/grounds/${groundId}/end`}
-          style={{ display: 'inline-block', padding: '9px 16px', borderRadius: 7, background: 'var(--gw-dark)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
+          className="gwui-fs-13 gwui-ink-white gwui-pt-9 gwui-pr-16 gwui-pb-9 gwui-pl-16"
+          style={{ display: 'inline-block', borderRadius: 7, background: 'var(--gw-dark)', fontWeight: 700, textDecoration: 'none' }}
         >
           Decide how it ends
         </Link>
@@ -172,8 +176,8 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
   /* ------------------------------------------------------------------ still open */
   const whoElse = oneOther ?? 'Everyone in the check-in'
   return (
-    <div style={card}>
-      <div style={heading}>How does this end?</div>
+    <div className={cardClass} style={cardStyle}>
+      <div className={headingClass}>How does this end?</div>
       {/*
         WHO DECIDES, SAID PLAINLY, AND ONLY THE RIGHT PERSON IS ASKED.
 
@@ -182,7 +186,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
         stays because the server owns the answer, not this component. The words are the
         prototype's (ending-and-probation-review.txt).
       */}
-      <div style={para}>
+      <div className={paraClass} style={paraStyle}>
         {viewerIsLead
           ? oneOther
             ? `This one is yours to decide. ${oneOther} can see the possible outcomes and where things stand, and what each of you shared stays whichever way you go.`
@@ -191,38 +195,39 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
       </div>
 
       {confirmations.filter(c => c.confirmed).length > 1 && new Set(confirmations.filter(c => c.confirmed).map(c => c.endState)).size > 1 && (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)', borderRadius: 7, padding: '9px 12px', marginBottom: 12, lineHeight: 1.55 }}>
+        <div className="gwui-fs-13 gwui-ink-amber gwui-pt-9 gwui-pr-12 gwui-pb-9 gwui-pl-12 gwui-mb-12" style={{ background: 'var(--gw-amber-bg)', borderRadius: 7, lineHeight: 1.55 }}>
           People have chosen differently so far. That disagreement is the useful part - it is
           worth talking about before anyone changes their answer.
         </div>
       )}
 
-      {canChoose && <div style={subheading}>The outcome</div>}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+      {canChoose && <div className={subheadingClass} style={subheadingStyle}>The outcome</div>}
+      <div className="gwui-gap-6 gwui-mb-12" style={{ display: 'flex', flexDirection: 'column' }}>
         {options.map(o => canChoose ? (
           <button
             key={o.value}
             type="button"
             aria-pressed={picked === o.value}
             onClick={() => setPicked(o.value)}
+            className="gwui-rule gwui-fs-13 gwui-pt-10 gwui-pr-12 gwui-pb-10 gwui-pl-12"
             style={{
-              textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-              fontFamily: 'inherit', fontSize: 13,
-              border: picked === o.value ? '2px solid var(--gw-navy)' : '1px solid var(--gw-border)',
+              textAlign: 'left', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+              borderColor: picked === o.value ? 'var(--gw-navy)' : undefined,
+              borderWidth: picked === o.value ? 2 : undefined,
               background: picked === o.value ? 'var(--gw-blue-bg)' : 'white',
             }}
           >
-            <div style={{ fontWeight: 600, color: 'var(--gw-text)' }}>{o.label}</div>
+            <div className="gwui-ink-text" style={{ fontWeight: 600 }}>{o.label}</div>
             {o.description && (
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.45 }}>{o.description}</div>
+              <div className="gwui-fs-13 gwui-ink-sub gwui-mt-3" style={{ lineHeight: 1.45 }}>{o.description}</div>
             )}
           </button>
         ) : (
           /* A person who does not decide sees the outcomes as a list, never as buttons to press. */
-          <div key={o.value} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--gw-border)', fontSize: 13 }}>
-            <div style={{ fontWeight: 600, color: 'var(--gw-text)' }}>{o.label}</div>
+          <div key={o.value} className="gwui-rule gwui-fs-13 gwui-pt-8 gwui-pr-12 gwui-pb-8 gwui-pl-12" style={{ borderRadius: 8 }}>
+            <div className="gwui-ink-text" style={{ fontWeight: 600 }}>{o.label}</div>
             {o.description && (
-              <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.45 }}>{o.description}</div>
+              <div className="gwui-fs-13 gwui-ink-sub gwui-mt-3" style={{ lineHeight: 1.45 }}>{o.description}</div>
             )}
           </div>
         ))}
@@ -230,16 +235,17 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
 
       {canChoose && (
         <>
-          <label htmlFor={`why-${groundId}`} style={{ ...subheading, display: 'block' }}>Why, in a sentence or two</label>
+          <label htmlFor={`why-${groundId}`} className={subheadingClass} style={{ ...subheadingStyle, display: 'block' }}>Why, in a sentence or two</label>
           <textarea
             id={`why-${groundId}`}
             value={why}
             onChange={(e) => setWhy(e.target.value)}
             maxLength={1000}
             rows={3}
-            style={{ width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 8, border: '1px solid var(--gw-border)', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.5 }}
+            className="gwui-rule gwui-fs-13 gwui-pt-9 gwui-pr-11 gwui-pb-9 gwui-pl-11"
+            style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, fontFamily: 'inherit', lineHeight: 1.5 }}
           />
-          <div style={{ fontSize: 12, color: 'var(--gw-sub)', margin: '4px 0 12px' }}>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-4 gwui-mb-12">
             {whoElse} reads this with the outcome.
           </div>
         </>
@@ -250,14 +256,13 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
           type="button"
           onClick={() => picked && setConfirming(true)}
           disabled={!picked || !why.trim() || proposeMut.isPending}
+          className={`gwui-rule gwui-fs-13 gwui-pt-10 gwui-pr-18 gwui-pb-10 gwui-pl-18 ${picked && why.trim() ? 'gwui-ink-white' : 'gwui-ink-subd'}`}
           style={{
-            padding: '10px 18px', borderRadius: 7, fontFamily: 'inherit',
-            fontSize: 13, fontWeight: 700,
+            borderRadius: 7, fontFamily: 'inherit', fontWeight: 700,
             /* A BUTTON WAITING FOR A CHOICE IS STILL A BUTTON SOMEBODY HAS TO READ.
                Paper with a line round it says "not yet" and the words stay legible. */
-            background: picked && why.trim() ? 'var(--gw-dark)' : 'var(--gw-card)',
-            border: picked && why.trim() ? '1px solid var(--gw-dark)' : '1px solid var(--gw-border)',
-            color: picked && why.trim() ? 'white' : 'var(--gw-sub-d)',
+            background: picked && why.trim() ? 'var(--gw-dark)' : 'white',
+            borderColor: picked && why.trim() ? 'var(--gw-dark)' : undefined,
             cursor: picked && why.trim() && !proposeMut.isPending ? 'pointer' : 'default',
           }}
         >
@@ -278,13 +283,13 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
 
       {viewerIsLead && (
         <>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 12 }}>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mt-12" style={{ lineHeight: 1.6 }}>
             {oneOther
               ? `Ending means nobody can add to it. Both of you keep your own history, and ${oneOther} can still correct their account.`
               : 'Ending means nobody can add to it. Everyone keeps their own history, and can still correct their own account.'}
           </div>
-          <div style={subheading}>{oneOther ? `What ${oneOther} sees now` : 'What everyone else sees now'}</div>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>“{`These are the outcomes this check-in can reach. ${leadName ?? 'Whoever runs it'} decides which one it is. Your account is kept either way, and you can still correct or add to it.`}”</div>
+          <div className={subheadingClass} style={subheadingStyle}>{oneOther ? `What ${oneOther} sees now` : 'What everyone else sees now'}</div>
+          <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>“{`These are the outcomes this check-in can reach. ${leadName ?? 'Whoever runs it'} decides which one it is. Your account is kept either way, and you can still correct or add to it.`}”</div>
         </>
       )}
 
@@ -293,14 +298,14 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
         tally - one answer closes it - and the people in those rows never had a say to withhold.
       */}
       {totalActive > 0 && !leadDecides && (
-        <div style={{ marginTop: 14, borderTop: '1px solid var(--gw-bg)', paddingTop: 10 }}>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 6 }}>
+        <div className="gwui-rule-top gwui-mt-14 gwui-pt-10" style={{ borderTopColor: 'var(--gw-bg)' }}>
+          <div className="gwui-fs-13 gwui-ink-muted gwui-mb-6">
             {confirmedCount} of {totalActive} {totalActive === 1 ? 'person has' : 'people have'} answered
           </div>
           {confirmations.map(c => (
-            <div key={c.participantId} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0', fontSize: 12.5 }}>
-              <span style={{ color: 'var(--gw-text)' }}>{c.label}</span>
-              <span style={{ color: c.confirmed ? 'var(--gw-green-t)' : 'var(--gw-muted)', fontWeight: c.confirmed ? 600 : 400 }}>
+            <div key={c.participantId} className="gwui-gap-12 gwui-pt-4 gwui-pb-4 gwui-fs-13" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="gwui-ink-text">{c.label}</span>
+              <span className={c.confirmed ? 'gwui-ink-green' : 'gwui-ink-muted'} style={{ fontWeight: c.confirmed ? 600 : 400 }}>
                 {c.confirmed ? label(c.endState) : 'not yet'}
               </span>
             </div>

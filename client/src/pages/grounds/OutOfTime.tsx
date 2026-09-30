@@ -7,12 +7,14 @@ import { Page, Mark, PageTitle, Panel, SubHeading, Button, Tag, Note, Stack } fr
 
 /**
  * "THIS CHECK-IN REACHED ITS END DATE" (A3, #/join/outoftime), for a person taking part. The words
- * are join-outoftime.txt's, with two changes said here:
+ * are join-outoftime.txt's, with one change said here:
  *
- *   - "All 38 of your check-ins and your history stay as they are." counts sessions as check-ins,
- *     which waits for Hafsah's decision on what "check-in" means. It says "Your answers and your
- *     history stay as they are." until then.
  *   - "She gets your request" becomes the lead's name: the product does not know pronouns.
+ *
+ * "ALL 38 OF YOUR CHECK-INS" (Hafsah, 29 September, item 11) used to be left out: it counted
+ * sessions (CheckIn rounds) as check-ins, which waited on a decision about what "check-in" means.
+ * It now reads the server's own `checkInsCount` (asking-for-more-time.service.ts), which counts
+ * distinct Grounds this person has ever been part of - never the sessions inside them.
  *
  * "Ask Wairimu for more time" is once a day, enforced on the server (asking-for-more-time.service.ts).
  *
@@ -59,6 +61,7 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
     : null
   const sub = `${until ? `It ran until ${until}. ` : ''}Nothing new can be added until ${lead ?? 'the person who runs it'} gives it more time.`
   const asked = !!data?.askedAt || ask.isSuccess
+  const yourAnswersAreKept = theirAnswersAreKept(data?.checkInsCount)
 
   return createPortal(
     <div className="gwui-full-page-cover">
@@ -72,7 +75,7 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
           <Stack gap={18}>
             <Panel>
               <SubHeading>Your answers are kept</SubHeading>
-              <p className="gwui-panel-text-muted">Your answers and your history stay as they are.</p>
+              <p className="gwui-panel-text-muted">{yourAnswersAreKept}</p>
             </Panel>
             <Stack gap={10}>
               {problem && <Note tone="error">{problem}</Note>}
@@ -91,6 +94,17 @@ export function OutOfTime({ groundId, onOpenMyWork }: { groundId: string; onOpen
     </div>,
     container,
   )
+}
+
+/**
+ * "All 38 of your check-ins and your history stay as they are." (join-outoftime.txt), with the
+ * server's own count, never a made-up number and never left out while it loads. A count of exactly
+ * one reads as a full sentence of its own rather than "All 1 of your check-ins".
+ */
+export function theirAnswersAreKept(checkInsCount: number | undefined): string {
+  if (checkInsCount == null) return 'Your answers and your history stay as they are.'
+  if (checkInsCount === 1) return 'Your check-in and your history stay as they are.'
+  return `All ${checkInsCount} of your check-ins and your history stay as they are.`
 }
 
 /**

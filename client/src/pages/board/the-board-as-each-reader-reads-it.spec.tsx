@@ -127,6 +127,43 @@ describe('the board, as each reader reads it', () => {
     expect(screen.queryByText('Add target')).toBeNull()
   })
 
+  /*
+   * U.10 (a): THE BOARD BUILDS ITS OWN HEADER TABS NOW (moved off the retired TheCheckInHeader,
+   * which pinned these same three cases in components/gw/an-admin-who-only-reads-has-no-check-in-
+   * tab.spec.tsx - that file still passes unchanged, since components/gw/TheCheckInHeader.tsx still
+   * runs the report pages). Grace, an admin who neither runs this check-in nor takes part in it,
+   * gets the prototype's read-only three tabs (read-only-view.txt): Board, Context, People and
+   * setup - no Check-in, no My work, no "Your check-in"/"Start my check-in" button either.
+   */
+  it('Grace, an admin who only reads, gets the read-only three tabs and no way into a check-in', async () => {
+    me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
+    renderBoard(AS_AN_ADMIN)
+    expect(await screen.findByRole('tab', { name: 'Board' })).toBeTruthy()
+    /* "Context" renamed to "Context and resources" so the tab's name says what it now holds. */
+    expect(screen.getByRole('tab', { name: 'Context and resources' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'People and setup' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Check-in' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'My work' })).toBeNull()
+    expect(screen.queryByText('Your check-in')).toBeNull()
+    expect(screen.queryByText('Start my check-in')).toBeNull()
+  })
+
+  it('Wairimu, who runs it, still gets her Check-in and My work tabs, and "Your check-in"', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard(AS_THE_LEAD)
+    expect(await screen.findByRole('tab', { name: 'Check-in' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'My work' })).toBeTruthy()
+    expect(screen.getByText('Your check-in')).toBeTruthy()
+  })
+
+  it('Miriam, a participant who is not the lead, reads "Start my check-in" instead', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard(AS_MIRIAM)
+    expect(await screen.findByRole('tab', { name: 'Check-in' })).toBeTruthy()
+    expect(screen.getByText('Start my check-in')).toBeTruthy()
+    expect(screen.queryByText('Your check-in')).toBeNull()
+  })
+
   it('with no time on record yet, it still says the board only changes when something new comes in', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard({ ...AS_THE_LEAD, lastChangedAt: null })
@@ -166,6 +203,29 @@ describe('the board, as each reader reads it', () => {
   })
 })
 
+/**
+ * U.10 (c1): THE SWITCHBOARD'S SECTIONS SIT IN THE SHARED PAGE RHYTHM, NOT WRAPPED AWAY FROM IT.
+ *
+ * Her review found the sections had no space between them - "'What we are aiming for' touches the
+ * panel above it" - because a wrapping div around the whole page escaped the shared Page frame's
+ * own 30px child spacing (`.gwui-page-wrap > * + *`). Fixed by giving each switchboard section its
+ * own heading AND content together, as one `<Section>`, so each is a direct child of the page wrap
+ * again. This does not compute CSS in jsdom; it pins the DOM shape the rule depends on, so the
+ * escape hatch cannot come back quietly.
+ */
+describe('the switchboard sections sit directly in the page rhythm', () => {
+  it('each rebuilt section is its own direct child of the page wrap, not buried in an extra wrapper', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    const { container } = renderBoard(AS_THE_LEAD)
+    await screen.findByRole('heading', { name: 'What we are aiming for' })
+    const wrap = container.querySelector('.gwui-page-wrap')
+    expect(wrap).toBeTruthy()
+    const sections = wrap!.querySelectorAll(':scope > section')
+    const headings = Array.from(sections).map((s) => s.querySelector('h2')?.textContent)
+    expect(headings).toEqual(expect.arrayContaining(['What success looks like', 'What we are aiming for']))
+  })
+})
+
 describe('seenAcross', () => {
   it('says the count only when that many sessions have happened', () => {
     expect(seenAcross(2, 1)).toBeNull()
@@ -201,10 +261,16 @@ describe('where people see it differently', () => {
  * "Patterns have a new shape"): `heading`, `whatHappened`, `howOften`, `whoSeesIt`, `theirWords`,
  * `canAnswer`, `askThem`, `participantId` - no `label`, `code`, `text` or `periods`.
  */
-/** `Sec`/`Card` are siblings, not nested in a `<section>`: the card is the heading's next sibling. */
+/**
+ * U.10 (c1/c2): THE HEADING AND ITS CONTENT ARE ONE `<section>` NOW, not a heading-only `<section>`
+ * with the card as its next sibling (the shape this helper originally pinned, back when only the
+ * headings had moved to the shared `Section` and the insides were still built from the old kit).
+ * Every switchboard section on the board now puts its content inside `Section`'s own children, so
+ * the whole section (heading and body together) is what a caller wants back.
+ */
 function cardAfter(headingText: string): HTMLElement {
   const heading = screen.getByText(headingText)
-  return heading.parentElement!.nextElementSibling as HTMLElement
+  return heading.closest('section') as HTMLElement
 }
 
 describe('what keeps coming up', () => {
@@ -380,7 +446,7 @@ describe('the alignment feed', () => {
     me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
     renderBoard({ ...AS_MIRIAM, sections: ['objectives'] })
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.queryByText('Alignment feed')).toBeNull()
   })
 
@@ -388,7 +454,7 @@ describe('the alignment feed', () => {
     me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
     renderBoard({ ...AS_AN_ADMIN, sections: ['objectives'] })
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.queryByText('Alignment feed')).toBeNull()
   })
 })

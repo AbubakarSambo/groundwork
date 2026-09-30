@@ -20,7 +20,11 @@ export interface AskPage {
 export type TextBlock = { type: 'text'; body: string }
 export type ProposalBlock = { type: 'proposal'; proposalId: string; summary: string }
 export type PickerBlock = { type: 'picker'; options: { key: string; label: string }[] }
-export type NextStepBlock = { type: 'next_step'; label: string; href: string; kind: string; id?: string }
+/**
+ * `kind: 'upload_a_document'` is not a page to open: it is the file picker, on the check-in named by
+ * `id`, with `context.groundId` for the "I've uploaded it." message that follows (decision 50).
+ */
+export type NextStepBlock = { type: 'next_step'; label: string; href: string; kind: string; id?: string; context?: Record<string, string> }
 /** A claim and how it is known (proven, confirmed, someone's word, memory). Not served yet: request 16. */
 export type ClaimBlock = { type: 'claim'; says: string; mark: string }
 /** Any block, as it arrives. The screen checks the shape before drawing it. */

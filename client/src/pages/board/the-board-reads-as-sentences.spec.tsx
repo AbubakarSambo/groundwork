@@ -89,19 +89,19 @@ function renderBoard() {
 describe('the board reads as sentences', () => {
   it('never joins pieces with a middle dot', async () => {
     renderBoard()
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(document.body.textContent).not.toContain(' · ')
   })
 
   it('never opens a line with a capitalised word and a colon, "Label: "', async () => {
     renderBoard()
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(document.body.textContent).not.toMatch(/\b[A-Z][a-z]+:\s/)
   })
 
   it('never renders three or more words in a row in capitals as the visible text', async () => {
     renderBoard()
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     // CSS text-transform is allowed to draw a heading in capitals; this checks the actual text
     // content, which is what a screen reader, a copy-paste, or this very test actually reads.
     expect(document.body.textContent).not.toMatch(/\b[A-Z]+(?:\s[A-Z]+){2,}\b/)
@@ -134,7 +134,7 @@ describe('the board reads as sentences', () => {
    */
   it('nothing on the rendered board is drawn in capitals by textTransform, anywhere', async () => {
     renderBoard()
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     const offenders: string[] = []
     document.querySelectorAll('body *').forEach((el) => {
       const cs = window.getComputedStyle(el as Element)

@@ -90,8 +90,16 @@ describe('the heading comes from the kit', () => {
   })
 
   it('settings uses it too, rather than a sixth copy of the same label', () => {
+    /*
+     * UPDATED, GROUP 1 REBUILD: SettingsPage.tsx no longer imports kit.tsx's `Sec` at all - it is
+     * rebuilt from components/gw/ui (the-rebuilt-pages-use-only-the-new-parts.spec.ts enforces
+     * that directly, and more strictly than this check ever did). Its heading is `Section`, the
+     * shared part `Sec` itself was lifted out to become; this checks the same guarantee the old
+     * assertion did - one shared heading component, not a bespoke label - in the vocabulary the
+     * page now actually uses.
+     */
     const S = strip(readFileSync(join(SRC, 'pages/settings/SettingsPage.tsx'), 'utf8'))
-    expect(S).toMatch(/<Sec title="Your data" \/>/)
+    expect(S).toMatch(/<Section heading="Your data">/)
     expect(S).not.toMatch(/letterSpacing: '\.06em'/)
   })
 })
@@ -166,21 +174,30 @@ describe('the pages are built from the kit, not from inline styles', () => {
    * checked at the rendered page on a throwaway account signed up through the real flow.
    */
   it('Settings\' panels are Cards rather than six copies of one', () => {
+    /*
+     * UPDATED, GROUP 1 REBUILD: the page is rebuilt from components/gw/ui, so the shared panel is
+     * now `Panel` (gw-ui.css's `.gwui-panel`), not kit.tsx's `Card` - the same guarantee (one panel
+     * component, not six hand-rolled ones), in the vocabulary the page now uses. The exact old
+     * literal panel style this test used to look for cannot recur either way:
+     * the-rebuilt-pages-use-only-the-new-parts.spec.ts refuses any inline background/border/radius
+     * on this page at all, which is the stronger version of the same check.
+     */
     const S = strip(readFileSync(join(SRC, 'pages/settings/SettingsPage.tsx'), 'utf8'))
-    expect(S).toMatch(/import \{ Sec, Card \} from '@\/components\/gw\/kit'/)
-    // The exact panel that was written out six times.
+    expect(S).toMatch(/Panel/)
     expect(S).not.toMatch(/background: 'white', border: '0\.5px solid var\(--gw-border\)', borderRadius: 10/)
   })
 
   it('and the panel holding one block says so', () => {
     /**
-     * The WhatsApp panel was written as a row container and filled with a single block, so its
-     * content sat flush against the card edge while every other panel was inset. Pre-existing, and
-     * invisible until the panels came onto one component. Measured after: all six inset at 33px.
+     * UPDATED, GROUP 1 REBUILD: the WhatsApp field now sits inside "You"'s single `FieldRows` panel,
+     * inset by `FieldRow`'s own padding (gw-ui.css), rather than a separate `Card pad="block"` of
+     * its own - so every row in that panel is inset the same way by construction, not by each
+     * caller remembering to ask for it.
      */
     const S = strip(readFileSync(join(SRC, 'pages/settings/SettingsPage.tsx'), 'utf8'))
-    const whatsapp = S.slice(S.indexOf('<Sec title="WhatsApp" />'), S.indexOf('<Sec title="WhatsApp" />') + 200)
-    expect(whatsapp).toMatch(/<Card pad="block">/)
+    const you = S.slice(S.indexOf('<Section heading="You">'), S.indexOf('<Section heading="What we send you">'))
+    expect(you).toMatch(/<Panel pad=\{false\}>/)
+    expect(you).toMatch(/<FieldRows>/)
   })
 
   it('Card has the one-block case, so a panel is never padded for rows it does not have', () => {
@@ -195,14 +212,22 @@ describe('the pages are built from the kit, not from inline styles', () => {
    * Stat tiles. What these two checks were for is kept: the state is said in one place, and once.
    */
   it('Billing answers "what is the state of this" in the prototype\'s rows', () => {
+    /*
+     * UPDATED, GROUP 1 REBUILD: the rows are the shared `FieldRow` now (components/gw/ui), whose
+     * own label column renders each fact's name - `<b>Plan</b>` was kit.tsx's own row markup,
+     * which this page no longer writes at all. The guarantee is the same: one row, one label, one
+     * sentence, each said once.
+     */
     const B = strip(readFileSync(join(SRC, 'pages/billing/BillingPage.tsx'), 'utf8'))
-    for (const label of ['<b>Plan</b>', '<b>Next payment</b>', '<b>Everyone counts</b>']) expect(B).toContain(label)
+    for (const label of ['label="Plan"', 'label="Next payment"', 'label="Everyone counts"']) expect(B).toContain(label)
   })
 
   it('and says each of those facts once', () => {
     const B = strip(readFileSync(join(SRC, 'pages/billing/BillingPage.tsx'), 'utf8'))
     expect(B.match(/thePlanLine\(/g) ?? []).toHaveLength(1)
-    const stopping = B.slice(B.indexOf('id="bill-stopping"'), B.indexOf('role="dialog"'))
+    /* UPDATED, GROUP 1 REBUILD: "Stopping" is `<Section heading="Stopping">` now, not an `id`
+       attribute of its own - the same slice, found the new way. */
+    const stopping = B.slice(B.indexOf('heading="Stopping"'), B.indexOf('role="dialog"'))
     expect(stopping).not.toMatch(/PLAN_PRICES\[/)
     expect(stopping).not.toMatch(/people\.count/)
   })

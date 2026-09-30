@@ -40,8 +40,14 @@ describe('after a real invitation', () => {
     const steps = [...document.querySelectorAll('.gwui-steps li')].map(li => li.textContent)
     expect(steps[0]).toBe('✓Done. You accepted the invitation')
     /* U.20 seventh round (Hafsah's first review): the prototype's own way of writing a time
-       (join-waiting.txt: "yesterday at 4:12pm"), not the 24-hour clock. */
-    expect(steps[1]).toMatch(/^✓Done\. Grace was asked, (yesterday|on \d+ \w+) at \d{1,2}:\d{2}(am|pm)$/)
+       (join-waiting.txt: "yesterday at 4:12pm"), not the 24-hour clock.
+       HAFSAH, 30 SEPTEMBER, ITEM 5: FLAKY ON THE HOUR. `whenItWasAsked` drops ":00" (so 1pm exactly
+       reads "at 1pm", not "at 1:00pm" - the product's own way of writing a time, the same trick
+       `aTime()` uses elsewhere) - this test ran fine every minute except :00, when `AFTER_AN_INVITATION`'s
+       fixed hour-ago offset happened to land on the hour and the old regex, which required a
+       minute, failed on nothing but the clock. The minutes group is now optional, matching what
+       the product actually writes rather than assuming it is always there. */
+    expect(steps[1]).toMatch(/^✓Done\. Grace was asked, (yesterday|on \d+ \w+) at \d{1,2}(:\d{2})?(am|pm)$/)
     expect(steps[2]).toBe('○Still to happen. Grace lets you in')
     expect(screen.getByText('We’ll email you the moment Grace does, and your first check-in will be waiting.')).toBeTruthy()
     expect(screen.getByText('You can remind Grace once a day. Wairimu can see you’re waiting too.')).toBeTruthy()

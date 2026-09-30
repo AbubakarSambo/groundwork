@@ -153,7 +153,7 @@ export default function SessionReportPage() {
           tabs={[
             { key: 'board', label: 'Board', to: `/grounds/${data.groundId}/board` },
             { key: 'chat', label: 'Check-in', to: `/grounds/${data.groundId}` },
-            { key: 'context', label: 'Context', to: `/grounds/${data.groundId}?tab=context` },
+            { key: 'context', label: 'Context and resources', to: `/grounds/${data.groundId}?tab=context` },
             { key: amTheInitiator ? 'sessions' : 'record', label: 'My work', to: `/grounds/${data.groundId}?tab=${amTheInitiator ? 'sessions' : 'record'}` },
             { key: 'settings', label: 'People and setup', to: `/grounds/${data.groundId}?tab=settings` },
             { key: 'report', label: 'Report', to: `/grounds/${data.groundId}?tab=report` },

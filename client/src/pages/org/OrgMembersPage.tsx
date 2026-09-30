@@ -142,13 +142,29 @@ export function OrgMembersPage() {
                 </ShowAFew>
               </>
             )}
+            /*
+              HAFSAH, 30 SEPTEMBER, ITEM 2: NOT A SECOND PRIMARY, AND NOT A REPEATED "SEE THE
+              PLANS". The prototype does not draw this card at all (it is the one part of this
+              page the prototype leaves out, kept because a lead can put somebody on a check-in
+              with no seat for them, and only an admin can make room - see the note above
+              OrgMembersPage). Where it is real, on this product, it must still leave the "Invite
+              people" form's own "Send their invitations" (InvitePeople.tsx) as the page's one
+              navy button, so "Send their invitations" here is a plain link, not a second
+              `Button`, and it sends a genuinely different thing (the people already waiting for a
+              seat, not whatever is typed into the invite form below) so it stays, rather than
+              being dropped. "See the plans" is not kept a second time here: it is the exact same
+              "Put your whole team on" link further down this page, and a person only needs to be
+              told that once.
+            */
             actions={(
-              <>
-                <Button onClick={() => sendHeld.mutate()} disabled={sendHeld.isPending}>
-                  {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
-                </Button>
-                <Button kind="quiet" onClick={() => navigate('/billing')}>See the plans</Button>
-              </>
+              <button
+                type="button"
+                className="gwui-plain-link"
+                onClick={() => sendHeld.mutate()}
+                disabled={sendHeld.isPending}
+              >
+                {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
+              </button>
             )}
           />
         </EdgeList>
@@ -158,8 +174,13 @@ export function OrgMembersPage() {
 
       <EveryoneHere orgName={orgName} ownerId={ownerId} />
 
+      {/* SECONDARY, NOT PRIMARY (Hafsah, 30 September): this only scrolls to "Invite people" below,
+          where "Send their invitations" is the page's real, single primary action. Kept primary,
+          it would sit navy on screen at the same time as the no-seat card's own "Send their
+          invitations" button above, whenever somebody is waiting for a seat. */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button
+          kind="secondary"
           onClick={() => {
             scrollToId('invite-list')
             document.getElementById('invite-list')?.focus()

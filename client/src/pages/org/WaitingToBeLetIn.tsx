@@ -87,12 +87,21 @@ export function WaitingToBeLetIn({ orgName }: { orgName: string }) {
               kind="look"
               title={p.name ? `${p.name}, ${p.email}` : p.email}
               detail={whoAskedForThem(p, seatsFree)}
+              /*
+                HAFSAH, 30 SEPTEMBER: NOT A SECOND PRIMARY. The prototype draws "Let him in" navy
+                (people.jpg), but on this rebuilt page the People screen's one primary is "Send
+                their invitations" (the "Invite people" form, always on the page); when somebody is
+                also waiting to be let in, that made two navy buttons live on the same screen at
+                once, which the 30 September rule forbids outright. "Let them in" stays the more
+                prominent of this row's own pair - `kind="secondary"`, not `"quiet"` like "Don't let
+                them in" - it is just no longer the page's navy.
+              */
               actions={(
                 <>
                   <Button kind="quiet" disabled={answer.isPending} onClick={() => answer.mutate({ id: p.id, letIn: false })}>
                     Don’t let them in
                   </Button>
-                  <Button disabled={answer.isPending} onClick={() => answer.mutate({ id: p.id, letIn: true })}>
+                  <Button kind="secondary" disabled={answer.isPending} onClick={() => answer.mutate({ id: p.id, letIn: true })}>
                     Let them in
                   </Button>
                 </>

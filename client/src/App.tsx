@@ -561,6 +561,9 @@ export default function App() {
                 plan is optional, not part of org setup - the free tier is the default, not a
                 step anyone completes. */}
             <Route path="/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
+            {/* The prototype's address for this page (F2-billing/settings-billing.txt): the same
+                page as /billing, reached from Settings rather than the rail's "Plan and billing". */}
+            <Route path="/settings/billing" element={<RequireAuth><BillingPage /></RequireAuth>} />
             <Route path="/pricing" element={<PricingPage />} />
             {/* PUBLIC, because the person this is for has not signed up. The pricing page's three
                 paid services all ended at a mailto, which does nothing without a configured mail
