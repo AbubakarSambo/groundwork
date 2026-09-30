@@ -173,15 +173,16 @@ describe('Grace, an admin, reads Connections', () => {
     expect(nums.textContent).not.toMatch(/Paystack|Flutterwave|M-Pesa|spreadsheet|Upload|MarketView/)
   })
 
-  it('"Your own address" is not set up, with nothing to press, as Hafsah decided it comes later', async () => {
+  /* UPDATED 29 September, item 11: "Your own address" used to stay on the page as "Not set up",
+     with nothing to press, on the reasoning that it "comes later". Hafsah's answer on item 11 asks
+     for your own web address and logo to be left out entirely until they are built, so the section
+     is gone rather than shown unset. */
+  it('leaves out "Your own address" entirely - it is not built yet (item 11)', async () => {
     serve()
     open(GRACE)
-    const addr = await screen.findByRole('region', { name: 'Your own address' })
-    expect(within(addr).getByText('Not set up')).toBeTruthy()
-    expect(addr.textContent).toContain('Put Groundwork at an address on your own domain. Invitations, reminders and sign-in links then use it.')
-    expect(within(addr).queryAllByRole('button')).toHaveLength(0)
-    expect(within(addr).queryAllByRole('textbox')).toHaveLength(0)
-    expect(document.body.textContent).not.toMatch(/Claude Code|Copy link|baridi\.co\.ke/)
+    await screen.findByRole('region', { name: 'Your numbers' })
+    expect(screen.queryByRole('region', { name: 'Your own address' })).toBeNull()
+    expect(document.body.textContent).not.toMatch(/Your own address|Put Groundwork at an address on your own domain|Claude Code|Copy link|baridi\.co\.ke/)
   })
 
   it('notices in Slack or Teams: never what anyone said, arriving switched off, with the kind read from the address', async () => {

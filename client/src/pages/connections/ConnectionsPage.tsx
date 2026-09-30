@@ -24,7 +24,13 @@ import { Confirm } from '@/components/gw/a-second-press-before-it-is-gone'
  * not-to-build.md rules out pretend ones); the line under "Your numbers" ("Totals only…"), which
  * promises a rule nothing enforces; "Hand it to your developer, or to Claude Code" (no setup link
  * exists); the sample drawings under "What these look like", which are replaced by the product's own
- * pictures. "Your own address" comes later, as Hafsah decided, so it shows only that it is not set up.
+ * pictures.
+ *
+ * "YOUR OWN ADDRESS" IS LEFT OUT ENTIRELY, NOT SHOWN AS "NOT SET UP" (Hafsah, 29 September, item 11).
+ * It used to stay on the page with nothing to press, on the reasoning that it "comes later" - but
+ * item 11 asks for it to be left out until it is actually built, the same as your own logo, so
+ * nobody is offered a door that leads nowhere. Nothing here builds the feature; this only stops
+ * mentioning it.
  *
  * WORDING NO SCREEN SHOWS, in the fewest plain words (item 29): "Switched off"; "Needs a key" on
  * "Accounting or sales tools"; "Usage numbers, sent by your own product."; "Waiting for an answer";
@@ -107,16 +113,6 @@ export function ConnectionsPage() {
             <Button kind="secondary" size="small" to="/settings/tools">Connect</Button>
           </li>
         </ul>
-      </section>
-
-      <section className="gw-conn-sec" aria-labelledby="conn-address">
-        <div className="gw-you-section-head">
-          <h2 id="conn-address" className="gw-t-h2">Your own address</h2>
-          <Tag tone="plain">Not set up</Tag>
-        </div>
-        <div className="gw-you-card">
-          <p>Put Groundwork at an address on your own domain. Invitations, reminders and sign-in links then use it.</p>
-        </div>
       </section>
 
       <NoticesSection notifiers={notifiers.data ?? []} />
