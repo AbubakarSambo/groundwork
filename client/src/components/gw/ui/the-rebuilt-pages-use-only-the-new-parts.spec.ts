@@ -107,6 +107,24 @@ export function bannedInlineStyleProps(stripped: string): string[] {
   return inlineStylePropNames(stripped).filter(p => BANNED_STYLE_PROPS.test(p))
 }
 
+/**
+ * U.10 (e), HER REVIEW: "moving the old sizes into classes named after their pixel values
+ * satisfies the guard's letter, not its purpose... nothing smaller than 13 pixels." Every
+ * `font-size` a rebuilt page's source names - inline (already banned above, whatever its value)
+ * or as CSS text of its own - and every one gw-ui.css itself declares, must be at least 13px, the
+ * prototype's own floor (`t-tiny`, "only for table column names and a person's level").
+ */
+export function tooSmallFontSizes(stripped: string): number[] {
+  const found: number[] = []
+  const re = /font-size:\s*([\d.]+)px/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(stripped))) {
+    const px = parseFloat(m[1])
+    if (px < 13) found.push(px)
+  }
+  return found
+}
+
 describe('a rebuilt page never falls back to the old parts', () => {
   /*
    * WAS: "the rebuilt-pages list starts empty, and this task adds no page to it" - true of the
@@ -185,6 +203,35 @@ describe('a rebuilt page never falls back to the old parts', () => {
     }
     expect(offenders).toEqual([])
   })
+
+  /**
+   * U.10 (e): NOTHING SMALLER THAN 13 PIXELS, ANYWHERE A LISTED PAGE'S OWN TEXT SIZE IS SET.
+   * Her review: a page can move its old, too-small sizes into named classes and still read as
+   * dense as it did before - the guard's letter satisfied, its purpose (a rebuilt page reads like
+   * the prototype) missed entirely. A listed page's inline `fontSize` is already banned outright
+   * above, whatever its value; this also refuses any `font-size` CSS text the page carries below
+   * the prototype's own floor (`t-tiny`, 13px - "only for table column names and a person's
+   * level"), so a future class name that happens to hide a smaller number cannot pass either.
+   */
+  it('no listed page sets a text size smaller than 13 pixels', () => {
+    const offenders: string[] = []
+    for (const relPath of REBUILT_PAGES) {
+      const stripped = stripComments(readFileSync(join(SRC_ROOT, relPath), 'utf8'))
+      const small = tooSmallFontSizes(stripped)
+      if (small.length > 0) offenders.push(`${relPath}: font-size(s) below 13px: ${[...new Set(small)].join(', ')}`)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * NOR DOES THE SHARED STYLESHEET ITSELF. Every rebuilt page's own sizes ultimately live in
+   * gw-ui.css (the utility scale, and every shared part's own class) - so the floor has to hold
+   * there too, or a page could stay "clean" by naming a class that gw-ui.css quietly sets small.
+   */
+  it('gw-ui.css itself sets no text size smaller than 13 pixels', () => {
+    const css = readFileSync(join(SRC_ROOT, 'components/gw/ui/gw-ui.css'), 'utf8')
+    expect(tooSmallFontSizes(css)).toEqual([])
+  })
 })
 
 describe('the detection itself catches a real offender, not only an empty list', () => {
@@ -208,6 +255,12 @@ describe('the detection itself catches a real offender, not only an empty list',
 
   it('does not confuse the new gwui- classes with the old gw- ones', () => {
     expect(oldClassesUsed('<button className="gwui-btn gwui-btn-primary">Go</button>')).toEqual([])
+  })
+
+  it('catches a text size below 13px, wherever it is written, and passes anything 13 or above', () => {
+    expect(tooSmallFontSizes('.gwui-fs-12 { font-size: 12px; }')).toEqual([12])
+    expect(tooSmallFontSizes('style={{fontSize: 10.5}}; .x { font-size: 10.5px; }')).toEqual([10.5])
+    expect(tooSmallFontSizes('.gwui-fs-13 { font-size: 13px; } .gwui-fs-21 { font-size: 21px; }')).toEqual([])
   })
 
   it('catches the newly-added old classes too', () => {
