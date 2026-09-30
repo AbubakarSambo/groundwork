@@ -2444,7 +2444,7 @@ export class AssistantService {
 
     if (reword) {
       const found = findByName(reword[1]);
-      if (found.length !== 1) return rules('add_context', text(`I cannot tell which question you mean. The people waiting are ${waiting.map((c) => c.who).join(', ')}.`));
+      if (found.length !== 1) return rules('add_context', text(`I cannot tell which question you mean. The people waiting are ${((w) => w.length > 1 ? `${w.slice(0, -1).join(', ')} and ${w[w.length - 1]}` : (w[0] ?? ''))(waiting.map((c) => c.who))}.`));
       const newQuestion = reword[2].trim();
       if (!newQuestion) return rules('add_context', text('Put the question you want asked in quotes.'));
       const proposal = await this.prisma.assistantProposal.create({
@@ -2459,7 +2459,7 @@ export class AssistantService {
 
     if (decline) {
       const found = findByName(decline[1]);
-      if (found.length !== 1) return rules('add_context', text(`I cannot tell which question you mean. The people waiting are ${waiting.map((c) => c.who).join(', ')}.`));
+      if (found.length !== 1) return rules('add_context', text(`I cannot tell which question you mean. The people waiting are ${((w) => w.length > 1 ? `${w.slice(0, -1).join(', ')} and ${w[w.length - 1]}` : (w[0] ?? ''))(waiting.map((c) => c.who))}.`));
       const proposal = await this.prisma.assistantProposal.create({
         data: {
           organizationId, personExternalId: who, kind: 'question_for_person',
@@ -2472,7 +2472,7 @@ export class AssistantService {
 
     if (confirm) {
       const found = findByName(confirm[1]);
-      if (found.length !== 1) return rules('add_context', text(`I cannot tell which question you mean. The people waiting are ${waiting.map((c) => c.who).join(', ')}.`));
+      if (found.length !== 1) return rules('add_context', text(`I cannot tell which question you mean. The people waiting are ${((w) => w.length > 1 ? `${w.slice(0, -1).join(', ')} and ${w[w.length - 1]}` : (w[0] ?? ''))(waiting.map((c) => c.who))}.`));
       const proposal = await this.prisma.assistantProposal.create({
         data: {
           organizationId, personExternalId: who, kind: 'question_for_person',

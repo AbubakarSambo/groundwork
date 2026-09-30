@@ -61,6 +61,6 @@ describe('nobody is invited into an empty check-in', () => {
   it('names both ways out in the refusal itself', () => {
     const refusal = gate.slice(gate.indexOf('BadRequestException'));
     expect(refusal).toMatch(/your own check-in/i);
-    expect(refusal).toMatch(/Context tab/i);
+    expect(refusal).toMatch(/Context and resources/i);
   });
 });
