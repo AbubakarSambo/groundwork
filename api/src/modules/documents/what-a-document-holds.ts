@@ -76,7 +76,7 @@ NUMBERS FOR EVERYBODY. A total for the group, or a limit every person carries.
 
 DATES. Where the document says something is due, give it in the document's own words: "by December", "end of Q3", "3 October". Never work out a date that is not written.
 
-WHAT IT IS. One plain line naming what kind of document this is, for somebody choosing between files in a list.
+WHAT IT IS. One full plain sentence, starting "It is" or "This is", saying what kind of document this is, for somebody choosing between files in a list. Never a label or a noun phrase on its own, such as "A Q4 sales target sheet" - write "It is a Q4 sales target sheet."
 
 TWO RULES OVER EVERYTHING. Give names and wording exactly as the document writes them - do not correct, expand, translate or match them to anybody. And an empty answer is a correct answer: a document with no numbers in it is an ordinary document, and a wrong number is worse than none.`;
 
@@ -86,7 +86,7 @@ export const WHAT_A_DOCUMENT_HOLDS_SCHEMA = {
   input_schema: {
     type: 'object',
     properties: {
-      whatItIs: { type: 'string', description: 'One plain, full sentence saying what kind of document this is.' },
+      whatItIs: { type: 'string', description: 'One full plain sentence, starting "It is" or "This is", saying what kind of document this is. Never a bare noun phrase.' },
       forOnePerson: {
         type: 'array',
         items: {
@@ -173,7 +173,8 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean } = 
    * "cookers delivered, 3, by by 9 October" because the document's own "by 9 October" was given a
    * second "by". The document's words for what a number is of stay exactly as it wrote them.
    */
-  const lines: string[] = [`Here is the context we have from ${held.fileName}.${held.whatItIs ? ` ${aSentence(held.whatItIs)}` : ''}`];
+  const whatItIs = aSentence(held.whatItIs);
+  const lines: string[] = [`Here is the context we have from ${held.fileName}.${whatItIs ? ` ${whatItIs}` : ''}`];
   if (held.forEverybody.length) {
     lines.push('');
     for (const t of held.forEverybody) {
@@ -211,9 +212,34 @@ export function byWhen(by?: string | null): string {
   return when ? ` by ${when}` : '';
 }
 
-const aSentence = (t: string): string => {
-  const s = t.trim();
-  return /[.!?]$/.test(s) ? s : `${s}.`;
+/**
+ * ONE FULL SENTENCE, NEVER THE MODEL'S FRAGMENT ON ITS OWN.
+ *
+ * `whatItIs` is asked of the model as a full sentence (see WHAT_A_DOCUMENT_HOLDS_PROMPT), but a read
+ * from before that wording, or a PromptVersion override that has not caught up, can still hand back a
+ * bare noun phrase - "A Q4 sales target sheet". Put straight after "Here is the context we have from
+ * Q4 targets.xlsx.", that fragment read as two sentences that did not join up. So it is turned into a
+ * sentence here, in code, which is the one guarantee that does not depend on the model getting it
+ * right: a phrase with no verb of its own is given one, in the product's own voice ("It looks like a
+ * Q4 sales target sheet."); a phrase that already has a verb - "This sheet sets the Q4 targets for
+ * each dealer." - is kept exactly as it is, with its full stop made certain. An empty answer stays
+ * empty: no sentence is better than an invented one.
+ */
+/*
+ * ONLY WORDS THAT ARE RARELY ANYTHING BUT A VERB HERE. "list", "record", "report", "detail", "cover"
+ * and "hold" were tried and dropped: a document description says "a price list" and "sales record"
+ * often enough, as an ordinary noun, that treating them as a verb wrapped the wrong half of a real
+ * fragment - "A price list for the 600L cookers" was kept as if "list" made it a sentence.
+ */
+const HAS_A_VERB =
+  /\b(is|are|was|were|has|have|had|sets|shows|show|tracks|track|outlines|outline|describes|describe|summarizes|summarize|summarises|summarise|contains|contain|confirms|confirm|explains|explain|asks|ask|requests|request|provides|provide|captures|capture|gives|give|lays out|lay out|breaks down|break down|tallies|tally)\b/i;
+
+export const aSentence = (t: string | null | undefined): string | null => {
+  const s = (t ?? '').trim().replace(/[.;:,\s]+$/, '').trim();
+  if (!s) return null;
+  if (HAS_A_VERB.test(s)) return `${s}.`;
+  const lower = `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+  return `It looks like ${lower}.`;
 };
 
 const andList = (xs: string[]): string => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
