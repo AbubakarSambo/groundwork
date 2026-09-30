@@ -27,7 +27,9 @@ describe('the screens', () => {
   it('the board asks the rule and offers Try again where it can', () => {
     const board = read('board/BoardPage.tsx')
     expect(board).toContain('whyYouCannotSeeThis(whatWentWrong(error))')
-    expect(board).toMatch(/\{why\.canRetry && <button onClick=\{\(\) => refetch\(\)\}/)
+    /* U.10 (d): the board's own <button> is now the shared Button (UIButton), rebuilt from the
+       parts - the offer itself ("Try again", only when `why.canRetry`) is unchanged. */
+    expect(board).toMatch(/\{why\.canRetry && <UIButton kind="primary" onClick=\{\(\) => refetch\(\)\}/)
     expect(board).not.toContain('You may not be a party to this check-in, or it may no longer exist.')
   })
   it('the session report tells a 404 from a 403', () => {

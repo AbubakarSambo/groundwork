@@ -21,7 +21,10 @@ describe('a line under "Who owns what" with no words is not drawn', () => {
     const src = readFileSync(join(__dirname, 'BoardPage.tsx'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
     expect(src).toContain('const said = p.items.filter((it) => theWordsOfALine(it.text))')
     expect(src).toContain('said.length === 0 ?')
-    expect(src).toContain(') : said.map((it, i) => (')
-    expect(src).not.toContain(') : p.items.map((it, i) => (')
+    /* U.10 (d): the row's own `i` (only ever used for the old borderTop-first-row ternary) is
+       gone now that ternary is a CSS class (`gwui-inner-row`, :first-child) - the invariant this
+       guards is still "maps over `said`, never the raw `p.items`". */
+    expect(src).toContain(') : said.map((it) => (')
+    expect(src).not.toContain(') : p.items.map((it) => (')
   })
 })
