@@ -119,7 +119,7 @@ It needs week 8's marks, and week 9's kept and missed commitments, to have signa
 
 **Week 18. Ask Groundwork changes things by talking, after a yes.** *Built 1 October: move a deadline, add a commitment, mark something done, each said back and written only on a yes; ticking off a to-do is said back too.* Moving a deadline, adding a commitment, marking something done. Every one is said back and confirmed first (decision 12), including ticking off a to-do, which today acts without saying it back.
 
-**Week 19. Brainstorm.** A "think it through" mode lays out options, targets and what each assumes before anything is written. Nothing is decided for the lead (decision 13).
+**Week 19. Brainstorm.** *Built 1 October (`f2998808`): options with what each assumes, nothing chosen for the lead, nothing written.* A "think it through" mode lays out options, targets and what each assumes before anything is written. Nothing is decided for the lead (decision 13).
 
 **Week 20. Memory that lasts beyond one check-in.** What a lead tells the context chat that is true of the whole company, such as a client's rules or names, can be kept for the organisation after the lead confirms it. Ask Groundwork and the next check-ins can then use it. Leave dates said in chat go to the leave suite, not to the record.
 - **Needs Hafsah first:** what may move from one check-in to the whole company, and who confirms it.
