@@ -77,7 +77,7 @@ const MORE: { key: keyof typeof SCOPE_FOR; title: string; line: string; needsKey
   { key: 'goals', title: 'Your goals come in', line: 'Groundwork reads your goals, projects and decisions from wherever you keep them. Groundwork points at yours instead of copying them.' },
   { key: 'roles', title: 'Roles and handovers', line: 'Groundwork knows who holds each role and since when, so a handover leaves a written brief.' },
   { key: 'handbook', title: 'Your handbook', line: 'People can ask your documents questions in plain words. Each answer quotes the page it came from.' },
-  { key: 'start', title: 'Start a check-in from your own system', line: 'Your system opens one, sends people the link. Your system is told when it is done, but never what anyone said.', needsKey: true },
+  { key: 'start', title: 'Start a check-in from your own system', line: 'Your system opens a check-in and sends people the link. It is told when the check-in is done, but never what anyone said.', needsKey: true },
   { key: 'brief', title: 'The brief before a hard conversation', line: 'One page about one person, with what they said they would do, what they are waiting on, and what they raised. It never gives a score.', needsKey: true },
 ]
 

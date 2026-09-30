@@ -6898,4 +6898,15 @@ The third review confirmed those fixes, and found three more things, which are b
 - "Erase it" read as "erase everything you wrote", but it removes only your name and email. It is being renamed.
 - About 40 lines on the six pages are clipped or use jargon, many of them the prototype's own words. I decided how to handle the prototype's fragments, and it is under "Decided for Hafsah to confirm".
 
+**Group 1 is finished and passed its review (1 October).**
+- The screenshots are gone, and nothing points at them.
+- "Remove your name and email" says what it does, and its confirmation agrees.
+- Every clipped or jargon line on the six pages now reads as a plain sentence.
+- The last broken sentence on Connections was fixed. It now reads "Your system opens a check-in and sends people the link. It is told when the check-in is done, but never what anyone said."
+- The whole screen suite passes (3,688 tests), and so do the button test (10 of 10) and the page-colour test (3 of 3).
+
+The review's pictures are in the scratchpad's `pictures/review-g1d/`.
+
+Not checked on screen, because no local organisation has them: the developer page after API access is approved, and a connected WhatsApp or Slack. Both were judged from the code and its tests.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
