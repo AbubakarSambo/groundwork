@@ -81,7 +81,7 @@ describe('a reply is a payload, not a string', () => {
     /* A client that has to be taught a new top-level shape later is a breaking change to somebody
        else's code. An unimplemented type costs a line; an unplanned one costs a version. */
     expect(Object.keys(BLOCK_TYPES).sort()).toEqual(
-      ['board', 'draft', 'finding_list', 'freshness', 'next_step', 'picker', 'proposal', 'text'],
+      ['board', 'draft', 'finding_list', 'freshness', 'next_step', 'picker', 'proposal', 'source', 'text'],
     );
   });
 
