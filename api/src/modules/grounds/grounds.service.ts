@@ -3735,7 +3735,18 @@ export class GroundsService {
      * there was nothing in what they said - or worse, have the length of the check-in changed
      * instead. The two halves have to read the same sentence the same way.
      */
-    if (openGap !== 'objectives') {
+    /**
+     * FOUND LIVE, 30 September 2026: when the open gap was 'timeline' but the proposal being
+     * confirmed actually came from THIS secondary reading (a judgement or expectation of Ben, heard
+     * whatever question was open), and this second, independent model call happened to read it
+     * differently from the first - a real disagreement between two calls, the same class the
+     * inventory's own equivalence run already names as open for the success field - the lead was
+     * shown "REFUSED 400: No length in that answer", the open gap's own irrelevant refusal, for a
+     * proposal that was never about the timeline at all. `triedTheSecondReading` says whether this
+     * path was even attempted, so the refusal below can be honest about what was actually confirmed.
+     */
+    const triedTheSecondReading = openGap !== 'objectives';
+    if (triedTheSecondReading) {
       const alsoHeard = await this.anthropic
         .extract<Heard>(
           WHO_AND_WHAT_THEY_EXPECT,
@@ -3748,7 +3759,20 @@ export class GroundsService {
         if (forSomebody.kind === 'expectation' || forSomebody.kind === 'lead_read') proposal = forSomebody;
       }
     }
-    if (proposal.kind === 'none') throw new BadRequestException(proposal.why);
+    if (proposal.kind === 'none') {
+      /*
+       * AN HONEST REFUSAL, NOT THE OPEN GAP'S OWN UNRELATED ONE. When the second reading was tried
+       * and still came back with nothing, `proposal.why` is whatever the PRIMARY, open-gap extraction
+       * said above - a reason about timeline, cadence or success that has nothing to do with what the
+       * lead actually said yes to. Refused the same honest way the traceability guard just below
+       * refuses a mismatch, rather than a confusing reason attached to the wrong field.
+       */
+      throw new BadRequestException(
+        triedTheSecondReading
+          ? 'I could not find that in what you said, so nothing was recorded. Say it in your own words and I will take it.'
+          : proposal.why,
+      );
+    }
     /* The same rule where the write happens: nothing is recorded that they did not say. */
     if (
       (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, dto.said))

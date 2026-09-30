@@ -111,3 +111,28 @@ describe('dropsAPromiseWithNothingToKeep: nothing says it will be recorded unles
       .toBe('What have you seen that makes you say that?');
   });
 });
+
+/*
+ * FOUND LIVE, 30 September 2026: on a ground with 'timeline' still open, confirming a `lead_read` or
+ * `expectation` proposal read from the SECOND reading (WHO_AND_WHAT_THEY_EXPECT) - the only reading
+ * that can hear it, since 'objectives' was not the open gap - could disagree with itself between the
+ * two model calls PROPOSE and CONFIRM each make (a real, already-documented class of disagreement;
+ * see the inventory's equivalence run for the success field). When it did, the lead was shown
+ * "REFUSED 400: No length in that answer" - the OPEN GAP's own irrelevant refusal, about a timeline
+ * question nobody had just answered - rather than an honest refusal about the thing they actually
+ * confirmed.
+ */
+describe('a disagreement between the two model calls refuses honestly, not with the open gap\'s own unrelated reason', () => {
+  const CODE = require('fs').readFileSync(require('path').join(__dirname, 'grounds.service.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
+  const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('private async writeWhatThePasteGave('));
+
+  it('the refusal is the honest, generic one whenever the second reading was tried', () => {
+    expect(apply).toContain('const triedTheSecondReading = openGap !== \'objectives\';');
+    const block = apply.slice(apply.indexOf('const triedTheSecondReading'), apply.indexOf('/* The same rule where the write happens'));
+    expect(block).toContain('triedTheSecondReading');
+    expect(block).toContain('I could not find that in what you said, so nothing was recorded. Say it in your own words and I will take it.');
+    /* And the open gap's own reason is only used when the second reading was never even tried. */
+    expect(block).toContain(': proposal.why,');
+  });
+});
