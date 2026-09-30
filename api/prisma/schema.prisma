@@ -8127,7 +8127,7 @@ model BlockerTrace {
   /// The check-in the blocker ends in (where the anchor handoff was said) and where it started.
   endGroundId        String   @map("end_ground_id")
   startGroundId      String   @map("start_ground_id")
-  /// [{ kind, groundId, ownerParticipantId | null, text, sourceId }], in order. No names.
+  /// [{ kind, groundId, personId | null, text, sourceId }], in order. No names.
   steps              Json
   /// "Where it started: ..." and the decision needed, written without any name.
   whereItStarted     String   @map("where_it_started") @db.Text

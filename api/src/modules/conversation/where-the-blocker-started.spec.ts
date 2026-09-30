@@ -70,7 +70,7 @@ describe('every step must come from the record', () => {
 
   it('keeps a chain whose steps all come from handoffs, taking the check-in and the owner from the handoff', () => {
     const t = check(good())!;
-    expect(t.steps.map((s) => [s.kind, s.groundId, s.ownerParticipantId])).toEqual([
+    expect(t.steps.map((s) => [s.kind, s.groundId, s.personId])).toEqual([
       ['need', 'sales', 'p-sales-miriam'],
       ['approval', 'finance', 'p-lead-amani'],
       ['priority', 'leadership', 'p-lead-amani'],
@@ -165,7 +165,7 @@ describe('the trace stored when something new comes in', () => {
     expect(stored[0].promptVersionId).toBe('pv-7');
     expect((extract.mock.calls as any[][])[0][0]).toBe('the stored instructions');
     expect(JSON.stringify(stored[0])).not.toMatch(/Miriam|Grace|Amani|Wanjiku|Achieng|Njoroge|@baridi/);
-    expect(stored[0].steps.every((s: any) => typeof s.groundId === 'string' && 'ownerParticipantId' in s)).toBe(true);
+    expect(stored[0].steps.every((s: any) => typeof s.groundId === 'string' && 'personId' in s)).toBe(true);
   });
 
   it('is not built again when the record has not changed', async () => {

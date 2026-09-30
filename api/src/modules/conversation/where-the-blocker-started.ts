@@ -101,7 +101,8 @@ export interface TheModelsTrace {
 export interface StoredStep {
   kind: TraceStepKind;
   groundId: string;
-  ownerParticipantId: string | null;
+  /** The person whose step it is (the one who raised it, or the one it waits on). An id, never a name. */
+  personId: string | null;
   text: string;
   sourceId: string;
 }
@@ -210,7 +211,7 @@ export function theTraceTheRecordSupports(
     steps.push({
       kind: s.kind as TraceStepKind,
       groundId: source.groundId,
-      ownerParticipantId: (s.whose === 'holds' ? source.onParticipantId : source.fromParticipantId) ?? null,
+      personId: (s.whose === 'holds' ? source.onParticipantId : source.fromParticipantId) ?? null,
       text: /[.?!]$/.test(text) ? text : `${text}.`,
       sourceId: source.id,
     });
