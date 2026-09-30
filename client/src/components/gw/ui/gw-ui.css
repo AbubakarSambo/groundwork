@@ -505,16 +505,25 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-conv-card { border-radius: 0; border-left: none; border-right: none; }
 }
 
-/* ── STAGE TRACK (request 76: a work record's stages, one row, in order) ─── */
+/* ── STAGE TRACK (request 76: a work record's stages, one row, in order) ───
+   Board review, 30 September, second pass: the stage's name and its count were joined with a
+   colon on one line ("Quoted: 1 deal") - still a label-and-value pair glued together, not a
+   sentence. The prototype's own shape (salesorg.txt) stacks them: the stage's name, then its
+   count underneath, two lines, no punctuation joining them. */
 .gwui-stage-track {
   display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none;
 }
 .gwui-stage-track-item {
-  font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 11px; white-space: nowrap;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center;
+  font-size: 13px; padding: 5px 8px; border-radius: 11px; white-space: nowrap;
   background: var(--gw-bg); color: var(--gw-sub);
 }
+.gwui-stage-track-name  { font-weight: 700; }
+.gwui-stage-track-count { font-weight: 500; }
 .gwui-stage-track-done    { background: var(--gw-green-bg); color: var(--gw-green-t); }
-.gwui-stage-track-current { background: var(--gw-navy); color: white; font-weight: 700; }
+.gwui-stage-track-current { background: var(--gw-navy); color: white; }
+.gwui-stage-track-current .gwui-stage-track-name,
+.gwui-stage-track-current .gwui-stage-track-count { font-weight: 700; }
 
 /* ── UTILITY SCALE (design-audit.md section 4, the guard test) ───────────────
    For a page on REBUILT_PAGES: no inline fontSize, color, margin*, padding*, border
@@ -681,3 +690,48 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-how-strong { font-weight: 600; color: var(--gwui-how-strong); }
 .gwui-how-people { color: var(--gwui-how-people); }
 .gwui-how-warn   { font-weight: 600; color: var(--gwui-how-warn); }
+
+/* ── WHAT TO SETTLE TOGETHER (board review, 30 September) ─────────────────────────────────── */
+.gwui-settle-label { font-size: 13px; font-weight: 700; margin-bottom: 3px; color: var(--gwui-settle-label); }
+.gwui-settle-body  { font-size: 13px; line-height: 1.6; max-width: 68ch; color: var(--gwui-settle-body); }
+.gwui-settle-note  { font-size: 13.5px; margin-top: 6px; color: var(--gwui-settle-note); }
+
+/* ── A SECOND PRESS BEFORE IT IS GONE (board review, 30 September) ────────────────────────── */
+.gwui-confirm { padding: 10px 12px; border-radius: 8px; margin-top: 8px; }
+.gwui-confirm-danger  { background: var(--gw-red-bg); border: 1px solid var(--gw-red-b-soft); }
+.gwui-confirm-caution { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b-soft); }
+.gwui-confirm-saying { font-size: 14.5px; line-height: 1.5; margin-bottom: 8px; }
+.gwui-confirm-saying-danger  { color: var(--gw-red-t); }
+.gwui-confirm-saying-caution { color: var(--gw-amber-t); }
+.gwui-confirm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.gwui-confirm-btn {
+  padding: 7px 12px; border-radius: 6px; border: none; font-size: 14.5px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+}
+.gwui-confirm-btn:disabled { cursor: wait; }
+.gwui-confirm-btn-danger  { background: var(--gw-red-t); color: white; }
+.gwui-confirm-btn-caution { background: var(--gw-navy); color: white; }
+.gwui-confirm-btn-keep { border: 1px solid var(--gw-border); background: white; color: var(--gw-sub); font-weight: 600; }
+
+/* ── THE OTHER BOARDS YOU ARE IN (board review, 30 September) ─────────────────────────────── */
+.gwui-boards-switcher { position: relative; }
+.gwui-boards-trigger {
+  display: flex; align-items: center; gap: 8px; max-width: 220px;
+  background: white; border: 1px solid var(--gw-border); color: var(--gw-text);
+  border-radius: 8px; padding: 6px 10px; font-size: 14.5px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.gwui-boards-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gwui-boards-trigger-caret { color: var(--gw-sub); }
+.gwui-boards-menu {
+  position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; min-width: 260px; max-width: 360px;
+  background: white; border: 1px solid var(--gw-border); border-radius: 10px; padding: 6px;
+  box-shadow: 0 10px 30px rgba(20, 24, 40, .18); max-height: 320px; overflow-y: auto;
+}
+.gwui-boards-option {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  color: var(--gw-text); font-size: 14.5px; padding: 8px 10px; border-radius: 7px;
+  cursor: pointer; font-family: inherit;
+}
+.gwui-boards-option-title { font-weight: 600; }
+.gwui-boards-option-finding { color: var(--gw-sub); font-size: 13px; line-height: 1.4; margin-top: 2px; }

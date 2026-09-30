@@ -11,9 +11,12 @@ import './gw-ui.css'
  * an empty gap.
  *
  * BOARD REVIEW, 30 SEPTEMBER, ITEM 3: "Quoted (1)" is a label with a number bolted on, not
- * something a person reads - now "Quoted: none yet" / "Quoted: 1 deal" / "Quoted: 3 deals", in the
- * kind's own word for one row (`itemNoun`, e.g. "deal", "ticket", "loan"), pluralised in the plain
- * way (every noun this product uses one of takes a simple "s").
+ * something a person reads. First pass made it "Quoted: 1 deal" - still a label and a value
+ * joined with a colon, the very thing this product's own wording rule refuses. Second pass: the
+ * prototype's own shape (salesorg.txt) is the stage's name, then its count on its own line under
+ * it - "Quoted", then "1 deal" beneath, two lines, no colon - in the kind's own word for one row
+ * (`itemNoun`, e.g. "deal", "ticket", "loan"), pluralised in the plain way (every noun this
+ * product uses one of takes a simple "s").
  */
 export function StageTrack({ stages, counts, itemNoun = 'item' }: { stages: string[]; counts: Record<string, number>; itemNoun?: string }) {
   const noun = itemNoun.toLowerCase()
@@ -24,7 +27,8 @@ export function StageTrack({ stages, counts, itemNoun = 'item' }: { stages: stri
         const countSaid = n === 0 ? 'none yet' : n === 1 ? `1 ${noun}` : `${n} ${noun}s`
         return (
           <li key={s} className={`gwui-stage-track-item ${n > 0 ? 'gwui-stage-track-done' : 'gwui-stage-track-plain'}`}>
-            {`${s}: ${countSaid}`}
+            <span className="gwui-stage-track-name">{s}</span>
+            <span className="gwui-stage-track-count">{countSaid}</span>
           </li>
         )
       })}

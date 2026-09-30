@@ -102,7 +102,7 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     expect(within(dealGrid).getByText('Akinyi Otieno')).toBeTruthy()
     expect(within(dealGrid).getByText('Nobody named yet.')).toBeTruthy()
     /* One "Stage now" per row - a single tag, not the whole track. */
-    expect(within(dealGrid).getByText('Won')).toHaveClass('gwui-tag')
+    expect(within(dealGrid).getByText('Won', { selector: '.gwui-tag' })).toHaveClass('gwui-tag')
     expect(within(dealGrid).getByText('No stage said yet.')).toBeTruthy()
     /* The person's own words, in their own name, never a colon join and never a status tag. */
     /* Board review, 30 September, item 1: the row's `owner` (Akinyi, whose deal this is) is not
@@ -117,10 +117,13 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
 
     /* The shape of the work: every stage, once, with how many rows sit at each. */
     expect(within(dealGrid).getByText('The shape of the work')).toBeTruthy()
-    /* Board review, 30 September, item 3: "Quoted (1)" read as a label with a number, not a
-       sentence - now "Won: 1 deal" / "Contacted: none yet". */
-    expect(within(dealGrid).getByText('Won: 1 deal')).toBeTruthy()
-    expect(within(dealGrid).getByText('Contacted: none yet')).toBeTruthy()
+    /* Board review, 30 September, two passes: "Quoted (1)" read as a label with a number, and
+       "Quoted: 1 deal" still joined a label and a value with a colon - now stacked on two lines,
+       the stage's name and its count, no punctuation joining them. */
+    expect(within(dealGrid).getByText('Won', { selector: '.gwui-stage-track-name' })).toBeTruthy()
+    expect(within(dealGrid).getByText('1 deal')).toBeTruthy()
+    expect(within(dealGrid).getByText('Contacted', { selector: '.gwui-stage-track-name' })).toBeTruthy()
+    expect(within(dealGrid).getAllByText('none yet').length).toBeGreaterThan(0)
     /* Never drawn as "proven" or "criteria met" - nothing served here says that. */
     expect(screen.queryByText(/proven/i)).toBeNull()
     expect(screen.queryByText(/criteria met/i)).toBeNull()

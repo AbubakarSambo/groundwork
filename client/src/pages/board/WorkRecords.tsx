@@ -44,8 +44,10 @@ const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
   'trader training programme': 'A trader training programme',
   "founder's own check-in": "A founder's own check-in, about their own commitments and decisions",
   'asset loans': 'Asset loans and their repayments',
-  'MarketView where next': 'MarketView, choosing where to focus next',
-  'MarketView Q4': "MarketView's Q4 numbers",
+  /* Second pass, 30 September: "MarketView" is an example company's name, not a plain word for
+     the kind of work - a chooser option names the WORK, not which example company it came from. */
+  'MarketView where next': 'Choosing where to focus next',
+  'MarketView Q4': 'Subscriptions, said and paid',
   'a law firm matter': 'A law firm matter',
   'a government programme': 'A government programme',
 }
