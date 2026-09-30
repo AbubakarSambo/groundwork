@@ -83,13 +83,16 @@ export function TodayPage() {
             {data && needs.length === 0 && <Empty>Nothing needs you right now.</Empty>}
             {needs.length > 0 && (
               <EdgeList label="What needs you">
-                {needs.map((n: Need) => (
+                {/* ONE NAVY BUTTON (Hafsah, 30 September): the prototype's own Today draws every "Start it"
+                    navy, but with two check-ins open that is two navy buttons at once. Only the first,
+                    the most important, is navy; the rest are white. */}
+                {needs.map((n: Need, i: number) => (
                   <EdgeRow
                     key={n.key}
                     kind={n.kind}
                     title={n.title}
                     detail={n.detail ?? undefined}
-                    actions={<Button kind={n.action.label === 'Start it' ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>}
+                    actions={<Button kind={n.action.label === 'Start it' && i === needs.findIndex((m: Need) => m.action.label === 'Start it') ? 'primary' : 'secondary'} size="small" to={n.action.to}>{n.action.label}</Button>}
                   />
                 ))}
               </EdgeList>

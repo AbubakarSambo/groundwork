@@ -189,3 +189,16 @@ describe('the words for when', () => {
     expect(whenItComes(new Date(2026, 9, 1, 9, 0), MORNING)).toBe('1 October')
   })
 })
+
+describe('Today has one navy button', () => {
+  /* Hafsah, 30 September: at most one primary button per screen. The prototype's own Today draws
+     every "Start it" navy; with two check-ins open that is two at once. Only the first is navy. */
+  it('with two check-ins to start, only the first "Start it" is navy', async () => {
+    open(WAIRIMU, LEAD_READ)
+    const starts = await screen.findAllByRole('link', { name: 'Start it' })
+    expect(starts).toHaveLength(2)
+    expect(starts[0].className).toContain('gwui-btn-primary')
+    expect(starts[1].className).not.toContain('gwui-btn-primary')
+    expect(document.querySelectorAll('.gwui-btn-primary')).toHaveLength(1)
+  })
+})
