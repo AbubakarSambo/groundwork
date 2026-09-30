@@ -546,3 +546,40 @@ How it is built. Stored in `blocker_traces`, without names (each step holds its 
 
 **Also, from request 37.** A participant's session report now says "Session 3. It runs until Wairimu Kamau ends it." (the lead's name, or "the person running it" where the reader may not read a name); the lead still reads "Session 3. It runs until you end it." `POST /check-ins` on the public API takes `runsUntilEnded: true`, as the product's own create does.
 
+
+## Request 17: the Company page's company-wide picture (parts a to d)
+
+`GET /company` (the same read as before) now carries four more things. Everything is written once, when the record changes, and only read when the page opens. Until a picture has been written for the organisation, `reading` is `null` on every priority and the three lists are empty: draw nothing in their place.
+
+### The fields
+
+    GET /company
+    {
+      ...the fields you already have...,
+      priorities: [{ ...,
+        reading: { tag: string, says: string } | null    // (a)
+      }],
+      notReaching: [{ id, observation, question, forWhom }],                              // (b)
+      namedByTeams: [{ id, title, touches, teams: [{ team, says }] }],                    // (c)
+      saidAndShown: [{ id, area, youSaid, checkInsShow }]                                 // (d)
+    }
+
+(a) `reading.tag` is one of: "Nobody owns it yet", "Nothing is moving it yet", "At risk", "Quiet for a month", "Moving, but not enough of it", "Moving". It is about the priority and is decided in code from the record (owner, check-ins that feed it, handoffs stopping work, a date that has passed). `reading.says` is one or two full sentences, for example "1 check-in feeds this priority, and 3 were finished in the last 30 days. 1 handoff is stopping work on it." It is `null` when the reader may not open every check-in it was built from. `tag` (the old field, "Nobody owns it yet" or null) is unchanged.
+
+(b) `notReaching` comes in this order and is written from the shape of the organisation's priorities, for example "Priority 3 has no owner and nothing underneath it." with the question "Who owns priority 3, Build a stronger organisation?" and `forWhom` "For you". The other two kinds are "The customer portal sits under no current priority." with "Which priority does The customer portal serve?" and `forWhom` "For Lina Ali, Product lead" (the owner's name and title from the roster, or "For you" when the reader is that owner), and "Open the second warehouse is still open, and its date has passed." with "Should Open the second warehouse get a new date, or be closed?". Served only to readers who may read every check-in (admins). Draw "Decide" for `forWhom` "For you" and "Ask" for anybody else.
+
+(c) `namedByTeams[].title` is the thing in plain words ("No way for customers to order in bulk"), `touches` is "Touches priority 1 and priority 2." (or "It does not sit under any priority yet."), and each team's `says` is one sentence ("Sales raised this in 2 check-ins, with 3 open handoffs." when the model's sentence did not pass the checks). Teams come in alphabetical order and groups in order of their title, never by size. A thing is only here when at least two teams raised it. "Nobody owns it." is not written, because the record cannot say it of a thing.
+
+(d) `saidAndShown[]`: `area` is "Priority 1", `youSaid` is the priority as the organisation wrote it in its own system (not anybody's words from a check-in), `checkInsShow` is one or two sentences such as "1 of the 4 check-ins finished in the last 30 days that belong to a priority was about this one. 1 handoff is open in them." Served only to readers who may read every check-in, and only once at least three such check-ins were finished. The prototype's examples ("6 in 10 sales visits went to small shops.") need figures the record does not hold, so they are not written.
+
+### Who reads what
+
+Each item keeps the ids of the check-ins it was built from (`restsOn`, never served). A reader is given an item only if they may open every one of them, by the same list of check-ins that feeds `fedBy` (their role and their access, never their title). A lead who runs the sales check-in reads the reading of the priority it feeds, and a thing that only check-ins they may open named; a member in that check-in reads the same reading. `notReaching` and `saidAndShown` are for readers who may read every check-in, so a lead or a member is given empty lists. An admin who was not given a performance plan, promotion or renewal check-in is given nothing that rests on it, and such check-ins are never read into the picture at all.
+
+### How it is kept
+
+Table `company_pictures`, one row per organisation, no names (an owner is held as the customer's own id and named only when served). Written by `CompanyPictureService` (`api/src/modules/grounds/the-company-picture.service.ts`) when a check-in completes, when a handoff is raised, and once a night if the priorities changed in the organisation's own system. The same record again makes no second model call and no new row. The model is given priorities with counts and open handoffs with team and check-in numbers, and no person. Its sentences are kept only if every number is on the record, nobody is named, nothing is judged or ranked, there is no quotation and nothing is copied word for word; otherwise a plain sentence is written from the counts. The instructions are the stored prompt `company_picture` (seeded on boot); the row records `promptVersionId`.
+
+### Not built
+
+(e) The company context picked up from check-ins is `docs/weekly-plan.md` week 20, "Memory that lasts beyond one check-in". It would be kept at the organisation's level, confirmed by a lead before it counts. (f) and (g) wait for Hafsah.
