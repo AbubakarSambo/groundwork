@@ -200,7 +200,7 @@ describe('the founder’s own check-in: a Work plan with none yet', () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard(FOUNDER)
     expect(await screen.findByText("This is a founder's own check-in, about their own commitments and decisions.")).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Every item, and what shows it' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Every commitment and decision, and what shows it' })).toBeTruthy()
     expect(screen.getByText('No commitments and decisions have come up yet. They appear here when someone names one in a check-in, or when you add one below.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add one' })).toBeTruthy()
   })

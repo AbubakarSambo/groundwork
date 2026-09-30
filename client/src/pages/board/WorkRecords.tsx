@@ -66,26 +66,26 @@ const ITEM_KINDS_FOR_HOLDS: Record<string, { value: string; label: string }[]> =
 
 /**
  * THE PROTOTYPE'S OWN HEADING FOR "Deal grid", "Work plan" and "Themes", where it has one, read
- * from docs/prototype/screens/G1-example-check-ins/<kind>.txt: salesorg "Every sale, and what shows
- * it", eng "Every task...", support "Every ticket...", ops "Every % on time..." (its own words, even
- * though the rows underneath are incidents), programme and loans "Every trader...", founder "Every
- * item...", mvnext "Where next, ranked". Where the prototype has none for this kind (MarketView Q4,
+ * from docs/prototype/screens/G1-example-check-ins/<kind>.txt where it names what the rows are (salesorg
+ * "Every sale, and what shows it", support "Every ticket...", mvnext "Where next, ranked"); otherwise
+ * the same shape, naming what the engine says the section holds, so a heading never names something
+ * other than the rows under it (ops's rows are incidents, loans' are loans, and so on). Where the prototype has none for this kind (MarketView Q4,
  * a government programme), a plain heading in the same "Every <the row's own name>, and what shows
  * it" shape, built from the section's own item noun - never a second, competing sentence glued onto
  * `holds` (that produced "All of the the parties" when `holds` was already "the parties").
  */
 const DEAL_GRID_HEADING: Partial<Record<KindOfWork, string>> = {
   'sales org': 'Every sale, and what shows it',
-  'engineering release': 'Every task, and what shows it',
+  'engineering release': 'Every release and task, and what shows it',
   'support desk': 'Every ticket, and what shows it',
-  'distribution operations': 'Every % on time, and what shows it',
-  'trader training programme': 'Every trader, and what shows it',
-  'asset loans': 'Every trader, and what shows it',
+  'distribution operations': 'Every incident, and what shows it',
+  'trader training programme': 'Every trader group, and what shows it',
+  'asset loans': 'Every loan, and what shows it',
   'MarketView Q4': 'Every subscription, and what shows it',
   'a government programme': 'Every county, and what shows it',
 }
 const WORK_PLAN_HEADING: Partial<Record<KindOfWork, string>> = {
-  "founder's own check-in": 'Every item, and what shows it',
+  "founder's own check-in": 'Every commitment and decision, and what shows it',
 }
 const THEMES_HEADING: Partial<Record<KindOfWork, string>> = {
   'MarketView where next': 'Where next, ranked',
