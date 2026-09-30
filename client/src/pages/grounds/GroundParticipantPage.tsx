@@ -11,7 +11,6 @@ import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { cadenceLabel } from '@/lib/cadence'
-import { useAskStore } from '@/stores/ask'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useOpenSession } from '@/hooks/useOpenSession'
@@ -72,9 +71,6 @@ export function GroundParticipantPage() {
   const { open: openSession, opening: sessionOpening, paywall } = useOpenSession(id)
 
   const user = useAuthStore(s => s.user)
-  /* Called here, before any early return below, so the hook count cannot change between renders
-     (rules of hooks) once the header starts using it for "Ask". */
-  const showAsk = useAskStore((s) => s.show)
 
   const { data: ground, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['ground', id],
@@ -476,7 +472,14 @@ export function GroundParticipantPage() {
                 at all when there is none to open, rather than promise a check-in that is not
                 there.
               */}
-              {myOpenForAutoOpen && (
+              {/*
+                HAFSAH, 30 SEPTEMBER, ITEM 4: NOT ON PEOPLE AND SETUP.
+                The prototype draws "Start my check-in" on Board (board-as-participant.txt), Context
+                and My work (my-record.txt), but check-in-people-and-setup.txt has no such button
+                before its tabs - only "Add people" is navy on that screen. Without this, the People
+                and setup tab carried two navy buttons at once.
+              */}
+              {myOpenForAutoOpen && outerTabOf(tab) !== 'people' && (
                 <button
                   type="button"
                   onClick={() => openSession(myOpenForAutoOpen, { isFreeGround: ground?.isFreeGround, groundLabel: ground?.label, isInitiator })}
@@ -486,13 +489,13 @@ export function GroundParticipantPage() {
                   {sessionOpening ? 'Opening…' : 'Start my check-in'}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={showAsk}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-              >
-                Ask
-              </button>
+              {/*
+                HAFSAH, 30 SEPTEMBER, ITEM 4: NOT HERE EITHER. "Ask" only sits in the header on the
+                board (board-as-participant.txt) - context.txt, my-record.txt and check-in-people-
+                and-setup.txt all carry the tabs with no "Ask" beside them. This page never renders
+                the Board tab itself (BoardPage.tsx does, with its own "Ask", already in place), so
+                its own header never needs one.
+              */}
               {/* The way back for an admin who is a party elsewhere - not in the prototype, but a
                   real door this product needs (the-two-views-are-a-pair.spec.ts). */}
               {canRunThisCheckIn && (

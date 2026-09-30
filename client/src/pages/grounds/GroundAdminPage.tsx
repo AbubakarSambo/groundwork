@@ -37,7 +37,6 @@ import { whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
-import { useAskStore } from '@/stores/ask'
 import { billingApi } from '@/api/billing'
 import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
@@ -148,9 +147,6 @@ export function GroundAdminPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const user = useAuthStore(s => s.user)
-  /* Called here, before any early return below, so the hook count cannot change between renders
-     (rules of hooks) once the header starts using it for "Ask". */
-  const showAsk = useAskStore((s) => s.show)
   /* U.6: WhatsApp is only mentioned while it is switched on (GET /auth/whatsapp), as well as connected. */
   const whatsAppIsOn = useWhatsAppIsOn()
   /**
@@ -1314,8 +1310,15 @@ export function GroundAdminPage() {
                 for an admin who is not a party, is now the plain line telling her she does not
                 answer this check-in (GroundAdminPage's own tab === 'chat' branch). Offering the
                 button anyway would promise a check-in that tab does not have for her.
+
+                HAFSAH, 30 SEPTEMBER, ITEM 4: NOT ON PEOPLE AND SETUP.
+                The prototype draws this button on Board, Context (context.jpg) and My work
+                (sessions.txt), but check-in-people-and-setup.txt has no "Your check-in" before its
+                tabs - only "Add people" is navy on that screen. Without this, the People and setup
+                tab carried two navy buttons at once ("Your check-in" here, "Add people" further
+                down); the prototype's own screen has exactly one.
               */}
-              {viewerIsAParty && (
+              {viewerIsAParty && outerTabOf(tab) !== 'people' && (
                 /*
                  * RE-REVIEW: THIS LINKED TO THE BARE GROUND PAGE, NOT TO A CHECK-IN.
                  * `/grounds/:id` is this very page - clicking it while already here did
@@ -1334,13 +1337,13 @@ export function GroundAdminPage() {
                   Your check-in
                 </button>
               )}
-              <button
-                type="button"
-                onClick={showAsk}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-              >
-                Ask
-              </button>
+              {/*
+                HAFSAH, 30 SEPTEMBER, ITEM 4: NOT HERE EITHER. "Ask" only sits in the header on the
+                board (board-as-lead.txt) - context.txt, sessions.txt and check-in-people-and-
+                setup.txt all carry the tabs with no "Ask" beside them. This page never renders the
+                Board tab itself (BoardPage.tsx does, with its own "Ask", already in place), so its
+                own header never needs one.
+              */}
             </div>
           )}
           active={outerTabOf(tab)}
