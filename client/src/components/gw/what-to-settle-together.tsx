@@ -29,12 +29,12 @@ export function WhatToSettleTogether({ question, tone = 'light' }: {
       {/* U.9 THIRD REVIEW, ITEM 4: A HEADING IS SAID, NOT SHOUTED. Capitals and letter-spacing
           turned a plain heading into "WHAT TO SETTLE TOGETHER", the same pattern already fixed
           elsewhere on the report and the session pages. */}
-      <div style={{ fontSize: 10.5, color: ink.label, fontWeight: 700, marginBottom: 3 }}>
+      <div style={{ fontSize: 13, color: ink.label, fontWeight: 700, marginBottom: 3 }}>
         What to settle together
       </div>
       <div style={{ fontSize: 13, color: ink.body, lineHeight: 1.6, maxWidth: '68ch' }}>{question}</div>
       {/* Where it goes. A question with nowhere to put it is a question somebody reads and drops. */}
-      <div style={{ fontSize: 12, color: ink.note, marginTop: 6 }}>Bring this to your next check-in.</div>
+      <div style={{ fontSize: 13.5, color: ink.note, marginTop: 6 }}>Bring this to your next check-in.</div>
     </>
   )
 }

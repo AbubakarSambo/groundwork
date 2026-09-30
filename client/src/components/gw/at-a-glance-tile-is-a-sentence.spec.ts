@@ -55,6 +55,14 @@ describe('an at-a-glance tile reads as full sentences, not stacked pieces', () =
       .toBe('Nothing has moved yet. Two targets are set, and no session has closed to measure them against.')
   })
 
+  /* Board review, 30 September, item 6: "'One target is set, and no session has closed to measure
+     them against' ('it' for one)." - the pronoun has to agree with a single target, not default to
+     the plural "them" the way the multi-target case above reads correctly. */
+  it('Movement, one target set but no round closed yet - "it", not "them"', () => {
+    expect(tileSentence({ label: 'Movement', value: 'Nothing yet', sub: '1 target set, and no round has closed to measure from' }))
+      .toBe('Nothing has moved yet. One target is set, and no session has closed to measure it against.')
+  })
+
   it('Movement, one target moved', () => {
     expect(tileSentence({ label: 'Movement', value: '+1', sub: 'targets moved this session' }))
       .toBe('One target moved this session.')

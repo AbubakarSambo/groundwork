@@ -35,12 +35,12 @@ export function Confirm({ saying, confirmLabel, keepLabel = 'Keep it', pending =
 }) {
   return (
     <div role="group" aria-label={saying} style={{ padding: '10px 12px', borderRadius: 8, background: danger ? 'var(--gw-red-bg)' : 'var(--gw-amber-bg)', border: `1px solid ${danger ? 'var(--gw-red-b-soft)' : 'var(--gw-amber-b-soft)'}`, marginTop: 8 }}>
-      <div style={{ fontSize: 12.5, color: danger ? 'var(--gw-red-t)' : 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 8 }}>{saying}</div>
+      <div style={{ fontSize: 14.5, color: danger ? 'var(--gw-red-t)' : 'var(--gw-amber-t)', lineHeight: 1.5, marginBottom: 8 }}>{saying}</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" onClick={onConfirm} disabled={pending} style={{ padding: '7px 12px', borderRadius: 6, border: 'none', background: danger ? 'var(--gw-red-t)' : 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, cursor: pending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
+        <button type="button" onClick={onConfirm} disabled={pending} style={{ padding: '7px 12px', borderRadius: 6, border: 'none', background: danger ? 'var(--gw-red-t)' : 'var(--gw-navy)', color: 'white', fontSize: 14.5, fontWeight: 700, cursor: pending ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
           {pending ? pendingLabel : confirmLabel}
         </button>
-        <button type="button" onClick={onKeep} disabled={pending} style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-sub)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <button type="button" onClick={onKeep} disabled={pending} style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--gw-border)', background: 'white', color: 'var(--gw-sub)', fontSize: 14.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
           {keepLabel}
         </button>
       </div>

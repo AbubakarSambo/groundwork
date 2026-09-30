@@ -128,6 +128,13 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-cih-tabs-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
 .gwui-cih-tabs-row .gwui-tabs { flex: 1; min-width: 0; }
 .gwui-cih-trailing { flex-shrink: 0; padding-bottom: 8px; }
+/* Board review, 30 September, item 8: at phone width the check-in switcher squeezed the tab row -
+   the switcher now drops to its own line under the tabs, so the tabs keep their full row, as
+   board-phone.jpg draws it. */
+@media (max-width: 640px) {
+  .gwui-cih-tabs-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .gwui-cih-trailing { padding-bottom: 0; align-self: flex-start; }
+}
 
 /* ── TABS (prototype: .tabs, .tab, .tab.on) ──────────────────────────────
    BUG FIX (design-audit.md section 2, "Lines"): only the ACTIVE tab gets the 3px underline. The
@@ -241,9 +248,24 @@ a.gwui-person-row:hover { background: var(--gw-page); }
    template lives in a class, not inline, because only a class can carry the media query. */
 .gwui-work-head { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.8fr auto; }
 .gwui-work-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1.8fr auto; align-items: start; }
+/* A kind with no stages (and the founder's own check-in, which uses this slot for "Kind" instead)
+   drops one column - board review, 30 September, item 3. */
+.gwui-work-head-nostage { grid-template-columns: 1.5fr 1fr 1.8fr auto; }
+.gwui-work-row-nostage  { grid-template-columns: 1.5fr 1fr 1.8fr auto; }
 @media (max-width: 640px) {
   .gwui-work-head { display: none; }
   .gwui-work-row { grid-template-columns: 1fr !important; align-items: start; gap: 6px; }
+}
+
+/* Board review, 30 September, item 3: at phone width the column names above ("Rep", "Agent"...)
+   are hidden (`gwui-work-head` above), so a bare "Nobody named yet." no longer says whose it is.
+   Two texts, one shown per width - never a duplicate row a screen reader would read twice; each
+   pair here is one logical value, only one of the two ever visible. */
+.gwui-nobody-wide { display: inline; }
+.gwui-nobody-narrow { display: none; }
+@media (max-width: 640px) {
+  .gwui-nobody-wide { display: none; }
+  .gwui-nobody-narrow { display: inline; }
 }
 
 /* ── FOLDED PANEL (prototype: "Who reports to whom", a closed .panel) ───── */
@@ -647,3 +669,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   border: 1.5px solid var(--gw-dark); border-radius: 8px;
   background: white; color: var(--gw-dark); font-weight: 700; font-family: inherit;
 }
+
+/* ── HOW IT IS GOING (the board's own headline, board review 30 September) ───────────────────
+   The story is the board's headline: the largest, serif text on the page (prototype: s2.js's
+   `.t-title` at 32px, over "Will we reach 25 sales by 30 September?"'s small label) - not a quiet
+   12.5px aside. Each ink comes from a CSS custom property the caller sets (light ground or the
+   board's dark header), never an inline `color` - see how-it-is-going.tsx. */
+.gwui-how-story  { font-family: var(--gw-font-name); font-size: 32px; line-height: 1.28; font-weight: 500; margin: 0 0 10px; color: var(--gwui-how-story); }
+.gwui-how-brief  { font-size: 14.5px; line-height: 1.5; margin: 0 0 10px; color: var(--gwui-how-brief); }
+.gwui-how-glance { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; font-size: 14.5px; }
+.gwui-how-strong { font-weight: 600; color: var(--gwui-how-strong); }
+.gwui-how-people { color: var(--gwui-how-people); }
+.gwui-how-warn   { font-weight: 600; color: var(--gwui-how-warn); }

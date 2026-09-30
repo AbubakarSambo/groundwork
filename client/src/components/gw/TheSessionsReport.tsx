@@ -356,7 +356,7 @@ function movementSentence(value: string, sub: string): string {
   const set = sub.match(/^(\d+) targets? set, and no round has closed to measure from$/)
   if (set) {
     const n = Number(set[1])
-    return `Nothing has moved yet. ${capitalize(smallWord(n))} target${n === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} set, and no session has closed to measure them against.`
+    return `Nothing has moved yet. ${capitalize(smallWord(n))} target${n === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} set, and no session has closed to measure ${n === 1 ? 'it' : 'them'} against.`
   }
   return `Nothing has moved yet. ${withPeriod(capitalize(sub))}`
 }

@@ -55,7 +55,7 @@ export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
         style={{
           display: 'flex', alignItems: 'center', gap: 8, maxWidth: 220,
           background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)',
-          borderRadius: 8, padding: '6px 10px', fontSize: 12.5, fontWeight: 600,
+          borderRadius: 8, padding: '6px 10px', fontSize: 14.5, fontWeight: 600,
           cursor: 'pointer', fontFamily: 'inherit',
         }}
       >
@@ -82,14 +82,14 @@ export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
               onClick={() => { setOpen(false); navigate(`/grounds/${g.id}/board`) }}
               style={{
                 display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none',
-                color: 'var(--gw-text)', fontSize: 12.5, padding: '8px 10px', borderRadius: 7,
+                color: 'var(--gw-text)', fontSize: 14.5, padding: '8px 10px', borderRadius: 7,
                 cursor: 'pointer', fontFamily: 'inherit',
               }}
             >
               <div style={{ fontWeight: 600 }}>{g.label}</div>
               {/* What the last round found, the same line the check-in list leads with. */}
               {g.latestFinding && (
-                <div style={{ color: 'var(--gw-sub)', fontSize: 11.5, lineHeight: 1.4, marginTop: 2 }}>
+                <div style={{ color: 'var(--gw-sub)', fontSize: 13, lineHeight: 1.4, marginTop: 2 }}>
                   {String(g.latestFinding).slice(0, 90)}{String(g.latestFinding).length > 90 ? '…' : ''}
                 </div>
               )}
