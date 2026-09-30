@@ -4477,7 +4477,10 @@ export class GroundsService {
   ): Promise<{ participantId: string; who: string; exactQuestion: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    const viewer = await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } });
+    const viewer = await this.prisma.user.findUnique({
+      where: { id: requestingUserId },
+      select: { role: true, organizationId: true },
+    });
     if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
       throw new ForbiddenException('Only the person who runs this check-in can ask people things through it. Nothing was asked.');
     }
