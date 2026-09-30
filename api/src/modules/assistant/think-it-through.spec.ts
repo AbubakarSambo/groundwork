@@ -4,7 +4,7 @@ import { CAPABILITY_BY_KEY } from './what-the-assistant-can-do';
 import { SEED_PROMPTS } from '../conversation/prompt-library';
 import {
   THINK_IT_THROUGH_PROMPT, THINK_IT_THROUGH_PROMPT_KEY, THE_OFFER, NOT_ENOUGH_TO_GO_ON, COULD_NOT_LAY_OUT, WHAT_TO_THINK_ABOUT,
-  anOptionIsSafe, sayItRecommends, theOptionsThatStay, theOptionsSaid,
+  anOptionIsSafe, theOptionIs, sayItRecommends, theOptionsThatStay, theOptionsSaid,
 } from './think-it-through';
 
 /**
@@ -94,19 +94,19 @@ const words = (r: any) => r.blocks.filter((b: any) => b.type === 'text').map((b:
 const goodOptions = () => ({
   options: [
     {
-      name: 'Keep the target at 3',
+      name: 'keep the target at 3',
       means: 'It would mean that the team keeps working to 3 deliverables signed off by 15 December.',
       assumes: 'It assumes that the client can still sign off in December.',
       working: 'You would know it is working if each deliverable has a sign-off date before 15 December.',
     },
     {
-      name: 'Raise the target',
+      name: 'raise the target',
       means: 'It would mean that the team takes on more deliverables in the same time.',
       assumes: 'It assumes that the Kisumu depot work does not take the team away from the client work.',
       working: 'You would know it is working if the first extra deliverables are started by the end of the month.',
     },
     {
-      name: 'Keep 3 and add a review point',
+      name: 'keep 3 and add a review point',
       means: 'It would mean that the target stays the same and the team looks at it again part of the way through.',
       assumes: 'It assumes that a review point is enough to catch a slip early.',
       working: 'You would know it is working if the review finds nothing that surprises you.',
@@ -120,8 +120,8 @@ afterAll(() => { jest.useRealTimers(); });
 /** What a model with nothing written down to draw on can say without inventing anything. */
 const generalOptions = () => ({
   options: [
-    { name: 'Move the deadline', means: 'It would mean that the team gets more time and the work after it starts later.', assumes: 'It assumes that nobody is waiting on the original date.', working: 'You would know it is working if the new date is kept.' },
-    { name: 'Cut the scope', means: 'It would mean that the team keeps the date and does less by then.', assumes: 'It assumes that the smaller piece is still worth delivering.', working: 'You would know it is working if the people waiting on it are content with the smaller piece.' },
+    { name: 'move the deadline', means: 'It would mean that the team gets more time and the work after it starts later.', assumes: 'It assumes that nobody is waiting on the original date.', working: 'You would know it is working if the new date is kept.' },
+    { name: 'cut the scope', means: 'It would mean that the team keeps the date and does less by then.', assumes: 'It assumes that the smaller piece is still worth delivering.', working: 'You would know it is working if the people waiting on it are content with the smaller piece.' },
   ],
 });
 
@@ -151,7 +151,7 @@ describe('as a lead', () => {
     const said = words(r);
     expect(r.lane).toBe('think_it_through');
     expect(said).toContain('Here are three options for the Q4 target. I am not choosing for you, and nothing has been written.');
-    expect(said).toContain('Option 1 is Keep the target at 3.');
+    expect(said).toContain('The first option is to keep the target at 3.');
     expect(said).toContain('It would mean that the team keeps working to 3 deliverables signed off by 15 December.');
     expect(said).toContain('It assumes that the client can still sign off in December.');
     expect(said).toContain('You would know it is working if each deliverable has a sign-off date before 15 December.');
@@ -208,7 +208,7 @@ describe('as a lead', () => {
 describe('a number, a name or a date that was not given is dropped', () => {
   const given = 'help me think through the Q4 target\nYour target "Signed-off client deliverables" is 3 and is due 15 December.\nBaraka Mwangi said "We lost the Kisumu depot in August."';
   const ok = {
-    name: 'Keep the target at 3',
+    name: 'keep the target at 3',
     means: 'It would mean that the team keeps to 3 deliverables by 15 December.',
     assumes: 'It assumes that Baraka Mwangi stays on the work.',
     working: 'You would know it is working if the depot stays open.',
@@ -269,11 +269,27 @@ describe('it never recommends', () => {
   });
 });
 
+describe('the option is a full sentence', () => {
+  it('joins a verb phrase, and lowers a title that is not one', () => {
+    expect(theOptionIs(0, 'keep the target at 3')).toBe('The first option is to keep the target at 3.');
+    expect(theOptionIs(1, 'raise the target')).toBe('The second option is to raise the target.');
+    expect(theOptionIs(2, 'keep 3 and add a review point')).toBe('The third option is to keep 3 and add a review point.');
+    expect(theOptionIs(3, 'Wait and see')).toBe('The fourth option is wait and see.');
+    expect(theOptionIs(0, 'to keep it')).toBe('The first option is to keep it.');
+  });
+  it('reads in the reply', async () => {
+    const said = words(await world('rukia', goodOptions).say('help me think through the Q4 target'));
+    expect(said).toContain('The second option is to raise the target.');
+    expect(said).toContain('The third option is to keep 3 and add a review point.');
+    expect(said).not.toMatch(/Option \d is/);
+  });
+});
+
 describe('as a participant', () => {
   it('thinks through their own work, from their own records only', async () => {
     const w = world('baraka', goodOptions);
     const r = await w.say('help me think through the Q4 target');
-    expect(words(r)).toContain('Option 1 is Keep the target at 3.');
+    expect(words(r)).toContain('The first option is to keep the target at 3.');
     const given = w.calls[0].prompt;
     expect(given).toContain('Your target "Signed-off client deliverables"');
     /* Nobody's words from a check-in are read for a participant: no served report is opened at all. */

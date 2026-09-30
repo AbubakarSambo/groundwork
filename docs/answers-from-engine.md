@@ -868,7 +868,7 @@ It starts on "help me think through the Q4 target", "what are my options for the
 What a person reads (two to four options, the frame is the product's and the three sentences in each option are the model's, checked):
 
 - "Here are three options for the Q4 target. I am not choosing for you, and nothing has been written."
-- "Option 1 is Keep the target at 3." then three sentences on their own lines, always starting "It would mean that", "It assumes that" and "You would know it is working if".
+- "The first option is to keep the target at 3." (then "The second option is to raise the target.", "The third option is to keep 3 and add a review point."; the model gives each title as a short phrase starting with a lower-case verb and code joins it after "The first option is to") then three sentences on their own lines, always starting "It would mean that", "It assumes that" and "You would know it is working if".
 - When nothing written down could be read: "I found nothing written down about this that you can read, so these options come only from what you told me."
 - The last paragraph, always: "Would you like me to turn one of these into something concrete? I can help you set it as a target, add it as a commitment, or keep it as a line of context. Tell me which option and which of those, and I will say exactly what I would write, and I will write nothing until you say yes." That is only a question. The next message is routed as usual, so each of the three is said back first and waits for a yes.
 - With nothing named: "What would you like to think through? Tell me the target, the decision or the plan, and I will lay out the options."
