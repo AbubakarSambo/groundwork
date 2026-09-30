@@ -325,6 +325,9 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/connections/WhatsAppSetupPage.tsx',
       'pages/connections/ConnectionsPage.tsx',
       'pages/billing/BillingPage.tsx',
+      /* Group 1's last page (30 September): "Connect your own tools", #/settings/tools - see the
+         comment at the top of IntegrationsPage.tsx for what was kept, folded, and left out. */
+      'pages/org/IntegrationsPage.tsx',
     ])
   })
 

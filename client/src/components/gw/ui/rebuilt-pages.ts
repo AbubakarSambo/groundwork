@@ -58,4 +58,5 @@ export const REBUILT_PAGES: string[] = [
   'pages/connections/WhatsAppSetupPage.tsx',
   'pages/connections/ConnectionsPage.tsx',
   'pages/billing/BillingPage.tsx',
+  'pages/org/IntegrationsPage.tsx',
 ]

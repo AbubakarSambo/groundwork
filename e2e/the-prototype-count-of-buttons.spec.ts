@@ -109,6 +109,7 @@ const SCREENS: Record<string, Counterpart> = {
   'pages/connections/WhatsAppSetupPage.tsx': { productPath: '/settings/whatsapp', reader: 'admin', hash: '#/settings/whatsapp', persona: 'admin' },
   'pages/connections/ConnectionsPage.tsx': { productPath: '/settings/connections', reader: 'admin', hash: '#/settings/connections', persona: 'admin' },
   'pages/billing/BillingPage.tsx': { productPath: '/settings/billing', reader: 'admin', hash: '#/settings/billing', persona: 'admin' },
+  'pages/org/IntegrationsPage.tsx': { productPath: '/settings/tools', reader: 'admin', hash: '#/settings/tools', persona: 'admin' },
 };
 
 /* Sign-in is by the emailed link, through the one mail catcher every browser test shares

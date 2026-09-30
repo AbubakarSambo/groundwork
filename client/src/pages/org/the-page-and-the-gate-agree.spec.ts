@@ -30,19 +30,27 @@ const API_CONTROLLER = readFileSync(
 )
 
 describe('the page and the gate agree', () => {
+  /*
+   * UPDATED (30 September, the shared-parts rebuild): "Sending data in needs to be asked for" was
+   * never text a person reads - it only ever lived inside this file's own comment, explaining why an
+   * earlier heading ("Sending data in needs to be asked for") was replaced with the one actually
+   * drawn, "Put check-ins inside your own product" (named for what somebody wants, not for what the
+   * system does about it). This spec checked a comment, not the screen; it now checks the real
+   * heading, which carries exactly the same gate.
+   */
   it('the page tells somebody who has not been let in, before they do the work', () => {
-    expect(PAGE).toContain('Sending data in needs to be asked for')
+    expect(PAGE).toContain('Put check-ins inside your own product')
     /* Shown on the access request, which is what the API checks too. */
-    expect(PAGE).toMatch(/access\.data && !access\.data\.approved/)
+    expect(PAGE).toMatch(/!approved && \(/)
   })
 
   it('and says nothing about paying, because paying is no longer what this gates', () => {
-    const banner = PAGE.slice(PAGE.indexOf('Sending data in needs to be asked for'))
+    const banner = PAGE.slice(PAGE.indexOf('Put check-ins inside your own product'))
     expect(banner.slice(0, 1400)).not.toMatch(/paid plan|subscribe|\/billing|See the plans/)
   })
 
   it('and lets them ask right there rather than stopping at the bad news', () => {
-    const banner = PAGE.slice(PAGE.indexOf('Sending data in needs to be asked for'))
+    const banner = PAGE.slice(PAGE.indexOf('Put check-ins inside your own product'))
     /* The terms sit between the bad news and the button now, so the window is wider. */
     expect(banner.slice(0, 5200)).toContain('Ask for access')
   })
