@@ -144,7 +144,7 @@ export function WhatsAppSetupPage() {
                 <TextField id="wa-display" value={display} onChange={e => setDisplay(e.target.value)} placeholder={c?.displayNumber ?? ''} />
               </div>
               <div>
-                <FieldLabel htmlFor="wa-business">WhatsApp Business Account id (optional)</FieldLabel>
+                <FieldLabel htmlFor="wa-business">Your WhatsApp Business account ID, if you have one</FieldLabel>
                 <TextField id="wa-business" value={business} onChange={e => setBusiness(e.target.value)} placeholder={c?.businessAccountId ?? ''} />
               </div>
               <Button kind="primary" type="submit" disabled={!mayConnect || save.isPending}>{save.isPending ? 'Connecting…' : firstTime ? 'Connect' : 'Save'}</Button>
@@ -215,18 +215,28 @@ export function WhatsAppSetupPage() {
 
   return (
     <Page>
+      {/*
+       * THE PROTOTYPE'S OWN TITLE AREA (whatsapp.txt, whatsapp.jpg; group 1 review): "Settings" as
+       * the title, the organisation name as its subtitle, then a plain "Connections" link back -
+       * never a "Settings / Connections" crumb joined with a slash.
+       */}
+      <PageTitle title="Settings" subtitle={orgName} />
       <PageTitle
-        eyebrow={orgName}
-        crumbs={[{ label: 'Settings', to: '/settings' }, { label: 'Connections', to: '/settings/connections' }]}
+        crumbs={[{ label: 'Connections', to: '/settings/connections' }]}
         title="Connect WhatsApp"
         subtitle="People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step; what you’ve entered is kept."
       />
 
       {whatsapp.isError && <Note tone="error">Connections did not load.</Note>}
 
-      <Panel pad={false}>
-        <ol className="gwui-numsteps">
-          {steps.map(s => {
+      {/*
+       * THE STEPS SIT FLAT ON THE PAGE (whatsapp.jpg; group 1 review), not inside a white `Panel` -
+       * a panel's own left border ran straight through the middle of each step's numbered circle,
+       * which the prototype's own screen does not draw at all: there, the steps sit directly under
+       * the title, separated only by the thin rule `.gwui-numstep` already puts between them.
+       */}
+      <ol className="gwui-numsteps">
+        {steps.map(s => {
             const state = s.done ? 'done' : s.n === current || (s.n === 1 && !c) ? 'now' : 'later'
             /*
              * ALWAYS THE PROTOTYPE'S OWN SHAPE (whatsapp.txt): a step still to come shows its
@@ -252,8 +262,7 @@ export function WhatsAppSetupPage() {
               </li>
             )
           })}
-        </ol>
-      </Panel>
+      </ol>
 
       <Section heading="Keep your number on your own system instead">
         <Panel>

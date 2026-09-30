@@ -234,9 +234,15 @@ export function IntegrationsPage() {
 
   return (
     <Page>
+      {/*
+       * THE PROTOTYPE'S OWN TITLE AREA (tools.txt, tools.jpg; group 1 review): "Settings" as the
+       * title, the organisation name as its subtitle, then a plain "Connections" link back - never
+       * a "Settings / Connections" crumb joined with a slash, which read as a small nav row rather
+       * than the prototype's own two stacked headings.
+       */}
+      <PageTitle title="Settings" subtitle={orgName} />
       <PageTitle
-        eyebrow={orgName}
-        crumbs={[{ label: 'Settings', to: '/settings' }, { label: 'Connections', to: '/settings/connections' }]}
+        crumbs={[{ label: 'Connections', to: '/settings/connections' }]}
         title="Connect your own tools"
         subtitle={`For whoever runs ${orgName ? `${orgName}’s` : 'your'} systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in unless you choose an event that carries it.`}
       />

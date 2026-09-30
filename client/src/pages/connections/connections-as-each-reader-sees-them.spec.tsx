@@ -261,7 +261,17 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
   it('starts at step 2, with the prototype’s heading, lede and the three things to paste', async () => {
     serve()
     open(GRACE, 'whatsapp')
-    expect(screen.getByRole('link', { name: 'Connections' }).getAttribute('href')).toBe('/settings/connections')
+    /*
+     * GROUP 1 REVIEW: THE PROTOTYPE'S OWN TITLE AREA (whatsapp.txt, whatsapp.jpg). "Settings" as
+     * the title, the organisation's name as its subtitle, then a plain "Connections" link back -
+     * never a "Settings / Connections" crumb joined with a slash.
+     */
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeTruthy()
+    expect(screen.getByText('Baridi Appliances')).toBeTruthy()
+    expect(screen.queryByText('Settings / Connections')).toBeNull()
+    const connectionsLink = screen.getByRole('link', { name: 'Connections' })
+    expect(connectionsLink.getAttribute('href')).toBe('/settings/connections')
+    expect(connectionsLink.closest('nav')?.textContent).toBe('Connections')
     expect(screen.getByRole('heading', { name: 'Connect WhatsApp' })).toBeTruthy()
     expect(screen.getByText('People check in by replying to your organisation’s WhatsApp number. Most of it happens in Meta’s settings. You can stop at any step; what you’ve entered is kept.')).toBeTruthy()
     await screen.findByText('Paste three things from Meta')
@@ -274,6 +284,9 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
       expect(screen.getByText(hint)).toBeTruthy()
     }
     expect(screen.getByText(/A Meta Business account, a WhatsApp Business number on it, and a Meta app with WhatsApp added\./)).toBeTruthy()
+    /* PLAIN WORDS, NOT "id" (group 1 review, CLAUDE.md's banned-jargon list). */
+    expect(screen.getByText('Your WhatsApp Business account ID, if you have one')).toBeTruthy()
+    expect(screen.queryByText('WhatsApp Business Account id (optional)')).toBeNull()
     expect(screen.getByRole('link', { name: 'How to get these' })).toBeTruthy()
     expect(screen.queryByText('Done')).toBeNull()
     /*
@@ -287,6 +300,9 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
       expect(screen.getByText(later)).toBeTruthy()
       expect(screen.queryByRole('button', { name: later })).toBeNull()
     }
+    /* THE STEPS SIT FLAT ON THE PAGE (group 1 review), not inside a white Panel whose left border
+       used to run through the middle of each step's numbered circle. */
+    expect(document.querySelector('.gwui-numsteps')?.closest('.gwui-panel')).toBeNull()
     expect(screen.getByText('Keep your number on your own system instead')).toBeTruthy()
     expect(screen.getByText('If your WhatsApp number already runs through your own customer system, it can pass check-in messages to us and send our replies back. Nothing moves to Meta. Whoever runs your systems sets this up with a key.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Read how the relay works' }).getAttribute('href')).toBe('/settings/tools')

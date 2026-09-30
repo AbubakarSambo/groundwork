@@ -35,9 +35,17 @@ beforeEach(() => { calls.length = 0; whatsappOn = false })
 describe('Grace, an admin', () => {
   it('reads the prototype’s heading and opening sentence, and the way back to Connections', async () => {
     open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
-    expect(screen.getByText('Settings')).toBeTruthy()
+    /*
+     * GROUP 1 REVIEW: THE PROTOTYPE'S OWN TITLE AREA (tools.txt, tools.jpg). "Settings" as the
+     * title, the organisation's name as its subtitle, then a plain "Connections" link back - never
+     * a "Settings / Connections" crumb joined with a slash.
+     */
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeTruthy()
     expect(screen.getByText('Baridi Appliances')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Connections' }).getAttribute('href')).toBe('/settings/connections')
+    expect(screen.queryByText('Settings / Connections')).toBeNull()
+    const connectionsLink = screen.getByRole('link', { name: 'Connections' })
+    expect(connectionsLink.getAttribute('href')).toBe('/settings/connections')
+    expect(connectionsLink.closest('nav')?.textContent).toBe('Connections')
     expect(screen.getByRole('heading', { level: 1, name: 'Connect your own tools' })).toBeTruthy()
     /* FIXED (30 September, the rebuild from the shared parts): this used to pin the OLD page's
        truncated sentence, missing tools.txt's own last clause ("unless you choose an event that
