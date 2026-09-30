@@ -53,4 +53,9 @@ export const REBUILT_PAGES: string[] = [
   'components/gw/what-to-settle-together.tsx',
   'components/gw/a-second-press-before-it-is-gone.tsx',
   'components/gw/TheOtherBoardsYouAreIn.tsx',
+  'pages/settings/SettingsPage.tsx',
+  'pages/more/MorePage.tsx',
+  'pages/connections/WhatsAppSetupPage.tsx',
+  'pages/connections/ConnectionsPage.tsx',
+  'pages/billing/BillingPage.tsx',
 ]

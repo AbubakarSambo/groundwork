@@ -735,3 +735,75 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-boards-option-title { font-weight: 600; }
 .gwui-boards-option-finding { color: var(--gw-sub); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+
+/* ── GROUP 1 REBUILD: settings, billing, connections, tools, more ─────────────────────────── */
+
+/* A row of counted facts (WhatsApp's "6 people checking in", "212 check-ins this month"). */
+.gwui-stat-row { display: flex; gap: 28px; flex-wrap: wrap; }
+.gwui-stat-num { font-family: var(--gw-font-name); font-size: 26px; color: var(--gw-text); margin: 0; }
+.gwui-stat-label { font-size: 13.5px; color: var(--gw-sub); margin: 2px 0 0; }
+
+/* The plan cards on Plan and billing. */
+.gwui-plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.gwui-plan-card { display: flex; flex-direction: column; gap: 10px; }
+.gwui-plan-card-mine { box-shadow: inset 0 0 0 2px var(--gw-navy); }
+.gwui-plan-name { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
+.gwui-plan-price { font-family: var(--gw-font-name); font-size: 24px; color: var(--gw-text); margin: 0; }
+.gwui-plan-price span { font-size: 14.5px; color: var(--gw-sub); font-family: var(--gw-font-ui); }
+.gwui-plan-cap { font-size: 14.5px; color: var(--gw-sub); margin: 0; }
+
+/* A block of example code, in the developer pages. */
+.gwui-code-block {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
+  background: var(--gw-navy); color: #fff; border-radius: 10px; padding: 14px 16px;
+  overflow-x: auto; white-space: pre; margin: 0;
+}
+.gwui-code-block-light {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
+  background: var(--gw-bg); border: 1px solid var(--gw-border); color: var(--gw-text);
+  border-radius: 8px; padding: 12px 14px; overflow-x: auto; white-space: pre; margin: 0;
+}
+.gwui-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+
+/* A secret shown once (a new key, a signing secret). */
+.gwui-secret-box { background: var(--gw-amber-bg); border: 1px solid var(--gw-amber-b); border-radius: 8px; padding: 12px 14px; }
+.gwui-secret-box-label { font-size: 13px; font-weight: 700; color: var(--gw-amber-t); margin: 0 0 6px; }
+.gwui-secret-box-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; color: var(--gw-text); margin: 0; }
+
+/* A list of checkboxes with a sentence under each (webhook events, key scopes). */
+.gwui-check-list { display: flex; flex-direction: column; gap: 12px; }
+.gwui-check-row { display: flex; align-items: flex-start; gap: 10px; font-size: 14.5px; color: var(--gw-text); cursor: pointer; }
+.gwui-check-row input { margin-top: 4px; flex-shrink: 0; }
+.gwui-check-row-sub { display: block; font-size: 13.5px; color: var(--gw-sub); margin-top: 2px; }
+
+/* "More", the phone menu. */
+.gwui-more-list { list-style: none; margin: 0; padding: 0; }
+.gwui-more-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: none; border: none; font: inherit; cursor: pointer; color: var(--gw-text); text-decoration: none;
+  padding: 16px 22px; min-height: 44px;
+}
+.gwui-more-row + .gwui-more-row { border-top: 1px solid var(--gw-border); }
+.gwui-more-row b { font-size: 16px; font-weight: 700; }
+.gwui-more-org-row { display: flex; align-items: center; gap: 12px; padding: 14px 22px; }
+.gwui-more-org-row + .gwui-more-org-row { border-top: 1px solid var(--gw-border); }
+.gwui-more-org-name { font-size: 16px; font-weight: 700; color: var(--gw-text); flex: 1; min-width: 0; }
+.gwui-more-org-check { color: var(--gw-green-t); font-weight: 700; }
+
+/* A numbered set of steps, each opened as its own turn comes (Connect WhatsApp). Unlike `Steps`
+   (a closed checklist of done/not-done facts), each step here carries its own body and a number
+   until it is done, so it needs its own small stepper rather than a re-use of that one. */
+.gwui-numsteps { list-style: none; margin: 0; padding: 0; }
+.gwui-numstep { display: flex; gap: 14px; padding: 20px 0; border-top: 1px solid var(--gw-border); }
+.gwui-numstep:first-child { border-top: none; padding-top: 0; }
+.gwui-numstep-num {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 14.5px; font-weight: 700; background: var(--gw-card); border: 1px solid var(--gw-border); color: var(--gw-sub);
+}
+.gwui-numstep-num-done { background: var(--gw-green-t); border-color: var(--gw-green-t); color: #fff; }
+.gwui-numstep-num-now { background: var(--gw-navy); border-color: var(--gw-navy); color: #fff; }
+.gwui-numstep-body { flex: 1; min-width: 0; }
+.gwui-numstep-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gwui-numstep-title { font-size: 16px; font-weight: 700; color: var(--gw-text); margin: 0; }
+.gwui-numstep-title-btn { background: none; border: none; padding: 0; font: inherit; font-size: 16px; font-weight: 700; color: var(--gw-text); cursor: pointer; text-align: left; }
+.gwui-numstep-content { margin-top: 12px; }
