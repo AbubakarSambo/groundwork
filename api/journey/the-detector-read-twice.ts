@@ -131,6 +131,49 @@ async function main() {
     return { content, block, statedGoals, lastPeriod, deps };
   }
 
+  if (process.env.PRODUCT === '1') {
+    /* Through the product's own code (a1455696): whatOneReadKeeps is exactly what analyzeCheckIn runs five
+       times. Ten reads per check-in make two separate five-read majorities to compare. Nothing is written. */
+    const pairsA: Record<string, Set<string>> = {}, pairsB: Record<string, Set<string>> = {};
+    let same = 0, total = 0;
+    const most = (reads: string[][]) => {
+      const n: Record<string, number> = {};
+      reads.forEach((r) => new Set(r).forEach((c) => { n[c] = (n[c] ?? 0) + 1; }));
+      return new Set(Object.keys(n).filter((c) => n[c] >= 3));
+    };
+    for (const s of scenarios) {
+      const checkIns = await prisma.checkIn.findMany({
+        where: { groundId: s.groundId, patternsAnalyzedAt: { not: null } },
+        select: { id: true, groundId: true, participantId: true, sessionNumber: true, completedAt: true, startedAt: true, createdAt: true,
+          ground: { select: { cadence: true } }, participant: { select: { user: { select: { email: true } } } } },
+      });
+      await Promise.all(checkIns.map(async (checkIn: any) => {
+        const ctx = await contextFor(checkIn);
+        if (!ctx) return;
+        const getInput = () => patterns.buildDetectionInputForParticipant(checkIn.participantId);
+        const reads = await Promise.all(Array.from({ length: 10 }, () =>
+          patterns.whatOneReadKeeps(checkIn.id, ctx.content, ctx.block, ctx.lastPeriod, ctx.statedGoals, ctx.deps, getInput)
+            .then((k: { code: string }[]) => k.map((x) => x.code)).catch((e: any) => { process.stderr.write(`read failed: ${String(e?.message ?? e).slice(0, 160)}\n`); return null; })));
+        const okReads = reads.filter((r): r is string[] => !!r);
+        if (okReads.length < 10) { process.stderr.write(`check-in ${checkIn.id}: only ${okReads.length} of 10 reads came back\n`); return; }
+        const a = most(okReads.slice(0, 5)), b = most(okReads.slice(5));
+        const person = (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0];
+        total++; if ([...a].sort().join() === [...b].sort().join()) same++;
+        (pairsA[s.name] ??= new Set()); (pairsB[s.name] ??= new Set());
+        a.forEach((c) => pairsA[s.name].add(`${person}::${c}`)); b.forEach((c) => pairsB[s.name].add(`${person}::${c}`));
+      }));
+      process.stderr.write(`product-read ${s.name}\n`);
+    }
+    let sh = 0, un = 0;
+    for (const k of new Set([...Object.keys(pairsA), ...Object.keys(pairsB)])) {
+      const A = pairsA[k] ?? new Set<string>(), B = pairsB[k] ?? new Set<string>();
+      sh += [...A].filter((x) => B.has(x)).length; un += new Set([...A, ...B]).size;
+    }
+    console.log(`Through the product's own code, two separate five-read majorities: ${sh} of ${un} person-and-pattern pairs the same (${un ? Math.round(100 * sh / un) : 100}%); exactly the same patterns on ${same} of ${total} check-ins.`);
+    await app.close();
+    process.exit(0);
+  }
+
   if (MANY) {
     const out: any[] = [];
     for (const s of scenarios) {

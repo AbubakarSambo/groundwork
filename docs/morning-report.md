@@ -10,6 +10,14 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settled as proposed (60), the first threshold for week 10 (61), old patterns start the person-first process on release day (62), only the lead confirms setup unless the lead has left the organisation (63), the setup part of "how the leading is landing" restored without the three-period rule (64), and Ask Groundwork opened inside a check-in knows which one (65).
 
+**Patterns: five steady reads by majority is built** (`a1455696`). Each check-in is now read five times at the steady setting, in parallel, through exactly the same filters and confirming call as before, and a pattern is kept only when at least three of the five reads keep it. If fewer than three reads come back (the model unreachable), nothing is written and the nightly sweep tries again. All 49 patterns and every rule about who reads them are unchanged. The cost is about five times the model calls per check-in, once, after the check-in ends. 153 pattern tests pass.
+
+**The model went unreachable again at about 15:00**, the same network fault as this morning (the regional address times out; nothing to top up). Two things wait for it, and are ready to run:
+- the steadiness measurement through the product's own code (`PRODUCT=1` in `api/journey/the-detector-read-twice.ts`);
+- the live checks for items 10, 11, 15 and 16 through both the old chat and Ask Groundwork (`api/journey/the-four-live-checks.ts`).
+
+**Found while setting up the live checks, not yet changed:** the refusal to invite anyone says "add a document or a note on the Context and resources tab", but a shared note typed on that tab does not clear it. Only a private note, an expectation, a document or a long enough brief do. Either the sentence or the rule is wrong. This is for Hafsah, because the rule decides what counts as saying what a check-in is for.
+
 **Patterns, second round: five steady reads by majority reaches 8 in 10.** The same 50 check-ins, read 16 more times each. "Real patterns" here come from the first round's 12 reads, so they are independent of the reads being judged.
 
 | Way of reading | The same | Real patterns still found |

@@ -95,6 +95,7 @@ api/journey/*
 !api/journey/the-detector-read-twice.ts
 !api/journey/how-steady-each-way-is.py
 !api/journey/how-steady-each-way-is-2.py
+!api/journey/the-four-live-checks.ts
 
 # AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
 # 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace
