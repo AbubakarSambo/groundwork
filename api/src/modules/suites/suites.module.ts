@@ -12,11 +12,15 @@ import { TodosService } from './the-todos.service';
 import { CustomersService } from './the-customers.service';
 import { EquipmentService } from './the-equipment.service';
 import { CustomerStandingService } from './the-customer-standing.service';
+import { ReviewsProposedService } from './the-reviews-proposed.service';
+import { ReviewsProposedCron } from './the-reviews-proposed.cron';
+import { SuggestionsModule } from '../suggestions/suggestions.module';
 import { AnthropicService } from '../conversation/anthropic.service';
 
 @Module({
+  imports: [SuggestionsModule],
   controllers: [SuitesController],
-  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService],
-  exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, SpendingService, EquipmentService],
+  providers: [SuitesService, OnboardingBoardService, LeaveBoardService, TimeSheetsService, ReviewsService, LeavingBoardService, RoleMapService, SpendingService, TodosService, CustomersService, EquipmentService, CustomerStandingService, AnthropicService, ReviewsProposedService, ReviewsProposedCron],
+  exports: [SuitesService, LeaveBoardService, TimeSheetsService, ReviewsService, ReviewsProposedService, SpendingService, EquipmentService],
 })
 export class SuitesModule {}

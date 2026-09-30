@@ -8,6 +8,7 @@ import { EmailService } from '../email/email.service';
 import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
 import { GroundStatus, PartyType } from '@prisma/client';
 import { SuggestionsService } from '../suggestions/suggestions.service';
+import { ReviewsProposedService } from '../suites/the-reviews-proposed.service';
 import { theEndingPageFor } from './what-the-ending-page-reads';
 import { labelsForParties, namesVisibleTo, displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 
@@ -34,6 +35,7 @@ export class ResolutionService {
     private email: EmailService,
     private config: ConfigService,
     @Optional() private suggestions?: SuggestionsService,
+    @Optional() private reviewsProposed?: ReviewsProposedService,
   ) {}
 
   /**
@@ -332,6 +334,12 @@ export class ResolutionService {
         ),
       );
     }
+
+    /* When the check-in was about one person and they carry on, a review is PROPOSED to whoever runs
+       reviews. Only their yes starts it, and nothing goes to the person. Best-effort, like the rest. */
+    await this.reviewsProposed?.whenACheckInEnds(groundId).catch((err: any) =>
+      this.logger.error(`Proposing a review after ground ${groundId} closed failed: ${err?.message}`),
+    );
 
     this.logger.log(`Ground ${groundId} closed with end state ${endState}. Billing stopped.`);
   }
