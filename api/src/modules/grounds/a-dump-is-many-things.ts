@@ -25,7 +25,9 @@
  * product writes the list, so a number can be checked before it is agreed to.
  */
 
-import { NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT, THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT, plainQuestionFrom, whatGroundworkWillAsk } from './a-question-asked-word-for-word';
+import { ContextItemKind } from '@prisma/client';
+import { ABOUT_SOMEBODY } from './what-this-check-in-knows';
+import { NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT,THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT, plainQuestionFrom, whatGroundworkWillAsk } from './a-question-asked-word-for-word';
 
 export interface ADumpRead {
   /** What doing well looks like, in the lead's own words. */
@@ -216,7 +218,34 @@ export interface WhatAPasteGives {
  * the difference is one line. Every number is shown as it will be written, so the lead is checking
  * the thing itself rather than a description of it.
  */
-export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolean } = {}): string | null {
+/**
+ * WHO WILL READ A LINE, SAID IN ONE SENTENCE, FROM THE SAME RULE THAT SAVES IT.
+ *
+ * The writer (`writeWhatThePasteGave`) saves a line as lead-only when its kind is about somebody
+ * (`ABOUT_SOMEBODY`) and as everyone's otherwise. The say-back and the confirmation read the same
+ * rule here, so a sentence can never say "kept for you" over a line that everyone will read
+ * (screens request 92, point 1).
+ */
+export function whoWillReadThese(kind: ContextItemKind): string {
+  return ABOUT_SOMEBODY.has(kind) ? 'Only you will see these.' : 'Everyone on this check-in will see these.';
+}
+
+/** The two lines that say what the people taking part will be told this check-in is for. */
+export const WHAT_PEOPLE_ARE_TOLD_OPENS = 'People taking part will be told this about the check-in, and I will write it when you say yes:';
+export const WHAT_PEOPLE_WERE_TOLD_OPENS = 'People taking part have now been told this about the check-in:';
+
+/** The sentence a say-back offered for what participants are told, or null where it offered none. */
+export function theTellingInTheList(history: { role: 'user' | 'assistant'; content: string }[] | null | undefined): string | null {
+  const lastAssistant = [...(history ?? [])].reverse().find((t) => t.role === 'assistant')?.content ?? '';
+  if (!lastAssistant.trim().startsWith(THE_LIST_OPENS_WITH)) return null;
+  const at = lastAssistant.indexOf(WHAT_PEOPLE_ARE_TOLD_OPENS);
+  if (at < 0) return null;
+  const next = lastAssistant.slice(at + WHAT_PEOPLE_ARE_TOLD_OPENS.length).replace(/^\s*\n/, '').split('\n')[0] ?? '';
+  const told = next.trim().replace(/^[“"]\s*/, '').replace(/\s*[”"]$/, '').trim();
+  return told || null;
+}
+
+export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolean; told?: string | null } = {}): string | null {
   const anything = got.success || got.teamTargets.length || got.forPeople.length || got.dates.length || got.unmatched.length
     || got.waysOfWorking?.length || got.openDecisions?.length || got.notSettled?.length || got.aboutPeople?.length
     || got.commitments?.length || got.questionsForPeople?.length || got.betweenPeople?.length
@@ -243,27 +272,27 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
     for (const d of got.dates) lines.push(`- ${d.what}: ${d.when}`);
   }
   if (got.strategy?.length) {
-    lines.push('', 'The strategy, as I read it. Everybody on the check-in will see these:');
+    lines.push('', `The strategy, as I read it. ${whoWillReadThese(ContextItemKind.STRATEGY)}`);
     for (const w of got.strategy) lines.push(`- ${w}`);
   }
   if (got.waysOfWorking?.length) {
-    lines.push('', 'How this team works. Everybody sees these, said as yours rather than as anything agreed:');
+    lines.push('', `How this team works, said as yours rather than as anything agreed. ${whoWillReadThese(ContextItemKind.WAY_OF_WORKING)}`);
     for (const w of got.waysOfWorking) lines.push(`- ${w}`);
   }
   if (got.notes?.length) {
-    lines.push('', 'Notes, kept as they are:');
+    lines.push('', `Notes, kept as they are. ${whoWillReadThese(ContextItemKind.NOTE)}`);
     for (const w of got.notes) lines.push(`- ${w}`);
   }
   if (got.openDecisions?.length) {
-    lines.push('', 'Still to decide, kept for you:');
+    lines.push('', `Still to decide. ${whoWillReadThese(ContextItemKind.DECISION)}`);
     for (const d of got.openDecisions) lines.push(`- ${d}`);
   }
   if (got.notSettled?.length) {
-    lines.push('', 'Not settled, so nothing here is treated as a fact or a target:');
+    lines.push('', `Not settled, so nothing here is treated as a fact or a target. ${whoWillReadThese(ContextItemKind.UNSETTLED)}`);
     for (const n of got.notSettled) lines.push(`- ${n}`);
   }
   if (got.aboutPeople?.length) {
-    lines.push('', 'What you said about each person that is not a number. Kept where only you read it, and never quoted to them or in a report:');
+    lines.push('', `What you said about each person that is not a number. ${whoWillReadThese(ContextItemKind.ABOUT_A_PERSON)} These are never quoted to the person or in a report:`);
     for (const a of got.aboutPeople) lines.push(`- ${a.who}: "${a.observation}"`);
   }
   if (got.commitments?.length) {
@@ -290,7 +319,7 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
     lines.push(one ? THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT : NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT);
   }
   if (got.betweenPeople?.length) {
-    lines.push('', 'Between two people, so it sits with neither of them alone. Kept for you, never quoted to either:');
+    lines.push('', `Between two people, so it sits with neither of them alone. ${whoWillReadThese(ContextItemKind.BETWEEN_PEOPLE)} It is never quoted to either of them:`);
     for (const b of got.betweenPeople) lines.push(`- ${b.who.join(' and ')}: ${b.issue}`);
   }
   if (got.unmatched.length) {
@@ -303,6 +332,9 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
    * number, no success sentence". The product knew all three and said none of them, so a lead read a
    * long confident list and could not see what was still missing from it.
    */
+  if (opts.told) {
+    lines.push('', opts.asking ? WHAT_PEOPLE_ARE_TOLD_OPENS : WHAT_PEOPLE_WERE_TOLD_OPENS, `“${opts.told}”`);
+  }
   const open: string[] = [];
   if (!got.success) open.push('nothing in it says what doing well looks like, so nothing is set as the yardstick');
   const noOwner = (got.commitments ?? []).filter((c) => !c.participantId).length;

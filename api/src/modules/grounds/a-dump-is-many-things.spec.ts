@@ -212,12 +212,13 @@ describe('the parts of a paste that are words', () => {
 
   it('and listed back with what will be done with it', () => {
     const said = took(got);
-    expect(said).toContain('How this team works. Everybody sees these, said as yours rather than as anything agreed');
+    expect(said).toContain('How this team works, said as yours rather than as anything agreed. Everyone on this check-in will see these.');
     expect(said).toContain('- follow up 48 hours after a demo');
-    expect(said).toContain('Still to decide, kept for you:');
-    expect(said).toContain('Not settled, so nothing here is treated as a fact or a target:');
+    /* Was 'Still to decide, kept for you:', over lines saved for everyone (request 92). */
+    expect(said).toContain('Still to decide. Everyone on this check-in will see these.');
+    expect(said).toContain('Not settled, so nothing here is treated as a fact or a target. Everyone on this check-in will see these.');
     expect(said).toContain('someone mentioned 15m for Q4, not approved');
-    expect(said).toContain('Kept where only you read it, and never quoted to them or in a report');
+    expect(said).toContain('Only you will see these. These are never quoted to the person or in a report');
     expect(said).toContain('- Amina: "relationships are good, does not ask for the deal"');
   });
 
