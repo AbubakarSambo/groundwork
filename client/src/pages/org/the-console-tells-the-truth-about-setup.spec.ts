@@ -18,6 +18,10 @@ const SRC = readFileSync(join(__dirname, 'IntegrationsPage.tsx'), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/^\s*\/\/.*$/gm, '')
 
+/** The same source, with every `<pre>...</pre>` code block removed - the curl examples keep their
+    own `-H`/`-X` flags and `Bearer $ACCESS_TOKEN` header, which are code, not prose a person reads. */
+const PROSE = SRC.replace(/<pre[\s\S]*?<\/pre>/g, '')
+
 describe('the console tells the truth about setup', () => {
   it('ticks "authenticated" on real use, not on a credential existing', () => {
     expect(SRC).toMatch(/used:\s*\(creds\.data \?\? \[\]\)\.some\(c => c\.lastUsedAt\)/)
@@ -105,20 +109,20 @@ describe('a skipped row can be found and fixed', () => {
     expect(SRC).not.toMatch(/failures\.slice\(0,\s*\d/)
   })
 
-  it('prints the index exactly as the API returns it', () => {
-    /*
-     * It was `f.index + 1` for a minute, on the reasoning that people count from one. The field is
-     * documented zero-based and the engineer fixing this reads the API, so a screen saying row 148
-     * about what the API calls 147 is two places that must agree, disagreeing, in the one place
-     * somebody is already confused.
-     */
-    expect(SRC).not.toMatch(/f\.index \+ 1/)
-    expect(SRC).toMatch(/index \{f\.index\}/)
-  })
-
-  it('still identifies a row when no id was sent', () => {
-    /* Which is why the index is stored beside the id rather than instead of it. */
-    expect(SRC).toMatch(/no id was sent/)
+  /*
+   * REVERSED (group 1 re-review, fault B): the earlier decision here was that a screen showing
+   * `f.index + 1` disagreed with the API's own documented zero-based field, confusing whoever
+   * cross-checks the two. The re-review's instruction is explicit: "no id was sent" and a bare
+   * mono "index {n}" are not full sentences a person reads, and the fix is "Row 4 had no ID, so
+   * it was skipped." using the real row number, counting from 1 *because a person reads it* -
+   * this screen is that person-facing sentence, not the API reference (which still documents the
+   * field zero-based, for whoever reads code). The two audiences read different numbers on
+   * purpose now: this test checks the sentence a person reads, not the raw field.
+   */
+  it('names a skipped row as a full sentence, counting from 1 because a person reads it', () => {
+    expect(SRC).not.toMatch(/index \{f\.index\}/)
+    expect(SRC).toMatch(/f\.index \+ 1/)
+    expect(SRC).toMatch(/had no ID, so it was skipped/)
   })
 
   it('says the fix is safe to re-send, because it is', () => {
@@ -130,5 +134,29 @@ describe('a skipped row can be found and fixed', () => {
   it('explains a quiet period rather than leaving the product silent', () => {
     expect(SRC).toMatch(/detectionQuietUntil/)
     expect(SRC).toMatch(/will not raise findings until/)
+  })
+})
+
+/*
+ * GROUP 1 RE-REVIEW, FAULT B (last item): "For your engineer"'s own prose used to join two
+ * clauses with a dash instead of writing a sentence, said "bearer token" and "completeness band"
+ * (jargon nobody outside an engineer would recognise), and named "the read-one-person's-desk
+ * permission" as a hyphenated compound rather than a sentence. Checked against the prose only -
+ * the curl examples keep their own `-H`, `-X` and `Bearer $ACCESS_TOKEN`, which are code the
+ * engineer this section is for actually needs, not sentences a person reads.
+ */
+describe('"For your engineer": plain sentences, code blocks untouched', () => {
+  it('never joins two clauses with a dash', () => {
+    expect(PROSE).not.toMatch(/\S - \S/)
+  })
+
+  it('never says "bearer", "band" or "desk permission"', () => {
+    expect(PROSE).not.toMatch(/\bbearer\b/i)
+    expect(PROSE).not.toMatch(/\bband\b/i)
+    expect(PROSE).not.toMatch(/desk permission/i)
+  })
+
+  it('the curl examples still carry their own headers, unaffected', () => {
+    expect(SRC).toMatch(/authorization: Bearer \$ACCESS_TOKEN/)
   })
 })

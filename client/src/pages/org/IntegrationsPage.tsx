@@ -11,7 +11,7 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { OnlyAnAdmin } from '@/pages/connections/ConnectionsPage'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, Folded, Steps, Step,
-  Button, Tag, TextField, TextArea, Select, FieldLabel, Note, OpsConsoleExample, EmbedWidgetExample,
+  Button, Tag, TextField, TextArea, Select, FieldLabel, Note, OpsConsoleExample, EmbedWidgetExample, WhatsAppConversationExample,
 } from '@/components/gw/ui'
 
 /**
@@ -171,7 +171,7 @@ export function IntegrationsPage() {
       qc.invalidateQueries({ queryKey: ['integrations', 'credentials'] })
       toast.success('New secret issued. The old one keeps working until you revoke it.')
     },
-    onError: () => toast.error('Could not replace that - nothing was issued and the old one is unchanged.'),
+    onError: () => toast.error('Could not replace that. Nothing was issued, and the old one is unchanged.'),
   })
   const register = useMutation({
     mutationFn: () => integrationsApi.registerEndpoint(hookUrl, hookEvents),
@@ -196,7 +196,7 @@ export function IntegrationsPage() {
   const replay = useMutation({
     mutationFn: integrationsApi.replay,
     onSuccess: r => {
-      toast.success(r.delivered ? 'Delivered.' : 'Tried again - it failed again.')
+      toast.success(r.delivered ? 'Delivered.' : 'Tried again. It failed again.')
       qc.invalidateQueries({ queryKey: ['integrations', 'deliveries'] })
     },
   })
@@ -211,7 +211,7 @@ export function IntegrationsPage() {
       placement: embedPlacement,
       outOfScopeDepartments: embedOutOfScope.split(',').map(d => d.trim()).filter(Boolean),
     }),
-    onSuccess: (r) => { setEmbedSecret(r.signingSecret); qc.invalidateQueries({ queryKey: ['integrations', 'embed'] }); toast.success('Saved. Copy the signing secret now - it is shown once.') },
+    onSuccess: (r) => { setEmbedSecret(r.signingSecret); qc.invalidateQueries({ queryKey: ['integrations', 'embed'] }); toast.success('Saved. Copy the signing secret now. It is shown once.') },
     onError: (e: any) => toast.error(e?.response?.data?.message ?? 'Could not save the embed setup.'),
   })
 
@@ -390,7 +390,7 @@ export function IntegrationsPage() {
                   <Stack gap={10}>
                     <div>
                       <FieldLabel htmlFor="tools-key-name">What is it for?</FieldLabel>
-                      <TextField id="tools-key-name" placeholder="e.g. Workday, our OKR tool" value={credName} onChange={e => setCredName(e.target.value)} />
+                      <TextField id="tools-key-name" placeholder="For example, your billing system" value={credName} onChange={e => setCredName(e.target.value)} />
                     </div>
                     <div className="gwui-check-list">
                       {SCOPES.map(sc => (
@@ -440,13 +440,14 @@ export function IntegrationsPage() {
                         {jobDetail.isPending && <p className="gwui-panel-text-muted">Loading…</p>}
                         {(jobDetail.data?.failures ?? []).map(f => (
                           <p key={f.index} className="gwui-panel-text-muted">
-                            {f.externalId ? <span className="gwui-mono">{f.externalId}</span> : 'no id was sent'}
-                            <span className="gwui-mono"> index {f.index}</span>
+                            {f.externalId
+                              ? <>Row {f.index + 1} (<span className="gwui-mono">{f.externalId}</span>) was skipped.</>
+                              : `Row ${f.index + 1} had no ID, so it was skipped.`}
                             <span className="gwui-field-help">{f.message}</span>
                           </p>
                         ))}
                         {!!(jobDetail.data?.failures ?? []).length && (
-                          <p className="gwui-panel-text-muted">Everything else in this batch was stored. Fix these and send them again - re-sending the whole batch is safe, because each row updates what is already there rather than adding a second copy.</p>
+                          <p className="gwui-panel-text-muted">Everything else in this batch was stored. Fix these and send them again; re-sending the whole batch is safe, because each row updates what is already there rather than adding a second copy.</p>
                         )}
                       </Stack>
                     )}
@@ -571,7 +572,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
 
       {/* SHOWN WHETHER OR NOT ACCESS IS APPROVED, like the same section on Connections: this is what
           the product already does, not a call to make against the API. */}
-      <Section heading="How it looks inside your tool" note="An example: Baridi’s own operations console">
+      <Section heading="How it looks inside your tool" note={`${whatsappOn ? 'Three examples' : 'Two examples'}. The people and companies in them are made up.`}>
         <div className="gwui-two-up">
           <Panel pad={false}>
             <figure>
@@ -588,7 +589,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
           {whatsappOn && (
             <Panel pad={false}>
               <figure>
-                <img src="/connect/whatsapp.png" alt="A check-in over WhatsApp" />
+                <div className="gwui-console-frame"><WhatsAppConversationExample /></div>
                 <figcaption className="gwui-panel-row"><b>A check-in over WhatsApp</b></figcaption>
               </figure>
             </Panel>
@@ -653,7 +654,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
             <Panel>
               <form onSubmit={e => { e.preventDefault(); if (retentionDays.trim()) saveRetention.mutate() }}>
                 <Stack gap={10}>
-                  <p className="gwui-panel-text-muted">When your roster tells us somebody has left, we delete their raw words after this many days. That is always after any handover brief has been built, never before. Choose a number between {retention.data.floor} and {retention.data.ceiling} days.</p>
+                  <p className="gwui-panel-text-muted">When your people list tells us somebody has left, we delete what they said word for word after this many days. That is always after any handover brief has been built, never before. Choose a number between {retention.data.floor} and {retention.data.ceiling} days.</p>
                   <div className="gwui-invite-actions">
                     <TextField type="number" min={retention.data.floor} max={retention.data.ceiling} step={1} placeholder={String(retention.data.turnRetentionDays)} value={retentionDays} onChange={e => setRetentionDays(e.target.value)} aria-label="Days to keep a departed person's words" />
                     <Button kind="secondary" size="small" type="submit" disabled={!retentionDays.trim() || saveRetention.isPending}>{saveRetention.isPending ? 'Saving…' : 'Save'}</Button>
@@ -673,7 +674,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
   -d '{"grant_type":"client_credentials",
        "client_id":"${firstClientId ?? 'gwc_your_client_id'}",
        "client_secret":"gws_the_secret_shown_when_you_issued_it"}'`}</pre>
-            <p className="gwui-panel-text-muted">That answers with <span className="gwui-mono">access_token</span>. Send it as a bearer token on everything after it - here is an objective arriving from your system:</p>
+            <p className="gwui-panel-text-muted">That answers with <span className="gwui-mono">access_token</span>. Send it on everything else you call after that. Here is an objective arriving from your system:</p>
             <pre className="gwui-code-block-light">{`curl -X POST ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/subjects \\
   -H 'authorization: Bearer $ACCESS_TOKEN' \\
   -H 'content-type: application/json' \\
@@ -703,7 +704,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
       ]}'`}</pre>
             <p className="gwui-panel-text-muted">
               It answers <span className="gwui-mono">matched: true</span> per item, or <span className="gwui-mono">matched: false</span> for an
-              objective nobody is checking in about - not an error, so a nightly push covering everything does not fail on the parts nobody is discussing.
+              objective nobody is checking in about. That is not an error, so a nightly push covering everything does not fail on the parts nobody is discussing.
               Send <span className="gwui-mono">observedAt</span> and we hold your observation time rather than ours, so a figure that is three days old says so instead of looking current.
             </p>
             <p className="gwui-panel-text-muted">Opening a check-in from inside your product:</p>
@@ -720,18 +721,18 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
               <span className="gwui-mono">scenario</span> and <span className="gwui-mono">moment</span> are fixed values, and the common ones are{' '}
               <span className="gwui-mono">NEW_HIRE</span>, <span className="gwui-mono">NEW_PROJECT</span> and <span className="gwui-mono">OKR_ALIGNMENT</span>, each with a moment of{' '}
               <span className="gwui-mono">STARTING</span>, <span className="gwui-mono">RECOGNITION</span> or <span className="gwui-mono">RESOLUTION</span>. Send one we do not have and you get a
-              list of the ones we do. Somebody has to be named as opening it: a key belongs to your organisation and nobody in particular, and a check-in has a real person as its initiator, whose
-              name appears in the report.
+              list of the ones we do. Somebody has to be named as opening it. A key belongs to your organisation and nobody in particular, but a check-in has a real person as its initiator, and that
+              person's name appears in the report.
             </p>
             <p className="gwui-panel-text-muted">Back come the check-in id and one invitation link per person, addressed by your own ids rather than by email, so you deliver them inside the product those people already have open. We email them as well.</p>
             <p className="gwui-panel-text-muted">And what a lead should read before a hard conversation, for one named person:</p>
             <pre className="gwui-code-block-light">{`curl ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/people/SAM-1/before-a-conversation \\
   -H 'authorization: Bearer $ACCESS_TOKEN'`}</pre>
             <p className="gwui-panel-text-muted">
-              It needs the read-one-person’s-desk permission, not the findings one - this is a great deal more than a finding and no integration should get it by accident. What comes back carries{' '}
-              <span className="gwui-mono">sections</span> with where each came from, a <span className="gwui-mono">completeness</span> band saying how much of a picture this is, and a{' '}
-              <span className="gwui-mono">refusal</span> stating that it is not an assessment. Show all three. Where the record holds nothing you get that said plainly rather than an empty page, so
-              a lead is never handed a blank screen about a person and left to read it as a verdict.
+              It needs the same permission as reading one person’s desk, not the permission for findings. This is a great deal more than a finding, and no integration should get it by accident.
+              What comes back carries <span className="gwui-mono">sections</span> with where each came from, a note on how complete this picture is, and a{' '}
+              <span className="gwui-mono">refusal</span> stating that it is not an assessment. Show all three. Where the record holds nothing, you get that said plainly rather than an empty page,
+              so a lead is never handed a blank screen about a person and left to read it as a verdict.
             </p>
             <p className="gwui-fine">The full reference is generated from the running code rather than written by hand, so it cannot drift from what the API actually does.</p>
             <div><Button kind="quiet" size="small" onClick={() => openDocs.mutate()} disabled={openDocs.isPending}>{openDocs.isPending ? 'Opening…' : 'Open the developer docs'}</Button></div>

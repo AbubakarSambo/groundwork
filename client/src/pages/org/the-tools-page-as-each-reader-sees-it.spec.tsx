@@ -69,15 +69,20 @@ describe('Grace, an admin', () => {
     expect(calls).not.toContain('workspaceNotifiers')
   })
 
+  /*
+   * UPDATED (group 1 re-review, fault A): the real screenshot `/connect/whatsapp.png` is gone,
+   * replaced by `WhatsAppConversationExample`, drawn in markup from the prototype's own made-up
+   * exchange - so this is a `role="img"` with its own accessible name now, not an `<img alt=...>`.
+   */
   it('sees the WhatsApp picture only while WhatsApp is switched on', async () => {
     const { unmount } = open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
     await screen.findByText('Keys')
-    expect(screen.queryByAltText('A check-in over WhatsApp')).toBeNull()
+    expect(screen.queryByRole('img', { name: 'A check-in over WhatsApp' })).toBeNull()
     unmount()
     whatsappOn = true
     open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
     await screen.findByText('Keys')
-    expect(screen.getByAltText('A check-in over WhatsApp')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'A check-in over WhatsApp' })).toBeTruthy()
   })
 })
 
@@ -141,7 +146,9 @@ describe('the approved state, with keys, webhooks, deliveries, embed and retenti
     expect(screen.getByText('Recent deliveries')).toBeTruthy()
     expect(screen.getAllByText('report.shared').length).toBeGreaterThan(0)
     await userEvent.click(screen.getByRole('button', { name: 'Change' }))
-    expect(screen.getByText(/When your roster tells us somebody has left, we delete their raw words after this many days\./)).toBeTruthy()
+    /* UPDATED (group 1 re-review): "roster" and "raw words" were both jargon; the sentence now
+       reads "your people list" and "what they said word for word". */
+    expect(screen.getByText(/When your people list tells us somebody has left, we delete what they said word for word after this many days\./)).toBeTruthy()
     expect(screen.getByText(/That is always after any handover brief has been built, never before\./)).toBeTruthy()
   })
 
