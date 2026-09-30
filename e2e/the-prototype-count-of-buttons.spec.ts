@@ -15,12 +15,29 @@ import { pathToFileURL } from 'url';
  * `#d-persona` and the screen chosen by its hash - the way the prototype addresses its own
  * screens; docs/prototype/screens/index.json lists them). It counts every visible button a
  * person can see - a `<button>`, or a link styled and acting as one - and how many of those are
- * primary (navy), on both sides, and fails if the product has more than one primary, or more
- * buttons in total than the prototype's own screen.
+ * primary, on both sides, and fails if the product has more than one primary, or more buttons in
+ * total than the prototype's own screen.
  *
- * A "primary" button is one whose own background colour is the navy the button system defines
- * (`--gw-navy` / the prototype's `--navy`, both `#0C447C` - rgb(12, 68, 124)), not a class name,
- * so this catches a primary button however it was drawn, old part or new.
+ * MADE FAIR IN TWO WAYS, AND NO OTHER (Hafsah, 30 September, item 1), on top of the #main scoping
+ * below:
+ *
+ *   (a) PRIMARY BY KIND, NOT COLOUR. A chosen filter or choice chip (`Choices`, the role/team
+ *   filters on the People page and their prototype counterparts) sits on a navy background when
+ *   selected, on both sides, the same navy `--gw-navy`/`--navy` a primary button uses - it is a
+ *   choice, not a button, and was never meant to be counted as one. Colour cannot tell the two
+ *   apart; the button's own KIND can. A primary button is now one carrying the product's own
+ *   `gwui-btn-primary` class, or the prototype's own `btn pri` pair of classes - however it was
+ *   drawn, old part or new, but never a control that merely happens to render navy.
+ *
+ *   (b) ONE ROW, ONE COUNT. A button repeated once per row of a genuine list - every "Open" in a
+ *   table of people, every "Change" in a list of fields - counts once, by its visible label, on
+ *   both sides, because the local data has more rows than the prototype's own fixed example
+ *   (Amani is in seven check-ins; the prototype's Miriam is in one). This only ever collapses a
+ *   label that appears THREE TIMES OR MORE on the one screen - a real list has many rows, not two
+ *   - so it never hides two separate, deliberately duplicated buttons that merely happen to share
+ *   words (such as "Send their invitations" appearing once in a warning card and once in the
+ *   invite form): those are exactly the kind of accidental double button the whole test exists to
+ *   catch, and stay counted separately.
  *
  * Run it against the local servers, from the repo root:
  *
@@ -35,7 +52,6 @@ const APP = 'http://localhost:5173';
 const PROTOTYPE_FILE = pathToFileURL(
   path.join(__dirname, '..', 'docs', 'prototype', 'groundwork-prototype.html'),
 ).toString();
-const NAVY = 'rgb(12, 68, 124)'; // #0C447C, both --gw-navy and the prototype's --navy
 
 type Reader = { who: string; email: string };
 const READERS: Record<string, Reader> = {
@@ -145,8 +161,8 @@ async function signIn(page: Page, email: string) {
 }
 
 /**
- * Every visible button-like element, and how many of those are navy (primary) - counted ONLY
- * inside the page's own content area, on both sides.
+ * Every visible button-like element, and how many of those are primary - counted ONLY inside the
+ * page's own content area, on both sides.
  *
  * WHY THIS CHANGED (Hafsah, 30 September, item 1): counting the whole document also counted the
  * sidebar and the phone tab bar - the product's `<aside class="gw-sidebar-desktop">` rail lists
@@ -171,10 +187,22 @@ async function signIn(page: Page, email: string) {
  *
  * So both sides are counted the same way: every visible button or link-as-button inside `#main`
  * (still excluding the prototype's own dev bar, `#dev`/`#devshow`, which sits outside `#main`
- * anyway but is excluded for clarity). Navy is still by computed background colour, not class.
+ * anyway but is excluded for clarity).
+ *
+ * PRIMARY IS NOW BY KIND (item 1a above), not by computed background colour: the product's own
+ * `gwui-btn-primary` class, or the prototype's own pair of classes, `btn` and `pri` together (a
+ * plain `.btn` is secondary/quiet/danger; `.pri` alone is never used away from `.btn` in the
+ * prototype's own CSS). A selected filter chip is navy on both sides but carries neither class, so
+ * it is no longer counted as primary.
+ *
+ * REPEATED ROWS COUNT ONCE (item 1b above): once every node's label and primary-kind are read,
+ * any label seen three times or more on the one screen - the signature of a real list, a table row
+ * or a repeated field, never of two accidental one-off buttons that merely share words - is folded
+ * down to a single counted instance, keeping whichever primary-kind its first occurrence had (a
+ * repeated row is always drawn the same way, so its first occurrence speaks for the rest).
  */
 async function countButtons(page: Page): Promise<{ total: number; primary: number; labels: string[] }> {
-  return page.evaluate((NAVY) => {
+  const { items } = await page.evaluate(() => {
     const isVisible = (e: Element) => {
       const r = (e as HTMLElement).getBoundingClientRect();
       const cs = getComputedStyle(e);
@@ -187,10 +215,36 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
       const looksLikeAButton = e.tagName === 'BUTTON' || cs.display.includes('flex') || cs.display.includes('inline-flex') || e.className.toString().includes('btn');
       return looksLikeAButton && isVisible(e);
     });
-    const labels = nodes.map((e) => (e.textContent || '').trim().slice(0, 40));
-    const primary = nodes.filter((e) => getComputedStyle(e).backgroundColor === NAVY).length;
-    return { total: nodes.length, primary, labels };
-  }, NAVY);
+    const isPrimary = (e: Element) => {
+      const cls = e.className.toString().split(/\s+/);
+      return cls.includes('gwui-btn-primary') || (cls.includes('btn') && cls.includes('pri'));
+    };
+    const items = nodes.map((e) => ({
+      label: (e.textContent || '').trim().slice(0, 40),
+      primary: isPrimary(e),
+    }));
+    return { items };
+  });
+
+  /* Item 1b: fold a label seen 3+ times on this one screen down to its first occurrence. */
+  const countOfLabel = new Map<string, number>();
+  for (const it of items) countOfLabel.set(it.label, (countOfLabel.get(it.label) ?? 0) + 1);
+  const seenRepeated = new Set<string>();
+  const kept: { label: string; primary: boolean }[] = [];
+  for (const it of items) {
+    const isRepeatedRow = (countOfLabel.get(it.label) ?? 0) >= 3;
+    if (isRepeatedRow) {
+      if (seenRepeated.has(it.label)) continue;
+      seenRepeated.add(it.label);
+    }
+    kept.push(it);
+  }
+
+  return {
+    total: kept.length,
+    primary: kept.filter((it) => it.primary).length,
+    labels: kept.map((it) => it.label),
+  };
 }
 
 test.use({ viewport: { width: 1440, height: 900 } });
