@@ -124,6 +124,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 
 /* ── CHECK-IN HEADER (prototype: PageTitle + .tabs, 18px below) ─────────── */
 .gwui-cih-tabs { margin-top: 18px; }
+/* The board's own check-in switcher (trailing) sits in the "Views ▾" slot, at the row's end. */
+.gwui-cih-tabs-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.gwui-cih-tabs-row .gwui-tabs { flex: 1; min-width: 0; }
+.gwui-cih-trailing { flex-shrink: 0; padding-bottom: 8px; }
 
 /* ── TABS (prototype: .tabs, .tab, .tab.on) ──────────────────────────────
    BUG FIX (design-audit.md section 2, "Lines"): only the ACTIVE tab gets the 3px underline. The

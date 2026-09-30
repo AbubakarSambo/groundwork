@@ -21,7 +21,7 @@ export const CHECK_IN_TABS = [
 
 export type CheckInTabKey = typeof CHECK_IN_TABS[number]['key']
 
-export function CheckInHeader({ crumbs, title, subtitle, action, active, tabHref, tabs, onSelectTab }: {
+export function CheckInHeader({ crumbs, title, subtitle, action, active, tabHref, tabs, onSelectTab, trailing }: {
   crumbs?: Crumb[]
   title: string
   subtitle?: string
@@ -38,13 +38,21 @@ export function CheckInHeader({ crumbs, title, subtitle, action, active, tabHref
    */
   tabs?: { key: string; label: string; to?: string }[]
   onSelectTab?: (key: string) => void
+  /**
+   * U.10 (b): drawn at the end of the tab row, in the same slot the prototype's own "Views ▾" sits
+   * in - nothing in the product answers what that menu would offer, so nothing is built for it, but
+   * the board's real check-in switcher (TheOtherBoardsYouAreIn, a genuine control with nowhere else
+   * on the page to sit) uses this slot rather than being dropped.
+   */
+  trailing?: React.ReactNode
 }) {
   const items = tabs ?? CHECK_IN_TABS.map(t => ({ key: t.key, label: t.label, to: tabHref ? tabHref(t.key) : undefined }))
   return (
     <div>
       <PageTitle crumbs={crumbs} title={title} subtitle={subtitle} action={action} />
-      <div className="gwui-cih-tabs">
+      <div className={trailing ? 'gwui-cih-tabs gwui-cih-tabs-row' : 'gwui-cih-tabs'}>
         <Tabs active={active} items={items} onChange={onSelectTab} />
+        {trailing && <div className="gwui-cih-trailing">{trailing}</div>}
       </div>
     </div>
   )
