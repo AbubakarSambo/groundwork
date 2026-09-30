@@ -395,6 +395,25 @@ export const SCENARIO_FACTS: Record<ScenarioKey, ScenarioFacts> = {
 }
 
 /**
+ * WHETHER A SITUATION IS ONE OF THE THREE THE ENGINE REACHES A VERDICT ON: a performance plan
+ * (`PIP`), a promotion or raise (`RECOGNITION`), or a renewal (`CONTRACT_RENEWAL`). Decision 17
+ * names exactly these three, and the API's own `isEvaluationCheckIn` (`is-this-an-evaluation-check-
+ * in.ts`) already tests this same equality against `BoardFamily.EVALUATION` - which is exactly the
+ * `'person'` group here, no more and no less.
+ *
+ * A COPY, LIKE THE CADENCE ABOVE, because the client cannot import from `api/`. It stands in for a
+ * field the engine does not send yet: the invitation ("The people in this check-in...") needs to
+ * know, for its own scenario, whether admins can read it, and the server has no per-check-in flag
+ * for that (engine request 78, still open). Once request 78 lands, the invitation should read the
+ * server's own field instead of this guess, and this function can be retired for that path.
+ */
+export function isEvaluationScenario(scenario: string | null | undefined): boolean {
+  if (!scenario) return false
+  const facts = (SCENARIO_FACTS as Record<string, ScenarioFacts>)[scenario]
+  return facts?.group === 'person'
+}
+
+/**
  * WHERE IN THE ARC A SITUATION USUALLY STARTS. MIRRORS THE ENGINE'S RECOMMENDED_MOMENT.
  *
  * Step one of setup has a second required choice - "where are you in this situation?" - and Continue

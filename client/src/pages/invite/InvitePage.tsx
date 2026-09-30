@@ -5,12 +5,14 @@ import { InvitationExpired } from './InvitationExpired'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { participantsApi } from '@/api'
 import type { InvitePreview } from '@/api/participants'
+import type { GroundScenario } from '@/types'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import { Page, Mark, PageTitle, Panel, SubHeading, Callout, Note, Button, FieldLabel, TextField, Modal, Stack } from '@/components/gw/ui'
 import { LinkProblem } from '@/components/gw/LinkProblem'
 import { toast } from 'sonner'
 import { opensStraightOnTheQuestion, whereTheLinkGoes } from './the-link-opens-on-the-question'
+import { isEvaluationScenario } from '@/lib/scenario-catalog'
 
 /**
  * The participant invite landing. ONE PATH: accepting the invite signs the
@@ -291,14 +293,18 @@ export function InvitePage() {
     <Page narrow>
       {/*
         THE INVITATION, AS THE PROTOTYPE HAS IT (A3, join-invite.txt, U.3; rebuilt from
-        components/gw/ui in U.20).
+        components/gw/ui in U.20), WITH HAFSAH'S ANSWER OF 29 SEPTEMBER ON ITEM 11 (CONFLICT A).
 
-        Two of its sentences are held while Hafsah decides, because they say the words are private
-        and people in the check-in and admins can read them: "Nobody else reads your answers." and
-        "Wairimu reads the report, not your words." Until then today's panel, "What happens to what
-        you write", stays exactly as it was, just no longer folded away (below). "Your number" is
-        shown only when the record holds this person's share of a target, which the invitation does
-        not carry yet.
+        The prototype's first line is kept. Its two held sentences, "Nobody else reads your
+        answers." and "Wairimu reads the report, not your words.", are dropped for good - they are
+        not true, once admins and colleagues in the same check-in can read it. In their place, the
+        line below is built from this check-in's own scenario, so it is always true of what the
+        server actually does: the admins sentence is left out for a performance plan, a promotion or
+        a renewal (`isEvaluationScenario`, in `scenario-catalog.ts`), and left out too when the
+        scenario is not known, which is the more private reading. This is a client-side stand-in for
+        a field the engine does not send yet (request 78); once it does, this should read that field
+        instead of guessing from the scenario. "Your number" is shown only when the record holds
+        this person's share of a target, which the invitation does not carry yet.
       */}
       <Mark />
       {/*
@@ -313,10 +319,7 @@ export function InvitePage() {
         <PageTitle title={theInvitation(preview)} subtitle={(preview.organisationName || preview.endsAt) ? whereAndUntil(preview) : undefined} />
 
         <Stack gap={19}>
-          <Callout>
-            The people in this check-in, including your manager, can see what you say in it. Your questions to Ask
-            Groundwork stay private.
-          </Callout>
+          <Callout>{whoCanReadThis(preview.scenario)}</Callout>
 
           {/* U.6 review: no "Your part in this". The server no longer sends it, because what it held
               was the lead's sentence about this person. See the-leads-words-about-someone.ts. */}
@@ -419,9 +422,16 @@ export function InvitePage() {
           {/* The fourth heading used to be styled differently from the other three (plain, muted
               text rather than a heading) - Hafsah's first review. All four are SubHeading now. */}
           <div className="gwui-subheading-list">
+            {/*
+              REPLACES THE OLD "NOBODY YOU WORK WITH READS IT" PANEL (Hafsah, 29 September, item 11,
+              conflict A): it told a participant that no manager and no admin ever saw their words,
+              which decision 1 in CLAUDE.md's privacy rules makes untrue for every check-in. This
+              says instead what is actually true of THIS check-in, built the same way as the
+              callout above (`whoCanReadThis`), so the two can never disagree.
+            */}
             <div>
-              <SubHeading>Nobody you work with reads it</SubHeading>
-              <p className="gwui-note">Not your manager, not whoever set this up, not an admin. What they see is the shared report, which is built by comparing what everyone said. Your own words about your own work can appear in it. Anything you say about somebody else never does, and it never says who said what about whom.</p>
+              <SubHeading>Who can read what you write</SubHeading>
+              <p className="gwui-note">{whoCanReadThis(preview.scenario)}</p>
             </div>
             <div>
               <SubHeading>We cannot show it to ourselves either</SubHeading>
@@ -481,6 +491,24 @@ export function heldForASeatCard(saying: string): { heading: string; sub?: strin
     }
   }
   return { heading: saying }
+}
+
+/**
+ * WHO CAN READ THIS CHECK-IN, BUILT FROM ITS OWN SETTINGS (Hafsah, 29 September, item 11,
+ * conflict A). The prototype's first line, "The people in this check-in, including your manager,
+ * can see what you say in it.", is always true - decision 1 in CLAUDE.md's privacy rules makes it
+ * so for every check-in. The admins sentence is added only when it is true of THIS check-in: never
+ * on a performance plan, a promotion or a renewal (decision 5, corrected 29 September to cover all
+ * three the same way as a performance plan), and left out too when the scenario is not known,
+ * which is the more private reading. `isEvaluationScenario` (`scenario-catalog.ts`) is a
+ * client-side stand-in for a field the engine does not send yet (request 78); once it does, this
+ * should read that field instead of guessing from the scenario.
+ */
+export function whoCanReadThis(scenario: GroundScenario | null | undefined): string {
+  const admins = !scenario || isEvaluationScenario(scenario)
+    ? ''
+    : ' Admins in your organisation can read every check-in.'
+  return `The people in this check-in, including your manager, can see what you say in it.${admins} Your own report and your questions to Ask Groundwork stay private.`
 }
 
 /** "Wairimu invited you to the sales team's check-in", with the check-in's own name. */

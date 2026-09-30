@@ -13,8 +13,14 @@ import { InvitePage, theInvitation, whereAndUntil } from './InvitePage'
  * say, "What it asks", "Who sees your answers", and "Answer today's check-in now". Hafsah asked for
  * the prototype's page (26 September), so this file now reads that, rendered as the person sees it.
  *
- * HELD while she decides: "Nobody else reads your answers." and "Wairimu reads the report, not your
- * words." are not shown, and today's panel "What happens to what you write" stays as it was.
+ * DECIDED, 29 September, item 11 conflict A: "Nobody else reads your answers." and "Wairimu reads
+ * the report, not your words." are dropped for good, not shown while a decision is pending - they
+ * are not true, since decision 1 in CLAUDE.md's privacy rules lets the people in a check-in and its
+ * organisation's admins read what somebody said in it. The box on who can see what you say is now
+ * built from the check-in's own scenario (`whoCanReadThis`, InvitePage.tsx): the admins sentence is
+ * left out on a performance plan, a promotion or a renewal, and left out too when the scenario is
+ * not known. "What happens to what you write" carries the same true sentence in its own panel,
+ * "Who can read what you write", replacing the old "Nobody you work with reads it".
  */
 const participantsApi = vi.hoisted(() => ({ preview: vi.fn(), accept: vi.fn() }))
 vi.mock('@/api', () => ({ participantsApi }))
@@ -100,6 +106,32 @@ describe('the invitation a participant reads', () => {
     open({ ...PREVIEW, yourNumberIsSeenBy: 'everybody' })
     await screen.findByText('Who sees your answers')
     expect(screen.getByText('Everybody in this check-in sees every number, including yours.')).toBeTruthy()
+  })
+})
+
+describe('who can read this, built from the check-in\'s own scenario (item 11, conflict A)', () => {
+  /* Decision 5 (corrected 29 September) keeps a performance plan, a promotion or a renewal from an
+     admin with no access to it, the same as a performance plan alone. The invitation must never
+     promise admins can read a check-in where the server would actually refuse them. */
+  it('says admins can read an ordinary check-in', async () => {
+    open({ ...PREVIEW, scenario: 'NEW_PROJECT' })
+    await screen.findByText('Who sees your answers')
+    expect(screen.getByText(/Admins in your organisation can read every check-in\./)).toBeTruthy()
+  })
+
+  it.each(['PIP', 'RECOGNITION', 'CONTRACT_RENEWAL'])('leaves out the admins line on %s', async (scenario) => {
+    open({ ...PREVIEW, scenario })
+    await screen.findByText('Who sees your answers')
+    const text = document.body.textContent ?? ''
+    expect(text).not.toMatch(/Admins in your organisation can read every check-in\./)
+    expect(screen.getByText(/The people in this check-in, including your manager, can see what you say in it\. Your own report and your questions to Ask\s+Groundwork stay private\./)).toBeTruthy()
+  })
+
+  it('leaves the admins line out too when the scenario is not known - the more private reading', async () => {
+    open({ ...PREVIEW, scenario: undefined })
+    await screen.findByText('Who sees your answers')
+    const text = document.body.textContent ?? ''
+    expect(text).not.toMatch(/Admins in your organisation can read every check-in\./)
   })
 })
 
