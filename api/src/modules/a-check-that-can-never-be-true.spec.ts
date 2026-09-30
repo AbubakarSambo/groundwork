@@ -166,6 +166,14 @@ const CHECKED_AND_FINE = new Set([
    * `WorkMention.kind`, a non-nullable enum column this file also reads, purely on the field name.
    */
   'modules/board/board.service.ts:kind',
+  /*
+   * `if (!status.roleName)` in `whereAmIUpTo`. `status` is what the onboarding service returns for
+   * a person (`roleName: string | null`, null when no role is recorded for them, which is the
+   * whole point of the branch: it says so instead of inventing a checklist). It matched the
+   * non-nullable `roleName` on the role-interview and role-guide tables this file also reads,
+   * purely on the field name. A name collision, not a check that can never be true.
+   */
+  'modules/assistant/assistant.service.ts:roleName',
 ]);
 
 function findHits() {
