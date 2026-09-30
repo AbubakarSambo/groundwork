@@ -491,3 +491,21 @@ What the server now does, so the screens need not hide anything: an admin of the
 I did not serve each person's own coaching note to the lead, because the report never does: a note written for one person is not given to their lead (the report's own comment says so). If Hafsah wants the lead to read each person's note too, that is a change to a privacy rule and is hers to decide.
 
 **Periods (request 79 a).** `managerAlignment[].periods` is now never more than the number of answered sessions as decision 57 counts them (a daily check-in counts calendar weeks). After a single session it reads 1.
+
+## 30 September, night: a check-in that runs until the lead ends it (request 37)
+
+Hafsah said yes on 27 September. The engine side is done. This is exactly what the ongoing state looks like and what to send.
+
+**The state.** One field on the check-in: `runsUntilEnded` (true or false). It is on every check-in read (the check-in itself, the list, the admin view, the API). When it is true, `timelineDays` is served as `null` (stored internally as 0, never shown), `daysLeft` and `endsOn` are `null`, `endsAt` is `null`, and the check-in is never "out of time": no warning email, no stall. Every check-in that existed before is `runsUntilEnded: false` and unchanged.
+
+**What to send.**
+- Creating a check-in (`POST /grounds`, `POST /grounds/for-lead`, and the entry commit `POST /entry/commit`): send `runsUntilEnded: true` and leave `timelineDays` and `endsAt` out. If you send both, the choice "When I end it" wins and the length and end date are ignored.
+- Changing it later (`PATCH /grounds/:id`): send `{ "runsUntilEnded": true }` to make it ongoing. Send a length (`timelineDays` or `timelineWeeks`) to give it a length again; that turns `runsUntilEnded` off. A check-in that had run out of time opens again when it is made ongoing.
+- The context chat: the lead can say "when I end it", "until I stop it" or "no end date". The proposal comes back as `{ kind: 'timeline', days: 0, untilEnded: true, say: "I will set this to run until you end it." }`, and after the yes the reply says "I have set this to run until you end it." The same works in Ask Groundwork's setup, which is the same chat. Once set, the chat does not ask how long it runs again, and its opening line reads "This check-in runs until you end it and people check in once a week."
+- Ending it: the existing "Begin the closing session" route (`POST /grounds/:id/closing-session`) is the "End it". It works at any session of an ongoing check-in. It makes each person's next session the closing one, and no session is made after it. The report of that session is written as a closing report, the same as a check-in that reached its planned last session.
+
+**What the screens read.**
+- The session report carries `runsUntilEnded` and a ready sentence, `position`: "Session 3. It runs until you end it." For a check-in with a length it is "Session 3 of 12." and for one with no length set it is "Session 3." `plannedSessions` is `null` for an ongoing check-in. Print `position` rather than building the sentence.
+- For an ongoing check-in the engine never says how many sessions there are, how far through it is, "halfway", or "the last session", in the conversation, the reports, the board, Today or the suggestions. There is no "Decide how it ends" prompt, because there is no planned last session. The only ending is the lead's.
+- `howItIsGoing` has no planned rounds for an ongoing check-in. Do not draw "x of y rounds".
+- The setting history on the Context page carries `untilItIsEnded` (true on the change that made it ongoing) and `weeks.to` is `null` for that change.
