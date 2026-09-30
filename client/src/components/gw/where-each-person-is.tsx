@@ -1,5 +1,6 @@
 import { ShowAFew } from './a-long-list-is-not-a-page'
-import { Pill } from './kit'
+import { PeopleTable, PersonRow, Tag, type TagTone } from './ui'
+import { initialsOf } from '@/pages/org/people-here'
 
 /**
  * THE ONE READ A MANAGER OPENS THE BOARD FOR.
@@ -38,7 +39,7 @@ export interface Row {
   keepsComingUp?: string | null
 }
 
-/** The pill's label for each reason, sentence case throughout - not just "Nothing checkable". */
+/** The tag's label for each reason, sentence case throughout - not just "Nothing checkable". */
 const LABEL: Record<Reason, string> = {
   'has not answered': 'Has not answered',
   'stuck and not chasing': 'Stuck and not chasing',
@@ -47,27 +48,28 @@ const LABEL: Record<Reason, string> = {
   'nothing to do': 'Nothing to do',
 }
 
-const TONE: Record<Reason, 'bad' | 'warn' | 'info' | 'flat'> = {
-  'has not answered': 'bad',
-  'stuck and not chasing': 'bad',
-  'behind the pace': 'warn',
-  'nothing checkable': 'warn',
-  'nothing to do': 'flat',
+const TONE: Record<Reason, TagTone> = {
+  'has not answered': 'concern',
+  'stuck and not chasing': 'concern',
+  'behind the pace': 'attention',
+  'nothing checkable': 'attention',
+  'nothing to do': 'plain',
 }
 
 export type Square = { key: number; state: 'done' | 'empty' | 'upcoming' }
 
 /**
- * U.10: "THE TEAM TODAY", THE PROTOTYPE'S WHITE TABLE (board-as-lead.jpg).
+ * U.10 (c1): "THE TEAM TODAY", REBUILT FROM THE SHARED PARTS - a `PeopleTable` of `PersonRow`s
+ * (components/gw/ui), replacing the hand-rolled white card and divider rows this drew before.
  *
- * Name, a one-line summary, a reason pill, then ten small navy squares for the last ten
- * check-ins. The prototype's rightmost column - "what keeps coming up" ("Same leads, 3
- * check-ins running") - is `keepsComingUp`, one quiet line under the summary; it is left off a
- * row with nothing to add, and there is nothing there at all while patterns are off.
+ * Name, a one-line summary, a reason tag, then ten small navy squares for the last ten check-ins.
+ * The prototype's rightmost column - "what keeps coming up" ("Same leads, 3 check-ins running") -
+ * is `keepsComingUp`, one quiet line under the summary; it is left off a row with nothing to add,
+ * and there is nothing there at all while patterns are off.
  *
  * PICTURE-CHECK ROUND 6, ITEM C: ONE COMPACT ROW, NOT A STACKED CARD. The first pass drew each
  * person as a tall card (name, pill, says, squares, ask, a quoted finding, each on its own line) -
- * the prototype draws one table row: name | summary | pill | squares. `ask` and `finding` are not
+ * the prototype draws one table row: name | summary | tag | squares. `ask` and `finding` are not
  * in the prototype's table at all, so rather than drop them (the whole point of a row - the one
  * thing a lead can act on) they sit as a single quiet second line under the summary, smaller and
  * greyer than `says`, instead of each getting a card-sized block of their own.
@@ -75,7 +77,7 @@ export type Square = { key: number; state: 'done' | 'empty' | 'upcoming' }
 export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFor?: (participantId: string) => Square[] }) {
   if (!rows.length) return null
   return (
-    <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 16px' }}>
+    <PeopleTable>
       {/*
         A HUNDRED OF THESE IS NOT A GLANCE. The rows are ordered by what needs the lead first, so
         the few at the top are the ones this section exists for - and on a check-in run across a
@@ -83,29 +85,20 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
         a-long-list-is-not-a-page.
       */}
       <ShowAFew rows={rows} few={10} what="people">
-      {(r: Row, i: number) => (
-        <div key={r.participantId} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)' }}>
-                {r.who}
-                {/*
-                  Nobody has given a name, so this is their role. Said plainly, because on a list of
-                  people a role reads as a name. "A colleague · no name given" joined a role and a
-                  fact with a middle dot; now it is one clause read straight through.
-                */}
-                {r.nameIsTheirRole && (
-                  <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--gw-sub)' }}>, who has not given a name</span>
-                )}
-              </span>
-              {/* The number, where they have one. A person with no target of their own still has a
-                  row: what to do about them does not depend on somebody having set them a figure. */}
-              {r.target != null && (
-                <span style={{ fontSize: 12.5, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums' }}>
-                  {r.count} of {r.target}
-                </span>
-              )}
-            </div>
+      {(r: Row) => (
+        <PersonRow
+          key={r.participantId}
+          extraColumns="1fr auto 170px"
+          person={{ initials: initialsOf(r.who), name: r.who, level: r.nameIsTheirRole ? 'Has not given a name' : undefined }}
+        >
+          <div style={{ minWidth: 0 }}>
+            {/* The number, where they have one. A person with no target of their own still has a
+                row: what to do about them does not depend on somebody having set them a figure. */}
+            {r.target != null && (
+              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums' }}>
+                {r.count} of {r.target}
+              </div>
+            )}
             <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>{r.says}</div>
             {/* `ask` and `finding`, kept as one quiet line rather than dropped - not in the
                 prototype's table, but the whole point of a row for a lead who can act on it. */}
@@ -118,12 +111,10 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
               <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4, lineHeight: 1.5 }}>{r.keepsComingUp}</div>
             )}
           </div>
-          <div style={{ flexShrink: 0 }}>
-            <Pill tone={TONE[r.reason]}>{LABEL[r.reason]}</Pill>
-          </div>
+          <Tag tone={TONE[r.reason]}>{LABEL[r.reason]}</Tag>
           {/* The last-10 squares, the same mark and the same data "Who checked in" draws, in their
               own fixed-width column so they line up across every row. */}
-          {squaresFor && (
+          {squaresFor ? (
             <div style={{ display: 'flex', gap: 5, width: 170, justifyContent: 'flex-end', flexShrink: 0 }}>
               {squaresFor(r.participantId).map((sq) => (
                 <span
@@ -138,10 +129,10 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
                 />
               ))}
             </div>
-          )}
-        </div>
+          ) : <span />}
+        </PersonRow>
       )}
       </ShowAFew>
-    </div>
+    </PeopleTable>
   )
 }

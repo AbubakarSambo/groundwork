@@ -15,7 +15,7 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
-import { Card, Row, Pill, btn, miniBtn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
+import { Card, Row, Pill, btn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
 import { todayApi, type Need } from '@/api/today'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
@@ -56,7 +56,7 @@ import { buildSessionRows } from '@/lib/session-rows'
 import { peopleLabels, personLabel } from '@/lib/utils'
 import { EVERY_SESSION, sessionDay, checkedIn } from '@/components/gw/TheReportIsAListOfSessions'
 import { useAskStore } from '@/stores/ask'
-import { Page, CheckInHeader, Section } from '@/components/gw/ui'
+import { Page, CheckInHeader, Section, Panel, Tag, Button as UIButton } from '@/components/gw/ui'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { KindOfWorkBanner, WorkRecordsSections } from './WorkRecords'
@@ -584,15 +584,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
   return (
     <Page>
-      {/*
-        U.10 (a): ONE PLAIN WRAPPER, SO THE SHARED PAGE FRAME'S OWN CHILD-TO-CHILD SPACING (30px,
-        for a page built from a handful of sections) DOES NOT REACH IN AND RE-SPACE THE BOARD'S OWN
-        SECTIONS, each of which already sets its own margin to match the prototype's own pixels
-        (picture-checked across every kind of board). Sole child of the Page frame, so nothing here
-        is touched by it; everything below is exactly as it was before this pass, apart from the
-        header itself.
-      */}
-      <div>
+        {/*
+          U.10 (c1): THE SHARED PAGE RHYTHM APPLIES NOW (Page's own `.gwui-page-wrap > * + *`, 30px
+          between direct children), the way every other rebuilt page gets its section spacing - not
+          escaped by a wrapping div, which is what made "What we are aiming for" touch the panel
+          above it (the switchboard sections below were plain siblings with no margin of their
+          own). Every element up to here (the header, "Last updated…", the kind-of-work banner, the
+          session pills, "How to read this board" and so on) already carries its own inline
+          marginTop, which wins over the class rule - so removing the escape hatch changes nothing
+          about their spacing, and only affects elements that had none, which is exactly the
+          switchboard's sections further down.
+        */}
         {/* Somebody who has just answered from a link lands here with ?done=1: their answer landed, and where the report goes. */}
         {justAnswered && <ThatIsOnTheRecord groundId={id!} />}
 
@@ -867,13 +869,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           the definition of success, and it renders its own no: a group that opened an alignment
           check-in and never named what it aligns to is told so plainly rather than shown a gap.
         */}
+        {/*
+          U.10 (c1): FROM THE SHARED PARTS. The card's own title (18px, of its own invention) is
+          now the section's real heading, the same 21px every other section on the board uses -
+          this was the one heading that sat inside its own card rather than above it.
+        */}
         {shown.cascade && b.cascade && (
-          <Card>
-            <Row first>
-              {/* Picture-check round 6, item H: the card's own title, the prototype's weight (18px/700/near-black), not a 12.5px muted caption. */}
-              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>
-                {b.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}
-              </div>
+          <Section heading={b.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
+            <Panel>
               {b.cascade.parentNamed && (
                 <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6, lineHeight: 1.35 }}>
                   {b.cascade.parentNamed}
@@ -883,12 +886,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {b.cascade.teamsNamed.length > 1 && (
                 <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {b.cascade.teamsNamed.map((t: string) => (
-                    <span key={t} style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', color: 'var(--gw-sub)' }}>{t}</span>
+                    <Tag key={t} tone="plain">{t}</Tag>
                   ))}
                 </div>
               )}
-            </Row>
-          </Card>
+            </Panel>
+          </Section>
         )}
 
         {/*
@@ -899,18 +902,20 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           place, and what each person independently says it is. The board is the shared picture, so
           the definition everybody is being read against belongs at the top of this zone rather than
           only on the Setup tab where one person typed it.
+
+          U.10 (c1): its own heading, from the shared Section - `headingIsTheCallers` tells the
+          component to leave its own internal heading out, since the section above it now draws one.
         */}
         {(shown.objectives || shown.divergence) && (
-          <Card>
-            <Row first>
-              <WhatSuccessLooksLikeFor groundId={id!} />
-            </Row>
-          </Card>
+          <Section heading="What success looks like">
+            <Panel>
+              <WhatSuccessLooksLikeFor groundId={id!} headingIsTheCallers />
+            </Panel>
+          </Section>
         )}
 
         {shown.objectives && b.objectives && (
-          <>
-            <Section heading="What we are aiming for" note="The lead sets these targets." />
+          <Section heading="What we are aiming for" note="The lead sets these targets.">
             {/* The privacy setting is on and some numbers still have nobody's name on them, so
                 everybody can read those. Said to the only person who can fix it. */}
             {/* One total, ten people, from the export they already have. Above the form, because
@@ -926,8 +931,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 {b.objectivesPrompt}
               </div>
             )}
-            <Card>
-              {b.objectives.map((o, i) => {
+            <Panel pad={false}>
+              {b.objectives.map((o) => {
                 /*
                   A MEASURE THAT GOES DOWN IS STILL GOING WELL.
 
@@ -939,11 +944,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 */
                 const pct = o.journey?.covered ?? (o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0)
                 return (
-                  <Row key={o.id} first={i === 0}>
+                  <div key={o.id} className="gwui-panel-row">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                       <div style={{ flex: 1, fontSize: 13, fontWeight: 600, minWidth: 160 }}>
                         {o.name}
-                        {o.isNew && <span style={{ marginLeft: 7 }}><Pill tone="info">new</Pill></span>}
+                        {o.isNew && <span style={{ marginLeft: 7 }}><Tag tone="plain">new</Tag></span>}
                         {/*
                           WHOSE NUMBER IT IS, on its own line. "12 shops· Rukia Otieno" read live: the
                           name sat right after the target with only a CSS margin between them, no
@@ -958,7 +963,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           nobody had decided whether the 12m is signed or recognised revenue. The
                           sentence is the lead's own; it does not change or block the target.
                         */}
-                        {o.notSettled && <span style={{ marginLeft: 7 }}><Pill tone="warn">definition not settled</Pill></span>}
+                        {o.notSettled && <span style={{ marginLeft: 7 }}><Tag tone="attention">definition not settled</Tag></span>}
                       </div>
                       {/*
                         NOTHING TO MEASURE MEANS NOTHING TO DRAW. An aim with no number got an empty
@@ -1008,27 +1013,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       */}
                       {b.canEditFrame && (
                         <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <button
+                          <UIButton
+                            kind="secondary" size="small"
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
                             disabled={(bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id) || o.count === 0}
-                            title="Move this count down"
                             aria-label={`One fewer: ${o.name}`}
-                            style={{ ...miniBtn, width: 'auto', padding: '0 8px' }}
-                          >Lower</button>
-                          <button
+                          >Lower</UIButton>
+                          <UIButton
+                            kind="secondary" size="small"
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.count + 1 })}
                             disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
-                            title="Move this count up"
                             aria-label={`One more: ${o.name}`}
-                            style={{ ...miniBtn, width: 'auto', padding: '0 8px' }}
-                          >Raise</button>
-                          <button
+                          >Raise</UIButton>
+                          <UIButton
+                            kind="danger" size="small"
                             onClick={() => sureAboutTarget.arm(o.id)}
                             disabled={removeObjective.isPending}
-                            title="Remove this target"
                             aria-label={`Remove target: ${o.name}`}
-                            style={{ ...miniBtn, width: 'auto', padding: '0 8px', color: 'var(--gw-clay)' }}
-                          >Remove</button>
+                          >Remove</UIButton>
                         </span>
                       )}
                       {sureAboutTarget.isArmed(o.id) && (
@@ -1073,12 +1075,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         })()}
                       </div>
                     )}
-                  </Row>
+                  </div>
                 )
               })}
               {/* The lead sets the frame. A target, never an assessment of a person. */}
               {b.canEditFrame && (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '11px 0', borderTop: '1px solid var(--gw-border)', flexWrap: 'wrap' }}>
+                <div className="gwui-panel-row" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input
                     value={newObjName}
                     onChange={(e) => setNewObjName(e.target.value)}
@@ -1091,17 +1093,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     placeholder="how many"
                     style={{ width: 96, padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none' }}
                   />
-                  <button
+                  <UIButton
+                    kind="primary" size="small"
                     onClick={() => addObjective.mutate()}
                     disabled={!newObjName.trim() || addObjective.isPending}
-                    style={{ ...btn, padding: '7px 14px', fontSize: 12.5, opacity: !newObjName.trim() || addObjective.isPending ? 0.5 : 1 }}
                   >
                     {addObjective.isPending ? 'Adding...' : 'Add target'}
-                  </button>
+                  </UIButton>
                 </div>
               )}
-            </Card>
-          </>
+            </Panel>
+          </Section>
         )}
 
         {/*
@@ -1128,14 +1130,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             where the work had got to and not what it was meant to be for. It is
             the only block here that no check-in can revise. */}
         {shown.startingState && b.startingState && (
-          <>
-            <Section heading="What was agreed at the start" note="Set when this was opened, before any check-in." />
-            <Card>
-              <Row first>
-                <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
-              </Row>
-            </Card>
-          </>
+          <Section heading="What was agreed at the start" note="Set when this was opened, before any check-in.">
+            <Panel>
+              <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
+            </Panel>
+          </Section>
         )}
 
         {/*
@@ -1151,18 +1150,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           lead "Against the plan" where the difference used to be.
         */}
         {shown.divergence && b.divergence && (
-          <>
-            <Section heading="Where people differ" note="Built from what each person said in their check-in." />
-            <Card>
+          <Section heading="Where people differ" note="Built from what each person said in their check-in.">
+            <Panel pad={false}>
               {b.divergence.items.length === 0 && b.divergence.agreements.length === 0 ? (
                 /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
                    more than one person has checked in" on a round where everybody had, three inches
                    under a tile that said so. The server computes it from the one counter. */
-                <Row first><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></Row>
+                <div className="gwui-panel-row"><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></div>
               ) : (
                 <>
                   {b.divergence.items.map((d: any, i: number) => (
-                    <Row key={i} first={i === 0}>
+                    <div key={i} className="gwui-panel-row">
                       {/*
                         A TAG GLUED TO THE SENTENCE BEFORE IT. "...12 shops.agreed" read on a live
                         board: the pill sat right after the topic with only a CSS margin between
@@ -1215,15 +1213,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           {d.atStake}
                         </div>
                       )}
-                    </Row>
+                    </div>
                   ))}
                   {b.divergence.agreements.map((a: any, i: number) => (
-                    <Row key={`a${i}`}>
+                    <div key={`a${i}`} className="gwui-panel-row">
                       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
                         {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
                       </div>
                       <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', marginTop: 2 }}>Everybody agrees on this.</div>
-                    </Row>
+                    </div>
                   ))}
                 </>
               )}
@@ -1236,8 +1234,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 was. Each account is now printed above, so the sentence would be sending people away
                 from the thing they are already looking at.
               */}
-            </Card>
-          </>
+            </Panel>
+          </Section>
         )}
 
         {/*
@@ -1252,21 +1250,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           report saw what looked like two different things.
         */}
         {b.divergence?.centralQuestion && (
-          <Card>
-            <Row first>
-              <WhatToSettleTogether question={b.divergence.centralQuestion} />
-            </Row>
-          </Card>
+          <Panel>
+            <WhatToSettleTogether question={b.divergence.centralQuestion} />
+          </Panel>
         )}
 
         {shown.whatTheRoomIsAbout && (
-          <>
-            <Section heading="What people are after, and where" note="Built from what everybody said." />
+          <Section heading="What people are after, and where" note="Built from what everybody said.">
             {b.whatTheRoomIsAboutNote && (
-              <Card><div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{b.whatTheRoomIsAboutNote}</div></Card>
+              <Panel><div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{b.whatTheRoomIsAboutNote}</div></Panel>
             )}
             {b.whatTheRoomIsAbout && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 14, marginTop: b.whatTheRoomIsAboutNote ? 14 : 0 }}>
                 {/*
                   THE AIMS COME FIRST AND TAKE THE WIDTH THEY NEED. On a board where nobody set a
                   target, what each person is trying to do is the only thing there is to align on,
@@ -1274,9 +1269,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   which is the whole point: an aim one person holds and an aim twenty hold are not
                   the same fact about a room.
                 */}
-                {/* The aims run the full width; Card takes no style, so the span lives on a wrapper. */}
+                {/* The aims run the full width; Panel takes no style, so the span lives on a wrapper. */}
                 <div style={{ gridColumn: '1 / -1' }}>
-                <Card pad={false}>
+                <Panel pad={false}>
                   <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)', fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>
                     What people are trying to do
                   </div>
@@ -1287,16 +1282,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       <div key={a.aim} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                         <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)', flex: 1 }}>{a.aim}</div>
-                          <Pill>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Pill>
+                          <Tag>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Tag>
                         </div>
                         <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{a.held.join(', ')}</div>
                       </div>
                     ))}
                   </div>
-                </Card>
+                </Panel>
                 </div>
                 {([['Places named', b.whatTheRoomIsAbout.places], ['What it is about', b.whatTheRoomIsAbout.things]] as const).map(([label, rows]) => (
-                  <Card key={label} pad={false}>
+                  <Panel key={label} pad={false}>
                     <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)', fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{label}</div>
                     <div style={{ padding: '2px 15px 12px' }}>
                       {rows.length === 0 ? (
@@ -1305,22 +1300,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <div key={r.name} style={{ padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
                           <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)', flex: 1 }}>{r.name}</div>
-                            <Pill>{r.named.length}</Pill>
+                            <Tag>{r.named.length}</Tag>
                           </div>
                           <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{r.named.join(', ')}</div>
                         </div>
                       ))}
                     </div>
-                  </Card>
+                  </Panel>
                 ))}
               </div>
             )}
-          </>
+          </Section>
         )}
 
         {shown.quickRead && b.quickRead && (
-          <>
-            <Section heading="The quick read" note="How much the team agrees, and how much the report can rely on." />
+          <Section heading="The quick read" note="How much the team agrees, and how much the report can rely on.">
             {/*
               FOUR TILES BECOME FOUR SCREENS-FULL WHEN THE GRID COLLAPSES TO ONE COLUMN.
 
@@ -1366,7 +1360,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 )
               })}
             </div>
-          </>
+          </Section>
         )}
 
 
@@ -1401,14 +1395,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           timescale.
         */}
         {(b as any).overTime && (
-          <>
-            <Section heading="What the record shows" note="Read across every session so far." />
+          <Section heading="What the record shows" note="Read across every session so far.">
             <WhatTheRecordShows it={(b as any).overTime} />
-          </>
+          </Section>
         )}
 
         {((b as any).whatTheAnswersSay || (b as any).theJudgement) && (
-          <>
+          <Section heading="What the answers say" note="Built from everybody who has answered so far.">
             {/*
               THE JUDGEMENT FIRST, THEN WHAT PEOPLE SAID.
 
@@ -1416,23 +1409,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               below this is what everybody said, grouped. This is what it means, what to do about it,
               and what it cannot tell you - which is the thing a reader opens a board for. A summary
               above the detail, the way every other read on this page is arranged.
+
+              U.10 (c1): the heading above is the shared Section's; TheJudgement and WhatTheNetworkSaid
+              are the engine's own synthesis components and are left exactly as they render today.
             */}
-            <Section heading="What the answers say" note="Built from everybody who has answered so far." />
             <TheJudgement it={(b as any).theJudgement} />
             {(b as any).whatTheAnswersSay && <WhatTheNetworkSaid picture={(b as any).whatTheAnswersSay} />}
-          </>
+          </Section>
         )}
 
         {shown.eachPerson && (
-          <>
+          <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up.">
             {/*
               U.10: "THE TEAM TODAY", THE PROTOTYPE'S WORDING (board-as-lead.txt).
               The rows are still ordered by what needs the lead first, not listed by name - that
               ordering is unchanged, only the heading now reads as the prototype's screen does.
             */}
-            <Section heading="The team today" note="Each person’s line, their last 10 check-ins, and what keeps coming up." />
             <WhereEachPersonIs rows={eachPersonRows} squaresFor={squaresFor} />
-          </>
+          </Section>
         )}
 
         {/*
@@ -1444,7 +1438,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           a target nobody set, a dependency nobody owns.
         */}
         {!!b.stillUnanswered?.length && (
-          <>
+          <div>
             <Section heading="Asked for, not answered" note="The check-in asked twice, then stopped." />
             <Card>
               {b.stillUnanswered.map((g, i) => (
@@ -1464,13 +1458,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </Row>
               ))}
             </Card>
-          </>
+          </div>
         )}
 
 
 
         {shown.decisions && b.decisions && (
-          <>
+          <div>
             <Section heading="Decisions needed" note="Raised by what people see differently, or what is stuck." />
             <Card>
               {b.decisions.map((d, i) => (
@@ -1487,7 +1481,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </Row>
               ))}
             </Card>
-          </>
+          </div>
         )}
 
         {/* ---------------------------------------------- against the plan */}
@@ -1500,7 +1494,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
 
 
         {shown.whoOwnsWhat && b.whoOwnsWhat && (
-          <>
+          <div>
             {/* AN UPDATE HAS NO OWNERSHIP TO READ. Its per-person cards are the answers to the lead's one line. */}
             {b.family === 'UPDATE'
               ? <Section heading="What each person said" note="Their own answers to the question, in their words." />
@@ -1541,11 +1535,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </Card>
               ))}
             </div>
-          </>
+          </div>
         )}
 
         {shown.dependencies && b.dependencies && (
-          <>
+          <div>
             <Section heading="Waiting on" note="Handoffs between people, read from their check-ins." />
             {/*
               U.10: ONE CARD PER BLOCKER, THE PROTOTYPE'S LAYOUT (board-as-lead.jpg, "Blockers").
@@ -1595,7 +1589,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 })}
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* Links between check-ins (D3, U.16): drawn only when the server serves this reader any. */}
@@ -1622,7 +1616,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
            * header.
            */
           return (
-          <>
+          <div>
             <Section heading="Who checked in" note="The last 10 sessions, one row each." />
             <Card>
               {/*
@@ -1677,7 +1671,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
               )}
             </Card>
-          </>
+          </div>
           )
         })()}
 
@@ -1702,7 +1696,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {shown.contribution && b.contribution && (
-          <>
+          <div>
             <Section heading="Contribution against role" note="Measured against each person’s own role." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
@@ -1777,11 +1771,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
               )}
             </Card>
-          </>
+          </div>
         )}
 
         {shown.coverage && b.coverage && (
-          <>
+          <div>
             <Section heading="Where work is landing" note="Whose work is landing where." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
@@ -1863,7 +1857,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 person. It is only shown where the role is defined, because an undefined boundary has no coverage to measure.
               </div>
             </Card>
-          </>
+          </div>
         )}
 
         {/*
@@ -1876,7 +1870,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
          * sessions have actually happened here.
          */}
         {viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
-          <>
+          <div>
             <Section heading="How the leading is landing" note="Two sides of the same leadership." />
             <Card>
               <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
@@ -1910,7 +1904,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 is a prompt for a conversation rather than a finding about anyone.
               </div>
             </Card>
-          </>
+          </div>
         )}
 
         {/* ---------------------------------------------- the record over time */}
@@ -1925,7 +1919,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           here and no branch for one.
         */}
         {shown.hiddenContributors && b.hiddenContributors && (
-          <>
+          <div>
             <Section heading="Named here, and not in this check-in" note="Built from what people said." />
             <Card>
               {b.hiddenContributors.rows.map((r, i) => (
@@ -1938,12 +1932,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{b.hiddenContributors.why}</div>
               </Row>
             </Card>
-          </>
+          </div>
         )}
 
 
         {shown.patterns && b.patterns && (
-          <>
+          <div>
             {/*
               WHAT KEEPS COMING UP (board-as-lead.txt). Named after three check-ins in a row, never
               after one, and each one describes the work - never a label joined to a name (see
@@ -1975,12 +1969,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 Patterns about the work only. Anything that would read as a judgement about a person stays in the lead's private report and never appears here.
               </div>
             </Card>
-          </>
+          </div>
         )}
 
         {/* ---------------------------------------------- logistics */}
         {has('poll') && (
-          <>
+          <div>
             <Section heading="Find a time" note={b.canEditFrame ? 'The only thing on this board you set up yourself.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`} />
             <Card>
               {b.canEditFrame && (
@@ -2062,7 +2056,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </>
               )}
             </Card>
-          </>
+          </div>
         )}
 
         {/*
@@ -2089,7 +2083,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           if (sigs.length === 0) return null
           if (shown.patterns) {
             return (
-              <>
+              <div>
                 <Section heading="Alignment feed" />
                 <Card>
                   <Row first>
@@ -2100,7 +2094,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     </div>
                   </Row>
                 </Card>
-              </>
+              </div>
             )
           }
           const good = sigs.filter((s) => s.kind === 'good').length
@@ -2112,7 +2106,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             ...(carrying ? [carrying === 1 ? '1 pattern of somebody carrying something' : `${carrying} patterns of somebody carrying something`] : []),
           ]
           return (
-            <>
+            <div>
               <Section heading="Alignment feed" note={`${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}.`} />
               <Card>
                 {sigs.map((sig, i) => (
@@ -2125,7 +2119,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </Row>
                 ))}
               </Card>
-            </>
+            </div>
           )
         })()}
 
@@ -2152,7 +2146,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           rule that could drift from the server's.
         */}
         {shown.checkInGrid && sessionRows.length > 0 && (
-          <>
+          <div>
             <Section heading="Reports" note="Every session has two: each person's own, and the team's once you share it." />
             <Card>
               {sessionRows.slice(0, 5).map((r, i) => (
@@ -2193,7 +2187,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             >
               {EVERY_SESSION.heading}
             </Link>
-          </>
+          </div>
         )}
 
         {/*
@@ -2327,7 +2321,6 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           example asked for.
         */}
         <AskTheBoard firstBlocker={b.dependencies?.[0] ?? null} />
-      </div>
     </Page>
   )
 }
