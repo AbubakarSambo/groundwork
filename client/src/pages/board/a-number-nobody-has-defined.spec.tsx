@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BoardPage } from './BoardPage'
@@ -83,6 +83,12 @@ describe('a number nobody has defined', () => {
  * prototype's four kinds (primary, secondary, quiet, danger - the last always solid red), so
  * Remove is plain `quiet` (navy) like every other quiet button, and relies on the confirmation
  * step, not a tinted trigger, to signal the action is destructive.
+ *
+ * UPDATED 30 SEPTEMBER (Hafsah, "at most one primary button per screen... no more buttons than
+ * the prototype"): Lower, Raise and Remove no longer sit open on every target row - each target
+ * gets one quiet "Change" instead, matching the prototype's own board (31 buttons, not 48), and
+ * Lower/Raise/Remove now only render once that row's "Change" is pressed. This test still checks
+ * their weight and size; it now opens each row first, since that is the only way to see them.
  */
 describe('a target row\'s own buttons, not three buttons', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -90,6 +96,10 @@ describe('a target row\'s own buttons, not three buttons', () => {
   it('Lower and Raise are the small secondary size, and Remove is small and quiet, not a boxed danger button', async () => {
     ;(boardApi.get as any).mockResolvedValue(board(null))
     renderBoard()
+    /* Fewer controls on the face (Hafsah, 30 September): each target's Lower/Raise/Remove are
+       folded behind its own quiet "Change", so every "Change" is opened first. */
+    const changeButtons = await screen.findAllByRole('button', { name: /^Change target:/ })
+    for (const c of changeButtons) fireEvent.click(c)
     const lower = await screen.findAllByRole('button', { name: /One fewer/ })
     const raise = screen.getAllByRole('button', { name: /One more/ })
     const remove = screen.getAllByRole('button', { name: /Remove target/ })
