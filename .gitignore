@@ -91,6 +91,8 @@ api/journey/*
 # THE LIVE PROOF THAT ASK GROUNDWORK SAVES THE SAME THING THE OLD CONTEXT CHAT DOES (decision 50,
 # piece 2, step (c)). Local-only and it refuses to run against anything else - see the file itself.
 !api/journey/context-chat-equivalence.ts
+# Reads a stored run's conversations twice through the pattern detector; writes nothing to the database.
+!api/journey/the-detector-read-twice.ts
 
 # AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
 # 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace

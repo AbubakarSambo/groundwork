@@ -16,6 +16,19 @@ What was proven through Ask Groundwork, and what was not:
 - **Not proven, and found missing:** numbers read out of a document added through Ask Groundwork are never said back, so they can never be saved. The old chat takes them when the lead answers "yes" to the sentence "Here is the context we have from ...", which only the Context page shows. This is being built next.
 - **Not tested through Ask Groundwork yet:** that a target lands on the right person (the live check matched the number but did not print whose it is); a change to a line already on the record (item 7); a lead saying someone is struggling (item 10); an expectation of a named person (item 11); a colleague's private document staying out (item 12); a colleague asking about someone else's number (item 13); opening on what is already there (item 15); success restated with a reason (item 16); bank details in a message (item 18, the message is cleaned at the door, not yet shown live); a paste sent twice, and two people with the same first name (item 21). These are the next helper's work, after requests 84, 83 and 81.
 
+**Step 2: why patterns repeat so little between runs. The detector itself is unsteady.**
+
+I gave the detector the same stored conversations from run-20 twice, with no new scenario run: 87 check-ins, each with exactly the same input both times, the same filters, and the same second call that confirms a pattern. Nothing was written.
+- The two reads named exactly the same patterns on only 31 of the 87 check-ins.
+- Across whole scenarios, only 58 of 150 person-and-pattern pairs were found by both reads. That is 39%.
+- Between run-19 and run-20 it was 15%.
+
+So the same words, read twice, give the same patterns only about 4 times in 10. That is most of the problem. The simulated people saying different things each run takes it from about 4 in 10 down to about 1.5 in 10: the detector explains roughly 60 of the 85 points lost, and what people say explains the other 25 or so.
+
+The patterns that flip most are the ones whose meanings sit close together: tasks described without what they are for (K5), the same problem raised and never fixed (K3), good ideas and not much built (F1), and problems put down to things outside the team (B11). The cause is that the detector call runs at the model's default randomness, so each read samples slightly differently among 49 overlapping descriptions.
+
+The fix is next, after the current builder: read the patterns at the model's steadiest setting with a fixed seed, and measure it on both counts. It has to be steadier, and it must still find what a consensus of five ordinary reads finds, because an earlier measurement showed that a steadier setting can make judgements consistently wrong. No pattern is removed or weakened. A test will check that the same input gives the same patterns. The script is `api/journey/the-detector-read-twice.ts`.
+
 **Step 4: the thresholds for week 10, explained. Nothing is set.**
 
 A suggestion about a person can only be reached when a threshold is set for it, and none is set. Each threshold has two numbers.
