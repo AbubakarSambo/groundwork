@@ -290,7 +290,12 @@ describe('Grace, an admin, connects WhatsApp step by step', () => {
     /* PLAIN WORDS, NOT "id" (group 1 review, CLAUDE.md's banned-jargon list). */
     expect(screen.getByText('Your WhatsApp Business account ID, if you have one')).toBeTruthy()
     expect(screen.queryByText('WhatsApp Business Account id (optional)')).toBeNull()
-    expect(screen.getByRole('link', { name: 'How to get these' })).toBeTruthy()
+    /* GROUP 1 RE-REVIEW, FAULT F: this read as plain grey text, not a link, with nothing to show
+       it was clickable. Underlined now, the same style "Read them" and other in-sentence links
+       already use. */
+    const howToGetThese = screen.getByRole('link', { name: 'How to get these' })
+    expect(howToGetThese).toBeTruthy()
+    expect(howToGetThese.className).toContain('gwui-plain-link')
     expect(screen.queryByText('Done')).toBeNull()
     /*
      * A STEP STILL TO COME IS PLAIN TEXT, NOT A BUTTON (Hafsah, 30 September, item 2: "no more

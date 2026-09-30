@@ -117,7 +117,7 @@ export function WhatsAppSetupPage() {
         return (
           <p className="gwui-panel-text-muted">
             A Meta Business account, a WhatsApp Business number on it, and a Meta app with WhatsApp added.{' '}
-            <a href={HOW_TO_GET_THESE} target="_blank" rel="noreferrer">How to get these</a>
+            <a className="gwui-plain-link" href={HOW_TO_GET_THESE} target="_blank" rel="noreferrer">How to get these</a>
           </p>
         )
       case 2:
