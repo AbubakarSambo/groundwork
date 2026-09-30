@@ -59,6 +59,7 @@ const patternCatalogue = () => (patternByCode ??= new Map(
   [...BAD_FAITH_CODES, ...POSITIVE_CODES, ...CARRYING_CODES].map((c) => [c.code, c]),
 ));
 import { cleanText } from './what-the-record-actually-holds';
+import { theMarksOfAReport, markTheRows, withTheMarksOnItsLines, WHAT_EACH_MARK_SAYS } from './the-mark-on-every-line';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS, type HowALineIsKnown } from './how-a-line-is-known';
 import { withoutAGuessedPronoun } from './nobody-is-he-or-she-here';
 import { whatDoesNotAddUpPerPerson, withoutUncountedAlls } from './the-picture-gets-what-the-conversation-gets';
@@ -631,7 +632,7 @@ export class ReportsService {
       const section = mayWeigh && whatALeaderCanWeigh({
         statedStandards: stated,
         standardsTouched,
-        entries: entries.map((r) => ({ kind: r.type as any, text: cleanText(r.text), session: r.sessionNumber, mark: r.mark })),
+        entries: entries.map((r) => ({ kind: r.type as any, text: cleanText(r.text), session: r.sessionNumber, mark: r.mark, markSays: WHAT_EACH_MARK_SAYS[r.mark] })),
         isClosing,
       });
       if (section) {
@@ -2475,6 +2476,30 @@ Close the report by framing - neutrally, without recommending one - the choice n
       this.logger.warn(`Report for ground ${groundId}: the check of every line as it will be read did not run (${err?.message}). The report is kept as written.`);
     }
 
+    /*
+     * THE FOUR MARKS ON EVERY LINE THE SYNTHESIS WROTE (week 6b, decision 43), worked out HERE, when the
+     * report is built from the record, and stored with it. Opening a report reads them and asks nothing.
+     * The product decides each mark from the record lines behind the line, never the model. Best effort:
+     * a report is never lost to its marks, and one stored without them reads as it always did.
+     */
+    try {
+      const rows = await this.prisma.recordEntry.findMany({
+        where: { disputedAt: null, participant: { groundId } } as any,
+        select: { participantId: true, type: true, text: true, ...WHAT_A_MARK_READS } as any,
+      }) as any[];
+      const whoAdded = await whoAddedEachBackingDocument(this.prisma, rows);
+      const marked = markTheRows(rows.map((r) => ({ ...r, text: cleanText(r.text) })), whoAdded);
+      (enrichedEngagement as any) = {
+        ...(enrichedEngagement as any),
+        marksOnItsLines: theMarksOfAReport(
+          { sharedPicture: (result as any).sharedPicture, agreements: (result as any).agreements, divergences: (result as any).divergences, findings },
+          marked,
+        ),
+      };
+    } catch (err: any) {
+      this.logger.warn(`Report for ground ${groundId}: the marks on its lines were not worked out (${err?.message}). The report is kept without them.`);
+    }
+
     const report = await this.prisma.report.upsert({
       where: { groundId },
       create: {
@@ -2842,7 +2867,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             user: { select: { firstName: true, lastName: true } },
           },
         },
-        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true, findings: true, direction: true } },
+        report: { select: { agreements: true, divergences: true, centralQuestion: true, releasedAt: true, findings: true, direction: true, engagement: true } },
         brief: true,
         /* A one-time listening session is drafted differently from a run of work. See PictureInput.oneTime. */
         cadence: true, scenario: true, id: true,
@@ -3062,6 +3087,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       })(),
       closed: !!snapshot,
       agreements: (snapshot?.agreements ?? ground.report?.agreements ?? []) as unknown[],
+      /* The marks the build stored, only for the live report: a closed round's lines were kept as they were. */
+      marksOnItsLines: snapshot ? null : ((ground.report as any)?.engagement?.marksOnItsLines ?? null),
       /*
        * EACH SIDE NAMED THE WAY EVERY OTHER LINE IS. The positions carried the raw label, and the page
        * printed "Expansion lead at MarketView, an agricultural market intelligence platform. I am
@@ -5152,7 +5179,15 @@ happened, and what is in the way.`;
     /* And a finding's positional label stays on the stored row: nothing renders it, and it was 113
        of the 114 labels anybody was handed. See a-finding-is-served-without-its-label. The same for
        the lead's own description of a person under a gap over time: see a-gap-is-served-as-its-sentence. */
-    const withNames = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(ground.report as any))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
+    /* The marks the build stored, beside each line they belong to (week 6b). Taken out of the engagement
+       block so they are served once, on the lines, and never as a second copy. */
+    const asStored = (ground.report ?? {}) as any;
+    const { marksOnItsLines, ...theRestOfEngagement } = (asStored.engagement && typeof asStored.engagement === 'object' ? asStored.engagement : {}) as Record<string, any>;
+    const withMarks = !ground.report ? (ground.report as any) : withTheMarksOnItsLines(
+      asStored.engagement && typeof asStored.engagement === 'object' ? { ...asStored, engagement: theRestOfEngagement } : asStored,
+      marksOnItsLines,
+    );
+    const withNames = this.applyNames(gapsAsTheirSentences(findingsWithoutTheirLabels(theTableStaysWithTheEngine(withMarks))), (ground.participants ?? []) as any, viewerParticipantId, viewerIsLead, named);
     if (viewerIsLead || sharedAs !== 'ANONYMOUS') return withNames;
     return nothingIdentifyingIn(withNames, (ground.participants ?? []).map((p: any) => ({
       name: [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || p.nameGiven || null,
@@ -5922,12 +5957,16 @@ happened, and what is in the way.`;
       .then(async (rows: any[]) => {
         /* How each of their own lines is known, by the one rule (week 6b). Read from stored columns. */
         const whoAdded = await whoAddedEachBackingDocument(this.prisma, rows);
-        return rows.map((r) => ({
+        return rows.map((r) => {
+          const mark = theMarkOf({ ...r, text: cleanText(r.text) }, whoAdded);
+          return {
           id: r.id, type: r.type, text: cleanText(r.text), disputedAt: r.disputedAt,
           documented: !r.recallBased, documentSays: r.documentSays ?? null,
-          mark: theMarkOf({ ...r, text: cleanText(r.text) }, whoAdded),
+          mark,
+          markSays: WHAT_EACH_MARK_SAYS[mark],
           checkInId: r.checkIn?.id ?? null, sessionNumber: r.checkIn?.sessionNumber ?? null,
-        }));
+          };
+        });
       })
       .catch(() => [] as any[]);
   }

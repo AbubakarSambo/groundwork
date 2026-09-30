@@ -100,6 +100,7 @@ import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/co
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
+import { WHAT_EACH_MARK_SAYS } from '../reports/the-mark-on-every-line';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -969,6 +970,7 @@ export class BoardService {
             })
           : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
+        ...(Array.isArray((reportSafe as any).agreementMarks) ? { agreementMarks: (reportSafe as any).agreementMarks } : {}),
         /* Why it is empty, where it is, rather than one sentence for every reason - see the module. */
         whyNothingYet: whyNothingIsCrossReferenced({
           stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
@@ -977,6 +979,8 @@ export class BoardService {
         centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],
         stillOpen: sessionShape?.whereThingsStand?.open ?? [],
+        ...(sessionShape?.whereThingsStand?.settledMarks ? { settledMarks: sessionShape.whereThingsStand.settledMarks } : {}),
+        ...(sessionShape?.whereThingsStand?.openMarks ? { stillOpenMarks: sessionShape.whereThingsStand.openMarks } : {}),
       };
     }
 
@@ -1178,7 +1182,7 @@ export class BoardService {
           const text = label
             ? String(f.text ?? '').replace(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), row.who ?? 'They')
             : String(f.text ?? '');
-          return { ...row, finding: text, hasGap: !!f.hasGap };
+          return { ...row, finding: text, hasGap: !!f.hasGap, ...(f.mark ? { findingMark: f.mark, findingMarkSays: f.markSays, ...(f.markNote ? { findingMarkNote: f.markNote } : {}) } : {}) };
         });
       }
     }
@@ -1243,6 +1247,7 @@ export class BoardService {
           items: entries.filter((e) => e.participantId === p.id).map((e) => ({
             id: e.id, type: e.type, text: cleanText(e.text),
             mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
+            markSays: WHAT_EACH_MARK_SAYS[theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded)],
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
           })),
         }));

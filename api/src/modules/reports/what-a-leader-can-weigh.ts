@@ -57,6 +57,8 @@ export interface WeighableEntry {
   session: number;
   /** How the line is known: proven, confirmed, said or memory (week 6b). See how-a-line-is-known. */
   mark?: 'proven' | 'confirmed' | 'said' | 'memory';
+  /** The mark in the prototype's own words, ready to print. */
+  markSays?: string;
 }
 
 /**

@@ -172,13 +172,13 @@ export function deeplyWithoutColleaguesQuotesForTheSubject<T>(value: T, subjectR
  *
  * The subject's own row, `lines` included, is returned exactly as given.
  */
-export function whatEachPersonSaidForTheSubject<T extends { isYou: boolean; lines?: unknown; lineMarks?: unknown; saying?: string }>(
+export function whatEachPersonSaidForTheSubject<T extends { isYou: boolean; lines?: unknown; lineMarks?: unknown; lineMarksSay?: unknown; saying?: string }>(
   rows: readonly T[] | null | undefined,
 ): T[] {
   if (!Array.isArray(rows)) return (rows ?? []) as T[];
   return rows.map((row) => {
     if (!row || row.isYou) return row;
-    const { lineMarks, ...rest } = row as any;
+    const { lineMarks, lineMarksSay, ...rest } = row as any;
     const saying = typeof rest.saying === 'string' ? rest.saying.trim() : '';
     return { ...rest, lines: [], saying: saying || THE_FACTS_ONLY };
   });

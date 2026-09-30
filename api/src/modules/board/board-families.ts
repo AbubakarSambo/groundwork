@@ -511,6 +511,8 @@ export function defaultModeFor(scenario: GroundScenario): GroundMode {
 export const BOARD_WHITELIST = [
   'sharedPicture',
   'agreements',
+  /* How each agreement is known (week 6b), beside the agreements themselves. A mark, never a rating. */
+  'agreementMarks',
   'divergences',
   'centralQuestion',
   'engagement',
