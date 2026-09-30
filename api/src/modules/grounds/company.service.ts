@@ -3,6 +3,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { companyPage, type CompanyPage, type OwnerDetail } from './the-company-page';
 import type { StoredPicture } from './the-company-picture';
+import { keptForTheOrganisation, mayReadWhatIsKept } from '../knowledge/organisation-memory';
+
+/** Said on the page, so the people who read it can see who does. */
+export const WHO_READS_WHAT_IS_KEPT = 'Admins, leads and anyone who runs a check-in can read this. Everyone else cannot.';
 
 /** Said to somebody from another company, added to one of this organisation's check-ins. */
 export const NOT_YOUR_COMPANY = 'Only people in this organisation can read its company page.';
@@ -86,7 +90,7 @@ export class CompanyService {
           c.status === 'COMPLETED' && !c.isSetup && c.completedAt && now.getTime() - new Date(c.completedAt).getTime() <= WEEK_MS).length, 0)
       : null;
 
-    return companyPage({
+    const page = companyPage({
       name: organisation?.name ?? '',
       readsEverything,
       subjects: subjects as any,
@@ -99,5 +103,19 @@ export class CompanyService {
       ownerDetails,
       readerUserId: reader.userId,
     });
+
+    /* What was kept for the organisation, for the readers who may read it. Read, never built, on opening. */
+    try {
+      if (await mayReadWhatIsKept(this.prisma, { userId: reader.userId, organizationId: org, role: reader.role })) {
+        const kept = await keptForTheOrganisation(this.prisma, org);
+        page.whatWeKeep = {
+          readBy: WHO_READS_WHAT_IS_KEPT,
+          items: kept.map((k) => ({ id: k.id, kind: k.kind, says: k.text, source: k.sourceLine })),
+        };
+      }
+    } catch {
+      /* The page is served without this part rather than not at all, and never with a part the reader may not read. */
+    }
+    return page;
   }
 }

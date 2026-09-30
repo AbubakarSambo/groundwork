@@ -62,6 +62,12 @@ export interface CompanyPage {
   namedByTeams: { id: string; title: string; touches: string; teams: { team: string; says: string }[] }[];
   /** What leadership says, next to what the check-ins show. For readers who may read every check-in. */
   saidAndShown: { id: string; area: string; youSaid: string; checkInsShow: string }[];
+  /**
+   * WHAT A LEAD CONFIRMED IS TRUE OF THE WHOLE COMPANY (week 20). Present only for an admin, a lead
+   * and anybody who runs a check-in; absent for everyone else, not empty. Each item is the lead's
+   * own sentence and where it came from, never a participant's words and never a private note.
+   */
+  whatWeKeep?: { readBy: string; items: { id: string; kind: string; says: string; source: string }[] };
 }
 
 export interface OwnerDetail { name: string; title: string | null; linkedUserId: string | null }
