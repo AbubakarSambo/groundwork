@@ -6882,4 +6882,15 @@ The whole screen suite passes (3,684 tests), and so do the button test (10 of 10
 - "Download it" doing two things at once;
 - an unmarked link on WhatsApp.
 
+Those are now fixed.
+- The WhatsApp example is drawn, word for word, from the prototype's conversation with Miriam.
+- None of the three screenshots of real-looking check-ins is used anywhere now. The files are kept.
+- The developer page's reference for your engineer is in plain sentences.
+- On a phone, the console's menu wraps onto a second line.
+- More has one way to join or create an organisation.
+- "Download it" is an outlined button that says "Saved." with your counts, and "Erase it" is always there.
+- The whole screen suite passes (3,688 tests), and so do the button test (10 of 10) and the page-colour test (3 of 3).
+
+A third review is reading every sentence on the six pages for jargon.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
