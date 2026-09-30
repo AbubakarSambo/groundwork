@@ -1419,8 +1419,11 @@ export class BoardService {
      * and then only to the lead, whose leading it is about, and only once it has been seen in three
      * periods (decision 8), the setup gap included. Nobody else reads it: it has no answer box and no
      * clock of its own, so decision 39 (the person answers first) cannot be kept for anyone else.
+     * Access follows decision 58's rule, the same as any other pattern (runsItForAPattern): the lead,
+     * or an admin who set the check-in up for them - never a participant, never an admin without that
+     * access, even one who can otherwise read the rest of this board (decision 64).
      */
-    if (has('contribution') && PATTERNS_ARE_SERVED && isInitiator) {
+    if (has('contribution') && PATTERNS_ARE_SERVED && runsItForAPattern(ground as any, requestingUserId)) {
       // Only meaningful where someone actually manages someone: needs a manager
       // and at least one report, both with accounts on record.
       // The forbidden-name list is built from THIS ground's participants. See
