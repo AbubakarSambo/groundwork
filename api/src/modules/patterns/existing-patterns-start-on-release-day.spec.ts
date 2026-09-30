@@ -22,7 +22,10 @@ import { thePersonHasHadTheirTurn, patternRowsThisReaderMayRead, type APatternRo
 const MIGRATION_SQL = readFileSync(
   join(__dirname, '..', '..', '..', 'prisma', 'migrations', '20260928090000_the_person_sees_their_pattern_first', 'migration.sql'),
   'utf8',
-).replace(/--.*$/gm, '');
+)
+  /* SQL carries both kinds of comment; a guard a comment satisfies is not a guard. */
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/--.*$/gm, '');
 
 describe('an existing pattern starts the person-first process on release day', () => {
   it('sets ready_at to the moment the migration runs, never to when the pattern was last seen', () => {
