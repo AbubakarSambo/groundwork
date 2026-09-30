@@ -6693,3 +6693,7 @@ The engine now serves each check-in's kind of work and each kind's records (requ
 **Found in the engine's text on the way (request 87):** "The time You gave for it" with a capital "You", and "over 1 sessions".
 
 **Next, the second step:** the rest of the board itself, still the old page drawn from old parts, rebuilt from the shared parts in pieces, each with its own picture check. The protected sections are rebuilt in place, never dropped.
+
+**The board itself, rebuilt from the shared parts: the frame and the headings are done (30 September).** The board now sits in the shared page frame with the shared check-in header, like the check-in page: breadcrumb, title, the cadence line, the five tabs (three for an admin who only reads, with no "Your check-in"), "Ask", and the check-in switcher on the right. Every section heading is the shared one. Pictured as Rukia, Amani and Juma. The whole screen suite passes (3,599 tests). Now with the builder: each section's contents, from the top down to "The team today", then the rest.
+
+**One refusal.** I piped the push's output through another command, which made it a chained command, and the safety check refused it. I then ran the push on its own, as its message says.
