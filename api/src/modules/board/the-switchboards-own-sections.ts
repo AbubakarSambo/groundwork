@@ -215,12 +215,12 @@ export function theRisks(
     const what = inASentence(d.what);
     const blocking = String(d.status).toUpperCase() === 'BLOCKING';
     const says = blocking
-      ? (on ? `${who} cannot move on ${what} until ${on} ${on === 'you' ? 'send' : 'sends'} it.` : `${who} cannot move on ${what}, and nobody has been named to provide it.`)
+      ? (on ? `${who} cannot move on ${what} until it comes from ${on}.` : `${who} cannot move on ${what}, and nobody has been named to provide it.`)
       : (on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}, and nobody has been named to provide it.`);
     const since = day(d.createdAt);
     const facts: string[] = [];
     if (since) facts.push(`It was first said on ${saidAsDate(since)}.`);
-    facts.push(d.triedSaid?.trim() || d.escalatedAt ? `${who} said ${who === 'You' ? 'you' : 'they'} went back about it.` : `Nobody has said they went back about it.`);
+    facts.push(d.triedSaid?.trim() ? `About what has been tried, ${midSentence(who)} said, "${d.triedSaid.trim()}"` : 'Nobody has said what has been tried.');
     facts.push(d.dueSaid?.trim() ? `The time given for it was "${d.dueSaid.trim()}".` : 'No time has been given for it.');
     out.push({ id: `handoff-${d.id}`, says, because: facts.join(' ') });
   }
@@ -238,7 +238,7 @@ export function theRisks(
       out.push({
         id: `again-${c.id}`,
         says: `${who} ${what}, and it has come up ${times} times now without anybody saying it happened.`,
-        because: `It was first said in session ${c.statedInSession ?? 'one'} and said again in ${listed((c.saidAgainIn ?? []).map(String))}.`,
+        because: `It was first said in session ${c.statedInSession ?? 'one'} and said again in ${(c.saidAgainIn ?? []).length === 1 ? 'session' : 'sessions'} ${listed((c.saidAgainIn ?? []).map(String))}.`,
       });
     } else if (!hasATime) {
       out.push({
@@ -281,7 +281,10 @@ export function theTimeline(
   let order = 0;
   const push = (when: Date | string | null | undefined, says: string) => {
     const on = day(when);
-    if (on) events.push({ on, says, order: order++ });
+    if (on) {
+      const start = /^(The|You|Your|A colleague|Another colleague|One colleague)\b/.test(says) ? says.charAt(0).toLowerCase() + says.slice(1) : says;
+      events.push({ on, says: `On ${saidAsDate(on)}, ${start}`, order: order++ });
+    }
   };
 
   const firstAnswer = new Map<number, Date | string>();
@@ -365,8 +368,10 @@ export function thePersonHistory(
     const doneCount = theirCommitments.filter((c) => stateOf(c.status) === 'done').length;
     const notDone = theirCommitments.filter((c) => stateOf(c.status) === 'not done' || stateOf(c.status) === 'dropped').length;
     const open = total - doneCount - notDone;
+    /* How many were kept is the person's own (decision 24): only they are told the tally, never whoever runs the check-in. */
+    const theirOwn = !!r.meId && p.id === r.meId;
     const summary = total
-      ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}. ${doneCount} ${doneCount === 1 ? 'is' : 'are'} done, ${notDone} ${notDone === 1 ? 'is' : 'are'} not done or dropped, and ${open} ${open === 1 ? 'is' : 'are'} still open.`
+      ? `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')} and made ${plural(total, 'commitment', 'commitments')}.${theirOwn ? ` ${doneCount} ${doneCount === 1 ? 'is' : 'are'} done, ${notDone} ${notDone === 1 ? 'is' : 'are'} not done or dropped, and ${open} ${open === 1 ? 'is' : 'are'} still open.` : ''}`
       : `${who} ${who === 'You' ? 'have' : 'has'} answered ${plural(done.length, 'session', 'sessions')}, and the record holds no commitment from ${midSentence(who)} yet.`;
     out.push({ participantId: p.id, who, says: summary, sessions: perSession });
   }
@@ -384,8 +389,8 @@ export interface ABlockerCheck {
   says: string;
   /** Whether somebody, not only something outside, is named as holding it. */
   namesWhoHoldsIt: boolean;
-  /** Whether the person said they went back about it. */
-  wentBackAbout: boolean;
+  /** Whether the person said what they had tried. */
+  saidWhatWasTried: boolean;
   /** Whether a time was given. */
   timeGiven: boolean;
   /** The three facts above, in full sentences, and what is missing from them. */
@@ -402,18 +407,18 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
     const on = onName ?? (d.onLabel?.trim() || null);
     const what = inASentence(d.what);
     const named = !!(d.onParticipantId || d.onLabel?.trim());
-    const wentBack = !!(d.triedSaid?.trim() || d.escalatedAt);
+    const wentBack = !!d.triedSaid?.trim();
     const timeGiven = !!d.dueSaid?.trim();
     out.push({
       id: d.id,
       who,
       says: on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}.`,
       namesWhoHoldsIt: named,
-      wentBackAbout: wentBack,
+      saidWhatWasTried: wentBack,
       timeGiven,
       checks: [
-        named ? `It names who holds it, which is ${on}.` : 'Nobody has been named as holding it.',
-        wentBack ? `${who} said ${who === 'You' ? 'you' : 'they'} went back about it.` : 'Nobody has said they went back about it.',
+        named ? (on === 'you' ? 'You hold it.' : `${on!.charAt(0).toUpperCase()}${on!.slice(1)} holds it.`) : 'Nobody has been named as holding it.',
+        wentBack ? `About what has been tried, ${midSentence(who)} said, "${d.triedSaid!.trim()}"` : 'Nobody has said what has been tried.',
         timeGiven ? `The time given for it was "${d.dueSaid!.trim()}".` : 'No time has been given for it.',
       ],
     });
@@ -487,11 +492,10 @@ export function theBusyOrMoving(
     const waits = handoffs.filter((d) => d.fromParticipantId === p.id);
     if (!mine.length && !waits.length) continue;
     const who = whoIs(r, p.id);
-    const done = mine.filter((c) => stateOf(c.status) === 'done').length;
-    const cleared = waits.filter((d) => String(d.status).toUpperCase() === 'CLEARED' || d.clearedAt).length;
+    /* Counts of what was said, never of how many were kept: that tally is the person's own (decision 24). */
     const parts: string[] = [];
-    if (mine.length) parts.push(`${who} has made ${plural(mine.length, 'commitment', 'commitments')} across ${plural(answered, 'answered session', 'answered sessions')}, and ${done} ${done === 1 ? 'is' : 'are'} done.`);
-    if (waits.length) parts.push(`${plural(waits.length, 'thing', 'things')} the work waited on ${waits.length === 1 ? 'was' : 'were'} named, and ${cleared} ${cleared === 1 ? 'has' : 'have'} cleared.`);
+    if (mine.length) parts.push(`${who} has made ${plural(mine.length, 'commitment', 'commitments')} across ${plural(answered, 'answered session', 'answered sessions')}.`);
+    if (waits.length) parts.push(`${who} also named ${plural(waits.length, 'thing', 'things')} the work was waiting on.`);
     eachPerson.push({ participantId: p.id, who, says: parts.join(' ') });
   }
   if (!eachPerson.length) return null;

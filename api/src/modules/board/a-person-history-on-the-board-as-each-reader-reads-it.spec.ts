@@ -26,13 +26,13 @@ describe('A person\'s history, as each person reads it', () => {
     expect(byName(b, 'p-rukia')).toEqual({
       participantId: 'p-rukia',
       who: 'Rukia Mwangi',
-      says: 'Rukia Mwangi has answered 2 sessions and made 3 commitments. 1 is done, 1 is not done or dropped, and 1 is still open.',
+      says: 'Rukia Mwangi has answered 2 sessions and made 3 commitments.',
       sessions: [
         { n: 1, on: '2026-09-02', says: 'In session 1, Rukia Mwangi made 1 commitment and named 1 thing the work was waiting on.' },
         { n: 2, on: '2026-09-16', says: 'In session 2, Rukia Mwangi made 2 commitments.' },
       ],
     });
-    expect(byName(b, 'p-baraka').says).toBe('Baraka Otieno has answered 1 session and made 1 commitment. 0 are done, 0 are not done or dropped, and 1 is still open.');
+    expect(byName(b, 'p-baraka').says).toBe('Baraka Otieno has answered 1 session and made 1 commitment.');
   });
 
   it('Rukia reads only her own, as "You"', async () => {
@@ -57,6 +57,20 @@ describe('A person\'s history, as each person reads it', () => {
     expect((await boardAs(evaluation, ...RUKIA)).personHistory.map((p: any) => p.participantId)).toEqual(['p-rukia']);
     expect((await boardAs(evaluation, ...SETUP_ADMIN)).personHistory).toHaveLength(2);
     expect((await boardAs(evaluation, ...JUMA).then((b) => b, (e) => e)).personHistory).toBeUndefined();
+  });
+
+  it('how many were kept is the person\'s own: the lead, the admin who set it up and an admin never read a kept count for another person, and the person reads their own', async () => {
+    const evaluation: Setup = { ...RECORD, scenario: GroundScenario.PIP, createdByUserId: 'u-setup' };
+    const readers = [await boardAs(RECORD, ...AMINA), await boardAs(RECORD, ...JUMA), await boardAs(evaluation, ...SETUP_ADMIN)];
+    for (const b of readers) {
+      const all = JSON.stringify(b.personHistory);
+      expect(all).not.toMatch(/ is done| are done|not done|dropped|still open/);
+      expect(byName(b, 'p-rukia').says).toBe('Rukia Mwangi has answered 2 sessions and made 3 commitments.');
+    }
+    /* A colleague reads only their own tally, and none of Rukia's. */
+    const asBaraka = (await boardAs(RECORD, ...BARAKA)).personHistory;
+    expect(asBaraka.map((p: any) => p.participantId)).toEqual(['p-baraka']);
+    expect((await boardAs(RECORD, ...RUKIA)).personHistory[0].says).toContain('1 is done');
   });
 
   it('is never a score, a label or a verdict', async () => {

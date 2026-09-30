@@ -25,20 +25,20 @@ describe('Risks, as each person reads them', () => {
   it('Amina, who runs it, reads all of them, in full sentences, each with the facts behind it', async () => {
     const b = await boardAs(RECORD, ...AMINA);
     expect(says(b)).toEqual([
-      'Rukia Mwangi cannot move on the credit terms until Finance sends it.',
+      'Rukia Mwangi cannot move on the credit terms until it comes from Finance.',
       'Baraka Otieno is waiting on Rukia Mwangi for the depot keys.',
       'Rukia Mwangi committed to send the Westgate quote, and no time was given for it, so nobody can tell when it would be late.',
       'Rukia Mwangi committed to finish the stock count, and it has come up 3 times now without anybody saying it happened.',
     ]);
-    expect(b.risks[0].because).toBe('It was first said on 3 September. Rukia Mwangi said they went back about it. The time given for it was "by Friday".');
-    expect(b.risks[1].because).toBe('It was first said on 3 September. Nobody has said they went back about it. No time has been given for it.');
-    expect(b.risks[3].because).toBe('It was first said in session 1 and said again in 2 and 3.');
+    expect(b.risks[0].because).toBe('It was first said on 3 September. About what has been tried, Rukia Mwangi said, "I emailed twice." The time given for it was "by Friday".');
+    expect(b.risks[1].because).toBe('It was first said on 3 September. Nobody has said what has been tried. No time has been given for it.');
+    expect(b.risks[3].because).toBe('It was first said in session 1 and said again in sessions 2 and 3.');
   });
 
   it('Rukia reads her own commitments and the waits she is in, with "You", and a colleague who may not be named to her is "a colleague"', async () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...RUKIA);
     expect(says(b)).toEqual([
-      'You cannot move on the credit terms until Finance sends it.',
+      'You cannot move on the credit terms until it comes from Finance.',
       'A colleague is waiting on you for the depot keys.',
       'You committed to send the Westgate quote, and no time was given for it, so nobody can tell when it would be late.',
       'You committed to finish the stock count, and it has come up 3 times now without anybody saying it happened.',

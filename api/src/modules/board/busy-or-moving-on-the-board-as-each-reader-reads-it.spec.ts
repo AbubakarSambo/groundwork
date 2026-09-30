@@ -26,8 +26,8 @@ describe('Busy or moving, as each person reads it', () => {
   it('Amina reads each person\'s counts, in plain sentences, and what the counts cannot tell her', async () => {
     const b = await boardAs(RECORD, ...AMINA);
     expect(b.busyOrMoving.eachPerson).toEqual([
-      { participantId: 'p-rukia', who: 'Rukia Mwangi', says: 'Rukia Mwangi has made 3 commitments across 2 answered sessions, and 1 is done. 2 things the work waited on were named, and 1 has cleared.' },
-      { participantId: 'p-baraka', who: 'Baraka Otieno', says: 'Baraka Otieno has made 1 commitment across 1 answered session, and 0 are done.' },
+      { participantId: 'p-rukia', who: 'Rukia Mwangi', says: 'Rukia Mwangi has made 3 commitments across 2 answered sessions. Rukia Mwangi also named 2 things the work was waiting on.' },
+      { participantId: 'p-baraka', who: 'Baraka Otieno', says: 'Baraka Otieno has made 1 commitment across 1 answered session.' },
     ]);
     expect(b.busyOrMoving.cannotTellYou).toBe('These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that.');
   });
@@ -47,6 +47,13 @@ describe('Busy or moving, as each person reads it', () => {
     const evaluation: Setup = { ...RECORD, scenario: GroundScenario.PIP, createdByUserId: 'u-setup' };
     expect((await boardAs(evaluation, ...SETUP_ADMIN)).busyOrMoving.eachPerson).toHaveLength(2);
     expect((await boardAs(evaluation, ...JUMA).then((b) => b, (e) => e)).busyOrMoving).toBeUndefined();
+  });
+
+  it('carries no count of how many were kept or cleared, for the lead or anybody else', async () => {
+    const evaluation: Setup = { ...RECORD, scenario: GroundScenario.PIP, createdByUserId: 'u-setup' };
+    for (const b of [await boardAs(RECORD, ...AMINA), await boardAs(RECORD, ...JUMA), await boardAs(evaluation, ...SETUP_ADMIN)]) {
+      expect(JSON.stringify(b.busyOrMoving)).not.toMatch(/\bdone\b|kept|cleared|dropped/);
+    }
   });
 
   it('says no label, and does not call anybody busy or slow', async () => {

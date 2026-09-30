@@ -24,17 +24,17 @@ describe('The blocker check, as each person reads it', () => {
     expect(b.blockerCheck.map((x: any) => x.id).sort()).toEqual(['d-1', 'd-2', 'd-3']);
     expect(check(b, 'd-1')).toEqual({
       id: 'd-1', who: 'Rukia Mwangi', says: 'Rukia Mwangi is waiting on Finance for the credit terms.',
-      namesWhoHoldsIt: true, wentBackAbout: true, timeGiven: true,
+      namesWhoHoldsIt: true, saidWhatWasTried: true, timeGiven: true,
       checks: [
-        'It names who holds it, which is Finance.',
-        'Rukia Mwangi said they went back about it.',
+        'Finance holds it.',
+        'About what has been tried, Rukia Mwangi said, "I emailed twice."',
         'The time given for it was "by Friday".',
       ],
     });
     expect(check(b, 'd-3')).toMatchObject({
       says: 'Baraka Otieno is waiting for the new price list.',
-      namesWhoHoldsIt: false, wentBackAbout: false, timeGiven: false,
-      checks: ['Nobody has been named as holding it.', 'Nobody has said they went back about it.', 'No time has been given for it.'],
+      namesWhoHoldsIt: false, saidWhatWasTried: false, timeGiven: false,
+      checks: ['Nobody has been named as holding it.', 'Nobody has said what has been tried.', 'No time has been given for it.'],
     });
   });
 
@@ -42,14 +42,14 @@ describe('The blocker check, as each person reads it', () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...BARAKA);
     expect(b.blockerCheck.map((x: any) => x.id).sort()).toEqual(['d-2', 'd-3']);
     expect(check(b, 'd-2').says).toBe('You are waiting on a colleague for the depot keys.');
-    expect(check(b, 'd-2').checks[0]).toBe('It names who holds it, which is a colleague.');
+    expect(check(b, 'd-2').checks[0]).toBe('A colleague holds it.');
     expect(JSON.stringify(b.blockerCheck)).not.toContain('Rukia');
   });
 
   it('Rukia reads the wait on her, as "you"', async () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...RUKIA);
     expect(check(b, 'd-2').says).toBe('A colleague is waiting on you for the depot keys.');
-    expect(check(b, 'd-1').checks[1]).toBe('You said you went back about it.');
+    expect(check(b, 'd-1').checks[1]).toBe('About what has been tried, you said, "I emailed twice."');
   });
 
   it('an admin who only reads an ordinary check-in reads all three', async () => {

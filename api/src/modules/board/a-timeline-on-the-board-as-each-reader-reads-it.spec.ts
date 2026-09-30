@@ -18,30 +18,30 @@ const RECORD: Setup = {
   ],
   closedAt: new Date('2026-09-20T12:00:00Z'),
 };
-const lines = (b: any) => (b.timeline ?? []).map((e: any) => `${e.on} ${e.says}`);
+const lines = (b: any) => (b.timeline ?? []).map((e: any) => e.says);
 
 describe('The timeline, as each person reads it', () => {
   it('Amina reads every event in order, each one full sentence', async () => {
     expect(lines(await boardAs(RECORD, ...AMINA))).toEqual([
-      '2026-09-02 The first answers for session 1 came in.',
-      '2026-09-02 Rukia Mwangi committed to send the Westgate quote.',
-      '2026-09-03 Baraka Otieno committed to call the Kisumu depot.',
-      '2026-09-04 Rukia Mwangi said the work was waiting on Finance for the credit terms.',
-      '2026-09-10 Baraka Otieno\'s commitment to call the Kisumu depot was marked done.',
-      '2026-09-12 The wait for the credit terms was cleared.',
-      '2026-09-16 The first answers for session 2 came in.',
-      '2026-09-20 The check-in was closed.',
+      'On 2 September, the first answers for session 1 came in.',
+      'On 2 September, Rukia Mwangi committed to send the Westgate quote.',
+      'On 3 September, Baraka Otieno committed to call the Kisumu depot.',
+      'On 4 September, Rukia Mwangi said the work was waiting on Finance for the credit terms.',
+      'On 10 September, Baraka Otieno\'s commitment to call the Kisumu depot was marked done.',
+      'On 12 September, the wait for the credit terms was cleared.',
+      'On 16 September, the first answers for session 2 came in.',
+      'On 20 September, the check-in was closed.',
     ]);
   });
 
   it('Baraka, where people do not see each other, reads the sessions and his own events, and nobody else\'s', async () => {
     const b = await boardAs({ ...RECORD, peersVisibleToEachOther: false }, ...BARAKA);
     expect(lines(b)).toEqual([
-      '2026-09-02 The first answers for session 1 came in.',
-      '2026-09-03 You committed to call the Kisumu depot.',
-      '2026-09-10 Your commitment to call the Kisumu depot was marked done.',
-      '2026-09-16 The first answers for session 2 came in.',
-      '2026-09-20 The check-in was closed.',
+      'On 2 September, the first answers for session 1 came in.',
+      'On 3 September, you committed to call the Kisumu depot.',
+      'On 10 September, your commitment to call the Kisumu depot was marked done.',
+      'On 16 September, the first answers for session 2 came in.',
+      'On 20 September, the check-in was closed.',
     ]);
     expect(JSON.stringify(b.timeline)).not.toMatch(/Rukia|Westgate|Finance/);
   });
