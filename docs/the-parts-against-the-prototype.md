@@ -119,6 +119,23 @@ page-level fault found was not in a shared part at all:
   one person, Connections, WhatsApp, More) already matched the prototype's own use of the shared
   parts closely enough that no further part or page change was made.
 
+## Group 2, piece 1 (Today and the check-ins list): the parts this piece added
+
+Rebuilding Today (`TodayPage.tsx`, `YouAreIn.tsx`) and the check-ins list (`GroundsListPage.tsx`,
+`an-admin-lands-on-a-check-in-list.tsx`) from the shared parts needed four small additions to
+`components/gw/ui`, each read from `docs/prototype/source/app.css`:
+
+| Part | Property | Prototype's value | Ours |
+| --- | --- | --- | --- |
+| **Greeting** (new; `.t-greet`, app.css line 12) | heading font/size | Literata, `clamp(30px,4vw,38px)`, weight 500, line-height 1.12, letter-spacing -.01em | same, plus a `17px`/1.5 muted subtitle line under it (the prototype's own `t-body`-sized line under the greeting, e.g. "Wednesday 23 September. …") |
+| **ComingUp** (new; Today's own sidebar list, app.css `.side`) | the two-column layout | `.side { grid-template-columns: minmax(0,1fr) 340px; gap: 44px }`, `@media (max-width:1100px)` collapses to one column | same, as `.gwui-side`, used by Today; each row a `120px` time column (bold) beside a plain link, a line above the first and under each |
+| **CheckInsTable** / **CheckInRow** (new; check-ins.txt's own table) | column widths, row height | no dedicated prototype CSS class for this exact table (the screen's own markup); built at the same sizes the page already used before the rebuild (`17px`/700 name, `14.5px` muted "about" line, `13px` "also" line) | unchanged - a straight rename into the shared kit (`gw-ci-table*` -> `gwui-ci-table*`), not a value change |
+| **Callout** `tone="success"` (extends the existing shared part) | colour | no dedicated prototype rule ("You are in." is this product's own line, not one of the prototype's screens); nearest is the prototype's own green, `--rec`/`--rec-soft` | `var(--gw-green-bg)`/`var(--gw-green-t)`, the same green `Tag tone="proven"` already uses |
+
+`Stack` also gained a `gap={30}` option, matching `Page`'s own flat 30px stacking rule
+(`.gwui-page-wrap > * + *`), for a two-column layout's own single column - not a new value, the
+existing one made available where a `Page` cannot be nested.
+
 ## What this pass found, in one line
 
 Out of every part checked, only **Button's `danger` kind** actually diverged from the prototype's own value (an outline instead of the prototype's one solid red, plus two extra variants). Everything else already matches, because this stylesheet was built by copying `app.css`'s numbers directly and has been checked against it, part by part, in `the-parts-match-the-prototypes-exact-values.spec.tsx`, through several earlier sessions. The parts with **no prototype rule at all** (Toggle, FieldRow, StageTrack, SubHeading, Steps, Stack's gaps, and the whole "group 1-2 rebuild" set) are named above so nobody mistakes "no exact source line" for "not checked" - each is built from the prototype's own type and colour scale, just without one specific CSS rule to point at.

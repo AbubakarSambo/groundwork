@@ -59,4 +59,15 @@ export const REBUILT_PAGES: string[] = [
   'pages/connections/ConnectionsPage.tsx',
   'pages/billing/BillingPage.tsx',
   'pages/org/IntegrationsPage.tsx',
+  /*
+   * GROUP 2's FIRST PIECE (C1-today-and-check-ins, docs/prototype/screens/C1-today-and-check-ins):
+   * Today, the check-ins list, and the two page-local pieces they both draw ("You are in." and the
+   * admin's welcome card/checklist). New shared parts this piece added: `Greeting`, `ComingUp`,
+   * `CheckInsTable`/`CheckInRow`, and `Callout`'s `tone="success"` - see
+   * docs/the-parts-against-the-prototype.md.
+   */
+  'pages/today/TodayPage.tsx',
+  'pages/today/YouAreIn.tsx',
+  'pages/grounds/GroundsListPage.tsx',
+  'pages/grounds/an-admin-lands-on-a-check-in-list.tsx',
 ]
