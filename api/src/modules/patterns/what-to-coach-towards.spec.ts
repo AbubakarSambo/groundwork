@@ -39,3 +39,12 @@ describe('the good version and one step, for every pattern that can be served', 
     expect(c.oneStep).toMatch(/^One step they could take this week is to /);
   });
 });
+
+describe('the step is the person\'s alone, and being listened to is the lead\'s part (A3)', () => {
+  it('reads as something only the person does, with the listening in the sentence for the lead', () => {
+    const c = coachingForAPattern('A3')!;
+    expect(c.oneStep).toBe('One step they could take this week is to say what has got in their way since the change.');
+    expect(c.oneStep).not.toMatch(/listened/);
+    expect(c.coachTowards).toBe('Coach them towards getting back to the level of work they did before the change, after listening first to what has got in their way.');
+  });
+});

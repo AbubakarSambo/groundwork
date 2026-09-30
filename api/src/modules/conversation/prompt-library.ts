@@ -1,3 +1,4 @@
+import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY } from './where-the-blocker-started';
 import { alreadyEstablished } from './setup-already-asked-this';
 import { whatThisCheckInIsFor, whichStage, THE_SCENARIO_TABLE, type Stage } from './the-scenario-table';
 import { NOTHING_HERE_IS_PLEASED_WITH_YOU } from './nothing-here-is-pleased-with-you';
@@ -1712,6 +1713,7 @@ For each handoff give:
 - status: BLOCKING if they said they genuinely cannot proceed without it. WAITING if it is slowing them but other work is moving. CLEARED if they said it has since arrived or been resolved.
 - then: what happens once it clears, if they said ("then I can close the three orgs"). Null if they did not say.
 - triedSaid: what they said they have already DONE about it, in their own words ("I emailed finance twice", "I called him on Tuesday", "I raised it with her manager"). This is what they DID, not what they intend to do. Null if they did not say.
+- dueSaid: when they said it is due, or was promised, in their OWN words, copied exactly as they said them ("by Friday", "next week", "30 September", "before the audit"). Never reword it, shorten it or turn it into a date. Null if they gave no time.
 
 A WISH IS NOT A HANDOFF. Something the person says would be useful, or wants to exist, is not something they are waiting on - nobody owes it to them and nobody can hand it over. "A shared, searchable layer like MarketView would help us" is a want, and extracting it produced a board that told a manager one of her people was waiting on a software product and advised her to go and speak to it. What they want built, what they wish existed, and what they would like to have access to one day are all left out. What somebody has promised them, or owes them, or is holding, is the whole of what belongs here.
 
@@ -1751,6 +1753,10 @@ export const DEPENDENCY_EXTRACTION_SCHEMA = {
               type: 'boolean',
               description:
                 'True when they named the thing they are waiting on. False when they said they were waiting or blocked but never said on what.',
+            },
+            dueSaid: {
+              type: ['string', 'null'],
+              description: 'When they said it is due, copied exactly as they said it, never reworded. Null if they gave no time.',
             },
             onName: { type: ['string', 'null'], description: 'Name of the person they are waiting on, or null.' },
             onLabel: { type: ['string', 'null'], description: 'What they are waiting on when it is not a person.' },
@@ -3843,6 +3849,8 @@ export interface PromptContext {
    * "reaching an end" and "at the start" read identically on a two-week ground.
    */
   timelineDays?: number | null;
+  /** Runs until the lead ends it (request 37): there is no total, so nothing says "of N". */
+  runsUntilEnded?: boolean;
   /**
    * THIS PERSON'S OWN OBJECTIVE, WHO WROTE IT, AND WHETHER THEY HAVE SEEN IT.
    *
@@ -4370,6 +4378,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
   const relHistory = resolveRelationshipHistory(ctx.scenario, ctx.relationshipHistory);
   const relType = relationshipTypeFromScenario(ctx.scenario);
   const openerRole = ctx.openerRole ?? (ctx.partyType === PartyType.INITIATOR ? 'founder' : 'peer');
+  const ongoing = ctx.runsUntilEnded === true;
   const total = ctx.totalSessions ?? 4;
   const sessionMode = ctx.sessionMode ?? 'checkin';
   const activePathway = buildActivePathway(ctx);
@@ -4415,7 +4424,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     `RELATIONSHIP_HISTORY: ${relHistory}`,
     `RELATIONSHIP_TYPE: ${relType}`,
     `OPENER_ROLE: ${openerRole}`,
-    `SESSION: ${ctx.sessionNumber} of ${total}`,
+    ongoing ? `SESSION: ${ctx.sessionNumber}. It runs until the lead ends it.` : `SESSION: ${ctx.sessionNumber} of ${total}`,
     /**
      * THE NUMBERS WERE ALREADY HERE. WHAT THEY MEAN WAS NOT.
      *
@@ -4426,6 +4435,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
      */
     ...whereInTheRun({
       sessionNumber: ctx.sessionNumber,
+      runsUntilEnded: ongoing,
       totalSessions: total,
       moment: ctx.moment ?? null,
       timelineDays: ctx.timelineDays ?? null,
@@ -5054,6 +5064,8 @@ Never treat a confident recall as stronger than a less confident one. Memory wor
 export const SEED_PROMPTS: { key: string; content: string }[] = [
   { key: 'system', content: ENGINE_RULES },
   { key: 'report_synthesis', content: REPORT_SYNTHESIS },
+  /* Where a blocker started (request 18): the version stored here is the one that runs. */
+  { key: BLOCKER_TRACE_PROMPT_KEY, content: BLOCKER_TRACE_PROMPT },
   ...buildPartySeeds(),
 ];
 

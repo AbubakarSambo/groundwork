@@ -26,6 +26,8 @@
  */
 
 
+import { THE_LEADS_LABEL } from './party-labels';
+
 export interface ACommitmentOverTime {
   participantId: string | null;
   who: string;
@@ -40,6 +42,11 @@ export interface ACommitmentOverTime {
   /** How it was settled: SAID, PROVEN or CONFIRMED (week 9). Null while open or not known. */
   settledBy?: string | null;
   fromAPaste?: boolean;
+  /**
+   * The lead's label as the report is written (the party label, so the wrapper swaps in the lead's
+   * name, or "you" for the lead themselves). The sentence names the lead with it, never "the lead".
+   */
+  leadLabel?: string;
   /**
    * Whether `what` (and, separately, `when`) is a passage of what the person actually typed, stamped
    * once when the commitment is written (conversation.service.ts, `saidWordForWord`/
@@ -147,6 +154,7 @@ export function commitmentsOverTime(
   rows: ACommitmentRow[],
   labelOf: (participantId: string | null) => string,
   sessionsSoFar: number,
+  leadLabel: string = THE_LEADS_LABEL,
 ): ACommitmentOverTime[] {
   return (rows ?? []).map((c) => {
     const restatedIn = [...(c.saidAgainIn ?? [])].sort((a, b) => a - b);
@@ -163,6 +171,7 @@ export function commitmentsOverTime(
       theySaidIt: !!c.explicit,
       settledBy: c.settledBy ?? null,
       fromAPaste: c.source === 'PASTE',
+      leadLabel,
       saidWordForWord: c.saidWordForWord === true,
       whenSaidWordForWord: c.whenSaidWordForWord === true,
     };
@@ -239,7 +248,7 @@ export function inOurVoice(what: string | null | undefined): string | null {
 export function aCommitmentSaid(
   c: {
     who: string; what: string; when: string | null; statedInSession: number | null; restatedIn: number[];
-    status: string; theySaidIt: boolean; settledBy?: string | null; fromAPaste?: boolean;
+    status: string; theySaidIt: boolean; settledBy?: string | null; fromAPaste?: boolean; leadLabel?: string;
     saidWordForWord?: boolean; whenSaidWordForWord?: boolean;
   },
   sessionsSoFar: number,
@@ -254,6 +263,10 @@ export function aCommitmentSaid(
   const who = c.who;
   const mid = who === 'You' ? 'you' : who;
   const isWord = who === 'You' ? 'are' : 'is';
+  /* The lead is named with their label (their name, or "you" for the lead), never "the lead". */
+  const leadStart = c.leadLabel ?? 'the lead'; // only a row kept before the label was stored
+  const leadMid = leadStart === 'You' ? 'you' : leadStart;
+  const leadFirst = leadStart.charAt(0).toUpperCase() + leadStart.slice(1);
   const stated = c.statedInSession ?? null;
   const status = String(c.status).toUpperCase();
   const open = status === 'UNKNOWN';
@@ -267,30 +280,30 @@ export function aCommitmentSaid(
   if (!c.theySaidIt) {
     if (quoteWhat) {
       out.push(stated !== null
-        ? `In session ${stated}, the lead said that ${mid} would do this, "${c.what}"`
-        : `The lead said that ${mid} would do this, "${c.what}"`);
+        ? `In session ${stated}, ${leadMid} said that ${mid} would do this, "${c.what}"`
+        : `${leadFirst} said that ${mid} would do this, "${c.what}"`);
     } else if (clause) {
       out.push(stated !== null
-        ? `In session ${stated}, the lead committed ${mid} to ${clause}.`
-        : `The lead committed ${mid} to ${clause}.`);
+        ? `In session ${stated}, ${leadMid} committed ${mid} to ${clause}.`
+        : `${leadFirst} committed ${mid} to ${clause}.`);
     } else {
       out.push(stated !== null
-        ? `In session ${stated}, the lead committed ${mid} to something, which is in the record.`
-        : `The lead committed ${mid} to something, which is in the record.`);
+        ? `In session ${stated}, ${leadMid} committed ${mid} to something, which is in the record.`
+        : `${leadFirst} committed ${mid} to something, which is in the record.`);
     }
     out.push(`${who} did not say it.`);
   } else if (quoteWhat) {
     if (stated !== null) out.push(`In session ${stated}, ${mid} said, "${c.what}"`);
-    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${mid} ${isWord} down to do this, "${c.what}"`);
+    else if (c.fromAPaste) out.push(`In what ${leadMid} pasted in, ${mid} ${isWord} down to do this, "${c.what}"`);
     else out.push(`${who} said, "${c.what}"`);
   } else if (clause) {
     if (stated !== null) out.push(`In session ${stated}, ${mid} committed to ${clause}.`);
-    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${mid} committed to ${clause}.`);
+    else if (c.fromAPaste) out.push(`In what ${leadMid} pasted in, ${mid} committed to ${clause}.`);
     else out.push(`${who} committed to ${clause}.`);
   } else if (stated !== null) out.push(`In session ${stated}, ${mid} made a commitment, which is in the record.`);
   else out.push(`${who} made a commitment, which is in the record.`);
-  if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : 'the lead'} gave for it was "${c.when}".`);
-  else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : 'the lead'} gave for it was ${c.when}.`);
+  if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was "${c.when}".`);
+  else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? mid : leadMid} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
     out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
   }

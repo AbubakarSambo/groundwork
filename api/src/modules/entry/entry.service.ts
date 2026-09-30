@@ -1167,6 +1167,7 @@ Fields:
 - goals: array of what they need from this
 - brief: anything specific to focus on or probe
 - cadence: how often they check in, IF they said. One of "DAILY", "WEEKLY", "FORTNIGHTLY", "MONTHLY", "ONE_TIME". Map their own words: "weekly" or "every week" -> WEEKLY; "every two weeks", "fortnightly", "every other week" -> FORTNIGHTLY; "monthly" or "once a month" -> MONTHLY; "just once", "a single check-in" -> ONE_TIME. Omit it entirely if they did not say.
+- runsUntilEnded: true ONLY if they said it runs until they end it themselves ("when I end it", "until I stop it", "no end date"). Then leave timelineDays out.
 - timelineDays: how long the whole period runs, in days, IF they said. "90 days" or "three months" -> 90; "60 days" -> 60; "a quarter" -> 90; "two weeks" -> 14; "three weeks" -> 21; "a month" -> 30. Omit if they did not say.
 
 Only include a field if it has been clearly communicated. Omit fields that are still unknown.
@@ -1218,6 +1219,7 @@ from finishing at all.`;
           // brief and then dropped on the way to the enum.
           cadence: { type: 'string', enum: ['DAILY', 'WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'ONE_TIME'] },
           timelineDays: { type: 'number' },
+          runsUntilEnded: { type: 'boolean' },
         },
         /**
          * MODE REQUIRED, AND THIS IS WHY THE SETUP USED TO DEAD-END.
@@ -1237,7 +1239,7 @@ from finishing at all.`;
       },
     };
 
-    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number; yourRole?: string } = {};
+    let extracted: { mode?: string; initial?: string; whoInvolved?: string; peopleNamed?: string[]; decision?: string; goals?: string[]; brief?: string; cadence?: string; timelineDays?: number; runsUntilEnded?: boolean; yourRole?: string } = {};
     /* Kept out of the try so a failed reply still fails the turn; a failed extraction is logged below. */
     const extractionInFlight: Promise<typeof extracted | null | Error> = (async () =>
       this.anthropic.extract<typeof extracted>(EXTRACT_SYSTEM, messages, EXTRACT_TOOL, { thinkingBudget: CONVERSATION_THINKING_BUDGET_FOR_EXTRACT, fast: true }))()
@@ -1770,6 +1772,8 @@ from finishing at all.`;
       scenario?: string;
       cadence?: string;
       cadenceChosen?: boolean;
+      /** Runs until the lead ends it (request 37). */
+      runsUntilEnded?: boolean;
       cadenceAnchorDay?: number;
       workingDays?: number[];
       checkInBy?: string;
@@ -2108,6 +2112,7 @@ from finishing at all.`;
         /* A default the page sent is not a choice. Only a confirmed pick is handed on; the ground
            service records an absent cadence as unstated and takes the scenario's recommendation. */
         cadence: chosenCadence,
+        runsUntilEnded: dto.runsUntilEnded === true ? true : undefined,
         cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
         workingDays: dto.workingDays ?? undefined,
         // Mirrors the self path a few lines below (dto.checkInBy/lastCheckInBy
@@ -2189,6 +2194,7 @@ from finishing at all.`;
          */
         moment: RECOMMENDED_MOMENT[scenario],
       cadence: chosenCadence,
+      runsUntilEnded: dto.runsUntilEnded === true ? true : undefined,
       cadenceAnchorDay: dto.cadenceAnchorDay ?? undefined,
       workingDays: dto.workingDays ?? undefined,
       startsAt: dto.checkInBy || undefined,

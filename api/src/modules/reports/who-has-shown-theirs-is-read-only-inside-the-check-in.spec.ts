@@ -24,6 +24,7 @@ const USERS: Record<string, { role: string; organizationId: string }> = {
 function serviceFor(peersVisibleToEachOther: boolean) {
   const ground = {
     id: 'g1',
+    scenario: 'NEW_PROJECT',
     initiatorId: 'lead-user',
     organizationId: 'org1',
     peersVisibleToEachOther,

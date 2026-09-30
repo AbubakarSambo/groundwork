@@ -188,10 +188,27 @@ export interface WhereAgainstSuccessInputs {
    * was true about the field and false about the man, and the list underneath it proved so.
    */
   leadHasSaidIt?: boolean;
+  /** True when the reader is the person who runs this check-in, who is spoken to as "you". */
+  readerIsTheLead?: boolean;
+  /** The name the reader may read for the person who runs it, for the sentence that speaks about them. */
+  leadName?: string | null;
   version: number | null;
   conditions: string[];
   /** Every entry that could speak to a condition, across every session so far. */
   entries: { type: RecordEntryType; text: string; who: string | null }[];
+}
+
+/**
+ * THE ONE SENTENCE ABOUT SUCCESS BEING SAID BUT NEVER SET, told to whoever reads it. The tab is "People and
+ * setup" (request 75). The person who runs the check-in is spoken to; anybody else reads the same in the
+ * third person, with the lead's name where they may read one.
+ */
+function theLeadSaidItButNeverSetIt(input: { readerIsTheLead?: boolean; leadName?: string | null }): string {
+  if (input.readerIsTheLead) {
+    return 'You said what success looks like in your own check-in, and it is in the list below. You have not set it as the standard yet, so nothing is measured against it. You can set it on People and setup.';
+  }
+  const name = input.leadName?.trim() || 'The person running this';
+  return `${name} said what success looks like in their own check-in, and it is in the list below. ${name} has not set it as the standard yet, so nothing is measured against it. They can set it on People and setup.`;
 }
 
 export function whereYouAreAgainstWhatYouNamed(
@@ -294,7 +311,7 @@ export function whereYouAreAgainstWhatYouNamed(
               /* Said in a check-in but never set as the yardstick. Naming that difference is the
                  useful thing: the words are right there, they are simply not what anybody is being
                  read against, and one person can change it in a minute. */
-              ? 'The person running this said what success looks like in their own check-in, and it is in the list below. They have not set it as the standard, so nothing is being measured against it yet. They can set it on the Setup tab.'
+              ? theLeadSaidItButNeverSetIt(input)
               : 'No standard is set. The person running this has not said what success looks like, so nobody is being measured against anything yet.'
             : null,
   };

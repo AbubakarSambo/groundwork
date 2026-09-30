@@ -53,7 +53,7 @@ describe('the read behind Today', () => {
   it('an admin is asked to approve what is waiting in their organisation', async () => {
     const { svc, grounds } = setup();
     const r = await svc.forReader('me', 'me@x.test', 'org-a', 'ADMIN');
-    expect(grounds.listAwaitingApproval).toHaveBeenCalledWith('org-a');
+    expect(grounds.listAwaitingApproval).toHaveBeenCalledWith('org-a', 'me');
     expect(r.needs.map((n) => n.title)).toContain('Supplier review is waiting for you to approve it');
   });
 });

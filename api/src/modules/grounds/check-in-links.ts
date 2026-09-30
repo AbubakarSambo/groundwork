@@ -1,5 +1,6 @@
 import { blockerHasSubstance, dedupeDependencies, type ReadDependency } from '../board/reads';
 import { peersAreNamedOn } from '../reports/peers-are-named';
+import { theDueFields } from './when-a-handoff-is-due';
 
 /**
  * LINKS BETWEEN CHECK-INS (D3, U.16), AS ONE READER MAY SEE THEM.
@@ -19,7 +20,7 @@ import { peersAreNamedOn } from '../reports/peers-are-named';
  *     only where that check-in lets its people see each other or the reader runs it.
  *
  * WHAT IT NEVER HOLDS. How anybody's answers were rated, a label on anybody, or where a blocker
- * started (the engine's to write, request 18).
+ * started (that is `GET /grounds/:id/blocker-trace`, in the reports folder).
  */
 
 export interface LinkRow extends ReadDependency {
@@ -27,6 +28,9 @@ export interface LinkRow extends ReadDependency {
   groundId: string;
   waitingOnGroundId: string | null;
   createdAt: Date;
+  dueSaid?: string | null;
+  dueOn?: Date | string | null;
+  blockerKind?: string | null;
   fromParticipant?: { userId: string | null; nameGiven?: string | null; user?: { firstName: string | null; lastName: string | null } | null } | null;
   onParticipant?: { userId: string | null } | null;
 }
@@ -48,6 +52,14 @@ export interface WaitingOnAnotherTeam {
   asked: string;
   /** Only when you may open the other check-in. */
   open: { label: string; to: string } | null;
+  /** The person's own words for when, word for word; null where they gave none. */
+  dueSaid: string | null;
+  /** The day those words meant, as YYYY-MM-DD; null where the words name no day. */
+  dueOn: string | null;
+  /** "Overdue", "Today", a short weekday ("Fri") or a short date; null where no day is known. */
+  dueWord: string | null;
+  /** One plain sentence of where it stands, written from the record. */
+  standing: string;
 }
 
 export interface AskedOfThisCheckIn {
@@ -59,6 +71,14 @@ export interface AskedOfThisCheckIn {
   askedBy: string | null;
   asked: string;
   open: { label: string; to: string };
+  /** The person's own words for when, word for word; null where they gave none. */
+  dueSaid: string | null;
+  /** The day those words meant, as YYYY-MM-DD; null where the words name no day. */
+  dueOn: string | null;
+  /** "Overdue", "Today", a short weekday ("Fri") or a short date; null where no day is known. */
+  dueWord: string | null;
+  /** One plain sentence of where it stands, written from the record. */
+  standing: string;
 }
 
 export interface CheckInLinks {
@@ -92,6 +112,7 @@ export function checkInLinks(
   rows: LinkRow[],
   mayOpen: Map<string, OpenableCheckIn>,
   reader: LinkReader,
+  today: Date = new Date(),
 ): CheckInLinks {
   const hereWalled = wallFor(here, reader);
 
@@ -107,6 +128,7 @@ export function checkInLinks(
         what: r.what.trim(),
         asked: new Date(r.createdAt).toISOString(),
         open: other && labelOf(other) ? { label: labelOf(other), to: `/grounds/${other.id}/board` } : null,
+        ...theDueFields(r, today),
       };
     });
 
@@ -125,6 +147,7 @@ export function checkInLinks(
       askedBy: walled ? null : first,
       asked: new Date(r.createdAt).toISOString(),
       open: { label: labelOf(from), to: `/grounds/${from.id}/board` },
+      ...theDueFields(r, today),
     });
   }
 

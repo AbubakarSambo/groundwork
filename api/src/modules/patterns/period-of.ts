@@ -63,3 +63,26 @@ export function periodOf(session: SessionForPeriod, ground: GroundForPeriod | nu
   if (Number.isNaN(d.getTime())) return session.sessionNumber;
   return calendarWeekNumber(d);
 }
+
+/**
+ * HOW MANY PERIODS THE RECORD REALLY HOLDS, as decision 57 counts them: the distinct periods among the
+ * sessions that were answered (a setup conversation is not one). One session is one period, whatever
+ * anybody claimed, and several sessions in one week of a daily check-in are the one period.
+ */
+export function periodsTheRecordHolds(
+  answeredSessions: { sessionNumber: number; when?: Date | string | null }[],
+  ground: GroundForPeriod | null | undefined,
+): number {
+  return new Set(answeredSessions.map((s) => periodOf(s, ground))).size;
+}
+
+/**
+ * A COUNT OF PERIODS THAT CAN ONLY BE TRUE. The synthesis model reports how many periods a pattern was
+ * "visible across", and that is a claim: it read 2 after a single session (request 79). The count is never
+ * more than the periods the record holds, and never below one for something that was seen at all.
+ */
+export function aTruePeriodCount(claimed: unknown, periodsHeld: number): number {
+  const said = Math.floor(Number(claimed));
+  if (!Number.isFinite(said) || said < 1) return Math.min(1, Math.max(0, periodsHeld));
+  return Math.min(said, Math.max(0, periodsHeld));
+}

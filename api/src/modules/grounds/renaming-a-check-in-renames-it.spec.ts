@@ -15,7 +15,7 @@ import { GroundsService } from './grounds.service';
 describe('GW-RENAME: renaming a check-in', () => {
   function makeService(ground: any = {}, viewer: any = { role: 'MEMBER', organizationId: 'org1' }) {
     const g = {
-      id: 'g1', organizationId: 'org1', initiatorId: 'u-lead', label: 'The old name',
+      id: 'g1', organizationId: 'org1', scenario: 'NEW_PROJECT', initiatorId: 'u-lead', label: 'The old name',
       timelineDays: 90, timelineWeeks: 13, cadence: 'FORTNIGHTLY', mode: 'SHARED',
       groundAuditLog: null, ...ground,
     };

@@ -32,11 +32,11 @@ describe('what the record shows over time', () => {
       const row = (over: Record<string, any> = {}) => commitmentsOverTime([{
         participantId: 'you', text: 'call the client', whenSaid: 'on Wednesday 30 September', explicit: true,
         status: 'UNKNOWN', source: 'CHECK_IN', statedInSession: 1, saidAgainIn: [], ...over,
-      }], () => 'You', 1)[0].say;
+      }], () => 'You', 1, 'Hafsah')[0].say;
       expect(row()).toBe('In session 1, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
-      expect(row({ source: 'PASTE', statedInSession: null })).toBe('In what the lead pasted in, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
+      expect(row({ source: 'PASTE', statedInSession: null })).toBe('In what Hafsah pasted in, you committed to call the client. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
       expect(row({ status: 'DONE', settledBy: 'PROVEN' })).toContain('A document you added shows it was done.');
-      expect(row({ explicit: false, saidWordForWord: false })).toContain('the lead committed you to call the client');
+      expect(row({ explicit: false, saidWordForWord: false })).toContain('Hafsah committed you to call the client');
     });
 
     it('never says anything happened, because only a person says that', () => {
@@ -52,16 +52,16 @@ describe('what the record shows over time', () => {
       const [c] = commitmentsOverTime([{
         participantId: 'marcus', text: 'get the MOU signed', whenSaid: null, explicit: false,
         status: 'UNKNOWN', source: 'PASTE', statedInSession: null, saidAgainIn: [], saidWordForWord: true,
-      }], labelOf, 3);
-      expect(c.say).toBe('The lead said that Marcus Oyelaran would do this, "get the MOU signed". Marcus Oyelaran did not say it. Nobody has said yet whether it happened.');
+      }], labelOf, 3, 'Wairimu');
+      expect(c.say).toBe('Wairimu said that Marcus Oyelaran would do this, "get the MOU signed". Marcus Oyelaran did not say it. Nobody has said yet whether it happened.');
     });
 
     it('says so plainly, without quote marks, when the lead\'s words for it are not word for word', () => {
       const [c] = commitmentsOverTime([{
         participantId: 'marcus', text: 'get the MOU signed', whenSaid: null, explicit: false,
         status: 'UNKNOWN', source: 'PASTE', statedInSession: null, saidAgainIn: [], saidWordForWord: false,
-      }], labelOf, 3);
-      expect(c.say).toBe('The lead committed Marcus Oyelaran to get the MOU signed. Marcus Oyelaran did not say it. Nobody has said yet whether it happened.');
+      }], labelOf, 3, 'Wairimu');
+      expect(c.say).toBe('Wairimu committed Marcus Oyelaran to get the MOU signed. Marcus Oyelaran did not say it. Nobody has said yet whether it happened.');
       expect(c.say).not.toContain('"');
     });
 

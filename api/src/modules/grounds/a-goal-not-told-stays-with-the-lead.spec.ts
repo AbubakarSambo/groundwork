@@ -43,7 +43,7 @@ const PICTURE = `Tobi Adewale has started well. Wanjiru Mwangi expects Tobi Adew
 
 function contextFor(userId: string) {
   const ground: any = {
-    id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, createdAt: new Date('2026-09-20T09:00:00Z'), timelineDays: null,
+    id: 'g1', organizationId: 'org1', scenario: 'OKR_ALIGNMENT', initiatorId: WANJIRU, createdAt: new Date('2026-09-20T09:00:00Z'), timelineDays: null,
     restrictExternalVisibility: true, peersVisibleToEachOther: true, whoSeesTargets: 'EVERYBODY',
     participants: people(), checkIns: [], resolution: null, patternDetections: [], objectives: [],
     /* Fixed, not wall-clock: a live new Date() here has previously been rendered somewhere in the

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEmail, IsEnum, IsInt, Min, Max, IsOptional, MaxLength, ValidateNested, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, IsEmail, IsEnum, IsInt, Min, Max, IsOptional, MaxLength, ValidateNested, IsArray, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
 import { GroundScenario, GroundMoment, Cadence, GroundMode } from '@prisma/client';
 
@@ -63,6 +63,11 @@ export class CreateGroundForLeadDto {
   @IsInt()
   @Min(1)
   timelineDays?: number;
+
+  @ApiPropertyOptional({ description: 'True when the check-in runs until the lead ends it. There is then no length and no planned last session.' })
+  @IsOptional()
+  @IsBoolean()
+  runsUntilEnded?: boolean;
 
   @ApiPropertyOptional({ enum: Cadence })
   @IsOptional()

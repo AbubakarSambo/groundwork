@@ -63,7 +63,9 @@ function setup(opts: { on?: boolean } = {}) {
   const inList = (g: any, w: any) => {
     if (w.organizationId !== g.organizationId) return false;
     if (!w.OR) return true;
-    return w.OR.some((x: any) => (x.initiatorId && (typeof x.initiatorId === 'string' ? x.initiatorId === g.initiatorId : x.initiatorId.in.includes(g.initiatorId)))
+    /* An admin's list also carries the scenario clause of request 78: everything but the three evaluation kinds. */
+    return w.OR.some((x: any) => (x.scenario && !x.scenario.notIn.includes(g.scenario))
+      || (x.initiatorId && (typeof x.initiatorId === 'string' ? x.initiatorId === g.initiatorId : x.initiatorId.in.includes(g.initiatorId)))
       || (x.createdByUserId && x.createdByUserId === g.createdByUserId)
       || (x.participants && g.participants.includes(x.participants.some.userId)));
   };

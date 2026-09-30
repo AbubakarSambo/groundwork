@@ -37,6 +37,8 @@ import { CADENCE_WORDS, CADENCES, type Cadence } from './what-the-context-chat-h
 export interface ContextGaps {
   /** No duration means the ground cannot say how many sessions it holds. */
   timelineDays: number | null;
+  /** It runs until the lead ends it (request 37): the length is answered, so it is not asked. */
+  runsUntilEnded?: boolean;
   /** No rhythm means the same. */
   cadence: string | null;
   /** How many measures this ground counts by. Zero means the board shows movement against nothing. */
@@ -125,7 +127,7 @@ const WORTH_COUNTING = new Set([
 export function contextGaps(g: ContextGaps): ContextGap[] {
   const gaps: ContextGap[] = [];
 
-  if (!g.timelineDays || g.timelineDays <= 0) {
+  if (!g.runsUntilEnded && (!g.timelineDays || g.timelineDays <= 0)) {
     gaps.push({
       key: 'timeline',
       ask: 'How long should this run? Until a date, or for a set number of weeks - either is fine, but without it we cannot work out how many check-ins this holds.',
@@ -351,9 +353,11 @@ export function contextChatPrompt(
  * already hold does not need a model call to say correctly, and a sentence written here cannot drift
  * from what a re-run of the model would have said.
  */
-export function openingLine(timelineDays: number | null, cadence: string | null): string | null {
+export function openingLine(timelineDays: number | null, cadence: string | null, runsUntilEnded = false): string | null {
   const parts: string[] = [];
-  if (timelineDays && timelineDays > 0) {
+  if (runsUntilEnded) {
+    parts.push('runs until you end it');
+  } else if (timelineDays && timelineDays > 0) {
     const weeks = Math.round(timelineDays / 7);
     parts.push(weeks >= 4 && timelineDays % 7 === 0 ? `runs for ${weeks} weeks` : `runs for ${timelineDays} days`);
   }

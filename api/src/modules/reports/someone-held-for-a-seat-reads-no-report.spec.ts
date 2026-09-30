@@ -37,6 +37,7 @@ const RELEASED = {
 function reportsFor(held: boolean) {
   const ground = {
     id: 'g1',
+    scenario: 'NEW_PROJECT',
     initiatorId: 'lead-user',
     organizationId: 'org1',
     status: 'ACTIVE',

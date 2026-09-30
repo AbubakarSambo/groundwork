@@ -122,6 +122,8 @@ export class GroundsByApiService {
       moment: string;
       mode?: string;
       timelineDays?: number;
+      /** True when it runs until the lead ends it, as the product's own create takes it. */
+      runsUntilEnded?: boolean;
       cadence?: string;
       participants?: { personExternalId: string; roleAsDescribed?: string }[];
       leadRemit?: string;
@@ -211,6 +213,7 @@ export class GroundsByApiService {
       moment: moment as any,
       ...(dto.mode ? { mode: dto.mode as any } : {}),
       ...(dto.timelineDays ? { timelineDays: dto.timelineDays } : {}),
+      ...(dto.runsUntilEnded === true ? { runsUntilEnded: true } : {}),
       ...(dto.cadence ? { cadence: dto.cadence as any } : {}),
       ...(dto.leadRemit ? { leadRemit: dto.leadRemit } : {}),
       ...(startsAt ? { startsAt: startsAt.toISOString() } : {}),
@@ -274,7 +277,8 @@ export class GroundsByApiService {
       moment: ground.moment,
       mode: ground.mode,
       status: ground.status,
-      timelineDays: ground.timelineDays,
+      timelineDays: (ground as any).runsUntilEnded ? null : ground.timelineDays,
+      runsUntilEnded: !!(ground as any).runsUntilEnded,
       cadence: ground.cadence,
       startsAt: ground.startsAt,
       endsAt: ground.endsAt,

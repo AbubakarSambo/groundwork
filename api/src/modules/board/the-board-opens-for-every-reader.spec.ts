@@ -135,6 +135,9 @@ describe('the board opens for every reader, on every kind of check-in', () => {
               /* Somebody this variant took out of the check-in is refused, which is right and is tested below. */
               const inIt = ground.participants.some((p: any) => p.userId === userId);
               if (!inIt && !(viewer.role === 'ADMIN' && viewer.organizationId === 'org-1')) continue;
+              /* Changed with request 78: an admin who is not in a performance plan, a promotion or a renewal is
+                 refused its board (proved in an-admin-does-not-read-an-evaluation-check-in-in-grounds-or-on-the-board). */
+              if (!inIt && ['PIP', 'RECOGNITION', 'CONTRACT_RENEWAL'].includes(scenario)) continue;
               try {
                 const b = await openTheBoard(ground, userId, viewer);
                 if (typeof b?.renders !== 'boolean') failures.push(`${reader}, peers ${peers}, ${variant}: no board came back`);
@@ -235,7 +238,10 @@ describe('where people see only themselves, a participant reads no colleague’s
     expect(mine).toContain('Wairimu');
     const leads = JSON.stringify(await openTheBoard(g, 'u-lead', { role: 'MEMBER', organizationId: 'org-1' }));
     for (const name of ['Miriam', 'Aisha', 'Kofi']) expect(leads).toContain(name);
-    const admins = JSON.stringify(await openTheBoard(g, 'u-admin', { role: 'ADMIN', organizationId: 'org-1' }));
+    /* Changed with request 78: an admin who is not in a performance plan is refused its board. */
+    await expect(openTheBoard(g, 'u-admin', { role: 'ADMIN', organizationId: 'org-1' })).rejects.toBeInstanceOf(ForbiddenException);
+    const team = withEverything(aGround({ scenario: GroundScenario.OKR_ALIGNMENT, peers: null, sharedAs: null }));
+    const admins = JSON.stringify(await openTheBoard(team, 'u-admin', { role: 'ADMIN', organizationId: 'org-1' }));
     for (const name of ['Miriam', 'Aisha', 'Kofi']) expect(admins).toContain(name);
   });
 });

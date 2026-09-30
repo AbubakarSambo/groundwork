@@ -916,7 +916,7 @@ export class AssistantService {
     if (groundId && userId) {
       const ground = await this.prisma.ground.findFirst({
         where: { id: groundId, organizationId, status: { notIn: A_GROUND_IS_OVER } },
-        select: { id: true, label: true, initiatorId: true, organizationId: true },
+        select: { id: true, label: true, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
       });
       const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
       if (ground && runsIt(userId, viewer, ground)) chosen = { groundId: ground.id, label: ground.label };
@@ -1923,7 +1923,7 @@ export class AssistantService {
 
     const grounds = await this.prisma.ground.findMany({
       where: { organizationId, status: { notIn: A_GROUND_IS_OVER } },
-      select: { id: true, label: true, initiatorId: true, organizationId: true },
+      select: { id: true, label: true, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
     const candidates = grounds.filter((g) => runsIt(userId, viewer, g));
@@ -2318,7 +2318,7 @@ export class AssistantService {
   ): Promise<{ id: string; label: string } | Reply> {
     const grounds = await this.prisma.ground.findMany({
       where: { organizationId, status: { notIn: A_GROUND_IS_OVER } },
-      select: { id: true, label: true, initiatorId: true, organizationId: true },
+      select: { id: true, label: true, initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
     const candidates = grounds.filter((g) => runsIt(userId, viewer, g));

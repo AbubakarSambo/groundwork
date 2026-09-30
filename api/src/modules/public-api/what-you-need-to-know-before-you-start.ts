@@ -94,7 +94,7 @@ export const THE_PANEL = {
     'GET /check-ins/mine',
     'GET /grounds/awaiting-me',
     'POST /grounds/:id/confirm-lead',
-    'POST /check-ins  { label, scenario, moment, timelineDays, cadence, startsAt, brief, participants[] }',
+    'POST /check-ins  { label, scenario, moment, timelineDays (or runsUntilEnded: true, for a check-in that runs until its lead ends it), cadence, startsAt, brief, participants[] }',
     'POST /check-ins/:id/open',
     'POST /check-ins/:id/messages  { message }',
     'POST /check-ins/:id/complete',

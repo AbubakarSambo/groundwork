@@ -10,6 +10,7 @@ import { targetsFor } from '../board/whose-number-is-whose-business';
 import { SuggestionsService } from '../suggestions/suggestions.service';
 import type { ForThePerson } from '../suggestions/a-suggestion-told-like-a-signal';
 import { askedOfYou, type AskedOfYou } from './asked-of-you';
+import { theDayIn } from './when-a-handoff-is-due';
 import {
   PATTERN_ROW_SELECT, servedPatterns, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson,
   type APatternRow,
@@ -106,7 +107,7 @@ export class YourBoardService {
             },
             select: {
               id: true, groundId: true, fromParticipantId: true, onParticipantId: true, onLabel: true,
-              what: true, status: true, namedTheThing: true, createdAt: true,
+              what: true, status: true, namedTheThing: true, createdAt: true, dueSaid: true, dueOn: true, blockerKind: true,
               fromParticipant: { select: { userId: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
               ground: { select: { label: true, initiatorId: true, scenario: true, peersVisibleToEachOther: true } },
             },
@@ -155,7 +156,7 @@ export class YourBoardService {
     });
     /* Only the check-ins still running: a request in a check-in that has ended, or not begun, is not on you now. */
     const running = new Set(mine.filter((g) => !isShut(g.status) && !['AWAITING_APPROVAL', 'DECLINED'].includes(g.status) && !g.closedAt && !g.resolvedAt).map((g) => g.id));
-    const asked = askedOfYou(onYou as any, reader, { groundIds: running, participantIds: new Set(participantIds) });
+    const asked = askedOfYou(onYou as any, reader, { groundIds: running, participantIds: new Set(participantIds) }, theDayIn('Africa/Lagos', new Date()));
     const patterns = await this.servedPatternsAcrossGrounds(patternRows as any[]);
     return {
       ...board,

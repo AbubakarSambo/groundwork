@@ -82,7 +82,7 @@ describe('the board applies it, and says so', () => {
   it('and never hides anything from whoever runs the check-in', () => {
     expect(SRC).toMatch(/const runsThisGround =[\s\S]{0,200}isInitiator \|\| isSetupAdmin/);
     /* Through the one rule (grounds/who-may-read-this-check-in.ts), which asks the role in THIS organisation. */
-    expect(SRC).toMatch(/adminsThisOrg\(viewer, ground as any\)/);
+    expect(SRC).toMatch(/adminsThisOrg\(\{ \.\.\.viewer, userId: requestingUserId \}, ground as any\)/);
     expect(SRC).toMatch(/peersHidden: !peersVisible && !runsThisGround/);
   });
 

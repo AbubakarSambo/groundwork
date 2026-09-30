@@ -15,6 +15,30 @@ export interface PatternCode {
   probe?: string;
 }
 
+/**
+ * WHAT COUNTS AND WHAT DOES NOT, for the codes that came and went most when the same check-in was
+ * read fourteen times (30 September 2026, decisions 55 and 68). It is read by the detector only, in
+ * PATTERN_DETECTION_PROMPT, after the code's signal. The signal itself, the name, the family, the
+ * three-period rule and who reads the code are all unchanged, and no code is removed or merged.
+ * The ones that can only be judged across time say so and point at the person's own earlier record.
+ */
+export const WHAT_COUNTS_BY_CODE: Record<string, string> = {
+  K3: 'Counts only when the person\'s earlier record shows the same problem raised before and still not fixed, and this period raises it again. A problem raised for the first time does not count, and neither does one that was raised and then fixed.',
+  K5: 'Counts when the tasks they describe this period are never tied to any goal, target or result, even when asked. It does not count when they name a goal or what the work is for, even loosely.',
+  F2: 'Needs both sides in the record: a confident account of direction-setting, and the team\'s own record showing none of it. One side alone does not count.',
+  B9: 'Needs the team members\' own records to name different priorities from each other or from the leader. A leader saying the team is unclear, with nothing from the team, does not count.',
+  K2: 'Counts only when the earlier record shows the same spend or cost reported before and left unchallenged, and this period reports it again with no intervention. Tracking a cost once, or challenging it, does not count.',
+  C1: 'Counts when the record names something that was unclear for others and is now clear because of this person, and says what changed. Being clear about their own work, or explaining something once, does not count.',
+  B5: 'Counts when there is a lot of communication or coordination and the same blockers are still there afterwards. It does not count when blockers went down, or when there is little communication.',
+  B2: 'Needs the earlier record to show it: confident reporting in more than one period, with what was promised still not delivered. One period of confident talk, or one missed deliverable, does not count.',
+  B6: 'Needs the earlier record to show it: research, comparing or options still open from an earlier period, with no decision made since. Research that ended in a decision does not count, and neither does early research with no earlier record of it.',
+  K4: 'Counts when this period\'s work is mostly inbox, admin and small tasks, and nothing in it moves what the person is measured on. A busy period that still moved a main goal does not count.',
+  D4: 'Counts when planning and discussion are described and no plan, document or output came from them. It does not count when they can point to something produced.',
+  A2: 'Counts when the person stepped in to fix a failure that should have been caught earlier by someone or something else. Ordinary help, or fixing their own work, does not count.',
+  R2: 'Counts when others are named as coming back to ask, or as confused, because of this person\'s work or messages. The person being unclear about their own plans, with nobody affected, does not count.',
+  B1: 'Counts when upbeat reporting upward sits beside a different picture from the team or the record. Good news that the record backs up does not count.',
+};
+
 // Positive patterns. R3 is a positive signal - surfaced separately, never mixed
 // with bad-faith codes and never subject to the three-period rule.
 export const POSITIVE_CODES: PatternCode[] = [
@@ -357,16 +381,17 @@ Hard rules:
   Not:   "The record shows work was marked finished without downstream confirmation."
   The observation is already about the record; saying so adds nothing but distance.
 - Do not infer intent. A pattern is a reason to have a specific conversation, not a conclusion.
+- Some lines below say what counts and what does not. Follow them. Where a line says it needs the earlier record, use the section headed "WHAT THIS PERSON THEMSELVES RECORDED IN THE LAST TWO PERIODS" if there is one; when there is none, or it does not show the repeat, leave that code out.
 - One data point is not a pattern. You are emitting a per-period observation; the system applies the three-period rule across periods. Do not claim a pattern is established.
 
 The pattern codes and their signals:
-${BAD_FAITH_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+${BAD_FAITH_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}${WHAT_COUNTS_BY_CODE[c.code] ? ` ${WHAT_COUNTS_BY_CODE[c.code]}` : ''}`).join('\n')}
 
 AND THE ONES THAT ARE GOOD NEWS. Look for these with the same care, and emit them on the same
 terms: only where the signal is genuinely present in this period's evidence. These are not
 consolation prizes for a period with nothing wrong in it, and a person who did steady ordinary
 work gets no code at all, which is a perfectly good period.
-${POSITIVE_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+${POSITIVE_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}${WHAT_COUNTS_BY_CODE[c.code] ? ` ${WHAT_COUNTS_BY_CODE[c.code]}` : ''}`).join('\n')}
 
 M4 is the one most often missed, because nothing visibly breaks while somebody is doing it. Work
 that is only noticed when it stops is still work.
@@ -374,7 +399,7 @@ that is only noticed when it stops is still work.
 AND THE ONES THAT ARE NEITHER. These say somebody is holding something together that should not
 have needed holding. They are never a fault in the person - they are usually a fault around them -
 so write the observation about the situation and never about their choices.
-${CARRYING_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}`).join('\n')}
+${CARRYING_CODES.map((c) => `- ${c.code} (${c.name}): ${c.signal}${WHAT_COUNTS_BY_CODE[c.code] ? ` ${WHAT_COUNTS_BY_CODE[c.code]}` : ''}`).join('\n')}
 
 Return the codes whose signal is present this period, each with a one-sentence plain-language
 observation. Say what happened, plainly, without prefacing it. A good one is written the same way

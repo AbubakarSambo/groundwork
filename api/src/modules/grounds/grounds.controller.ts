@@ -71,6 +71,12 @@ class UpdateTimelineDto {
   @Min(1)
   timelineWeeks?: number;
 
+  /** True sets the check-in to run until the lead ends it (request 37). A length sent later turns it off. */
+  @ApiPropertyOptional({ description: 'Run until the lead ends it.' })
+  @IsOptional()
+  @IsBoolean()
+  runsUntilEnded?: boolean;
+
   /**
    * WHEN THE FIRST CHECK-IN OPENS, which could be set at creation and never afterwards.
    *
@@ -324,8 +330,8 @@ export class GroundsController {
   @Get('awaiting-approval')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Grounds a member has set up that are waiting for an admin to accept them' })
-  async awaitingApproval(@CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.listAwaitingApproval(organizationId);
+  async awaitingApproval(@CurrentUser() user: CurrentUserData) {
+    return this.grounds.listAwaitingApproval(user.organizationId, user.id);
   }
 
   @Get(':id')

@@ -466,3 +466,83 @@ I found no sentence "No patterns have repeated often enough to show yet." in the
 **Request 90: one form of number.** `howItIsGoing.latestSummary` counts in one form: `"Four of the six people have answered so far."` (words up to ten, figures after: `"12 of the 41 people have answered so far."`).
 
 **Request 86: a question, answered in `docs/requests-to-engine.md`.** A session that has been started is now read as open on Today, in the assistant and in a guest's answer, whatever `availableFrom` still says. `availableFrom` itself is unchanged; it only says when the session was first offered.
+
+## 30 September, night: a conversation point in the lead's judgement (decision 56, point 3)
+
+The report's `theJudgement` can now carry `conversationPoints`, a list of plain sentences for the lead only. It is filled when the judgement rests on a goal the person has not been told about yet, for example:
+
+"Tobi has not been told about this goal yet, so talk it through with Tobi before reading anything into it."
+
+Draw each sentence under the judgement, as the lead reads it. The person, a colleague and an admin who only reads never receive it. The product writes it, not the model.
+
+Also from tonight: in "What the record shows over time", the lead is now named, or is "you" when the lead reads it ("In session 3, you committed Aisha Otieno to call the client."), never "the lead".
+
+## 30 September, late: admins and the three evaluation check-ins (request 78), coaching on the board (request 79)
+
+**Which check-ins are a performance plan, a promotion or a renewal (request 78).** Read the check-in's `scenario`. It is one of these three exactly when it is `PIP` (a performance plan), `RECOGNITION` (a promotion) or `CONTRACT_RENEWAL` (a renewal). The list is `EVALUATION_SCENARIOS` in `api/src/modules/reports/is-this-an-evaluation-check-in.ts`, built from the same test the engine uses, so it cannot drift. Leave the admins line out of the invitation on those three.
+
+What the server now does, so the screens need not hide anything: an admin of the organisation reads one of these three only when they run it, set it up, or take part in it. Without that they are treated as if they were not an admin of it. It is not in their list, on Today, in the roster or in the approval queue, and its page, board, report, session reports, earlier rounds, activation status, outcome and reasons answer "not found" or "not part of this check-in". An admin who set it up or runs it reads it as before. An admin who only takes part reads it as a person in it does. On every other kind of check-in an admin reads what they read today.
+
+**Coaching on the board (request 79 b).** The board response carries `coaching`, present only when there is something for this reader:
+
+- `coaching.yours` is the reader's own coaching note, exactly as the report serves it (the same note, about the reader only). It is there for anyone who takes part, the lead included.
+- `coaching.eachPerson` is what to ask each person, the list the report gives the person who runs the check-in. It is there for the lead, and for the admin who set the check-in up for them, and for nobody else. An admin who only reads, a colleague and the person themselves get `null`.
+
+I did not serve each person's own coaching note to the lead, because the report never does: a note written for one person is not given to their lead (the report's own comment says so). If Hafsah wants the lead to read each person's note too, that is a change to a privacy rule and is hers to decide.
+
+**Periods (request 79 a).** `managerAlignment[].periods` is now never more than the number of answered sessions as decision 57 counts them (a daily check-in counts calendar weeks). After a single session it reads 1.
+
+## 30 September, night: a check-in that runs until the lead ends it (request 37)
+
+Hafsah said yes on 27 September. The engine side is done. This is exactly what the ongoing state looks like and what to send.
+
+**The state.** One field on the check-in: `runsUntilEnded` (true or false). It is on every check-in read (the check-in itself, the list, the admin view, the API). When it is true, `timelineDays` is served as `null` (stored internally as 0, never shown), `daysLeft` and `endsOn` are `null`, `endsAt` is `null`, and the check-in is never "out of time": no warning email, no stall. Every check-in that existed before is `runsUntilEnded: false` and unchanged.
+
+**What to send.**
+- Creating a check-in (`POST /grounds`, `POST /grounds/for-lead`, and the entry commit `POST /entry/commit`): send `runsUntilEnded: true` and leave `timelineDays` and `endsAt` out. If you send both, the choice "When I end it" wins and the length and end date are ignored.
+- Changing it later (`PATCH /grounds/:id`): send `{ "runsUntilEnded": true }` to make it ongoing. Send a length (`timelineDays` or `timelineWeeks`) to give it a length again; that turns `runsUntilEnded` off. A check-in that had run out of time opens again when it is made ongoing.
+- The context chat: the lead can say "when I end it", "until I stop it" or "no end date". The proposal comes back as `{ kind: 'timeline', days: 0, untilEnded: true, say: "I will set this to run until you end it." }`, and after the yes the reply says "I have set this to run until you end it." The same works in Ask Groundwork's setup, which is the same chat. Once set, the chat does not ask how long it runs again, and its opening line reads "This check-in runs until you end it and people check in once a week."
+- Ending it: the existing "Begin the closing session" route (`POST /grounds/:id/closing-session`) is the "End it". It works at any session of an ongoing check-in. It makes each person's next session the closing one, and no session is made after it. The report of that session is written as a closing report, the same as a check-in that reached its planned last session.
+
+**What the screens read.**
+- The session report carries `runsUntilEnded` and a ready sentence, `position`: "Session 3. It runs until you end it." For a check-in with a length it is "Session 3 of 12." and for one with no length set it is "Session 3." `plannedSessions` is `null` for an ongoing check-in. Print `position` rather than building the sentence.
+- For an ongoing check-in the engine never says how many sessions there are, how far through it is, "halfway", or "the last session", in the conversation, the reports, the board, Today or the suggestions. There is no "Decide how it ends" prompt, because there is no planned last session. The only ending is the lead's.
+- `howItIsGoing` has no planned rounds for an ongoing check-in. Do not draw "x of y rounds".
+- The setting history on the Context page carries `untilItIsEnded` (true on the change that made it ongoing) and `weeks.to` is `null` for that change.
+
+## 1 October: links between check-ins (your request 18)
+
+Done. Nothing in `client/` is changed. Below is exactly where each field is and its shape.
+
+**(a) Which check-in a handoff waits on.** `GroundDependency.waitingOnGroundId` is now written when the conversation records a handoff. It is set only when it is certain, and only in code: the words the person said for the team ("Finance") must all be in the name of exactly one other running check-in of the same organisation ("Finance, Q3"). The plain words every team name carries ("team", "review", "Q3") are set aside. Two check-ins that fit, the handoff's own check-in fitting as well, another organisation's check-in, or a person named in the same check-in all give null. A newer account that names a team updates the link; an account that names no team leaves it alone. `GET /grounds/:id/links` needed no change.
+
+**(b) When, and where it stands.** These four fields are on every item of `GET /grounds/:id/links` (`waitingOnOtherTeams[]` and `askedOfThisCheckIn[]`) and of `askedOfYou.items[]` on `GET /you`, under the rules those already use:
+
+| Field | Shape | What it is |
+| --- | --- | --- |
+| `dueSaid` | string or null | The person's own words for when, word for word ("by Friday"). Kept only if those exact words are in what they said; null if they gave no time. |
+| `dueOn` | "2026-09-25" or null | The day those words meant, read in code ("Friday", "tomorrow", "30 September"). Null for "soon" or "after the audit": a day is never guessed. |
+| `dueWord` | string or null | "Overdue", "Today", a short weekday through the next six days ("Fri"), or a short date ("9 Oct"). Null when `dueOn` is null. Counted in Lagos time. Use it for the due word in "Everything asked of you this week". |
+| `standing` | string | One plain sentence of where it stands, written from the record. |
+
+What a person reads in `standing`: "The Mombasa depot's count is due Friday." (a time was given; "are due" where the thing is plural, such as "The seals are due next week."), "Not decided yet." (the handoff is a decision nobody has made), or "No date has been given yet." Show it after "Asked 14 Sept." Show `dueSaid` where you want their own words.
+
+**(c) Where the blocker started.** `GET /grounds/:id/blocker-trace`, for anybody who may open that check-in (404 otherwise). It answers `{ traces: [...] }`, one trace for each blocker that ends in this check-in, often none.
+
+    {
+      id: string,
+      steps: [{ kind: 'need' | 'request' | 'question' | 'approval' | 'priority' | 'delay' | 'effect',
+                checkIn: string, checkInId: string,        // the check-in it came from; open with /grounds/<checkInId>/board
+                owner: string | null,                       // a name this reader may read, "You", or "a colleague"
+                text: string }],                            // one full sentence
+      whereItStarted: string | null,    // "Where it started: the request went to Finance without ..."
+      decisionNeeded: string | null,    // "Decision needed: sign off Westgate's credit terms this week?"
+      decidedBy: string | null          // "Amani Njoroge decides."
+    }
+
+Who reads what. Each reader gets only the steps from check-ins they may open (the same list as the links). Where a check-in keeps people apart, a reader who does not run it (and is not an admin) reads only the steps that are theirs. If the first step or the last step is not readable, the trace is not served at all. If any step between is hidden, the steps the reader may read are served and `whereItStarted`, `decisionNeeded` and `decidedBy` are null, because they were written from the whole chain. Nothing is ever rated or labelled; the sentences are checked for names and for words that judge a person. The prototype's "Nobody was slow on their own." is not written, because the record cannot say it. Show the steps, then the two sentences when they are there; "Ask Miriam for the references" is yours to draw from the owner of the request step.
+
+How it is built. Stored in `blocker_traces`, without names (each step holds its check-in and a person id). Built only when a handoff is written or changes, in `ConversationService.followTheBlockersAcrossCheckIns`, never on opening. The same record again makes no second model call. The model gets the handoffs on record with people as tokens; its answer is kept only if every step cites a handoff on the record, takes its check-in and person from that handoff, shares words with it, names nobody and judges nobody, and the chain crosses two check-ins and ends where the blocker is felt. The instructions are the stored prompt `blocker_trace` (seeded on boot); the row records `promptVersionId`. Names are swapped in when it is served, for each step's own check-in, through the same wrapper every report uses.
+
+**Also, from request 37.** A participant's session report now says "Session 3. It runs until Wairimu Kamau ends it." (the lead's name, or "the person running it" where the reader may not read a name); the lead still reads "Session 3. It runs until you end it." `POST /check-ins` on the public API takes `runsUntilEnded: true`, as the product's own create does.
+

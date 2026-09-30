@@ -57,7 +57,7 @@ function world(opts: { closed: boolean; storedReason?: string | null }) {
       findMany: jest.fn(async () => participants),
     },
     user: {
-      findFirst: jest.fn(async ({ where }: any) => (where.id === GRACE ? { id: GRACE } : null)),
+      findFirst: jest.fn(async ({ where }: any) => (where.id === GRACE ? { id: GRACE, role: 'ADMIN', organizationId: 'org1' } : null)),
     },
     resolution: {
       findUnique: jest.fn(async () => resolution),

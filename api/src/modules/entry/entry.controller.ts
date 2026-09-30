@@ -355,6 +355,8 @@ export class EntryCommitDto {
    * made. This says which, and the ground's `cadenceStated` follows it (fix plan B15).
    */
   @IsOptional() @IsBoolean() cadenceChosen?: boolean;
+  /** "When I end it": no planned length and no planned last session (request 37). Send true instead of a length. */
+  @IsOptional() @IsBoolean() runsUntilEnded?: boolean;
   @IsOptional() @IsInt() cadenceAnchorDay?: number;
   /** Which days this team works, 0=Sun..6=Sat. Absent means nobody said; never defaulted. */
   @IsOptional() @IsArray() @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true })

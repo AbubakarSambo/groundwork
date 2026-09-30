@@ -40,7 +40,7 @@ function ratedReport(released: boolean) {
 }
 
 function serviceFor(released: boolean) {
-  const ground = { id: 'g1', initiatorId: 'lead-user', organizationId: 'org1', participants: PARTICIPANTS, report: ratedReport(released) };
+  const ground = { id: 'g1', scenario: 'NEW_PROJECT', initiatorId: 'lead-user', organizationId: 'org1', participants: PARTICIPANTS, report: ratedReport(released) };
   const prisma: any = {
     groundDocument: { findMany: jest.fn(async () => []) },
     ground: { findUnique: jest.fn(async () => ground) },

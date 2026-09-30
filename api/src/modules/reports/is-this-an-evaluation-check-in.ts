@@ -1,5 +1,5 @@
 import { GroundScenario } from '@prisma/client';
-import { BoardFamily, familyFor } from '../board/board-families';
+import { BoardFamily, familyFor, SCENARIO_FAMILY } from '../board/board-families';
 
 /**
  * THE ONE PLACE A CHECK-IN IS KNOWN TO BE AN EVALUATION CHECK-IN.
@@ -18,6 +18,14 @@ import { BoardFamily, familyFor } from '../board/board-families';
  * who is new (see the note on `SCENARIO_FAMILY`). COHORT_CHECK is its own family: many people
  * against one shared bar, not one person under review with colleagues giving views about them.
  */
+/**
+ * THE THREE SCENARIOS, AS A LIST, for a database query that cannot call the function above (the list of
+ * check-ins an admin may see, request 78) and for the screens, which are told the same list in
+ * `docs/answers-from-engine.md`. Built from the same family, so it cannot drift from `isEvaluationCheckIn`.
+ */
+export const EVALUATION_SCENARIOS: GroundScenario[] = (Object.keys(SCENARIO_FAMILY) as GroundScenario[])
+  .filter((s) => SCENARIO_FAMILY[s] === BoardFamily.EVALUATION);
+
 export function isEvaluationCheckIn(scenario: GroundScenario | null | undefined): boolean {
   if (!scenario) return false;
   return familyFor(scenario) === BoardFamily.EVALUATION;
