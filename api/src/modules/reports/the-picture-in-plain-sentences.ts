@@ -221,8 +221,10 @@ export function whenThePictureCannotBeWritten(peopleAnswered: number, peopleExpe
    target" says more than the count and is left alone. */
 const A_COUNT_SENTENCE = /^\s*(?:all|both|nobody|no one|one|two|three|four|five|six|seven|eight|nine|ten|\d+)(?: (?:of (?:the |all )?)?(?:\w+ )?(?:people|person|of them|parties))? (?:have|has)(?: (?:now|all|both|already))? (?:answered|checked in|given (?:an |their )?accounts?|responded)(?: (?:so far|yet|now|this (?:check-in|round|session)))?(?:,? of (?:the )?\w+)?[.!?](?:\s+|$)/i;
 export function theCountSaidRight(opening: string, answered: number, expected: number): string {
-  if (!opening || !A_COUNT_SENTENCE.test(opening)) return opening;
-  return opening.replace(A_COUNT_SENTENCE, (m) => `${howManyAnsweredInWords(answered, expected)}${(m.match(/\s*$/) ?? [''])[0]}`);
+  if (!opening) return opening;
+  /* Whatever else the model wrote around a count, it is in one form of number (request 90). */
+  if (!A_COUNT_SENTENCE.test(opening)) return inOneFormOfNumber(opening);
+  return inOneFormOfNumber(opening.replace(A_COUNT_SENTENCE, (m) => `${howManyAnsweredInWords(answered, expected)}${(m.match(/\s*$/) ?? [''])[0]}`));
 }
 
 /**
@@ -254,4 +256,31 @@ export function howManyAnsweredInWords(answered: number, expected: number): stri
   return answered === 1
     ? `${inWords ? 'One' : '1'} of the ${total} people has answered so far.`
     : `${first} of the ${total} people have answered so far.`;
+}
+
+/**
+ * ONE FORM OF NUMBER IN ONE COUNT (screens request 90).
+ *
+ * "Four of the 6 people have answered so far." was read at the top of a lead's board, with "4 of 6
+ * people have answered this round." under it. The opening's count is the product's own
+ * (`theCountSaidRight`), but the sentence a model wrote around it, or a report stored before that
+ * rule, can still mix a word and a figure. Every "<number> of <the> <number>" is put into one form,
+ * wherever it is read: both in words where both are ten or under, both in figures past that, the
+ * same rule `howManyAnsweredInWords` follows.
+ */
+const COUNT_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+const A_COUNT_OF_A_COUNT = new RegExp(`\\b(${COUNT_WORDS.slice(1).join('|')}|\\d+)( of (?:the |all )?)(${COUNT_WORDS.slice(1).join('|')}|\\d+)\\b`, 'gi');
+export function inOneFormOfNumber(text: string): string {
+  if (!text) return text;
+  return text.replace(A_COUNT_OF_A_COUNT, (m: string, a: string, of: string, b: string, offset: number, whole: string) => {
+    const aIsFigure = /^\d+$/.test(a);
+    if (aIsFigure === /^\d+$/.test(b)) return m;
+    const na = aIsFigure ? Number(a) : COUNT_WORDS.indexOf(a.toLowerCase());
+    const nb = /^\d+$/.test(b) ? Number(b) : COUNT_WORDS.indexOf(b.toLowerCase());
+    const inWords = na >= 1 && na <= 10 && nb >= 1 && nb <= 10;
+    const startsASentence = !whole.slice(0, offset).trim() || /[.!?]["')\]]?\s+$/.test(whole.slice(0, offset));
+    let first = inWords ? COUNT_WORDS[na] : String(na);
+    if (inWords && startsASentence) first = `${first[0].toUpperCase()}${first.slice(1)}`;
+    return `${first}${of}${inWords ? COUNT_WORDS[nb] : String(nb)}`;
+  });
 }

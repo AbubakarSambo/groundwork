@@ -1,4 +1,4 @@
-import { howManyAnsweredInWords, theCountSaidRight, thePictureInstruction } from './the-picture-in-plain-sentences';
+import { howManyAnsweredInWords, theCountSaidRight, thePictureInstruction, inOneFormOfNumber } from './the-picture-in-plain-sentences';
 
 /**
  * "ALL TWO PEOPLE HAVE ANSWERED." Seniorhire, run 10, the participant's own report, three rounds of it.
@@ -46,5 +46,14 @@ describe('the opening starts with the product\'s count, whatever the model wrote
   it('and the model is handed the sentence to open with', () => {
     const prompt = thePictureInstruction({ peopleAnswered: 2, peopleExpected: 2, differenceTopics: [], aboutOnePerson: false } as any);
     expect(prompt).toContain('Open with this sentence, exactly as it is: "Both people have answered."');
+  });
+});
+
+describe('one form of number in one count (request 90)', () => {
+  it('says "Four of the six", never "Four of the 6"', () => {
+    expect(inOneFormOfNumber('Four of the 6 people have answered so far.')).toBe('Four of the six people have answered so far.');
+    expect(inOneFormOfNumber('They said 4 of the six people agree.')).toBe('They said four of the six people agree.');
+    expect(inOneFormOfNumber('Twelve of the 41 people have answered.')).toBe('12 of the 41 people have answered.');
+    expect(theCountSaidRight('Four of the 6 people have answered so far, and they agree.', 4, 6)).toBe('Four of the six people have answered so far, and they agree.');
   });
 });

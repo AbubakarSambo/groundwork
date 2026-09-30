@@ -4,6 +4,7 @@ import { atAGlance, type AtAGlance } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { notTheWordParty } from '../reports/not-the-word-party';
+import { inOneFormOfNumber } from '../reports/the-picture-in-plain-sentences';
 
 /**
  * HOW A CHECK-IN IS GOING, COMPUTED ONCE, BECAUSE THREE SCREENS ASK IT.
@@ -81,9 +82,9 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
    * before the column existed or one whose wording call fell back - flat, but never empty.
    */
   const latestSummary = (it as any).theOpening?.trim()
-    ? notTheWordParty(String((it as any).theOpening).trim())
+    ? inOneFormOfNumber(notTheWordParty(String((it as any).theOpening).trim()))
     : it.sharedPicture
-      ? sentencesIn(notTheWordParty(it.sharedPicture)).slice(0, 3).join(' ').trim() || null
+      ? inOneFormOfNumber(sentencesIn(notTheWordParty(it.sharedPicture)).slice(0, 3).join(' ').trim()) || null
       : null;
 
   /*
