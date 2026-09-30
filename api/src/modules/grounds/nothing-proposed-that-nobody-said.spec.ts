@@ -84,6 +84,28 @@ describe('dropsAPromiseWithNothingToKeep: nothing says it will be recorded unles
     expect(dropsAPromiseWithNothingToKeep('I will keep a note of that.', false)).toBe('');
   });
 
+  /*
+   * FOUND LIVE, 30 September 2026, on the very first real run of the four live checks (port 3001,
+   * real Gemini): the first version of this regex only caught the future tense, and the model said
+   * the same false promise two OTHER ways on that one run - past tense on the old route, present
+   * continuous on Ask Groundwork - neither of which the first version dropped.
+   */
+  it('catches the past tense, exactly as the old route said it live: "I have recorded..."', () => {
+    expect(dropsAPromiseWithNothingToKeep('I have recorded that as your read of Ben.', false)).toBe('');
+  });
+
+  it('catches the present continuous, exactly as Ask Groundwork said it live: "I am recording..."', () => {
+    expect(dropsAPromiseWithNothingToKeep(
+      "I'm recording that you see Ben as struggling and difficult to work with.", false,
+    )).toBe('');
+    expect(dropsAPromiseWithNothingToKeep('I am recording that.', false)).toBe('');
+  });
+
+  it('does not touch an ordinary sentence that happens to contain "note" or "record" as a different word', () => {
+    expect(dropsAPromiseWithNothingToKeep('Note that Ben has been assigned a new client.', false))
+      .toBe('Note that Ben has been assigned a new client.');
+  });
+
   it('leaves an ordinary sentence with no such promise untouched either way', () => {
     expect(dropsAPromiseWithNothingToKeep('What have you seen that makes you say that?', false))
       .toBe('What have you seen that makes you say that?');

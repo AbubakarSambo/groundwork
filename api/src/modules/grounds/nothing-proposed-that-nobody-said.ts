@@ -86,8 +86,15 @@ export function traceableToWhatTheySaid(value: string | null | undefined, said: 
  * only drops the sentence when `hasProposal` is false - the coaching rule (rule 2 of
  * `contextChatPrompt`) is free to say it plainly whenever there is something to say yes to.
  */
+/*
+ * FOUND LIVE, 30 September 2026: the first version only caught the future tense, "I will record...".
+ * The real model said it two OTHER ways on the same live run, neither of which this caught:
+ *   old route:      "I HAVE recorded that as your read of Ben." (past tense, as though already done)
+ *   Ask Groundwork: "I'M RECORDING that you see Ben as struggling..." (present continuous)
+ * Both are the same false promise in a different tense, so all three are covered now.
+ */
 const PROMISES_TO_RECORD =
-  /\b(i will (record|keep|save|note|log|write (?:that|this|it) down)|(?:will be|is) (?:recorded|kept|saved|noted)|recording (?:that|this|it) as|keeping (?:that|this|it) as)\b/i;
+  /\b(i(?:'m| am)\s+(?:recording|keeping|saving|noting|logging)\b|i\s+(?:will|have|'ve|'ll)\s+(?:record(?:ed)?|keep(?:ing)?|kept|save(?:d)?|note(?:d)?|log(?:ged)?|write (?:that|this|it) down)\b|(?:will be|has been|have been|is being) (?:recorded|kept|saved|noted|logged)\b|recording (?:that|this|it) as|keeping (?:that|this|it) as)/i;
 
 export function dropsAPromiseWithNothingToKeep(text: string, hasProposal: boolean): string {
   if (hasProposal) return text;
