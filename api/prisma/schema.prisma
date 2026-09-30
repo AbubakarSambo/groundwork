@@ -457,6 +457,8 @@ model Organization {
   suites             OrganizationSuite[]
   /// Requests for time off, for the leave suite (E2, U.17).
   leaveRequests      LeaveRequest[]
+  /// What a lead confirmed is true of the whole company (week 20), kept next to the knowledge cards.
+  memories           OrganizationMemory[]
   /// Hours for billing, for the time sheets suite (E3, U.17). Never evidence about anybody's work.
   timeEntries        TimeEntry[]
   timeWeeks          TimeWeek[]
@@ -8154,6 +8156,37 @@ model BlockerTrace {
   @@index([endGroundId])
   @@index([organizationId])
   @@map("blocker_traces")
+}
+
+/// WHAT A LEAD CONFIRMED IS TRUE OF THE WHOLE COMPANY (week 20, request 17 e): a rule, a definition, a
+/// principle, an owner, something about a client. It sits next to the knowledge cards ("how we do it
+/// here") and is read the same way, but it is kept apart from them on purpose: a card is what the
+/// company wrote down, and a person's account is measured against it; this is what a lead said in
+/// setup, and it is only ever context. A row exists as OFFERED while the lead is being asked, and
+/// counts only once it is KEPT, on the lead's yes. A no deletes it. `text` is the lead's own words
+/// from the setup conversation: never a participant's words, never a private note (those are not
+/// offered at all). `sourceLine` is what the screen reads under it ("Picked up from your check-in on
+/// 22 September").
+model OrganizationMemory {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  /// The check-in whose setup conversation heard it. A pointer only; the words are copied here.
+  groundId       String?   @map("ground_id")
+  /// rule | definition | principle | owner | client.
+  kind           String    @db.VarChar(16)
+  text           String    @db.Text
+  /// OFFERED | KEPT.
+  status         String    @default("OFFERED") @db.VarChar(8)
+  offeredById    String    @map("offered_by_id")
+  sourceLine     String    @map("source_line") @db.Text
+  offeredAt      DateTime  @default(now()) @map("offered_at")
+  keptById       String?   @map("kept_by_id")
+  keptAt         DateTime? @map("kept_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("organization_memories")
 }
 
 /// THE COMPANY PAGE'S COMPANY-WIDE PICTURE (request 17, D2): how each priority is moving, where the
