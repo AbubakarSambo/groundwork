@@ -6731,3 +6731,13 @@ The reviewer read 22 boards, every kind as its lead and a participant, and "Sale
 Items 1 and part of 6 are the engine's (request 88); the rest are with a fresh builder.
 
 **A refusal of mine (30 September).** The safety check refused my morning-report entry for the board review's fixes, saying protected files cannot be changed. I did not retry or reword it. What was fixed is described in the commits from e9039c4d to b6e78c6e, and I told Hafsah in the chat.
+
+## Re-review of the board (30 September)
+
+The reviewer read the running board again as a lead, a participant and an admin on nine kinds, at 1440 and 375 pixels. **Fixed and reading well:** the story is the board's headline at the prototype's size; every record table fits its kind of work; the rounds and answers lines read as sentences; the stages sit with their counts beneath them; people's own words are quoted exactly; the lead reads "You added it." and a participant "You need the price list from Rukia Otieno."; the kind-of-work choices are plain words; and on a phone the tabs have their own full row. No board scrolls sideways.
+
+**Left, now with the builder:** a few places still call Rukia by name ("Rukia Otieno's own target", the owner of a decision); the board's own sentence for two kinds still names the example company MarketView; two form labels are single words; a "Nothing to do" tag sits beside people the lead owes an answer; Juma, who is not in the check-in, is told he has a report of his own; and the board still names a "Setup tab" that does not exist.
+
+**Still open with the engine, and first:** request 88 (colleagues' contribution and coverage sent to a participant and an admin who only reads) with request 84 (patterns to an admin who only reads), and request 89 (who said a record). The story's mixed number forms are request 90.
+
+**The reviewer's one refusal.** The safety check refused one of its commands (a search of the saved board text, and a read of an earlier capture), naming it as changing shared resources. It did not retry, and worked from its pictures and a live look instead.
