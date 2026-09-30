@@ -85,6 +85,42 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | **The numeric utility scale** (`gwui-fs-*`, `gwui-mt-*`, etc.) | floor | the prototype's own smallest real text, `.t-tiny` at `13px` | floor enforced at `13px` by the guard test | same |
 | **Stat row / plan cards / code block / check list / numbered steps / More rows / board classes** (group 1-2 rebuild) | - | none of these have a named prototype class; each was built at the prototype's existing type sizes (`16px`/700 names, `14.5px` muted captions, `13px`/700 tiny labels) and its existing spacing scale, not a new one | as listed in `gw-ui.css`, "GROUP 1 REBUILD" section onward | unchanged - all already drawn from the sizes above, no floating numbers of their own |
 
+## The second pass (30 September, the screen-by-screen picture check)
+
+A picture check of the rebuilt screens not yet checked (the check-in page and conversation, Done,
+between check-ins, My work, People, one person, the board, Connections, WhatsApp, More) against
+`docs/prototype/screens/*/*.jpg`, one screen at a time. Most rebuilt screens already match closely
+(the srow rows, panels, tags and buttons the first pass fixed are holding up); the one real
+page-level fault found was not in a shared part at all:
+
+- **A party's "My work", "Report", "Context and resources" and "People and setup" tabs were all
+  capped at 600px** (`GroundParticipantPage.tsx`), the width meant for the conversation itself. The
+  lead's own equivalent page (`GroundAdminPage.tsx`) already widens its own settings tab to the
+  page's full 1150px, by a documented decision (`the-dashboard-uses-the-screen.spec.ts`) - "People
+  and setup" is a page of tiles and lists, not prose to read top to bottom, so it gets the screen.
+  `my-record.jpg` shows exactly the same shape for "My work" (the stat tiles and any deals beside
+  a right-hand column: the pattern, what was promised, and the reports) - a two-column layout that
+  cannot fit, and so silently collapsed to one column, inside 600px. Fixed by widening `record` the
+  same way `settings` already widens, in both the page (`GroundParticipantPage.tsx`) and
+  `YourWork.tsx`'s own layout (a `grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))`,
+  the same responsive pairing BoardPage.tsx already uses for its own side-by-side cards). `Report`
+  and `Context and resources` are unchanged and still read at 600px; nothing in this pass found
+  either of those two to be wrong. The guard test was updated to match (see its own comment,
+  30 September, for why).
+- **The People page's no-seat warning** was rebuilt again on Hafsah's own instruction (30
+  September, after this pass started) to follow the prototype's row shape (`s11.js`): one `EdgeRow`
+  per person waiting for a seat, a quiet "Free a seat" link to their own page, and "Move to a larger
+  plan" as a secondary button (not the prototype's second navy one - the page's one navy button is
+  spoken for). The product's own bulk "Send their invitations" has no place in the prototype's row,
+  so it stays as a quiet text link inside the warning. This is expected to still fail the running
+  product's own button count against the prototype for one reason that is not a styling fault: the
+  seeded dev organisation always has somebody waiting for a seat, while the prototype's own
+  comparison render of this screen does not show that state at all - so the count is compared
+  against a prototype screenshot with zero buttons in that section, whatever this page draws there.
+- Everything else checked in this pass (the check-in conversation, Done, between check-ins, People,
+  one person, Connections, WhatsApp, More) already matched the prototype's own use of the shared
+  parts closely enough that no further part or page change was made.
+
 ## What this pass found, in one line
 
 Out of every part checked, only **Button's `danger` kind** actually diverged from the prototype's own value (an outline instead of the prototype's one solid red, plus two extra variants). Everything else already matches, because this stylesheet was built by copying `app.css`'s numbers directly and has been checked against it, part by part, in `the-parts-match-the-prototypes-exact-values.spec.tsx`, through several earlier sessions. The parts with **no prototype rule at all** (Toggle, FieldRow, StageTrack, SubHeading, Steps, Stack's gaps, and the whole "group 1-2 rebuild" set) are named above so nobody mistakes "no exact source line" for "not checked" - each is built from the prototype's own type and colour scale, just without one specific CSS rule to point at.
