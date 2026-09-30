@@ -9,7 +9,7 @@ import { myDataApi, type MyData } from '@/api/my-data'
 import { todaysPasswordRules } from '@/pages/auth/password-rules'
 import {
   Page, PageTitle, Section, Panel, Stack, FieldRows, FieldRow, SwitchRow, Steps, Step,
-  Button, TextField, FieldLabel,
+  Button, TextField, FieldLabel, SubHeading,
 } from '@/components/gw/ui'
 
 /**
@@ -170,9 +170,8 @@ export function SettingsPage() {
     onSuccess: () => { toast.success('Your way in is gone. What you shared stays with the check-ins you were part of.'); logout(); navigate('/auth') },
     onError: () => toast.error('That did not happen. Nothing has changed - try again.'),
   })
-  function downloadMyData() {
-    if (!myData) return
-    const blob = new Blob([JSON.stringify(myData, null, 2)], { type: 'application/json' })
+  function saveAsAFile(data: MyData) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -180,6 +179,18 @@ export function SettingsPage() {
     a.click()
     URL.revokeObjectURL(url)
   }
+  function downloadMyData() {
+    if (!myData) return
+    saveAsAFile(myData)
+  }
+  /* THE PROTOTYPE'S OWN "Download it", BESIDE THE HEADING (own-settings.txt): a one-step download
+     that does not require first pressing "Show me" to see the list. Reads your data and saves it
+     straight away, never showing it on screen. */
+  const downloadDirect = useMutation({
+    mutationFn: myDataApi.get,
+    onSuccess: saveAsAFile,
+    onError: () => toast.error('Could not download your data. Try again.'),
+  })
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const leaveOrg = useMutation({
@@ -233,7 +244,7 @@ export function SettingsPage() {
             value={!editingName ? (
               <span>
                 {user?.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}` : 'Not set'}
-                <span className="gwui-field-help">This is what your team sees next to what you said. Without it we can only show your email address.</span>
+                <span className="gwui-field-help">This is what your team sees. A first name is enough.</span>
               </span>
             ) : (
               <Stack gap={10}>
@@ -295,21 +306,28 @@ export function SettingsPage() {
 
       <Section heading="Your data">
         <Panel>
-          {!myData ? (
-            <Stack gap={12}>
-              <p className="gwui-panel-text-muted">
-                Every answer, which check-in it came from, and nothing anyone else wrote. As a file you can open.
-              </p>
+          <Stack gap={12}>
+            <div className="gwui-sentence-row">
+              <SubHeading>Everything you’ve written</SubHeading>
+              <Button kind="quiet" size="small" onClick={() => downloadDirect.mutate()} disabled={downloadDirect.isPending}>
+                {downloadDirect.isPending ? 'Downloading…' : 'Download it'}
+              </Button>
+            </div>
+            <p className="gwui-panel-text-muted">
+              Every answer, which check-in it came from, and nothing anyone else wrote. As a file you can open.
+            </p>
+            {!myData && (
               <Button kind="secondary" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
                 {loadMyData.isPending ? 'Loading…' : 'Show me'}
               </Button>
-            </Stack>
-          ) : (
+            )}
+          </Stack>
+          {myData && (
             <Stack gap={12}>
               <div>
                 <p className="gwui-panel-text-muted">
-                  {myData.recordEntries.length} things you wrote, across {myData.checkIns.length} check-ins,
-                  on {myData.grounds.length} {myData.grounds.length === 1 ? 'ground' : 'grounds'}:
+                  You have written {myData.recordEntries.length} answer{myData.recordEntries.length === 1 ? '' : 's'}, in{' '}
+                  {myData.grounds.length} check-in{myData.grounds.length === 1 ? '' : 's'}.
                 </p>
                 <Stack gap={0}>
                   {myData.grounds.map(g => <p key={g.id} className="gwui-panel-text">{g.label}</p>)}
@@ -347,12 +365,12 @@ export function SettingsPage() {
               <p className="gwui-panel-text-muted">
                 You’ll lose access. What you shared stays in the check-ins you were part of, as it is today.
               </p>
-              <Button kind="danger" onClick={() => setShowLeaveConfirm(true)}>Leave</Button>
+              <Button kind="secondary" redText onClick={() => setShowLeaveConfirm(true)}>Leave</Button>
             </div>
           ) : (
             <Stack gap={12}>
               <p className="gwui-panel-text-muted">
-                You will lose access to {orgName} immediately. Your contributions to existing check-ins stay on record.
+                You will lose access to {orgName} immediately. What you said in your check-ins stays on the record.
               </p>
               <div className="gwui-invite-actions">
                 <Button kind="danger" onClick={() => leaveOrg.mutate()} disabled={leaveOrg.isPending}>

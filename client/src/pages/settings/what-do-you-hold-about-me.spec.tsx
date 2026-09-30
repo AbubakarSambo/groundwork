@@ -46,15 +46,36 @@ describe('what the page shows', () => {
     expect(CODE).toMatch(/loadMyData\.mutate\(\)/)
   })
 
+  /*
+   * UPDATED (group 1 review): the old sentence read "{recordEntries} things you wrote, across
+   * {checkIns} check-ins, on {grounds} grounds:" - "grounds" is the product's own internal word
+   * for what everywhere else on this page calls a check-in, so the count on screen (`grounds`,
+   * which is also what the list right below it enumerates) did not match the word next to it
+   * ("check-ins" meant `checkIns`, a count of individual sessions, not what the list showed). The
+   * true sentence counts what the list actually is: "You have written {recordEntries} answers, in
+   * {grounds} check-ins." `checkIns.length` (sessions) is no longer named in this sentence, since
+   * nothing on screen shows that count any more.
+   */
   it('counts what is held and names the check-ins it came from', () => {
     expect(CODE).toMatch(/myData\.recordEntries\.length/)
-    expect(CODE).toMatch(/myData\.checkIns\.length/)
+    expect(CODE).toMatch(/myData\.grounds\.length/)
     expect(CODE).toMatch(/myData\.grounds\.map/)
+    expect(CODE).toMatch(/You have written/)
   })
 
-  it('and the download is built from what is on screen', () => {
+  /*
+   * UPDATED (group 1 review, "Download it" beside the heading): the JSON-building code moved into
+   * a shared `saveAsAFile(data)` helper, used both by "Download all of it" (after "Show me" has
+   * loaded and shown `myData`) and by the new one-step "Download it" beside the heading (which
+   * fetches and saves without ever putting anything on screen, so there is no "screen" for it to
+   * match). The invariant this test protects - "Download all of it" saves the very data that is
+   * already on screen, not a second, possibly different, request - still holds: `downloadMyData`
+   * passes the `myData` state variable itself into the helper, never re-fetching.
+   */
+  it('"Download all of it" is built from what is on screen', () => {
     // A second request could return something different from what the page just told them.
-    expect(CODE).toMatch(/JSON\.stringify\(myData, null, 2\)/)
+    expect(CODE).toMatch(/function saveAsAFile\(data: MyData\)[\s\S]*?JSON\.stringify\(data, null, 2\)/)
+    expect(CODE).toMatch(/function downloadMyData\(\)[\s\S]*?saveAsAFile\(myData\)/)
   })
 })
 
