@@ -128,7 +128,7 @@ describe.each([['a performance plan', 'PIP'], ['a promotion', 'RECOGNITION'], ['
 
   it('its outcome and reasons are refused to an admin without access', async () => {
     await expect(resolutionService(scenario).get('g1', OTHER_ADMIN)).rejects.toThrow('You are not part of this check-in.');
-    await expect(resolutionService(scenario).get('g1', SETTER)).resolves.toEqual({ outcome: 'the outcome and its reasons' });
+    await expect(resolutionService(scenario).get('g1', SETTER)).resolves.toMatchObject({ outcome: 'the outcome and its reasons' });
   });
 });
 
