@@ -20,7 +20,7 @@ Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settl
 
 What worked: a lead saying someone is struggling was asked what they had seen, tried and want, on both doors; "I expect Ben to close 3 renewals by the end of December" was said back and kept as the lead's expectation, unseen by Ben, on both doors; a wish with nothing checkable ("more proactive") was not kept as an expectation on either; the first success statement was kept.
 
-**Patterns through the product's own code, first six scenarios: 73%** of person-and-pattern pairs the same across a scenario (33 of 45), and exactly the same patterns on 27 of 39 check-ins. Short of 8 in 10. The other six scenarios are being read now, for a number comparable with the 80% measured earlier on all twelve.
+**Patterns through the product's own code, all twelve scenarios: 70%** of person-and-pattern pairs the same across a scenario (46 of 66), and exactly the same patterns on 36 of 54 check-ins. Today's single read was 36%, so it is nearly twice as steady, but short of 8 in 10; the 80% measured earlier from stored reads was on the high side. **Not yet steady enough for release by Hafsah's aim.** Now measuring seven reads with four agreeing, through the same code.
 
 **Decision 66 done** (`d9cf4224`). A note typed on the Context and resources tab now lifts the "nobody can be invited yet" block, the same as a private note, an expectation, a document or a long enough brief. A retired note does not. Only the tab's "Notes" section counts; strategy, how we work, still to decide and not settled lines do not, because the tab does not call them notes. The refusal's sentences are unchanged, word for word. 1,276 tests pass in the grounds folder.
 
