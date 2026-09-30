@@ -44,6 +44,12 @@ Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settl
 - **90.** "Four of the six people have answered so far."
 - **86.** A session somebody has started is open, whatever its first-day date still says. Three places treated it as not open yet: Today listed it under "Coming up", the assistant left it out, and a guest was told it "opens on" a past date. All three are fixed.
 
+**Pattern steadiness, on what people are actually shown (decision 68): the detector reaches the aim.** The same six-session conversations (sales, seniorhire and cofounder, from run A), read twice through the product's own five-read detector: people are shown the same patterns 14 times in 15 (93%), and 7 of 8 people are shown exactly the same set. The one difference is a borderline pattern for one person, "the inbox wins over the important work", seen in two periods in one read and three in the other. The three-period rule filters out most of what wavers in a single check-in: one check-in alone gives the same patterns about 7 times in 10, but what a person is shown after three periods is far steadier.
+
+Between two separate runs, where the simulated people say different things each time, it is 32%. That is the conversations differing, not the detector: the same words give the same patterns. Real people are no different; what someone is shown depends on what they say.
+
+**My recommendation: steady enough for release.** Run B's three scenarios are being checked the same way to confirm it on more people. A change to give the detector the person's own earlier record, for the patterns that waver most in a single check-in, is still being built and will only be kept if it is steadier and finds at least as many real patterns.
+
 **Night of 30 September, continued.**
 - **The session restarted in the evening,** which stopped the local API, so the two six-session runs (decision 68) stopped partway. Each run finished three scenarios completely: sales, seniorhire and cofounder.
 - **What people are actually shown, on those three: 32% the same between the two runs** (11 of 34 person-and-pattern pairs). This is far below the 7 in 10 of a single check-in, because over six sessions the differences add up: a pattern seen in three periods in one run and two in the other is shown in one and not the other. Two causes are mixed in it, the detector reading differently and the simulated people saying different things. The same stored six-session conversations are being re-read twice through the product's own detector now, to separate the two.
