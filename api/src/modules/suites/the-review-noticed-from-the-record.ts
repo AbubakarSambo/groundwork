@@ -1,5 +1,6 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { endStatesFor } from '../resolution/end-states';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 
 /**
@@ -19,7 +20,7 @@ import { isEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
  */
 export interface ANoticedLine { says: string; mark: 'proven'; private?: true }
 
-const DAYS_IN_WORDS = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const DAYS_IN_WORDS = (d: Date) => whenItWas(d, 'full', 'UTC');
 
 export async function whatGroundworkNoticed(
   prisma: PrismaService,
