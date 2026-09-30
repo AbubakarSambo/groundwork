@@ -6875,4 +6875,11 @@ A builder is fixing all of them now. The review's pictures are in the scratchpad
 
 The whole screen suite passes (3,684 tests), and so do the button test (10 of 10) and the page-colour test (3 of 3).
 
+**Group 1's second review: nine of the ten faults are fixed, as a person sees them.** It found one serious new fault. The WhatsApp example picture on Connections and the developer page looks like a real check-in, with numbers and answers, and every organisation with WhatsApp switched on would see it. It is being redrawn with the prototype's made-up conversation with Miriam. The other faults being fixed now:
+- the rest of the developer page's wording, including the "for your engineer" reference;
+- the drawn console's menu running off the side on a phone;
+- a duplicate "Create an organisation" on More;
+- "Download it" doing two things at once;
+- an unmarked link on WhatsApp.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
