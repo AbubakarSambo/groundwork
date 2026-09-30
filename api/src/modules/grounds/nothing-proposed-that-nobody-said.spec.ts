@@ -73,9 +73,18 @@ describe('dropsAPromiseWithNothingToKeep: nothing says it will be recorded unles
     )).toBe('It will never be quoted to Ben.');
   });
 
-  it('leaves the sentence alone when a proposal is attached this turn', () => {
+  /*
+   * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: this test used to assert the
+   * OPPOSITE - that a proposal attached this turn made the model's own restating sentence fine to
+   * keep. It is not: `proposal.say` is the one true statement of what gets kept, built
+   * deterministically from the lead's own words, and the model's own restatement is a second,
+   * independent description of the same thing that is free to disagree with it - see fix 3 for the
+   * two exact live sentences that did. The sentence is dropped either way now; only the reason
+   * differs (a false promise with nothing behind it, or a true one told twice and possibly wrongly).
+   */
+  it('drops the model\'s own restating sentence even when a proposal is attached this turn, because proposal.say already says it', () => {
     const text = 'I will record this as your read of Ben. It will never be quoted to Ben.';
-    expect(dropsAPromiseWithNothingToKeep(text, true)).toBe(text);
+    expect(dropsAPromiseWithNothingToKeep(text, true)).toBe('It will never be quoted to Ben.');
   });
 
   it('catches the other phrasings the model uses for the same promise', () => {
@@ -119,6 +128,31 @@ describe('dropsAPromiseWithNothingToKeep: nothing says it will be recorded unles
 
   it('catches "record ... as your perspective/read/expectation" without needing "I" right next to the verb', () => {
     expect(dropsAPromiseWithNothingToKeep('That is noted as your read of Ben.', false)).toBe('');
+  });
+
+  /*
+   * FIX 3, FOUND LIVE, 30 September 2026, on the four live checks: with a proposal attached, the
+   * model's own sentence restating what it would add sometimes contradicted the real say-back beside
+   * it - "I can add that you expect Ben to be more proactive." beside an offer to keep "should be
+   * more proactive" as a PRIVATE NOTE, and "I can add that Ben expects to close three renewals by the
+   * end of December." (wrong person, and "three" instead of the said-back "3") beside the correct
+   * say-back. Neither had been caught, because "can add" was not in the old pattern at all.
+   */
+  it('drops "I can add that ..." beside a lead_read proposal, exactly as it was said live', () => {
+    expect(dropsAPromiseWithNothingToKeep(
+      'I can add that you expect Ben to be more proactive. Is there anything else you have seen?', true,
+    )).toBe('Is there anything else you have seen?');
+  });
+
+  it('drops "I can add that ..." beside an expectation proposal, exactly as it was said live', () => {
+    expect(dropsAPromiseWithNothingToKeep(
+      'I can add that Ben expects to close three renewals by the end of December.', true,
+    )).toBe('');
+  });
+
+  it('a genuine question from the model survives, because nothing here matches a question', () => {
+    expect(dropsAPromiseWithNothingToKeep('Should I record that as well?', true)).toBe('Should I record that as well?');
+    expect(dropsAPromiseWithNothingToKeep('Should I record that as well?', false)).toBe('Should I record that as well?');
   });
 
   it('does not touch an ordinary sentence that happens to contain "note" or "record" as a different word', () => {

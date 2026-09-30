@@ -82,9 +82,26 @@ export function traceableToWhatTheySaid(value: string | null | undefined, said: 
  * exactly the shape `traceableToWhatTheySaid` exists for, one turn later: it is not enough for the
  * words to be theirs, the ACT has to be real too.
  *
- * A `lead_read` or `expectation` proposal attached to the same turn makes the promise true, so this
- * only drops the sentence when `hasProposal` is false - the coaching rule (rule 2 of
- * `contextChatPrompt`) is free to say it plainly whenever there is something to say yes to.
+ * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: this used to only drop the sentence
+ * when `hasProposal` was false, on the reasoning that a proposal attached to the same turn makes the
+ * promise true. That reasoning was wrong. `proposal.say` is the one statement of what will be kept -
+ * built deterministically, in code, from the same words the lead typed (see `proposalFrom` and
+ * `verbatimQuote`) - and it is shown to the lead separately, with its own Yes. The model's OWN
+ * sentence restating the same thing is a second, independent description of it, free to disagree
+ * with the real one:
+ *
+ *   "I can add that you expect Ben to be more proactive." - beside an offer to keep "should be more
+ *     proactive" as a PRIVATE NOTE, not an expectation
+ *   "I can add that Ben expects to close three renewals by the end of December." - beside the correct
+ *     say-back, but naming the wrong person and a different number form
+ *
+ * Both were true statements in the narrow sense that something real was being recorded that turn - so
+ * the old `hasProposal` guard let them straight through - and both were wrong about what. The model's
+ * restating sentences are dropped now whenever a proposal is attached, exactly as a false promise is
+ * dropped when one is not: either way, `proposal.say` is the only sentence allowed to describe what
+ * gets kept. The model's own QUESTION survives untouched, because nothing here matches one - "Should
+ * I record that as well?" has no modal directly after "I", only "record" does, and the pattern below
+ * requires the modal.
  */
 /*
  * FOUND LIVE, 30 September 2026: the first version only caught the future tense, "I will record...".
@@ -104,8 +121,14 @@ export function traceableToWhatTheySaid(value: string | null | undefined, said: 
  * catches "record/note/keep ... as your perspective/read/expectation" in any tense, with no subject
  * required, since the model does not always say "I" right next to the verb.
  */
-const SUBJECT_AND_MODAL = "(?:i|we)(?:'ll|'m|'ve|\\s+will|\\s+am|\\s+have|\\s+are)";
-const RECORD_VERB = '(?:record(?:ing|ed)?|keep(?:ing)?|kept|sav(?:e|ing|ed)|not(?:e|ing|ed)|log(?:ging|ged)|write (?:that|this|it) down)';
+/*
+ * "can" joins the other modals so "I can add that ..." is caught, and "add(?:ing)?" joins the record
+ * verbs so both real examples above ("I can add that you expect...") match through the same piece
+ * that already caught "I will record...", "I've noted...", and so on - it is the same sentence shape
+ * either way, so one piece of grammar covers it rather than a second copy of it.
+ */
+const SUBJECT_AND_MODAL = "(?:i|we)(?:'ll|'m|'ve|\\s+will|\\s+am|\\s+have|\\s+are|\\s+can)";
+const RECORD_VERB = '(?:record(?:ing|ed)?|keep(?:ing)?|kept|sav(?:e|ing|ed)|not(?:e|ing|ed)|log(?:ging|ged)|add(?:ing)?|write (?:that|this|it) down)';
 const PROMISES_TO_RECORD = new RegExp(
   `\\b${SUBJECT_AND_MODAL}\\b\\s*(?:going to\\s+)?(?:be\\s+)?${RECORD_VERB}` +
     '|\\b(?:record|records|recording|recorded|note|notes|noting|noted|keep|keeps|keeping|kept)\\b(?:(?!\\.).){0,80}\\bas your (?:perspective|read|expectation)\\b' +
@@ -114,8 +137,14 @@ const PROMISES_TO_RECORD = new RegExp(
   'i',
 );
 
+/**
+ * `hasProposal` is unused now: the sentence is dropped either way, for two different reasons - see
+ * the comment above. The parameter stays so every call site keeps saying, in its own words, whether a
+ * proposal is attached this turn, which is worth reading at the call site even though both branches
+ * now do the same thing.
+ */
 export function dropsAPromiseWithNothingToKeep(text: string, hasProposal: boolean): string {
-  if (hasProposal) return text;
+  void hasProposal;
   const kept = intoSentences(text).filter((s) => !PROMISES_TO_RECORD.test(s));
   return kept.join('').trim();
 }
