@@ -76,6 +76,7 @@ import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
+import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
@@ -400,6 +401,32 @@ export class GroundsService {
        at the moment report text is served. See `reportTextAsItWasShared`. */
     @Optional() private readonly moduleRef?: ModuleRef,
   ) {}
+
+  /**
+   * THE ONE GATE EVERY SETUP-CONFIRMING WRITER CALLS (decision 63). Throws
+   * `ONLY_THE_LEAD_CONFIRMS_SETUP` for anybody but the lead, unless the lead has left the
+   * organisation, in which case an admin of it may confirm - and this returns the decision so the
+   * caller can record who did it, and why, for the people the change reaches.
+   *
+   * The lead's own case never looks anything up beyond the check-in itself; the lead-left lookups
+   * only run once that fast path has already failed.
+   */
+  private async mayConfirmSetupOn(
+    checkIn: { initiatorId: string | null },
+    requestingUserId: string,
+  ): Promise<Extract<SetupConfirmDecision, { allowed: true }>> {
+    const fastPath = whoMayConfirmSetup(requestingUserId, checkIn);
+    if (fastPath.allowed) return fastPath;
+    const [lead, confirmer] = await Promise.all([
+      checkIn.initiatorId
+        ? this.prisma.user.findUnique({ where: { id: checkIn.initiatorId }, select: { isActive: true, firstName: true, lastName: true } })
+        : Promise.resolve(null),
+      this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true, firstName: true, lastName: true } }),
+    ]);
+    const decision = whoMayConfirmSetup(requestingUserId, checkIn, { lead, confirmer, organizationId: confirmer?.organizationId });
+    if (!decision.allowed) throw new ForbiddenException(ONLY_THE_LEAD_CONFIRMS_SETUP);
+    return decision;
+  }
 
   /**
    * REPORT TEXT, SERVED THROUGH THE REPORT'S OWN DOOR AND NO OTHER (U.5 re-review).
@@ -2237,12 +2264,12 @@ export class GroundsService {
     const leadContextNotes = isInitiatorViewer
       ? await this.prisma.leadContextNote.findMany({
           where: { groundId: id },
-          select: { id: true, participantId: true, text: true, createdAt: true, audience: true },
+          select: { id: true, participantId: true, text: true, createdAt: true, audience: true, confirmedByAdminNote: true },
           orderBy: { createdAt: 'asc' },
         })
       : await this.prisma.leadContextNote.findMany({
           where: { groundId: id, audience: ContextNoteAudience.EVERYONE },
-          select: { id: true, participantId: true, text: true, createdAt: true, audience: true },
+          select: { id: true, participantId: true, text: true, createdAt: true, audience: true, confirmedByAdminNote: true },
           orderBy: { createdAt: 'asc' },
         });
 
@@ -2255,7 +2282,7 @@ export class GroundsService {
      */
     const contextLines = await (this.prisma.groundContextItem?.findMany?.({
       where: { groundId: id },
-      select: { id: true, kind: true, text: true, saidAs: true, audience: true, aboutParticipantId: true, closedAt: true, createdAt: true, exactQuestion: true, questionConfirmedAt: true },
+      select: { id: true, kind: true, text: true, saidAs: true, audience: true, aboutParticipantId: true, closedAt: true, createdAt: true, exactQuestion: true, questionConfirmedAt: true, confirmedByAdminNote: true },
       orderBy: { createdAt: 'asc' },
     }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]);
     const theLeadReadsThese = isInitiatorViewer || viewerAdminsThisOrg;
@@ -3182,15 +3209,21 @@ export class GroundsService {
     };
   }
 
-  /** The write behind a confirmed change. One row, one field, nothing else touched. */
-  private async makeTheChange(change: { intent: WhatTheyWant; thing: AThingOnRecord; newText?: string | null; participantId?: string | null }): Promise<void> {
+  /**
+   * The write behind a confirmed change. One row, one field, nothing else touched.
+   *
+   * `confirmedByAdminNote` (decision 63) is the plain sentence naming the admin who confirmed this
+   * in the lead's place, or null when the lead confirmed it themselves - only recorded on a line,
+   * which is the one kind of thing here a participant may read.
+   */
+  private async makeTheChange(change: { intent: WhatTheyWant; thing: AThingOnRecord; newText?: string | null; participantId?: string | null }, confirmedByAdminNote: string | null = null): Promise<void> {
     const { intent, thing } = change;
     if (thing.what === 'line') {
       if (intent === 'drop' || intent === 'settle') {
-        await this.prisma.groundContextItem.update({ where: { id: thing.id }, data: { closedAt: new Date() } });
+        await this.prisma.groundContextItem.update({ where: { id: thing.id }, data: { closedAt: new Date(), confirmedByAdminNote } });
       } else if (intent === 'reword' && change.newText?.trim()) {
         const text = change.newText.trim().slice(0, 400);
-        await this.prisma.groundContextItem.update({ where: { id: thing.id }, data: { text, ...(thing.kind === ContextItemKind.QUESTION_FOR_PERSON ? aQuestionReworded(text) : {}) } });
+        await this.prisma.groundContextItem.update({ where: { id: thing.id }, data: { text, confirmedByAdminNote, ...(thing.kind === ContextItemKind.QUESTION_FOR_PERSON ? aQuestionReworded(text) : {}) } });
       }
       return;
     }
@@ -3420,9 +3453,15 @@ export class GroundsService {
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Setting this check-in up is the lead\'s.');
-    }
+    /*
+     * DECISION 63: THE LEAD CONFIRMS, OR - ONLY ONCE THE LEAD HAS LEFT THE ORGANISATION - AN ADMIN
+     * OF IT CAN, IN THEIR PLACE. Before this the lead was the only door here, with no way through at
+     * all once they had left: every open proposal on their check-ins would sit unconfirmable for
+     * ever. `confirmedByAdminNote` is the plain sentence, or null when the lead confirmed it
+     * themselves, threaded into the rows this writes so the people it reaches are told who did it.
+     */
+    const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
+    const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
 
     const openDocumentCount = await this.prisma.groundDocument.count({ where: { groundId, visibility: 'OPEN' } });
     const objectiveRowsForGaps = await this.prisma.personObjective.findMany({
@@ -3480,7 +3519,7 @@ export class GroundsService {
      */
     const theirChange = await this.whatTheyWantChanged(groundId, dto.said).catch(() => null);
     if (theirChange?.apply) {
-      await this.makeTheChange(theirChange.apply);
+      await this.makeTheChange(theirChange.apply, confirmedByAdminNote);
       return { changed: theirChange.apply.intent, say: whatChanged(theirChange.apply) };
     }
     /* A yes to a change proposed on the previous turn: the instruction is one turn up. */
@@ -3492,7 +3531,7 @@ export class GroundsService {
       return wants?.apply ? wants : null;
     })();
     if (yesToAChange?.apply) {
-      await this.makeTheChange(yesToAChange.apply);
+      await this.makeTheChange(yesToAChange.apply, confirmedByAdminNote);
       return { changed: yesToAChange.apply.intent, say: whatChanged(yesToAChange.apply) };
     }
 
@@ -3553,13 +3592,13 @@ export class GroundsService {
         }
         got = withoutWhatTheyLeftOut(got, leaves);
         const left = [...leaves.teamTargets, ...leaves.people, ...leaves.commitments];
-        const wroteSome = await this.writeWhatThePasteGave(groundId, got);
+        const wroteSome = await this.writeWhatThePasteGave(groundId, got, confirmedByAdminNote);
         const say = `${whatWeTookFromThat(got) ?? 'Recorded.'}\n\nLeft out, as you said: ${left.join('; ')}.`;
         const questionsForPeople = got.questionsForPeople.length ? await this.theQuestionsForPeople(groundId).catch(() => []) : undefined;
         return { changed: wroteSome ? 'everything but what you left out' : 'nothing new', say, ...(questionsForPeople ? { questionsForPeople } : {}) };
       }
       if (got) {
-        const wrote = await this.writeWhatThePasteGave(groundId, got);
+        const wrote = await this.writeWhatThePasteGave(groundId, got, confirmedByAdminNote);
         /* Only a whole yes marks the paste as taken: a partial one leaves the rest still to take. */
         await (this.prisma.groundPaste?.create?.({ data: { groundId, hash } }) ?? Promise.resolve(null)).catch(() => null);
         /* And the questions it kept, each waiting for its own yes. See confirmQuestionForPerson. */
@@ -3721,7 +3760,10 @@ export class GroundsService {
    * whole point of a paste is that the people answering should be standing in it. See
    * what-a-participant-is-told-about-this.
    */
-  private async writeWhatThePasteGave(groundId: string, got: WhatAPasteGives): Promise<boolean> {
+  /** `confirmedByAdminNote` (decision 63): the plain sentence naming the admin who confirmed this
+   *  paste in the lead's place, or null when the lead confirmed it themselves. Recorded on the rows
+   *  a participant may go on to read: the baseline and the context lines it writes below. */
+  private async writeWhatThePasteGave(groundId: string, got: WhatAPasteGives, confirmedByAdminNote: string | null = null): Promise<boolean> {
     let wrote = false;
     if (got.success) {
       const latest = await this.prisma.groundBaseline.findFirst({ where: { groundId }, orderBy: { version: 'desc' }, select: { version: true, conditions: true, successLooksLike: true } });
@@ -3733,6 +3775,7 @@ export class GroundsService {
             successLooksLike: got.success,
             conditions: (latest?.conditions ?? undefined) as any,
             changeReason: latest ? 'Restated in the context conversation.' : null,
+            confirmedByAdminNote,
           },
         });
         wrote = true;
@@ -3862,6 +3905,7 @@ export class GroundsService {
             aboutParticipantId: about,
             source: 'PASTE',
             authorUserId: author,
+            confirmedByAdminNote,
             /* Never confirmed here: `questionConfirmedAt` is only ever set by the lead's own yes to it. */
             ...(kind === ContextItemKind.QUESTION_FOR_PERSON && opts?.exactQuestion ? { exactQuestion: opts.exactQuestion.slice(0, 400) } : {}),
           },
@@ -3931,13 +3975,10 @@ export class GroundsService {
   async shareLeadContext(groundId: string, requestingUserId: string, noteId: string) {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
-      throw new ForbiddenException('Only the lead of this check-in, or an admin in your organisation, can share a note from it.');
-    }
+    /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
+       in for them. Was any admin of the organisation, at any time; narrowed here. */
+    const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
+    const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const note = await this.prisma.leadContextNote.findFirst({ where: { id: noteId, groundId }, select: { id: true, participantId: true, audience: true } });
     if (!note) throw new NotFoundException('That note is not on this check-in');
     if (note.participantId) {
@@ -3948,10 +3989,10 @@ export class GroundsService {
     if (note.audience === ContextNoteAudience.EVERYONE) return { id: note.id, audience: note.audience, alreadyShared: true };
     const shared = await this.prisma.leadContextNote.update({
       where: { id: note.id },
-      data: { audience: ContextNoteAudience.EVERYONE },
-      select: { id: true, text: true, audience: true, participantId: true, createdAt: true },
+      data: { audience: ContextNoteAudience.EVERYONE, confirmedByAdminNote },
+      select: { id: true, text: true, audience: true, participantId: true, createdAt: true, confirmedByAdminNote: true },
     });
-    this.logger.log(`Ground ${groundId}: a context note was shared with the team.`);
+    this.logger.log(`Ground ${groundId}: a context note was shared with the team${confirm.as === 'admin' ? ', by an admin because the lead has left' : ''}.`);
     return shared;
   }
 
@@ -4033,15 +4074,12 @@ export class GroundsService {
       select: { initiatorId: true, organizationId: true, status: true, endState: true },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
-      throw new ForbiddenException('Only the lead of this check-in, or an admin in your organisation, can add what it knows.');
-    }
+    /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
+       in for them. Was any admin of the organisation, at any time; narrowed here. */
+    const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
+    const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     /* The same door every other writer goes through: ended, held or out of time refuses alike. */
-    const refused = whyItRefuses(ground.status, ground.endState, ground.initiatorId === requestingUserId ? 'the lead' : 'anybody else');
+    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else');
     if (refused) throw new BadRequestException(refused);
 
     const text = (line.text ?? '').trim();
@@ -4062,10 +4100,11 @@ export class GroundsService {
         /* Typed in, not heard in a conversation and not pasted, and the record says which. */
         source: 'TYPED',
         authorUserId: requestingUserId,
+        confirmedByAdminNote,
       },
-      select: { id: true, kind: true, text: true, audience: true },
+      select: { id: true, kind: true, text: true, audience: true, confirmedByAdminNote: true },
     });
-    this.logger.log(`Ground ${groundId}: a ${kind} line was typed in directly.`);
+    this.logger.log(`Ground ${groundId}: a ${kind} line was typed in directly${confirm.as === 'admin' ? ', by an admin because the lead has left' : ''}.`);
     return made;
   }
 
@@ -4078,13 +4117,10 @@ export class GroundsService {
     if (typeof change?.text === 'string') change = { ...change, text: withoutBankDetails(change.text) };
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
-      throw new ForbiddenException('Only the lead of this check-in, or an admin in your organisation, can change what it knows.');
-    }
+    /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
+       in for them. Was any admin of the organisation, at any time; narrowed here. */
+    const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
+    const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const line = await this.prisma.groundContextItem.findFirst({ where: { id: itemId, groundId }, select: { id: true, kind: true } });
     if (!line) throw new NotFoundException('That line is not on this check-in');
     const aQuestion = line.kind === ContextItemKind.QUESTION_FOR_PERSON;
@@ -4102,8 +4138,9 @@ export class GroundsService {
         /* A question reworded, or opened again, waits for the lead's yes to its sentence once more. */
         ...(aQuestion && text ? aQuestionReworded(text) : {}),
         ...(aQuestion && change.closed !== undefined ? { questionConfirmedAt: null } : {}),
+        confirmedByAdminNote,
       },
-      select: { id: true, kind: true, text: true, audience: true, aboutParticipantId: true, closedAt: true },
+      select: { id: true, kind: true, text: true, audience: true, aboutParticipantId: true, closedAt: true, confirmedByAdminNote: true },
     });
   }
 
@@ -4120,7 +4157,7 @@ export class GroundsService {
     const [lines, people] = await Promise.all([
       (this.prisma.groundContextItem?.findMany?.({
         where: { groundId, kind: ContextItemKind.QUESTION_FOR_PERSON, closedAt: null },
-        select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, questionConfirmedAt: true },
+        select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, questionConfirmedAt: true, confirmedByAdminNote: true },
         orderBy: { createdAt: 'asc' },
       }) ?? Promise.resolve([] as any[])).catch(() => [] as any[]),
       this.prisma.groundParticipant.findMany({
@@ -4169,11 +4206,12 @@ export class GroundsService {
   ): Promise<AQuestionForAPerson & { say: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Only the person who runs this check-in can confirm a question for somebody on it.');
-    }
+    /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
+       in for them. See mayConfirmSetupOn and who-may-confirm-setup.ts. */
+    const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
+    const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     /* The same door every other writer goes through: ended, held or out of time refuses alike. */
-    const refused = whyItRefuses(ground.status, ground.endState, 'the lead');
+    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else');
     if (refused) throw new BadRequestException(refused);
     const line = await this.prisma.groundContextItem.findFirst({
       where: { id: itemId, groundId, kind: ContextItemKind.QUESTION_FOR_PERSON },
@@ -4195,10 +4233,10 @@ export class GroundsService {
     if (!exactQuestion) throw new BadRequestException('Write the question as you want it asked first.');
     const saved = await this.prisma.groundContextItem.update({
       where: { id: line.id },
-      data: { exactQuestion, questionConfirmedAt: new Date() },
-      select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, questionConfirmedAt: true },
+      data: { exactQuestion, questionConfirmedAt: new Date(), confirmedByAdminNote },
+      select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, questionConfirmedAt: true, confirmedByAdminNote: true },
     });
-    this.logger.log(`Ground ${groundId}: the lead confirmed a question for somebody${edited ? ', in their own changed words' : ''}.`);
+    this.logger.log(`Ground ${groundId}: ${confirm.as === 'lead' ? 'the lead' : 'an admin, because the lead has left'} confirmed a question for somebody${edited ? ', in their own changed words' : ''}.`);
     const card = aQuestionAsTheLeadReadsIt(saved as any, who);
     return { ...card, say: `Confirmed. Groundwork will ask ${who} "${exactQuestion}" in their next check-in, word for word.` };
   }
@@ -4207,15 +4245,16 @@ export class GroundsService {
   async declineQuestionForPerson(groundId: string, requestingUserId: string, itemId: string): Promise<{ id: string; status: 'left out'; say: string }> {
     const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true } });
     if (!ground) throw new NotFoundException('Check-in not found');
-    if (ground.initiatorId !== requestingUserId) {
-      throw new ForbiddenException('Only the person who runs this check-in can leave out a question for somebody on it.');
-    }
+    /* Decision 63: the lead, or - only once the lead has left the organisation - an admin standing
+       in for them. */
+    const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
+    const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const line = await this.prisma.groundContextItem.findFirst({
       where: { id: itemId, groundId, kind: ContextItemKind.QUESTION_FOR_PERSON },
       select: { id: true, aboutParticipantId: true },
     });
     if (!line) throw new NotFoundException('That question is not on this check-in.');
-    await this.prisma.groundContextItem.update({ where: { id: line.id }, data: { closedAt: new Date(), questionConfirmedAt: null } });
+    await this.prisma.groundContextItem.update({ where: { id: line.id }, data: { closedAt: new Date(), questionConfirmedAt: null, confirmedByAdminNote } });
     const person = line.aboutParticipantId
       ? await this.prisma.groundParticipant.findFirst({ where: { id: line.aboutParticipantId, groundId }, select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } }).catch(() => null)
       : null;
@@ -4231,29 +4270,18 @@ export class GroundsService {
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     /**
-     * AN ORG ADMIN CAN WRITE CONTEXT, BECAUSE THEY CAN ALREADY DO THE HEAVIER THINGS.
-     *
-     * The powers were split down a line nobody drew on purpose: an admin in this organisation could
-     * RELEASE the report and CLOSE the check-in - the two least reversible acts in the product - and
-     * could not write a note or use the context chat. So somebody covering for a lead who has left, or
-     * is on leave, could end the thing and could not steer it.
-     *
-     * They read with the lead's eyes everywhere else in this file (`isOrgAdmin` above `get`,
-     * `setExternalVisibility`, the timeline). This was the one place that forgot.
+     * DECISION 63, 30 September 2026, NARROWS THIS: only the lead confirms setup changes, unless the
+     * lead has left the organisation, in which case an admin can, in their place. This used to let
+     * ANY admin of the organisation write context at any time, reasoning that they could already do
+     * the heavier things - release the report, close the check-in - and a lead mid-check-in could be
+     * silently overridden by any admin who felt like it. `mayConfirmSetupOn` is the one place this
+     * question is decided now, so this file no longer disagrees with itself.
      *
      * WHAT DOES NOT CHANGE: a note is still never quoted, and a note about a person is still never
      * shown to that person. Who may WRITE one is a different question from what one may be used for.
      */
-    const viewer = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    const isOrgAdmin = adminsThisOrg(viewer, ground);
-    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException(
-        'Only the lead of this check-in, or an admin in your organisation, can add context to it.',
-      );
-    }
+    const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
+    const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
     const text = (dto.text ?? '').trim();
     if (!text) throw new BadRequestException('Context note text is required');
     if (dto.participantId) {
@@ -4277,8 +4305,8 @@ export class GroundsService {
     }
 
     return this.prisma.leadContextNote.create({
-      data: { groundId, participantId: dto.participantId ?? null, authorUserId: requestingUserId, text, audience },
-      select: { id: true, participantId: true, text: true, createdAt: true, audience: true },
+      data: { groundId, participantId: dto.participantId ?? null, authorUserId: requestingUserId, text, audience, confirmedByAdminNote },
+      select: { id: true, participantId: true, text: true, createdAt: true, audience: true, confirmedByAdminNote: true },
     });
   }
 
@@ -6507,18 +6535,14 @@ export class GroundsService {
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     /**
-     * The lead's, or an admin in the same organisation. What doing well looks like is the lead's to
-     * state - a party stating it would be the person being read setting their own yardstick, which is
-     * the one thing the report exists to compare against something else.
+     * DECISION 63: the lead's, or - only once the lead has left the organisation - an admin of the
+     * same organisation, standing in for them. What doing well looks like is the lead's to state - a
+     * party stating it would be the person being read setting their own yardstick, which is the one
+     * thing the report exists to compare against something else. Was any admin of the organisation,
+     * at any time; narrowed here to match every other setup writer.
      */
-    const asker = await this.prisma.user.findUnique({
-      where: { id: requestingUserId },
-      select: { role: true, organizationId: true },
-    });
-    const isOrgAdmin = adminsThisOrg(asker, ground);
-    if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-      throw new ForbiddenException('Stating what doing well looks like belongs to whoever runs this check-in.');
-    }
+    const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
+    const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
 
     const success = dto.successLooksLike?.trim() || null;
     const conditions = (dto.conditions ?? []).map(c => c?.trim()).filter((c): c is string => !!c);
@@ -6548,8 +6572,9 @@ export class GroundsService {
         successLooksLike: success ?? latest?.successLooksLike ?? null,
         conditions: conditions.length ? conditions : carried,
         changeReason: dto.changeReason?.trim() || null,
+        confirmedByAdminNote,
       },
-      select: { id: true, version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true },
+      select: { id: true, version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true, confirmedByAdminNote: true },
     });
   }
 
@@ -6578,7 +6603,7 @@ export class GroundsService {
     const rows = await this.prisma.groundBaseline.findMany({
       where: { groundId },
       orderBy: { version: 'asc' },
-      select: { version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true },
+      select: { version: true, successLooksLike: true, conditions: true, changeReason: true, effectiveFrom: true, confirmedByAdminNote: true },
     });
     return rows.map(r => ({
       ...r,

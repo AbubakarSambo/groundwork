@@ -104,7 +104,8 @@ describe('what the lead wants changed', () => {
     expect(chat).toContain('await this.whatTheyWantChanged(groundId, lastFromLead)');
     expect(chat).not.toContain('makeTheChange');
     const apply = src.slice(src.indexOf('async applyContextProposal('), src.indexOf('private async writeWhatThePasteGave('));
-    expect(apply).toContain('await this.makeTheChange(theirChange.apply)');
+    /* Decision 63: also carries who confirmed it, when it was an admin standing in for the lead. */
+    expect(apply).toContain('await this.makeTheChange(theirChange.apply, confirmedByAdminNote)');
     /* And a yes to what was proposed a turn ago, because that is how a lead answers a question. */
     expect(apply).toContain('const yesToAChange');
   });

@@ -44,6 +44,10 @@ export interface AContextLine {
   audience: 'LEAD_ONLY' | 'EVERYONE';
   aboutParticipantId?: string | null;
   closedAt?: Date | string | null;
+  /** DECISION 63, 30 September 2026: set only when an admin added, changed or confirmed this line in
+   *  the lead's place, because the lead had left the organisation - the plain sentence naming them.
+   *  Null when the lead did it themselves. See who-may-confirm-setup.ts. */
+  confirmedByAdminNote?: string | null;
 }
 
 /**

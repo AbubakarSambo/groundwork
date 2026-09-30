@@ -120,9 +120,15 @@ describe('and the service writes only after a yes', () => {
     expect(apply).toMatch(/const parties = await this\.partiesForMatching\(groundId\)/);
   });
 
+  /**
+   * DECISION 63, 30 September 2026: still checked again on the write, not only on the read - now
+   * through `mayConfirmSetupOn`, which lets the lead through on `checkIn.initiatorId === requestingUserId`
+   * (the same comparison this used to make directly) and, only once the lead has left the
+   * organisation, an admin standing in for them.
+   */
   it('and it is the lead\'s, checked again on the write and not only on the read', () => {
-    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('async applyContextProposal(') + 1200);
-    expect(apply).toMatch(/ground\.initiatorId !== requestingUserId/);
+    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('async applyContextProposal(') + 1400);
+    expect(apply).toMatch(/this\.mayConfirmSetupOn\(ground, requestingUserId\)/);
   });
 
   it('the timeline change goes through updateTimeline, not straight at the column', () => {

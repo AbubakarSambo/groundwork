@@ -78,7 +78,8 @@ describe('a dump is many things at once', () => {
     expect(apply).toContain('looksLikeADump(dto.said)');
     expect(apply).toContain('thePasteThisYesIsFor(dto.said, dto.history as any)');
     expect(apply).toContain('await this.whatAPasteGives(groundId, thePaste)');
-    expect(apply).toContain('await this.writeWhatThePasteGave(groundId, got)');
+    /* Decision 63: also carries who confirmed it, when it was an admin standing in for the lead. */
+    expect(apply).toContain('await this.writeWhatThePasteGave(groundId, got, confirmedByAdminNote)');
   });
 
   it('writes it the way the one-at-a-time path does, and tells the team', () => {

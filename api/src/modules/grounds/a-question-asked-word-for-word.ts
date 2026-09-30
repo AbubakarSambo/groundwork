@@ -227,18 +227,24 @@ export interface AQuestionForAPerson {
   confirmedAt: string | null;
   /** True for a line kept before 28 September, which had no exact sentence until now. */
   writtenBeforeConfirming: boolean;
-  /** The sentence to show under it where it was written before; null otherwise. */
+  /** The sentence to show under it where it was written before, or an admin confirmed it in the
+   *  lead's place (decision 63), or both, one under the other; null when neither applies. */
   note: string | null;
+  /** DECISION 63: set only when an admin confirmed or declined this in the lead's place, because the
+   *  lead had left the organisation - the plain sentence naming them. Null when the lead did it. */
+  confirmedByAdminNote: string | null;
 }
 
 /** The card for one stored line. An older line with no sentence is shown its words made a sentence. */
 export function aQuestionAsTheLeadReadsIt(
-  line: { id: string; text: string; aboutParticipantId?: string | null; exactQuestion?: string | null; questionConfirmedAt?: Date | string | null },
+  line: { id: string; text: string; aboutParticipantId?: string | null; exactQuestion?: string | null; questionConfirmedAt?: Date | string | null; confirmedByAdminNote?: string | null },
   who: string,
 ): AQuestionForAPerson {
   const stored = (line.exactQuestion ?? '').trim();
   const exactQuestion = stored || plainQuestionFrom(line.text, who);
   const confirmed = !!(stored && line.questionConfirmedAt);
+  const confirmedByAdminNote = (line.confirmedByAdminNote ?? '').trim() || null;
+  const writtenBeforeNote = stored ? null : WRITTEN_BEFORE_YOU_CONFIRMED_EACH_ONE;
   return {
     id: line.id,
     participantId: line.aboutParticipantId ?? null,
@@ -248,6 +254,7 @@ export function aQuestionAsTheLeadReadsIt(
     status: confirmed ? 'confirmed' : 'waiting',
     confirmedAt: confirmed ? new Date(line.questionConfirmedAt as any).toISOString() : null,
     writtenBeforeConfirming: !stored,
-    note: stored ? null : WRITTEN_BEFORE_YOU_CONFIRMED_EACH_ONE,
+    note: [writtenBeforeNote, confirmedByAdminNote].filter(Boolean).join(' ') || null,
+    confirmedByAdminNote,
   };
 }

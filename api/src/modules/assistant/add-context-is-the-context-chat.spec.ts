@@ -224,8 +224,15 @@ describe('say-back and confirm before saving (inventory item 5), by calling the 
   });
 });
 
-describe('the asymmetry, unchanged: propose allows an admin, confirm does not (inventory items 5 and 14)', () => {
-  it('an admin can have the whole conversation and still be refused at the confirm step, honestly, not silently', async () => {
+/**
+ * DECISION 63, 30 September 2026, NARROWED THIS: an admin now CAN confirm, but only once the lead
+ * has left the organisation - `applyContextProposal` itself decides that (who-may-confirm-setup.ts).
+ * This mock stands in for "the lead is still here", which is the one case still refused. What this
+ * test protects is unchanged either way: assistant.service.ts surfaces whatever
+ * `applyContextProposal` throws, honestly, rather than pretending the write saved.
+ */
+describe('propose allows an admin; confirm still refuses one while the lead is still here (inventory items 5 and 14)', () => {
+  it('an admin can have the whole conversation and still be refused at the confirm step, honestly, not silently, while the lead is still in the organisation', async () => {
     const parked = {
       id: 'pr1',
       kind: 'context',

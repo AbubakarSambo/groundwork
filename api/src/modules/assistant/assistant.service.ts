@@ -2055,11 +2055,13 @@ export class AssistantService {
    * CALLS. `said` is the lead's own words that produced the proposal, not the word "yes": the value is
    * re-derived from what they typed, the same guarantee the old confirm route keeps (item 5).
    *
-   * `applyContextProposal` is lead-only, with no admin fallback - the asymmetry inventory item 5 and
-   * item 14 both flag, kept exactly as it is rather than widened to "lead or admin" here. An admin who
-   * opened this conversation for an absent lead can hear the proposal back but the write itself still
-   * throws for them, same as it does on the old route; see `context-and-confirm-are-not-the-same-gate`
-   * for the test that pins this down from the Ask Groundwork side.
+   * DECISION 63, 30 September 2026: `applyContextProposal` is the lead's, or - only once the lead has
+   * left the organisation - an admin's, in their place; `mayConfirmSetupOn` decides which, in one
+   * place, so this door and the old confirm route can never disagree. Before this it was the lead's
+   * alone with no way through at all, the asymmetry inventory items 5 and 14 both flagged: an admin
+   * covering for an absent lead could have the whole conversation and still be refused here, honestly
+   * (not silently), by the catch below. That still happens - while the lead is still in the
+   * organisation, this is unchanged.
    */
   private async resolveParkedContext(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
@@ -2089,9 +2091,9 @@ export class AssistantService {
       return rules('add_context', text(applied.say));
     } catch (err: any) {
       /*
-       * THE ASYMMETRY, SURFACED RATHER THAN SWALLOWED. An admin covering for an absent lead can have
-       * had this whole conversation and still be refused here - `applyContextProposal` is the lead's
-       * alone (item 5) - and the honest answer says so instead of pretending it saved.
+       * ANY REFUSAL IS SURFACED RATHER THAN SWALLOWED. An admin covering for an absent lead who is
+       * still in the organisation can have had this whole conversation and still be refused here
+       * (decision 63), and the honest answer says so instead of pretending it saved.
        */
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be saved.'));
@@ -2569,8 +2571,9 @@ export class AssistantService {
    *
    * Lists what `GroundsService.questionsForPeople` already has waiting, and turns "confirm the
    * question for X" or "leave out the question for X" into a proposal that says the exact sentence
-   * back before `confirmQuestionForPerson`/`declineQuestionForPerson` - the lead-only routes the old
-   * Context and resources page's own cards call - ever runs.
+   * back before `confirmQuestionForPerson`/`declineQuestionForPerson` - the routes the old Context and
+   * resources page's own cards call, the lead's or (decision 63, once the lead has left) an admin's -
+   * ever runs.
    */
   private async questionsForPeopleByChat(
     organizationId: string,
@@ -2682,9 +2685,9 @@ export class AssistantService {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
       return rules('add_context', text((result as any).say));
     } catch (err: any) {
-      /* THE SAME LEAD-ONLY ASYMMETRY AS ITEM 5: an admin who listed the questions can still be
-         refused here, honestly, because `confirmQuestionForPerson`/`declineQuestionForPerson` are
-         the lead's alone, with no admin fallback (inventory item 8). */
+      /* DECISION 63: an admin who listed the questions, while the lead is still in the organisation,
+         can still be refused here, honestly - `confirmQuestionForPerson`/`declineQuestionForPerson`
+         are the lead's, or an admin's only once the lead has left. */
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be saved.'));
     }
