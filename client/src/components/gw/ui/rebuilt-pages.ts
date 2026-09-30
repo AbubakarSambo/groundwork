@@ -42,4 +42,11 @@ export const REBUILT_PAGES: string[] = [
   'components/gw/WhatTheRecordShows.tsx',
   'components/gw/TheJudgement.tsx',
   'components/gw/WhatTheNetworkSaid.tsx',
+  'components/gw/HowThisHasMoved.tsx',
+  'components/gw/ResolutionPanel.tsx',
+  'components/gw/TheSessionsReport.tsx',
+  'components/gw/split-one-total-across-people.tsx',
+  'components/gw/WhatSuccessLooksLike.tsx',
+  'components/gw/TargetsBand.tsx',
+  'components/gw/Suggestions.tsx',
 ]

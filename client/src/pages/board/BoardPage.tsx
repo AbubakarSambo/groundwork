@@ -91,11 +91,7 @@ import { KindOfWorkBanner, WorkRecordsSections } from './WorkRecords'
  * border, bold near-black text, full width. Kept local to the board rather than added to
  * `btnGhost`, which many other pages already use for its lighter weight.
  */
-const wideOutlineBtn = {
-  display: 'block', textAlign: 'center' as const, marginTop: 8, textDecoration: 'none',
-  padding: '11px 16px', borderRadius: 8, border: '1.5px solid var(--gw-dark)',
-  background: 'white', color: 'var(--gw-dark)', fontSize: 14, fontWeight: 700, fontFamily: 'inherit',
-}
+
 
 const dshort = (iso?: string | null) =>
   iso ? whenItWas(iso, 'dayAndMonth') : ' - '
@@ -709,20 +705,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {b.phaseSpine.sessions.map((s) => {
                 const been = s.state === 'done' || (s.state === 'current' && !groundEnded)
                 const face = sessionPillSentence(s, groundEnded)
-                const skin = {
-                  fontSize: 11, padding: '4px 10px', borderRadius: 20,
-                  background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white',
-                  border: '1px solid var(--gw-border)',
-                  color: s.state === 'current' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
-                  fontWeight: s.state === 'current' ? 700 : 500,
-                } as const
-                if (!been) return <div key={s.n} style={skin}>{face}</div>
+                const skinClass = `gwui-fs-13 gwui-rule gwui-pt-4 gwui-pr-10 gwui-pb-4 gwui-pl-10 ${s.state === 'current' ? 'gwui-ink-green' : 'gwui-ink-sub'}`
+                const skinStyle = { borderRadius: 20, background: s.state === 'current' ? 'var(--gw-green-bg)' : 'white', fontWeight: s.state === 'current' ? 700 : 500 } as const
+                if (!been) return <div key={s.n} className={skinClass} style={skinStyle}>{face}</div>
                 return (
                   <button
                     key={s.n}
                     type="button"
                     onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
-                    style={{...skin, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3}}
+                    className={skinClass}
+                    style={{...skinStyle, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3}}
                   >
                     {face}
                   </button>
@@ -1332,9 +1324,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               widths the prototype always draws as a single row of four white tiles. A fixed
               four-column grid keeps them together; on a phone this still hands off to the list.
             */}
-            <div className={onAPhone ? 'gw-qr-list' : undefined} style={onAPhone
-              ? { background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '2px 14px' }
-              : { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
+            <div
+              className={onAPhone ? 'gw-qr-list gwui-rule gwui-pt-2 gwui-pr-14 gwui-pb-2 gwui-pl-14' : 'gwui-gap-10'}
+              style={onAPhone ? { background: 'white', borderRadius: 12 } : { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}
+            >
               {/*
                 U.10 RE-REVIEW ITEM 6: A SENTENCE, THE WAY U.9's tileSentence ALREADY DOES IT.
                 "Differences / None / no disagreement, as the written report reads it" was a label,
@@ -2161,7 +2154,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             </div>
             <Link
               to={`/grounds/${id}?tab=report`}
-              style={wideOutlineBtn}
+              className="gwui-wide-outline-btn gwui-mt-8 gwui-pt-11 gwui-pr-16 gwui-pb-11 gwui-pl-16 gwui-fs-16"
             >
               {EVERY_SESSION.heading}
             </Link>
@@ -2179,7 +2172,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!shown.checkInGrid && b.myParticipantId && (
           <Link
             to={`/grounds/${id}?tab=record`}
-            className="gwui-mt-20" style={{...wideOutlineBtn}}
+            className="gwui-wide-outline-btn gwui-mt-20 gwui-pt-11 gwui-pr-16 gwui-pb-11 gwui-pl-16 gwui-fs-16"
           >
             {EVERY_SESSION.heading}
           </Link>

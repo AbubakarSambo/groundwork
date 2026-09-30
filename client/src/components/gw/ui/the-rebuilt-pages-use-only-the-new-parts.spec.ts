@@ -107,6 +107,111 @@ export function bannedInlineStyleProps(stripped: string): string[] {
   return inlineStylePropNames(stripped).filter(p => BANNED_STYLE_PROPS.test(p))
 }
 
+/** Scans forward from `start` (the char after an opening `{`) to its matching `}`, honouring
+    strings and nested braces. Returns the index just past that closing `}`. */
+function matchBrace(src: string, start: number): number {
+  let depth = 1
+  let inStr: string | null = null
+  let j = start
+  while (j < src.length && depth > 0) {
+    const c = src[j]
+    if (inStr) {
+      if (c === '\\') { j += 2; continue }
+      if (c === inStr) inStr = null
+      j++; continue
+    }
+    if (c === "'" || c === '"' || c === '`') { inStr = c; j++; continue }
+    if (c === '{') depth++
+    else if (c === '}') depth--
+    j++
+  }
+  return j
+}
+
+/** Every `style={ ... }` expression's raw text (the part between the outer braces), whatever it
+    is - a literal object, a ternary between two, an identifier, or a spread. */
+export function styleExprs(stripped: string): string[] {
+  const found: string[] = []
+  const marker = 'style={'
+  let i = 0
+  while (true) {
+    const idx = stripped.indexOf(marker, i)
+    if (idx === -1) break
+    const start = idx + marker.length
+    const end = matchBrace(stripped, start)
+    found.push(stripped.slice(start, end - 1))
+    i = end
+  }
+  return found
+}
+
+/** Every top-level `{ ... }` chunk inside a string (brace-balanced, not just up to the first `}` -
+    a ternary's two branches, say), each chunk's own inner text. */
+function topLevelBraceChunks(s: string): string[] {
+  const found: string[] = []
+  let i = 0
+  while (i < s.length) {
+    const idx = s.indexOf('{', i)
+    if (idx === -1) break
+    const end = matchBrace(s, idx + 1)
+    found.push(s.slice(idx + 1, end - 1))
+    i = end
+  }
+  return found
+}
+
+/** `const NAME = { ... }` / `const NAME: React.CSSProperties = { ... }`, name -> its own body text,
+    read from the whole file (a style constant a listed page, or something it imports, defines and
+    then passes as `style={NAME}` or spreads into one - see `bannedStyleReferenceProps`). */
+export function localObjectConstants(stripped: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  const re = /const\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*\{/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(stripped))) {
+    const start = m.index + m[0].length
+    const end = matchBrace(stripped, start)
+    out[m[1]] = stripped.slice(start, end - 1)
+  }
+  return out
+}
+
+/**
+ * U.10 (g), HER REVIEW: "style={SOME_CONSTANT} (and style={someObject}, or a spread) is not
+ * caught, only style={{ }}." `bannedInlineStyleProps` only ever matched a `style={{` immediately
+ * followed by `{` - a ternary between two object literals (`style={cond ? {...} : {...}}`), a
+ * bare reference to a `const` object (`style={CARD}`), or a spread of one into a literal
+ * (`style={{...CARD, cursor: 'pointer'}}`) all read the expression as starting with something
+ * other than `{{`, so none of them were ever inspected. This resolves every `style={...}` that
+ * ISN'T a plain literal: any object literal branch written directly inside it (a ternary's two
+ * sides), and any bare identifier in it that names a local `const` object, checked against that
+ * object's own definition wherever it sits in the file.
+ */
+export function bannedStyleReferenceProps(stripped: string): string[] {
+  const consts = localObjectConstants(stripped)
+  const bannedKeysIn = (body: string) => (body.match(/[A-Za-z]+(?=\s*:)/g) ?? []).filter(p => BANNED_STYLE_PROPS.test(p))
+  const found: string[] = []
+  for (const expr of styleExprs(stripped)) {
+    const trimmed = expr.trim()
+    const chunks = topLevelBraceChunks(expr)
+    /* A single plain literal - the whole expression is exactly one `{ ... }`, nothing else beside
+       it (no ternary, no spread) - is what `style={{ }}` already means, and `bannedInlineStyleProps`
+       above already checks it directly on every LISTED page. Re-flagging it here too would widen
+       the one-level-deep check (which this function feeds) to cover every ordinary inline style in
+       every file a listed page imports - far beyond the gap HER REVIEW named (a style CONSTANT,
+       OBJECT reference, ternary or spread standing in for one). So a lone literal with no spread is
+       skipped here; a ternary between two literals, a bare identifier, or a spread is not - none of
+       those read as a single plain `{ ... }` covering the whole expression. */
+    const isSinglePlainLiteral = chunks.length === 1 && trimmed === `{${chunks[0]}}` && !trimmed.includes('...')
+    if (!isSinglePlainLiteral) {
+      for (const chunk of chunks) found.push(...bannedKeysIn(chunk))
+    }
+    for (const ident of expr.match(/[A-Za-z_$][\w$]*/g) ?? []) {
+      if (consts[ident]) found.push(...bannedKeysIn(consts[ident]))
+    }
+  }
+  return found
+}
+
 /**
  * U.10 (e), HER REVIEW: "moving the old sizes into classes named after their pixel values
  * satisfies the guard's letter, not its purpose... nothing smaller than 13 pixels." Every
@@ -153,6 +258,13 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'components/gw/WhatTheRecordShows.tsx',
       'components/gw/TheJudgement.tsx',
       'components/gw/WhatTheNetworkSaid.tsx',
+      'components/gw/HowThisHasMoved.tsx',
+      'components/gw/ResolutionPanel.tsx',
+      'components/gw/TheSessionsReport.tsx',
+      'components/gw/split-one-total-across-people.tsx',
+      'components/gw/WhatSuccessLooksLike.tsx',
+      'components/gw/TargetsBand.tsx',
+      'components/gw/Suggestions.tsx',
     ])
   })
 
@@ -192,6 +304,12 @@ describe('a rebuilt page never falls back to the old parts', () => {
         if (badClasses.length > 0) {
           offenders.push(`${relPath} imports ${importedRel}, which uses old class(es) ${badClasses.join(', ')}`)
         }
+        /* U.10 (g): the style-reference gap applies one level deep too - a listed page can pass a
+           `const` object it imports straight through as another component's `style={}`. */
+        const badStyleRefs = bannedStyleReferenceProps(importedStripped)
+        if (badStyleRefs.length > 0) {
+          offenders.push(`${relPath} imports ${importedRel}, which sets ${[...new Set(badStyleRefs)].join(', ')} through a style reference`)
+        }
       }
     }
     expect(offenders).toEqual([])
@@ -203,6 +321,23 @@ describe('a rebuilt page never falls back to the old parts', () => {
       const stripped = stripComments(readFileSync(join(SRC_ROOT, relPath), 'utf8'))
       const bad = bannedInlineStyleProps(stripped)
       if (bad.length > 0) offenders.push(`${relPath}: inline style(s) ${[...new Set(bad)].join(', ')}`)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * U.10 (g), HER REVIEW: THE SAME RULE, FOR A STYLE THAT IS NOT A PLAIN `{{ }}` LITERAL. A
+   * `const` object passed as `style={NAME}`, a ternary between two object literals, or one
+   * spread into another (`style={{...NAME, cursor: 'pointer'}}`) can all carry the very same
+   * banned properties the test above catches for a plain literal - and none of them were being
+   * read at all. See `bannedStyleReferenceProps`.
+   */
+  it('no listed page sets font size, colour, margin, padding or gap through a style constant, object, ternary or spread either', () => {
+    const offenders: string[] = []
+    for (const relPath of REBUILT_PAGES) {
+      const stripped = stripComments(readFileSync(join(SRC_ROOT, relPath), 'utf8'))
+      const bad = bannedStyleReferenceProps(stripped)
+      if (bad.length > 0) offenders.push(`${relPath}: style reference(s) carrying ${[...new Set(bad)].join(', ')}`)
     }
     expect(offenders).toEqual([])
   })
@@ -285,5 +420,25 @@ describe('the detection itself catches a real offender, not only an empty list',
     expect(bannedInlineStyleProps('<div style={{ paddingTop: 14, borderTop: \'1px solid red\' }}>'))
       .toEqual(['paddingTop', 'borderTop'])
     expect(bannedInlineStyleProps('<div style={{ display: \'grid\', gap: 14 }}>')).toEqual(['gap'])
+  })
+
+  it('catches a style constant, a ternary between two literals, and a spread - never a plain literal', () => {
+    const constUse = `
+      const CARD = { fontSize: 13, color: 'var(--gw-sub)' }
+      const X = <div style={CARD}>hi</div>
+    `
+    expect(bannedStyleReferenceProps(stripComments(constUse))).toEqual(expect.arrayContaining(['fontSize', 'color']))
+
+    const ternary = `const X = <div style={cond ? { padding: 4 } : { margin: 6 }}>hi</div>`
+    expect(bannedStyleReferenceProps(stripComments(ternary))).toEqual(expect.arrayContaining(['padding', 'margin']))
+
+    const spread = `
+      const BASE = { border: '1px solid red' }
+      const X = <div style={{...BASE, cursor: 'pointer'}}>hi</div>
+    `
+    expect(bannedStyleReferenceProps(stripComments(spread))).toEqual(['border'])
+
+    const plainLiteral = `const X = <div style={{ textAlign: 'center' }}>hi</div>`
+    expect(bannedStyleReferenceProps(stripComments(plainLiteral))).toEqual([])
   })
 })
