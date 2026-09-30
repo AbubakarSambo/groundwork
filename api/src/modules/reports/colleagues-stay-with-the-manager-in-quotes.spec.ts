@@ -24,11 +24,12 @@ function makeParticipant(overrides: Partial<Record<string, any>> = {}) {
   };
 }
 
-function makeGround(scenario: string) {
+function makeGround(scenario: string, opts: { createdByUserId?: string | null } = {}) {
   return {
     id: 'g1',
     organizationId: 'org-1',
     initiatorId: 'user-1',
+    createdByUserId: opts.createdByUserId ?? null,
     whoSeesTargets: 'THEIR_OWN',
     scenario,
     peersVisibleToEachOther: true,
@@ -111,11 +112,23 @@ describe.each([
     expect(result.sharedPicture).toContain(THE_COLLEAGUES_LINE);
   });
 
-  it('an admin reads both quotes too - treated like the manager', async () => {
-    const service = makeService(makeGround(scenario), 'ADMIN');
+  /**
+   * DECISION 60 POINT 4, 30 September 2026: an admin is treated like the manager only WITH access
+   * to this specific check-in - the admin who set it up for the lead (`createdByUserId`), the same
+   * per-check-in grant decision 58 reads for patterns. Never every admin of the organisation.
+   */
+  it('an admin who set this check-in up reads both quotes too - treated like the manager', async () => {
+    const service = makeService(makeGround(scenario, { createdByUserId: 'user-admin' }), 'ADMIN');
     const result: any = await service.get('g1', 'user-admin', 'org-1');
     expect(result.sharedPicture).toContain(THE_SUBJECTS_LINE);
     expect(result.sharedPicture).toContain(THE_COLLEAGUES_LINE);
+  });
+
+  it('an admin WITHOUT access to this check-in never reads the colleague\'s quote', async () => {
+    const service = makeService(makeGround(scenario), 'ADMIN');
+    const result: any = await service.get('g1', 'user-admin', 'org-1');
+    expect(result.sharedPicture).not.toContain(THE_COLLEAGUES_LINE);
+    expect(result.sharedPicture).toContain('A colleague described this differently.');
   });
 });
 

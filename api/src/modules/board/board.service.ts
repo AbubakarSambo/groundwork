@@ -92,7 +92,7 @@ import { splitTheTotal, sayingWhatTheSplitDoes } from '../alignment/a-total-spli
 import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
-import { viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -1704,17 +1704,24 @@ export class BoardService {
       /*
        * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being
        * reviewed reads the facts on this board, never a colleague's exact words - those stay with
-       * the manager (an admin reads as the manager does). See
+       * the manager (an admin WITH access to this check-in reads as the manager does). See
        * colleagues-exact-words-stay-with-the-manager.ts. A colleague giving a view, and every
        * reader on every other kind of check-in, reads `whoOwnsWhat` and `divergence` exactly as
        * before - this is a no-op for them.
+       *
+       * DECISION 60 POINT 4, 30 September 2026: an admin WITHOUT access to this check-in reads no
+       * colleague's exact words here either - the SAME access rule decision 58 gave patterns
+       * (`runsItForAPattern`), never `runsThisGround`, which also counts every admin of the
+       * organisation (`adminHere`). `isLead` here is deliberately narrower than `runsThisGround`.
        */
+      const evaluationWordsRunsIt = runsItForAPattern(ground as any, requestingUserId);
+      const adminWithoutCheckInAccess = adminHere && !evaluationWordsRunsIt && isEvaluationCheckIn(ground.scenario);
       if (viewerIsTheSubjectOfAnEvaluationCheckIn({
         scenario: ground.scenario,
-        isLead: runsThisGround,
+        isLead: isInitiator || evaluationWordsRunsIt,
         viewerParticipantId: me?.id ?? null,
         participants: ground.participants as any,
-      })) {
+      }) || adminWithoutCheckInAccess) {
         if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = whoOwnsWhatForTheSubject(walled.whoOwnsWhat, me?.id ?? null);
         if (Array.isArray(walled.divergence?.items)) {
           walled.divergence = {

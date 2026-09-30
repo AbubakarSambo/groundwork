@@ -30,8 +30,22 @@ describe('the board calls the one helper, for the one reader, right where it ret
     expect(board).toContain("from '../reports/colleagues-exact-words-stay-with-the-manager'");
   });
 
-  it('gates the call on viewerIsTheSubjectOfAnEvaluationCheckIn, with the manager and an admin both counted as the lead', () => {
-    expect(board).toMatch(/viewerIsTheSubjectOfAnEvaluationCheckIn\(\{[\s\S]{0,200}isLead:\s*runsThisGround/);
+  /**
+   * DECISION 60 POINT 4, 30 September 2026, NARROWS THIS: the manager and an admin WITH access to
+   * this check-in count as the lead here (`evaluationWordsRunsIt`, `runsItForAPattern`'s own
+   * result) - never `runsThisGround`, which also counts every admin of the organisation
+   * (`adminHere`). An admin without access is instead caught by the added
+   * `adminWithoutCheckInAccess` branch, tested below.
+   */
+  it('gates the call on viewerIsTheSubjectOfAnEvaluationCheckIn, with the manager and an admin WITH access to this check-in counted as the lead', () => {
+    expect(board).toMatch(/viewerIsTheSubjectOfAnEvaluationCheckIn\(\{[\s\S]{0,200}isLead:\s*isInitiator \|\| evaluationWordsRunsIt/);
+    expect(board).not.toMatch(/viewerIsTheSubjectOfAnEvaluationCheckIn\(\{[\s\S]{0,200}isLead:\s*runsThisGround/);
+  });
+
+  it('an admin WITHOUT access to this check-in is redacted too, the same access rule decision 58 gave patterns', () => {
+    expect(board).toContain('const evaluationWordsRunsIt = runsItForAPattern(ground as any, requestingUserId)');
+    expect(board).toContain('const adminWithoutCheckInAccess = adminHere && !evaluationWordsRunsIt && isEvaluationCheckIn(ground.scenario)');
+    expect(board).toMatch(/\}\)\s*\|\|\s*adminWithoutCheckInAccess\)\s*\{/);
   });
 
   it('redacts divergence positions/perspectives, and passes the viewer\'s own resolved name so their own side is left alone', () => {
