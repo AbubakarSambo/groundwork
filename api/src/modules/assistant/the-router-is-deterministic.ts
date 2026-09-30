@@ -324,7 +324,8 @@ const RULES = [
      */
     /\b(?:reword|change)\s+the\s+line\b/i,
     /\bshare\s+the\s+line\b/i,
-    /\bmake\s+the\s+line\s+private\b/i,
+    /* Both word orders: "make the line private" and "make the line 'X' private". */
+    /\bmake\s+the\s+line\b[\s\S]*\bprivate\b/i,
     /\bretire\s+the\s+line\b/i,
   ]),
   rule('lead_note', [

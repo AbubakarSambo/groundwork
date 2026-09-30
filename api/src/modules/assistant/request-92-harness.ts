@@ -13,7 +13,7 @@ export function askGroundwork(opts: {
   engine?: any;
   parked?: any;
   grounds?: { id: string; label: string; initiatorId: string; organizationId: string }[];
-  groundRows?: Record<string, any>;
+  contextItems?: { id: string; text: string; audience: string }[];
 } = {}) {
   const grounds = opts.grounds ?? [{ id: 'g1', label: 'Sales team, Q3', initiatorId: 'lead-1', organizationId: 'org-a' }];
   const created: any[] = [];
@@ -37,6 +37,7 @@ export function askGroundwork(opts: {
       }),
       update: jest.fn(async ({ data }: any) => data),
     },
+    groundContextItem: { findMany: jest.fn(async () => opts.contextItems ?? []) },
     commitment: { create: jest.fn(async () => ({})), findUnique: jest.fn(async () => null), findMany: jest.fn(async () => []) },
     subject: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
     detectionQuietPeriod: { findMany: jest.fn(async () => []) },

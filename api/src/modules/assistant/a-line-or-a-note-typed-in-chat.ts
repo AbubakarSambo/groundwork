@@ -85,7 +85,9 @@ export function parseChangeContextLine(
   const share = /\bshare\s+the\s+line\s+["'“](.+?)["'”]/i.exec(raw);
   if (share) return { action: 'share', fragment: share[1].trim() };
 
-  const priv = /\bmake\s+the\s+line\s+["'“](.+?)["'”]\s+private\b/i.exec(raw);
+  /* Both word orders. Greedy on the quoted words, so an apostrophe inside them ("Rukia's plan") stays in. */
+  const priv = /\bmake\s+the\s+line\s+["'“](.+)["'”]\s+private\b/i.exec(raw)
+    ?? /\bmake\s+the\s+line\s+private\s*[:\-]?\s*["'“](.+)["'”]/i.exec(raw);
   if (priv) return { action: 'private', fragment: priv[1].trim() };
 
   const retire = /\bretire\s+the\s+line\s+["'“](.+?)["'”]/i.exec(raw);

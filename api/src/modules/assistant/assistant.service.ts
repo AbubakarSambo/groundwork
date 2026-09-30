@@ -2378,7 +2378,14 @@ export class AssistantService {
     if (!lines.length) {
       return rules('add_context', text('There is no open line on this check-in to change.'));
     }
-    const matches = change.fragment ? lines.filter((l) => l.text.toLowerCase().includes(change.fragment!.toLowerCase())) : lines.length === 1 ? lines : [];
+    const said1 = (x: string) => x.trim().replace(/[\s.!?]+$/, '').toLowerCase();
+    /* The lead's own words, exactly, find their line first; only then is part of a line enough. */
+    const exact = change.fragment ? lines.filter((l) => said1(l.text) === said1(change.fragment!)) : [];
+    const matches = exact.length
+      ? exact
+      : change.fragment
+        ? lines.filter((l) => l.text.toLowerCase().includes(change.fragment!.toLowerCase()))
+        : lines.length === 1 ? lines : [];
     if (matches.length !== 1) {
       const said = lines.map((l) => `"${l.text}"`);
       return rules(

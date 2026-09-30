@@ -40,3 +40,39 @@ describe('point 4: the file picker is offered to whoever runs the check-in chose
     expect(textOf(reply)).toContain('there is nowhere to put one yet');
   });
 });
+
+describe('point 5: making a line private, in either word order, finds the line by its exact words', () => {
+  const lines = [
+    { id: 'l1', text: 'Every shop visit gets a photo of the shelf.', audience: 'EVERYONE' },
+    { id: 'l2', text: 'Rukia decides on discounts above ten percent.', audience: 'EVERYONE' },
+  ];
+  for (const message of [
+    "make the line 'Every shop visit gets a photo of the shelf.' private",
+    'make the line private "Every shop visit gets a photo of the shelf."',
+    'make the line "Every shop visit gets a photo of the shelf" private',
+  ]) {
+    it(`${message} asks, in full, whether to make that one line private`, async () => {
+      const { service } = askGroundwork({ contextItems: lines });
+      const reply = await service.respond('org-a', 'p1', message, 'g1');
+      expect(reply.lane).toBe('add_context');
+      expect(textOf(reply)).toBe('Shall I make the line "Every shop visit gets a photo of the shelf." visible only to you?');
+    });
+  }
+
+  it('the exact words win over a line that only contains them', async () => {
+    const { service } = askGroundwork({
+      contextItems: [
+        { id: 'a', text: 'Visit every shop.', audience: 'EVERYONE' },
+        { id: 'b', text: 'Visit every shop. Take a photo.', audience: 'EVERYONE' },
+      ],
+    });
+    const reply = await service.respond('org-a', 'p1', "make the line 'Visit every shop.' private", 'g1');
+    expect(textOf(reply)).toBe('Shall I make the line "Visit every shop." visible only to you?');
+  });
+
+  it('words with an apostrophe inside them are found', async () => {
+    const { service } = askGroundwork({ contextItems: [{ id: 'a', text: "Rukia's plan is the plan.", audience: 'EVERYONE' }, lines[0]] });
+    const reply = await service.respond('org-a', 'p1', `make the line 'Rukia's plan is the plan.' private`, 'g1');
+    expect(textOf(reply)).toBe(`Shall I make the line "Rukia's plan is the plan." visible only to you?`);
+  });
+});
