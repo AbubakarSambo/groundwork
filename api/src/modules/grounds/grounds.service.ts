@@ -76,7 +76,8 @@ import { isASecondOrganisation, GUEST_ROLE } from '../participants/joining-a-sec
 import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
-import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
+import { adminsThisOrg, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
+import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -1183,8 +1184,10 @@ export class GroundsService {
    * that logic in two languages). Admin/HR/Founder/Manager oversight view -
    * not scoped to "my grounds," unlike list(). */
   async getOrgRoster(organizationId: string, requestingUserId?: string) {
+    /* Every ground in the organisation, except a performance plan, a promotion or a renewal this admin was
+       not given access to (decision 5, request 78): the same rule as the list, asked as a query. */
     const grounds = await this.prisma.ground.findMany({
-      where: { organizationId },
+      where: this.whatAnAdminMayList(organizationId, requestingUserId) as any,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true, label: true, scenario: true, status: true, cadence: true, cadenceStated: true, timelineStated: true,
@@ -1912,7 +1915,7 @@ export class GroundsService {
       ? await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } })
       : null;
     /* An admin of a DIFFERENT organisation is a stranger, and this is not the rule to hand them. */
-    const viewerAdminsThisOrg = adminsThisOrg(viewer, ground as any);
+    const viewerAdminsThisOrg = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any);
     const viewerRunsThisGround = viewerIsInitiator || !!viewerAdminsThisOrg;
 
     /* Whether this organisation has a number of its own, for the "where people answer this" setting. */
@@ -2659,7 +2662,7 @@ export class GroundsService {
       select: {
         id: true, label: true, scenario: true, initiatorId: true, timelineDays: true,
         cadence: true, brief: true, timelineStated: true, cadenceStated: true,
-        organizationId: true,
+        organizationId: true, createdByUserId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
       },
@@ -2676,7 +2679,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg(viewer, ground);
+    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Setting this check-in up is for the lead or an admin in your organisation. Your own check-ins are on your page.');
     }
@@ -4452,13 +4455,13 @@ export class GroundsService {
 
   /** The lead's own questions, read by the lead or an admin in their organisation. */
   async questionsForPeople(groundId: string, requestingUserId: string): Promise<AQuestionForAPerson[]> {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } });
     if (!ground) throw new NotFoundException('Check-in not found');
     const viewer = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
       throw new ForbiddenException('Only the person who runs this check-in can see or change the questions for people. Nothing was changed.');
     }
     return this.theQuestionsForPeople(groundId);
@@ -4475,13 +4478,13 @@ export class GroundsService {
     requestingUserId: string,
     said: { name: string; leadWords: string },
   ): Promise<{ participantId: string; who: string; exactQuestion: string }> {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } });
     if (!ground) throw new NotFoundException('Check-in not found');
     const viewer = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
       throw new ForbiddenException('Only the person who runs this check-in can ask people things through it. Nothing was asked.');
     }
     const people = await this.prisma.groundParticipant.findMany({
@@ -4611,7 +4614,7 @@ export class GroundsService {
     dto = { ...dto, text: withoutBankDetails(dto?.text) as string };
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true },
+      select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     /**
@@ -4707,14 +4710,14 @@ export class GroundsService {
   private async aSettingOnlyTheLeadMayChange(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true },
+      select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const viewer = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg({ ...viewer, userId: requestingUserId }, ground)) {
       throw new ForbiddenException(
         'Only the lead of this check-in, or an admin in this organisation, can change this.',
       );
@@ -4832,7 +4835,7 @@ export class GroundsService {
   async setPeerVisibility(groundId: string, requestingUserId: string, visible: boolean) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true },
+      select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
@@ -4840,7 +4843,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg(viewer, ground);
+    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
         'Only the lead of this check-in, or an admin in this organisation, can change this.',
@@ -4876,7 +4879,7 @@ export class GroundsService {
   async setPeopleWorkTogether(groundId: string, requestingUserId: string, together: boolean) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true },
+      select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
 
@@ -4884,7 +4887,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg(viewer, ground);
+    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException(
         'Only the lead of this check-in, or an admin in this organisation, can change this.',
@@ -5807,7 +5810,7 @@ export class GroundsService {
   private async assertMaySeeGround(groundId: string, userId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { organizationId: true, initiatorId: true, createdByUserId: true, participants: { select: { userId: true } } },
+      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const user = await this.prisma.user.findUnique({
@@ -5815,7 +5818,7 @@ export class GroundsService {
     });
     const viewer = { ...user, department: user?.role === 'LEAD' ? await this.departmentOf(userId, ground.organizationId) : null };
     const leadDepartment = user?.role === 'LEAD' && ground.initiatorId ? await this.departmentOf(ground.initiatorId, ground.organizationId) : null;
-    if (!maySee(userId, viewer, { ...ground, leadDepartment })) throw new NotFoundException('Check-in not found');
+    if (!maySee(userId, { ...viewer, userId }, { ...ground, leadDepartment })) throw new NotFoundException('Check-in not found');
     return ground;
   }
 
@@ -6026,7 +6029,7 @@ export class GroundsService {
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg(viewer, ground);
+    const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, { ...ground, participants: link ? [{ userId: requestingUserId }] : [] });
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
@@ -6399,6 +6402,7 @@ export class GroundsService {
    * is a normal race, and the second one should not see an error for agreeing.
    */
   async approve(groundId: string, organizationId: string, adminUserId: string) {
+    await this.refuseAnEvaluationTheAdminWasNotGivenAccessTo(groundId, organizationId, adminUserId);
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
       select: { id: true, status: true, label: true, initiatorId: true },
@@ -6434,6 +6438,7 @@ export class GroundsService {
    * that vanishes is indistinguishable from a bug to the person who created it.
    */
   async declineGround(groundId: string, organizationId: string, adminUserId: string, reason?: string) {
+    await this.refuseAnEvaluationTheAdminWasNotGivenAccessTo(groundId, organizationId, adminUserId);
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId },
       select: { id: true, status: true, label: true, initiatorId: true },
@@ -6465,10 +6470,29 @@ export class GroundsService {
     return { ...updated, alreadyDecided: false };
   }
 
+  /**
+   * THE CHECK-INS AN ADMIN MAY LIST, as a query: the organisation's, except the performance plans,
+   * promotions and renewals they were not given access to. Without who is asking, none of those three.
+   */
+  private whatAnAdminMayList(organizationId: string, adminUserId: string | undefined): Record<string, unknown> {
+    return adminUserId
+      ? groundsAViewerMayList(adminUserId, { role: 'ADMIN', organizationId }, organizationId)
+      : { organizationId, scenario: { notIn: EVALUATION_SCENARIOS } };
+  }
+
+  /** The approval asks an admin, so it reads the same as any other admin read: no evaluation they were not given access to. */
+  private async refuseAnEvaluationTheAdminWasNotGivenAccessTo(groundId: string, organizationId: string, adminUserId: string): Promise<void> {
+    const found = await this.prisma.ground.findFirst({
+      where: { id: groundId, ...(this.whatAnAdminMayList(organizationId, adminUserId) as any) },
+      select: { id: true },
+    });
+    if (!found) throw new NotFoundException('Check-in not found');
+  }
+
   /** What is waiting on an admin. Oldest first: the longest wait is the worst one. */
-  async listAwaitingApproval(organizationId: string) {
+  async listAwaitingApproval(organizationId: string, adminUserId?: string) {
     const rows = await this.prisma.ground.findMany({
-      where: { organizationId, status: GroundStatus.AWAITING_APPROVAL },
+      where: { ...(this.whatAnAdminMayList(organizationId, adminUserId) as any), status: GroundStatus.AWAITING_APPROVAL },
       orderBy: { createdAt: 'asc' },
       select: {
         id: true, label: true, scenario: true, createdAt: true, timelineDays: true, cadence: true, cadenceStated: true, timelineStated: true,
@@ -6732,14 +6756,14 @@ export class GroundsService {
   async baselineEntryCandidates(groundId: string, requestingUserId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true },
+      select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg(asker, ground);
+    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this check-in.');
     }
@@ -6784,14 +6808,14 @@ export class GroundsService {
   async recordBaselineEntries(groundId: string, requestingUserId: string, texts: string[]) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true },
+      select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg(asker, ground);
+    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Recording where this stood at the start belongs to whoever runs this check-in.');
     }
@@ -6822,14 +6846,14 @@ export class GroundsService {
     const link = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId } });
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true },
+      select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg(asker, ground);
+    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
@@ -6949,14 +6973,14 @@ export class GroundsService {
     const link = await this.prisma.groundParticipant.findFirst({ where: { groundId, userId: requestingUserId } });
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true },
+      select: { initiatorId: true, organizationId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
     const asker = await this.prisma.user.findUnique({
       where: { id: requestingUserId },
       select: { role: true, organizationId: true },
     });
-    const isOrgAdmin = adminsThisOrg(asker, ground);
+    const isOrgAdmin = adminsThisOrg({ ...asker, userId: requestingUserId }, ground);
     if (!link && ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }

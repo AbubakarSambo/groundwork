@@ -17,7 +17,7 @@ const TOLD = 'This check-in follows the water pump sales this quarter.';
 
 function getAs(userId: string, over: any = {}, setupWords: { authorUserId: string; text: string } | null = null) {
   const ground: any = {
-    id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, createdAt: new Date(), timelineDays: null,
+    id: 'g1', organizationId: 'org1', scenario: 'OKR_ALIGNMENT', initiatorId: WANJIRU, createdAt: new Date(), timelineDays: null,
     restrictExternalVisibility: true, peersVisibleToEachOther: true, whoSeesTargets: 'THEIR_OWN',
     brief: HER_WORDS, toldToParticipants: TOLD, groundAuditLog: null,
     participants: [
@@ -84,7 +84,7 @@ describe('what this check-in is for, as each reader is sent it', () => {
 
 describe('rewriting it records who did', () => {
   function makeService(viewer: any) {
-    const g = { id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, label: 'Sales', timelineDays: 90, timelineWeeks: 13, cadence: 'WEEKLY', mode: 'SHARED', brief: HER_WORDS, groundAuditLog: null };
+    const g = { id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, scenario: 'NEW_PROJECT', label: 'Sales', timelineDays: 90, timelineWeeks: 13, cadence: 'WEEKLY', mode: 'SHARED', brief: HER_WORDS, groundAuditLog: null };
     const updated = jest.fn(async (args: any) => ({ ...g, ...args.data }));
     const prisma: any = {
       ground: { findUnique: jest.fn(async () => g), update: updated },

@@ -49,6 +49,7 @@ import {
   ManagerAlignmentRead,
 } from './coverage';
 import { MIN_COACHING_CONFIDENCE, roleMapFor } from './role-maps';
+import { periodsTheRecordHolds, aTruePeriodCount } from '../patterns/period-of';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { theSessionReport } from '../reports/the-session-report';
@@ -354,7 +355,7 @@ export class BoardService {
       : null;
     /* Nobody held for a seat reads the board, its report's story or its names (request 49). */
     if ((viewer as any)?.awaitingOrgApproval === true) throw new ForbiddenException(CANNOT_OPEN_THE_BOARD_YET);
-    const adminHere = adminsThisOrg(viewer, ground as any);
+    const adminHere = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground as any);
     if (!me && !isInitiator && !isSetupAdmin && !adminHere) {
       throw new ForbiddenException('You are not a participant in this check-in');
     }
@@ -1469,8 +1470,15 @@ export class BoardService {
       // and at least one report, both with accounts on record.
       // The forbidden-name list is built from THIS ground's participants. See
       // buildManagerAlignment for why the board needs one at all.
+      /* The count of periods is made true here too, for a report stored before it was made true at the source
+         (request 79 a): never more than the sessions that were answered, as decision 57 counts them. */
+      const answeredHere = ((ground as any).checkIns ?? []).filter((c: any) => c.status === CheckInStatus.COMPLETED && !c.isSetup);
+      const periodsHeld = periodsTheRecordHolds(answeredHere.map((c: any) => ({ sessionNumber: c.sessionNumber, when: c.completedAt })), ground as any);
+      const reportWithTrueCounts = Array.isArray((reportSafe as any)?.leadershipGaps)
+        ? { ...(reportSafe as any), leadershipGaps: (reportSafe as any).leadershipGaps.map((g: any) => ({ ...g, periods: aTruePeriodCount(g?.periods, periodsHeld) })) }
+        : reportSafe;
       const alignment = this.buildManagerAlignment(
-        reportSafe,
+        reportWithTrueCounts,
         forbiddenNames(
           ground.participants.map((p: any) => ({
             firstName: p.user?.firstName,
@@ -1492,6 +1500,13 @@ export class BoardService {
         (a) => a.pattern === LeadershipPattern.SETUP_NEVER_SAID || Number(a.periods ?? 0) >= 3,
       );
       if (seenThreeTimes.length) out.managerAlignment = seenThreeTimes;
+    }
+
+    /* The coaching, from the report's own builders and under its privacy (request 79 b): your own note, and
+       for whoever runs the check-in, what to ask each person. Nothing for an admin who only reads. */
+    {
+      const coaching = await Promise.resolve().then(() => this.reports.coachingForTheBoard(groundId, requestingUserId)).catch(() => null);
+      if (coaching) (out as any).coaching = coaching;
     }
 
     if (has('patterns')) {

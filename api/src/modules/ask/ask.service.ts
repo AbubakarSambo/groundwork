@@ -335,7 +335,7 @@ export class AskService {
     if (mine.some((g) => g.id === groundId)) return;
     const ground = await this.prisma.ground.findFirst({
       where: { id: groundId, organizationId: asker.organizationId, status: { notIn: A_GROUND_IS_OVER } },
-      select: { organizationId: true, initiatorId: true },
+      select: { organizationId: true, initiatorId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } },
     });
     if (ground) {
       const viewer = await this.prisma.user.findUnique({ where: { id: asker.userId }, select: { role: true, organizationId: true } });

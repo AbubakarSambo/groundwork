@@ -20,6 +20,7 @@ const svc = (over: { releasedAt?: Date | null; rounds?: any[] } = {}) => {
     ground: {
       findUnique: async () => ({
         organizationId: 'org1',
+        scenario: 'NEW_PROJECT',
         initiatorId: 'ceo',
         report: { releasedAt: over.releasedAt === undefined ? new Date() : over.releasedAt },
         participants: [{ userId: 'ed' }],

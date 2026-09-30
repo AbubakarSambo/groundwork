@@ -17,7 +17,7 @@ export class WhatNeedsYouService {
   async forReader(userId: string, email: string, organizationId: string, role: string): Promise<WhatNeedsYou> {
     const [list, waiting, me] = await Promise.all([
       this.grounds.list(organizationId, userId, email, role),
-      role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId) : Promise.resolve([]),
+      role === 'ADMIN' ? this.grounds.listAwaitingApproval(organizationId, userId) : Promise.resolve([]),
       /**
        * NOT LET IN YET (U.8 third review, PRIVACY). One cheap read of the reader's own account,
        * so Today can stop offering a check-in to start or a report to read to somebody the

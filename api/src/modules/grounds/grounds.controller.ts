@@ -324,8 +324,8 @@ export class GroundsController {
   @Get('awaiting-approval')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Grounds a member has set up that are waiting for an admin to accept them' })
-  async awaitingApproval(@CurrentUser('organizationId') organizationId: string) {
-    return this.grounds.listAwaitingApproval(organizationId);
+  async awaitingApproval(@CurrentUser() user: CurrentUserData) {
+    return this.grounds.listAwaitingApproval(user.organizationId, user.id);
   }
 
   @Get(':id')

@@ -143,7 +143,7 @@ import { NEW_STARTING_REPORT_SCHEMA, RECOGNITION_REPORT_SCHEMA, DRIFT_REPORT_SCH
 import { BAD_FAITH_CODES, POSITIVE_CODES, CARRYING_CODES, ALIGNMENT_FEED_ONLY_CODES, isPositiveCode, isCarryingCode, nameOfPattern } from '../patterns/pattern-library';
 import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, patternRowsThisReaderMayRead, periodsSeen, patternRowAsOfSession, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern, type APatternRow } from '../patterns/who-reads-a-pattern';
-import { periodOf } from '../patterns/period-of';
+import { periodOf, periodsTheRecordHolds, aTruePeriodCount } from '../patterns/period-of';
 import { plainNameOf as plainPatternNameOf } from '../patterns/plain-pattern-names';
 import { whatMoreThanOnePersonNamed, namedByMoreThanOne } from './what-more-than-one-person-named';
 import { decide, RoundPicture } from './what-the-report-said-at-the-time';
@@ -163,7 +163,7 @@ import { everyDivergenceReadable } from './a-field-name-is-not-a-heading';
 import { liftsInReport, withholdLiftsIn } from './said-in-its-own-words';
 import { rankOf, labelFromMean } from '../conversation/how-checkable-a-session-was';
 import { whatThisSessionHolds } from './what-this-session-holds';
-import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
+import { adminsThisOrg, adminsTheOrg, runsOrSetItUp } from '../grounds/who-may-read-this-check-in';
 import { ONLY_THE_LEAD_RELEASES } from './only-the-lead-releases';
 import { whoSharedItBecauseTheLeadLeft, fullNameOf, sharedByAnAdminFrom, type SharedBecauseLeadLeft } from './who-shared-it-because-the-lead-left';
 import { CANNOT_READ_THE_REPORT_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
@@ -2400,6 +2400,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
       (result as any).divergences = fromTheRecord((result as any).divergences);
       (result as any).centralQuestion = fromTheRecord((result as any).centralQuestion);
       (result as any).leadershipGaps = fromTheRecord((result as any).leadershipGaps);
+      /* A count of periods is a claim the model makes; it is made true here, at the source, against the
+         sessions that were answered (request 79 a). */
+      if (Array.isArray((result as any).leadershipGaps) && (result as any).leadershipGaps.length) {
+        const answered = await this.prisma.checkIn.findMany({
+          where: { groundId, status: 'COMPLETED' as any, isSetup: false },
+          select: { sessionNumber: true, completedAt: true, createdAt: true },
+        }).catch(() => [] as { sessionNumber: number; completedAt: Date | null; createdAt: Date }[]);
+        const held = periodsTheRecordHolds(answered.map((c) => ({ sessionNumber: c.sessionNumber, when: c.completedAt ?? c.createdAt })), ground as any);
+        (result as any).leadershipGaps = (result as any).leadershipGaps.map((g: any) => ({ ...g, periods: aTruePeriodCount(g?.periods, held) }));
+      }
       findings.splice(0, findings.length, ...fromTheRecord(findings));
       inferences = fromTheRecord(inferences);
       enrichedEngagement = fromTheRecord(enrichedEngagement);
@@ -2687,10 +2697,16 @@ Close the report by framing - neutrally, without recommending one - the choice n
   }
 
   /** The one rule (grounds/who-may-read-this-check-in.ts): an admin of THIS organisation, by role, re-read from the database. */
-  private async isAnAdminOf(requestingUserId: string, requestingUserOrgId: string | undefined, groundOrganizationId: string): Promise<boolean> {
-    if (!requestingUserOrgId || groundOrganizationId !== requestingUserOrgId) return false;
+  private async isAnAdminOf(
+    requestingUserId: string,
+    requestingUserOrgId: string | undefined,
+    ground: { organizationId: string; scenario: GroundScenario | null | undefined; initiatorId: string | null; createdByUserId: string | null | undefined; participants?: { userId: string | null }[] },
+  ): Promise<boolean> {
+    if (!requestingUserOrgId || ground.organizationId !== requestingUserOrgId) return false;
     const user = await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } });
-    return adminsThisOrg(user, { organizationId: groundOrganizationId });
+    /* On a performance plan, a promotion or a renewal an admin reads only what they were given access to
+       (decision 5, request 78); the rule lives in who-may-read-this-check-in.ts, not here. */
+    return adminsThisOrg({ ...user, userId: requestingUserId }, ground);
   }
 
   /** Where things stand against what success was said to be, through the same last read. */
@@ -2706,6 +2722,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       select: {
         organizationId: true,
         initiatorId: true,
+        createdByUserId: true,
         /*
          * RE-REVIEW PRIVACY BUG (SCREENS WORKSPACE): `scenario` AND `peersVisibleToEachOther`
          * WERE NEVER SELECTED, SO `peersAreNamedOn` BELOW COULD NOT SEE WHETHER THIS CHECK-IN
@@ -2736,7 +2753,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
-    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
+    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground));
     /* NotFound, not Forbidden. GW-PRI-04: a 403 tells a stranger the check-in is real. */
     if (!me && !isInitiator && !isOrgAdmin) throw new NotFoundException('Check-in not found');
 
@@ -2798,6 +2815,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         (e) => e.type === RecordEntryType.SUCCESS_DEFINITION
           && ground.participants.find((x) => x.id === e.participantId)?.userId === ground.initiatorId,
       ),
+      readerIsTheLead: isInitiator,
+      leadName: whoOf(ground.participants.find((x) => !!ground.initiatorId && x.userId === ground.initiatorId)?.id ?? null),
       version: baseline?.version ?? null,
       conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],
       entries: entries.map((e) => ({ type: e.type, text: cleanText(e.text), who: whoOf(e.participantId) })),
@@ -2836,7 +2855,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
-    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
+    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground));
     /*
      * NOT FOUND, NOT FORBIDDEN. GW-PRI-04.
      *
@@ -3257,6 +3276,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
         (e) => e.type === RecordEntryType.SUCCESS_DEFINITION
           && ground.participants.find((x) => x.id === e.participantId)?.userId === ground.initiatorId,
       ),
+      readerIsTheLead: isInitiator,
+      leadName: ((id) => (id ? whoOf(id) : null))(ground.participants.find((x) => !!ground.initiatorId && x.userId === ground.initiatorId)?.id),
       version: baseline?.version ?? null,
       conditions: Array.isArray(baseline?.conditions) ? (baseline!.conditions as string[]) : [],
       entries: everyEntrySoFar.map((e) => ({
@@ -3744,6 +3765,8 @@ Close the report by framing - neutrally, without recommending one - the choice n
       select: {
         organizationId: true,
         initiatorId: true,
+        scenario: true,
+        createdByUserId: true,
         report: { select: { releasedAt: true } },
         participants: { select: { userId: true } },
       },
@@ -3752,7 +3775,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
 
     const isInitiator = ground.initiatorId === requestingUserId;
     const isParty = ground.participants.some((p) => p.userId === requestingUserId);
-    const isOrgAdmin = !isInitiator && !isParty && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
+    const isOrgAdmin = !isInitiator && !isParty && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground));
     /* NotFound, not Forbidden, for the reason in `sessionReport` above: a 403 confirms the
        check-in exists. This endpoint has had the leak since it was written. GW-PRI-04. */
     if (!isParty && !isInitiator && !isOrgAdmin) throw new NotFoundException('Report not found');
@@ -4558,9 +4581,11 @@ happened, and what is in the way.`;
    * once, atomically - neither party reads it before the other. (Part E:
    * "why the report goes to both parties simultaneously".)
    */
-  async generateForAdmin(groundId: string, organizationId: string) {
-    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId } });
+  async generateForAdmin(groundId: string, organizationId: string, adminUserId?: string) {
+    const ground = await this.prisma.ground.findFirst({ where: { id: groundId, organizationId }, include: { participants: { select: { userId: true } } } });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* A performance plan, a promotion or a renewal is not an admin's to touch without access (decision 5, request 78). */
+    if (isEvaluationCheckIn(ground.scenario) && !runsOrSetItUp(adminUserId, ground)) throw new NotFoundException('Check-in not found');
 
     const completedCount = await this.prisma.checkIn.count({ where: { groundId, status: 'COMPLETED' } });
     if (completedCount === 0) {
@@ -4606,7 +4631,7 @@ happened, and what is in the way.`;
       where: { id: userId },
       select: { firstName: true, lastName: true, role: true, organizationId: true },
     }).catch(() => null);
-    if (!adminsThisOrg(sharingAdmin, { organizationId })) throw new ForbiddenException(ONLY_THE_LEAD_RELEASES);
+    if (!adminsTheOrg(sharingAdmin, organizationId)) throw new ForbiddenException(ONLY_THE_LEAD_RELEASES);
 
     const byName = fullNameOf(sharingAdmin, 'An admin');
     const leadName = fullNameOf(lead, 'The person who ran this check-in');
@@ -5304,8 +5329,8 @@ happened, and what is in the way.`;
       const readers = [...inTheCheckIn, ...(anAdmin?.id ? [anAdmin.id] : [])];
       const out: { userId: string; sessionReport: any }[] = [];
       for (const userId of readers) {
-        const sessionReport = await this.sessionReport(groundId, sessionNumber, userId, ground.organizationId).catch(() => undefined);
-        await this.get(groundId, userId, ground.organizationId).catch(() => undefined);
+        const sessionReport = await this.sessionReport(groundId, sessionNumber, userId, ground).catch(() => undefined);
+        await this.get(groundId, userId, ground).catch(() => undefined);
         out.push({ userId, sessionReport });
       }
       /* Logged here, where the work is done, so a warm-up that was shared or skipped is not counted. */
@@ -5385,6 +5410,63 @@ happened, and what is in the way.`;
     /* Every row, for the two builders to narrow to their reader: the coaching note to the person's own,
        the probe list to what the lead may read. See patterns/who-reads-a-pattern. */
     return { detections, dependencies, entries, docs, sessions, wholeDays, ground };
+  }
+
+  /**
+   * THE COACHING THE BOARD SERVES, UNDER THE REPORT'S OWN PRIVACY AND BUILT BY THE REPORT'S OWN BUILDERS
+   * (request 79 b). Nothing here is written a second time: the note is `coachingNoteFor` and the list for
+   * the lead is `whatToProbeOn`, the two the report serves.
+   *
+   *   yours       the reader's own coaching note, for anyone who takes part (the lead included), about
+   *               themselves only, exactly as the report serves it.
+   *   eachPerson  what to ask each person, for whoever runs the check-in (the lead, or the admin who set
+   *               it up) and nobody else; an admin who only reads gets none. This is what the report gives
+   *               the lead in place of other people's notes, which the report never serves to anybody but
+   *               the person.
+   *
+   * Null when there is nothing to serve, so the board draws nothing rather than an empty block.
+   */
+  async coachingForTheBoard(groundId: string, requestingUserId: string): Promise<{ yours: any; eachPerson: any } | null> {
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      include: { participants: { include: { user: { select: { firstName: true, lastName: true, email: true } } } }, report: true },
+    });
+    if (!ground) return null;
+    const participant = (ground.participants as any[]).find((p) => p.userId === requestingUserId) ?? null;
+    const runsIt = runsItForAPattern(ground as any, requestingUserId);
+    if (!participant && !runsIt) return null;
+
+    const labels = labelsForParties(ground.participants as any);
+    const names = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    const plainNameOf = (id: string): string | null => {
+      const label = labels.get(id);
+      return (label ? names.get(label) : undefined) ?? label ?? null;
+    };
+    const nameOf = (id: string | null, fallback: string | null): string | null => {
+      if (!id) return fallback;
+      if (participant && id === participant.id) return 'you';
+      const label = labels.get(id);
+      return (label ? names.get(label) : undefined) ?? label ?? fallback;
+    };
+    const quotable = await theRecordAQuoteMayComeFrom(this.prisma as any, groundId);
+    const [note, probes] = await Promise.all([
+      participant
+        ? this.coachingNoteFor(groundId, ground as any, participant, nameOf).catch((err) => {
+          this.logger.warn(`Could not build the coaching note for the board, ${participant.id}: ${err?.message}`);
+          return null;
+        })
+        : Promise.resolve(null),
+      runsIt && (ground as any).cadence !== Cadence.ONE_TIME
+        ? this.whatToProbeOn(groundId, ground as any, true, nameOf, plainNameOf).catch((err) => {
+          this.logger.warn(`Could not build the probe list for the board, ${groundId}: ${err?.message}`);
+          return null;
+        })
+        : Promise.resolve(null),
+    ]);
+    const yours = this.readAsItWillBeRead(note, groundId, 'the coaching note', quotable);
+    const eachPerson = this.readAsItWillBeRead(probes, groundId, 'the probe list', quotable);
+    if (!yours && !eachPerson) return null;
+    return { yours: yours ?? null, eachPerson: eachPerson ?? null };
   }
 
   /**
@@ -6019,12 +6101,12 @@ happened, and what is in the way.`;
     if (!served || typeof served !== 'object') return served;
     const ground = await (this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { initiatorId: true, organizationId: true, participants: { select: { userId: true } } } as any,
+      select: { initiatorId: true, organizationId: true, scenario: true, createdByUserId: true, participants: { select: { userId: true } } } as any,
     }) as Promise<any>).catch(() => null);
     if (!ground) return served;
     const isParty = ((ground.participants ?? []) as any[]).some((p) => p.userId === requestingUserId);
     const isAdmin = ground.initiatorId !== requestingUserId && !isParty
-      && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId).catch(() => false));
+      && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground).catch(() => false));
     const today = await whatTodayReads(this.prisma as any, groundId, { userId: requestingUserId, isAdmin }).catch(() => ({}));
     return Object.keys(today).length ? { ...(served as any), ...today } : served;
   }
@@ -6063,7 +6145,7 @@ happened, and what is in the way.`;
     const ground = await (this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
-        initiatorId: true, organizationId: true, whoSeesTargets: true, scenario: true, peersVisibleToEachOther: true,
+        initiatorId: true, organizationId: true, createdByUserId: true, whoSeesTargets: true, scenario: true, peersVisibleToEachOther: true,
         participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, remitAsGiven: true, user: { select: { firstName: true, lastName: true } } } },
         objectives: { select: { ownerParticipantId: true, target: true } },
       } as any,
@@ -6071,7 +6153,7 @@ happened, and what is in the way.`;
     if (!ground) return served;
     const me = (ground.participants ?? []).find((p: any) => p.userId === requestingUserId) ?? null;
     const isInitiator = ground.initiatorId === requestingUserId;
-    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId).catch(() => false));
+    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground).catch(() => false));
     const docs = await ((this.prisma as any).groundDocument?.findMany?.({ where: { groundId }, select: { fileName: true, visibility: true, participantId: true } }) ?? Promise.resolve([])).catch(() => []);
     const privateNames = namesThisReaderMayNotOpen(docs as any[], { participantId: me?.id ?? null, isLead: isInitiator || isOrgAdmin }, (d, r) => canSeeDocument(d as any, r, true));
     const namesOfPerson = (pid: string) => {
@@ -6165,7 +6247,7 @@ happened, and what is in the way.`;
     const isInitiator = ground.initiatorId === requestingUserId;
     const participant = ground.participants.find((p) => p.userId === requestingUserId);
     // Org admins can read reports for grounds in their own org (read-only, same view as initiator).
-    const isOrgAdmin = !isInitiator && !participant && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
+    const isOrgAdmin = !isInitiator && !participant && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground));
     if (!participant && !isInitiator && !isOrgAdmin) throw new ForbiddenException('You are not a participant in this check-in');
     /* Decision 58: narrower than isInitiator || isOrgAdmin - a pattern (the lead's probe list
        included) goes only to the lead or the admin who set this check-in up for them, never to
@@ -6669,7 +6751,7 @@ happened, and what is in the way.`;
     if (!ground) throw new NotFoundException('Check-in not found');
     const isInitiator = ground.initiatorId === requestingUserId;
     const me = ground.participants.find((p) => p.userId === requestingUserId) ?? null;
-    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground.organizationId));
+    const isOrgAdmin = !isInitiator && !me && (await this.isAnAdminOf(requestingUserId, requestingUserOrgId, ground));
     if (!isInitiator && !me && !isOrgAdmin) throw new NotFoundException('Check-in not found');
     const status = await this.getActivationStatus(groundId, ground.participants.map((p) => p.id));
     return this.activationStatusThisReaderMaySee(status, ground as any, isInitiator || isOrgAdmin ? null : me?.id ?? null);

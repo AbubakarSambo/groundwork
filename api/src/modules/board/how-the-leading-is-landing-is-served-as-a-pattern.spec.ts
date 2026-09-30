@@ -25,7 +25,7 @@ function boardAs(mods: any, userId: string, role = 'MEMBER') {
     id: 'g-1', scenario: GroundScenario.OKR_ALIGNMENT, mode: GroundMode.SHARED,
     initiatorId: 'u-rukia', createdByUserId: 'u-rukia', organizationId: 'org-1',
     peopleWorkTogether: true, peersVisibleToEachOther: true, timelineDays: 90, cadence: 'WEEKLY',
-    whoSeesTargets: 'EVERYBODY', label: 'Sales team, Q3', participants: PEOPLE, checkIns: [], objectives: [], dependencies: [], poll: null,
+    whoSeesTargets: 'EVERYBODY', label: 'Sales team, Q3', participants: PEOPLE, checkIns: [1, 2, 3].map((n) => ({ id: `ci${n}`, participantId: PEOPLE[0].id, sessionNumber: n, status: 'COMPLETED', isSetup: false, completedAt: new Date(`2026-09-0${n}T10:00:00Z`) })), objectives: [], dependencies: [], poll: null,
     report: {
       releasedAt: new Date('2026-09-23T17:00:00Z'), sharedPicture: 'Everybody describes the stock count as late.', agreements: [], divergences: [],
       engagement: {}, createdAt: new Date('2026-09-20T09:00:00Z'), updatedAt: new Date('2026-09-23T15:02:00Z'),

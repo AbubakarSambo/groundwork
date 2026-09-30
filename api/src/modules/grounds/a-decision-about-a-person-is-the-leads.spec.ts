@@ -40,7 +40,7 @@ const role = (u: string) => (u === OTIENO ? 'ADMIN' : 'MEMBER');
 
 function contextFor(userId: string, whoSeesTargets = 'THEIR_OWN') {
   const ground: any = {
-    id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, createdAt: new Date(), timelineDays: null,
+    id: 'g1', organizationId: 'org1', scenario: 'OKR_ALIGNMENT', initiatorId: WANJIRU, createdAt: new Date(), timelineDays: null,
     restrictExternalVisibility: true, peersVisibleToEachOther: true, whoSeesTargets,
     participants: people(), checkIns: [], resolution: null, patternDetections: [], objectives: objectives(),
     report: { id: 'r1', releasedAt: new Date(), sharedPicture: null, createdAt: new Date() },

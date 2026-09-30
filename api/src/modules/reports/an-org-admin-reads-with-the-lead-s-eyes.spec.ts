@@ -64,11 +64,11 @@ describe('who reads with the lead\'s eyes', () => {
   it('and it is the same flag that gates the rest of their view', () => {
     // If an org admin can read the report at all, they can read the nouns in it. The
     // coherent alternative is to withhold the whole report, not the names inside it.
-    expect(CODE).toMatch(/const isOrgAdmin = !isInitiator && !participant && \(await this\.isAnAdminOf\(requestingUserId, requestingUserOrgId, ground\.organizationId\)\)/);
+    expect(CODE).toMatch(/const isOrgAdmin = !isInitiator && !participant && \(await this\.isAnAdminOf\(requestingUserId, requestingUserOrgId, ground\)\)/);
     /* And the question it asks is the role, in the organisation the check-in belongs to. */
     const helper = CODE.slice(CODE.indexOf('private async isAnAdminOf('), CODE.indexOf('async whereAgainstSuccess('));
     /* Through the one rule (grounds/who-may-read-this-check-in.ts), which asks the role in THIS organisation. */
-    expect(helper).toMatch(/adminsThisOrg\(user, \{ organizationId: groundOrganizationId \}\)/);
+    expect(helper).toMatch(/adminsThisOrg\(\{ \.\.\.user, userId: requestingUserId \}, ground\)/);
     expect(helper).toMatch(/select: \{ role: true, organizationId: true \}/);
   });
 });

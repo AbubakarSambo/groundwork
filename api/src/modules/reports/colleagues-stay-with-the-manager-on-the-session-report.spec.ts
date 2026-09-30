@@ -148,9 +148,10 @@ describe.each([
   });
 
   it('an admin WITHOUT access to this check-in never reads the colleague\'s exact words', async () => {
+    /* Changed with request 78: an admin without access no longer reads a redacted copy; the check-in is not
+       theirs to read at all, so the report is refused. The colleague's words still never reach them. */
     const service = makeService(makeGround(scenario), 'ADMIN');
-    const result: any = await service.sessionReport('g1', 1, 'user-admin', 'org-1');
-    expect(JSON.stringify(rowsFor(result))).not.toContain(THE_COLLEAGUES_WORDS);
+    await expect(service.sessionReport('g1', 1, 'user-admin', 'org-1')).rejects.toThrow('Report not found');
   });
 
   it('a colleague who gave a view reads what they read today - including the subject\'s own words', async () => {

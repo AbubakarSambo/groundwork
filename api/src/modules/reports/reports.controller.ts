@@ -73,8 +73,8 @@ export class ReportsController {
   @Post('generate')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Manually trigger or retry report synthesis (admin only)' })
-  async generate(@Param('groundId') groundId: string, @CurrentUser('organizationId') organizationId: string) {
-    return this.reports.generateForAdmin(groundId, organizationId);
+  async generate(@Param('groundId') groundId: string, @CurrentUser('id') userId: string, @CurrentUser('organizationId') organizationId: string) {
+    return this.reports.generateForAdmin(groundId, organizationId, userId);
   }
 
   @Post('release')

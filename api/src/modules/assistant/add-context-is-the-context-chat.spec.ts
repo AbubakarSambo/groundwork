@@ -29,7 +29,7 @@ function svc(opts: {
 } = {}) {
   const proposals: any[] = [];
   const grounds = opts.grounds ?? [
-    { id: 'g1', label: 'Q4 sales', initiatorId: 'lead-1', organizationId: 'org-a' },
+    { id: 'g1', label: 'Q4 sales', initiatorId: 'lead-1', organizationId: 'org-a', scenario: 'NEW_PROJECT' },
   ];
   const contextChat = opts.contextChat ?? jest.fn(async () => ({
     reply: 'How long does this check-in run for?',
@@ -145,8 +145,8 @@ describe('which check-in (a check-in chosen or named; ambiguous asks)', () => {
   it('with more than one, an unnamed request asks which, rather than guessing', async () => {
     const { service, contextChat } = svc({
       grounds: [
-        { id: 'g1', label: 'Q4 sales', initiatorId: 'lead-1', organizationId: 'org-a' },
-        { id: 'g2', label: 'Onboarding', initiatorId: 'lead-1', organizationId: 'org-a' },
+        { id: 'g1', label: 'Q4 sales', initiatorId: 'lead-1', organizationId: 'org-a', scenario: 'NEW_PROJECT' },
+        { id: 'g2', label: 'Onboarding', initiatorId: 'lead-1', organizationId: 'org-a', scenario: 'NEW_PROJECT' },
       ],
     });
     const r = await service.respond('org-a', 'p1', 'add this as context');
@@ -158,8 +158,8 @@ describe('which check-in (a check-in chosen or named; ambiguous asks)', () => {
   it('naming one of several resolves it without asking', async () => {
     const { service, contextChat } = svc({
       grounds: [
-        { id: 'g1', label: 'Q4 sales', initiatorId: 'lead-1', organizationId: 'org-a' },
-        { id: 'g2', label: 'Onboarding', initiatorId: 'lead-1', organizationId: 'org-a' },
+        { id: 'g1', label: 'Q4 sales', initiatorId: 'lead-1', organizationId: 'org-a', scenario: 'NEW_PROJECT' },
+        { id: 'g2', label: 'Onboarding', initiatorId: 'lead-1', organizationId: 'org-a', scenario: 'NEW_PROJECT' },
       ],
     });
     const r = await service.respond('org-a', 'p1', 'the context for Onboarding');

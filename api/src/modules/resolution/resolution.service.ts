@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { adminsThisOrg, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from '../grounds/who-may-read-this-check-in';
 import { PrismaService } from '../prisma/prisma.service';
 import { IntelligenceService } from '../intelligence';
 import { ReportsService } from '../reports';
@@ -40,15 +41,20 @@ export class ResolutionService {
    * over a check-in that had ended.
    */
   async get(groundId: string, userId: string) {
-    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { id: true, organizationId: true, initiatorId: true } });
+    const ground = await this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { id: true, organizationId: true, initiatorId: true, ...WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS },
+    });
     if (!ground) throw new NotFoundException('Check-in not found');
     const isParty = !!(await this.prisma.groundParticipant.findFirst({ where: { groundId, userId }, select: { id: true } }));
     if (!isParty) {
       const admin = await this.prisma.user.findFirst({
         where: { id: userId, organizationId: ground.organizationId, role: 'ADMIN' },
-        select: { id: true },
+        select: { role: true, organizationId: true },
       });
-      if (!admin) throw new ForbiddenException('You are not part of this check-in.');
+      /* An admin reads the outcome of a performance plan, a promotion or a renewal only when given access
+         (decision 5, request 78); otherwise it is as if there were no such check-in. */
+      if (!admin || !adminsThisOrg({ ...admin, userId }, ground)) throw new ForbiddenException('You are not part of this check-in.');
     }
     return this.buildState(groundId, userId);
   }

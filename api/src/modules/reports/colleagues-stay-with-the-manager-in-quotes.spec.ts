@@ -125,10 +125,9 @@ describe.each([
   });
 
   it('an admin WITHOUT access to this check-in never reads the colleague\'s quote', async () => {
+    /* Changed with request 78: refused outright, not served in a redacted form. */
     const service = makeService(makeGround(scenario), 'ADMIN');
-    const result: any = await service.get('g1', 'user-admin', 'org-1');
-    expect(result.sharedPicture).not.toContain(THE_COLLEAGUES_LINE);
-    expect(result.sharedPicture).toContain('A colleague described this differently.');
+    await expect(service.get('g1', 'user-admin', 'org-1')).rejects.toThrow();
   });
 });
 

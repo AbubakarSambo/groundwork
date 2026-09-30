@@ -37,7 +37,7 @@ const PICTURE = `All three have answered. ${NGOZIS} ${FEMIS} ${TEAM}`;
 
 function contextFor(userId: string) {
   const ground: any = {
-    id: 'g1', organizationId: 'org1', initiatorId: BISI, createdAt: new Date(), timelineDays: null,
+    id: 'g1', organizationId: 'org1', scenario: 'OKR_ALIGNMENT', initiatorId: BISI, createdAt: new Date(), timelineDays: null,
     restrictExternalVisibility: true, peersVisibleToEachOther: true, whoSeesTargets: 'THEIR_OWN', brief: PICTURE,
     participants: people(), checkIns: [], resolution: null, patternDetections: [], objectives: [],
     report: { id: 'r1', releasedAt: new Date(), sharedPicture: PICTURE, createdAt: new Date() },
