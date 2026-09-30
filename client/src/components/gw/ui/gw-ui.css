@@ -481,3 +481,127 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 }
 .gwui-stage-track-done    { background: var(--gw-green-bg); color: var(--gw-green-t); }
 .gwui-stage-track-current { background: var(--gw-navy); color: white; font-weight: 700; }
+
+/* ── UTILITY SCALE (design-audit.md section 4, the guard test) ───────────────
+   For a page on REBUILT_PAGES: no inline fontSize, color, margin*, padding*, border
+   (shorthand) or gap. Most of the board's own text sizes, inks and spacing are one-off
+   numbers that no named part fits (a track's own gap, a target row's own margin) - so
+   they live here as a plain numeric scale, named after the pixel value they hold, not
+   after any one place that uses them. `gwui-t-h2`/etc. above remain the first choice
+   where a whole type style (size + line-height + weight) already matches; these are for
+   the sizes and spacing outside that scale. Alignment (`textAlign`), layout (`display`,
+   `flex*`, `grid*`, width/height) and anything with a value that only JS can compute
+   (a bar's own width percentage) stay inline - the guard does not ban them. */
+
+/* Font size only (line-height, weight and letter-spacing are not banned - they stay inline
+   or on a semantic class where one already fits). */
+.gwui-fs-10-5 { font-size: 10.5px; }
+.gwui-fs-11   { font-size: 11px; }
+.gwui-fs-11-5 { font-size: 11.5px; }
+.gwui-fs-12   { font-size: 12px; }
+.gwui-fs-12-5 { font-size: 12.5px; }
+.gwui-fs-13   { font-size: 13px; }
+.gwui-fs-13-5 { font-size: 13.5px; }
+.gwui-fs-14   { font-size: 14px; }
+.gwui-fs-15   { font-size: 15px; }
+.gwui-fs-16   { font-size: 16px; }
+.gwui-fs-17   { font-size: 17px; }
+.gwui-fs-22   { font-size: 22px; }
+
+/* Ink (colour only). Named after the token, not the place it is used. */
+.gwui-ink-text  { color: var(--gw-text); }
+.gwui-ink-sub   { color: var(--gw-sub); }
+.gwui-ink-subd  { color: var(--gw-sub-d); }
+.gwui-ink-muted { color: var(--gw-muted); }
+.gwui-ink-dark  { color: var(--gw-dark); }
+.gwui-ink-navy  { color: var(--gw-navy); }
+.gwui-ink-amber { color: var(--gw-amber-t); }
+.gwui-ink-green { color: var(--gw-green-t); }
+.gwui-ink-blue  { color: var(--gw-blue-t); }
+.gwui-ink-red   { color: var(--gw-red-t); }
+.gwui-ink-white { color: #fff; }
+
+/* Spacing (margin-top/right/bottom/left, padding-top/right/bottom/left, gap), the exact
+   pixel values the board already used - a plain numeric scale, not a redesign. */
+.gwui-mt-1  { margin-top: 1px; }  .gwui-mt-2  { margin-top: 2px; }  .gwui-mt-3  { margin-top: 3px; }
+.gwui-mt-4  { margin-top: 4px; }  .gwui-mt-5  { margin-top: 5px; }  .gwui-mt-6  { margin-top: 6px; }
+.gwui-mt-7  { margin-top: 7px; }  .gwui-mt-8  { margin-top: 8px; }  .gwui-mt-9  { margin-top: 9px; }
+.gwui-mt-10 { margin-top: 10px; } .gwui-mt-11 { margin-top: 11px; } .gwui-mt-12 { margin-top: 12px; }
+.gwui-mt-14 { margin-top: 14px; } .gwui-mt-16 { margin-top: 16px; } .gwui-mt-20 { margin-top: 20px; }
+.gwui-mt-22 { margin-top: 22px; } .gwui-mt-28 { margin-top: 28px; }
+.gwui-mb-2  { margin-bottom: 2px; } .gwui-mb-4  { margin-bottom: 4px; } .gwui-mb-6  { margin-bottom: 6px; }
+.gwui-mb-8  { margin-bottom: 8px; } .gwui-mb-10 { margin-bottom: 10px; } .gwui-mb-16 { margin-bottom: 16px; }
+.gwui-ml-7 { margin-left: 7px; } .gwui-ml-8 { margin-left: 8px; }
+.gwui-m-0 { margin: 0; }
+
+.gwui-pt-0 { padding-top: 0; } .gwui-pt-2 { padding-top: 2px; } .gwui-pt-3 { padding-top: 3px; }
+.gwui-pt-4 { padding-top: 4px; } .gwui-pt-6 { padding-top: 6px; } .gwui-pt-7 { padding-top: 7px; }
+.gwui-pt-8 { padding-top: 8px; } .gwui-pt-9 { padding-top: 9px; } .gwui-pt-10 { padding-top: 10px; }
+.gwui-pt-11 { padding-top: 11px; } .gwui-pt-12 { padding-top: 12px; } .gwui-pt-13 { padding-top: 13px; }
+.gwui-pt-16 { padding-top: 16px; } .gwui-pt-22 { padding-top: 22px; }
+.gwui-pr-0 { padding-right: 0; } .gwui-pr-8 { padding-right: 8px; } .gwui-pr-9 { padding-right: 9px; }
+.gwui-pr-10 { padding-right: 10px; } .gwui-pr-13 { padding-right: 13px; } .gwui-pr-14 { padding-right: 14px; }
+.gwui-pr-15 { padding-right: 15px; } .gwui-pr-16 { padding-right: 16px; } .gwui-pr-20 { padding-right: 20px; }
+.gwui-pr-22 { padding-right: 22px; } .gwui-pr-24 { padding-right: 24px; }
+.gwui-pb-0 { padding-bottom: 0; } .gwui-pb-2 { padding-bottom: 2px; } .gwui-pb-6 { padding-bottom: 6px; }
+.gwui-pb-7 { padding-bottom: 7px; } .gwui-pb-8 { padding-bottom: 8px; } .gwui-pb-9 { padding-bottom: 9px; }
+.gwui-pb-10 { padding-bottom: 10px; } .gwui-pb-11 { padding-bottom: 11px; } .gwui-pb-12 { padding-bottom: 12px; }
+.gwui-pb-16 { padding-bottom: 16px; } .gwui-pb-22 { padding-bottom: 22px; }
+.gwui-pl-0 { padding-left: 0; } .gwui-pl-8 { padding-left: 8px; } .gwui-pl-9 { padding-left: 9px; }
+.gwui-pl-10 { padding-left: 10px; } .gwui-pl-13 { padding-left: 13px; } .gwui-pl-14 { padding-left: 14px; }
+.gwui-pl-15 { padding-left: 15px; } .gwui-pl-16 { padding-left: 16px; } .gwui-pl-20 { padding-left: 20px; }
+.gwui-pl-22 { padding-left: 22px; } .gwui-pl-24 { padding-left: 24px; }
+.gwui-p-0 { padding: 0; }
+
+.gwui-gap-4  { gap: 4px; }  .gwui-gap-5  { gap: 5px; }  .gwui-gap-6  { gap: 6px; }
+.gwui-gap-8  { gap: 8px; }  .gwui-gap-9  { gap: 9px; }  .gwui-gap-10 { gap: 10px; }
+.gwui-gap-11 { gap: 11px; } .gwui-gap-12 { gap: 12px; } .gwui-gap-14 { gap: 14px; }
+.gwui-gap-16 { gap: 16px; }
+
+/* Rules (the board's own repeated border shorthands - the guard bans the shorthand
+   property, not borderRadius/Color/Width/Style, so a one-off radius stays inline). */
+.gwui-rule       { border: 1px solid var(--gw-border); }
+.gwui-rule-none  { border: none; }
+.gwui-rule-blue  { border: 1px solid var(--gw-blue-b); }
+.gwui-rule-amber { border: 1px solid var(--gw-amber-b); }
+.gwui-rule-dark  { border: 1.5px solid var(--gw-dark); }
+.gwui-rule-dashed { border: 1px dashed var(--gw-border); }
+.gwui-rule-top       { border-top: 1px solid var(--gw-border); }
+.gwui-rule-top-none  { border-top: none; }
+.gwui-rule-top-dashed { border-top: 1px dashed var(--gw-border); }
+/* A repeated inner list row (an item inside a wider card, e.g. a per-person panel's own
+   lines, or a poll option): a line above every row but the first, without an `i === 0`
+   ternary in the JSX. */
+.gwui-inner-row { border-top: 1px solid var(--gw-border); }
+.gwui-inner-row:first-child { border-top: none; }
+
+/* Board (piece d): additional box-model values generated from its own former inline styles. */
+.gwui-mb-0 { margin-bottom: 0px; }
+.gwui-mb-48 { margin-bottom: 48px; }
+.gwui-ml-0 { margin-left: 0px; }
+.gwui-ml-auto { margin-left: auto; }
+.gwui-mr-0 { margin-right: 0px; }
+.gwui-mr-auto { margin-right: auto; }
+.gwui-mt-0 { margin-top: 0px; }
+.gwui-mt-48 { margin-top: 48px; }
+.gwui-pb-3 { padding-bottom: 3px; }
+.gwui-pb-4 { padding-bottom: 4px; }
+.gwui-pb-40 { padding-bottom: 40px; }
+.gwui-pl-40 { padding-left: 40px; }
+.gwui-pr-40 { padding-right: 40px; }
+.gwui-pt-40 { padding-top: 40px; }
+.gwui-rule-bottom { border-bottom: 1px solid var(--gw-border); }
+.gwui-rule-bottom-none { border-bottom: none; }
+.gwui-rule-square { border: 1.5px solid var(--gw-border); }
+/* "In their own voice" quote box (board): their own words when given, else a muted placeholder. */
+.gwui-ownvoice { background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); color: var(--gw-blue-t); }
+.gwui-ownvoice-none { border: 1px dashed var(--gw-border); color: var(--gw-muted); }
+/* The "words only / with a bar" toggle (board coverage variant), chosen vs not. */
+.gwui-toggle-chip-on  { border: 1px solid var(--gw-dark); background: var(--gw-dark); color: #fff; }
+.gwui-toggle-chip-off { border: 1px solid var(--gw-border); background: #fff; color: var(--gw-sub); }
+/* The poll's winning option, picked out from the rest (board: "Find a time"). */
+.gwui-win-row { background: var(--gw-green-bg); border-radius: 9px; margin: 2px -8px; }
+/* The poll's own "I can make this" toggle, picked vs not. */
+.gwui-poll-chip-on  { background: var(--gw-blue-bg); color: var(--gw-blue-t); border: 1px solid var(--gw-blue-b); }
+.gwui-poll-chip-off { background: #F1F2F5; color: var(--gw-sub); border: 1px solid var(--gw-border); }
+.gwui-fs-14-5 { font-size: 14.5px; }
