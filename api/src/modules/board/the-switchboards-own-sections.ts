@@ -69,9 +69,12 @@ export interface AHandoff {
   dueOn: Date | string | null;
   clearedAt: Date | string | null;
   createdAt: Date | string;
+  /** The check-in the person first said it in. */
+  sourceCheckInId?: string | null;
 }
 
 export interface ASession {
+  id?: string;
   participantId: string;
   sessionNumber: number;
   status: string;
@@ -349,11 +352,7 @@ export function thePersonHistory(
     const theirWaits = handoffs.filter((d) => d.fromParticipantId === p.id);
     const perSession = done.map((s) => {
       const made = theirCommitments.filter((c) => c.statedInSession === s.sessionNumber).length;
-      const raised = theirWaits.filter((d) => {
-        const at = day(d.createdAt);
-        const answered = day(s.completedAt);
-        return !!at && !!answered && at === answered;
-      }).length;
+      const raised = theirWaits.filter((d) => !!s.id && d.sourceCheckInId === s.id).length;
       const bits: string[] = [];
       if (made) bits.push(`made ${plural(made, 'commitment', 'commitments')}`);
       if (raised) bits.push(`named ${plural(raised, 'thing', 'things')} the work was waiting on`);

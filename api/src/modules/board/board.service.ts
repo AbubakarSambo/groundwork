@@ -95,7 +95,7 @@ import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
-import { theRisks, theWorkPlan, theTimeline, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
+import { theRisks, theWorkPlan, theTimeline, thePersonHistory, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -1761,7 +1761,7 @@ export class BoardService {
         aColleague: (pid) => aColleague(pid),
       };
       const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId);
-      const sessions = (checkIns as any[]).map((c) => ({ participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup }));
+      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup }));
       const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
       const handoffs = (ground.dependencies ?? []) as any[];
       const risks = theRisks(mine.commitments, handoffs, sessions, typeof (out as any).targetsNobodyOwns === 'string' ? (out as any).targetsNobodyOwns : null, reader);
@@ -1770,7 +1770,8 @@ export class BoardService {
       if (workPlan.length) out.workPlan = workPlan;
       const timeline = theTimeline(mine.commitments, handoffs, sessions, (ground as any).closedAt ?? null, reader);
       if (timeline.length) out.timeline = timeline;
-      void people;
+      const personHistory = thePersonHistory(people, mine.commitments, handoffs, sessions, reader);
+      if (personHistory.length) out.personHistory = personHistory;
     }
 
     /*
