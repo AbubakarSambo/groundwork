@@ -148,6 +148,17 @@ export const groundsApi = {
       .patch<{ id: string; overWhatsApp: boolean | null }>(`/grounds/${id}/over-whatsapp`, { over })
       .then(r => r.data),
 
+  /**
+   * THE KIND OF WORK THIS CHECK-IN IS ABOUT (request 76), and its own stage names. Only the lead,
+   * or an admin of the organisation, can change it. `kind: null` clears it back to none. A name
+   * that is not one of the eleven kinds is refused with a plain sentence, shown as the server gives
+   * it. A later read never overwrites the lead's own choice.
+   */
+  setKindOfWork: (id: string, body: { kind?: string | null; stages?: string[] | null }) =>
+    apiClient
+      .patch<{ id: string; kindOfWork: string | null; kindOfWorkSetBy: string | null; workStages: string[] | null }>(`/grounds/${id}/kind-of-work`, body)
+      .then(r => r.data),
+
   setExpectThemToUnblock: (id: string, expect: boolean) =>
     apiClient
       .patch<{ id: string; expectThemToUnblock: boolean }>(`/grounds/${id}/expect-them-to-unblock`, { expect })
