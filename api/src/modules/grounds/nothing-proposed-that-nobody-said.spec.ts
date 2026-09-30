@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant } from './nothing-proposed-that-nobody-said';
+import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, dropsAPromiseWithNothingToKeep } from './nothing-proposed-that-nobody-said';
 
 /**
  * "I WILL RECORD THAT AS WHAT DOING WELL LOOKS LIKE: 'HI! WHAT'S ON YOUR MIND?'"
@@ -57,5 +57,35 @@ describe('nothing proposed that nobody said', () => {
     const prompt = fs.readFileSync(path.join(__dirname, 'the-context-chat.ts'), 'utf8');
     expect(prompt).toContain('ANSWER THEM BEFORE YOU ASK');
     expect(prompt).toContain('is not a conversation, and it is the thing people close this panel over');
+  });
+});
+
+/*
+ * FIX 4, 30 September 2026. Driven live: after "Ben should be more proactive", the chat said "I will
+ * record this as your read of Ben... it will never be quoted to Ben" and nothing was recorded - a
+ * false statement, since nothing was ever proposed that turn. A sentence promising to record or keep
+ * something is dropped unless a proposal is actually attached to the same turn.
+ */
+describe('dropsAPromiseWithNothingToKeep: nothing says it will be recorded unless something actually is', () => {
+  it('drops the promise when nothing is proposed', () => {
+    expect(dropsAPromiseWithNothingToKeep(
+      'I will record this as your read of Ben. It will never be quoted to Ben.', false,
+    )).toBe('It will never be quoted to Ben.');
+  });
+
+  it('leaves the sentence alone when a proposal is attached this turn', () => {
+    const text = 'I will record this as your read of Ben. It will never be quoted to Ben.';
+    expect(dropsAPromiseWithNothingToKeep(text, true)).toBe(text);
+  });
+
+  it('catches the other phrasings the model uses for the same promise', () => {
+    expect(dropsAPromiseWithNothingToKeep('Keeping that as a private note.', false)).toBe('');
+    expect(dropsAPromiseWithNothingToKeep('That will be recorded for you.', false)).toBe('');
+    expect(dropsAPromiseWithNothingToKeep('I will keep a note of that.', false)).toBe('');
+  });
+
+  it('leaves an ordinary sentence with no such promise untouched either way', () => {
+    expect(dropsAPromiseWithNothingToKeep('What have you seen that makes you say that?', false))
+      .toBe('What have you seen that makes you say that?');
   });
 });

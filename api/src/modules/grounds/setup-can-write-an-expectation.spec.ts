@@ -32,10 +32,22 @@ describe('setup can write an expectation, once the lead confirms it', () => {
     expect(p.kind).toBe('none');
   });
 
-  it('refuses something nobody could be held to', () => {
+  /*
+   * FIX 4, 30 September 2026 (inventory items 10-11). This used to assert `kind: 'none'` - nothing
+   * proposed, nothing saved - while the model's own reply (contextChatPrompt rule 2) told the lead it
+   * was being kept as their read regardless. Driven live: "Ben should be more proactive" got "I will
+   * record this as your read of Ben... it will never be quoted to Ben", and nothing was recorded. What
+   * is not checkable enough to hold somebody to is not nothing - it is the lead's own read of that
+   * person, and it is now proposed as a private LEAD_ONLY note, said back and confirmed like
+   * everything else here, never as an expectation the person is held to.
+   */
+  it('what is not checkable enough to hold somebody to becomes a private note about them, not nothing', () => {
     const p = proposalFrom('objectives', { expectationPerson: 'Dele', expectationText: 'be more proactive' }, PARTIES);
-    expect(p.kind).toBe('none');
-    expect((p as any).why).toContain('better left to the check-in');
+    expect(p.kind).toBe('lead_read');
+    expect((p as any).participantId).toBe('p1');
+    expect((p as any).text).toBe('be more proactive');
+    expect((p as any).say).toContain('private note about Dele Okonkwo');
+    expect((p as any).say).toContain('never quoted');
   });
 
   it('refuses a name that matches nobody, rather than picking somebody', () => {
@@ -106,5 +118,20 @@ describe('and the write happens only on confirmation', () => {
     expect(block).toContain('seenBySubject: false');
     expect(block).toContain('authoredBy: AUTHORED_AT_SETUP');
     expect(block).not.toContain('seenBySubject: true');
+  });
+
+  /*
+   * FIX 4, 30 September 2026. The lead's read of a person (a `lead_read` proposal) is written through
+   * `addLeadContext` - the SAME function the note box on the Context page calls - not a second write
+   * of `LeadContextNote` with a second set of rules. This is what makes the refusal-to-share-a-note-
+   * about-a-person rule (item 9) apply here for free, rather than needing to be re-proven.
+   */
+  it('writes the lead\'s read of a person through addLeadContext, inside applyContextProposal, as a LEAD_ONLY note', () => {
+    const apply = CODE.slice(CODE.indexOf('async applyContextProposal('), CODE.indexOf('private async writeWhatThePasteGave('));
+    expect(apply).toContain("if (proposal.kind === 'lead_read')");
+    const leadRead = apply.slice(apply.indexOf("if (proposal.kind === 'lead_read')"));
+    const block = leadRead.slice(0, leadRead.indexOf('return { changed'));
+    expect(block).toContain('this.addLeadContext(groundId, requestingUserId,');
+    expect(block).toContain("audience: 'LEAD_ONLY'");
   });
 });

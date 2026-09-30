@@ -34,7 +34,8 @@ describe('the setup chat goes through the boundary', () => {
      * sources, and still returned through `forHumans` either way, so the boundary this test protects
      * is unchanged.
      */
-    expect(CHAT).toContain('const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(changeSay ?? reply) : (changeSay ?? reply);');
+    expect(CHAT).toContain('const withoutFalsePromises = dropsAPromiseWithNothingToKeep(changeSay ?? reply, proposal.kind !== \'none\');');
+    expect(CHAT).toContain('const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;');
     expect(CHAT).toContain('reply: forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply)');
   });
 

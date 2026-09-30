@@ -76,7 +76,19 @@ export type Proposal =
   | { kind: 'cadence'; cadence: Cadence; say: string }
   | { kind: 'success'; text: string; say: string }
   | { kind: 'expectation'; participantId: string; personLabel: string; text: string; say: string }
-  | { kind: 'targets'; targets: { name: string; target: number | null }[]; say: string };
+  | { kind: 'targets'; targets: { name: string; target: number | null }[]; say: string }
+  /**
+   * THE LEAD'S READ OF A NAMED PERSON, KEPT AS THEIR OWN PRIVATE NOTE. FIX 4, inventory items 10-11.
+   *
+   * What a lead says about somebody that is not something checkable to hold them to - "Ben should be
+   * more proactive", "he is struggling and difficult to work with" - used to fall all the way to
+   * `{kind:'none'}` here, and the model's OWN reply text still promised to record it as their read
+   * (`contextChatPrompt` rule 2). Nothing was ever proposed, so nothing was ever saved, and the
+   * promise was false. This is the proposal that makes it true: the same private note a lead can
+   * write directly (`addLeadContext`, LEAD_ONLY, never quoted to the person it is about), reached from
+   * the conversation and confirmed the same way as everything else here.
+   */
+  | { kind: 'lead_read'; participantId: string; personLabel: string; text: string; say: string };
 
 /**
  * A day count somebody would actually choose. Below a week there is nothing to check in against;
@@ -218,12 +230,26 @@ export function proposalFrom(
     if (!person || !text) {
       return { kind: 'none', why: 'No expectation of a named person in that answer.' };
     }
-    if (!worthRecording(text)) {
-      return { kind: 'none', why: 'That is not specific enough to hold anybody to, so it is better left to the check-in.' };
-    }
     const match = whoTheyMeant(person, parties);
     if (!match) {
       return { kind: 'none', why: `Nobody on this check-in matches "${person}".` };
+    }
+    /*
+     * FIX 4, inventory items 10-11: WHAT IS NOT CHECKABLE ENOUGH TO HOLD SOMEBODY TO IS NOT NOTHING -
+     * it is the lead's own read of that person, kept private. This used to stop at `{kind: 'none'}`
+     * here, silent, while the model's own reply (rule 2 of `contextChatPrompt`) told the lead it was
+     * being recorded as their read regardless - a promise nothing behind it made true. Matched to a
+     * real person FIRST, so the note lands on the right row.
+     */
+    if (!worthRecording(text)) {
+      return {
+        kind: 'lead_read',
+        participantId: match.id,
+        personLabel: match.label,
+        text,
+        say: `Shall I keep "${text}" as a private note about ${match.label} that only you can see? `
+          + `It guides how this check-in is run and is never quoted to ${match.label} or put into their own check-in.`,
+      };
     }
     return {
       kind: 'expectation',

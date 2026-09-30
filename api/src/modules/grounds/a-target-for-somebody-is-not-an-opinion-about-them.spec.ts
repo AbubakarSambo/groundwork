@@ -65,7 +65,12 @@ describe('a target for somebody is not an opinion about them', () => {
 
   it('a target for a named person is heard whatever question was open', () => {
     expect((src.match(/proposalFrom\('objectives', \w+, /g) ?? []).length).toBeGreaterThanOrEqual(2);
-    expect(src).toMatch(/if \(forSomebody\.kind === 'expectation'\) proposal = forSomebody;/);
+    /*
+     * FIX 4, 30 September 2026: this now also wins the turn for a `lead_read` proposal - a judgement
+     * about a named person, heard whatever question was open, the same as a checkable expectation
+     * always has been. See what-the-context-chat-heard.ts's objectives branch.
+     */
+    expect(src).toMatch(/if \(forSomebody\.kind === 'expectation' \|\| forSomebody\.kind === 'lead_read'\) proposal = forSomebody;/);
   });
 
   it('and both halves read the sentence the same way, so a yes lands', () => {

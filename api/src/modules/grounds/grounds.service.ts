@@ -64,7 +64,7 @@ import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
-import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant } from './nothing-proposed-that-nobody-said';
+import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, dropsAPromiseWithNothingToKeep } from './nothing-proposed-that-nobody-said';
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
 import {
@@ -2942,7 +2942,7 @@ export class GroundsService {
           );
           if (alsoHeard) {
             const forSomebody = proposalFrom('objectives', alsoHeard, await this.partiesForMatching(groundId));
-            if (forSomebody.kind === 'expectation') proposal = forSomebody;
+            if (forSomebody.kind === 'expectation' || forSomebody.kind === 'lead_read') proposal = forSomebody;
           }
         } catch {
           /* the open gap's proposal, or none, stands */
@@ -2961,6 +2961,7 @@ export class GroundsService {
       const untraceable =
         (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
         || (proposal.kind === 'expectation' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
+        || (proposal.kind === 'lead_read' && !traceableToWhatTheySaid((proposal as any).text, lastFromLead))
         || (proposal.kind === 'timeline' && !aLengthTheyCouldHaveMeant((proposal as any).days, lastFromLead));
       if (untraceable) {
         this.logger.warn(`Context chat on ${groundId}: dropped a ${proposal.kind} proposal whose words were not theirs.`);
@@ -2997,7 +2998,14 @@ export class GroundsService {
      */
     const isOpeningTurn = !history.some((h) => h.role === 'assistant');
     const openedOn = isOpeningTurn ? openingLine(ground.timelineStated ? ground.timelineDays : null, ground.cadenceStated ? ground.cadence : null) : null;
-    const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(changeSay ?? reply) : (changeSay ?? reply);
+    /*
+     * FIX 4: NOTHING SAYS IT WILL BE RECORDED UNLESS SOMETHING IS ACTUALLY BEING PROPOSED THIS TURN.
+     * "I will record this as your read of Ben" was once said with no `lead_read` or `expectation`
+     * proposal attached - a false statement, since nothing was kept. See nothing-proposed-that-
+     * nobody-said.ts.
+     */
+    const withoutFalsePromises = dropsAPromiseWithNothingToKeep(changeSay ?? reply, proposal.kind !== 'none');
+    const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;
     return {
       reply: forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply),
       gaps: gaps.map((g: { key: string }) => g.key),
@@ -3689,7 +3697,7 @@ export class GroundsService {
         .catch(() => null);
       if (alsoHeard) {
         const forSomebody = proposalFrom('objectives', alsoHeard, parties);
-        if (forSomebody.kind === 'expectation') proposal = forSomebody;
+        if (forSomebody.kind === 'expectation' || forSomebody.kind === 'lead_read') proposal = forSomebody;
       }
     }
     if (proposal.kind === 'none') throw new BadRequestException(proposal.why);
@@ -3697,6 +3705,7 @@ export class GroundsService {
     if (
       (proposal.kind === 'success' && !traceableToWhatTheySaid((proposal as any).text, dto.said))
       || (proposal.kind === 'expectation' && !traceableToWhatTheySaid((proposal as any).text, dto.said))
+      || (proposal.kind === 'lead_read' && !traceableToWhatTheySaid((proposal as any).text, dto.said))
       || (proposal.kind === 'timeline' && !aLengthTheyCouldHaveMeant((proposal as any).days, dto.said))
     ) {
       throw new BadRequestException('I could not find that in what you said, so nothing was recorded. Say it in your own words and I will take it.');
@@ -3737,6 +3746,21 @@ export class GroundsService {
         },
       });
       return { changed: 'expectation', say: proposal.say };
+    }
+    if (proposal.kind === 'lead_read') {
+      /*
+       * FIX 4: THROUGH THE NORMAL NOTE PATH, NOT A COPY OF IT. `addLeadContext` already owns who may
+       * write one (the same lead-or-admin-in-their-place rule `mayConfirmSetupOn` just checked here),
+       * the bank-detail scrub, and the refusal that a note about a person can never be shared - this
+       * calls it rather than writing the `LeadContextNote` row a second time with a second set of
+       * rules that could drift from the first.
+       */
+      await this.addLeadContext(groundId, requestingUserId, {
+        participantId: proposal.participantId,
+        text: proposal.text,
+        audience: 'LEAD_ONLY',
+      });
+      return { changed: 'a private note', say: proposal.say };
     }
 
     /*

@@ -20,6 +20,8 @@
  * invention shares nothing.
  */
 
+import { intoSentences } from '../conversation/nothing-invented-reaches-them';
+
 /** Hello, thanks, ok. A turn with no content to take, which is not a turn to take nothing from. */
 const A_GREETING_OR_AN_ACKNOWLEDGEMENT =
   /^(hi|hey|hello|yo|hiya|good (morning|afternoon|evening)|thanks|thank you|thx|ta|ok|okay|cool|great|nice|sure|fine|got it|understood|right|yep|yes|no|nope|sorry|hmm+|erm|um)\b[\s.,!?]*$/i;
@@ -68,6 +70,29 @@ export function traceableToWhatTheySaid(value: string | null | undefined, said: 
   const shared = mine.filter((w) => theirs.has(w)).length;
   /* Most of it, not some of it: a one-word overlap is how "Hi! What's on your mind?" would pass. */
   return shared >= Math.ceil(mine.length * 0.6);
+}
+
+/**
+ * A SENTENCE THAT PROMISES TO RECORD SOMETHING IS DROPPED WHEN NOTHING IS BEING PROPOSED. FIX 4.
+ *
+ * Driven live: after "Ben should be more proactive", the chat said "I will record this as your read
+ * of Ben... it will never be quoted to Ben" - and nothing was recorded, because that answer was not
+ * specific enough to hold anybody to and fell to `{kind: 'none'}`. A sentence that says something
+ * will be kept, with nothing behind it in the same turn to actually keep, is a false statement -
+ * exactly the shape `traceableToWhatTheySaid` exists for, one turn later: it is not enough for the
+ * words to be theirs, the ACT has to be real too.
+ *
+ * A `lead_read` or `expectation` proposal attached to the same turn makes the promise true, so this
+ * only drops the sentence when `hasProposal` is false - the coaching rule (rule 2 of
+ * `contextChatPrompt`) is free to say it plainly whenever there is something to say yes to.
+ */
+const PROMISES_TO_RECORD =
+  /\b(i will (record|keep|save|note|log|write (?:that|this|it) down)|(?:will be|is) (?:recorded|kept|saved|noted)|recording (?:that|this|it) as|keeping (?:that|this|it) as)\b/i;
+
+export function dropsAPromiseWithNothingToKeep(text: string, hasProposal: boolean): string {
+  if (hasProposal) return text;
+  const kept = intoSentences(text).filter((s) => !PROMISES_TO_RECORD.test(s));
+  return kept.join('').trim();
 }
 
 /** A number a person typed, in any of the ways they write it: 90, ninety, 12 weeks, 3 months. */
