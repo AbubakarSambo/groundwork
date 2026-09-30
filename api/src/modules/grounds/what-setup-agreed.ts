@@ -82,6 +82,40 @@ export function withoutFraming(text: string): string {
 }
 
 /**
+ * WHAT IS SAVED IS THE SAME TEXT THE LEAD WAS SHOWN, CHARACTER FOR CHARACTER. FIX (found live, the
+ * four live checks, 30 September 2026).
+ *
+ * `propose` and `confirm` are two separate model calls reading the same sentence the lead typed (see
+ * `applyContextProposal`'s own comment on why it re-derives rather than trusting a payload), and each
+ * call is free to punctuate and capitalise its own quote however it likes. Driven live, on the same
+ * turn:
+ *
+ *   said back: "the update in by every Friday"        saved: "the update in by every Friday." (a full
+ *     stop the lead never typed, added by the confirm call alone)
+ *   said back: "Every pipeline stage has an owner ..." saved: "every pipeline stage ..." (the confirm
+ *     call lower-cased the first letter the propose call had capitalised)
+ *
+ * Neither call's own wording is trustworthy as the record, because either one can drift from the
+ * other. What IS trustworthy is the sentence the lead actually typed - `said` here - so the quote is
+ * located in there, case-insensitively and ignoring a trailing full stop, and the LITERAL characters
+ * of `said` at that span are what is quoted back and saved, on both sides of the confirmation, every
+ * time. Whichever model call finds it, the answer is the same string, because it is read off the
+ * lead's own sentence and not off either call's paraphrase of it.
+ *
+ * A paraphrase that is not a substring of what they typed - the model tidied a few words - falls back
+ * to the trimmed candidate exactly as before: this is a refinement of what is already shown, never a
+ * new way to refuse it.
+ */
+export function verbatimQuote(candidate: string, said: string): string {
+  const trimmed = (candidate ?? '').trim().replace(/[.!?]+$/, '').trim();
+  if (!trimmed) return (candidate ?? '').trim();
+  const source = said ?? '';
+  const idx = source.toLowerCase().indexOf(trimmed.toLowerCase());
+  if (idx === -1) return trimmed;
+  return source.slice(idx, idx + trimmed.length);
+}
+
+/**
  * WHAT MAKES AN EXPECTATION WORTH RECORDING.
  *
  * A sentence with nothing checkable in it - "do a good job", "be more proactive" - is worse than no

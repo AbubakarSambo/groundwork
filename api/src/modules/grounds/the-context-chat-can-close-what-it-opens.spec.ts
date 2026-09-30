@@ -112,11 +112,16 @@ describe('and the service writes only after a yes', () => {
     expect(apply).not.toMatch(/dto\.(timelineDays|cadence|participantId|target)\b/);
     expect(apply).toMatch(/extractionToolFor\(openGap\)/);
     /*
-     * The parties are passed as well now, so a name in an answer can be matched to a real person.
-     * The invariant is unchanged and is what this asserts: the proposal is re-derived from the
-     * words, never taken from a payload.
+     * The parties are passed as well now, so a name in an answer can be matched to a real person,
+     * and `dto.said` is passed too - not a value the client asked to be saved, but the lead's own
+     * sentence, so a quoted proposal can be locked to its literal characters rather than to either
+     * extraction call's own paraphrase of them (see `verbatimQuote`, found live: the same sentence
+     * read twice - once to propose, once to confirm - came back with a full stop added on one call
+     * and a capital letter dropped on the other, so what was saved did not match what was shown).
+     * The invariant this asserts is unchanged: the proposal is re-derived from the words, never
+     * taken from a payload.
      */
-    expect(apply).toMatch(/proposalFrom\(openGap, heard \?\? \{\}, parties\)/);
+    expect(apply).toMatch(/proposalFrom\(openGap, heard \?\? \{\}, parties, dto\.said\)/);
     expect(apply).toMatch(/const parties = await this\.partiesForMatching\(groundId\)/);
   });
 

@@ -2942,7 +2942,7 @@ export class GroundsService {
           [{ role: 'user' as const, content: lastFromLead }],
           extractionToolFor(openGap),
         );
-        if (heard) proposal = proposalFrom(openGap, heard, await this.partiesForMatching(groundId));
+        if (heard) proposal = proposalFrom(openGap, heard, await this.partiesForMatching(groundId), lastFromLead);
       } catch {
         /* no proposal; the conversation carries on and the lead can use the form */
       }
@@ -2967,7 +2967,7 @@ export class GroundsService {
             extractionToolFor('objectives'),
           );
           if (alsoHeard) {
-            const forSomebody = proposalFrom('objectives', alsoHeard, await this.partiesForMatching(groundId));
+            const forSomebody = proposalFrom('objectives', alsoHeard, await this.partiesForMatching(groundId), lastFromLead);
             if (forSomebody.kind === 'expectation' || forSomebody.kind === 'lead_read') proposal = forSomebody;
           }
         } catch {
@@ -3725,7 +3725,7 @@ export class GroundsService {
       extractionToolFor(openGap),
     );
     const parties = await this.partiesForMatching(groundId);
-    let proposal = proposalFrom(openGap, heard ?? {}, parties);
+    let proposal = proposalFrom(openGap, heard ?? {}, parties, dto.said);
 
     /*
      * AND THE SAME SECOND READING THE CHAT DOES, BECAUSE THIS IS WHERE THE YES LANDS.
@@ -3755,7 +3755,7 @@ export class GroundsService {
         )
         .catch(() => null);
       if (alsoHeard) {
-        const forSomebody = proposalFrom('objectives', alsoHeard, parties);
+        const forSomebody = proposalFrom('objectives', alsoHeard, parties, dto.said);
         if (forSomebody.kind === 'expectation' || forSomebody.kind === 'lead_read') proposal = forSomebody;
       }
     }

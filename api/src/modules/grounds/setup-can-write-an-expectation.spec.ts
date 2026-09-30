@@ -1,6 +1,6 @@
 import { proposalFrom, extractionToolFor } from './what-the-context-chat-heard';
 import { whoTheyMeant } from './who-they-meant';
-import { withoutFraming } from './what-setup-agreed';
+import { withoutFraming, verbatimQuote } from './what-setup-agreed';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -99,6 +99,56 @@ describe('the say-back quote never starts with a clipped verb fragment (FIX 5)',
 
   it('withoutFraming keeps the lead\'s own case, unlike the internal thin-check which lowercases', () => {
     expect(withoutFraming('I want The Update In By Every Friday')).toBe('The Update In By Every Friday');
+  });
+});
+
+/*
+ * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: fix 5 above converges the FRAMING
+ * strip, but not a trailing full stop the confirm call alone added, nor a first letter the confirm
+ * call alone lower-cased - both left the saved text different from the text the lead had already
+ * been shown and said yes to.
+ *
+ *   said back: "the update in by every Friday"          saved: "the update in by every Friday."
+ *   said back: "Every pipeline stage has an owner ..."   saved: "every pipeline stage ..."
+ *
+ * The fix locks the quoted text to the LITERAL characters of the lead's own sentence (`said`, now
+ * threaded through into `proposalFrom`), so whatever either call's own wording happens to be, both
+ * land on the identical substring of what the lead actually typed.
+ */
+describe('what is saved is exactly what was said back, character for character (found live again)', () => {
+  it('the exact exchange the fix names: a full stop the confirm call alone added is never saved', () => {
+    const said = 'He has missed the last two pipeline updates. I spoke to him once. I want the update in by every Friday.';
+    const propose = proposalFrom('objectives', { expectationPerson: 'Dele', expectationText: 'the update in by every Friday' }, PARTIES, said) as any;
+    /* confirm's own extraction added a full stop the lead never typed. */
+    const confirm = proposalFrom('objectives', { expectationPerson: 'Dele', expectationText: 'the update in by every Friday.' }, PARTIES, said) as any;
+    expect(propose.text).toBe('the update in by every Friday');
+    expect(confirm.text).toBe('the update in by every Friday');
+    expect(confirm.text).toBe(propose.text);
+  });
+
+  it('the exact exchange the fix names: a capital letter the confirm call alone dropped is never saved either', () => {
+    const said = 'Good means every pipeline stage has an owner and nothing sits unowned for more than two days.';
+    const propose = proposalFrom('success', { success: 'Every pipeline stage has an owner and nothing sits unowned for more than two days' }, PARTIES, said) as any;
+    /* confirm's own extraction lower-cased the first letter, the same words otherwise. */
+    const confirm = proposalFrom('success', { success: 'every pipeline stage has an owner and nothing sits unowned for more than two days' }, PARTIES, said) as any;
+    expect(propose.text).toBe('every pipeline stage has an owner and nothing sits unowned for more than two days');
+    expect(confirm.text).toBe(propose.text);
+    /* And what is shown as said back quotes the very same string that gets saved. */
+    expect(propose.say).toContain(`"${propose.text}"`);
+  });
+
+  it('a genuine paraphrase, not a substring of what they typed, still falls back to the trimmed candidate', () => {
+    const p = proposalFrom('success', { success: 'Every stage owned, nothing stale' }, PARTIES, 'Good means each stage has somebody on it and the board never goes stale.') as any;
+    expect(p.text).toBe('Every stage owned, nothing stale');
+  });
+
+  it('verbatimQuote itself: drops a trailing full stop the candidate had that the source does not need, and matches case from the source', () => {
+    expect(verbatimQuote('the update in by every Friday.', 'I want the update in by every Friday.')).toBe('the update in by every Friday');
+    expect(verbatimQuote('every pipeline stage has an owner', 'Good means every pipeline stage has an owner and nothing sits unowned.')).toBe('every pipeline stage has an owner');
+    expect(verbatimQuote('EVERY PIPELINE STAGE', 'Good means every pipeline stage has an owner.')).toBe('every pipeline stage');
+    /* Nothing typed at all: the trimmed candidate stands, so this is never a new way to refuse. */
+    expect(verbatimQuote('a paraphrase', '')).toBe('a paraphrase');
+    expect(verbatimQuote('', 'anything')).toBe('');
   });
 });
 

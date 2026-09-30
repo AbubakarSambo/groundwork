@@ -1,4 +1,4 @@
-import { worthRecording, withoutFraming } from './what-setup-agreed';
+import { worthRecording, withoutFraming, verbatimQuote } from './what-setup-agreed';
 import { whoTheyMeant } from './who-they-meant';
 /**
  * THE HALF THE CONTEXT CHAT WAS MISSING: what it heard, and what may be done with it. Stage 3.
@@ -149,6 +149,13 @@ export function proposalFrom(
   heard: Heard,
   /** Who is on this ground, so a name in an answer can be matched to somebody real. */
   parties: { id: string; email: string; name?: string | null }[] = [],
+  /**
+   * The lead's own sentence this turn, so a quoted text is the LITERAL characters they typed rather
+   * than either extraction call's own paraphrase of them - see `verbatimQuote`. Optional and empty by
+   * default so every existing caller and every unit test that builds a `Heard` by hand still works;
+   * where it is missing, the candidate text is used trimmed, exactly as before.
+   */
+  said: string = '',
 ): Proposal {
   if (!gap) return { kind: 'none', why: 'There is no open question for this to answer.' };
 
@@ -199,11 +206,13 @@ export function proposalFrom(
   }
 
   if (gap === 'success') {
-    const text = (heard.success ?? '').trim();
-    if (text.length < MIN_SUCCESS) return { kind: 'none', why: 'That is too short to stand as what doing well looks like.' };
-    if (text.length > MAX_SUCCESS) {
+    const raw = (heard.success ?? '').trim();
+    if (raw.length < MIN_SUCCESS) return { kind: 'none', why: 'That is too short to stand as what doing well looks like.' };
+    if (raw.length > MAX_SUCCESS) {
       return { kind: 'none', why: 'That is longer than this field holds. The short version is the useful one.' };
     }
+    /* The lead's own words, not this call's own paraphrase of them - see verbatimQuote. */
+    const text = verbatimQuote(raw, said);
     return { kind: 'success', text, say: `I will record that as what doing well looks like: "${text}"` };
   }
 
@@ -234,7 +243,9 @@ export function proposalFrom(
      * update in by every Friday". Both calls run this same strip now, so both converge on the same
      * text far more often than leaving the model to decide on its own where the sentence starts.
      */
-    const text = withoutFraming((heard.expectationText ?? '').trim());
+    /* The lead's own words: framing stripped deterministically, then locked to the literal
+       characters they typed rather than either call's own paraphrase - see verbatimQuote. */
+    const text = verbatimQuote(withoutFraming((heard.expectationText ?? '').trim()), said);
     if (!person || !text) {
       return { kind: 'none', why: 'No expectation of a named person in that answer.' };
     }
