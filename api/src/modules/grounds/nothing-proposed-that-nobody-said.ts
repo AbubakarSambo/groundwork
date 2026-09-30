@@ -92,9 +92,27 @@ export function traceableToWhatTheySaid(value: string | null | undefined, said: 
  *   old route:      "I HAVE recorded that as your read of Ben." (past tense, as though already done)
  *   Ask Groundwork: "I'M RECORDING that you see Ben as struggling..." (present continuous)
  * Both are the same false promise in a different tense, so all three are covered now.
+ *
+ * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: a fourth phrasing slipped through both
+ * doors, with no proposal attached that turn -
+ *   "I'll record what you tell me as your perspective on Ben, and it will guide how we run this
+ *   check-in."
+ * "I'll" is a contraction of "I will" with no space before the apostrophe, so the old "i\s+(?:...|'ll)"
+ * branch never matched it - it only matched "I" then whitespace then "'ll", which never occurs. The
+ * subject-and-modal is now its own piece, covering every contraction ("I'll", "I'm", "I've", "we'll")
+ * and "going to" as well as "will/am/have", bridged to the verb by an optional "be". A second branch
+ * catches "record/note/keep ... as your perspective/read/expectation" in any tense, with no subject
+ * required, since the model does not always say "I" right next to the verb.
  */
-const PROMISES_TO_RECORD =
-  /\b(i(?:'m| am)\s+(?:recording|keeping|saving|noting|logging)\b|i\s+(?:will|have|'ve|'ll)\s+(?:record(?:ed)?|keep(?:ing)?|kept|save(?:d)?|note(?:d)?|log(?:ged)?|write (?:that|this|it) down)\b|(?:will be|has been|have been|is being) (?:recorded|kept|saved|noted|logged)\b|recording (?:that|this|it) as|keeping (?:that|this|it) as)/i;
+const SUBJECT_AND_MODAL = "(?:i|we)(?:'ll|'m|'ve|\\s+will|\\s+am|\\s+have|\\s+are)";
+const RECORD_VERB = '(?:record(?:ing|ed)?|keep(?:ing)?|kept|sav(?:e|ing|ed)|not(?:e|ing|ed)|log(?:ging|ged)|write (?:that|this|it) down)';
+const PROMISES_TO_RECORD = new RegExp(
+  `\\b${SUBJECT_AND_MODAL}\\b\\s*(?:going to\\s+)?(?:be\\s+)?${RECORD_VERB}` +
+    '|\\b(?:record|records|recording|recorded|note|notes|noting|noted|keep|keeps|keeping|kept)\\b(?:(?!\\.).){0,80}\\bas your (?:perspective|read|expectation)\\b' +
+    '|(?:will be|has been|have been|is being) (?:recorded|kept|saved|noted|logged)\\b' +
+    '|recording (?:that|this|it) as|keeping (?:that|this|it) as',
+  'i',
+);
 
 export function dropsAPromiseWithNothingToKeep(text: string, hasProposal: boolean): string {
   if (hasProposal) return text;

@@ -101,6 +101,26 @@ describe('dropsAPromiseWithNothingToKeep: nothing says it will be recorded unles
     expect(dropsAPromiseWithNothingToKeep('I am recording that.', false)).toBe('');
   });
 
+  /*
+   * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: neither door dropped this, because
+   * "I'll" is a contraction with no space before the apostrophe, which the old regex required.
+   */
+  it('catches the contraction, exactly as both doors said it live: "I\'ll record..."', () => {
+    expect(dropsAPromiseWithNothingToKeep(
+      "I'll record what you tell me as your perspective on Ben, and it will guide how we run this check-in.",
+      false,
+    )).toBe('');
+  });
+
+  it('catches "I\'m going to" and "we\'ll" as well', () => {
+    expect(dropsAPromiseWithNothingToKeep("I'm going to record that as your expectation of Ben.", false)).toBe('');
+    expect(dropsAPromiseWithNothingToKeep("We'll record that as your read of Ben.", false)).toBe('');
+  });
+
+  it('catches "record ... as your perspective/read/expectation" without needing "I" right next to the verb', () => {
+    expect(dropsAPromiseWithNothingToKeep('That is noted as your read of Ben.', false)).toBe('');
+  });
+
   it('does not touch an ordinary sentence that happens to contain "note" or "record" as a different word', () => {
     expect(dropsAPromiseWithNothingToKeep('Note that Ben has been assigned a new client.', false))
       .toBe('Note that Ben has been assigned a new client.');
