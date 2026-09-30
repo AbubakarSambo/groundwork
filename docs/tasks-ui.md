@@ -68,3 +68,13 @@ Rebuilt from the shared parts in four groups, each with a picture check per scre
 - [ ] **Group 2, your own pages:** Today, You, Company and company context, Suites and each suite's board (review, leaving, spending, equipment, time sheets, leave, reviews, onboarding), the check-ins list (GroundsListPage).
 - [ ] **Group 3, check-ins and signing in:** the rest of GroundAdminPage, ChatPage, CreateGroundPage, EntryChatPage and SaveCard, ReportPage and SessionReportPage, the sign-in pages (AuthPage, auth-kit, MagicVerifyPage), JoinPage.
 - [ ] **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages.
+
+## The engine's answers of 30 September, to draw on the screens
+
+Each is in `docs/answers-from-engine.md`. They come after group 1, in this order.
+- [ ] **Request 82 and decision 67:** put each pattern under "About each person's work" or "How what people say can run ahead of what happened" by its `about`. Show the lead `coachTowards` and `oneStep` under the person the pattern is about. The person, a colleague and an admin never receive them.
+- [ ] **Request 85:** someone an admin did not let in reads "… was not let in by …, so there is nobody to ask", with no chasing and no label on the person.
+- [ ] **Request 87:** the heading uses `overTime.inSessions` ("What people said they would do, in 1 session").
+- [ ] **Request 89:** "In {saidBy}'s words" from `saidBy`, beside whose the record is.
+- [ ] **Decision 65:** open Ask Groundwork from a check-in's own Context and resources page with `groundId` and `openedFrom: "check_in_setup"`, only from the lead's page.
+- [ ] **The suggestion thresholds admin page:** show `labels.keptBelow` and `labels.overPeriods`, not the field names (group 4).
