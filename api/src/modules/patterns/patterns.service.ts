@@ -1,6 +1,8 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Optional, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { LEARNING_SIGNAL } from '../learning/learning-signal';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
 import { theirOwnEarlierRecord, earlierRecordQuery } from './the-detector-reads-their-own-earlier-record';
 import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherCode, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
@@ -86,7 +88,13 @@ export class PatternsService {
   constructor(
     private prisma: PrismaService,
     private anthropic: AnthropicService,
+    /* Optional so that a service built by hand (most specs) still works; tells the learning counts a new signal came in. */
+    @Optional() private events?: EventEmitter2,
   ) {}
+
+  private learnFrom(detectionId: string): void {
+    try { this.events?.emit(LEARNING_SIGNAL, { detectionId }); } catch { /* counting must never break a mark */ }
+  }
 
   /**
    * Analyse one completed check-in (one period for one party). Extracts pattern
@@ -1071,6 +1079,7 @@ export class PatternsService {
       data: { leadMark: mark, leadMarkedAt: now, leadMarkedBy: userId },
       select: PATTERN_ROW_SELECT,
     });
+    this.learnFrom(row.id);
     return servedPatterns([saved], reader, { now })[0];
   }
 
@@ -1090,6 +1099,7 @@ export class PatternsService {
           data: { talkedAboutAt: now, talkedAboutBy: userId, talkedAboutAtPeriod: periodsSeen(row) },
           select: PATTERN_ROW_SELECT,
         });
+    if (!row.talkedAboutAt) this.learnFrom(row.id);
     return servedPatterns([saved], reader, { now })[0];
   }
 
