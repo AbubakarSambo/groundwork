@@ -66,11 +66,11 @@ const STATE: Record<'everyone' | 'only-yours', Record<ConditionState, { word: st
  * at the same weight.
  */
 const Heading = ({ children, note }: { children: React.ReactNode; note?: string | null }) => (
-  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)' }}>
+  <div className="gwui-gap-10 gwui-mb-8" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+    <div className="gwui-fs-18 gwui-ink-text" style={{ fontWeight: 700 }}>
       {children}
     </div>
-    {note ? <div style={{ fontSize: 12, color: 'var(--gw-muted)', flexShrink: 0 }}>{note}</div> : null}
+    {note ? <div className="gwui-fs-13 gwui-ink-muted" style={{ flexShrink: 0 }}>{note}</div> : null}
   </div>
 )
 
@@ -110,8 +110,8 @@ export function WhatSuccessLooksLike({
     const line = data.stated || data.saying
     if (!line) return null
     return (
-      <div style={{ fontSize: 12.5, color: data.stated ? 'var(--gw-text)' : 'var(--gw-muted)', lineHeight: 1.65 }}>
-        <span style={{ fontWeight: 700, color: 'var(--gw-text)' }}>What success looks like. </span>
+      <div className={`gwui-fs-13 ${data.stated ? 'gwui-ink-text' : 'gwui-ink-muted'}`} style={{ lineHeight: 1.65 }}>
+        <span className="gwui-ink-text" style={{ fontWeight: 700 }}>What success looks like. </span>
         {line}
       </div>
     )
@@ -124,7 +124,7 @@ export function WhatSuccessLooksLike({
     return (
       <div>
         {!headingIsTheCallers && <Heading>What success looks like</Heading>}
-        <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.65 }}>{data.saying}</div>
+        <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: 1.65 }}>{data.saying}</div>
       </div>
     )
   }
@@ -137,7 +137,7 @@ export function WhatSuccessLooksLike({
           to reach the reader either way, so it moves onto its own line rather than going with it. */}
       {headingIsTheCallers
         ? (of > 0 && (
-          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginBottom: 8 }}>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mb-8">
             {`${count} of ${of} ${data.counting === 'only-yours' ? 'you have spoken to' : 'spoken to'}`}
           </div>
         ))
@@ -148,35 +148,35 @@ export function WhatSuccessLooksLike({
         )}
 
       {data.stated ? (
-        <div style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.65 }}>
+        <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.65 }}>
           {data.stated}
           {data.version && data.version > 1 ? (
             /* A changed goal is not a wiped record, and the schema says so in as many words. The
                version is shown because being read against something restated in week six is a
                different fact from being read against the original. */
-            <span style={{ color: 'var(--gw-muted)', fontSize: 11.5 }}> · restated, version {data.version}</span>
+            <span className="gwui-fs-13 gwui-ink-muted"> · restated, version {data.version}</span>
           ) : null}
         </div>
       ) : (
-        <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.65 }}>{data.saying}</div>
+        <div className="gwui-fs-13 gwui-ink-muted" style={{ lineHeight: 1.65 }}>{data.saying}</div>
       )}
 
       {data.conditions.length > 0 && (
-        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 7 }}>
+        <div className="gwui-gap-7 gwui-mt-12" style={{ display: 'flex', flexDirection: 'column' }}>
           {data.conditions.map((c, i) => {
             const s = STATE[data.counting ?? 'everyone'][c.state]
             return (
-              <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                <div style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0, marginTop: 6 }} />
+              <div key={i} className="gwui-gap-9" style={{ display: 'flex', alignItems: 'flex-start' }}>
+                <div className="gwui-mt-6" style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.5 }}>{c.text}</div>
+                  <div className="gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.5 }}>{c.text}</div>
                   {/*
                     THE MATCH IS SHOWN, NEVER JUST ASSERTED. A condition is put in a state by a line
                     somebody actually wrote, and that line is printed under it - so a reader who
                     thinks the match is wrong can see that it is wrong, rather than being told a
                     condition is moving and having to take the product's word for it.
                   */}
-                  <div style={{ fontSize: 11.5, color: s.tone, lineHeight: 1.5, marginTop: 1 }}>
+                  <div className="gwui-fs-13 gwui-tone gwui-mt-1" style={{ lineHeight: 1.5, ['--gwui-tone' as any]: s.tone }}>
                     {c.why ? <>{s.word}{c.who ? ` · ${c.who}` : ''}: “{c.why}”</> : s.word}
                   </div>
                 </div>
@@ -193,21 +193,21 @@ export function WhatSuccessLooksLike({
         answered.
       */}
       {data.counting === 'only-yours' && data.conditions.length > 0 && (
-        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 9, lineHeight: 1.5 }}>
+        <div className="gwui-fs-13 gwui-ink-muted gwui-mt-9" style={{ lineHeight: 1.5 }}>
           This is what you said against it. What everybody else has said arrives with the report.
         </div>
       )}
 
       {data.definitions.length > 0 && (
-        <div style={{ marginTop: 13, paddingTop: 11, borderTop: '1px solid var(--gw-border)' }}>
-          <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginBottom: 7 }}>
+        <div className="gwui-rule-top gwui-mt-13 gwui-pt-11">
+          <div className="gwui-fs-13 gwui-ink-muted gwui-mb-7">
             {/* No verdict on whether these agree with the statement above. The report's own engine
                 decides what agrees and what diverges, reading the whole account; a second answer
                 worked out from word overlap would be the worse of two, printed next to the better
                 one. Both are on the page. That was the entire problem. */}
             And what each person says it is
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="gwui-gap-6" style={{ display: 'flex', flexDirection: 'column' }}>
             {data.definitions.map((d, i) => {
               /* Null is the reader's own line, and so is their own name when the surface
                  resolved it - both say "You" rather than printing a name back at them, and
@@ -221,8 +221,8 @@ export function WhatSuccessLooksLike({
                */
               const text = d.text ? d.text.charAt(0).toLowerCase() + d.text.slice(1) : d.text
               return (
-                <div key={i} style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>
-                  <span style={{ color: 'var(--gw-text)', fontWeight: 600 }}>{who}</span>{' '}
+                <div key={i} className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.55 }}>
+                  <span className="gwui-ink-text" style={{ fontWeight: 600 }}>{who}</span>{' '}
                   {who === 'You' ? 'say' : 'said'} {text}
                 </div>
               )

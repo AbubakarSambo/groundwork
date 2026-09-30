@@ -90,22 +90,23 @@ export function TargetsBand({
   const theTeams = targets.filter((t) => !t.ownerParticipantId)
   const shares = targets.filter((t) => t.ownerParticipantId)
 
-  const row = (t: Target, i: number) => {
+  const row = (t: Target) => {
     const assumes = (t.assumes ?? []).filter((a) => a && a.trim())
     const figure = t.target == null ? null : t.target.toLocaleString('en-GB')
     return (
-      <div key={t.id} data-gw-target={t.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ flex: '1 1 140px', fontSize: 13, fontWeight: 700, color: 'var(--gw-dark)' }}>{t.name}</span>
-          <span style={{ flex: '0 0 110px', fontSize: 13, color: 'var(--gw-text)', fontVariantNumeric: 'tabular-nums' }}>
-            {figure ?? <span style={{ color: 'var(--gw-muted)', fontSize: 12 }}>No number set</span>}
+      <div key={t.id} data-gw-target={t.id} className="gwui-inner-row gwui-pt-9 gwui-pr-13 gwui-pb-9 gwui-pl-13">
+        <div className="gwui-gap-12" style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <span className="gwui-fs-13 gwui-ink-dark" style={{ flex: '1 1 140px', fontWeight: 700 }}>{t.name}</span>
+          <span className="gwui-fs-13 gwui-ink-text" style={{ flex: '0 0 110px', fontVariantNumeric: 'tabular-nums' }}>
+            {figure ?? <span className="gwui-fs-13 gwui-ink-muted">No number set</span>}
           </span>
-          <span style={{ flex: '1 1 110px', fontSize: 12, color: 'var(--gw-sub)' }}>{whose(t)}</span>
-          <span style={{ flex: '1 1 130px', fontSize: 12, color: 'var(--gw-sub)', textAlign: 'right' }}>{seenBy(t)}</span>
+          <span className="gwui-fs-13 gwui-ink-sub" style={{ flex: '1 1 110px' }}>{whose(t)}</span>
+          <span className="gwui-fs-13 gwui-ink-sub" style={{ flex: '1 1 130px', textAlign: 'right' }}>{seenBy(t)}</span>
           {onChangeTarget && (
             <button
               onClick={() => onChangeTarget(t)}
-              style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+              className="gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none"
+              style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Change this
             </button>
@@ -113,7 +114,7 @@ export function TargetsBand({
         </div>
         {/* A number nobody has defined is not an agreed number, said beside the number. */}
         {t.notSettled && (
-          <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 4, lineHeight: 1.5, maxWidth: '62ch' }}>{t.notSettled}</div>
+          <div className="gwui-fs-13 gwui-ink-amber gwui-mt-4" style={{ lineHeight: 1.5, maxWidth: '62ch' }}>{t.notSettled}</div>
         )}
         {assumes.length > 0 && editing !== t.id && (
           <WhatTheTargetAssumes figure={figure} name={t.name} assumes={assumes} />
@@ -121,14 +122,15 @@ export function TargetsBand({
         {isTheLead && editing !== t.id && (
           <button
             onClick={() => { setEditing(t.id); setDraft(assumes.join('\n')) }}
-            style={{ marginTop: 6, fontSize: 11.5, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+            className="gwui-fs-13 gwui-ink-navy gwui-mt-6 gwui-p-0 gwui-rule-none"
+            style={{ fontWeight: 600, background: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
           >
             {assumes.length ? 'Change what it assumes' : 'Say what it assumes'}
           </button>
         )}
         {isTheLead && editing === t.id && (
-          <div style={{ marginTop: 8, maxWidth: 560 }}>
-            <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }} htmlFor={`assumes-${t.id}`}>
+          <div className="gwui-mt-8" style={{ maxWidth: 560 }}>
+            <label className="gwui-fs-13 gwui-ink-dark gwui-mb-4" style={{ display: 'block', fontWeight: 700 }} htmlFor={`assumes-${t.id}`}>
               {figure ? `What the target of ${figure} assumes` : 'What this target assumes'}
             </label>
             <textarea
@@ -140,17 +142,19 @@ export function TargetsBand({
               onChange={(e) => setDraft(e.target.value)}
               placeholder="One thing on each line."
             />
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <div className="gwui-gap-8 gwui-mt-8" style={{ display: 'flex' }}>
               <button
                 onClick={() => saveAssumes.mutate({ id: t.id, lines: draft.split('\n').map((l) => l.trim()).filter(Boolean) })}
                 disabled={saveAssumes.isPending}
-                style={{ padding: '7px 13px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                className="gwui-fs-13 gwui-ink-white gwui-pt-7 gwui-pr-13 gwui-pb-7 gwui-pl-13 gwui-rule-none"
+                style={{ borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 {saveAssumes.isPending ? 'Saving…' : 'Save'}
               </button>
               <button
                 onClick={() => { setEditing(null); setDraft('') }}
-                style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                className="gwui-rule gwui-fs-13 gwui-ink-sub gwui-pt-7 gwui-pr-12 gwui-pb-7 gwui-pl-12"
+                style={{ borderRadius: 7, background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>
@@ -162,24 +166,24 @@ export function TargetsBand({
   }
 
   return (
-    <section aria-label="Targets" style={{ marginBottom: 14, maxWidth: 720 }}>
+    <section aria-label="Targets" className="gwui-mb-14" style={{ maxWidth: 720 }}>
       {/* The band's heading, "Targets", is the page's own (Sec in ContextPage), so it is numbered
           with the others. The link sits at its right, as in the prototype. */}
       {isTheLead && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-4px 2px 8px' }}>
-          <a href={`/grounds/${groundId}?tab=settings`} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)' }}>
+        <div className="gwui-mb-8" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <a href={`/grounds/${groundId}?tab=settings`} className="gwui-fs-13 gwui-ink-navy" style={{ fontWeight: 600 }}>
             Change who sees them
           </a>
         </div>
       )}
-      <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+      <div className="gwui-rule" style={{ background: 'white', borderRadius: 10, overflow: 'hidden' }}>
         {theTeams.map(row)}
         <ShowAFew rows={shares} few={8} what="shares of the target">
-          {(t: Target, i: number) => row(t, i + theTeams.length)}
+          {(t: Target) => row(t)}
         </ShowAFew>
       </div>
       {!numbersShared && (
-        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8 }}>
+        <div className="gwui-fs-13 gwui-ink-sub gwui-mt-8">
           Each person sees their own share and the team{'’'}s totals, never someone else{'’'}s share.
         </div>
       )}
@@ -198,15 +202,15 @@ export function TargetsBand({
 export function WhatTheTargetAssumes({ figure, assumes }: { figure: string | null; name?: string; assumes: string[] }) {
   if (!assumes.length) return null
   return (
-    <div style={{ marginTop: 8, background: 'var(--gw-bg)', borderRadius: 8, padding: '12px 14px', maxWidth: 560 }}>
+    <div className="gwui-mt-8 gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{ background: 'var(--gw-bg)', borderRadius: 8, maxWidth: 560 }}>
       {/* Picture-check round 6, item H: named directly as the prototype's own card-title example - 18px/700/near-black, not 12.5px. */}
-      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>
+      <div className="gwui-fs-18 gwui-ink-text gwui-mb-6" style={{ fontWeight: 700 }}>
         {figure ? `What the target of ${figure} assumes` : 'What this target assumes'}
       </div>
-      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.6 }}>
+      <ul className="gwui-m-0 gwui-pl-18 gwui-fs-13 gwui-ink-text" style={{ lineHeight: 1.6 }}>
         {assumes.map((a, k) => <li key={k}>{a}</li>)}
       </ul>
-      <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 6 }}>
+      <div className="gwui-fs-13 gwui-ink-sub gwui-mt-6">
         If one of these stops being true, the target needs a second look.
       </div>
     </div>

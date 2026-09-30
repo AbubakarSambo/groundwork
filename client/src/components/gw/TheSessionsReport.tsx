@@ -50,7 +50,7 @@ const PROSE: React.CSSProperties = { maxWidth: '68ch', lineHeight: 1.6 }
  * page had the same facts as eleven headings of prose. Every block below is one of the card's rows;
  * the facts and their sources are unchanged, only the shape is.
  */
-const ROW: React.CSSProperties = { padding: '16px 20px', borderTop: '1px solid var(--gw-border)' }
+const ROW_CLASS = 'gwui-rule-top gwui-pt-16 gwui-pr-20 gwui-pb-16 gwui-pl-20'
 
 /**
  * WHAT A PHONE CHANGES ON THIS PAGE, AND IT IS NOT THE TYPE SIZE OF THE BODY.
@@ -73,7 +73,7 @@ const ROW: React.CSSProperties = { padding: '16px 20px', borderTop: '1px solid v
  */
 const SHEET = `
 .gw-sr .gw-find     { font-size: 16.5px; line-height: 1.4; font-weight: 600; }
-.gw-sr .gw-find-why { font-size: 12.5px; line-height: 1.6; }
+.gw-sr .gw-find-why { font-size: 13px; line-height: 1.6; }
 .gw-sr .gw-tile     { padding: 14px 18px; }
 .gw-sr .gw-tile-n   { border-left: 1px solid var(--gw-border); }
 /* U.9 THIRD REVIEW: ONE CLASS, FOR ONE SENTENCE, NOT A FIGURE CLASS AND A CAPTION CLASS. Each tile
@@ -95,10 +95,8 @@ const SHEET = `
  * worse, a person's own name under a quote into "RUKIA OTIENO (YOU)" - a name is never a label.
  * The words underneath were already plain sentences; only the styling shouted them.
  */
-const LABEL: React.CSSProperties = {
-  fontSize: 12, fontWeight: 700,
-  color: 'var(--gw-sub-d)', marginBottom: 10,
-}
+const LABEL_CLASS = 'gwui-fs-13 gwui-ink-subd'
+const LABEL_STYLE: React.CSSProperties = { fontWeight: 700 }
 
 /** "Note from Tuskys Kilimani.txt", "team-plan.txt" - a source cited by its own filename, never a
     person's name. Used to decide how the sentence under it reads. */
@@ -152,7 +150,7 @@ function Cite({ who, documented, figureIs, isYou }: { who: string; documented?: 
       ? `${who} is ${kindOfFile(who)}.`
       : `${who} said this${figureIs ? ` ${figureIs}` : ''}.${documented && !figureIs ? ' A document backs it.' : ''}`
   return (
-    <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--gw-muted)' }}>
+    <div className="gwui-fs-13 gwui-ink-muted gwui-mt-6">
       {sentence}
     </div>
   )
@@ -165,10 +163,10 @@ function Cite({ who, documented, figureIs, isYou }: { who: string; documented?: 
  */
 function Quotes({ items, yourName }: { items: { text: string; who?: string | null; documented?: boolean; figureIs?: string }[]; yourName: string | null }) {
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div className="gwui-gap-12" style={{ display: 'grid' }}>
       {items.map((it, i) => (
         <div key={i}>
-          <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{it.text}</div>
+          <div className="gwui-fs-13-5 gwui-ink-text" style={{ fontStyle: 'italic', ...PROSE }}>{it.text}</div>
           <Cite
             who={it.who == null || it.who === yourName ? 'You' : it.who}
             isYou={it.who == null || it.who === yourName}
@@ -203,7 +201,7 @@ function Row({ label, children, style }: {
   style?: React.CSSProperties
 }) {
   return (
-    <div style={{ ...ROW, ...style }}>
+    <div className={ROW_CLASS} style={style}>
       {/*
         U.9 REVIEW FIX 7 AND 12, AND THE RE-REVIEW: ONE PLAIN LABEL, NOTHING UNDER IT.
         "01 What this sits under" numbered every block, which is what produced "Session 1 /
@@ -214,7 +212,7 @@ function Row({ label, children, style }: {
         needs a person to count blocks to read it, and each label below now says everything it
         needs to in one line.
       */}
-      {label && <div style={LABEL}>{label}</div>}
+      {label && <div className={`${LABEL_CLASS} gwui-mb-10`} style={LABEL_STYLE}>{label}</div>}
       {children}
     </div>
   )
@@ -442,7 +440,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
   const lastChanged: string | null = (current as any)?.updatedAt ?? (current as any)?.createdAt ?? null
   const lastChangedLine = lastChanged ? lastUpdated(lastChanged) : null
   /* The read is computed when asked for and takes ten to twenty seconds. Say so, or it looks stuck. */
-  if (isLoading) return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Reading everybody&apos;s side of this session. It takes a moment.</div>
+  if (isLoading) return <div className="gwui-fs-13 gwui-ink-muted">Reading everybody&apos;s side of this session. It takes a moment.</div>
   if (isError || !data) return null
 
   /**
@@ -455,11 +453,11 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
    */
   if ((data as any).withheldUntilYouAnswer) {
     return (
-      <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '14px 16px' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', marginBottom: 4 }}>
+      <div className="gwui-rule-blue gwui-pt-14 gwui-pr-16 gwui-pb-14 gwui-pl-16" style={{ background: 'var(--gw-blue-bg)', borderRadius: 10 }}>
+        <div className="gwui-fs-13 gwui-ink-navy gwui-mb-4" style={{ fontWeight: 700 }}>
           There is a picture forming, and you have not answered yet
         </div>
-        <div style={{ fontSize: 12, color: 'var(--gw-blue-body)', lineHeight: 1.6 }}>
+        <div className="gwui-fs-13 gwui-ink-blue" style={{ lineHeight: 1.6 }}>
           {(data as any).saying}
         </div>
       </div>
@@ -521,7 +519,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
   const next = () => (step += 1)
 
   return (
-    <div className="gw-sr" style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+    <div className="gw-sr gwui-rule" style={{ background: 'white', borderRadius: 12, overflow: 'hidden' }}>
       <style>{SHEET}</style>
 
       {/*
@@ -531,12 +529,12 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         an objective, read three times on one screen: the page's own heading, this one, then
         "Session N" again inside the count sentence below. One heading, said once, above the card.
       */}
-      <div style={{ padding: '16px 20px' }}>
-        <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.5 }}>
+      <div className="gwui-pt-16 gwui-pr-20 gwui-pb-16 gwui-pl-20">
+        <div className="gwui-fs-14 gwui-ink-text" style={{ lineHeight: 1.5 }}>
           {sessionAndWhoCheckedIn(d.sessionNumber, d.plannedSessions ?? null, answered, ofPeople)}
         </div>
         {final && (
-          <div style={{ marginTop: 2, fontSize: 13.5, color: 'var(--gw-sub)' }}>{SHARED_WITH_THE_TEAM}</div>
+          <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{SHARED_WITH_THE_TEAM}</div>
         )}
       </div>
 
@@ -549,9 +547,9 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         row exists for, and I dropped the whole row in the rebuild before a spec caught it.
       */}
       {(d.counting ?? []).length > 0 && (
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--gw-border)', display: 'flex', flexWrap: 'wrap', gap: '6px 20px' }}>
+        <div className="gwui-rule-top gwui-pt-12 gwui-pr-20 gwui-pb-12 gwui-pl-20 gwui-gap-6-20" style={{ display: 'flex', flexWrap: 'wrap' }}>
           {d.counting.map((c: any, i: number) => (
-            <span key={i} style={{ fontSize: 13, color: c.answered ? 'var(--gw-text)' : 'var(--gw-sub)' }}>
+            <span key={i} className={`gwui-fs-13 ${c.answered ? 'gwui-ink-text' : 'gwui-ink-sub'}`}>
               {hasCheckedIn(c)}
             </span>
           ))}
@@ -560,16 +558,16 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
 
       {/* ── The finding, first and alone. One sentence the engines stand behind. */}
       {finding && (
-        <div style={{ padding: '16px 20px', background: 'var(--gw-amber-bg)', borderTop: '1px solid var(--gw-border)' }}>
-          <div style={{ ...LABEL, color: 'var(--gw-amber-t)', marginBottom: 8 }}>The finding</div>
-          <p className="gw-find" style={{ margin: 0, color: 'var(--gw-text)', maxWidth: '58ch' }}>{finding.text}</p>
+        <div className="gwui-rule-top gwui-pt-16 gwui-pr-20 gwui-pb-16 gwui-pl-20" style={{ background: 'var(--gw-amber-bg)' }}>
+          <div className={`${LABEL_CLASS} gwui-ink-amber gwui-mb-8`} style={LABEL_STYLE}>The finding</div>
+          <p className="gw-find gwui-m-0 gwui-ink-text" style={{ maxWidth: '58ch' }}>{finding.text}</p>
           {finding.basis && (
-            <small className="gw-find-why" style={{ display: 'block', marginTop: 8, color: 'var(--gw-amber-t)' }}>{finding.basis}</small>
+            <small className="gw-find-why gwui-ink-amber gwui-mt-8" style={{ display: 'block' }}>{finding.basis}</small>
           )}
           {/* When it would have come up on its own. Under the finding and nowhere else: alone it is a
               remark about a calendar; here it is why the finding matters now rather than later. */}
           {finding.wouldHaveSurfaced && (
-            <small className="gw-find-why" style={{ display: 'block', marginTop: 6, color: 'var(--gw-amber-t)', opacity: .85 }}>
+            <small className="gw-find-why gwui-ink-amber gwui-mt-6" style={{ display: 'block', opacity: .85 }}>
               {finding.wouldHaveSurfaced}
             </small>
           )}
@@ -594,11 +592,11 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         shown as a heading of its own.
       */}
       {(d.atAGlance ?? []).length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', borderTop: '1px solid var(--gw-border)' }}>
+        <div className="gwui-rule-top" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
           {d.atAGlance.map((r: any, i: number) => (
             <div key={r.label} className={i > 0 ? 'gw-tile gw-tile-n' : 'gw-tile'}>
               <span className="gw-sr-only">{r.label}</span>
-              <div className="gw-tile-txt" style={{ color: r.tone === 'good' ? 'var(--gw-green-t)' : r.tone === 'watch' ? 'var(--gw-amber-t)' : 'var(--gw-text)' }}>
+              <div className={`gw-tile-txt ${r.tone === 'good' ? 'gwui-ink-green' : r.tone === 'watch' ? 'gwui-ink-amber' : 'gwui-ink-text'}`}>
                 {tileSentence(r)}
               </div>
             </div>
@@ -629,9 +627,9 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       {d.cascade && (
         <Row n={next()} label={d.cascade.isCascade ? 'This is part of a bigger goal.' : 'Nobody has said what bigger goal this is part of.'}>
           {d.cascade.parentNamed && (
-            <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--gw-text)', lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
+            <p className="gwui-m-0 gwui-mb-6 gwui-fs-15 gwui-ink-text" style={{ fontWeight: 600, lineHeight: 1.35 }}>{d.cascade.parentNamed}</p>
           )}
-          <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-sub)', ...PROSE }}>{d.cascade.why}</p>
+          <p className="gwui-m-0 gwui-fs-13-5 gwui-ink-sub" style={PROSE}>{d.cascade.why}</p>
         </Row>
       )}
 
@@ -648,10 +646,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         <Row n={next()} label="What everybody said good looks like">
           <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} headingIsTheCallers />
           {definitions.length > 0 && (
-            <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+            <div className="gwui-gap-10 gwui-mt-12" style={{ display: 'grid' }}>
               {definitions.map((def, i) => (
                 <div key={i}>
-                  <div style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{def.text}</div>
+                  <div className="gwui-fs-13-5 gwui-ink-text" style={{ fontStyle: 'italic', ...PROSE }}>{def.text}</div>
                   <Cite
                     who={def.who === null || (yourName && def.who === yourName) ? 'You' : def.who!}
                     isYou={def.who === null || (yourName && def.who === yourName) || false}
@@ -666,18 +664,18 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       {/* ── Where things stand. Still open leads: it is the half somebody can act on. */}
       {(settled.length > 0 || open.length > 0) && (
         <Row n={next()} label="Where things stand">
-          <div style={{ display: 'grid', gap: 8 }}>
+          <div className="gwui-gap-8" style={{ display: 'grid' }}>
             {openReasoned.length
               ? openReasoned.map((o, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: 10, alignItems: 'start' }}>
-                  <span aria-hidden style={{ marginTop: 6, width: 6, height: 6, borderRadius: 3, background: 'var(--gw-amber-b)' }} />
-                  <div style={{ display: 'grid', gap: 6 }}>
-                    <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--gw-text)', ...PROSE }}>{o.topic}</p>
+                <div key={i} className="gwui-gap-10" style={{ display: 'grid', gridTemplateColumns: '10px 1fr', alignItems: 'start' }}>
+                  <span aria-hidden className="gwui-mt-6" style={{ width: 6, height: 6, borderRadius: 3, background: 'var(--gw-amber-b)' }} />
+                  <div className="gwui-gap-6" style={{ display: 'grid' }}>
+                    <p className="gwui-m-0 gwui-fs-13-5 gwui-ink-text" style={{ fontWeight: 600, ...PROSE }}>{o.topic}</p>
                     {o.positions.length > 0 && (
-                      <div style={{ display: 'grid', gap: 3 }}>
+                      <div className="gwui-gap-3" style={{ display: 'grid' }}>
                         {o.positions.map((p, j) => (
-                          <p key={j} style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>
-                            <span style={{ color: 'var(--gw-sub)' }}>{p.who}: </span>{p.view}
+                          <p key={j} className="gwui-m-0 gwui-fs-13 gwui-ink-text" style={PROSE}>
+                            <span className="gwui-ink-sub">{p.who}: </span>{p.view}
                           </p>
                         ))}
                       </div>
@@ -690,22 +688,22 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                       already uses.
                     */}
                     {o.atStake && (
-                      <div style={{ marginTop: 2 }}>
-                        <p style={{ margin: '0 0 2px', fontSize: 11.5, color: 'var(--gw-sub)' }}>Why this matters</p>
-                        <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>{o.atStake}</p>
+                      <div className="gwui-mt-2">
+                        <p className="gwui-m-0 gwui-mb-2 gwui-fs-13 gwui-ink-sub">Why this matters</p>
+                        <p className="gwui-m-0 gwui-fs-13 gwui-ink-text" style={PROSE}>{o.atStake}</p>
                       </div>
                     )}
                     {o.settledBy && (
-                      <div style={{ marginTop: 2 }}>
-                        <p style={{ margin: '0 0 2px', fontSize: 11.5, color: 'var(--gw-sub)' }}>What would settle it</p>
-                        <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', ...PROSE }}>{o.settledBy}</p>
+                      <div className="gwui-mt-2">
+                        <p className="gwui-m-0 gwui-mb-2 gwui-fs-13 gwui-ink-sub">What would settle it</p>
+                        <p className="gwui-m-0 gwui-fs-13 gwui-ink-text" style={PROSE}>{o.settledBy}</p>
                       </div>
                     )}
                     {o.restsOn.length > 0 && (
                       <Folded summary="The lines this comes from">
-                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+                        <div className="gwui-gap-4 gwui-mt-6" style={{ display: 'grid' }}>
                           {o.restsOn.map((r, j) => (
-                            <p key={j} style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)', fontStyle: 'italic', ...PROSE }}>{r}</p>
+                            <p key={j} className="gwui-m-0 gwui-fs-13 gwui-ink-sub" style={{ fontStyle: 'italic', ...PROSE }}>{r}</p>
                           ))}
                         </div>
                       </Folded>
@@ -715,18 +713,18 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
               ))
               : open.length
                 ? open.map((t, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr', gap: 10, alignItems: 'start' }}>
-                    <span aria-hidden style={{ marginTop: 6, width: 6, height: 6, borderRadius: 3, background: 'var(--gw-amber-b)' }} />
-                    <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>
+                  <div key={i} className="gwui-gap-10" style={{ display: 'grid', gridTemplateColumns: '10px 1fr', alignItems: 'start' }}>
+                    <span aria-hidden className="gwui-mt-6" style={{ width: 6, height: 6, borderRadius: 3, background: 'var(--gw-amber-b)' }} />
+                    <p className="gwui-m-0 gwui-fs-13-5 gwui-ink-text" style={PROSE}>{t}</p>
                   </div>
                 ))
-                : <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)' }}>Nothing is open. Everything anybody raised has been settled.</p>}
+                : <p className="gwui-m-0 gwui-fs-13 gwui-ink-sub">Nothing is open. Everything anybody raised has been settled.</p>}
           </div>
           {settled.length > 0 && (
-            <div style={{ marginTop: 12 }}>
+            <div className="gwui-mt-12">
               <Folded summary={`What everybody agrees (${settled.length})`}>
-                <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-                  {settled.map((t, i) => <p key={i} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{t}</p>)}
+                <div className="gwui-gap-8 gwui-mt-8" style={{ display: 'grid' }}>
+                  {settled.map((t, i) => <p key={i} className="gwui-m-0 gwui-fs-13-5 gwui-ink-text" style={PROSE}>{t}</p>)}
                 </div>
               </Folded>
             </div>
@@ -737,33 +735,33 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       {/* ── What each person said they did. Folded: long, and their own work only. */}
       {themed.length > 0 && (
         <Row n={next()} label="What people said this session">
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginTop: -4, marginBottom: 8 }}>
-            <span style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>Each person&apos;s own work, in their own words.</span>
+          <div className="gwui-gap-10 gwui-mb-8" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <span className="gwui-fs-13 gwui-ink-sub">Each person&apos;s own work, in their own words.</span>
             <button
               onClick={() => setByPerson(v => !v)}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, color: 'var(--gw-navy)', textDecoration: 'underline', flexShrink: 0 }}
+              className="gwui-p-0 gwui-rule-none gwui-fs-13 gwui-ink-navy" style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
             >
               {byPerson ? 'Group by theme' : 'Group by person'}
             </button>
           </div>
           <Folded summary={byPerson ? `What each of the ${(d.whatEachPersonSaid ?? []).length} said` : `All ${themed.length} groups`}>
-            <div style={{ display: 'grid', gap: 16, marginTop: 10 }}>
+            <div className="gwui-gap-16 gwui-mt-10" style={{ display: 'grid' }}>
               {byPerson
                 ? (d.whatEachPersonSaid ?? []).map((p: any, i: number) => (
                   <div key={i}>
                     {/* U.9 RE-REVIEW, ITEM A: "a colleague" as a heading is capitalised, like the
                         start of any other sentence or line - `atTheStart` only touches the plain
                         phrases this can fall back to, never a real name. */}
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 6 }}>
+                    <div className="gwui-fs-13 gwui-ink-text gwui-mb-6" style={{ fontWeight: 700 }}>
                       {p.isYou ? `${p.who} (you)` : atTheStart(p.who)}
                     </div>
-                    {p.saying && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{p.saying}</div>}
+                    {p.saying && <div className="gwui-fs-13 gwui-ink-sub" style={PROSE}>{p.saying}</div>}
                     {/* The product's own finding for this person, from the record: purpose, standing, the lead's number against theirs, the gap. */}
-                    {p.finding && <div style={{ fontSize: 13, color: 'var(--gw-text)', marginTop: 6, padding: '8px 10px', borderLeft: `3px solid ${p.hasGap ? 'var(--gw-amber-b)' : 'var(--gw-border)'}`, ...PROSE }}>{p.finding}</div>}
+                    {p.finding && <div className="gwui-fs-13 gwui-ink-text gwui-mt-6 gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10" style={{ borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: p.hasGap ? 'var(--gw-amber-b)' : 'var(--gw-border)', ...PROSE }}>{p.finding}</div>}
                     {p.lines?.length ? (
-                      <div style={{ display: 'grid', gap: 8 }}>
+                      <div className="gwui-gap-8" style={{ display: 'grid' }}>
                         {p.lines.map((l: string, j: number) => (
-                          <div key={j} style={{ fontSize: 13.5, color: 'var(--gw-text)', fontStyle: 'italic', ...PROSE }}>{l}</div>
+                          <div key={j} className="gwui-fs-13-5 gwui-ink-text" style={{ fontStyle: 'italic', ...PROSE }}>{l}</div>
                         ))}
                       </div>
                     ) : null}
@@ -771,11 +769,11 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                 ))
                 : themed.map((sec: any) => (
                   <div key={sec.title}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>{sec.title}</div>
+                    <div className="gwui-fs-13 gwui-ink-text gwui-mb-8" style={{ fontWeight: 700 }}>{sec.title}</div>
                     {sec.items.length > 0
                       ? <Quotes items={sec.items} yourName={yourName} />
-                      : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{sec.saying}</div>}
-                    {sec.note && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 8, ...PROSE }}>{sec.note}</div>}
+                      : <div className="gwui-fs-13 gwui-ink-sub" style={PROSE}>{sec.saying}</div>}
+                    {sec.note && <div className="gwui-fs-13 gwui-ink-sub gwui-mt-8" style={PROSE}>{sec.note}</div>}
                   </div>
                 ))}
             </div>
@@ -786,8 +784,8 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       {/* ── The picture from everybody. The long read of the finding, after the sharp part. */}
       {rest.length > 0 && (
         <Row n={next()} label="The picture from everybody">
-          <div style={{ display: 'grid', gap: 10 }}>
-            {rest.map((l) => <p key={l.key} style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{l.text}</p>)}
+          <div className="gwui-gap-10" style={{ display: 'grid' }}>
+            {rest.map((l) => <p key={l.key} className="gwui-m-0 gwui-fs-13-5 gwui-ink-text" style={PROSE}>{l.text}</p>)}
           </div>
         </Row>
       )}
@@ -800,25 +798,25 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       */}
       {d.whatWentQuiet && (
         <Row n={next()} label="Not raised again">
-          <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-text)', ...PROSE }}>{d.whatWentQuiet}</p>
+          <p className="gwui-m-0 gwui-fs-13-5 gwui-ink-text" style={PROSE}>{d.whatWentQuiet}</p>
         </Row>
       )}
 
       {/* ── The one conversation worth having. Boxed, because it is the thing to do next. */}
       {d.theConversationWorthHaving ? (
-        <div style={{ padding: '18px 20px', background: 'var(--gw-blue-bg)', borderTop: '1px solid var(--gw-border)' }}>
+        <div className="gwui-rule-top gwui-pt-18 gwui-pr-20 gwui-pb-18 gwui-pl-20" style={{ background: 'var(--gw-blue-bg)' }}>
           {/* U.9 REVIEW FIX 12: no more "06 THE CONVERSATION WORTH HAVING NOW" - a number and a
               shout on a heading that already reads plainly as a sentence in itself. `next()` still
               advances `step`, which the "nothing yet" empty state below reads. */}
           {(() => { next(); return null })()}
-          <div style={{ ...LABEL, color: 'var(--gw-navy)', marginBottom: 6 }}>
+          <div className={`${LABEL_CLASS} gwui-ink-navy gwui-mb-6`} style={LABEL_STYLE}>
             The conversation worth having now
           </div>
-          <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.45, fontWeight: 600, color: 'var(--gw-text)', maxWidth: '58ch' }}>{d.theConversationWorthHaving}</p>
+          <p className="gwui-m-0 gwui-fs-16 gwui-ink-text" style={{ lineHeight: 1.45, fontWeight: 600, maxWidth: '58ch' }}>{d.theConversationWorthHaving}</p>
         </div>
       ) : d.whyNoQuestion ? (
         <Row n={next()} label="The conversation worth having now">
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{d.whyNoQuestion}</p>
+          <p className="gwui-m-0 gwui-fs-13 gwui-ink-sub" style={PROSE}>{d.whyNoQuestion}</p>
         </Row>
       ) : null}
 
@@ -826,13 +824,13 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
              read as a verdict on it. */}
       <Row n={next()} label="What this is built from">
         <Folded summary="How much there is to go on, and what it is built from">
-          <div style={{ marginTop: 10 }}>
+          <div className="gwui-mt-10">
             {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} />}
             {restsOn.map((sec: any) => (
-              <div key={sec.title} style={{ marginTop: 12 }}>
+              <div key={sec.title} className="gwui-mt-12">
                 {sec.items.length > 0
                   ? <Quotes items={sec.items.map((it: any) => ({ ...it, text: asFileIsKindSentence(it.text) }))} yourName={yourName} />
-                  : <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', ...PROSE }}>{sec.saying}</div>}
+                  : <div className="gwui-fs-13 gwui-ink-sub" style={PROSE}>{sec.saying}</div>}
               </div>
             ))}
           </div>
@@ -840,9 +838,9 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       </Row>
 
       {/* ── The promise, and what state this is in. */}
-      <div style={{ ...ROW, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+      <div className={`${ROW_CLASS} gwui-fs-13 gwui-ink-sub`} style={{ lineHeight: 1.6 }}>
         {!final && lastChangedLine && (
-          <span style={{ display: 'block', marginBottom: 4 }}>{lastChangedLine}</span>
+          <span className="gwui-mb-4" style={{ display: 'block' }}>{lastChangedLine}</span>
         )}
         {!final
           ? 'People are still answering, so this moves. '
