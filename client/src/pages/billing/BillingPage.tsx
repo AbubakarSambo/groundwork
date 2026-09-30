@@ -85,7 +85,7 @@ function ThingsWeDoByHand() {
   const open: Record<string, string> = asked.data?.open ?? {}
   const rows = [
     { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar Jamal, a partner at Groundwork who coaches teams and helps them set up, reads the report with your team and turns what it found into a decision somebody owns.' },
-    { subject: 'HANDS_ON', title: 'Setting you up', what: 'A named person to get you running and train your team, over the first month.' },
+    { subject: 'HANDS_ON', title: 'Setting you up', what: 'A named person gets you running and trains your team during your first month.' },
   ]
 
   return (
@@ -281,7 +281,7 @@ export function BillingPage() {
           {usage && (
             <FieldRow
               label="So far"
-              value={`${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'}, ${usage.reportsReleased} ${usage.reportsReleased === 1 ? 'report' : 'reports'} shared, and ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
+              value={`So far there have been ${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'} and ${usage.reportsReleased} shared ${usage.reportsReleased === 1 ? 'report' : 'reports'}, with ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
             />
           )}
         </FieldRows>
@@ -299,7 +299,7 @@ export function BillingPage() {
       )}
 
       <div id="billing-plans">
-        <Section heading="Plans" note="One flat monthly rate, unlimited check-ins, sessions and reports">
+        <Section heading="Plans" note="Each plan is one monthly price, with as many check-ins and reports as you need.">
           <div className="gwui-plan-grid">
             {PLANS.filter(p => p !== 'ENTERPRISE').map(plan => {
               const mine = (isSubscribed || isPaused) && orgSub?.plan === plan
@@ -327,7 +327,7 @@ export function BillingPage() {
             })}
             <Panel className="gwui-plan-card gwui-plan-card-enterprise">
               <p className="gwui-plan-name">Enterprise</p>
-              <p className="gwui-plan-cap">Custom needs, volume pricing or dedicated support.</p>
+              <p className="gwui-plan-cap">For special needs, a lower price per person, or your own support person.</p>
               <Button kind="secondary" size="small" wide onClick={() => { window.location.href = 'mailto:hello@myground.work?subject=Enterprise plan enquiry' }}>Contact us</Button>
             </Panel>
           </div>
@@ -423,8 +423,14 @@ export function BillingPage() {
              * or the extension already used on this organisation), each row keeps its own tag
              * below rather than a sentence that would not be true of all of them.
              */}
+            {/*
+             * GROUP 1'S THIRD REVIEW: "You can extend any of them for free" was not true of
+             * anything on this page - the free extension is claimed from inside a check-in itself
+             * (SessionPaywallModal.tsx's "Continue for free", shown when a session completes),
+             * never from Plan and billing. Said truthfully, naming where it actually happens.
+             */}
             {allFreeRows && !anyExtensionUsed && (
-              <p className="gwui-panel-text-muted">Each of these is a free check-in. You can extend any of them for free.</p>
+              <p className="gwui-panel-text-muted">Each of these is a free check-in. You can extend one for free from its own check-in.</p>
             )}
             {allFreeRows && anyExtensionUsed && (
               <p className="gwui-panel-text-muted">Each of these is a free check-in. The one free extension for your organisation has already been used.</p>

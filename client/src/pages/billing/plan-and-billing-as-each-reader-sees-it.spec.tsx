@@ -83,11 +83,12 @@ describe('Grace, an admin, on Growth', () => {
     expect(screen.getByRole('heading', { name: 'Plan and billing' })).toBeTruthy()
     expect(text()).toContain('Baridi Appliances')
     expect(text()).toContain('1 October, $400, by card ending 4417.')
-    /* F2's own line (U.4 re-review): a guest with an account takes a seat; only guests with no account don't. */
-    expect(text()).toContain('Every person with a Groundwork account at Baridi Appliances. Guests with no account don’t.')
-    expect(text()).toContain('38 check-ins, 12 reports shared, and 25 people taking part.')
-    expect(text()).toContain('One flat monthly rate, unlimited check-ins, sessions and reports')
-    expect(text()).toContain('Custom needs, volume pricing or dedicated support.')
+    /* F2's own line (U.4 re-review): a guest with an account takes a seat; only guests with no account don't.
+       GROUP 1'S THIRD REVIEW: full plain sentences, rewritten as the reviewer gave them. */
+    expect(text()).toContain('Everyone with a Groundwork account at Baridi Appliances counts. Guests without an account do not.')
+    expect(text()).toContain('So far there have been 38 check-ins and 12 shared reports, with 25 people taking part.')
+    expect(text()).toContain('Each plan is one monthly price, with as many check-ins and reports as you need.')
+    expect(text()).toContain('For special needs, a lower price per person, or your own support person.')
     expect(text()).toContain('Pause, or cancel at the end of this period. Either way, everything stays readable.')
     expect(screen.getByText('Change card')).toBeTruthy()
   })
@@ -121,7 +122,7 @@ describe('Grace, on the free plan', () => {
 
   it('reads that the five include her, and that nothing is charged until she chooses', async () => {
     renderIt()
-    await waitFor(() => expect(text()).toContain('The free plan, for up to 10 check-ins. 3 of 5 people, including you.'))
+    await waitFor(() => expect(text()).toContain('You are on the free plan, which covers up to 10 check-ins and 5 people. 3 of 5 places are used, including yours.'))
     expect(text()).toContain('Nothing is charged until you choose a plan.')
     expect(screen.getAllByText('Move to this')).toHaveLength(5)
     expect(screen.queryByText('Stopping')).toBeNull()
@@ -150,7 +151,7 @@ describe('a new organisation once the switch is on, with no plan yet (U.19)', ()
     m.pricing = { ...m.pricing, trial: TRIAL_ON }
     m.status = { subscription: { plan: null, status: null, periodEnd: null, endsAt: null, freeExtensionUsed: false }, people: { count: 3, cap: 5 }, onTheFreePlan: true, onTheHouse: null, activeGrounds: [], card: null, invoices: [] }
     renderIt()
-    await waitFor(() => expect(text()).toContain('The free plan, for up to 10 check-ins. 3 of 5 people, including you.'))
+    await waitFor(() => expect(text()).toContain('You are on the free plan, which covers up to 10 check-ins and 5 people. 3 of 5 places are used, including yours.'))
   })
 })
 
@@ -246,7 +247,9 @@ describe('group 1 review fixes', () => {
     ])
     renderIt()
     await waitFor(() => expect(screen.getByText('In progress')).toBeTruthy())
-    expect(await screen.findByText('Each of these is a free check-in. You can extend any of them for free.')).toBeTruthy()
+    /* GROUP 1'S THIRD REVIEW: the free extension is claimed from inside a check-in
+       (SessionPaywallModal.tsx), never from this page - said truthfully. */
+    expect(await screen.findByText('Each of these is a free check-in. You can extend one for free from its own check-in.')).toBeTruthy()
     expect(screen.queryByText('Free check-in')).toBeNull()
     expect(screen.queryByText('Free extension available')).toBeNull()
   })
