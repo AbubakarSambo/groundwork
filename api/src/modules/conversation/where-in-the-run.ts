@@ -19,7 +19,10 @@ import { GroundMoment } from '@prisma/client';
  */
 export type RunPosition = 'first' | 'middle' | 'last';
 
-export function positionInRun(sessionNumber: number, totalSessions: number | undefined): RunPosition {
+export function positionInRun(sessionNumber: number, totalSessions: number | undefined, runsUntilEnded = false): RunPosition {
+  /* A check-in that runs until the lead ends it has no planned last session. Every session after the
+     first is a middle one, however many there have been. Only the lead ending it closes it. */
+  if (runsUntilEnded) return sessionNumber <= 1 ? 'first' : 'middle';
   const total = totalSessions && totalSessions > 0 ? totalSessions : 1;
   if (sessionNumber <= 1) return 'first';
   /**
@@ -65,10 +68,20 @@ const MOMENT_MEANING: Record<GroundMoment, string> = {
 
 export function whereInTheRun(input: {
   sessionNumber: number;
+  /** Runs until the lead ends it: no total, no "further check-ins planned", no run length. */
+  runsUntilEnded?: boolean;
   totalSessions?: number;
   moment?: GroundMoment | null;
   timelineDays?: number | null;
 }): string[] {
+  if (input.runsUntilEnded) {
+    const position = positionInRun(input.sessionNumber, undefined, true);
+    const lines = [
+      `WHERE_IN_THE_RUN: ${position} - ${POSITION_MEANING[position]} This check-in runs until the lead ends it. There is no planned last check-in, so never say how far through it is, never say it is halfway or nearly over, and never wrap up as if this were the last one.`,
+    ];
+    if (input.moment) lines.push(`MOMENT: ${input.moment} - ${MOMENT_MEANING[input.moment]}`);
+    return lines;
+  }
   const position = positionInRun(input.sessionNumber, input.totalSessions);
   const remaining = sessionsRemaining(input.sessionNumber, input.totalSessions);
   const lines = [

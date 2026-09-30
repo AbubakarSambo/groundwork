@@ -3843,6 +3843,8 @@ export interface PromptContext {
    * "reaching an end" and "at the start" read identically on a two-week ground.
    */
   timelineDays?: number | null;
+  /** Runs until the lead ends it (request 37): there is no total, so nothing says "of N". */
+  runsUntilEnded?: boolean;
   /**
    * THIS PERSON'S OWN OBJECTIVE, WHO WROTE IT, AND WHETHER THEY HAVE SEEN IT.
    *
@@ -4370,6 +4372,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
   const relHistory = resolveRelationshipHistory(ctx.scenario, ctx.relationshipHistory);
   const relType = relationshipTypeFromScenario(ctx.scenario);
   const openerRole = ctx.openerRole ?? (ctx.partyType === PartyType.INITIATOR ? 'founder' : 'peer');
+  const ongoing = ctx.runsUntilEnded === true;
   const total = ctx.totalSessions ?? 4;
   const sessionMode = ctx.sessionMode ?? 'checkin';
   const activePathway = buildActivePathway(ctx);
@@ -4415,7 +4418,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
     `RELATIONSHIP_HISTORY: ${relHistory}`,
     `RELATIONSHIP_TYPE: ${relType}`,
     `OPENER_ROLE: ${openerRole}`,
-    `SESSION: ${ctx.sessionNumber} of ${total}`,
+    ongoing ? `SESSION: ${ctx.sessionNumber}. It runs until the lead ends it.` : `SESSION: ${ctx.sessionNumber} of ${total}`,
     /**
      * THE NUMBERS WERE ALREADY HERE. WHAT THEY MEAN WAS NOT.
      *
@@ -4426,6 +4429,7 @@ export function buildIntakeBlock(ctx: PromptContext): string {
      */
     ...whereInTheRun({
       sessionNumber: ctx.sessionNumber,
+      runsUntilEnded: ongoing,
       totalSessions: total,
       moment: ctx.moment ?? null,
       timelineDays: ctx.timelineDays ?? null,

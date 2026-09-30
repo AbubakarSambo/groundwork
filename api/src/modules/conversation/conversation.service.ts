@@ -3592,7 +3592,7 @@ export class ConversationService {
       // pulse. Without this the onboarding cohort got the pulse conversation.
       moment: ground.moment,
       // So the engine can tell a fortnight from a year. See where-in-the-run.ts.
-      timelineDays: ground.timelineDays,
+      timelineDays: (ground as any).runsUntilEnded ? null : ground.timelineDays,
       /**
        * This person's own objective, with who set it and whether they have seen it. Both columns
        * existed on PersonObjective and neither reached the engine, so the interview could press
@@ -3674,7 +3674,8 @@ export class ConversationService {
        * to pass it and stopped. Derived here from the same timeline and cadence the header uses, so
        * the two cannot say different numbers.
        */
-      totalSessions: totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
+      totalSessions: (ground as any).runsUntilEnded ? undefined : totalSessionsFor(ground.timelineDays, ground.cadence) ?? undefined,
+      runsUntilEnded: !!(ground as any).runsUntilEnded,
       /* Their own words for their part only: for anybody the lead invited it is the lead's sentence about them. */
       roleAsDescribed: aRoleInTheirOwnWords(checkIn.participant as any),
       /*
@@ -4171,6 +4172,7 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
       sessionNumber: checkIn.sessionNumber ?? 1,
       roundsPlanned: totalSessionsFor((ground as any).timelineDays, (ground as any).cadence) ?? null,
       endsOn: deadlineOf(ground as any),
+      runsUntilEnded: !!(ground as any).runsUntilEnded,
     });
 
     /*
@@ -6214,7 +6216,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // explicit "Begin the closing session".)
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { timelineDays: true, cadence: true },
+      select: { timelineDays: true, cadence: true, runsUntilEnded: true },
     });
     // ONE_TIME never reaches this function - ensureNextSession's early return
     // above (and the SEQUENTIAL-only guard on the other caller) mean
@@ -6225,7 +6227,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     // to that entry would have silently broken the guarantee.
     const cadenceDays: Record<string, number> = { DAILY: 1, WEEKLY: 7, FORTNIGHTLY: 14, MONTHLY: 30, SEQUENTIAL: 0 };
     const step = cadenceDays[ground?.cadence ?? ''] ?? 0;
-    const planned = step > 0 && ground ? Math.max(1, Math.floor(ground.timelineDays / step)) : null;
+    /* A check-in that runs until the lead ends it has no planned last session, so no session is made final. */
+    const planned = step > 0 && ground && !ground.runsUntilEnded ? Math.max(1, Math.floor(ground.timelineDays / step)) : null;
     const isFinal = planned != null && sessionNumber >= planned;
 
     /**
