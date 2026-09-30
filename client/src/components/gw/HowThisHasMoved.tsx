@@ -64,7 +64,7 @@ export function HowThisHasMoved({ groundId, viewerRunsThisCheckIn }: { groundId:
           <div
             key={m.sessionNumber ?? m.takenAt}
             style={{
-              border: '1px solid var(--gw-border)', borderRadius: 10, background: 'var(--gw-card)',
+              border: '1px solid var(--gw-border)', borderRadius: 10, background: 'white',
               padding: '11px 14px',
             }}
           >

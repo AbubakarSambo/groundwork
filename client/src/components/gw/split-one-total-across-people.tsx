@@ -22,7 +22,7 @@ import { boardApi } from '@/api/board'
  */
 const box: React.CSSProperties = {
   width: '100%', padding: '9px 11px', borderRadius: 8, border: '1px solid var(--gw-border)',
-  fontSize: 13, fontFamily: 'inherit', background: 'var(--gw-card)', color: 'var(--gw-text)',
+  fontSize: 13, fontFamily: 'inherit', background: 'white', color: 'var(--gw-text)',
 }
 
 /** A pasted CSV or a spreadsheet copy. Tabs and commas both, because both are what people paste. */
@@ -60,7 +60,7 @@ export function SplitOneTotalAcrossPeople({ groundId }: { groundId: string }) {
   }
 
   return (
-    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: 16, marginBottom: 10, background: 'var(--gw-card)' }}>
+    <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: 16, marginBottom: 10, background: 'white' }}>
       <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)', marginBottom: 4 }}>Split one total across people</div>
       <p style={{ fontSize: 12.5, color: 'var(--gw-sub)', margin: '0 0 12px', lineHeight: 1.55, maxWidth: '68ch' }}>
         Paste the export your CRM already gives you. First row the headings, then one row per

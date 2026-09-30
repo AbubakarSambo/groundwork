@@ -255,7 +255,7 @@ export function ResolutionPanel({ groundId, nearTheEnd, lastSessionDone, place }
             fontSize: 13, fontWeight: 700,
             /* A BUTTON WAITING FOR A CHOICE IS STILL A BUTTON SOMEBODY HAS TO READ.
                Paper with a line round it says "not yet" and the words stay legible. */
-            background: picked && why.trim() ? 'var(--gw-dark)' : 'var(--gw-card)',
+            background: picked && why.trim() ? 'var(--gw-dark)' : 'white',
             border: picked && why.trim() ? '1px solid var(--gw-dark)' : '1px solid var(--gw-border)',
             color: picked && why.trim() ? 'white' : 'var(--gw-sub-d)',
             cursor: picked && why.trim() && !proposeMut.isPending ? 'pointer' : 'default',

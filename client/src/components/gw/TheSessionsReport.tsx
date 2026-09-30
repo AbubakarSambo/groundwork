@@ -521,7 +521,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
   const next = () => (step += 1)
 
   return (
-    <div className="gw-sr" style={{ background: 'var(--gw-card)', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
+    <div className="gw-sr" style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, overflow: 'hidden' }}>
       <style>{SHEET}</style>
 
       {/*

@@ -1,4 +1,4 @@
-import { Pill } from './kit'
+import { Tag, type TagTone } from './ui'
 import { theLeadsNote } from '@/lib/the-leads-note'
 
 /**
@@ -36,8 +36,8 @@ export const WHAT_A_CELL_MEANS: Record<Cell, string> = {
   'na': 'Not on this one',
 }
 
-const TONE: Record<Cell, 'good' | 'info' | 'bad' | 'flat'> = {
-  'done': 'good', 'in-progress': 'info', 'declined': 'bad', 'not-started': 'flat', 'na': 'flat',
+const TONE: Record<Cell, TagTone> = {
+  'done': 'proven', 'in-progress': 'action', 'declined': 'concern', 'not-started': 'plain', 'na': 'plain',
 }
 
 const asCell = (v: string | undefined): Cell =>
@@ -147,7 +147,7 @@ export function NineColumnsIsNotAPhoneScreen({ rows, sessions, openSessions }: {
                 {shape.rest.map((e) => (
                   <span key={String(e.s)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 13, color: 'var(--gw-sub)' }}>Session {e.s}</span>
-                    <Pill tone={TONE[e.state]}>{WHAT_A_CELL_MEANS[e.state]}</Pill>
+                    <Tag tone={TONE[e.state]}>{WHAT_A_CELL_MEANS[e.state]}</Tag>
                   </span>
                 ))}
               </div>
