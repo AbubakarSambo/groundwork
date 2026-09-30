@@ -1,20 +1,41 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { youApi, type YourBoard } from '@/api/you'
+import { youApi, type YourBoard, type YourCheckIn } from '@/api/you'
 import { myDataApi } from '@/api/my-data'
 import { useAuthStore } from '@/stores/auth'
-import { Button, NeedsYouList, NeedsYouRow, Tag } from '@/components/gw/kit'
+import {
+  Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, EdgeList, EdgeRow, RowList, Row,
+} from '@/components/gw/ui'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
 import { WhereYouStandFromSuggestions } from '@/components/gw/Suggestions'
 import { PatternPanel } from '@/components/gw/ui'
 
 /**
- * THE YOU BOARD (C2, #/you). The wording is copied from docs/prototype/screens/C2-the-you-board/
- * you-board-miriam.txt, you-board-wairimu.txt, you-board-daniel.txt and you-board-kwame.txt.
+ * THE YOU BOARD (C2, #/you, group 2 piece 2). The wording is copied from
+ * docs/prototype/screens/C2-the-you-board/you-board-miriam.txt, you-board-wairimu.txt,
+ * you-board-daniel.txt and you-board-kwame.txt - the same board, drawn for four different kinds of
+ * person. What changes between them is only how many check-ins this reader has, and whether they
+ * run at least one; the sections themselves (where you stand, your goals, what you said you'd do,
+ * your own reports) are the same shape for everybody, and each is drawn only when the server serves
+ * it.
  *
  * ONLY YOU READ IT, AND THE SERVER DECIDES THAT (GET /you): it serves the signed-in person their own
  * board and refuses anybody who asks for someone else's. The page adds nothing to what it is given.
+ *
+ * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` for the frame, `Section` for every heading with
+ * an optional note or trailing sentence, `Panel` (now `as="section"`, `heading`) for each titled
+ * card in place of the page's own `Card`, `EdgeList`/`EdgeRow` for "Your turn" (the same shared row
+ * "What needs you" already uses), and the new `RowList`/`Row` for the four plain row-lists
+ * ("Everything asked of you this week", "What you said you'd do", "Your own reports", "Your work in
+ * each"). `PatternPanel` is unchanged - it already was a shared part, and patterns are protected:
+ * every field the server serves for this reader's own pattern (`heading`, `whatHappened`,
+ * `howOften`, `askThem`, `theirWords`, `canAnswer`, `whoSeesIt`) is still drawn, exactly as before.
+ * A pattern's `coachTowards`/`oneStep` are for whoever runs the check-in, never the person it is
+ * about (`api/src/modules/patterns/who-reads-a-pattern.ts`) - the client's own `ServedPattern` type
+ * does not carry them yet (they belong to the still-pending task for the engine's new pattern
+ * shape, docs/tasks-ui.md), so there is nothing here that could show them to the wrong reader, or
+ * leave an empty space where they would go.
  *
  * NOT SAID HERE, ON PURPOSE:
  *   - "Only you, and the people who run your check-ins, see it." under "Your board". The page is
@@ -22,7 +43,7 @@ import { PatternPanel } from '@/components/gw/ui'
  *   - "Share with your lead", after "Everything asked of you this week": your load across check-ins
  *     is yours alone, and who may read it once shared is Hafsah's to decide (D3, U.16), so nothing
  *     shares it yet. For the same reason the line under the heading stops at "Only you see this".
- *   - "Say what’s behind it" and "Stop sharing automatically", on something Groundwork noticed:
+ *   - "Say what's behind it" and "Stop sharing automatically", on something Groundwork noticed:
  *     they wait for the engine to serve what it noticed (request 14).
  * "Where you stand" from Groundwork's suggestions about you, with "Add my side" and "Appeal this
  * decision", is drawn when the server serves one (C3, U.13).
@@ -33,6 +54,16 @@ import { PatternPanel } from '@/components/gw/ui'
  * api/src/modules/patterns/who-reads-a-pattern.ts. `.filter(p => p.yours)` below is this page's
  * own check, on top of what the server already withheld, never instead of it.
  */
+
+/** "What's yours..." varies with how many check-ins this reader has, and whether they run one
+ *  (you-board-daniel.txt/kwame.txt vs you-board-miriam.txt/wairimu.txt). One check-in or none reads
+ *  as the shorter, plainer sentence; more than one names the scope, as the prototype does. */
+export function theYouSubtitle(checkIns: YourCheckIn[]): string {
+  if (checkIns.length <= 1) return 'What’s yours, across your check-ins. Only you see this page.'
+  const scope = checkIns.some(c => c.youRunIt) ? `all ${checkIns.length} check-ins` : 'every check-in you’re in'
+  return `What’s yours across ${scope}: what you said you’d do, your own reports, and what keeps coming up about your part. Only you see this page.`
+}
+
 export function YouPage() {
   const user = useAuthStore(s => s.user)
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
@@ -43,19 +74,18 @@ export function YouPage() {
   })
 
   return (
-    <div className="gw-you">
-      <h1 className="gw-t-title gw-you-h1">You</h1>
-      <p className="gw-you-sub">What’s yours, across your check-ins. Only you see this page.</p>
+    <Page>
+      <PageTitle title="You" subtitle={data ? theYouSubtitle(data.checkIns) : 'What’s yours, across your check-ins. Only you see this page.'} />
 
-      {isLoading && <p className="gw-t-body gw-you-quiet">Loading…</p>}
+      {isLoading && <Note>Loading…</Note>}
       {isError && (
-        <div role="alert" className="gw-you-quiet">
-          <p className="gw-t-body">Your board did not load. Nothing you have written is affected.</p>
+        <div>
+          <Note tone="error">Your board did not load. Nothing you have written is affected.</Note>
           <Button kind="secondary" size="small" onClick={() => refetch()} disabled={isFetching}>Try again</Button>
         </div>
       )}
       {data && <TheBoard b={data} />}
-    </div>
+    </Page>
   )
 }
 
@@ -64,177 +94,159 @@ function TheBoard({ b }: { b: YourBoard }) {
   const myPatterns = (b.patterns ?? []).filter((p) => p.yours !== false)
   return (
     <>
-      <h2 className="gw-t-h2 gw-you-h2">Your board</h2>
-      {nothingYet && <p className="gw-t-body gw-you-quiet">You are not in any check-in yet.</p>}
+      <Section heading="Your board">
+        {nothingYet && <Empty>You are not in any check-in yet.</Empty>}
 
-      <WhereYouStandFromSuggestions items={b.suggestionsAboutYou ?? []} />
+        <WhereYouStandFromSuggestions items={b.suggestionsAboutYou ?? []} />
 
-      {b.whereYouStand?.says && (
-        <section className="gw-you-card" aria-labelledby="you-stand-h">
-          <h3 id="you-stand-h" className="gw-t-h3">Where you stand</h3>
-          <p>{b.whereYouStand.says}</p>
-          {b.whereYouStand.whatWouldChangeIt && <p>What would change this: {b.whereYouStand.whatWouldChangeIt}</p>}
-          {b.whereYouStand.decision && <p>{b.whereYouStand.decision}</p>}
-        </section>
-      )}
+        {b.whereYouStand?.says && (
+          <Panel as="section" heading="Where you stand">
+            <p className="gwui-panel-text">{b.whereYouStand.says}</p>
+            {b.whereYouStand.whatWouldChangeIt && <p className="gwui-panel-text">What would change this: {b.whereYouStand.whatWouldChangeIt}</p>}
+            {b.whereYouStand.decision && <p className="gwui-panel-text">{b.whereYouStand.decision}</p>}
+          </Panel>
+        )}
 
-      {(b.worthKnowing?.length || b.noticed?.says || b.coachingOverTime) ? (
-        <div className="gw-you-grid gw-you-grid-2">
-          {!!b.worthKnowing?.length && (
-            <Card title="Worth knowing now">{b.worthKnowing.map(s => <p key={s}>{s}</p>)}</Card>
-          )}
-          {b.noticed?.says && (
-            <Card title="Something Groundwork noticed about your work">
-              <p>{b.noticed.says}</p>
-              {b.noticed.whoSees && <p className="gw-you-quiet">{b.noticed.whoSees}</p>}
-            </Card>
-          )}
-          {b.coachingOverTime && <Card title="Coaching, followed over time"><p>{b.coachingOverTime}</p></Card>}
-        </div>
-      ) : null}
+        {(b.worthKnowing?.length || b.noticed?.says || b.coachingOverTime) ? (
+          <div className="gwui-cards-2">
+            {!!b.worthKnowing?.length && (
+              <Panel as="section" heading="Worth knowing now">
+                {b.worthKnowing.map(s => <p key={s} className="gwui-panel-text">{s}</p>)}
+              </Panel>
+            )}
+            {b.noticed?.says && (
+              <Panel as="section" heading="Something Groundwork noticed about your work">
+                <p className="gwui-panel-text">{b.noticed.says}</p>
+                {b.noticed.whoSees && <p className="gwui-panel-text-muted">{b.noticed.whoSees}</p>}
+              </Panel>
+            )}
+            {b.coachingOverTime && (
+              <Panel as="section" heading="Coaching, followed over time">
+                <p className="gwui-panel-text">{b.coachingOverTime}</p>
+              </Panel>
+            )}
+          </div>
+        ) : null}
 
-      {(b.goals.length > 0 || b.todos.length > 0 || !!b.contributed?.length) && (
-        <div className="gw-you-grid">
-          {b.goals.length > 0 && (
-            <Card title="Your goals">
-              <ul className="gw-you-list">{b.goals.map(g => <li key={g.id}>{g.says}</li>)}</ul>
-            </Card>
-          )}
-          {b.todos.length > 0 && (
-            <Card title="Your to-dos">
-              <ul className="gw-you-list">
-                {b.todos.map(t => <li key={t.id}>{t.text}{t.when ? <span className="gw-you-quiet"> {t.when}</span> : null}</li>)}
-              </ul>
-            </Card>
-          )}
-          {!!b.contributed?.length && (
-            <Card title="What you contributed">
-              <ul className="gw-you-list">{b.contributed.map(c => <li key={c}>{c}</li>)}</ul>
-            </Card>
-          )}
-        </div>
-      )}
+        {(b.goals.length > 0 || b.todos.length > 0 || !!b.contributed?.length) && (
+          <div className="gwui-cards-3">
+            {b.goals.length > 0 && (
+              <Panel as="section" heading="Your goals">
+                <ul className="gwui-panel-list">{b.goals.map(g => <li key={g.id}>{g.says}</li>)}</ul>
+              </Panel>
+            )}
+            {b.todos.length > 0 && (
+              <Panel as="section" heading="Your to-dos">
+                <ul className="gwui-panel-list">
+                  {b.todos.map(t => <li key={t.id}>{t.text}{t.when ? <span className="gwui-ink-sub"> {t.when}</span> : null}</li>)}
+                </ul>
+              </Panel>
+            )}
+            {!!b.contributed?.length && (
+              <Panel as="section" heading="What you contributed">
+                <ul className="gwui-panel-list">{b.contributed.map(c => <li key={c}>{c}</li>)}</ul>
+              </Panel>
+            )}
+          </div>
+        )}
 
-      {b.coaching && (
-        <section className="gw-you-card" aria-labelledby="you-coaching-h">
-          <h3 id="you-coaching-h" className="gw-t-h3">Coaching</h3>
-          <p>{b.coaching.says}</p>
-        </section>
-      )}
+        {b.coaching && (
+          <Panel as="section" heading="Coaching">
+            <p className="gwui-panel-text">{b.coaching.says}</p>
+          </Panel>
+        )}
 
-      {b.turns.length > 0 && (
-        <section className="gw-you-section" aria-label="Your turn">
-          <NeedsYouList label="Your turn">
+        {b.turns.length > 0 && (
+          <EdgeList label="Your turn">
             {b.turns.map(t => (
-              <NeedsYouRow
+              <EdgeRow
                 key={t.key}
                 kind="decide"
                 title={t.title}
                 detail={t.detail ?? undefined}
-                actions={<Button size="small" to={t.action.to}>{t.action.label}</Button>}
+                /* Not primary: an admin or a lead can have more than one turn waiting at once (a
+                   picture check, Juma with two "Start it" rows, found two navy buttons on screen
+                   together), and "at most one primary button per screen" holds here too. */
+                actions={<Button kind="secondary" size="small" to={t.action.to}>{t.action.label}</Button>}
               />
             ))}
-          </NeedsYouList>
-        </section>
-      )}
+          </EdgeList>
+        )}
+      </Section>
 
       {!!b.askedOfYou?.items.length && (
-        <section className="gw-you-section" aria-labelledby="you-asked-h">
-          <div className="gw-you-section-head">
-            <h2 id="you-asked-h" className="gw-t-h2">Everything asked of you this week</h2>
-            <span className="gw-t-small">From every check-in you’re in. Only you see this.</span>
-          </div>
-          <ul className="gw-you-rows">
+        <Section
+          heading="Everything asked of you this week"
+          note="From every check-in you’re in. Only you see this."
+          foot={b.askedOfYou.says}
+        >
+          <RowList label="Everything asked of you this week">
             {b.askedOfYou.items.map(a => (
-              <li key={a.id} className="gw-you-row gw-you-row-asked">
+              <Row key={a.id} columns="minmax(0, 1fr) minmax(0, 2fr) auto">
                 <div>
-                  {a.who ? <><b>{a.who}</b><div className="gw-you-quiet">{a.checkIn}</div></> : <b>{a.checkIn}</b>}
+                  {a.who ? <><b>{a.who}</b><div className="gwui-ink-sub">{a.checkIn}</div></> : <b>{a.checkIn}</b>}
                 </div>
                 <span>{a.what}</span>
                 <span>{`Asked ${whenItWas(a.asked, 'dayAndMonth')}.`}</span>
-              </li>
+              </Row>
             ))}
-          </ul>
-          <p className="gw-t-small gw-you-quiet">{b.askedOfYou.says}</p>
-        </section>
+          </RowList>
+        </Section>
       )}
 
       {b.saidYoudDo.length > 0 && (
-        <section className="gw-you-section" aria-labelledby="you-said-h">
-          <div className="gw-you-section-head">
-            <h2 id="you-said-h" className="gw-t-h2">What you said you’d do</h2>
-            <span className="gw-t-small">From every check-in</span>
-          </div>
-          <ul className="gw-you-rows">
+        <Section heading="What you said you’d do" note="From every check-in">
+          <RowList label="What you said you’d do">
             {b.saidYoudDo.map(s => (
-              <li key={s.id} className="gw-you-row gw-you-row-said">
+              <Row key={s.id} columns="minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto">
                 <b>{s.text}</b>
                 <span>{s.checkIn}</span>
                 <span>{s.when ?? ''}</span>
                 <span><Tag tone={s.state === 'kept' ? 'proven' : 'plain'}>{s.stateSays}</Tag></span>
-              </li>
+              </Row>
             ))}
-          </ul>
-        </section>
+          </RowList>
+        </Section>
       )}
 
       {!!myPatterns.length && (
-        <section className="gw-you-section" aria-labelledby="you-coming-h">
-          <div className="gw-you-section-head">
-            <h2 id="you-coming-h" className="gw-t-h2">Something that keeps coming up</h2>
-            <span className="gw-t-small">About your part in the work</span>
-          </div>
-          {myPatterns.map(p => (
-            <div key={p.id} className="gw-you-card gw-you-card-warm">
-              <PatternPanel pattern={p} invalidateKey={['you']} />
-            </div>
-          ))}
-        </section>
+        <Section heading="Something that keeps coming up" note="About your part in the work">
+          {myPatterns.map(p => <PatternPanel key={p.id} pattern={p} invalidateKey={['you']} />)}
+        </Section>
       )}
 
       {(b.ownReports.length > 0 || b.checkIns.length > 0) && (
-        <div className="gw-you-grid gw-you-grid-2">
+        <div className="gwui-cards-2">
           {b.ownReports.length > 0 && (
-            <section aria-labelledby="you-reports-h">
-              <h2 id="you-reports-h" className="gw-t-h2 gw-you-h2-small">Your own reports</h2>
-              <ul className="gw-you-rows">
+            <Section heading="Your own reports">
+              <RowList label="Your own reports">
                 {b.ownReports.map(r => (
-                  <li key={r.to} className="gw-you-row gw-you-row-report">
+                  <Row key={r.to} columns="minmax(0, 1fr) auto auto">
                     <b>{r.checkIn}</b>
                     <span>{whenItWas(r.at, 'dayAndMonth')}</span>
                     <Link to={r.to}>Read</Link>
-                  </li>
+                  </Row>
                 ))}
-              </ul>
-            </section>
+              </RowList>
+            </Section>
           )}
           {b.checkIns.length > 0 && (
-            <section aria-labelledby="you-each-h">
-              <h2 id="you-each-h" className="gw-t-h2 gw-you-h2-small">Your work in each</h2>
-              <ul className="gw-you-rows">
+            <Section heading="Your work in each">
+              <RowList label="Your work in each">
                 {b.checkIns.map(c => (
-                  <li key={c.id} className="gw-you-row gw-you-row-each">
-                    <div><b>{c.label}</b>{c.line && <div className="gw-you-quiet">{c.line}</div>}</div>
+                  <Row key={c.id} columns="minmax(0, 1fr) auto">
+                    <div><b>{c.label}</b>{c.line && <div className="gwui-ink-sub">{c.line}</div>}</div>
                     <Link to={c.to}>Open</Link>
-                  </li>
+                  </Row>
                 ))}
-              </ul>
-            </section>
+              </RowList>
+            </Section>
           )}
         </div>
       )}
 
       <YourData />
     </>
-  )
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="gw-you-card">
-      <h3 className="gw-t-h3">{title}</h3>
-      {children}
-    </section>
   )
 }
 
@@ -265,10 +277,10 @@ function YourData() {
     }
   }
   return (
-    <section className="gw-you-card gw-you-data" aria-label="Your data">
-      <p>Everything you’ve written, in every check-in, as one file.</p>
+    <Panel as="section" aria-label="Your data">
+      <p className="gwui-panel-text">Everything you’ve written, in every check-in, as one file.</p>
       <Button kind="secondary" onClick={download} disabled={busy}>Download it</Button>
-      {failed && <p role="alert" className="gw-you-quiet">Your file did not download. Try again.</p>}
-    </section>
+      {failed && <p role="alert" className="gwui-panel-text-muted">Your file did not download. Try again.</p>}
+    </Panel>
   )
 }

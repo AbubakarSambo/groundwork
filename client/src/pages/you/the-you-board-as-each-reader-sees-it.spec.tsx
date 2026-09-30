@@ -88,7 +88,9 @@ describe('Miriam reads her own You board', () => {
     await screen.findByRole('heading', { name: 'What you said you’d do' })
     const said = section('What you said you’d do')
     expect(within(said).getByText('From every check-in')).toBeInTheDocument()
-    expect([...said.querySelectorAll('.gw-you-row')].map(r => [...r.children].map(c => c.textContent))).toEqual([
+    /* Rebuilt from the shared parts (group 2, piece 2): the row is now the shared `Row`
+       (`gwui-row`, components/gw/ui/Rows.tsx), in place of the page's own `gw-you-row`. */
+    expect([...said.querySelectorAll('.gwui-row')].map(r => [...r.children].map(c => c.textContent))).toEqual([
       ['Visit Westgate Deli on Friday', 'Sales team, Q3', 'Friday', 'Open'],
       ['Send Green Mart the quote, with a photo', 'Sales team, Q3', '', 'Kept'],
     ])

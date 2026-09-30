@@ -9,6 +9,11 @@ import {
   type TheAppealDecision,
 } from '@/api/suggestions'
 import { Button } from '@/components/gw/kit'
+/* WhereYouStand (the You board's own reader, group 2 piece 2) uses the shared Button and Panel's
+   own CSS classes, in place of the old kit and YouPage's page-local gw-you-* classes, since YouPage
+   no longer defines them for its own use. ASuggestionForTheLead and AnAppealToDecide, on the lead's
+   board and Today, are unchanged. */
+import { Button as UIButton } from '@/components/gw/ui'
 
 /**
  * A VERDICT, TOLD LIKE A SIGNAL (C3, U.13; decisions rule 6). Three views of one suggestion, each
@@ -226,9 +231,9 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
   const busy = side.isPending || appeal.isPending
 
   return (
-    <section className="gw-you-card" aria-label="Where you stand" style={{ borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }}>
-      <h3 className="gw-t-h3">Where you stand</h3>
-      <div className="gw-you-quiet">About your work in {s.checkIn.label}.</div>
+    <section className="gwui-panel gwui-panel-pad" aria-label="Where you stand" style={{ borderStyle: 'solid', borderWidth: 2, borderColor: 'var(--gw-text)' }}>
+      <h3 className={h3Class} style={h3Style}>Where you stand</h3>
+      <div className={quietClass}>About your work in {s.checkIn.label}.</div>
       <div>{s.facts}</div>
       {s.whatWouldChangeIt && <div><b>What would change this:</b> {s.whatWouldChangeIt}</div>}
 
@@ -240,7 +245,7 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
           <div className="gwui-mt-2">{s.decision.reasons}</div>
         </div>
       ) : (
-        <div className="gw-you-quiet">{lead} has not decided anything yet. You will see the decision and the reasons here.</div>
+        <div className={quietClass}>{lead} has not decided anything yet. You will see the decision and the reasons here.</div>
       )}
 
       {s.yourSide && <Said who="Your side">{s.yourSide}</Said>}
@@ -249,10 +254,10 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
 
       {writing === 'none' && (
         <div className={rowClass} style={rowStyle}>
-          <Button kind="secondary" size="small" onClick={() => { setWriting('side'); setText(s.yourSide ?? '') }}>
+          <UIButton kind="secondary" size="small" onClick={() => { setWriting('side'); setText(s.yourSide ?? '') }}>
             {s.yourSide ? 'Change my side' : 'Add my side'}
-          </Button>
-          {s.mayAppeal && <Button kind="quiet" size="small" onClick={() => { setWriting('appeal'); setText('') }}>Appeal this decision</Button>}
+          </UIButton>
+          {s.mayAppeal && <UIButton kind="quiet" size="small" onClick={() => { setWriting('appeal'); setText('') }}>Appeal this decision</UIButton>}
         </div>
       )}
 
@@ -270,12 +275,12 @@ function WhereYouStand({ s }: { s: SuggestionForThePerson }) {
             <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} maxLength={4000} className={fieldClass} style={fieldStyle} />
           </label>
           <div className={rowClass} style={rowStyle}>
-            <Button type="submit" size="small" disabled={!text.trim() || busy}>
+            <UIButton type="submit" size="small" disabled={!text.trim() || busy}>
               {busy ? 'Saving…' : writing === 'side' ? 'Save' : 'Send my appeal'}
-            </Button>
-            <Button kind="quiet" size="small" onClick={() => { setWriting('none'); setText('') }}>Not yet</Button>
+            </UIButton>
+            <UIButton kind="quiet" size="small" onClick={() => { setWriting('none'); setText('') }}>Not yet</UIButton>
           </div>
-          {failed && <div role="alert" className="gw-you-quiet">{DIDNT_SAVE}</div>}
+          {failed && <div role="alert" className={quietClass}>{DIDNT_SAVE}</div>}
         </form>
       )}
     </section>
