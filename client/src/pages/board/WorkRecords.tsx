@@ -12,6 +12,13 @@ import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
  * labels, not sentences a person reads ("sales org", "MarketView Q4"); this says each of them the
  * way a lead would say it out loud. Written once here, so the banner and the "Change" form always
  * agree with each other.
+ *
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: this file's two default-primary `<Button>`s (the kind-of-work
+ * form's "Save", and the add/edit-record form's "Save"/"Add it") each sit inside its own `Modal`,
+ * opened by a different quiet trigger ("Change"/"Choose" here, "Add a record" or a row's "Change"
+ * in `WorkRecordRow` below). `Modal` renders as a full-screen overlay that blocks the page behind
+ * it, and nothing here ever opens a second one while the first is still open, so only one of these
+ * two can ever be on screen at once.
  */
 const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
   'sales org': "This check-in is about a sales team and its deals.",
