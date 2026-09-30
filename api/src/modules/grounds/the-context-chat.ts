@@ -375,6 +375,24 @@ export function openingLine(timelineDays: number | null, cadence: string | null)
  */
 const OPENING_GREETING = /^(?:(?:hi|hey|hello|hiya|greetings|welcome)\b[^.!?\n]*[.!?]+\s*|[^.!?\n]*\bi(?:'m| am)\s+here to help[^.!?\n]*[.!?]+\s*)/i;
 
+/**
+ * DRIVEN LIVE: A SINGLE STRIP LEFT A SECOND GREETING SENTENCE STANDING.
+ *
+ * `openingSentence.test(the-context-chat.spec.ts)` proved a single sentence was stripped; the live
+ * run (30 September 2026) showed the model writing TWO in a row - "Hello! I'm here to help you set
+ * up your check-in." - and `String.replace` with no `/g` flag, on a pattern already anchored to `^`,
+ * only ever removes the first match it finds at that position: "Hello! " went, and "I'm here to help
+ * you set up your check-in." was still the first thing the lead read. Looped rather than given a
+ * `/g` flag, because `/g` on a pattern anchored with `^` only ever matches once anyway - what is
+ * needed is repetition FROM THE NEW START of the string after each removal, which only a loop gives.
+ * Bounded to five passes so a reply that never stops matching cannot loop forever.
+ */
 export function withoutTheOpeningGreeting(reply: string): string {
-  return reply.replace(OPENING_GREETING, '');
+  let out = reply;
+  for (let i = 0; i < 5; i++) {
+    const stripped = out.replace(OPENING_GREETING, '');
+    if (stripped === out) break;
+    out = stripped;
+  }
+  return out;
 }

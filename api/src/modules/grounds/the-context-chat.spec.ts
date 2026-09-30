@@ -199,4 +199,15 @@ describe('the greeting a model still adds at the start of an opening turn is dro
     expect(withoutTheOpeningGreeting('Got it. He said hello to the new starter on their first day.'))
       .toBe('Got it. He said hello to the new starter on their first day.');
   });
+
+  /*
+   * DRIVEN LIVE, 30 September 2026: the model wrote TWO greeting sentences in a row - a bare "Hello!"
+   * followed by a self-introduction - and a single strip only removed the first, leaving "I'm here to
+   * help you set up your check-in." as the first thing the lead actually read.
+   */
+  it('drops a run of more than one greeting sentence, not only the first', () => {
+    expect(withoutTheOpeningGreeting(
+      'Hello! I\'m here to help you set up your "old15 check-in" check-in. To start, what does success look like for this work?',
+    )).toBe('To start, what does success look like for this work?');
+  });
 });
