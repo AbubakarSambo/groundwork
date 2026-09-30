@@ -210,16 +210,40 @@ export class WhoIsWaitingAtTheDoorService {
   /**
    * Let them in. Clears the flag the seat count and the check-in gate both read, so this one write
    * is what makes them a person on the account and a person who can answer.
+   *
+   * TWO SHAPES OF REQUEST WAIT AT THIS ONE QUEUE (item 11). A check-in invitation always carries a
+   * `groundId` (participants.service.ts, entry.service.ts): the account IS this organisation's, so
+   * approving clears `awaitingOrgApproval` on it. The organisation's own invite link
+   * (the-organisation-invite-link.service.ts) has no ground - it is a person with an account
+   * elsewhere asking to join a SECOND organisation, whose domain did not match - so approving here
+   * makes them a member of it instead, the same seat-checked write `join()` would have made on the
+   * spot had the domain matched.
    */
   async approve(organizationId: string, requestId: string, adminUserId: string) {
     const request = await this.mine(organizationId, requestId);
+    const isASecondOrganisationRequest = request.groundId === null;
+
+    if (isASecondOrganisationRequest) {
+      const room = await this.billing.canInviteMember(organizationId);
+      if (!room.allowed) {
+        throw new BadRequestException(`${request.organization.name} has no room for another person on its plan right now. Make room, then let them in.`);
+      }
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.membershipRequest.update({
         where: { id: request.id },
         data: { status: MembershipRequestStatus.APPROVED, decidedByUserId: adminUserId, decidedAt: new Date() },
       });
-      await tx.user.update({ where: { id: request.userId }, data: { awaitingOrgApproval: false } });
+      if (isASecondOrganisationRequest) {
+        await tx.organizationMembership.upsert({
+          where: { userId_organizationId: { userId: request.userId, organizationId } },
+          create: { userId: request.userId, organizationId, role: 'MEMBER' as any, joinedHow: 'link' },
+          update: {},
+        });
+      } else {
+        await tx.user.update({ where: { id: request.userId }, data: { awaitingOrgApproval: false } });
+      }
     });
 
     this.email
