@@ -31,6 +31,9 @@ export type Lane =
   | 'my_to_dos'
   | 'tick_off_a_to_do'
   | 'add_context'
+  | 'context_line'
+  | 'lead_note'
+  | 'questions_for_people'
   | 'unplaced';
 
 export interface Routed {
@@ -296,6 +299,37 @@ const RULES = [
     /\bwhat(?:'s| is)\s+connected\b/i,
     /\bhow\s+current\b/i,
     /\bwhat\s+would\s+you\s+connect\b/i,
+  ]),
+  rule('context_line', [
+    /*
+     * TYPING A LINE DIRECTLY, WITH NO CHAT (decision 50, item 17). Anchored on the WHOLE message so
+     * "strategy" or "decision" said in passing, anywhere else, never lands here by accident - the
+     * lead has to name the kind and put the line straight after it, the same shape the Context and
+     * resources page's own "type it in" box already asks for.
+     */
+    /^\s*strategy\s*[:\-]\s*.{2,400}$/i,
+    /^\s*way\s+of\s+working\s*[:\-]\s*.{2,400}$/i,
+    /^\s*decision\s*[:\-]\s*.{2,400}$/i,
+    /^\s*unsettled\s*[:\-]\s*.{2,400}$/i,
+    /^\s*context\s+note\s*[:\-]\s*.{2,400}$/i,
+  ]),
+  rule('lead_note', [
+    /*
+     * A NOTE ONLY THE LEAD SEES (decision 50, item 9). Narrow, on the word "private" or "privately" -
+     * an ordinary "note:" alone is ambiguous with a shared context note (above) and is left unplaced
+     * rather than guessed onto either.
+     */
+    /\b(?:private|personal)\s+note\b/i,
+    /\bnote\s+(?:privately|only\s+for\s+me|just\s+for\s+me)\b/i,
+  ]),
+  rule('questions_for_people', [
+    /*
+     * THE LEAD'S EXACT QUESTIONS FOR PEOPLE (decision 34; decision 50 item 8). Lists what is waiting,
+     * and a name after "confirm"/"decline"/"leave out" acts on one of them - never a bare yes or no
+     * without saying which, since more than one could be waiting at once.
+     */
+    /\bquestions?\s+for\s+(?:people|someone|somebody|him|her|them)\b/i,
+    /\b(?:confirm|decline|leave\s+out)\s+(?:the\s+)?question\s+for\s+.+/i,
   ]),
   rule('add_context', [
     /*
