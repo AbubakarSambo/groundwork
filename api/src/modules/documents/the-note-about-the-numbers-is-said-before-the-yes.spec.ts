@@ -14,8 +14,8 @@ describe('the note a yes to a document writes is said first, and is true', () =>
     ['OWN', 'The numbers on this check-in come from a document the person running it added.'],
   ])('for a %s document the say-back quotes the note that is then written', async (visibility, note) => {
     const asking = theContextWeHave(HOLDS, { asking: true, willNoteIt: { visibility } })!;
-    expect(asking).toContain(`If you say yes, I will also add a note that everyone on this check-in can read. It says: “${note}”`);
-    expect(asking.indexOf('It says:')).toBeLessThan(asking.indexOf('Is that right?'));
+    expect(asking).toContain(`If you say yes, I will also add a note that everyone on this check-in can read. The note will read “${note}”`);
+    expect(asking.indexOf('The note will read')).toBeLessThan(asking.indexOf('Is that right?'));
     const made: any[] = [];
     const prisma: any = {
       groundObjective: { findMany: async () => [], createMany: async () => ({}) },

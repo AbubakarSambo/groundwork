@@ -13,5 +13,5 @@ export function theNoteAboutWhereTheNumbersCameFrom(fileName: string, documentVi
 
 /** The sentence said before the yes, so nobody is asked to agree to a note they were never shown. */
 export function aboutTheNoteBeforeTheYes(fileName: string, documentVisibility?: string | null): string {
-  return `If you say yes, I will also add a note that everyone on this check-in can read. It says: “${theNoteAboutWhereTheNumbersCameFrom(fileName, documentVisibility)}”`;
+  return `If you say yes, I will also add a note that everyone on this check-in can read. The note will read “${theNoteAboutWhereTheNumbersCameFrom(fileName, documentVisibility)}”`;
 }

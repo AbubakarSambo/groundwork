@@ -38,7 +38,7 @@ describe('the sentence a lead reads, before anything is asked', () => {
         { who: 'Tunde', participantId: 'p2', question: 'which accounts actually have a buying process?', exactQuestion: null },
       ],
     }, { asking: true })!;
-    expect(said).toContain('Questions you want asked, each one exactly as Groundwork will ask it:');
+    expect(said).toContain('Questions you want asked, each one exactly as Groundwork will ask it.');
     expect(said).toContain('- Groundwork will ask Ngozi: "Have you sent the Client B proposal?"');
     expect(said).toContain('- Groundwork will ask Tunde: "Which accounts actually have a buying process?"');
     expect(said).toContain(NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT);
@@ -51,7 +51,7 @@ describe('the sentence a lead reads, before anything is asked', () => {
       notSettled: [], aboutPeople: [], commitments: [], betweenPeople: [], strategy: [], notes: [],
       questionsForPeople: [{ who: 'Ngozi', participantId: 'p1', question: 'x', exactQuestion: 'Have you sent the Client B proposal?' }],
     }, { asking: true })!;
-    expect(said).toContain('A question you want asked, exactly as Groundwork will ask it:\n- Groundwork will ask Ngozi: "Have you sent the Client B proposal?"\nThis question is not asked until you confirm it. You can confirm it, change it or leave it out.');
+    expect(said).toContain('A question you want asked, exactly as Groundwork will ask it.\n- Groundwork will ask Ngozi: "Have you sent the Client B proposal?"\nThis question is not asked until you confirm it. You can confirm it, change it or leave it out.');
   });
 });
 

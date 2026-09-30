@@ -285,3 +285,90 @@ describe('point 11: a question for one person, through the real grounds code', (
     expect(out.say).toBe('I have confirmed it. Groundwork will ask Amani Wekesa "Have the Kilimani shops paid their deposits yet?" in their next check-in, word for word.');
   });
 });
+
+/* ------------------------------------------------------------------------------------------------ */
+
+describe('the whole paste, end to end: the sentence participants are told is written only when the list showed it', () => {
+  const PASTE = 'Every Kilimani shop has paid its deposit by the end of the quarter. '.repeat(10);
+  const TOLD = 'This check-in is about how the Kilimani shops are doing this quarter.';
+
+  function aLeadsCheckIn() {
+    const updates: any[] = [];
+    const harness = aSetupConversation({
+      ground: { participants: PEOPLE, status: 'ACTIVE', endState: null },
+      seed: {
+        ground: {
+          findUnique: async () => ({ id: 'g1', label: 'Sales team, Q3', organizationId: 'org1', initiatorId: 'userLead', scenario: 'OKR_ALIGNMENT', timelineDays: 90, timelineStated: false, cadence: 'WEEKLY', cadenceStated: false, brief: null, status: 'ACTIVE', endState: null, participants: PEOPLE, objectives: [] }),
+          update: jest.fn(async (args: any) => { updates.push(args); return {}; }),
+        },
+        groundBaseline: { findFirst: async () => null, create: jest.fn(async () => ({})) },
+        groundParticipant: { findMany: async () => PEOPLE },
+      },
+      paste: { success: 'Every Kilimani shop has paid its deposit.' },
+    });
+    return { ...harness, updates };
+  }
+
+  it('the list showed the sentence, so the yes writes exactly that sentence', async () => {
+    const { service, updates } = aLeadsCheckIn();
+    jest.spyOn(service as any, 'theTellingAPasteWouldWrite').mockResolvedValue(TOLD);
+    const chat: any = await service.contextChat('g1', 'userLead', [{ role: 'user', content: PASTE }], { yesOrNo: true });
+    expect(chat.proposal.say).toContain(`When you say yes, people taking part will be told this about the check-in.\n“${TOLD}”`);
+    expect(updates).toEqual([]);
+
+    const applied = await service.applyContextProposal('g1', 'userLead', {
+      said: PASTE,
+      history: [{ role: 'user', content: PASTE }, { role: 'assistant', content: chat.proposal.say }],
+    });
+    expect(applied.changed).toBe('everything');
+    expect(updates).toEqual([expect.objectContaining({ data: { toldToParticipants: TOLD } })]);
+    expect(applied.say).toContain(`People taking part have now been told this about the check-in.\n“${TOLD}”`);
+  });
+
+  it('the list showed none, so the yes writes none, and says none', async () => {
+    const { service, updates } = aLeadsCheckIn();
+    jest.spyOn(service as any, 'theTellingAPasteWouldWrite').mockResolvedValue(null);
+    const chat: any = await service.contextChat('g1', 'userLead', [{ role: 'user', content: PASTE }], { yesOrNo: true });
+    expect(chat.proposal.say).not.toContain('people taking part will be told');
+    const applied = await service.applyContextProposal('g1', 'userLead', {
+      said: PASTE,
+      history: [{ role: 'user', content: PASTE }, { role: 'assistant', content: chat.proposal.say }],
+    });
+    expect(applied.changed).toBe('everything');
+    expect(updates).toEqual([]);
+    expect(applied.say).not.toContain('have now been told');
+  });
+
+  it('a yes with no list behind it, as when the conversation is carried without it, writes none either', async () => {
+    const { service, updates } = aLeadsCheckIn();
+    jest.spyOn(service as any, 'theTellingAPasteWouldWrite').mockResolvedValue(TOLD);
+    await service.applyContextProposal('g1', 'userLead', { said: PASTE, history: [{ role: 'user', content: PASTE }] });
+    expect(updates).toEqual([]);
+  });
+});
+
+describe('the list a paste gives has no sentence that ends in a colon', () => {
+  it('not one line, for any kind of line a paste can hold, before the yes or after it', () => {
+    const everything = aPaste({
+      success: 'Every Kilimani shop has paid its deposit.',
+      teamTargets: [{ name: 'Shops signed', target: 4, notToExceed: false }],
+      forPeople: [{ who: 'Amani Wekesa', participantId: 'pA', expectation: 'sign four shops', targets: [{ name: 'shops signed', number: 4 }] }],
+      dates: [{ what: 'quarter ends', when: '31 December' }],
+      strategy: ['Lead with the cold chain.'], waysOfWorking: ['Every deal has one owner.'], notes: ['Kisumu reopens in October.'],
+      openDecisions: ['Whether to hire a second driver.'], notSettled: ['Whether the depot moves.'],
+      aboutPeople: [{ who: 'Amani Wekesa', participantId: 'pA', observation: 'Slow to answer the regional office.' }],
+      commitments: [
+        { who: 'Amani Wekesa', participantId: 'pA', action: 'send the price list', outcome: null, when: 'Friday', theySaidIt: true },
+        { who: null, participantId: null, action: 'clean up the CRM', outcome: null, when: null, theySaidIt: false },
+      ],
+      questionsForPeople: [{ who: 'Amani Wekesa', participantId: 'pA', question: 'x', exactQuestion: 'Did the proposal go out?' }],
+      betweenPeople: [{ who: ['Amani Wekesa', 'Juma Oloo'], participantIds: ['pA', 'pJ'], issue: 'They both chase the Mombasa account.' }],
+      unmatched: ['Zawadi'],
+    });
+    for (const asking of [true, false]) {
+      const said = whatWeTookFromThat(everything, { asking, told: 'This check-in is about the Kilimani shops.' })!;
+      const headings = said.split('\n').filter((l) => l.trim() && !l.startsWith('- ') && !l.startsWith('“'));
+      expect(headings.filter((l) => /:\s*$/.test(l))).toEqual([]);
+    }
+  });
+});

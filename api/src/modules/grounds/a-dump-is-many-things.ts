@@ -236,8 +236,8 @@ export function whoWillReadThese(kind: ContextItemKind): string {
 }
 
 /** The two lines that say what the people taking part will be told this check-in is for. */
-export const WHAT_PEOPLE_ARE_TOLD_OPENS = 'People taking part will be told this about the check-in, and I will write it when you say yes:';
-export const WHAT_PEOPLE_WERE_TOLD_OPENS = 'People taking part have now been told this about the check-in:';
+export const WHAT_PEOPLE_ARE_TOLD_OPENS = 'When you say yes, people taking part will be told this about the check-in.';
+export const WHAT_PEOPLE_WERE_TOLD_OPENS = 'People taking part have now been told this about the check-in.';
 
 /** The sentence a say-back offered for what participants are told, or null where it offered none. */
 export function theTellingInTheList(history: { role: 'user' | 'assistant'; content: string }[] | null | undefined): string | null {
@@ -263,15 +263,15 @@ export function whatWeTookFromThat(
     || got.strategy?.length || got.notes?.length;
   if (!anything) return null;
   const lines: string[] = ['Here is what I took from that.'];
-  if (got.success) lines.push('', `What doing well looks like: "${got.success}"`);
+  if (got.success) lines.push('', `What doing well looks like is "${got.success}".`);
   if (got.teamTargets.length) {
-    lines.push('', 'For the whole check-in:');
+    lines.push('', 'These are for the whole check-in.');
     for (const t of got.teamTargets) {
       lines.push(`- ${t.name}${t.target != null ? `: ${fmt(t.target)}${t.notToExceed ? ', not to be passed' : ''}` : ', tracked rather than counted'}`);
     }
   }
   if (got.forPeople.length) {
-    lines.push('', 'What you expect of each person, in your words, marked as yours and not yet seen by them:');
+    lines.push('', 'This is what you expect of each person, in your words. It is marked as yours, and they have not seen it yet.');
     /* One line per person, carrying every number of theirs: two numbers read as the same sentence twice. */
     for (const p of got.forPeople) {
       const numbers = p.targets.map((t) => `${t.name}: ${fmt(t.number)}`);
@@ -279,7 +279,7 @@ export function whatWeTookFromThat(
     }
   }
   if (got.dates.length) {
-    lines.push('', 'Dates you named, which stay in this conversation rather than on the record:');
+    lines.push('', 'These are the dates you named. They stay in this conversation and are not put on the record.');
     for (const d of got.dates) lines.push(`- ${d.what}: ${d.when}`);
   }
   if (got.strategy?.length) {
@@ -303,18 +303,18 @@ export function whatWeTookFromThat(
     for (const n of got.notSettled) lines.push(`- ${n}`);
   }
   if (got.aboutPeople?.length) {
-    lines.push('', `What you said about each person that is not a number. ${whoWillReadThese(ContextItemKind.ABOUT_A_PERSON)} These are never quoted to the person or in a report:`);
+    lines.push('', `What you said about each person that is not a number. ${whoWillReadThese(ContextItemKind.ABOUT_A_PERSON)} They are never quoted to the person or in a report.`);
     for (const a of got.aboutPeople) lines.push(`- ${called(a.who, a.participantId)}: "${a.observation}"`);
   }
   if (got.commitments?.length) {
     const owned = got.commitments.filter((c) => c.participantId);
     const nobodys = got.commitments.filter((c) => !c.participantId);
     if (owned.length) {
-      lines.push('', 'What people are down as doing. Nobody is marked as having done or not done any of it until they say:');
+      lines.push('', 'This is what people are down as doing. Nobody is marked as having done or not done any of it until they say.');
       for (const c of owned) lines.push(`- ${called(c.who, c.participantId)}: ${c.action}${c.when ? ` (${c.when})` : ''}${c.theySaidIt ? '' : ' - your words, not theirs'}`);
     }
     if (nobodys.length) {
-      lines.push('', `${nobodys.length === 1 ? 'One thing has' : `${nobodys.length} things have`} no owner. Kept as they are rather than put on the nearest person:`);
+      lines.push('', `${nobodys.length === 1 ? 'One thing has no owner. It is kept as it is' : `${nobodys.length} things have no owner. They are kept as they are`}, and not put on the nearest person.`);
       for (const c of nobodys) lines.push(`- ${c.action}${c.when ? ` (${c.when})` : ''}`);
     }
   }
@@ -325,16 +325,18 @@ export function whatWeTookFromThat(
    */
   if (got.questionsForPeople?.length) {
     const one = got.questionsForPeople.length === 1;
-    lines.push('', one ? 'A question you want asked, exactly as Groundwork will ask it:' : 'Questions you want asked, each one exactly as Groundwork will ask it:');
+    lines.push('', one ? 'A question you want asked, exactly as Groundwork will ask it.' : 'Questions you want asked, each one exactly as Groundwork will ask it.');
     for (const q of got.questionsForPeople) lines.push(`- ${whatGroundworkWillAsk(q.who, q.exactQuestion?.trim() || plainQuestionFrom(q.question, q.who))}`);
     lines.push(one ? THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT : NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT);
   }
   if (got.betweenPeople?.length) {
-    lines.push('', `Between two people, so it sits with neither of them alone. ${whoWillReadThese(ContextItemKind.BETWEEN_PEOPLE)} It is never quoted to either of them:`);
+    lines.push('', `Between two people, so it sits with neither of them alone. ${whoWillReadThese(ContextItemKind.BETWEEN_PEOPLE)} It is never quoted to either of them.`);
     for (const b of got.betweenPeople) lines.push(`- ${b.who.join(' and ')}: ${b.issue}`);
   }
   if (got.unmatched.length) {
-    lines.push('', `${got.unmatched.length === 1 ? 'One name is' : `${got.unmatched.length} names are`} not on this check-in: ${got.unmatched.join(', ')}. Add them and I will put their part on too.`);
+    lines.push('', got.unmatched.length === 1
+      ? `One name is not on this check-in. It is ${got.unmatched[0]}. Add them and I will put their part on too.`
+      : `${got.unmatched.length} names are not on this check-in. They are ${got.unmatched.join(', ')}. Add them and I will put their part on too.`);
   }
   /*
    * AND WHAT THE PASTE DID NOT SETTLE, SAID OUT LOUD.
@@ -347,13 +349,13 @@ export function whatWeTookFromThat(
     lines.push('', opts.asking ? WHAT_PEOPLE_ARE_TOLD_OPENS : WHAT_PEOPLE_WERE_TOLD_OPENS, `“${opts.told}”`);
   }
   const open: string[] = [];
-  if (!got.success) open.push('nothing in it says what doing well looks like, so nothing is set as the yardstick');
+  if (!got.success) open.push('Nothing in it says what doing well looks like, so nothing is set as the yardstick.');
   const noOwner = (got.commitments ?? []).filter((c) => !c.participantId).length;
-  if (noOwner) open.push(`${noOwner} thing${noOwner === 1 ? '' : 's'} to do with nobody's name on ${noOwner === 1 ? 'it' : 'them'}`);
+  if (noOwner) open.push(noOwner === 1 ? "One thing to do has nobody's name on it." : `${noOwner} things to do have nobody's name on them.`);
   const withoutANumber = (got.forPeople ?? []).filter((p) => !p.targets.length).map((p) => p.who);
-  if (withoutANumber.length) open.push(`${withoutANumber.join(', ')} ${withoutANumber.length === 1 ? 'has' : 'have'} something expected of them and no number to measure it by`);
+  if (withoutANumber.length) open.push(`${withoutANumber.join(', ')} ${withoutANumber.length === 1 ? 'has' : 'have'} something expected of them and no number to measure it by.`);
   if (open.length) {
-    lines.push('', `What this does not settle: ${open.join('; ')}.`);
+    lines.push('', `Some things are still not settled. ${open.join(' ')}`);
   }
   lines.push('', opts.asking ? 'Record all of this?' : 'Nothing else from it is kept.');
   return lines.join('\n');

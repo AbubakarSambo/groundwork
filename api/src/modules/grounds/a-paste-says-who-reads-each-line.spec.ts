@@ -90,9 +90,9 @@ describe('what participants are told is said back before the yes, and only that 
 
   it('the list before the yes shows the sentence, and the confirmation says it has been told', () => {
     const before = whatWeTookFromThat(EVERY_KIND, { asking: true, told: TOLD })!;
-    expect(before).toContain(`People taking part will be told this about the check-in, and I will write it when you say yes:\n“${TOLD}”`);
+    expect(before).toContain(`When you say yes, people taking part will be told this about the check-in.\n“${TOLD}”`);
     const after = whatWeTookFromThat(EVERY_KIND, { told: TOLD })!;
-    expect(after).toContain(`People taking part have now been told this about the check-in:\n“${TOLD}”`);
+    expect(after).toContain(`People taking part have now been told this about the check-in.\n“${TOLD}”`);
   });
 
   it('the yes reads the very sentence out of the list it is answering', () => {
@@ -107,7 +107,7 @@ describe('what participants are told is said back before the yes, and only that 
     expect(list).not.toContain('People taking part will be told');
     expect(theTellingInTheList([{ role: 'assistant', content: list }])).toBeNull();
     /* And a sentence tucked into some other turn is not taken. */
-    expect(theTellingInTheList([{ role: 'assistant', content: `Something else.\n\nPeople taking part will be told this about the check-in, and I will write it when you say yes:\n“${TOLD}”` }])).toBeNull();
+    expect(theTellingInTheList([{ role: 'assistant', content: `Something else.\n\nWhen you say yes, people taking part will be told this about the check-in.\n“${TOLD}”` }])).toBeNull();
   });
 
   function serviceThatUpdates() {
