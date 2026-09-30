@@ -230,6 +230,57 @@ export function tooSmallFontSizes(stripped: string): number[] {
   return found
 }
 
+/**
+ * AT MOST ONE PRIMARY (NAVY) BUTTON PER SCREEN (Hafsah, 30 September: "at most one primary
+ * button per screen... no more buttons than the prototype's own version of that screen has").
+ * The e2e test (e2e/the-prototype-count-of-buttons.spec.ts) checks this live, as each reader,
+ * against what actually renders - but it can only run against the screens it opens. This is the
+ * cheap, always-on half: a static count of every `<Button`/`<UIButton` OPENING TAG a listed
+ * page's own source writes, over `kind="primary"` or no `kind` at all (the shared Button's
+ * default, `Button.tsx`: `kind = 'primary'`).
+ *
+ * A page may still WRITE more than one - two branches of an `if`/ternary that never render
+ * together (a "before" and "after" state of the same row) are not two buttons on screen at once.
+ * Rather than try to prove that from the source, a file that means this marks it, once, with a
+ * plain comment containing the literal text `PRIMARY-BUTTONS-NEVER-TOGETHER:` followed by which
+ * ones and why - the marker is the file's own claim, checked by whoever reviews it, not by this
+ * script. A file with no such marker must never write more than one.
+ */
+export function primaryButtonOpenTags(rawSource: string): string[] {
+  const stripped = stripComments(rawSource)
+  const found: string[] = []
+  const re = /<(Button|UIButton)\b/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(stripped))) {
+    const start = m.index
+    let j = m.index + m[0].length
+    let depth = 0
+    let inStr: string | null = null
+    while (j < stripped.length) {
+      const c = stripped[j]
+      if (inStr) {
+        if (c === '\\') { j += 2; continue }
+        if (c === inStr) inStr = null
+        j++; continue
+      }
+      if (c === "'" || c === '"' || c === '`') { inStr = c; j++; continue }
+      if (c === '{') { depth++; j++; continue }
+      if (c === '}') { depth--; j++; continue }
+      if (c === '>' && depth === 0) { j++; break }
+      j++
+    }
+    found.push(stripped.slice(start, j))
+  }
+  return found
+}
+
+export function primaryButtonCount(rawSource: string): number {
+  return primaryButtonOpenTags(rawSource).filter((tag) => {
+    if (/kind\s*=\s*["']primary["']/.test(tag)) return true
+    return !/kind\s*=/.test(tag)
+  }).length
+}
+
 describe('a rebuilt page never falls back to the old parts', () => {
   /*
    * WAS: "the rebuilt-pages list starts empty, and this task adds no page to it" - true of the
@@ -366,6 +417,45 @@ describe('a rebuilt page never falls back to the old parts', () => {
       const stripped = stripComments(readFileSync(join(SRC_ROOT, relPath), 'utf8'))
       const small = tooSmallFontSizes(stripped)
       if (small.length > 0) offenders.push(`${relPath}: font-size(s) below 13px: ${[...new Set(small)].join(', ')}`)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  /**
+   * AT MOST ONE PRIMARY BUTTON. See `primaryButtonCount` above for what counts and how a page
+   * marks a genuine either/or pair as not-really-two.
+   *
+   * NOT FIXED YET (Hafsah, 30 September, item 3: "Run the new e2e test once and report which
+   * screens break each rule today... Do not fix the screens yet; that is the next step"). The
+   * list below is today's count, taken from this same check, for every listed page that has more
+   * than one and carries no marker - so this test passes today by naming the problem precisely,
+   * fails the moment a NEW page joins it (or an existing one gets worse), and fails just the same
+   * if an entry is deleted from the list without the page actually being fixed to one primary
+   * button or marked. Shrinking this list is the next task's job, not this one's.
+   */
+  const PAGES_WITH_MORE_THAN_ONE_PRIMARY_BUTTON_TODAY: Record<string, number> = {
+    'pages/invite/InvitePage.tsx': 2,
+    'pages/org/OrgMembersPage.tsx': 2,
+    'pages/org/InvitePeople.tsx': 2,
+    'pages/grounds/CheckInPeopleAndSetup.tsx': 5,
+    'pages/board/BoardPage.tsx': 6,
+    'pages/board/WorkRecords.tsx': 2,
+    'components/gw/Suggestions.tsx': 4,
+    'pages/settings/SettingsPage.tsx': 4,
+    'pages/billing/BillingPage.tsx': 7,
+  }
+  it('no listed page writes more than one primary button beyond what is already named as not fixed yet', () => {
+    const offenders: string[] = []
+    for (const relPath of REBUILT_PAGES) {
+      const raw = readFileSync(join(SRC_ROOT, relPath), 'utf8')
+      const count = primaryButtonCount(raw)
+      const knownToday = PAGES_WITH_MORE_THAN_ONE_PRIMARY_BUTTON_TODAY[relPath]
+      if (count <= 1 || raw.includes('PRIMARY-BUTTONS-NEVER-TOGETHER:')) continue
+      if (knownToday === undefined) {
+        offenders.push(`${relPath}: ${count} primary buttons - a NEW offender, not on today's list`)
+      } else if (count !== knownToday) {
+        offenders.push(`${relPath}: ${count} primary buttons, but the list says ${knownToday} - update the list only by fixing or marking the page`)
+      }
     }
     expect(offenders).toEqual([])
   })
