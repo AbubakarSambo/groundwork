@@ -209,6 +209,19 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     refuses: ['how am I doing', 'what am I on'],
   },
   {
+    key: 'add_context',
+    does:
+      'Add or change a check-in\'s setup - how long it runs, how often people check in, what doing '
+      + 'well looks like, its documents and targets - for the lead who runs it, or an admin covering '
+      + 'for them. The same setup conversation as before, reached from here.',
+    writes: 'after you confirm it',
+    ordered:
+      'Above how_we_work only, so a real handbook question never lands here first. Below everything '
+      + 'more specific: "context" and "what is missing" are narrow words nothing else here owns.',
+    owns: ['add this as context', 'the context for the Q4 check-in', 'what is missing from this check-in'],
+    refuses: ['set an objective for the quarter', 'what are my objectives', 'how does the freeze work'],
+  },
+  {
     key: 'what_you_can_see',
     does: 'What this assistant is connected to and what it can answer from',
     writes: 'nothing',

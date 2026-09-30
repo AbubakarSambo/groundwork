@@ -520,5 +520,87 @@ it in:
 
 ## Comparison, item by item
 
-*(Left empty here, on purpose — this is filled in as step (c), once the move into Ask Groundwork is
-planned.)*
+**Step (b), piece 1 (decided 29 September, decision 50).** Ask Groundwork now has an `add_context`
+lane (`api/src/modules/assistant/the-router-is-deterministic.ts`, dispatched in
+`AssistantService.answer`/`addContext`, `api/src/modules/assistant/assistant.service.ts`). It does
+not reimplement anything the context chat does: when the message is about a check-in's context and
+one can be resolved, the lane calls `GroundsService.contextChat` for the propose half and
+`GroundsService.applyContextProposal` for the confirm half - the exact same methods
+`POST :id/context-chat` and `POST :id/context-chat/confirm` still call, unchanged. **The old routes
+keep working, unchanged, and are still the only way to reach items 8, 9, 17 and 19 below.**
+
+How the two halves fit onto Ask Groundwork's own request/confirm shape (item 5): the propose half's
+`proposal` is parked as an `AssistantProposal` of kind `context`, carrying `{groundId, said, history}`
+in its payload; a `yes` through `POST /ask/answer` re-sends that stored `said` and `history` into
+`applyContextProposal`, never a value read from the client - the same guarantee item 5 already
+names. An ambiguous "which check-in" (no `groundId` chosen and more than one candidate, and the
+message does not name one) parks a proposal of kind `which_context_check_in` instead, answered by
+naming one rather than by yes or no, the same way a document proposal already is.
+
+**Proven, with a new test at the Ask Groundwork boundary** (see
+`api/src/modules/assistant/add-context-is-the-context-chat.spec.ts`):
+
+- **Item 14, who may use it, AND THE TEST THE INVENTORY SAID WAS MISSING.** The lane is reached only
+  by the lead who runs the check-in or an admin of the same organisation - checked with `runsIt`, the
+  shared function behind `contextChat`'s own guard, not a second copy of "lead or admin". An admin of
+  a *different* organisation, and a participant who is neither the lead nor an admin, never reach the
+  setup conversation at all; their message gets Ask Groundwork's ordinary answer.
+- **Item 5, the asymmetry, kept exactly as it is rather than smoothed away.** `resolveParkedContext`
+  calls `applyContextProposal` un-widened: an admin can have the whole conversation, get the proposal
+  said back to them, say yes - and still be refused at the write, honestly (the error is returned as
+  the reply, and the proposal is marked `DROPPED` rather than silently vanishing), not by a shared
+  "lead or admin" guard quietly granting them a write item 5 says they must not have. This is the test
+  item 5's note said no spec file pinned down by name.
+- **Item 2, questions stay private, decided for this lane specifically.** The old context chat keeps
+  no history server-side at all - it is stateless, and the client holds it. Ask Groundwork *does* keep
+  a private history of everything else a person asks it (`AssistantTurn`), so the choice item 2 asks
+  for had to be made rather than inherited: **nothing from the `add_context` lane is written to
+  `AssistantTurn`** (`AssistantService.respond` skips `remember` whenever `reply.lane === 'add_context'`).
+  This keeps decision 50's own wording, "the context lane's history is stored where the context chat
+  stores it today" - which is nowhere - rather than quietly starting a transcript of check-in setup
+  talk inside a person's private Ask Groundwork questions, which nobody decided to do. The only state
+  this lane keeps between turns is what a still-open `AssistantProposal` payload carries, cleared once
+  it resolves.
+- **Items 1, 3, 15 (the setup conversation itself; nobody but the lead/admin gets it; opens on what is
+  already there, not a greeting).** Proven for the one turn this lane sends: `contextChat` is called
+  with exactly the ground and the words that produced it, and everything the prompt itself does
+  (opening on what is already on record, refusing to ask again for something unseen, and so on) is
+  unchanged because it is the same function - see `the-context-chat.spec.ts` for what it does with
+  that input.
+- **Items 4, 6, 7, 10, 11, 12, 13, 16, 18 (targets from documents, reading a dump, hearing a change,
+  coaching the lead, setting an expectation, private documents, hidden targets, stating success, bank
+  details).** All of these live *inside* `contextChat`/`applyContextProposal`, so a message routed to
+  this lane gets exactly their existing behaviour, proven by the existing specs those functions
+  already have (`what-a-document-holds.spec.ts`, `a-dump-is-many-things.spec.ts`,
+  `what-the-lead-wants-changed.spec.ts`, `setup-can-write-an-expectation.spec.ts`,
+  `your-own-file-is-not-behind-a-wall-from-you.spec.ts`,
+  `one-answer-about-whose-numbers-somebody-reads.spec.ts`,
+  `a-bar-nobody-set-is-a-bar-nobody-agreed.spec.ts`, `bank-details-are-never-kept.spec.ts` and
+  neighbours) - nothing here re-tests them, because nothing here re-implements them. **Not yet proven
+  end-to-end through Ask Groundwork's own turn**, because that would need the full multi-gap
+  conversation (several turns, several `groundId`-free follow-up answers) wired through the panel,
+  which is client work outside this piece's scope (this piece touches only `api/`).
+
+**Not reachable through Ask Groundwork at all yet, and still only the old routes:**
+
+- **Item 8, the lead's exact question for a person (decision 34).** `confirmQuestionForPerson` /
+  `declineQuestionForPerson` are separate endpoints from `contextChat`/`applyContextProposal`; the
+  `add_context` lane surfaces `proposal.questionsForPeople` in the text it says back (because
+  `contextChat`'s own reply already carries it), but does not yet offer a way to confirm one from
+  inside Ask Groundwork. Left for a later piece.
+- **Item 9, the lead's private notes (`addLeadContext`/`shareLeadContext`).** No lane calls these.
+- **Item 17, typing a context line directly with no chat (`addContextLine`/`changeContextLine`).** No
+  lane calls these either; decision 50's five bullets do not name this door, only the conversation.
+- **Item 19, setup sign-offs.** Unrelated surface, as the original entry already said.
+
+**Known, deliberate narrowing of what routes to the lane in this piece.** The router's `add_context`
+patterns are narrow on purpose (word "context", explicit "setting up context", "what is missing from
+this check-in") and do not yet recognise every phrasing a lead might use for duration, cadence or
+success on its own ("twelve weeks", said with nothing else, does not route here) - within an *open*
+setup conversation the old, stateless context chat reads every reply as an answer to the question it
+just asked, because the client resends the whole history; this lane, reached one Ask Groundwork
+message at a time with no client-held history, cannot yet tell a bare "twelve weeks" apart from an
+answer to a different question. The one piece of continuity it does have is the parked-proposal
+mechanism itself (propose then confirm, and "which check-in" then a name). Fixing the bare-answer case
+for a genuinely open multi-turn setup conversation is real remaining work, not a gap this piece
+pretends is closed.

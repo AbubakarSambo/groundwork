@@ -64,6 +64,8 @@ import { Prisma } from '@prisma/client';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
 import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
 import { targetsHiddenFrom, withoutHiddenTargetsIn, namesOnTheRoster } from '../board/a-hidden-target-stays-hidden';
+import { runsIt } from '../grounds/who-may-read-this-check-in';
+import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -124,20 +126,36 @@ export class AssistantService {
     private readonly grounds: GroundsService,
   ) {}
 
-  async respond(organizationId: string, personId: string, message: string): Promise<Reply> {
+  /**
+   * `groundId` IS THE CHECK-IN CHOSEN UNDER "ABOUT" (see ask.service.ts). Only the `add_context`
+   * lane reads it - every other lane answers from the person's whole record, unchanged. Optional and
+   * backward compatible: every other caller of `respond` still calls it with three arguments.
+   */
+  async respond(organizationId: string, personId: string, message: string, groundId?: string): Promise<Reply> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     message = withoutBankDetails(message);
     const me = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
-      select: { externalId: true },
+      select: { externalId: true, linkedUserId: true },
     });
     /* A guest's key is nobody's history, whichever entry carries it. See a-guests-questions-are-kept-apart. */
     const who = me?.externalId && !isAGuestsKey(me.externalId) ? me.externalId : null;
+    /* The signed-in USER, not the Person row - `contextChat`/`applyContextProposal` check this
+       against `ground.initiatorId` and against org-admin membership, neither of which a Person id
+       can answer. Ask Groundwork always links the two (see ask.service.ts whoIsAsking). */
+    const userId = me?.linkedUserId ?? null;
 
-    const reply = await this.answer(organizationId, personId, who, message);
+    const reply = await this.answer(organizationId, personId, who, message, false, groundId, userId);
 
-    /* Remembered after the answer, so a failure to record cannot cost somebody their reply. */
-    if (who) {
+    /*
+     * NOTHING FROM THE CONTEXT LANE IS REMEMBERED HERE. The setup conversation has never kept its
+     * own history server-side - the old context chat is stateless and the client held it - and
+     * decision 50 keeps that: "the context lane's history is stored where the context chat stores
+     * it today", which is nowhere, and never in this person's own private Ask Groundwork history.
+     * `addContext` and its parked-proposal handling carry what little continuity they need in the
+     * proposal's own payload instead. See docs/context-chat-inventory.md, item 2.
+     */
+    if (who && reply.lane !== 'add_context') {
       await this.remember(organizationId, who, message, reply).catch(() => undefined);
     }
     return reply;
@@ -165,6 +183,10 @@ export class AssistantService {
      * write would do.
      */
     afterDrop = false,
+    /** The check-in chosen under "About". Read only by `addContext`. See `respond`. */
+    groundId?: string,
+    /** The signed-in user behind `who`. Read only by `addContext`. See `respond`. */
+    userId?: string | null,
   ): Promise<Reply> {
     if (who && !afterDrop) {
       const parked = await this.prisma.assistantProposal.findFirst({
@@ -221,6 +243,8 @@ export class AssistantService {
         return this.sendMeThat(organizationId, personId, who);
       case 'add_a_document':
         return this.addADocument(organizationId, personId, who ?? '', message);
+      case 'add_context':
+        return this.addContext(organizationId, who, userId ?? null, groundId, message);
       case 'where_am_i_needed':
         return this.compose(await this.whereAmINeeded(organizationId, who));
       case 'what_is_stuck':
@@ -1094,6 +1118,14 @@ export class AssistantService {
       return this.resolveParkedDocument(organizationId, who, parked, message);
     }
 
+    /*
+     * WHICH CHECK-IN THEY MEANT is answered by naming one, not by yes or no - same reason a
+     * document's question is handled above, before the yes/no reading would misread it.
+     */
+    if (parked.kind === 'which_context_check_in') {
+      return this.resolveParkedWhichCheckIn(organizationId, who, parked, message);
+    }
+
     const decision = resolveConfirmation(message);
 
     if (decision === 'drop') {
@@ -1136,6 +1168,9 @@ export class AssistantService {
     }
     if (parked.kind === 'seed_objective') {
       return this.resolveParkedSeed(organizationId, who, parked, decision);
+    }
+    if (parked.kind === 'context') {
+      return this.resolveParkedContext(organizationId, who, parked, decision);
     }
 
     if (decision === 'decline') {
@@ -1639,6 +1674,202 @@ export class AssistantService {
       );
     } catch (err: any) {
       return rules('set_an_objective', text(`I could not set it: ${err?.message ?? 'something refused it'}. The draft is still here.`));
+    }
+  }
+
+  /*
+   * --- ADDING CONTEXT TO A CHECK-IN (decision 50, step (b), piece 1) ---
+   *
+   * THE ONE CHAT, CALLING THE OLD CHAT'S OWN CODE. Nothing here re-implements what a check-in still
+   * needs, how a document is read, how a target is matched to a person, or the confirm-before-saving
+   * rule - `GroundsService.contextChat` and `GroundsService.applyContextProposal` do all of that,
+   * unchanged, exactly as `POST :id/context-chat` and `.../confirm` still call them. This is why the
+   * rules are the same BY CONSTRUCTION rather than by two copies agreeing: there is only one copy.
+   *
+   * See docs/context-chat-inventory.md for the full list of what those two methods already do and
+   * keep doing here for free - reading documents, hiding bank details, matching names, recognising a
+   * paste, hearing a change, requiring a yes before anything is written.
+   */
+
+  /**
+   * WHO MAY ADD CONTEXT TO WHICH CHECK-IN, and which one this message is about.
+   *
+   * THE SAME PERMISSION RULE THE CONTEXT CHAT USES, not a copy of it: `runsIt` is the shared function
+   * behind `contextChat`'s own guard (`ground.initiatorId !== requestingUserId && !isOrgAdmin`) - the
+   * lead who started the check-in, or an admin of this organisation covering for them. A participant
+   * or a guest never has a check-in in this list, so they fall straight through to the ordinary
+   * unplaced reply below, never into the setup conversation (item 3 in the inventory).
+   */
+  private async addContext(
+    organizationId: string,
+    who: string | null,
+    userId: string | null,
+    groundId: string | undefined,
+    message: string,
+  ): Promise<Reply> {
+    if (!who || !userId) {
+      const { line, options } = whatICanDoWith(message);
+      return rules('unplaced', text(line), picker(options));
+    }
+
+    const grounds = await this.prisma.ground.findMany({
+      where: { organizationId, status: { notIn: A_GROUND_IS_OVER } },
+      select: { id: true, label: true, initiatorId: true, organizationId: true },
+    });
+    const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
+    const candidates = grounds.filter((g) => runsIt(userId, viewer, g));
+
+    /*
+     * NOBODY TO SET UP. Not the lead or an admin of anything here, so this is answered exactly as an
+     * unplaced message would be - never the setup conversation, and never a reason given that would
+     * tell a participant "you are not senior enough", which is not this product's business to say.
+     */
+    if (!candidates.length) {
+      const { line, options } = whatICanDoWith(message);
+      return rules('unplaced', text(line), picker(options));
+    }
+
+    let target = groundId ? candidates.find((g) => g.id === groundId) : undefined;
+    if (!target && !groundId) {
+      if (candidates.length === 1) {
+        target = candidates[0];
+      } else {
+        /* NAMED, NOT GUESSED. Two check-ins mentioned by the same word would match both and neither
+           is chosen - the same refusal-to-guess the document and paste readers keep (inventory item 21). */
+        const named = message.toLowerCase();
+        const byName = candidates.filter((g) => named.includes(g.label.toLowerCase()));
+        if (byName.length === 1) target = byName[0];
+      }
+    }
+
+    if (!target) {
+      const proposal = await this.prisma.assistantProposal.create({
+        data: {
+          organizationId,
+          personExternalId: who,
+          kind: 'which_context_check_in',
+          summary: `Which check-in do you mean? ${candidates.map((g) => g.label).join(', ')}.`,
+          payload: { candidates: candidates.map((g) => ({ groundId: g.id, label: g.label })), said: message } as never,
+        },
+      });
+      return {
+        lane: 'add_context',
+        composedBy: 'rules',
+        blocks: [text(proposal.summary), picker(candidates.map((g) => ({ key: g.id, label: g.label })))],
+      };
+    }
+
+    return this.runContextChat(organizationId, who, userId, target.id, message);
+  }
+
+  /** Somebody answered "which check-in", by name or by picking one. Never a yes or a no. */
+  private async resolveParkedWhichCheckIn(organizationId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const payload = parked.payload as { candidates: { groundId: string; label: string }[]; said: string };
+    const said = message.trim();
+    const byKey = payload.candidates.find((c) => c.groundId === said);
+    const byName = payload.candidates.filter((c) => said.toLowerCase().includes(c.label.toLowerCase()));
+    const found = byKey ?? (byName.length === 1 ? byName[0] : undefined);
+
+    if (!found) {
+      return {
+        lane: 'add_context',
+        composedBy: 'rules',
+        blocks: [
+          text(`I still cannot tell which check-in you mean. Say one of: ${payload.candidates.map((c) => c.label).join(', ')}.`),
+          picker(payload.candidates.map((c) => ({ key: c.groundId, label: c.label }))),
+        ],
+      };
+    }
+
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
+    if (!person?.linkedUserId) {
+      return rules('add_context', text('I could not open that check-in, because I can no longer see you in your organisation records.'));
+    }
+    return this.runContextChat(organizationId, who, person.linkedUserId, found.groundId, payload.said);
+  }
+
+  /**
+   * THE ACTUAL CALL, TO THE SAME SERVICE METHOD THE OLD ROUTE CALLS.
+   *
+   * `history` carries only this one message: Ask Groundwork does not keep the setup conversation's
+   * own turns (see `respond`, and inventory item 2), so each turn is sent as though it opened the
+   * conversation, the same way the old chat's first message would. `contextChat` computes what is
+   * missing from the ground's own record, not from the history, so this loses nothing there; what a
+   * longer history would add is pronoun resolution across several turns in one sitting, which is why
+   * a proposal still waiting for a yes carries its own `said`/`history` forward in its payload rather
+   * than depending on Ask Groundwork's turn log.
+   */
+  private async runContextChat(organizationId: string, who: string, userId: string, groundId: string, said: string): Promise<Reply> {
+    const history: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: said }];
+    const result = await this.grounds.contextChat(groundId, userId, history);
+
+    if (result.proposal) {
+      const proposal = await this.prisma.assistantProposal.create({
+        data: {
+          organizationId,
+          personExternalId: who,
+          kind: 'context',
+          summary: result.proposal.say,
+          payload: { groundId, said, history } as never,
+        },
+      });
+      return {
+        lane: 'add_context',
+        composedBy: 'rules',
+        blocks: [text(result.reply), { type: 'proposal', proposalId: proposal.id, summary: proposal.summary }],
+      };
+    }
+
+    return rules('add_context', text(result.reply));
+  }
+
+  /**
+   * THE YES OR THE NO, RUN THROUGH `applyContextProposal` - EXACTLY THE ROUTE THE OLD CONFIRM ENDPOINT
+   * CALLS. `said` is the lead's own words that produced the proposal, not the word "yes": the value is
+   * re-derived from what they typed, the same guarantee the old confirm route keeps (item 5).
+   *
+   * `applyContextProposal` is lead-only, with no admin fallback - the asymmetry inventory item 5 and
+   * item 14 both flag, kept exactly as it is rather than widened to "lead or admin" here. An admin who
+   * opened this conversation for an absent lead can hear the proposal back but the write itself still
+   * throws for them, same as it does on the old route; see `context-and-confirm-are-not-the-same-gate`
+   * for the test that pins this down from the Ask Groundwork side.
+   */
+  private async resolveParkedContext(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('add_context', text('Left it, then.'));
+    }
+
+    const payload = parked.payload as {
+      groundId: string;
+      said: string;
+      history: { role: 'user' | 'assistant'; content: string }[];
+    };
+
+    /* RE-VERIFY at execution, same as every other write here: still linked to a user at all. */
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
+    if (!person?.linkedUserId) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('add_context', text('I could not save that, because I can no longer see you in your organisation records.'));
+    }
+
+    try {
+      const applied = await this.grounds.applyContextProposal(payload.groundId, person.linkedUserId, {
+        said: payload.said,
+        history: payload.history,
+      });
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+      return rules('add_context', text(applied.say));
+    } catch (err: any) {
+      /*
+       * THE ASYMMETRY, SURFACED RATHER THAN SWALLOWED. An admin covering for an absent lead can have
+       * had this whole conversation and still be refused here - `applyContextProposal` is the lead's
+       * alone (item 5) - and the honest answer says so instead of pretending it saved.
+       */
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('add_context', text(err?.message ?? 'That could not be saved.'));
     }
   }
 

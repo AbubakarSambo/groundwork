@@ -6,6 +6,7 @@ import { ReportsService } from '../reports/reports.service';
 import { GroundsService } from '../grounds/grounds.service';
 import { aGuestsOwnKey, isAGuestsKey } from '../assistant/a-guests-questions-are-kept-apart';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
+import { runsIt } from '../grounds/who-may-read-this-check-in';
 import {
   A_GUEST_IN_MORE_THAN_ONE, A_GUEST_WITH_NO_CHECK_IN, NEEDS_THE_REPORT, TheReportAsServed,
   answerAGuest, fromTheServedReport, whichQuestion,
@@ -322,10 +323,25 @@ export class AskService {
     return reply;
   }
 
+  /**
+   * A ground the asker leads or takes part in, OR one an admin of this organisation runs (decision
+   * 50: the same permission the context chat uses, checked with `runsIt`, the shared function behind
+   * its own guard - not a second copy of "lead or admin"). An ordinary member reading a board never
+   * gets an admin's reach here; `runsIt` is the write gate for setting a check-in up, not a read one.
+   */
   private async checkTheCheckIn(asker: Asker, groundId: string | undefined) {
     if (!groundId) return;
     const mine = await this.whatItMayBeAbout(asker);
-    if (!mine.some((g) => g.id === groundId)) throw new ForbiddenException(NOT_IN_IT);
+    if (mine.some((g) => g.id === groundId)) return;
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId: asker.organizationId, status: { notIn: A_GROUND_IS_OVER } },
+      select: { organizationId: true, initiatorId: true },
+    });
+    if (ground) {
+      const viewer = await this.prisma.user.findUnique({ where: { id: asker.userId }, select: { role: true, organizationId: true } });
+      if (runsIt(asker.userId, viewer, ground)) return;
+    }
+    throw new ForbiddenException(NOT_IN_IT);
   }
 
   /** A question. The answer is the assistant's own, for the asker alone. */
@@ -333,7 +349,8 @@ export class AskService {
     await this.checkTheCheckIn(asker, input.groundId);
     if (await this.isAGuest(asker)) return this.answerTheGuest(asker, input);
     const me = await this.whoIsAsking(asker);
-    return this.assistant.respond(asker.organizationId, me.id, input.message);
+    /* `groundId` is read only by the `add_context` lane - see AssistantService.respond. */
+    return this.assistant.respond(asker.organizationId, me.id, input.message, input.groundId);
   }
 
   /**

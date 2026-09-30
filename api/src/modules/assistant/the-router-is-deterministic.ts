@@ -30,6 +30,7 @@ export type Lane =
   | 'add_a_to_do'
   | 'my_to_dos'
   | 'tick_off_a_to_do'
+  | 'add_context'
   | 'unplaced';
 
 export interface Routed {
@@ -295,6 +296,22 @@ const RULES = [
     /\bwhat(?:'s| is)\s+connected\b/i,
     /\bhow\s+current\b/i,
     /\bwhat\s+would\s+you\s+connect\b/i,
+  ]),
+  rule('add_context', [
+    /*
+     * THE SETUP CONVERSATION, REACHED FROM HERE RATHER THAN A SEPARATE CHAT (decision 50).
+     *
+     * Narrow, and on the word "context" or an explicit statement of what a check-in still needs to
+     * run - not "objectives" or "targets", which the drafting lane above already owns for a
+     * different kind of writing (a draft the team agrees together, not a lead's own setup). Placed
+     * above `how_we_work` only, so a genuine handbook question never lands here first, and below
+     * everything more specific for the same reason every lane here stays narrow.
+     */
+    /\b(?:add|put|note)\s+(?:this|that|it)\s+(?:as\s+|to\s+|into\s+|for\s+)?(?:the\s+)?context\b/i,
+    /\b(?:the\s+)?context\s+(?:for|on|about)\s+(.+)/i,
+    /\bset(?:ting)?\s+up\s+(?:the\s+)?context\b/i,
+    /\b(?:add|give)\s+(?:some\s+)?context\s+(?:for|to|on)\s+(?:the|this|our|my)\s+check[-\s]?in\b/i,
+    /\bwhat(?:'s| is)\s+missing\s+(?:from|on)\s+(?:the|this|our)\s+check[-\s]?in\b/i,
   ]),
   /*
    * LAST, ON PURPOSE. "How do we..." is the broadest shape here, and above the others it would
