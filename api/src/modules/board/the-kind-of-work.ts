@@ -146,6 +146,14 @@ export interface AServedRecord {
   from: 'said' | 'lead';
   /** The line it came from, word for word, when it came from a check-in. */
   said?: string;
+  /**
+   * WHO SAID IT, beside whose it is (screens request 89). One person can name another person's deal,
+   * so "in the owner's words" was wrong. A first name, named under the same rule as every other name
+   * on the board ("a colleague" where this reader may not name them), and the id only where they may.
+   * Both null for a record the lead added, which nobody said.
+   */
+  saidBy?: string | null;
+  saidByParticipantId?: string | null;
 }
 
 export type AServedSection =

@@ -76,6 +76,7 @@ import { PATTERNS_ARE_SERVED } from '../patterns/patterns-are-served';
 import { servedPatterns, PATTERN_ROW_SELECT, whoIsWhoIn, theOnesTheyAreSeeingFirst, markShownToThePerson, runsItForAPattern } from '../patterns/who-reads-a-pattern';
 import { overTimeAsServed } from '../reports/what-the-record-shows-over-time';
 import { forbiddenNames, namesAnyone, ForbiddenName } from '../reports/guide-sanitiser';
+import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
@@ -1614,9 +1615,23 @@ export class BoardService {
         : [];
       const sourceIds = (items as any[]).map((i) => i.sourceEntryId).filter(Boolean);
       const sources = sourceIds.length
-        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true } }) as Promise<any[]>).catch(() => [] as any[])
+        ? await (this.prisma.recordEntry.findMany({ where: { disputedAt: null, id: { in: sourceIds } }, select: { id: true, text: true, disputedAt: true, participantId: true } }) as Promise<any[]>).catch(() => [] as any[])
         : [];
       const lineOf = new Map((sources as any[]).map((l) => [l.id, l]));
+      /*
+       * WHO SAID THE LINE A RECORD CAME FROM (screens request 89), under the rule every other name on
+       * the board follows: a person this reader may not name is "a colleague" and their id is not
+       * served. The first name only, the way the board says a person in a sentence.
+       */
+      const whoSaidIt = (pid: string | null | undefined): { saidBy: string | null; saidByParticipantId: string | null } => {
+        const p = pid ? ground.participants.find((x: any) => x.id === pid) : null;
+        if (!p) return { saidBy: null, saidByParticipantId: null };
+        /* In lower case: the screen puts it inside "In ...'s words", so it is not the start of a sentence. */
+        const aColleagueMidSentence = noName.get(p.id) ?? 'a colleague';
+        if (hiddenFromThisReader(p.id)) return { saidBy: aColleagueMidSentence, saidByParticipantId: null };
+        const full = [p.user?.firstName, p.user?.lastName].filter(Boolean).join(' ').trim() || ((p as any).nameGiven ?? '').trim();
+        return full ? { saidBy: theShortNameOf(full), saidByParticipantId: p.id } : { saidBy: aColleagueMidSentence, saidByParticipantId: p.id };
+      };
       const rows: AServedRecord[] = [];
       for (const i of items as any[]) {
         const line = i.sourceEntryId ? lineOf.get(i.sourceEntryId) : null;
@@ -1632,6 +1647,7 @@ export class BoardService {
           fields: plainFields(i.fields),
           from: i.sourceEntryId ? 'said' : 'lead',
           ...(line ? { said: cleanText(line.text) } : {}),
+          ...(line ? whoSaidIt(line.participantId) : { saidBy: null, saidByParticipantId: null }),
         });
       }
       out.workRecords = theRecordSections(kind, (ground as any).workStages, rows);
