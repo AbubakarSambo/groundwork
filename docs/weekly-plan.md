@@ -117,7 +117,7 @@ It needs week 8's marks, and week 9's kept and missed commitments, to have signa
 
 **Week 17. Ask Groundwork answers more questions.** *Built 1 October (`16352e10`): "What should I do next?" and "What did Femi say last week?", with where each answer came from.* "What should I do next?", "What did Femi say last week?", and reading any record the person may already see, with where each answer came from. This is the biggest part of Converse.
 
-**Week 18. Ask Groundwork changes things by talking, after a yes.** Moving a deadline, adding a commitment, marking something done. Every one is said back and confirmed first (decision 12), including ticking off a to-do, which today acts without saying it back.
+**Week 18. Ask Groundwork changes things by talking, after a yes.** *Built 1 October: move a deadline, add a commitment, mark something done, each said back and written only on a yes; ticking off a to-do is said back too.* Moving a deadline, adding a commitment, marking something done. Every one is said back and confirmed first (decision 12), including ticking off a to-do, which today acts without saying it back.
 
 **Week 19. Brainstorm.** A "think it through" mode lays out options, targets and what each assumes before anything is written. Nothing is decided for the lead (decision 13).
 
