@@ -1140,6 +1140,16 @@ export class AssistantService {
       return this.resolveParkedWhichCheckIn(organizationId, who, parked, message);
     }
 
+    /*
+     * AN OPEN SETUP CONVERSATION (item 2) IS ANSWERED BEFORE THE YES/NO READING, for the same reason
+     * a document and "which check-in" are: its question is not a yes/no one, and reading a bare
+     * answer like "twelve weeks" through `resolveConfirmation` would call it neither and drop it as a
+     * "no" reads nothing said - leaving the setup conversation exactly where it started.
+     */
+    if (parked.kind === 'context_turn') {
+      return this.resolveParkedContextTurn(organizationId, who, parked, message);
+    }
+
     const decision = resolveConfirmation(message);
 
     if (decision === 'drop') {
@@ -1851,8 +1861,23 @@ export class AssistantService {
    * a proposal still waiting for a yes carries its own `said`/`history` forward in its payload rather
    * than depending on Ask Groundwork's turn log.
    */
-  private async runContextChat(organizationId: string, who: string, userId: string, groundId: string, said: string): Promise<Reply> {
-    const history: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: said }];
+  /**
+   * `priorHistory` is what item 2 adds: the turns this setup conversation has already had, for THIS
+   * check-in and THIS lead, so a bare answer with nothing else in it ("twelve weeks") has something
+   * to land on instead of being read as a fresh, contextless message. Omitted, this behaves exactly
+   * as it always has - a single-message history, as though the conversation just opened.
+   */
+  private async runContextChat(
+    organizationId: string,
+    who: string,
+    userId: string,
+    groundId: string,
+    said: string,
+    priorHistory?: { role: 'user' | 'assistant'; content: string }[],
+  ): Promise<Reply> {
+    const history: { role: 'user' | 'assistant'; content: string }[] = priorHistory
+      ? [...priorHistory, { role: 'user', content: said }]
+      : [{ role: 'user', content: said }];
     const result = await this.grounds.contextChat(groundId, userId, history);
 
     if (result.proposal) {
@@ -1872,7 +1897,44 @@ export class AssistantService {
       };
     }
 
+    /*
+     * ITEM 2: STILL GATHERING, NOTHING CONCRETE YET. `contextChat` is stateless - the ground's own
+     * gaps decide what it asks next time, not this history - but PRONOUN RESOLUTION AND A BARE
+     * ANSWER both need the turns said so far, which the old, client-held conversation always had and
+     * a single Ask Groundwork message never does on its own. Parked as its own kind, `context_turn`,
+     * rather than folded into the `context` kind above: a `context` proposal is a concrete value
+     * waiting for a yes/no, and this is not one - the next message, whatever it is, is read as an
+     * answer to keep gathering with, not as a decision.
+     */
+    if (!result.done) {
+      const withReply = [...history, { role: 'assistant' as const, content: result.reply }];
+      await this.prisma.assistantProposal.create({
+        data: {
+          organizationId,
+          personExternalId: who,
+          kind: 'context_turn',
+          summary: result.reply,
+          payload: { groundId, history: withReply } as never,
+        },
+      });
+    }
+
     return rules('add_context', text(result.reply));
+  }
+
+  /**
+   * THE NEXT TURN OF AN OPEN SETUP CONVERSATION (item 2). Not a yes/no: whatever the lead just said
+   * is read as the answer to the gap `contextChat` just asked about, carrying the turns so far
+   * forward. Re-verified the same way every other continuation here is - still linked to a user.
+   */
+  private async resolveParkedContextTurn(organizationId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const payload = parked.payload as { groundId: string; history: { role: 'user' | 'assistant'; content: string }[] };
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
+    if (!person?.linkedUserId) {
+      return rules('add_context', text('I could not continue that, because I can no longer see you in your organisation records.'));
+    }
+    return this.runContextChat(organizationId, who, person.linkedUserId, payload.groundId, message, payload.history);
   }
 
   /**

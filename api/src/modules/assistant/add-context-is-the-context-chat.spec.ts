@@ -243,3 +243,64 @@ describe('the asymmetry, unchanged: propose allows an admin, confirm does not (i
     );
   });
 });
+
+describe('inventory item 2: a multi-turn setup conversation continues (decision 50, piece 2, point 2)', () => {
+  /*
+   * THE DEFECT THIS FIXES: the lane had no history, so a bare answer with nothing else in it
+   * ("twelve weeks") - which is exactly how somebody answers the SECOND question of a setup
+   * conversation - was read as a fresh, contextless message rather than as the reply to the gap
+   * `contextChat` had just asked about. A three-turn exchange: still gathering, still gathering,
+   * then a concrete proposal - and by the third turn `contextChat` is given every earlier turn.
+   */
+  it('three turns: the first two are parked as an open conversation, and the third receives the whole history so far', async () => {
+    const contextChat = jest.fn()
+      .mockResolvedValueOnce({ reply: 'How long does this check-in run for?', gaps: ['duration', 'cadence'], done: false, proposal: null })
+      .mockResolvedValueOnce({ reply: 'And how often do you want to check in?', gaps: ['cadence'], done: false, proposal: null })
+      .mockResolvedValueOnce({ reply: 'I will set this to run for twelve weeks, checking in weekly.', gaps: [], done: true, proposal: { gap: 'duration', say: 'I will set this to run for twelve weeks, checking in weekly.' } });
+    const { service, prisma, proposals } = svc({ contextChat });
+
+    const r1 = await service.respond('org-a', 'p1', 'the context for our check-in', 'g1');
+    expect(r1.blocks.some((b) => b.type === 'proposal')).toBe(false);
+    expect(contextChat).toHaveBeenNthCalledWith(1, 'g1', 'lead-1', [{ role: 'user', content: 'the context for our check-in' }]);
+    const firstParked = proposals.find((p) => p.kind === 'context_turn' && p.state === 'PARKED');
+    expect(firstParked).toBeTruthy();
+
+    /* The second turn answers by naming the parked row directly, the way `svc`'s fake findFirst works. */
+    const { service: service2, proposals: proposals2 } = svc({ contextChat, parked: firstParked });
+    const r2 = await service2.respond('org-a', 'p1', 'twelve weeks');
+    expect(r2.blocks.some((b) => b.type === 'proposal')).toBe(false);
+    expect(contextChat).toHaveBeenNthCalledWith(2, 'g1', 'lead-1', [
+      { role: 'user', content: 'the context for our check-in' },
+      { role: 'assistant', content: 'How long does this check-in run for?' },
+      { role: 'user', content: 'twelve weeks' },
+    ]);
+    const secondParked = proposals2.find((p) => p.kind === 'context_turn' && p.state === 'PARKED');
+    expect(secondParked).toBeTruthy();
+    /* The first parked row was superseded, not left dangling. */
+    expect(proposals2.some((p) => p.id === 'pr1' && p.state === 'ACCEPTED')).toBe(true);
+
+    /* The third turn resolves into a concrete proposal, still carrying every earlier turn. */
+    const { service: service3, proposals: proposals3, prisma: prisma3 } = svc({ contextChat, parked: secondParked });
+    const r3 = await service3.respond('org-a', 'p1', 'weekly');
+    expect(r3.blocks.some((b) => b.type === 'proposal')).toBe(true);
+    expect(contextChat).toHaveBeenNthCalledWith(3, 'g1', 'lead-1', [
+      { role: 'user', content: 'the context for our check-in' },
+      { role: 'assistant', content: 'How long does this check-in run for?' },
+      { role: 'user', content: 'twelve weeks' },
+      { role: 'assistant', content: 'And how often do you want to check in?' },
+      { role: 'user', content: 'weekly' },
+    ]);
+    const finalProposal = proposals3.find((p) => p.kind === 'context' && p.state === 'PARKED');
+    expect(finalProposal).toBeTruthy();
+    /* Still never written on its own - a concrete proposal at the end of a long conversation is
+       confirmed exactly the same way a one-turn one is (item 5). */
+    expect(prisma3.assistantProposal.create).toHaveBeenCalled();
+  });
+
+  it('nothing from an open setup conversation reaches the person\'s ordinary Ask Groundwork history', async () => {
+    const contextChat = jest.fn(async () => ({ reply: 'How long does this check-in run for?', gaps: ['duration'], done: false, proposal: null }));
+    const { service, prisma } = svc({ contextChat });
+    await service.respond('org-a', 'p1', 'the context for our check-in', 'g1');
+    expect(prisma.assistantTurn.createMany).not.toHaveBeenCalled();
+  });
+});

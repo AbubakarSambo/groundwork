@@ -621,6 +621,29 @@ the old route calls, never a copy:**
   all, still reads as `'setup'` and resumes the old conversation exactly as it did.
 - Proven in `api/src/modules/assistant/items-8-9-17-through-ask-groundwork.spec.ts`.
 
+**Step (b), piece 2, point 2 (30 September 2026). A multi-turn setup conversation continues.** The
+defect the task named directly: `runContextChat` sent `contextChat` a fresh, one-message history on
+every turn, so a bare answer with nothing else in it ("twelve weeks") - exactly how somebody answers
+the SECOND question of a setup conversation - was read with no memory of the question it was answering.
+Fixed without a schema change, by parking the turns so far as their own `AssistantProposal` kind,
+`context_turn`, carrying `{ groundId, history }` - distinct from the `context` kind (item 5), which is
+a concrete value waiting for a yes/no. `context_turn` is not: the next message, whatever it is, is fed
+back into `contextChat` as the next turn, the same way the old, client-held conversation always sent
+its whole history. Handled before the yes/no reading in `resolveParked`, the same as `document` and
+`which_context_check_in` already are, for the same reason - its question is not a yes/no one. Each
+continuation supersedes the row before it (marked `ACCEPTED`), so exactly one `context_turn` is ever
+open for a person at a time, the same "one open question" invariant every other parked kind here keeps.
+Once `contextChat` returns a concrete proposal, or says there is nothing left to ask (`done` with no
+proposal), nothing further is parked - an unrelated message right after does not get swallowed into a
+finished setup conversation. Proven with a three-turn exchange (still gathering, still gathering, then
+a concrete proposal, with the whole history reaching `contextChat` on the third call) in
+`add-context-is-the-context-chat.spec.ts`. **Known limitation, not claimed as closed:** a message that
+is not remotely an answer to the open gap - the lead asking about something else entirely mid-setup -
+is still fed into `contextChat` as though it were one, because nothing here can tell the two apart
+generically; this is the same trust the old, stateless, client-held conversation always placed in
+`contextChat`'s own prompt to handle a genuine digression (see item 15's "answer them before you ask"
+rule), not a new risk this piece introduces.
+
 **Item 19, setup sign-offs.** Still not reachable through Ask Groundwork, and still not meant to be:
 re-reading the inventory's own item 19, it is "a person's own marks against the setup questions" - a
 per-person acknowledgement, not a write to the check-in's context - and it lives next to these routes
