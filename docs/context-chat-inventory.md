@@ -644,6 +644,20 @@ generically; this is the same trust the old, stateless, client-held conversation
 `contextChat`'s own prompt to handle a genuine digression (see item 15's "answer them before you ask"
 rule), not a new risk this piece introduces.
 
+**Step (b), piece 2, step (c) (30 September 2026). The live proof.** A new, local-only script,
+`api/journey/context-chat-equivalence.ts` (committed, with a `.gitignore` exception alongside the
+other named-exception journey scripts), creates two fresh check-ins with the same lead and the same
+colleague, puts the same setup message, the same long paste, the same typed context line, the same
+private note and the same document through the old routes on one and through Ask Groundwork on the
+other, confirms Ben's exact question the same way on both, and then reads both check-ins straight out
+of Postgres - never through either API's own GET routes, which could render two different rows the
+same way by accident - to compare, item by item: the targets a paste set (owner, number), the context
+lines kept (kind, text, audience), the lead's private note, the confirmed exact question, the
+document's visibility, and the check-in's who-sees-targets setting. It refuses to run against anything
+but a local database and a local API. **Not run as part of this piece** - the local API this checkout
+would hit is running a scenario suite (`npm run build`/starting or stopping it was off limits here) -
+so this is the script only; Hafsah runs it once that finishes and reads its plain-sentence output.
+
 **Item 19, setup sign-offs.** Still not reachable through Ask Groundwork, and still not meant to be:
 re-reading the inventory's own item 19, it is "a person's own marks against the setup questions" - a
 per-person acknowledgement, not a write to the check-in's context - and it lives next to these routes
@@ -653,12 +667,13 @@ list "add or change context", "a target for one person", "a document", "who can 
 
 **Known, deliberate narrowing of what routes to the lane in this piece.** The router's `add_context`
 patterns are narrow on purpose (word "context", explicit "setting up context", "what is missing from
-this check-in") and do not yet recognise every phrasing a lead might use for duration, cadence or
-success on its own ("twelve weeks", said with nothing else, does not route here) - within an *open*
-setup conversation the old, stateless context chat reads every reply as an answer to the question it
-just asked, because the client resends the whole history; this lane, reached one Ask Groundwork
-message at a time with no client-held history, cannot yet tell a bare "twelve weeks" apart from an
-answer to a different question. The one piece of continuity it does have is the parked-proposal
-mechanism itself (propose then confirm, and "which check-in" then a name). Fixing the bare-answer case
-for a genuinely open multi-turn setup conversation is real remaining work, not a gap this piece
-pretends is closed.
+this check-in") and do not recognise every phrasing a lead might use for duration, cadence or success
+on its own - the FIRST message of a setup conversation still has to name "context" or the check-in
+somehow, because nothing has opened yet for a bare answer to continue. **Piece 2, point 2 (above)
+closes the gap this paragraph used to describe**: once that first message has opened a setup
+conversation, a bare "twelve weeks" on the very next message is no longer read as a fresh,
+contextless question - it is carried forward as the answer to whichever gap `contextChat` just asked
+about, through the `context_turn` proposal. What is still real remaining work is the FIRST message of
+a conversation that has not opened yet ("twelve weeks", said cold, with nothing to link it to any
+check-in) - that one genuinely has nothing to route on, the same way it would mean nothing typed cold
+into any other chat.

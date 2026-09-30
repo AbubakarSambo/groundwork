@@ -88,6 +88,10 @@ api/journey/*
 !api/journey/pattern-steadiness.ts
 !api/journey/pattern-steadiness.spec.ts
 
+# THE LIVE PROOF THAT ASK GROUNDWORK SAVES THE SAME THING THE OLD CONTEXT CHAT DOES (decision 50,
+# piece 2, step (c)). Local-only and it refuses to run against anything else - see the file itself.
+!api/journey/context-chat-equivalence.ts
+
 # AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
 # 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace
 # could not run the scenarios or the scorer - and no task on either list may be ticked without
