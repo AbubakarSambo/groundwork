@@ -858,3 +858,25 @@ beingWritten: {
 - Until the very first report of a check-in exists, the read still answers "there is no report yet" with its reason, as before.
 
 Code: `api/src/modules/reports/the-report-is-being-written.ts`, `withBeingWritten` in `reports.service.ts`. Tests: `the-report-is-written-in-parallel.spec.ts`.
+
+## Week 19: think it through, in Ask Groundwork
+
+A new lane, `think_it_through`, lays out options before anything is written. It writes nothing, parks nothing and decides nothing (decisions 12 and 13). The reply has no `proposal` block and no `picker`: it is one `text` block, with `lane: "think_it_through"`, `composedBy: "model"`, and a new `promptVersionId` on the reply that says which stored prompt version ran (the prompt is stored as `think_it_through` and can be changed at `/prompts`). A reply that could not be made, or was refused by the checks, is a plain `text` block with `composedBy: "rules"` and no `promptVersionId`.
+
+It starts on "help me think through the Q4 target", "what are my options for the Atlas deadline", "let us think it through", "weigh up my options" or "brainstorm how to hit the quarter". "Set a target for Q4" still opens the target draft, and "add a commitment: X" still says the change back first.
+
+What a person reads (two to four options, the frame is the product's and the three sentences in each option are the model's, checked):
+
+- "Here are three options for the Q4 target. I am not choosing for you, and nothing has been written."
+- "Option 1 is Keep the target at 3." then three sentences on their own lines, always starting "It would mean that", "It assumes that" and "You would know it is working if".
+- When nothing written down could be read: "I found nothing written down about this that you can read, so these options come only from what you told me."
+- The last paragraph, always: "Would you like me to turn one of these into something concrete? I can help you set it as a target, add it as a commitment, or keep it as a line of context. Tell me which option and which of those, and I will say exactly what I would write, and I will write nothing until you say yes." That is only a question. The next message is routed as usual, so each of the three is said back first and waits for a yes.
+- With nothing named: "What would you like to think through? Tell me the target, the decision or the plan, and I will lay out the options."
+- If the model cannot be reached: "I could not lay out options just now, so I have not suggested anything and nothing has been written. Ask me again in a moment."
+- If fewer than two options pass the checks: "I could not put together options that stay within what you told me and what you can already read, so I have not suggested any. Nothing has been written. Tell me a little more about what you are deciding, such as the number or the date you have in mind, and I will try again."
+
+The checks, in code: any option that uses a number, a number in words, a name, a month or a day that was not in the question or in what the reader may read is dropped. So is any option that does not keep its three sentences, or that recommends ("I recommend", "you should", "the best option" and similar). The screens need not reword or filter anything.
+
+Who reads what: a participant's options come from their own targets and commitments only, and no check-in report is opened for them. A lead or an admin also has what the check-ins they may read serve to them (the same read as "what did Femi say"), so an admin with no access to a performance plan, promotion or renewal gets nothing from it. Private reports, questions to Ask Groundwork, a lead's private notes and a person's load across check-ins are never read.
+
+Code: `api/src/modules/assistant/think-it-through.ts`, the lane in `assistant.service.ts`, the rule in `the-router-is-deterministic.ts`, the capability in `what-the-assistant-can-do.ts`, the seed in `conversation/prompt-library.ts`. Tests: `think-it-through.spec.ts`.
