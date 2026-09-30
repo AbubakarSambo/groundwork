@@ -30,6 +30,7 @@ import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works'
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
+import { restatesSuccess } from './restating-what-good-means';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
 import { EmailService } from '../email/email.service';
@@ -2868,7 +2869,32 @@ export class GroundsService {
      * what-the-lead-wants-changed.
      */
     let changeSay: string | null = null;
-    if (!fromAPaste && lastFromLead) {
+    /*
+     * FIX 6, inventory item 16: RESTATING WHAT DOING WELL LOOKS LIKE, RECOGNISED ON ITS OWN.
+     *
+     * Driven live: "Change what good means: every stage has an owner and a next date, because the
+     * board kept going stale." answered "I cannot find 'what good means' on this check-in." -
+     * `whatTheyWantChanged` only ever matches something already sitting as a line, a target or an
+     * action, and a success statement lives in its own table (`GroundBaseline`), not among those.
+     * Checked before the generic change reader, deterministically, so it never depends on that reader
+     * having anything to match against.
+     */
+    const restated = !fromAPaste && lastFromLead ? restatesSuccess(lastFromLead) : null;
+    if (restated) {
+      const existingSuccess = await this.statedSuccessFor(groundId);
+      if (existingSuccess && !restated.reason) {
+        /* A restatement needs a reason once a version exists - stateBaseline's own rule, asked for
+           here before a proposal is even offered, rather than refused only once they say yes. */
+        changeSay = 'Say why this is changing, and I will record the new version - what is on the record now stays too.';
+        proposal = { kind: 'none', why: 'Waiting for a reason.' } as any;
+      } else {
+        const say = `I will record that as what doing well looks like now: "${restated.newSuccess}"`
+          + (restated.reason ? `, because ${restated.reason}.` : '.')
+          + (existingSuccess ? ' What is on the record now stays too, as an earlier version.' : '');
+        changeSay = say;
+        proposal = { kind: 'restate_success', text: restated.newSuccess, reason: restated.reason, say } as any;
+      }
+    } else if (!fromAPaste && lastFromLead) {
       const wants = await this.whatTheyWantChanged(groundId, lastFromLead).catch(() => null);
       /*
        * A CONFIDENT CHANGE WINS WHATEVER IS OPEN; AN AMBIGUOUS ONE DOES NOT SWALLOW AN ANSWER.
@@ -3563,6 +3589,28 @@ export class GroundsService {
       openDocumentCount,
     });
     const openGap = gaps[0]?.key ?? null;
+    /*
+     * FIX 6, inventory item 16: A RESTATEMENT OF WHAT DOING WELL LOOKS LIKE, CONFIRMED THROUGH
+     * `stateBaseline` ITSELF - the same function the Context page's own "restate success" control
+     * calls, so the versioning, the carried-forward conditions and the "a reason is required once a
+     * version exists" rule are `stateBaseline`'s own, not copied here. Read directly from `dto.said`,
+     * exactly as the change reader below is, and checked BEFORE the "is there an open question"
+     * guard: restating success is not answering a gap, so a fully set-up check-in with no gap open
+     * must still be able to hear it.
+     */
+    const restated = restatesSuccess(dto.said);
+    if (restated) {
+      const applied = await this.stateBaseline(groundId, requestingUserId, {
+        successLooksLike: restated.newSuccess,
+        changeReason: restated.reason ?? undefined,
+      });
+      return {
+        changed: 'success',
+        say: `Recorded. What doing well looks like now: "${applied.successLooksLike}"`
+          + (applied.changeReason ? ` (${applied.changeReason})` : ''),
+      };
+    }
+
     if (!openGap) throw new BadRequestException('There is no open question for this to answer.');
     /*
      * A PASTE IS CONFIRMED WHOLE. The same read as the chat's, run again on the lead's own words - so
