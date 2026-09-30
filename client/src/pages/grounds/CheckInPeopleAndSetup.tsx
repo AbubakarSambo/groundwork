@@ -544,7 +544,7 @@ export function CheckInPeopleAndSetup(props: {
             : ' Somebody else runs it, so ending it ends something they are running.')}
         </Note>
         <a
-          className="gwui-btn gwui-btn-danger"
+          className="gwui-btn gwui-btn-secondary gwui-btn-red-text"
           href={`mailto:hello@myground.work?subject=Archive check-in: ${encodeURIComponent(ground.label)}`}
         >
           Ask us to end this check-in
@@ -567,7 +567,7 @@ export function CheckInPeopleAndSetup(props: {
                 <Button kind="secondary" onClick={() => { props.setConfirmDelete(false); props.setDeleteError(null) }}>Keep it</Button>
               </div>
             ) : (
-              <Button kind="danger" onClick={() => { props.setDeleteError(null); props.setConfirmDelete(true) }}>Delete this check-in</Button>
+              <Button kind="secondary" redText onClick={() => { props.setDeleteError(null); props.setConfirmDelete(true) }}>Delete this check-in</Button>
             )}
           </Panel>
         )}

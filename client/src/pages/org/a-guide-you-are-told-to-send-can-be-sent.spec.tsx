@@ -32,7 +32,14 @@ describe('the lead guide', () => {
 
   it('is linked from the check-in screen before the first session, not only from the admin roster', () => {
     expect(MEMBERS).toContain("navigate('/org/guide')")
-    expect(ADMIN).toContain("navigate('/org/guide')")
+    /*
+     * HAFSAH, 30 SEPTEMBER: "HOW TO RUN ONE" ONLY GOES TO ANOTHER PAGE, SO IT IS A LINK NOW, NOT A
+     * BUTTON WITH A navigate() CALL STANDING IN FOR ONE. `TextAction`'s own `to` prop renders a real
+     * `<Link>` to '/org/guide' - checked here directly, since there is no `navigate(...)` call left
+     * on this control to search for. The People page's own "Send the guide" (MEMBERS, above) is
+     * unchanged: it is a real button there, matching the prototype's own people.txt.
+     */
+    expect(ADMIN).toContain("to=\"/org/guide\"")
     /*
      * The link is for the moment before the first session; after that the page is a reference, not
      * a briefing. U.10 PICTURE-CHECK ROUND 7, ITEM 3: the header's "pieces side by side" became one
@@ -41,6 +48,6 @@ describe('the lead guide', () => {
      * `!ended` addition (no guide link once the check-in has finished), are unchanged in spirit.
      */
     expect(ADMIN).toMatch(/sessionsDone === 0 && !ended && \(/)
-    expect(ADMIN).toMatch(/<TextAction onClick=\{\(\) => navigate\('\/org\/guide'\)\}/)
+    expect(ADMIN).toMatch(/<TextAction to="\/org\/guide"/)
   })
 })

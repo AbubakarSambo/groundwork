@@ -17,13 +17,19 @@ import './gw-ui.css'
  * tinted trigger button, to signal the action is destructive.
  *
  * Three sizes: the normal 44px minimum, `big` (54px), `small` (36px, 40px on a phone).
+ *
+ * `redText`, with the secondary kind only: the prototype's own "End this check-in" (s41.js,
+ * `class="btn sec" style="color:var(--con)"`), a white secondary button whose words are red. Not a
+ * fifth kind; used for a step that ends or deletes something, before its own confirmation.
  */
 export type ButtonKind = 'primary' | 'secondary' | 'quiet' | 'danger'
 
 export function Button({
-  kind = 'primary', size, wide, to, onClick, type = 'button', disabled, children, ...rest
+  kind = 'primary', size, wide, redText, to, onClick, type = 'button', disabled, children, ...rest
 }: {
   kind?: ButtonKind
+  /** Red words on a secondary button, as the prototype's "End this check-in". */
+  redText?: boolean
   size?: 'big' | 'small'
   wide?: boolean
   to?: string
@@ -38,6 +44,7 @@ export function Button({
     `gwui-btn-${kind}`,
     size && `gwui-btn-${size}`,
     wide && 'gwui-btn-wide',
+    redText && kind === 'secondary' && 'gwui-btn-red-text',
   ].filter(Boolean).join(' ')
 
   if (to && !disabled) {

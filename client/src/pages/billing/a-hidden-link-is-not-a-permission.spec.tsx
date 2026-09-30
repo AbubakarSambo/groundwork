@@ -100,9 +100,16 @@ describe('a member who types the URL', () => {
 describe('an admin', () => {
   beforeEach(() => { role = 'ADMIN' })
 
+  /**
+   * CHANGED (Hafsah, 30 September, the setting row): this used to look for the subtitle "Your plan,
+   * and how many people it covers.", which settings-billing.jpg does not draw at all - it was the
+   * product's own invention, dropped now to match the prototype - so it checked for a sentence that
+   * should never have been on screen. Looks for the "Plans" section instead, which only the real
+   * (not the access-refused) page renders.
+   */
   it('still gets the real page', async () => {
     renderBilling()
-    await waitFor(() => expect(screen.getByText(/Your plan, and how many people it covers/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Plans')).toBeTruthy())
     expect(screen.queryByText(/need admin access/i)).toBeNull()
   })
 

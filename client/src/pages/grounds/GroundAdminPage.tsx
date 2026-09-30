@@ -37,6 +37,7 @@ import { whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
 import { SoloReportBody } from '@/components/gw/SoloReportBody'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
+import { Page } from '@/components/gw/ui/Page'
 import { billingApi } from '@/api/billing'
 import { CheckInPeopleAndSetup } from './CheckInPeopleAndSetup'
 import { whoIsInRound } from '@/lib/who-is-in-this-round'
@@ -1287,17 +1288,18 @@ export function GroundAdminPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--gw-page)' }}>
       {/*
-        U.10 PICTURE-CHECK ROUND 7, ITEM 2: THE BOARD'S OWN HEADER PLACEMENT, EXACTLY.
+        HAFSAH, 30 SEPTEMBER, THE SETTING ROW, ITEM 3: THE SHARED PAGE FRAME, NOT A NARROWER ONE OF
+        THIS PAGE'S OWN.
 
-        A second picture check found the header still sitting `position: sticky` on its own
-        full-width beige band (var(--gw-bg)), flush against the sidebar - the shared header
-        component was in place (round 6, item I), but the WRAPPER around it was untouched, and
-        that wrapper is what actually draws the placement, margin, width and background a person
-        sees. The board wraps its header in `maxWidth: 1060, margin: '0 auto', padding: '20px 20px
-        0'` on the page's own cream; this now does the same - not sticky, not full width, not
-        beige, same left margin as the board's content column.
+        This used to wrap the header (and, further down, the "People and setup" tab's own body) in
+        a hand-rolled `maxWidth: 1060, margin: '0 auto'` div - a leftover from before the board
+        itself moved onto the real shared `Page` (components/gw/ui/Page.tsx). Measured at 1440px,
+        that put this page's content at about 315 to 1375 - narrower, and shifted right, against
+        the board's own frame (using `Page`) at about 304 to 1386. `Page` is what the board, and
+        every other rebuilt page, actually use for their outer frame; this page now uses the same
+        one, rather than a second, slightly different copy of its numbers.
       */}
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '20px 20px 0', width: '100%' }}>
+      <Page>
         <CheckInHeader
           crumbs={[{ label: 'Check-ins', to: '/grounds' }, { label: ground.label }]}
           title={ground.label}
@@ -1543,7 +1545,7 @@ export function GroundAdminPage() {
               {parts.join(' ')}
               {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
               {sessionsDone === 0 && !ended && (
-                <>{parts.length ? ' ' : ''}<TextAction onClick={() => navigate('/org/guide')} size={13}>How to run one</TextAction></>
+                <>{parts.length ? ' ' : ''}<TextAction to="/org/guide" size={13}>How to run one</TextAction></>
               )}
             </p>
           )
@@ -1556,18 +1558,17 @@ export function GroundAdminPage() {
           this sticky header - the prototype's own shape, header then tabs then everything else,
           rather than everything else then tabs.
         */}
-      </div>
 
       {/*
         PEOPLE AND SETUP IS FULL WIDTH, LIKE EVERY OTHER REBUILT PAGE.
         The other tabs here are a conversation and a list of sessions, which read better narrow
         (600px) - the prototype agrees, drawing its own chat and session views narrow too. People and
         setup is a settings page, and the prototype draws it the full width of the content column
-        (docs/prototype/screens/A4-people-roles-and-access/check-in-people-and-setup.jpg), the same
-        1060px this page's own header already uses (`maxWidth: 1060` a few lines up). So only this
-        one tab gets that width; the others are unchanged.
+        (docs/prototype/screens/A4-people-roles-and-access/check-in-people-and-setup.jpg), as wide as
+        `Page`'s own frame allows (1150px, see the note above where `Page` replaced this page's old,
+        narrower hand-rolled wrapper). So only this one tab gets that width; the others are unchanged.
       */}
-      <div className="gw-bd" style={{ paddingTop: 12, maxWidth: tab === 'settings' ? 1060 : 600, margin: '0 auto', width: '100%' }}>
+      <div className="gw-bd" style={{ paddingTop: 12, maxWidth: tab === 'settings' ? 1150 : 600, margin: tab === 'settings' ? '0' : '0 auto', width: '100%' }}>
 
         {/* OVERVIEW */}
         {/*
@@ -2495,6 +2496,7 @@ export function GroundAdminPage() {
           />
         )}
       </div>
+      </Page>
       {shareCodeModalOpen && (
         <div
           onClick={() => setShareCodeModalOpen(false)}

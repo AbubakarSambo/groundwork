@@ -41,24 +41,45 @@ describe('the dashboard uses the screen it is given', () => {
   })
 
   it('and the pages that ARE reading keep theirs', () => {
-    /* The point is not "wider everywhere". A check-in and a party's own account are read, not
-       scanned, and 600 is right for them.
+    /* The point is not "wider everywhere". A check-in, a report and a party's own documents are
+       read, not scanned, and 600 is right for them.
        UPDATED 29 SEPT, PEOPLE AND SETUP REBUILD: GroundAdminPage.tsx's own conversation, sessions
        list, documents and report tabs still cap at 600 - only "People and setup" (a settings page,
-       not a column of prose) now widens to 1060, the same width the header above it already uses.
-       This still proves the reading tabs keep 600; it no longer requires the literal `maxWidth: 600`
-       substring, which the settings-only ternary broke without changing what any tab actually does. */
+       not a column of prose) now widens to the shared Page frame's own maximum, 1150 (see the next
+       test). This still proves the reading tabs keep 600; it no longer requires the literal
+       `maxWidth: 600` substring, which the settings-only ternary broke without changing what any
+       tab actually does.
+       UPDATED 30 SEPT, THE SIDE-BY-SIDE STYLE CHECK OF B3-THE-CHECK-IN: the same was true of
+       GroundParticipantPage.tsx's "My work" tab, and the picture check found it - my-record.jpg
+       draws "Your work" and "Something that keeps coming up"/"What you said you'd do"/"Your
+       reports" as two columns side by side, not a single 600px column of prose, the same shape
+       "People and setup" already gets on the lead's own page for the same reason (a page of tiles
+       and lists, not paragraphs to read top to bottom). `record` now widens the same way
+       `settings` already does, on this page; `report` and `docs` (Context and resources) are
+       unchanged and still cap at 600, since nothing in this round found those two to be wrong. */
     expect(CHECK_IN).toMatch(/maxWidth: tab === 'settings' \? \d+ : 600/)
-    expect(PARTY).toMatch(/maxWidth: 600/)
+    expect(PARTY).toMatch(/maxWidth: \(tab === 'settings' \|\| tab === 'record'\) \? \d+ : 600/)
   })
 
   it("and People and setup is the one exception - a settings page, not a reading column", () => {
-    /* Picture check, 29 Sept: the whole tab was a narrow ~568px column where the prototype runs
-       full width, like every other rebuilt page (docs/prototype/screens/
-       A4-people-roles-and-access/check-in-people-and-setup.jpg). 1060 matches this same page's own
-       header a few lines above it (`maxWidth: 1060`), so the tab does not read as a different width
-       from the title and tabs sitting right above it. */
-    expect(CHECK_IN).toMatch(/tab === 'settings' \? 1060 : 600/)
+    /*
+     * CHANGED, 30 SEPTEMBER (Hafsah, the setting row, item 3): this used to check for 1060, matching
+     * this page's own header, which was ALSO wrong - both were a narrower, hand-rolled copy of the
+     * page frame, not the real one. Measured at 1440px against the board (which uses the shared
+     * `Page` component, components/gw/ui/Page.tsx): the header and "People and setup" here sat at
+     * about 315 to 1375, against the board's 304 to 1386. Both now render inside `<Page>` itself,
+     * whose own wrap caps at 1150 - so this tab widens to 1150, not 1060, and no longer needs its
+     * own hand-rolled maxWidth for the header (removed; `Page` supplies it).
+     */
+    expect(CHECK_IN).toMatch(/tab === 'settings' \? 1150 : 600/)
+    expect(CHECK_IN).toMatch(/from '@\/components\/gw\/ui\/Page'/)
+  })
+
+  it("and on the party's page, My work is now the same exception, beside People and setup", () => {
+    /* 30 SEPTEMBER, THE SIDE-BY-SIDE STYLE CHECK: see the comment above. Both settings pages this
+       page has - Setup and My work - now widen to 1150; only the conversation, the report and
+       Context and resources stay at the reading width. */
+    expect(PARTY).toMatch(/\(tab === 'settings' \|\| tab === 'record'\) \? 1150 : 600/)
   })
 
   it('it is a cap, not a fixed width, so it still fits a narrow screen', () => {

@@ -48,7 +48,7 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | **PeopleTable / PersonRow** | head row | `10px 18px`, `13px` | `10px 18px`, `13px` | same |
 | | row padding | no exact prototype rule for a full data-table row (the prototype's own `.row` is a generic `14px 0` list row); this is the product's own invention for a wide admin table | `12px 18px` | same, unchanged |
 | **Avatar** (`.av`) | size at the sidebar's own scale | `34px`, radius 50%, weight 700, `13.5px` | matches where used at that scale; `Avatar.tsx` also offers other sizes the prototype's `.av` does not name (56px on PageTitle, etc.) - explicitly a "nearest equivalent", not a literal prototype rule | unchanged |
-| **FieldRow** | row grid/padding | no direct prototype class (the prototype writes each fact's row by hand in its JS, at `.pad`'s own `20px 22px` inset with a `1px solid var(--rule)` line between rows); nearest matched | `200px label column, 14px 22px padding, 1px rule` | unchanged, still the nearest equivalent |
+| **FieldRow** | row grid/padding | `srow` (s5.js/s20.js/s21.js/s38.js), on `.row`: `220px minmax(0,1fr) auto`, gap `18px`, padding `14px 0` (no side padding), `border-top:1px solid var(--rule)`, flat on the page - this was missed before this task, because nothing had read `srow` itself | `200px label column, 14px 22px padding, border-bottom, meant to sit inside a Panel` | fixed, 30 September: `220px minmax(0,1fr) auto`, gap `18px`, padding `14px 0`, `border-top`, no side padding, no Panel wrapper anywhere it is used |
 | **Choices** (`.seg`, `.seg button`) | button height | `40px` | `40px` | same |
 | | outline | `inset 0 0 0 1.5px var(--rule2)` | same | same |
 | | on state | `background:var(--ink)` -> resolves to navy at this cascade's end (`.seg button.on{background:var(--navy)}`, line 191) | `background: var(--gw-navy)` | same |
@@ -84,6 +84,40 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | **PatternPanel** | - | no prototype screen shows this panel's shape directly; built from `Panel` + `Section` sizes throughout | n/a | n/a |
 | **The numeric utility scale** (`gwui-fs-*`, `gwui-mt-*`, etc.) | floor | the prototype's own smallest real text, `.t-tiny` at `13px` | floor enforced at `13px` by the guard test | same |
 | **Stat row / plan cards / code block / check list / numbered steps / More rows / board classes** (group 1-2 rebuild) | - | none of these have a named prototype class; each was built at the prototype's existing type sizes (`16px`/700 names, `14.5px` muted captions, `13px`/700 tiny labels) and its existing spacing scale, not a new one | as listed in `gw-ui.css`, "GROUP 1 REBUILD" section onward | unchanged - all already drawn from the sizes above, no floating numbers of their own |
+
+## The second pass (30 September, the screen-by-screen picture check)
+
+A picture check of the rebuilt screens not yet checked (the check-in page and conversation, Done,
+between check-ins, My work, People, one person, the board, Connections, WhatsApp, More) against
+`docs/prototype/screens/*/*.jpg`, one screen at a time. Most rebuilt screens already match closely
+(the srow rows, panels, tags and buttons the first pass fixed are holding up); the one real
+page-level fault found was not in a shared part at all:
+
+- **A party's "My work", "Report", "Context and resources" and "People and setup" tabs were all
+  capped at 600px** (`GroundParticipantPage.tsx`), the width meant for the conversation itself. The
+  lead's own equivalent page (`GroundAdminPage.tsx`) already widens its own settings tab to the
+  page's full 1150px, by a documented decision (`the-dashboard-uses-the-screen.spec.ts`) - "People
+  and setup" is a page of tiles and lists, not prose to read top to bottom, so it gets the screen.
+  `my-record.jpg` shows exactly the same shape for "My work" (the stat tiles and any deals beside
+  a right-hand column: the pattern, what was promised, and the reports) - a two-column layout that
+  cannot fit, and so silently collapsed to one column, inside 600px. Fixed by widening `record` the
+  same way `settings` already widens, in both the page (`GroundParticipantPage.tsx`) and
+  `YourWork.tsx`'s own layout (a `grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))`,
+  the same responsive pairing BoardPage.tsx already uses for its own side-by-side cards). `Report`
+  and `Context and resources` are unchanged and still read at 600px; nothing in this pass found
+  either of those two to be wrong. The guard test was updated to match (see its own comment,
+  30 September, for why).
+- **The People page's no-seat warning** (corrected after this pass). The builder first rebuilt it
+  after `s11.js`, with a "Free a seat" and a "Move to a larger plan" button on each person's row.
+  But the prototype's People screen as it finally reads (`screens/A4-people-roles-and-access/people.txt`)
+  does not show this warning at all, so under Hafsah's rule its action is one quiet text link:
+  "Move to a larger plan" when the plan is full, "Send their invitations" when there is room. The
+  rows keep the prototype's shape and wording, with no buttons. The live button test counts a
+  `.gwui-plain-link` as a link, the way it never counted the prototype's own plain links, and
+  People passes.
+- Everything else checked in this pass (the check-in conversation, Done, between check-ins, People,
+  one person, Connections, WhatsApp, More) already matched the prototype's own use of the shared
+  parts closely enough that no further part or page change was made.
 
 ## What this pass found, in one line
 

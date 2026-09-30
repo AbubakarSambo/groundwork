@@ -49,7 +49,14 @@ describe('every Sign out in the product lands on it', () => {
   const doors: [string, RegExp][] = [
     ['components/gw/AppShell.tsx', /onClick=\{\(\) => navigate\('\/signout', \{ replace: true \}\)\}/],
     ['pages/more/MorePage.tsx', /onClick=\{\(\) => navigate\('\/signout', \{ replace: true \}\)\}>Sign out</],
-    ['pages/settings/SettingsPage.tsx', /onClick=\{\(\) => navigate\('\/signout', \{ replace: true \}\)\}/],
+    /*
+     * HAFSAH, 30 SEPTEMBER: A PLAIN LINK, NOT A BUTTON WITH A navigate() CALL. This door only goes
+     * to /signout and does nothing itself, so it is a real `<Link>` now, matching the prototype's
+     * own rule that a control which only leaves the screen is a link. It still only ever goes to
+     * /signout, and still replaces the history entry - checked here as `<Link ... to="/signout"
+     * replace>` rather than the onClick pattern the other three doors still use.
+     */
+    ['pages/settings/SettingsPage.tsx', /<Link className="gwui-open-link" to="\/signout" replace>Sign out<\/Link>/],
     ['pages/ops/OpsLayout.tsx', /window\.location\.href = '\/signout'/],
   ]
   for (const [file, door] of doors) {

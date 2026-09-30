@@ -26,10 +26,12 @@ import { join } from 'path'
  * UPDATED (design-audit.md section 3, "People", item 1): the centred-860 shape this file used to
  * pin on People was itself the defect - the prototype's content starts 48px right of the sidebar (at
  * 304px) and is 1088px wide, left-aligned, never centred. People is now rebuilt from the shared
- * `Page` frame (components/gw/ui), which gives it that width; Connect is not part of this task and
- * keeps its own 860-centred shape unchanged, so the two admin pages no longer share one width on
- * purpose, not by accident - this spec now checks each against what it is actually supposed to be,
- * rather than checking that they still match each other.
+ * `Page` frame (components/gw/ui), which gives it that width.
+ *
+ * UPDATED AGAIN (30 September, group 1's last page): Connect ("Connect your own tools", the old
+ * IntegrationsPage.tsx) is now rebuilt from the same shared `Page` frame too, so it is no longer the
+ * odd one out kept at its own 860-centred width - it shares People's shape on purpose, the way every
+ * other rebuilt page already does.
  */
 const read = (f: string) => readFileSync(join(__dirname, f), 'utf8')
 const PEOPLE = read('OrgMembersPage.tsx')
@@ -41,8 +43,10 @@ describe('the admin pages', () => {
     expect(CONNECT.length).toBeGreaterThan(3000)
   })
 
-  it('Connect stays 860 wide, centred - it is not part of this rebuild', () => {
-    expect(CONNECT).toMatch(/maxWidth: 860, margin: '0 auto'/)
+  it('Connect is rebuilt from the shared Page frame too, not its own old centred-860 shape', () => {
+    expect(CONNECT).toMatch(/from '@\/components\/gw\/ui'/)
+    expect(CONNECT).toMatch(/<Page>/)
+    expect(CONNECT).not.toMatch(/maxWidth: 860/)
   })
 
   it('People is rebuilt from the shared Page frame, 1088px wide and left-aligned, not the old centred column', () => {

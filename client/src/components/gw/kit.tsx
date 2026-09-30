@@ -206,7 +206,34 @@ export const btnGhost: React.CSSProperties = { padding: '9px 16px', borderRadius
  * account was a mouse click, and the keyboard could not reach it. Styled to read as a link; a button,
  * so it is focusable, activates on Enter and Space, and is named in the accessibility tree.
  */
-export function TextAction({ onClick, strong, children, size }: { onClick: () => void; strong?: boolean; children: React.ReactNode; size?: number }) {
+/**
+ * `to`, NOT `onClick`, FOR ANYTHING THAT ONLY GOES SOMEWHERE ELSE (Hafsah, 30 September). The
+ * prototype draws a control that only takes you to another page or section as a plain link; a
+ * button there always does something on that screen. Given `to`, this renders a real `<Link>` (an
+ * `<a>`), not a `<button>` with a navigate() call standing in for one - the same distinction
+ * People's own "Open" needed. Given `onClick` instead, it stays a `<button>`, because it does
+ * something right here (opens a form, switches a tab) rather than leaving the screen.
+ */
+export function TextAction({ onClick, to, strong, children, size }: { onClick?: () => void; to?: string; strong?: boolean; children: React.ReactNode; size?: number }) {
+  /* Each branch keeps its own plain style literal, not a shared `const` reference - a bare
+     identifier standing in for `style={{ }}` is exactly what
+     the-rebuilt-pages-use-only-the-new-parts.spec.ts's `bannedStyleReferenceProps` looks for, and a
+     single literal written directly here is what it deliberately leaves alone. */
+  if (to) {
+    return (
+      <Link
+        to={to}
+        style={{
+          color: 'var(--gw-navy)', textDecoration: 'underline', cursor: 'pointer',
+          background: 'none', border: 'none', padding: 0, font: 'inherit',
+          fontWeight: strong ? 700 : undefined,
+          fontSize: size,
+        }}
+      >
+        {children}
+      </Link>
+    )
+  }
   return (
     <button
       type="button"

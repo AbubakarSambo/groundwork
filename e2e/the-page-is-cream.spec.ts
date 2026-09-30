@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import * as net from 'net';
+import { signIn } from './sign-in-by-email';
 
 /**
  * THE PAGE IS CREAM, FOR EVERY READER (Hafsah, 29 September 2026).
@@ -35,54 +35,8 @@ const READERS: Reader[] = process.env.PAGE_COLOUR_READERS
       { who: 'admin', email: 'juma.u8admin@example.test', paths: ['/today', `/grounds/${CHECK_IN}/board`, '/settings/people', '/company'] },
     ];
 
-/* A small mail catcher on this Mac only, for the sign-in links. */
-const mail: string[] = [];
-let catcher: net.Server;
-test.beforeAll(async () => {
-  catcher = net.createServer((sock) => {
-    let data = false;
-    let buf = '';
-    sock.write('220 localhost\r\n');
-    sock.on('data', (chunk) => {
-      const s = chunk.toString('utf8');
-      if (data) {
-        buf += s;
-        if (buf.includes('\r\n.\r\n')) { mail.push(buf); buf = ''; data = false; sock.write('250 OK\r\n'); }
-        return;
-      }
-      for (const line of s.split('\r\n').filter(Boolean)) {
-        const cmd = line.slice(0, 4).toUpperCase();
-        if (cmd === 'EHLO' || cmd === 'HELO') sock.write('250 localhost\r\n');
-        else if (cmd === 'DATA') { data = true; sock.write('354 go\r\n'); }
-        else if (cmd === 'QUIT') { sock.write('221 bye\r\n'); sock.end(); }
-        else sock.write('250 OK\r\n');
-      }
-    });
-  });
-  await new Promise<void>((ok, no) => { catcher.once('error', no); catcher.listen(1025, '127.0.0.1', () => ok()); });
-});
-test.afterAll(async () => { catcher?.close(); });
-
-function linkFor(email: string, since: number): string | null {
-  for (let i = mail.length - 1; i >= since; i--) {
-    if (!mail[i].toLowerCase().includes(email.toLowerCase())) continue;
-    const found = mail[i].replace(/=\r\n/g, '').replace(/=3D/gi, '=').match(/https?:\/\/localhost:5173\/verify-email\?token=[0-9a-f]+/i);
-    if (found) return found[0];
-  }
-  return null;
-}
-
-async function signIn(page: Page, email: string) {
-  const since = mail.length;
-  await page.goto(`${APP}/auth`);
-  await page.locator('input[type="email"]').first().fill(email);
-  await page.getByRole('button', { name: 'Email me a sign-in link instead' }).click();
-  let link: string | null = null;
-  for (let t = 0; t < 40 && !link; t++) { await page.waitForTimeout(500); link = linkFor(email, since); }
-  expect(link, `a sign-in email for ${email}`).not.toBeNull();
-  await page.goto(link!);
-  await page.waitForTimeout(2500);
-}
+/* Sign-in is by the emailed link, through the one mail catcher every browser test shares
+   (sign-in-by-email.ts). */
 
 test.use({ viewport: { width: 1440, height: 900 } });
 

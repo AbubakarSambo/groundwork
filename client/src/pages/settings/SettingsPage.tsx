@@ -20,11 +20,20 @@ import {
  * `FieldRows`/`FieldRow` for "Your name", "Email" and "WhatsApp", `SwitchRow` for "What we send
  * you", `Steps`/`Step` for the password checklist, and the standard `Button`/`TextField`/`Note`.
  *
- * NO PRIMARY (NAVY) BUTTON ON THIS PAGE (Hafsah, 30 September, item 2: "at most one primary
- * button per screen"). The prototype's own settings screen draws every "Change"/"Save" here as a
- * small quiet button (`own-settings.txt`; `setShell`'s `srow(...)`, `"btn quiet sm"` throughout) -
- * there is no navy anywhere on this screen. "Change password", and each field's own "Save", were
- * `kind="primary"` here; all four are `kind="secondary"` now, to match.
+ * FieldRows SIT FLAT ON THE PAGE, NOT IN A PANEL (Hafsah, 30 September, the setting row):
+ * `srow` (docs/prototype/source/s5.js) draws each row at the page's own left edge, under the
+ * section heading, with no white box around it - `Organisation` and `You` no longer wrap their
+ * `FieldRows` in a `Panel`.
+ *
+ * "CHANGE PASSWORD" IS THIS SCREEN'S ONE PRIMARY BUTTON (Hafsah, 30 September, own-settings.jpg):
+ * the prototype draws it as the one navy button on this page ("one primary button per screen" is
+ * about the screen having ONE, not zero) - every other "Change"/"Save" here stays a small quiet
+ * button (`setShell`'s `srow(...)`, `"btn quiet sm"` throughout own-settings.txt).
+ *
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: `ChangePassword`'s two `kind="primary"` buttons - the closed
+ * state's "Change password" and the open form's own "Change password" submit - belong to a single
+ * `if (!open)` branch each, so only one of the two is ever on screen at once; the other is the
+ * form's "Cancel" (quiet), never a second primary button beside it.
  *
  * PASSWORD, AS THE PRODUCT ACTUALLY WORKS (a gap against the prototype, kept honest rather than
  * hidden): the prototype's form asks for the current password, then a new one twice. Nothing signs
@@ -77,7 +86,7 @@ function ChangePassword({ email }: { email?: string | null }) {
     <Section heading="Password" note="You can also sign in with Google or an email link">
       <Panel>
         {!open ? (
-          <Button kind="secondary" onClick={() => setOpen(true)}>Change password</Button>
+          <Button kind="primary" onClick={() => setOpen(true)}>Change password</Button>
         ) : (
           <Stack gap={12}>
             <div>
@@ -92,7 +101,7 @@ function ChangePassword({ email }: { email?: string | null }) {
               {rules.map(r => <Step key={r.text} done={r.met}>{r.text}</Step>)}
             </Steps>
             <div className="gwui-invite-actions">
-              <Button kind="secondary" onClick={() => change.mutate()} disabled={!met || change.isPending}>
+              <Button kind="primary" onClick={() => change.mutate()} disabled={!met || change.isPending}>
                 {change.isPending ? 'Saving…' : 'Change password'}
               </Button>
               <Button kind="quiet" onClick={() => { setOpen(false); setPassword(''); setConfirm('') }}>Cancel</Button>
@@ -187,30 +196,28 @@ export function SettingsPage() {
 
       {user?.role === 'ADMIN' && (
         <Section heading="Organisation">
-          <Panel pad={false}>
-            <FieldRows>
-              <FieldRow
-                label="Organisation name"
-                value={!editingOrgName ? (
-                  <span>
-                    {orgName || 'Not set'}
-                    <span className="gwui-field-help"> Everyone on your team sees this.</span>
-                  </span>
-                ) : (
-                  <Stack gap={10}>
-                    <TextField value={orgName2} onChange={e => setOrgName2(e.target.value)} placeholder={orgName || 'Organisation name'} aria-label="Organisation name" />
-                    <div className="gwui-invite-actions">
-                      <Button kind="secondary" size="small" onClick={() => renameOrgMut.mutate(orgName2.trim())} disabled={orgName2.trim().length < 2 || orgName2.trim() === orgName || renameOrgMut.isPending}>
-                        {renameOrgMut.isPending ? 'Saving…' : 'Save'}
-                      </Button>
-                      <Button kind="quiet" size="small" onClick={() => { setEditingOrgName(false); setOrgName2(orgName) }}>Cancel</Button>
-                    </div>
-                  </Stack>
-                )}
-                action={!editingOrgName && <Button kind="quiet" size="small" onClick={() => setEditingOrgName(true)}>Change</Button>}
-              />
-            </FieldRows>
-          </Panel>
+          <FieldRows>
+            <FieldRow
+              label="Organisation name"
+              value={!editingOrgName ? (
+                <span>
+                  {orgName || 'Not set'}
+                  <span className="gwui-field-help">Everyone on your team sees this.</span>
+                </span>
+              ) : (
+                <Stack gap={10}>
+                  <TextField value={orgName2} onChange={e => setOrgName2(e.target.value)} placeholder={orgName || 'Organisation name'} aria-label="Organisation name" />
+                  <div className="gwui-invite-actions">
+                    <Button kind="secondary" size="small" onClick={() => renameOrgMut.mutate(orgName2.trim())} disabled={orgName2.trim().length < 2 || orgName2.trim() === orgName || renameOrgMut.isPending}>
+                      {renameOrgMut.isPending ? 'Saving…' : 'Save'}
+                    </Button>
+                    <Button kind="quiet" size="small" onClick={() => { setEditingOrgName(false); setOrgName2(orgName) }}>Cancel</Button>
+                  </div>
+                </Stack>
+              )}
+              action={!editingOrgName && <Button kind="quiet" size="small" onClick={() => setEditingOrgName(true)}>Change</Button>}
+            />
+          </FieldRows>
           <p className="gwui-fine">
             Who can open a check-in, and whether new check-ins wait for an admin, are set on the{' '}
             <Link to="/org/members">People page</Link>. Your plan and how many people it covers are on{' '}
@@ -220,73 +227,69 @@ export function SettingsPage() {
       )}
 
       <Section heading="You">
-        <Panel pad={false}>
-          <FieldRows>
+        <FieldRows>
+          <FieldRow
+            label="Your name"
+            value={!editingName ? (
+              <span>
+                {user?.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}` : 'Not set'}
+                <span className="gwui-field-help">This is what your team sees next to what you said. Without it we can only show your email address.</span>
+              </span>
+            ) : (
+              <Stack gap={10}>
+                <div className="gwui-field-pair">
+                  <TextField value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" aria-label="First name" />
+                  <TextField value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" aria-label="Last name" />
+                </div>
+                <div className="gwui-invite-actions">
+                  <Button kind="secondary" size="small" onClick={() => saveName.mutate()} disabled={!nameChanged || !firstName.trim() || saveName.isPending}>
+                    {saveName.isPending ? 'Saving…' : 'Save'}
+                  </Button>
+                  <Button kind="quiet" size="small" onClick={() => { setEditingName(false); setFirstName(user?.firstName ?? ''); setLastName(user?.lastName ?? '') }}>Cancel</Button>
+                </div>
+              </Stack>
+            )}
+            action={!editingName && <Button kind="quiet" size="small" onClick={() => setEditingName(true)}>Change</Button>}
+          />
+          <FieldRow
+            label="Email"
+            value={<span>{user?.email}<span className="gwui-field-help">Where your sign-in links go.</span></span>}
+          />
+          {whatsappOn && (
             <FieldRow
-              label="Your name"
-              value={!editingName ? (
+              label="WhatsApp"
+              value={!editingPhone ? (
                 <span>
-                  {user?.firstName ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}` : 'Not set'}
-                  <span className="gwui-field-help"> This is what your team sees next to what you said. Without it we can only show your email address.</span>
+                  {user?.phoneNumber || 'Not set'}
+                  <span className="gwui-field-help">You can check in by replying on WhatsApp.</span>
                 </span>
               ) : (
                 <Stack gap={10}>
-                  <div className="gwui-field-pair">
-                    <TextField value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" aria-label="First name" />
-                    <TextField value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" aria-label="Last name" />
-                  </div>
+                  <TextField value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="+254 712 345 678" aria-label="Your WhatsApp number" />
                   <div className="gwui-invite-actions">
-                    <Button kind="secondary" size="small" onClick={() => saveName.mutate()} disabled={!nameChanged || !firstName.trim() || saveName.isPending}>
-                      {saveName.isPending ? 'Saving…' : 'Save'}
+                    <Button kind="secondary" size="small" onClick={() => savePhone.mutate(phoneNumber || null)} disabled={savePhone.isPending}>
+                      {savePhone.isPending ? 'Saving…' : 'Save'}
                     </Button>
-                    <Button kind="quiet" size="small" onClick={() => { setEditingName(false); setFirstName(user?.firstName ?? ''); setLastName(user?.lastName ?? '') }}>Cancel</Button>
+                    <Button kind="quiet" size="small" onClick={() => { setEditingPhone(false); setPhoneNumber(user?.phoneNumber ?? '') }}>Cancel</Button>
                   </div>
                 </Stack>
               )}
-              action={!editingName && <Button kind="quiet" size="small" onClick={() => setEditingName(true)}>Change</Button>}
+              action={!editingPhone && <Button kind="quiet" size="small" onClick={() => setEditingPhone(true)}>Change</Button>}
             />
-            <FieldRow
-              label="Email"
-              value={<span>{user?.email}<span className="gwui-field-help"> Where your sign-in links go.</span></span>}
-            />
-            {whatsappOn && (
-              <FieldRow
-                label="WhatsApp"
-                value={!editingPhone ? (
-                  <span>
-                    {user?.phoneNumber || 'Not set'}
-                    <span className="gwui-field-help"> You can check in by replying on WhatsApp.</span>
-                  </span>
-                ) : (
-                  <Stack gap={10}>
-                    <TextField value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} placeholder="+254 712 345 678" aria-label="Your WhatsApp number" />
-                    <div className="gwui-invite-actions">
-                      <Button kind="secondary" size="small" onClick={() => savePhone.mutate(phoneNumber || null)} disabled={savePhone.isPending}>
-                        {savePhone.isPending ? 'Saving…' : 'Save'}
-                      </Button>
-                      <Button kind="quiet" size="small" onClick={() => { setEditingPhone(false); setPhoneNumber(user?.phoneNumber ?? '') }}>Cancel</Button>
-                    </div>
-                  </Stack>
-                )}
-                action={!editingPhone && <Button kind="quiet" size="small" onClick={() => setEditingPhone(true)}>Change</Button>}
-              />
-            )}
-          </FieldRows>
-        </Panel>
+          )}
+        </FieldRows>
       </Section>
 
       <Section heading="What we send you">
-        <Panel pad={false}>
-          <FieldRows>
-            <SwitchRow
-              title="Check-in reminders"
-              detail="When a check-in opens and, once, if you haven’t answered."
-              on={emailNotif}
-              onChange={(v) => { setEmailNotif(v); toggleNotif.mutate(v) }}
-              disabled={toggleNotif.isPending}
-            />
-          </FieldRows>
-        </Panel>
+        <FieldRows>
+          <SwitchRow
+            title="Check-in reminders"
+            detail="When a check-in opens and, once, if you haven’t answered."
+            on={emailNotif}
+            onChange={(v) => { setEmailNotif(v); toggleNotif.mutate(v) }}
+            disabled={toggleNotif.isPending}
+          />
+        </FieldRows>
         <p className="gwui-fine">Notices say something is ready and link to it. They never include what anyone said.</p>
       </Section>
 
@@ -369,7 +372,10 @@ export function SettingsPage() {
               <p className="gwui-panel-text">Sign out</p>
               <p className="gwui-panel-text-muted">Signs you out of Groundwork on this device. Nothing you have written is affected.</p>
             </div>
-            <Button kind="secondary" onClick={() => navigate('/signout', { replace: true })}>Sign out</Button>
+            {/* A PLAIN LINK, NOT A BUTTON (Hafsah, 30 September): "/signout" is a real page
+                (SignOutPage.tsx) that does the actual signing out as it opens - this only goes
+                there, and does nothing itself. */}
+            <Link className="gwui-open-link" to="/signout" replace>Sign out</Link>
           </div>
         </Panel>
       </Section>

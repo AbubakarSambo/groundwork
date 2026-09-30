@@ -39,7 +39,7 @@ export default function PartsSamplePage() {
           <Button kind="primary">Start your check-in</Button>
           <Button kind="secondary">Read it</Button>
           <Button kind="quiet">Not now</Button>
-          <Button kind="danger">End this check-in</Button>
+          <Button kind="secondary" redText>End this check-in</Button>
           <Button kind="danger">Remove</Button>
           <Button kind="primary" size="big">Answer today's check-in now</Button>
           <Button kind="secondary" size="small">Copy</Button>

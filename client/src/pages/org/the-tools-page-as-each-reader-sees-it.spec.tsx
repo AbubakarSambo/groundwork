@@ -38,7 +38,12 @@ describe('Grace, an admin', () => {
     expect(screen.getByText('Baridi Appliances')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Connections' }).getAttribute('href')).toBe('/settings/connections')
     expect(screen.getByRole('heading', { level: 1, name: 'Connect your own tools' })).toBeTruthy()
-    expect(screen.getByText('For whoever runs Baridi Appliances’s systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in.')).toBeTruthy()
+    /* FIXED (30 September, the rebuild from the shared parts): this used to pin the OLD page's
+       truncated sentence, missing tools.txt's own last clause ("unless you choose an event that
+       carries it") - a real difference in meaning, not decoration: it says data only ever leaves
+       because an admin chose an event that carries it, not merely that nothing sends today. Now
+       copied in full from docs/prototype/screens/F1-connections/tools.txt. */
+    expect(screen.getByText('For whoever runs Baridi Appliances’s systems. Everything here is off until you turn it on, and nothing sends what anyone said in a check-in unless you choose an event that carries it.')).toBeTruthy()
     expect(await screen.findByText('Keys')).toBeTruthy()
     expect(screen.getByText('Be told when something happens')).toBeTruthy()
     expect(screen.getByText('Show Groundwork inside your own tool')).toBeTruthy()

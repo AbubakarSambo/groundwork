@@ -1,5 +1,5 @@
 import { WhoCanJoin } from './WhoCanJoin'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { authApi } from '@/api/auth'
@@ -115,8 +115,13 @@ export function OrgMembersPage() {
   }
 
   const noSeatHeading = (seatQueue.data?.length ?? 0) === 1
-    ? 'Somebody is on a check-in with no seat for them'
-    : `${seatQueue.data?.length ?? 0} people are on check-ins with no seat for them`
+    ? 'Somebody is on a check-in with no seat'
+    : `${seatQueue.data?.length ?? 0} people are on check-ins with no seat`
+
+  /* One row per person waiting, a red edge, "<email> is on <check-in> but has no seat" and how many
+     seats are taken, filled from what the server sends. No buttons on the rows: the warning's one
+     action is the quiet text link under them (Hafsah, 30 September). */
+  const seatsTakenSaying = people?.cap != null ? `${people.count} of ${people.cap} seats are taken.` : null
 
   return (
     <Page>
@@ -124,49 +129,50 @@ export function OrgMembersPage() {
 
       {(seatQueue.data?.length ?? 0) > 0 && (
         <EdgeList label={noSeatHeading}>
-          <EdgeRow
-            kind="concern"
-            title={noSeatHeading}
-            detail={(
-              <>
-                <p className="gwui-panel-text-muted">{whoAddedThem(seatQueue.data!, seatsFree)}</p>
-                <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
-                  {(person: any) => (
-                    <div key={person.id}>
-                      <p className="gwui-panel-text"><b>{person.email}</b></p>
-                      <p className="gwui-panel-text-muted">
-                        {`Added by ${person.addedBy ?? 'a lead'}${person.forCheckIn ? ` for ${person.forCheckIn}` : ''}.`}
-                      </p>
-                    </div>
-                  )}
-                </ShowAFew>
-              </>
+          {/* THE SUMMARY SENTENCE (kept, word for word): who added them, and whether there is room
+              now - `whoAddedThem`, unchanged, still the one place that says this. */}
+          <p className="gwui-panel-text-muted">{whoAddedThem(seatQueue.data!, seatsFree)}</p>
+          <ShowAFew rows={seatQueue.data!} few={5} what="waiting for a seat">
+            {(person: any) => (
+              <EdgeRow
+                key={person.id}
+                kind="concern"
+                title={`${person.email} is on ${person.forCheckIn ?? 'a check-in'} but has no seat`}
+                detail={(
+                  <>
+                    <p className="gwui-panel-text-muted">
+                      {`Added by ${person.addedBy ?? 'a lead'}${person.forCheckIn ? ` for ${person.forCheckIn}` : ''}.`}
+                    </p>
+                    <p className="gwui-panel-text-muted">
+                      {`They can’t check in until there’s room.${seatsTakenSaying ? ` ${seatsTakenSaying}` : ''}`}
+                    </p>
+                  </>
+                )}
+              />
             )}
-            /*
-              HAFSAH, 30 SEPTEMBER, ITEM 2: NOT A SECOND PRIMARY, AND NOT A REPEATED "SEE THE
-              PLANS". The prototype does not draw this card at all (it is the one part of this
-              page the prototype leaves out, kept because a lead can put somebody on a check-in
-              with no seat for them, and only an admin can make room - see the note above
-              OrgMembersPage). Where it is real, on this product, it must still leave the "Invite
-              people" form's own "Send their invitations" (InvitePeople.tsx) as the page's one
-              navy button, so "Send their invitations" here is a plain link, not a second
-              `Button`, and it sends a genuinely different thing (the people already waiting for a
-              seat, not whatever is typed into the invite form below) so it stays, rather than
-              being dropped. "See the plans" is not kept a second time here: it is the exact same
-              "Put your whole team on" link further down this page, and a person only needs to be
-              told that once.
-            */
-            actions={(
-              <button
-                type="button"
-                className="gwui-plain-link"
-                onClick={() => sendHeld.mutate()}
-                disabled={sendHeld.isPending}
-              >
-                {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
-              </button>
-            )}
-          />
+          </ShowAFew>
+          {/*
+            ONE QUIET TEXT LINK, NO BUTTONS (Hafsah, 30 September): "its action is a quiet text link
+            inside the warning, not a second button, unless the prototype's People page shows that
+            warning with a button". The prototype's People screen as it finally reads
+            (screens/A4-people-roles-and-access/people.txt, "you have 73 free") does not show this
+            warning at all; source/s11.js drew one earlier, and later screens replaced it. So: a
+            text link. With no room, the one thing to do here is get more seats (the sentence above
+            already says a seat can be freed too, from each person's own page); with room, send
+            the invitations.
+          */}
+          {seatsFree === 0 ? (
+            <Link className="gwui-plain-link" to="/settings/billing">Move to a larger plan</Link>
+          ) : (
+            <button
+              type="button"
+              className="gwui-plain-link"
+              onClick={() => sendHeld.mutate()}
+              disabled={sendHeld.isPending}
+            >
+              {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
+            </button>
+          )}
         </EdgeList>
       )}
 

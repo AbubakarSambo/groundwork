@@ -45,6 +45,25 @@ const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS'
  * "Generate" - used to be `kind="primary"`, which put a navy button on screen the prototype never
  * has. They are `kind="secondary"` now, the same weight this page already gives "Pause" and
  * "Move to this" in the state the prototype does draw.
+ *
+ * FIXED, 30 SEPTEMBER (the setting row, settings-billing.jpg): four things this page's own use of
+ * the shared parts got wrong, none of them the parts themselves.
+ *  1. Every price read "$25/mo/mo" - `priceLabel` already returns "$25/mo" (`formatMonthlyPrice`,
+ *     the one price formatter this page uses everywhere else), and the plan card appended a
+ *     second "/mo" after it. Now the card splits that same string instead of appending a new one.
+ *  2. The plan grid was five cards to a row (`repeat(auto-fit, minmax(200px,1fr))`); the prototype
+ *     (`.g3`, s20.js/s21.js) is three. Fixed in `gwui-plan-grid`.
+ *  3. "Move to this" and "Contact us" were the normal button size, half the card's width; the
+ *     prototype's are `"btn sec sm"`, the small size, filling the card. Both are `size="small"
+ *     wide` now.
+ *  4. The Enterprise card was a plain white `Panel` like every other plan card; the prototype
+ *     draws it alone on the warm chat-colour fill (`background:var(--band)`, the same colour as
+ *     `--chat`). `gwui-plan-card-enterprise` now sets `background: var(--gw-bg)` (the product's
+ *     name for that same colour, #F7F1E5).
+ * Also: the subtitle "Your plan, and how many people it covers." is gone - settings-billing.jpg
+ * has no subtitle under "Plan and billing" at all; it was the product's own invention. And the
+ * `FieldRows` under "Your plan", "Invoices" and "Your check-ins" no longer sit inside a `Panel` -
+ * see FieldRow.tsx: `srow` in the prototype has no side padding and sits flat on the page.
  */
 
 function ThingsWeDoByHand() {
@@ -209,7 +228,10 @@ export function BillingPage() {
 
   return (
     <Page>
-      <PageTitle eyebrow={orgName} title="Plan and billing" subtitle="Your plan, and how many people it covers." />
+      {/* NO SUBTITLE HERE (Hafsah, 30 September, settings-billing.jpg): the prototype's own
+          Plan-and-billing page draws no sentence under its title at all - "Your plan, and how many
+          people it covers." was the product's own invention. */}
+      <PageTitle eyebrow={orgName} title="Plan and billing" />
 
       {notices.map((n) => (
         <Panel key={n.key}>
@@ -237,30 +259,28 @@ export function BillingPage() {
       )}
 
       <Section heading="Your plan">
-        <Panel pad={false}>
-          <FieldRows>
+        <FieldRows>
+          <FieldRow
+            label="Plan"
+            value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ' More people have accounts here than this plan covers.' : ''}`}
+            action={<Button kind="quiet" size="small" onClick={scrollToPlans}>Change</Button>}
+          />
+          <FieldRow
+            label="Next payment"
+            value={theNextPaymentLine(billingStatus, livePricing)}
+            action={(isSubscribed || isPaused) ? (
+              <Button kind="quiet" size="small" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>{portalMut.isPending ? 'Opening…' : 'Change card'}</Button>
+            ) : undefined}
+          />
+          <FieldRow label="Everyone counts" value={whoCounts(orgName)} />
+          {trialSentence && <FieldRow label="Free trial" value={trialSentence} />}
+          {usage && (
             <FieldRow
-              label="Plan"
-              value={`${thePlanLine(billingStatus, livePricing, freeGrounds)}${peopleOverCap ? ' More people have accounts here than this plan covers.' : ''}`}
-              action={<Button kind="quiet" size="small" onClick={scrollToPlans}>Change</Button>}
+              label="So far"
+              value={`${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'}, ${usage.reportsReleased} ${usage.reportsReleased === 1 ? 'report' : 'reports'} shared, and ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
             />
-            <FieldRow
-              label="Next payment"
-              value={theNextPaymentLine(billingStatus, livePricing)}
-              action={(isSubscribed || isPaused) ? (
-                <Button kind="quiet" size="small" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>{portalMut.isPending ? 'Opening…' : 'Change card'}</Button>
-              ) : undefined}
-            />
-            <FieldRow label="Everyone counts" value={whoCounts(orgName)} />
-            {trialSentence && <FieldRow label="Free trial" value={trialSentence} />}
-            {usage && (
-              <FieldRow
-                label="So far"
-                value={`${usage.checkIns} ${usage.checkIns === 1 ? 'check-in' : 'check-ins'}, ${usage.reportsReleased} ${usage.reportsReleased === 1 ? 'report' : 'reports'} shared, and ${usage.peopleTakingPart} ${usage.peopleTakingPart === 1 ? 'person' : 'people'} taking part.`}
-              />
-            )}
-          </FieldRows>
-        </Panel>
+          )}
+        </FieldRows>
       </Section>
 
       {!hasBillingHistory && covers === 'free' && (
@@ -280,21 +300,31 @@ export function BillingPage() {
             {PLANS.filter(p => p !== 'ENTERPRISE').map(plan => {
               const mine = (isSubscribed || isPaused) && orgSub?.plan === plan
               const pending = (createSubscriptionMut.isPending && createSubscriptionMut.variables === plan) || (changePlanMut.isPending && changePlanMut.variables === plan)
+              /* THE PRICE'S OWN "/mo" (Hafsah, 30 September): `priceLabel` returns the whole string,
+                 e.g. "$25/mo", already carrying its own "/mo" (the one formatter every other price
+                 on this page uses, `formatMonthlyPrice`). The prototype's plan card splits it into
+                 the big figure and a small muted "/mo" beside it (s20.js/s21.js's `PLANS.map`) - so
+                 this splits the same string instead of appending a second "/mo" after it, which is
+                 what read "$25/mo/mo" before. */
+              const price = priceLabel(plan) ?? ''
+              const showsPerMonth = price.endsWith('/mo')
+              const priceFigure = showsPerMonth ? price.slice(0, -3) : price
               return (
                 <Panel key={plan} className={mine ? 'gwui-plan-card gwui-plan-card-mine' : 'gwui-plan-card'}>
                   <p className="gwui-plan-name">{PLAN_LABELS[plan]}</p>
-                  <p className="gwui-plan-price">{priceLabel(plan)}<span>/mo</span></p>
+                  <p className="gwui-plan-price">{priceFigure}{showsPerMonth && <span>/mo</span>}</p>
                   <p className="gwui-plan-cap">{capLabel(plan)}</p>
-                  {mine ? <Tag tone="proven">Your plan</Tag> : (
-                    <Button kind="secondary" disabled={busy || isPaused} onClick={() => choosePlan(plan)}>{pending ? 'Opening…' : 'Move to this'}</Button>
+                  {/* tag("act","Your plan") in the prototype (s20.js/s21.js): the navy tag, not green. */}
+                  {mine ? <Tag tone="action">Your plan</Tag> : (
+                    <Button kind="secondary" size="small" wide disabled={busy || isPaused} onClick={() => choosePlan(plan)}>{pending ? 'Opening…' : 'Move to this'}</Button>
                   )}
                 </Panel>
               )
             })}
-            <Panel className="gwui-plan-card">
+            <Panel className="gwui-plan-card gwui-plan-card-enterprise">
               <p className="gwui-plan-name">Enterprise</p>
               <p className="gwui-plan-cap">Custom needs, volume pricing or dedicated support.</p>
-              <Button kind="secondary" onClick={() => { window.location.href = 'mailto:hello@myground.work?subject=Enterprise plan enquiry' }}>Contact us</Button>
+              <Button kind="secondary" size="small" wide onClick={() => { window.location.href = 'mailto:hello@myground.work?subject=Enterprise plan enquiry' }}>Contact us</Button>
             </Panel>
           </div>
         </Section>
@@ -302,13 +332,11 @@ export function BillingPage() {
 
       {invoices.length > 0 && (
         <Section heading="Invoices">
-          <Panel pad={false}>
-            <FieldRows>
-              {invoices.map((i) => (
-                <FieldRow key={`${i.paidOn}-${i.amountCents}`} label={whenItWas(i.paidOn, 'dayAndMonthLong')} value={`${formatDollars(i.amountCents)}, paid.`} />
-              ))}
-            </FieldRows>
-          </Panel>
+          <FieldRows>
+            {invoices.map((i) => (
+              <FieldRow key={`${i.paidOn}-${i.amountCents}`} label={whenItWas(i.paidOn, 'dayAndMonthLong')} value={`${formatDollars(i.amountCents)}, paid.`} />
+            ))}
+          </FieldRows>
           <Button kind="secondary" disabled={portalMut.isPending} onClick={() => portalMut.mutate()}>{portalMut.isPending ? 'Opening…' : 'Invoices and payment method'}</Button>
         </Section>
       )}
@@ -380,37 +408,35 @@ export function BillingPage() {
         ) : grounds.length === 0 ? (
           <Panel><p className="gwui-panel-text-muted">Nothing active yet.</p></Panel>
         ) : (
-          <Panel pad={false}>
-            <FieldRows>
-              {(grounds as any[]).map((g: any) => {
-                const balance: number | undefined = g.sessionsBalance
-                const isFree: boolean = !!g.isFreeGround
-                const extUsed: boolean = g.org?.freeExtensionUsed ?? false
-                return (
-                  <FieldRow
-                    key={g.id}
-                    label={g.label}
-                    value={(
-                      <span className="gwui-invite-actions">
-                        {isSubscribed ? (
-                          <Tag tone="proven">Unlimited sessions</Tag>
-                        ) : isFree ? (
-                          <Tag tone="proven">Free check-in</Tag>
-                        ) : balance !== undefined ? (
-                          <Tag tone={balance > 0 ? 'plain' : 'concern'}>{balance} session{balance !== 1 ? 's' : ''} left</Tag>
-                        ) : null}
-                        {!isSubscribed && !extUsed && <Tag tone="proven">Free extension available</Tag>}
-                        {!isSubscribed && extUsed && <Tag tone="plain">Free extension used</Tag>}
-                      </span>
-                    )}
-                    action={!isFree && !isSubscribed
-                      ? <Button kind="secondary" size="small" onClick={() => navigate('/billing/checkout', { state: { groundId: g.id, groundName: g.label } })}>Add sessions</Button>
-                      : undefined}
-                  />
-                )
-              })}
-            </FieldRows>
-          </Panel>
+          <FieldRows>
+            {(grounds as any[]).map((g: any) => {
+              const balance: number | undefined = g.sessionsBalance
+              const isFree: boolean = !!g.isFreeGround
+              const extUsed: boolean = g.org?.freeExtensionUsed ?? false
+              return (
+                <FieldRow
+                  key={g.id}
+                  label={g.label}
+                  value={(
+                    <span className="gwui-invite-actions">
+                      {isSubscribed ? (
+                        <Tag tone="proven">Unlimited sessions</Tag>
+                      ) : isFree ? (
+                        <Tag tone="proven">Free check-in</Tag>
+                      ) : balance !== undefined ? (
+                        <Tag tone={balance > 0 ? 'plain' : 'concern'}>{balance} session{balance !== 1 ? 's' : ''} left</Tag>
+                      ) : null}
+                      {!isSubscribed && !extUsed && <Tag tone="proven">Free extension available</Tag>}
+                      {!isSubscribed && extUsed && <Tag tone="plain">Free extension used</Tag>}
+                    </span>
+                  )}
+                  action={!isFree && !isSubscribed
+                    ? <Button kind="secondary" size="small" onClick={() => navigate('/billing/checkout', { state: { groundId: g.id, groundName: g.label } })}>Add sessions</Button>
+                    : undefined}
+                />
+              )
+            })}
+          </FieldRows>
         )}
       </Section>
 
