@@ -233,8 +233,19 @@ describe('Grace, an admin, reads Connections', () => {
     const brief = within(more).getByRole('region', { name: 'The brief before a hard conversation' })
     expect(brief.textContent).toContain('One page on one person: what they said they’d do, what they’re waiting on, what they raised. Never a score.')
     expect(within(brief).getByText('Needs a key')).toBeTruthy()
-    for (const name of ['Your goals come in', 'Roles and handovers', 'Your handbook', 'Start a check-in from your own system']) {
-      expect(hrefOf(within(more).getByRole('region', { name }), 'Set up')).toBe('/settings/tools')
+    const start = within(more).getByRole('region', { name: 'Start a check-in from your own system' })
+    expect(within(start).getByText('Needs a key')).toBeTruthy()
+    /*
+     * GROUP 1 REVIEW: ONLY "START A CHECK-IN" AND "THE BRIEF" NEED A KEY. The other four cards here
+     * are not backed by the credential system the way those two are - the prototype's own screen
+     * (connections.txt) says "Not set up" for them, and saying "Needs a key" for every card here
+     * was the fault sent back.
+     */
+    for (const name of ['Your goals come in', 'Roles and handovers', 'Your handbook']) {
+      const region = within(more).getByRole('region', { name })
+      expect(within(region).getByText('Not set up')).toBeTruthy()
+      expect(within(region).queryByText('Needs a key')).toBeNull()
+      expect(hrefOf(region, 'Set up')).toBe('/settings/tools')
     }
   })
 

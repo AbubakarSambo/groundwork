@@ -319,6 +319,12 @@ a.gwui-person-row:hover { background: var(--gw-page); }
   padding: 0; cursor: pointer; font-family: inherit; text-decoration: underline;
 }
 .gwui-invite-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+/* A FIELD BESIDE ITS BUTTON, EVEN ON A PHONE (group 1 review, "Add it, switched off"): `.gwui-input`
+   is `width: 100%` on its own, which inside a flex row computes a wide flex-basis and pushes the
+   button onto its own line as soon as the row is narrower than the field's natural width. Letting
+   the field shrink (`flex: 1 1 140px`, `width: auto`) keeps it and its button on the same row down
+   to a phone's own width, the way the prototype draws it. */
+.gwui-invite-actions > input.gwui-input { flex: 1 1 140px; width: auto; }
 .gwui-invite-answer { margin-top: 16px; }
 .gwui-invite-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--gw-border); }
 .gwui-invite-link-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }

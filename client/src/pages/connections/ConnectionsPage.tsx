@@ -66,13 +66,19 @@ export function kindOf(url: string): 'slack' | 'teams' {
   return /^https:\/\/hooks\.slack\.com\//i.test(url.trim()) ? 'slack' : 'teams'
 }
 
-const MORE: { key: keyof typeof SCOPE_FOR; title: string; line: string }[] = [
+/**
+ * "NEEDS A KEY" ONLY WHERE A KEY IS THE NEXT STEP (group 1 review): every card here used to say
+ * "Needs a key" - true of "Start a check-in from your own system" and "The brief before a hard
+ * conversation", the two backed directly by a credential on "Connect your own tools", but not of
+ * the other four, which the prototype's own screen (connections.txt) says are simply "Not set up".
+ */
+const MORE: { key: keyof typeof SCOPE_FOR; title: string; line: string; needsKey?: boolean }[] = [
   { key: 'people', title: 'Your people come in', line: 'Who works here and who they report to, from your HR system. Joiners, movers and leavers arrive too.' },
   { key: 'goals', title: 'Your goals come in', line: 'Goals, projects and decisions from wherever you keep them. Groundwork points at yours instead of copying them.' },
   { key: 'roles', title: 'Roles and handovers', line: 'Who holds which role and since when, so a handover leaves a written brief.' },
   { key: 'handbook', title: 'Your handbook', line: 'Documents people can ask in plain words; the answer quotes the page it came from.' },
-  { key: 'start', title: 'Start a check-in from your own system', line: 'Your system opens one, sends people the link, and is told when it’s done. Never what anyone said.' },
-  { key: 'brief', title: 'The brief before a hard conversation', line: 'One page on one person: what they said they’d do, what they’re waiting on, what they raised. Never a score.' },
+  { key: 'start', title: 'Start a check-in from your own system', line: 'Your system opens one, sends people the link, and is told when it’s done. Never what anyone said.', needsKey: true },
+  { key: 'brief', title: 'The brief before a hard conversation', line: 'One page on one person: what they said they’d do, what they’re waiting on, what they raised. Never a score.', needsKey: true },
 ]
 
 /** The counts, said as a person would say them, one or many. */
@@ -164,7 +170,11 @@ export function ConnectionsPage() {
                 <SubHeading>{m.title}</SubHeading>
                 <p className="gwui-panel-text-muted">{m.line}</p>
                 <div className="gwui-sentence-row">
-                  {hasAKeyFor(creds.data, SCOPE_FOR[m.key]) ? <Tag tone="proven">Connected</Tag> : <Tag tone="attention">Needs a key</Tag>}
+                  {hasAKeyFor(creds.data, SCOPE_FOR[m.key])
+                    ? <Tag tone="proven">Connected</Tag>
+                    : m.needsKey
+                      ? <Tag tone="attention">Needs a key</Tag>
+                      : <Tag tone="plain">Not set up</Tag>}
                   <Button kind="quiet" size="small" to="/settings/tools">Set up</Button>
                 </div>
               </Stack>
