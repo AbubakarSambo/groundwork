@@ -466,3 +466,13 @@ I found no sentence "No patterns have repeated often enough to show yet." in the
 **Request 90: one form of number.** `howItIsGoing.latestSummary` counts in one form: `"Four of the six people have answered so far."` (words up to ten, figures after: `"12 of the 41 people have answered so far."`).
 
 **Request 86: a question, answered in `docs/requests-to-engine.md`.** A session that has been started is now read as open on Today, in the assistant and in a guest's answer, whatever `availableFrom` still says. `availableFrom` itself is unchanged; it only says when the session was first offered.
+
+## 30 September, night: a conversation point in the lead's judgement (decision 56, point 3)
+
+The report's `theJudgement` can now carry `conversationPoints`, a list of plain sentences for the lead only. It is filled when the judgement rests on a goal the person has not been told about yet, for example:
+
+"Tobi has not been told about this goal yet, so talk it through with Tobi before reading anything into it."
+
+Draw each sentence under the judgement, as the lead reads it. The person, a colleague and an admin who only reads never receive it. The product writes it, not the model.
+
+Also from tonight: in "What the record shows over time", the lead is now named, or is "you" when the lead reads it ("In session 3, you committed Aisha Otieno to call the client."), never "the lead".
