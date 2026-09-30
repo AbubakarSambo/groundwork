@@ -1960,7 +1960,7 @@ export class BoardService {
       .filter((d) => d.status === DependencyStatus.BLOCKING)
       .map((d) => ({
         question: `Somebody is waiting on ${inASentence(d.what)}, so it needs deciding.`,
-        why: 'A hard blocker. Someone cannot move until this is decided.',
+        why: 'Someone cannot move until this is decided.',
         owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? NOBODY_NAMED_TO_DECIDE) : (d.onLabel ?? NOBODY_NAMED_TO_DECIDE),
         source: 'blocker' as const,
       }));

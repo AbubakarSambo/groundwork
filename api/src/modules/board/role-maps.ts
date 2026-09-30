@@ -121,7 +121,7 @@ export const ROLE_MAPS: Record<RoleFunction, RoleMap> = {
     label: 'Sales and expansion',
     rootFailure: 'Avoidance. Fear of exposure and rejection, dressed as productivity.',
     rootSuccess: 'Deliberate exposure. The scary right thing, in reps, on the right targets.',
-    onTrackMeans: 'Named buyers with budget and authority, real pipeline moving, dated next actions.',
+    onTrackMeans: 'Named buyers with budget and authority, real sales moving towards a close, dated next actions.',
     goingWrongLooksLike: 'Plenty of activity and warm conversations, no named buyer who can actually decide.',
     neutralProbes: [
       /* Read on a live board with a word missing: "someone who can actually buy, budget and authority". */

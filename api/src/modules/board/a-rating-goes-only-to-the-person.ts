@@ -31,7 +31,7 @@ export function contributionAsThisReaderMayRead(
       positionLabel: null,
       ...(r.note ? { note: r.note } : {}),
       reason: r.remitDefined && r.nothingCheckable
-        ? `Nothing checkable. Nothing ${who} has said so far can be checked by somebody else yet. A number, a date or a document for what moved would change that.`
+        ? `Nothing ${who} has said so far is checkable, because nobody else can check it yet. A number, a date or a document for what moved would change that.`
         : null,
       nothingCheckable: !!r.nothingCheckable,
       isBlocked: r.isBlocked,
