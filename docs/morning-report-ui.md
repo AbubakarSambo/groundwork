@@ -6909,4 +6909,6 @@ The review's pictures are in the scratchpad's `pictures/review-g1d/`.
 
 Not checked on screen, because no local organisation has them: the developer page after API access is approved, and a connected WhatsApp or Slack. Both were judged from the code and its tests.
 
+**The side-by-side pictures, where you can open them.** They are in `/Users/hafsahjumare/Documents/GitHub/groundwork-pictures/`, next to the project folder and outside git. There is one folder for each of 13 screens. Each holds the prototype's picture, the screen before the fixes, and the screen now. Its `README.md` says, screen by screen, what differed and what was fixed.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
