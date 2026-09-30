@@ -144,7 +144,35 @@ async function signIn(page: Page, email: string) {
   await page.waitForTimeout(2500);
 }
 
-/** Every visible button-like element, and how many of those are navy (primary). */
+/**
+ * Every visible button-like element, and how many of those are navy (primary) - counted ONLY
+ * inside the page's own content area, on both sides.
+ *
+ * WHY THIS CHANGED (Hafsah, 30 September, item 1): counting the whole document also counted the
+ * sidebar and the phone tab bar - the product's `<aside class="gw-sidebar-desktop">` rail lists
+ * every one of the reader's check-ins as a link, plus "Start a check-in", "Jump to", the
+ * organisation switcher and "Settings, help, sign out", none of which the prototype's own sidebar
+ * carries in the same shape (a fixed nav list, no live check-in rows) - so the two totals were
+ * never comparable, and the product could fail the count by having MORE CHECK-INS, which has
+ * nothing to do with the screen being reviewed. The product's Feedback button (`AppShell.tsx`'s
+ * `FeedbackWidget`) is a floating pill outside the page entirely, on every authenticated screen,
+ * and the prototype has nothing at all in that position - counting it would fail every product
+ * screen by exactly one, forever, for a control neither rule is about.
+ *
+ * Both sides put the page's own content in a `<main id="main">`, as a sibling of the sidebar/rail
+ * and the tab bar, never a descendant of either:
+ *   - product: `AppShell.tsx`, `<AppSidebar />` then `<main id="main" className="gw-main-content">
+ *     {children}</main>` then `<FeedbackWidget />` - all three siblings. The rail, the phone tab
+ *     bar (`gw-sidebar-mobile`, inside `AppSidebar`) and the feedback pill all sit OUTSIDE this
+ *     `<main>`, so scoping the count to it excludes all three without listing any of them by name.
+ *   - prototype: `shell()`, `groundwork-prototype.html`: `<div class="shell">${rail}<main
+ *     class="main" id="main">...${body}...</main></div>${tb}` - the same shape: the rail (`nav.rail`)
+ *     and the phone tab bar (`nav.tabbar`) are siblings of `#main`, not inside it.
+ *
+ * So both sides are counted the same way: every visible button or link-as-button inside `#main`
+ * (still excluding the prototype's own dev bar, `#dev`/`#devshow`, which sits outside `#main`
+ * anyway but is excluded for clarity). Navy is still by computed background colour, not class.
+ */
 async function countButtons(page: Page): Promise<{ total: number; primary: number; labels: string[] }> {
   return page.evaluate((NAVY) => {
     const isVisible = (e: Element) => {
@@ -152,7 +180,8 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
       const cs = getComputedStyle(e);
       return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
     };
-    const nodes = Array.from(document.querySelectorAll('button, a')).filter((e) => {
+    const root = document.querySelector('#main') ?? document.body;
+    const nodes = Array.from(root.querySelectorAll('button, a')).filter((e) => {
       if (e.closest('#dev, #devshow')) return false; // the prototype's own dev bar, not the screen
       const cs = getComputedStyle(e);
       const looksLikeAButton = e.tagName === 'BUTTON' || cs.display.includes('flex') || cs.display.includes('inline-flex') || e.className.toString().includes('btn');
