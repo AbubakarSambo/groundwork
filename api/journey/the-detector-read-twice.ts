@@ -57,10 +57,13 @@ if (!/localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL ?? '') || !/gw_/.tes
 
 const STEADY = process.env.STEADY === '1';
 const RECALL = process.env.RECALL === '1';
+/* MANY=1: every check-in read 6 times at the default setting and 6 times at the steady setting, all kept
+   to many-reads.json for comparing single reads, the steady setting and majority reading (30 Sep 2026). */
+const MANY = process.env.MANY === '1';
 const ONLY_SCENARIOS = process.env.SCENARIOS ? new Set(process.env.SCENARIOS.split(',').map((s) => s.trim()).filter(Boolean)) : null;
 
 interface ARead { raw: Set<string>; kept: Set<string> }
-type AnOptions = { temperature?: number; seed?: number };
+type AnOptions = { temperature?: number; seed?: number; thinkingBudget?: number };
 
 async function main() {
   const folder = path.resolve(__dirname, process.argv[2] ?? 'all-24/run-20');
@@ -126,6 +129,53 @@ async function main() {
       select: { onParticipantId: true, status: true, what: true },
     });
     return { content, block, statedGoals, lastPeriod, deps };
+  }
+
+  if (MANY) {
+    const out: any[] = [];
+    for (const s of scenarios) {
+      const checkIns = await prisma.checkIn.findMany({
+        where: { groundId: s.groundId, patternsAnalyzedAt: { not: null } },
+        select: {
+          id: true, groundId: true, participantId: true, sessionNumber: true, completedAt: true, startedAt: true, createdAt: true,
+          ground: { select: { cadence: true } }, participant: { select: { user: { select: { email: true } } } },
+        },
+        orderBy: { sessionNumber: 'asc' },
+      });
+      await Promise.all(checkIns.map(async (checkIn: any) => {
+        try {
+          const ctx = await contextFor(checkIn);
+          if (!ctx) return;
+          const { content, block, statedGoals, lastPeriod, deps } = ctx;
+          const one = (o: AnOptions) => readOnce(checkIn, content, block, statedGoals, lastPeriod, deps, o)
+            .then((r) => ({ raw: [...r.raw], kept: [...r.kept] }))
+            .catch((err: any) => ({ failed: String(err?.message ?? err).slice(0, 80) }));
+          const person = (checkIn.participant?.user?.email ?? 'unknown').split('@')[0].split('.')[0];
+          if (process.env.MANY_MORE === '1') {
+            /* The second round: ten steady reads (two copies of five, for most of five agreeing),
+               and six steady reads with the smallest thinking budget the model allows. */
+            const reads = await Promise.all([
+              ...Array.from({ length: 10 }, () => one(PATTERN_DETECTION_STEADY_OPTIONS)),
+              ...Array.from({ length: 6 }, () => one({ ...PATTERN_DETECTION_STEADY_OPTIONS, thinkingBudget: 128 } as any)),
+            ]);
+            out.push({ scenario: s.name, person, session: checkIn.sessionNumber, checkInId: checkIn.id, steady: reads.slice(0, 10), steadyLittleThinking: reads.slice(10) });
+            return;
+          }
+          const reads = await Promise.all([
+            ...Array.from({ length: 6 }, () => one({})),
+            ...Array.from({ length: 6 }, () => one(PATTERN_DETECTION_STEADY_OPTIONS)),
+          ]);
+          out.push({ scenario: s.name, person, session: checkIn.sessionNumber, checkInId: checkIn.id, normal: reads.slice(0, 6), steady: reads.slice(6) });
+        } catch (err: any) {
+          process.stderr.write(`skipped ${s.name}/${checkIn.id}: ${err?.message ?? err}\n`);
+        }
+      }));
+      fs.writeFileSync(path.join(folder, process.env.MANY_MORE === '1' ? 'many-reads-2.json' : 'many-reads.json'), JSON.stringify(out, null, 1));
+      process.stderr.write(`many-read ${s.name}\n`);
+    }
+    console.log(`MANY mode done: ${out.length} check-ins, 12 reads each, kept in many-reads.json.`);
+    await app.close();
+    process.exit(0);
   }
 
   if (RECALL) {

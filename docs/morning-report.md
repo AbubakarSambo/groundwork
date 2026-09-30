@@ -10,6 +10,21 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settled as proposed (60), the first threshold for week 10 (61), old patterns start the person-first process on release day (62), only the lead confirms setup unless the lead has left the organisation (63), the setup part of "how the leading is landing" restored without the three-period rule (64), and Ask Groundwork opened inside a check-in knows which one (65).
 
+**Patterns, first round of measuring (the model answers again from about 11:40).** 47 check-ins from 12 run-20 scenarios, each read 12 times: 6 at the normal setting and 6 at the steady setting. "The same" means the person-and-pattern pairs two separate copies of a way of reading find across a whole scenario. "Real patterns" are the ones at least half of all 12 reads found.
+
+| Way of reading | The same | Real patterns still found |
+| --- | --- | --- |
+| One normal read (today) | 36% | 64% |
+| One steady read | 50% | 80% |
+| Two normal reads, both must agree | 49% | 48% |
+| Three normal reads, most must agree | 55% | 77% |
+| Three steady reads, most must agree | 68% | 90% |
+
+- Three steady reads, keeping what at least two agree on, is the best so far on both counts, and finds more real patterns than today's single read, not fewer. Nothing is removed or weakened.
+- It is still short of the aim of 8 in 10. Even at its steadiest setting the model does not give the same answer twice, and the difference starts in its first reading (two steady readings of the same check-in share 60% of what they name), not in the second call that confirms a pattern.
+- Keeping only what two normal reads both agree on is steadier but loses half the real patterns, so it is ruled out.
+- A second round is running: five steady reads by majority, and the steady setting with the smallest thinking budget the model allows.
+
 **Done while the model was down** (`0bfd0d04`, `4e7983c8`, `53621395`, `d55bdf32`, `99fac00a`):
 - **Decision 62.** The migration now starts every existing pattern's clock on the day it runs: nothing is readable by the lead on release day, the person is shown theirs first, and the lead's 3 and 7 days count from then. The release questions list it as changing data, and the edit was accepted this time.
 - **Decision 63.** One rule decides who may confirm setup: the lead, or an admin of the same organisation once the lead has left it (the account is switched off, the same sign decision 53 already uses). It covers the length, rhythm and success, lines, private notes, sharing a note, questions for people, and success restated, on the old chat and in Ask Groundwork alike. This also narrows things: before, any admin could add or change a line or a note at any time. When an admin confirms in the lead's place, the line, note, question card or success version carries the sentence, for example "Ngozi Bello confirmed this because Tunde Ade has left the organisation." A new migration adds that one empty column to three tables and changes no data.

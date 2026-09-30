@@ -93,6 +93,7 @@ api/journey/*
 !api/journey/context-chat-equivalence.ts
 # Reads a stored run's conversations twice through the pattern detector; writes nothing to the database.
 !api/journey/the-detector-read-twice.ts
+!api/journey/how-steady-each-way-is.py
 
 # AND THE 24-SCENARIO RUNNER, for the same reason, asked for by the screens workspace on
 # 26 September 2026: `api/journey/all-24/` only existed on one computer, so the other workspace
