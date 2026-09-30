@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { groundsApi } from '@/api/grounds'
+import './ui/gw-ui.css'
 
 /**
  * THE OTHER BOARDS YOU ARE IN, WITHOUT GOING BACK TO THE LIST TO FIND THEM.
@@ -28,6 +29,11 @@ import { groundsApi } from '@/api/grounds'
  * where the prototype's own tab row has an empty slot: beside "Views ▾" (which nothing in the
  * product answers yet), restyled for a light ground. `TheCheckInHeader` renders it there via its
  * `trailing` prop.
+ *
+ * BOARD REVIEW, 30 SEPTEMBER: rebuilt from the shared parts to join `REBUILT_PAGES` - the trigger
+ * and each option read at 12.5px, a finding's own line at 11.5px, both below the prototype's own
+ * 13px floor. Everything here is one fixed, light-ground look (no dark/light toggle like the
+ * board's own header), so it needs no `--gwui-*` custom property, only plain classes.
  */
 export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
   const navigate = useNavigate()
@@ -46,50 +52,34 @@ export function TheOtherBoardsYouAreIn({ groundId }: { groundId: string }) {
   if (others.length === 0) return null
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="gwui-boards-switcher">
       <button
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8, maxWidth: 220,
-          background: 'white', border: '1px solid var(--gw-border)', color: 'var(--gw-text)',
-          borderRadius: 8, padding: '6px 10px', fontSize: 14.5, fontWeight: 600,
-          cursor: 'pointer', fontFamily: 'inherit',
-        }}
+        className="gwui-boards-trigger"
       >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span className="gwui-boards-trigger-label">
           {here?.label ?? 'This board'}
         </span>
-        <span aria-hidden style={{ color: 'var(--gw-sub)' }}>{open ? '▴' : '▾'}</span>
+        <span aria-hidden className="gwui-boards-trigger-caret">{open ? '▴' : '▾'}</span>
       </button>
 
       {open && (
-        <div
-          role="listbox"
-          style={{
-            position: 'absolute', zIndex: 20, top: 'calc(100% + 6px)', right: 0, minWidth: 260, maxWidth: 360,
-            background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: 6,
-            boxShadow: '0 10px 30px rgba(20,24,40,.18)', maxHeight: 320, overflowY: 'auto',
-          }}
-        >
+        <div role="listbox" className="gwui-boards-menu">
           {others.map((g) => (
             <button
               key={g.id}
               role="option"
               aria-selected={false}
               onClick={() => { setOpen(false); navigate(`/grounds/${g.id}/board`) }}
-              style={{
-                display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none',
-                color: 'var(--gw-text)', fontSize: 14.5, padding: '8px 10px', borderRadius: 7,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
+              className="gwui-boards-option"
             >
-              <div style={{ fontWeight: 600 }}>{g.label}</div>
+              <div className="gwui-boards-option-title">{g.label}</div>
               {/* What the last round found, the same line the check-in list leads with. */}
               {g.latestFinding && (
-                <div style={{ color: 'var(--gw-sub)', fontSize: 13, lineHeight: 1.4, marginTop: 2 }}>
+                <div className="gwui-boards-option-finding">
                   {String(g.latestFinding).slice(0, 90)}{String(g.latestFinding).length > 90 ? '…' : ''}
                 </div>
               )}

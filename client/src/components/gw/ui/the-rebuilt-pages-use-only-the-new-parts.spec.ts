@@ -265,6 +265,10 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'components/gw/WhatSuccessLooksLike.tsx',
       'components/gw/TargetsBand.tsx',
       'components/gw/Suggestions.tsx',
+      'components/gw/how-it-is-going.tsx',
+      'components/gw/what-to-settle-together.tsx',
+      'components/gw/a-second-press-before-it-is-gone.tsx',
+      'components/gw/TheOtherBoardsYouAreIn.tsx',
     ])
   })
 
