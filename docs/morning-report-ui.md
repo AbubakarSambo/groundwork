@@ -6911,4 +6911,12 @@ Not checked on screen, because no local organisation has them: the developer pag
 
 **The side-by-side pictures, where you can open them.** They are in `/Users/hafsahjumare/Documents/GitHub/groundwork-pictures/`, next to the project folder and outside git. There is one folder for each of 13 screens. Each holds the prototype's picture, the screen before the fixes, and the screen now. Its `README.md` says, screen by screen, what differed and what was fixed.
 
+**The API tests after the second merge (1 October).** 12,086 of 12,090 passed at first.
+- Three of the four failures came from group 1's own wording. They are API tests that read screen files. Two were updated to the new words, and the promise they check is unchanged.
+- The rebuild had dropped the words "shown once" from the embed's secret box, leaving them only in a passing message. The box says it again.
+- The password sign-up test fails only when every test runs at once, and passes on its own.
+- The last one is the engine's own new test, and is request 94.
+
+From now on, each group's checks also run the API tests that read screen files.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
