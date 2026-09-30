@@ -189,11 +189,6 @@ export function SettingsPage() {
     onSuccess: () => { toast.success('Your way in is gone. What you shared stays with the check-ins you were part of.'); logout(); navigate('/auth') },
     onError: () => toast.error('That did not happen. Nothing has changed - try again.'),
   })
-  function downloadMyData() {
-    if (!myData) return
-    saveAsAFile(myData)
-  }
-
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const leaveOrg = useMutation({
     mutationFn: authApi.leaveOrg,
@@ -311,49 +306,67 @@ export function SettingsPage() {
           <Stack gap={12}>
             <div className="gwui-sentence-row">
               <SubHeading>Everything you’ve written</SubHeading>
-              {!myData && (
-                <Button kind="quiet" size="small" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
-                  {loadMyData.isPending ? 'Downloading…' : 'Download it'}
-                </Button>
-              )}
+              {/*
+               * THE PROTOTYPE'S OWN OUTLINED BUTTON (own-settings.jpg; group 1 re-review, fault E):
+               * a quiet text link read as decoration, not something to press - "Download it" is
+               * `kind="secondary"`, the same outlined weight the prototype draws it in.
+               */}
+              <Button kind="secondary" size="small" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
+                {loadMyData.isPending ? 'Downloading…' : 'Download it'}
+              </Button>
             </div>
             <p className="gwui-panel-text-muted">
               Every answer, which check-in it came from, and nothing anyone else wrote. As a file you can open.
             </p>
-          </Stack>
-          {myData && (
-            <Stack gap={12}>
+            {/*
+             * "Saved. ..." (fault E): confirms the file actually saved, then states what it holds,
+             * with the real counts - never a second "Download all of it" button repeating the one
+             * action "Download it" already did.
+             */}
+            {myData && (
               <div>
                 <p className="gwui-panel-text-muted">
-                  You have written {myData.recordEntries.length} answer{myData.recordEntries.length === 1 ? '' : 's'}, in{' '}
+                  Saved. You have written {myData.recordEntries.length} answer{myData.recordEntries.length === 1 ? '' : 's'}, in{' '}
                   {myData.grounds.length} check-in{myData.grounds.length === 1 ? '' : 's'}.
                 </p>
                 <Stack gap={0}>
                   {myData.grounds.map(g => <p key={g.id} className="gwui-panel-text">{g.label}</p>)}
                 </Stack>
               </div>
-              <div className="gwui-invite-actions">
-                <Button kind="secondary" onClick={downloadMyData}>Download all of it</Button>
-                {!showEraseConfirm && <Button kind="quiet" onClick={() => setShowEraseConfirm(true)}>Erase it</Button>}
+            )}
+          </Stack>
+          {/*
+           * "Erase it" IS REACHABLE WITHOUT DOWNLOADING FIRST (fault E), as it was before "Download
+           * it" started saving a file on press: it no longer waits for `myData`. It is drawn as a
+           * plain text link (`.gwui-plain-link`), like "Cancel" and "Never mind" elsewhere on this
+           * page, rather than a second boxed button - the prototype's own screen has no erase flow
+           * at all, so a second always-visible button here would put this screen over the
+           * prototype's own button count (e2e/the-prototype-count-of-buttons.spec.ts already holds
+           * it to exactly the prototype's five).
+           */}
+          <Stack gap={12}>
+            {!showEraseConfirm && (
+              <div>
+                <button type="button" className="gwui-plain-link" onClick={() => setShowEraseConfirm(true)}>Erase it</button>
               </div>
-              {showEraseConfirm && (
-                <Stack gap={10}>
-                  <p className="gwui-panel-text-muted">
-                    Your name and email are removed everywhere and cannot be brought back. What you wrote
-                    into these check-ins stays on the record, without your name on it, because the other
-                    people on them have their own account of the same events. Download a copy first if
-                    you want one.
-                  </p>
-                  <div className="gwui-invite-actions">
-                    <Button kind="danger" onClick={() => eraseMyData.mutate()} disabled={eraseMyData.isPending}>
-                      {eraseMyData.isPending ? 'Erasing…' : 'Yes, erase it'}
-                    </Button>
-                    <Button kind="quiet" onClick={() => setShowEraseConfirm(false)}>Cancel</Button>
-                  </div>
-                </Stack>
-              )}
-            </Stack>
-          )}
+            )}
+            {showEraseConfirm && (
+              <Stack gap={10}>
+                <p className="gwui-panel-text-muted">
+                  Your name and email are removed everywhere and cannot be brought back. What you wrote
+                  into these check-ins stays on the record, without your name on it, because the other
+                  people on them have their own account of the same events. Download a copy first if
+                  you want one.
+                </p>
+                <div className="gwui-invite-actions">
+                  <Button kind="danger" onClick={() => eraseMyData.mutate()} disabled={eraseMyData.isPending}>
+                    {eraseMyData.isPending ? 'Erasing…' : 'Yes, erase it'}
+                  </Button>
+                  <Button kind="quiet" onClick={() => setShowEraseConfirm(false)}>Cancel</Button>
+                </div>
+              </Stack>
+            )}
+          </Stack>
         </Panel>
       </Section>
 

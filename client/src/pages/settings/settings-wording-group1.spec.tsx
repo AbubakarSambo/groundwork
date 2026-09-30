@@ -55,23 +55,42 @@ describe('Your name, as the prototype words it', () => {
 })
 
 describe('Your data', () => {
-  it('is headed "Everything you’ve written", with "Download it" straight away', async () => {
+  it('is headed "Everything you’ve written", with "Download it" drawn as the prototype’s own outlined button', async () => {
     open({ id: 'u1', role: 'MEMBER', organizationName: 'Baridi Appliances', firstName: 'Grace', lastName: 'Achieng', email: 'grace@baridi.co.ke' })
     expect(screen.getByText('Everything you’ve written')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Download it' })).toBeTruthy()
+    const downloadBtn = screen.getByRole('button', { name: 'Download it' })
+    expect(downloadBtn).toBeTruthy()
+    /* GROUP 1 RE-REVIEW, FAULT E: own-settings.jpg draws this as an outlined secondary button,
+       not a quiet text link. */
+    expect(downloadBtn.className).toContain('gwui-btn-secondary')
   })
 
-  it('after "Download it", the sentence names answers and check-ins, matching the list shown', async () => {
+  it('after "Download it", says the file saved and names answers and check-ins, matching the list shown', async () => {
     open({ id: 'u1', role: 'MEMBER', organizationName: 'Baridi Appliances', firstName: 'Grace', lastName: 'Achieng', email: 'grace@baridi.co.ke' })
     await userEvent.click(screen.getByRole('button', { name: 'Download it' }))
-    expect(await screen.findByText('You have written 28 answers, in 7 check-ins.')).toBeTruthy()
+    expect(await screen.findByText('Saved. You have written 28 answers, in 7 check-ins.')).toBeTruthy()
     expect(screen.getAllByText(/^Check-in \d$/).length).toBe(7)
     expect(screen.queryByText(/grounds?:/)).toBeNull()
-    /* ONE BUTTON, MATCHING THE PROTOTYPE (e2e/the-prototype-count-of-buttons.spec.ts): "Show me"
-       and "Download it" used to be two separate always-visible buttons where the prototype's own
-       screen has one; they are now the same button, and it disappears once the record is loaded. */
-    expect(screen.queryByRole('button', { name: 'Download it' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Show me' })).toBeNull()
+    /* ONE BUTTON, MATCHING THE PROTOTYPE (e2e/the-prototype-count-of-buttons.spec.ts): no second
+       "Download all of it" button appears once the record is loaded - "Download it" stays, in
+       case somebody wants the file again, but nothing new is added beside it. */
+    expect(screen.queryByText('Download all of it')).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Download it' }).length).toBe(1)
+  })
+
+  /*
+   * "Erase it" IS REACHABLE WITHOUT DOWNLOADING FIRST (fault E), as it was before "Download it"
+   * started saving a file on press. It is a plain text link, not a second boxed button, which is
+   * how it stays off the button-count check without needing `myData` loaded first.
+   */
+  it('"Erase it" is reachable straight away, with no download needed first', async () => {
+    open({ id: 'u1', role: 'MEMBER', organizationName: 'Baridi Appliances', firstName: 'Grace', lastName: 'Achieng', email: 'grace@baridi.co.ke' })
+    const eraseLink = screen.getByText('Erase it')
+    expect(eraseLink.tagName).toBe('BUTTON')
+    expect(eraseLink.className).toContain('gwui-plain-link')
+    await userEvent.click(eraseLink)
+    expect(await screen.findByText(/Your name and email are removed everywhere/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Yes, erase it' })).toBeTruthy()
   })
 })
 

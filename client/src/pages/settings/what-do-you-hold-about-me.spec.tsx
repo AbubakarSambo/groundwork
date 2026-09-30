@@ -66,25 +66,38 @@ describe('what the page shows', () => {
    * {grounds} check-ins." `checkIns.length` (sessions) is no longer named in this sentence, since
    * nothing on screen shows that count any more.
    */
+  /*
+   * UPDATED (group 1 re-review, fault E): the sentence now confirms the file actually saved
+   * ("Saved. ...") before stating what it holds, with the real counts.
+   */
   it('counts what is held and names the check-ins it came from', () => {
     expect(CODE).toMatch(/myData\.recordEntries\.length/)
     expect(CODE).toMatch(/myData\.grounds\.length/)
     expect(CODE).toMatch(/myData\.grounds\.map/)
-    expect(CODE).toMatch(/You have written/)
+    expect(CODE).toMatch(/Saved\. You have written/)
   })
 
   /*
-   * UPDATED (group 1 review): the JSON-building code moved into a shared `saveAsAFile(data)`
-   * helper, called once from "Download it" (`loadMyData`'s own `onSuccess`, with the data that
-   * request just returned) and again from "Download all of it" further down, once the record is
-   * already on screen. The invariant this test protects - "Download all of it" saves the very data
-   * that is already on screen, not a second, possibly different, request - still holds:
-   * `downloadMyData` passes the `myData` state variable itself into the helper, never re-fetching.
+   * REMOVED (group 1 re-review, fault E): "Download all of it" repeated the one action "Download
+   * it" already did, with no different data behind it, so it is gone rather than kept as a second
+   * button. `saveAsAFile` is still the one place the JSON is built, called from `loadMyData`'s own
+   * `onSuccess` with the data that request just returned - never a second, possibly different,
+   * request for the same thing.
    */
-  it('"Download all of it" is built from what is on screen', () => {
-    // A second request could return something different from what the page just told them.
+  it('the file is built once, from what "Download it" itself just fetched', () => {
     expect(CODE).toMatch(/function saveAsAFile\(data: MyData\)[\s\S]*?JSON\.stringify\(data, null, 2\)/)
-    expect(CODE).toMatch(/function downloadMyData\(\)[\s\S]*?saveAsAFile\(myData\)/)
+    expect(CODE).not.toMatch(/Download all of it/)
+    expect(CODE).not.toMatch(/function downloadMyData/)
+  })
+
+  /*
+   * "Erase it" IS REACHABLE WITHOUT DOWNLOADING FIRST (fault E): drawn as a plain text link
+   * (`.gwui-plain-link`, like "Cancel" and "Never mind" elsewhere on this page), so it does not
+   * need to wait for `myData` to become a second always-visible boxed button - see the rendered
+   * check in settings-wording-group1.spec.tsx, which confirms it actually works this way.
+   */
+  it('is a plain text link, not a second boxed button beside "Download it"', () => {
+    expect(CODE).toMatch(/className="gwui-plain-link" onClick=\{\(\) => setShowEraseConfirm\(true\)\}>Erase it</)
   })
 })
 
