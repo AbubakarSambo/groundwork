@@ -49,3 +49,75 @@ describe('AnthropicService.respondStream — streamed deltas are normalized (bou
     expect(streamed).toContain('pipeline reviews... and "more"');
   });
 });
+
+/**
+ * STEADINESS PLUMBING (Hafsah, 30 September 2026, step 2): the pattern detector needs a way to ask
+ * both its calls for the model's steadiest setting - temperature 0 and a fixed seed - without
+ * changing what every other caller of respond()/extract() gets, since neither took an options
+ * argument before. Nobody sets these by default; see the long comment above `temperature` in
+ * extract() and PATTERN_DETECTION_STEADY_OPTIONS in patterns.service.ts for why.
+ */
+describe('respond() and extract() forward temperature and seed only when a caller asks for them', () => {
+  function generateContentSpy(fnCall?: { name: string; args: any }) {
+    return jest.fn(async () => ({
+      candidates: [{
+        content: {
+          parts: fnCall
+            ? [{ functionCall: { name: fnCall.name, args: fnCall.args } }]
+            : [{ text: 'a plain reply' }],
+        },
+      }],
+    }));
+  }
+
+  it('respond() sends no temperature or seed when the caller passes none (every existing caller)', async () => {
+    const svc = new AnthropicService({ get: () => undefined } as any);
+    const generateContent = generateContentSpy();
+    (svc as any).client = { models: { generateContent } };
+
+    await svc.respond('sys', [{ role: 'user', content: 'hi' } as ChatTurn]);
+
+    const config = (generateContent.mock.calls[0] as any[])[0].config;
+    expect(config.temperature).toBeUndefined();
+    expect(config.seed).toBeUndefined();
+  });
+
+  it('respond() forwards temperature and seed straight into the Gemini call when a caller passes them', async () => {
+    const svc = new AnthropicService({ get: () => undefined } as any);
+    const generateContent = generateContentSpy();
+    (svc as any).client = { models: { generateContent } };
+
+    await svc.respond('sys', [{ role: 'user', content: 'hi' } as ChatTurn], { temperature: 0, seed: 20260930 });
+
+    const config = (generateContent.mock.calls[0] as any[])[0].config;
+    expect(config.temperature).toBe(0);
+    expect(config.seed).toBe(20260930);
+  });
+
+  it('extract() sends no temperature or seed when the caller passes none', async () => {
+    const svc = new AnthropicService({ get: () => undefined } as any);
+    const generateContent = generateContentSpy({ name: 'a_tool', args: { ok: true } });
+    (svc as any).client = { models: { generateContent } };
+
+    await svc.extract('sys', [{ role: 'user', content: 'hi' } as ChatTurn], { name: 'a_tool', description: 'd', input_schema: {} });
+
+    const config = (generateContent.mock.calls[0] as any[])[0].config;
+    expect(config.temperature).toBeUndefined();
+    expect(config.seed).toBeUndefined();
+  });
+
+  it('extract() forwards temperature and seed straight into the Gemini call when a caller passes them', async () => {
+    const svc = new AnthropicService({ get: () => undefined } as any);
+    const generateContent = generateContentSpy({ name: 'a_tool', args: { ok: true } });
+    (svc as any).client = { models: { generateContent } };
+
+    await svc.extract(
+      'sys', [{ role: 'user', content: 'hi' } as ChatTurn], { name: 'a_tool', description: 'd', input_schema: {} },
+      { temperature: 0, seed: 20260930 },
+    );
+
+    const config = (generateContent.mock.calls[0] as any[])[0].config;
+    expect(config.temperature).toBe(0);
+    expect(config.seed).toBe(20260930);
+  });
+});
