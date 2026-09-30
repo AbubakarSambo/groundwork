@@ -163,7 +163,7 @@ describe('the law firm matter’s Timeline and Obligations, both without stages'
       {
         section: 'Obligations', holds: 'the parties', state: 'filled',
         rows: [
-          { id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: 'Amani Otieno', ownerParticipantId: 'p-akinyi', due: null, fields: {}, from: 'said', said: 'Pwani Mills is the defendant in this matter.' },
+          { id: 'w-3', kind: 'party', name: 'Pwani Mills', stage: null, owner: 'Amani Otieno', ownerParticipantId: 'p-akinyi', due: null, fields: { Side: 'the other side' }, from: 'said', said: 'Pwani Mills is the defendant in this matter.' },
         ],
       },
     ],
@@ -182,6 +182,8 @@ describe('the law firm matter’s Timeline and Obligations, both without stages'
 
     const obligations = screen.getByRole('region', { name: 'The parties' })
     expect(within(obligations).getByText('Pwani Mills')).toBeTruthy()
+    /* Each party's side, as the prototype shows it. */
+    expect(within(obligations).getByText('The other side.')).toBeTruthy()
     expect(within(obligations).getByText("In Amani's words,")).toBeTruthy()
     expect(within(obligations).getByText('“Pwani Mills is the defendant in this matter.”')).toBeTruthy()
   })

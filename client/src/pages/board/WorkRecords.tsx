@@ -421,6 +421,9 @@ function TimelineList({ rows, canEdit, leadFirstName, onEdit }: {
 }
 
 /** The parties, as a plain list (the prototype's own shape - a name, and what shows it). */
+/** The first letter up, so a value typed as "the other side" reads as a sentence. */
+function atTheStartOf(t: string): string { return t ? t[0].toUpperCase() + t.slice(1) : t }
+
 function PartiesList({ rows, canEdit, leadFirstName, onEdit }: {
   rows: AServedWorkRow[]
   canEdit: boolean
@@ -433,6 +436,10 @@ function PartiesList({ rows, canEdit, leadFirstName, onEdit }: {
         <div key={row.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '12px 16px', borderTop: '1px solid var(--gw-border)', alignItems: 'flex-start' }} role="row" aria-label={row.name}>
           <div>
             <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: 'var(--gw-text)' }}>{row.name}</p>
+            {/* What the record says about this party, as the prototype does ("Pwani Mills, the other side"): each field's value, in words. */}
+            {Object.values(row.fields ?? {}).filter(Boolean).length > 0 && (
+              <p style={{ margin: '2px 0 0', fontSize: 14, color: 'var(--gw-sub)' }}>{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
+            )}
             <div style={{ marginTop: 4 }}><WhatShowsIt row={row} leadFirstName={leadFirstName} /></div>
           </div>
           {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
