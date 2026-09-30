@@ -1,13 +1,21 @@
 import { readSuggestionThresholds, thresholdFor, DEFAULT_SUGGESTION_THRESHOLDS, isValidSuggestionThresholds } from './thresholds';
 
 /**
- * THE THRESHOLDS FOR A SUGGESTION (decision 33, decision 53). Nothing is set by default, and a
- * threshold that is not a proper `{ keptBelow, overPeriods }` pair is read as nothing set, never
- * guessed at - a bad row must never reach a suggestion nobody asked for.
+ * THE THRESHOLDS FOR A SUGGESTION (decision 33, decision 53, decision 61). Nothing is set by
+ * default for keep, reward, plan or exit, and a threshold that is not a proper
+ * `{ keptBelow, overPeriods }` pair is read as nothing set, never guessed at - a bad row must never
+ * reach a suggestion nobody asked for.
+ *
+ * `DEFAULT_SUGGESTION_THRESHOLDS` changed under decision 61 (30 September 2026): support is no
+ * longer left for Hafsah to switch on later, it is set from the start. This test used to assert the
+ * default was `{}`; it now asserts the one decision 61 actually sets, and that reading an empty or
+ * missing row still means "nothing set" for `readSuggestionThresholds` itself - the default is
+ * applied at the read (admin.service.ts) and by the migration that seeds the row, not by this
+ * function, which stays exactly as forgiving/empty as before.
  */
 describe('reading suggestion thresholds', () => {
-  it('starts empty: nothing is set until Hafsah sets it (decision 33)', () => {
-    expect(DEFAULT_SUGGESTION_THRESHOLDS).toEqual({});
+  it('the default now sets support from the start (decision 61); reading nothing still means nothing set', () => {
+    expect(DEFAULT_SUGGESTION_THRESHOLDS).toEqual({ support: { keptBelow: 0.5, overPeriods: 6 } });
     expect(readSuggestionThresholds(null)).toEqual({});
     expect(readSuggestionThresholds(undefined)).toEqual({});
     expect(thresholdFor({}, 'support')).toBeNull();

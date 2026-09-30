@@ -54,8 +54,18 @@ describe('AdminService - platform-admin bootstrap (E1)', () => {
 
 /**
  * `suggestions.thresholds` had a reader and no writer (a-setting-has-a-way-to-be-set.spec.ts, week
- * 10). This is that writer: empty by default, refuses anything that is not the documented shape,
- * and, like coaching_live and the correction window, upserts the platform_settings row.
+ * 10). This is that writer: refuses anything that is not the documented shape, and, like
+ * coaching_live and the correction window, upserts the platform_settings row.
+ *
+ * Two of these tests changed for decision 61 (30 September 2026), and say why in place:
+ *   - "reads as empty when nothing has been set" used to be true for every verdict, support
+ *     included. Decision 61 sets a real default for support from day one (thresholds.ts,
+ *     DEFAULT_SUGGESTION_THRESHOLDS); a database with no row at all now reads that default back,
+ *     not `{}`. In practice a migration seeds the row so this case should not arise, but the read
+ *     falls back to it properly if it ever does.
+ *   - Every read now carries `labels`, the plain words for `keptBelow` and `overPeriods` that the
+ *     admin page shows instead of the field names (decision 61: "'over periods' is called 'at
+ *     least this many settled commitments'").
  */
 describe('AdminService - suggestion thresholds (week 10 writer)', () => {
   function buildService(storedValue?: unknown) {
@@ -68,14 +78,30 @@ describe('AdminService - suggestion thresholds (week 10 writer)', () => {
     return { service: new AdminService(prisma, {} as any, {} as any), prisma };
   }
 
-  it('reads as empty when nothing has been set (decision 33)', async () => {
+  const LABELS = {
+    keptBelow: 'Suggest extra support when fewer than this share of commitments were kept',
+    overPeriods: 'At least this many settled commitments',
+  };
+
+  it('reads the decision 61 default when there is no row at all: support is set from the start, everything else is empty', async () => {
     const { service } = buildService();
-    expect(await service.getSuggestionThresholds()).toEqual({ thresholds: {} });
+    expect(await service.getSuggestionThresholds()).toEqual({
+      thresholds: { support: { keptBelow: 0.5, overPeriods: 6 } },
+      labels: LABELS,
+    });
+  });
+
+  it('reads an empty row exactly as an admin left it, not the default: a row that exists is never overwritten by a default', async () => {
+    const { service } = buildService({});
+    expect(await service.getSuggestionThresholds()).toEqual({ thresholds: {}, labels: LABELS });
   });
 
   it('reads back what was stored', async () => {
     const { service } = buildService({ support: { keptBelow: 0.6, overPeriods: 4 } });
-    expect(await service.getSuggestionThresholds()).toEqual({ thresholds: { support: { keptBelow: 0.6, overPeriods: 4 } } });
+    expect(await service.getSuggestionThresholds()).toEqual({
+      thresholds: { support: { keptBelow: 0.6, overPeriods: 4 } },
+      labels: LABELS,
+    });
   });
 
   it('writes a valid set of thresholds', async () => {

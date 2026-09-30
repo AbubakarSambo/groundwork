@@ -404,3 +404,19 @@ The gap this closes: `DocumentsService.whatItHolds` reads a document and keeps t
 **What the screen should send after an upload finishes: nothing, automatically.** `whatItHolds` runs in the background after the file is stored (`readTheRestOfIt`), so `holds` is not on the row yet when the upload's own response comes back (`numbersWaiting` is always `0` at that moment, by design - see `documents.service.ts`, "AND THE TWO SLOW READS, AFTER THE ANSWER"). Sending "I've uploaded it" straight after the upload call returns will usually find nothing waiting and say nothing. The decision, so every screen does the same thing: **poll the document (or the Context page's own read) until `numbersWaiting` is greater than zero or a reasonable time has passed (the Context page already shows "still reading"), and only then send the message "I've uploaded it." to `POST /ask`.** That is the one sentence to standardise on; Ask Groundwork recognises it (and close variants - "I added it", "I attached the file") whichever of the two ways above triggered it.
 
 **Who this reaches.** The same rule as everywhere a document's numbers may be set (`docs/context-chat-inventory.md`, item 4): only the uploader's own numbers, and a number for somebody else only when the uploader is the lead - decided when the document is read, not here, so nothing about who may set whose number changes by asking through Ask Groundwork instead of the Context page.
+
+## 30 September, later: the suggestion threshold admin page should show a plain label, not the field name
+
+Decision 61 sets the first threshold, support, from the start: extra support is suggested once a person has kept fewer than half of their commitments (`keptBelow: 0.5`), with at least 6 settled, kept or not (`overPeriods: 6`). `GET /admin/suggestion-thresholds` now returns both the values and a `labels` object with the plain words for each field, for example:
+
+```json
+{
+  "thresholds": { "support": { "keptBelow": 0.5, "overPeriods": 6 } },
+  "labels": {
+    "keptBelow": "Suggest extra support when fewer than this share of commitments were kept",
+    "overPeriods": "At least this many settled commitments"
+  }
+}
+```
+
+`overPeriods` is the API field name the admin `PATCH` already uses, and it stays exactly as it is - it is not being renamed. The admin page should show `labels.overPeriods` ("At least this many settled commitments") beside that field's value instead of the field name itself, and the same for `labels.keptBelow`. The labels are the same for every verdict (keep, reward, support, plan, exit); there is one `labels` object, not one per verdict.
