@@ -129,6 +129,9 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/org/WhoCanOpenACheckIn.tsx',
       'pages/org/OnePersonPage.tsx',
       'pages/grounds/CheckInPeopleAndSetup.tsx',
+      'pages/board/BoardPage.tsx',
+      'pages/board/WorkRecords.tsx',
+      'components/gw/where-each-person-is.tsx',
     ])
   })
 

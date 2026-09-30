@@ -15,7 +15,6 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'sonner'
 // The board's own vocabulary now lives in components/gw/kit so every other page
 // can be rebuilt from it. Values unchanged: this is an extraction, not a redesign.
-import { btn, btnGhost, Button, NeedsYouList, NeedsYouRow } from '@/components/gw/kit'
 import { todayApi, type Need } from '@/api/today'
 import { HowThisHasMoved } from '@/components/gw/HowThisHasMoved'
 import { ResolutionPanel } from '@/components/gw/ResolutionPanel'
@@ -337,7 +336,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   })
 
   if (isLoading) {
-    return <div role="status" style={{ padding: 40, textAlign: 'center', color: 'var(--gw-muted)' }}>Loading the board…</div>
+    return <div role="status" className="gwui-pt-40 gwui-pr-40 gwui-pb-40 gwui-pl-40 gwui-ink-muted" style={{textAlign: 'center'}}>Loading the board…</div>
   }
   if (error || !data) {
     /*
@@ -348,12 +347,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
      */
     const why = whyYouCannotSeeThis(whatWentWrong(error))
     return (
-      <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px', textAlign: 'center' }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>This board could not be loaded.</div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginBottom: 16 }}>{why.say}</div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-          {why.canRetry && <button onClick={() => refetch()} style={btn}>Try again</button>}
-          <button onClick={() => navigate('/grounds')} style={why.canRetry ? { ...btn, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-border)' } : btn}>Back to check-ins</button>
+      <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620, textAlign: 'center'}}>
+        <div className="gwui-fs-15 gwui-mb-6" style={{fontWeight: 700}}>This board could not be loaded.</div>
+        <div className="gwui-fs-13 gwui-ink-sub gwui-mb-16">{why.say}</div>
+        <div className="gwui-gap-8" style={{display: 'flex', justifyContent: 'center'}}>
+          {why.canRetry && <UIButton kind="primary" onClick={() => refetch()}>Try again</UIButton>}
+          <UIButton kind={why.canRetry ? 'secondary' : 'primary'} onClick={() => navigate('/grounds')}>Back to check-ins</UIButton>
         </div>
       </div>
     )
@@ -363,17 +362,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   // at the report, rather than showing an empty page that reads as broken.
   if (!data.renders) {
     return (
-      <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px' }}>
-        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '22px 24px' }}>
-          <div style={{ fontSize: 13, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
+      <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620}}>
+        <Panel>
+          <div className="gwui-fs-13 gwui-ink-muted gwui-mb-8" style={{letterSpacing: '.1px', fontWeight: 700}}>
             No shared board here
           </div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--gw-text)', marginBottom: 16 }}>{data.reason}</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Link to={`/grounds/${id}/report`} style={{ ...btn, textDecoration: 'none' }}>Read the report</Link>
-            <button onClick={() => navigate(`/grounds/${id}`)} style={btnGhost}>Back to the check-in</button>
+          <div className="gwui-fs-14 gwui-ink-text gwui-mb-16" style={{lineHeight: 1.6}}>{data.reason}</div>
+          <div className="gwui-gap-8" style={{display: 'flex'}}>
+            <UIButton kind="primary" to={`/grounds/${id}/report`}>Read the report</UIButton>
+            <UIButton kind="secondary" onClick={() => navigate(`/grounds/${id}`)}>Back to the check-in</UIButton>
           </div>
-        </div>
+        </Panel>
       </div>
     )
   }
@@ -392,17 +391,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
    */
   if ((data as any).withheldUntilYouCheckIn) {
     return (
-      <div style={{ maxWidth: 620, margin: '48px auto', padding: '0 20px' }}>
-        <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '22px 24px' }}>
-          <div style={{ fontSize: 13, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 8 }}>
+      <div className="gwui-mt-48 gwui-mr-auto gwui-mb-48 gwui-ml-auto gwui-pt-0 gwui-pr-20 gwui-pb-0 gwui-pl-20" style={{maxWidth: 620}}>
+        <Panel>
+          <div className="gwui-fs-13 gwui-ink-muted gwui-mb-8" style={{letterSpacing: '.1px', fontWeight: 700}}>
             Your answer first
           </div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--gw-text)', marginBottom: 16 }}>{(data as any).saying}</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => navigate(`/grounds/${id}`)} style={btn}>Do my check-in</button>
-            <button onClick={() => navigate('/grounds')} style={btnGhost}>Back to check-ins</button>
+          <div className="gwui-fs-14 gwui-ink-text gwui-mb-16" style={{lineHeight: 1.6}}>{(data as any).saying}</div>
+          <div className="gwui-gap-8" style={{display: 'flex'}}>
+            <UIButton kind="primary" onClick={() => navigate(`/grounds/${id}`)}>Do my check-in</UIButton>
+            <UIButton kind="secondary" onClick={() => navigate('/grounds')}>Back to check-ins</UIButton>
           </div>
-        </div>
+        </Panel>
       </div>
     )
   }
@@ -625,7 +624,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           title={b.title}
           subtitle={cadenceLine || undefined}
           action={(
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            <div className="gwui-gap-16" style={{display: 'flex', alignItems: 'center', flexShrink: 0}}>
               {/*
                 THE PROTOTYPE USES TWO DIFFERENT WORDS HERE. The lead's own board says "Your
                 check-in" (board-as-lead.txt); a party's says "Start my check-in"
@@ -634,7 +633,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               {(viewerRunsThisCheckIn || isAParty) && (
                 <Link
                   to={`/grounds/${id}`}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit' }}
+                  className="gwui-pt-8 gwui-pr-14 gwui-pb-8 gwui-pl-14 gwui-ink-white gwui-fs-13" style={{borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit'}}
                 >
                   {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
                 </Link>
@@ -642,7 +641,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               <button
                 type="button"
                 onClick={showAsk}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                className="gwui-rule-none gwui-pt-0 gwui-pr-0 gwui-pb-0 gwui-pl-0 gwui-fs-13-5 gwui-ink-navy" style={{background: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline'}}
               >
                 Ask
               </button>
@@ -658,11 +657,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           reader, from the server's `lastChangedAt`. Then, for an admin who only reads, who runs it.
           The prototype has this small-grey line directly under the tab bar.
         */}
-        <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: '14px 0 0' }}>
+        <p className="gwui-fs-12-5 gwui-ink-sub gwui-mt-14 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
           {whenTheBoardLastChanged(b.lastChangedAt)}
         </p>
         {b.readOnlyNote && (
-          <p role="note" style={{ fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, margin: '8px 0 0' }}>{b.readOnlyNote}</p>
+          <p role="note" className="gwui-fs-13 gwui-ink-text gwui-mt-8 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>{b.readOnlyNote}</p>
         )}
 
         {/*
@@ -688,7 +687,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           navigation this board already had - is kept underneath it rather than dropped.
         */}
         {(b as any).howItIsGoing && (
-          <div style={{ marginTop: 16 }}>
+          <div className="gwui-mt-16">
             <HowItIsGoing
               summary={(b as any).howItIsGoing.latestSummary}
               glance={(b as any).howItIsGoing.glance}
@@ -697,8 +696,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         )}
 
         {has('phaseSpine') && b.phaseSpine && (
-          <div style={{ marginTop: 10 }}>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div className="gwui-mt-10">
+            <div className="gwui-gap-10" style={{display: 'flex', flexWrap: 'wrap'}}>
               {/*
                 A FINISHED SESSION OPENS ITS REPORT, which is a rule this codebase already made
                 and this was the one list not keeping it: "a finished session opens the REPORT and
@@ -723,7 +722,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     key={s.n}
                     type="button"
                     onClick={() => navigate(`/grounds/${id}/session/${s.n}`)}
-                    style={{ ...skin, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3 }}
+                    style={{...skin, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 3}}
                   >
                     {face}
                   </button>
@@ -739,7 +738,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           decision". The server serves it to the lead alone; nobody else is drawn anything here.
         */}
         {viewerRunsThisCheckIn && (
-          <div style={{ marginTop: 14 }}>
+          <div className="gwui-mt-14">
             <SuggestionsForTheLead groundId={id!} where="board" />
           </div>
         )}
@@ -749,7 +748,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           Once it has ended, everyone reads the outcome, who decided, when, and why. Near the end,
           the lead reads "It’s yours to decide how this ends." with the way to the ending page.
         */}
-        <div style={{ marginTop: 14 }}>
+        <div className="gwui-mt-14">
           <ResolutionPanel
             groundId={id!}
             place="board-top"
@@ -764,19 +763,19 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           this check-in. So the board and Today cannot disagree about what needs the lead.
         */}
         {viewerRunsThisCheckIn && needsHere.length > 0 && (
-          <section aria-labelledby="board-needs-you-h" style={{ marginTop: 16 }}>
-            <h2 id="board-needs-you-h" className="gw-t-h2" style={{ margin: '0 0 8px' }}>What needs you in this check-in</h2>
-            <NeedsYouList label="What needs you in this check-in">
+          <section aria-labelledby="board-needs-you-h" className="gwui-mt-16">
+            <h2 id="board-needs-you-h" className="gwui-fs-22 gwui-mt-0 gwui-mr-0 gwui-mb-8 gwui-ml-0" style={{ fontFamily: 'var(--gw-font-ui)', fontWeight: 700, lineHeight: 1.25 }}>What needs you in this check-in</h2>
+            <EdgeList label="What needs you in this check-in">
               {needsHere.map((n: Need) => (
-                <NeedsYouRow
+                <EdgeRow
                   key={n.key}
                   kind={n.kind}
                   title={n.title}
                   detail={n.detail ?? undefined}
-                  actions={<Button kind="secondary" size="small" to={n.action.to}>{n.action.label}</Button>}
+                  actions={<UIButton kind="secondary" size="small" to={n.action.to}>{n.action.label}</UIButton>}
                 />
               ))}
-            </NeedsYouList>
+            </EdgeList>
           </section>
         )}
 
@@ -802,29 +801,29 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           (rgb(32,35,62)) is gone, in favour of the same small-grey-text treatment as the rest of the
           board (see "Last updated…" just above).
         */}
-        <div style={{ marginTop: 12 }}>
-          <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, margin: 0 }}>
+        <div className="gwui-mt-12">
+          <p className="gwui-fs-12-5 gwui-ink-sub gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{lineHeight: 1.55}}>
             Built from what each person shared in their private check-in. Use it to see what&rsquo;s going on and guide the conversation. It&rsquo;s not a verdict.
           </p>
           {howToRead && (
             <>
-              <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 7 }}>
+              <p className="gwui-fs-12-5 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
                 If something doesn&rsquo;t feel right, raise it in your next check-in. The board updates as people share more.
               </p>
-              <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 7 }}>
+              <p className="gwui-fs-12-5 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
                 Each person is shown in the context of their own role, not scored against everyone else.
               </p>
-              <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 7 }}>
+              <p className="gwui-fs-12-5 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
                 This is the shared picture from this round of check-ins. It can change as the picture changes.
               </p>
-              <p className="gw-t-small" style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 7 }}>
+              <p className="gwui-fs-12-5 gwui-ink-sub gwui-mt-7" style={{lineHeight: 1.55}}>
                 Where people see things differently or progress has stalled, you can see what each person shared and support them.
               </p>
             </>
           )}
           <button
             onClick={() => setHowToRead(v => { localStorage.setItem(HOW_TO_READ_KEY, v ? 'closed' : 'open'); return !v })}
-            style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+            className="gwui-mt-6 gwui-rule-none gwui-pt-0 gwui-pr-0 gwui-pb-0 gwui-pl-0 gwui-fs-12 gwui-ink-navy" style={{background: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline'}}
           >
             {howToRead ? 'Show less' : 'How to read this board'}
           </button>
@@ -841,7 +840,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           who can change it.
         */}
         {onlyOnePersonHere && (
-          <div role="status" style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 12, padding: '12px 14px', marginTop: 12, fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
+          <div role="status" className="gwui-rule-amber gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-12 gwui-fs-13 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 12, lineHeight: 1.6}}>
             This board compares accounts, and there is one person on this check-in.{' '}
             {b.canEditFrame ? 'Add somebody and it will build from the next round.' : 'It will build once the person running this check-in adds somebody.'}
           </div>
@@ -879,13 +878,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <Section heading={b.cascade.isCascade ? 'What this sits under' : 'Nothing above this'}>
             <Panel>
               {b.cascade.parentNamed && (
-                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 6, lineHeight: 1.35 }}>
+                <div className="gwui-fs-16 gwui-ink-text gwui-mb-6" style={{fontWeight: 600, lineHeight: 1.35}}>
                   {b.cascade.parentNamed}
                 </div>
               )}
-              <p style={{ margin: 0, fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{b.cascade.why}</p>
+              <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13-5 gwui-ink-sub" style={{lineHeight: 1.55}}>{b.cascade.why}</p>
               {b.cascade.teamsNamed.length > 1 && (
-                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div className="gwui-mt-8 gwui-gap-6" style={{display: 'flex', flexWrap: 'wrap'}}>
                   {b.cascade.teamsNamed.map((t: string) => (
                     <Tag key={t} tone="plain">{t}</Tag>
                   ))}
@@ -923,12 +922,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 somebody with a team and a committed number reaches for this before typing. */}
             {b.canEditFrame && <SplitOneTotalAcrossPeople groundId={id!} />}
             {b.targetsNobodyOwns && (
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
+              <div className="gwui-rule-amber gwui-pt-10 gwui-pr-14 gwui-pb-10 gwui-pl-14 gwui-mb-8 gwui-fs-12-5 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 10, lineHeight: 1.5}}>
                 {b.targetsNobodyOwns}
               </div>
             )}
             {b.objectivesPrompt && (
-              <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '10px 14px', marginBottom: 8, fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
+              <div className="gwui-rule-amber gwui-pt-10 gwui-pr-14 gwui-pb-10 gwui-pl-14 gwui-mb-8 gwui-fs-12-5 gwui-ink-amber" style={{background: 'var(--gw-amber-bg)', borderRadius: 10, lineHeight: 1.5}}>
                 {b.objectivesPrompt}
               </div>
             )}
@@ -946,17 +945,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 const pct = o.journey?.covered ?? (o.target && o.target > 0 ? Math.min(100, Math.round((o.count / o.target) * 100)) : 0)
                 return (
                   <div key={o.id} className="gwui-panel-row">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, fontSize: 13, fontWeight: 600, minWidth: 160 }}>
+                    <div className="gwui-gap-12" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
+                      <div className="gwui-fs-13" style={{flex: 1, fontWeight: 600, minWidth: 160}}>
                         {o.name}
-                        {o.isNew && <span style={{ marginLeft: 7 }}><Tag tone="plain">new</Tag></span>}
+                        {o.isNew && <span className="gwui-ml-7"><Tag tone="plain">new</Tag></span>}
                         {/*
                           WHOSE NUMBER IT IS, on its own line. "12 shops· Rukia Otieno" read live: the
                           name sat right after the target with only a CSS margin between them, no
                           space in the text itself. Said as a plain sentence below the name instead.
                         */}
                         {o.owner && (
-                          <div style={{ fontWeight: 400, color: 'var(--gw-sub)', fontSize: 12, marginTop: 2 }}>{o.owner}’s own target</div>
+                          <div className="gwui-ink-sub gwui-fs-12 gwui-mt-2" style={{fontWeight: 400}}>{o.owner}’s own target</div>
                         )}
                         {/*
                           A NUMBER NOBODY HAS DEFINED IS NOT AN AGREED NUMBER, AND THE ROW SAYS SO.
@@ -964,7 +963,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           nobody had decided whether the 12m is signed or recognised revenue. The
                           sentence is the lead's own; it does not change or block the target.
                         */}
-                        {o.notSettled && <span style={{ marginLeft: 7 }}><Tag tone="attention">definition not settled</Tag></span>}
+                        {o.notSettled && <span className="gwui-ml-7"><Tag tone="attention">definition not settled</Tag></span>}
                       </div>
                       {/*
                         NOTHING TO MEASURE MEANS NOTHING TO DRAW. An aim with no number got an empty
@@ -974,8 +973,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       */}
                       {o.target != null ? (
                         <>
-                          <div style={{ width: 140, height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6 }} />
+                          <div style={{width: 140, height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden'}}>
+                            <div style={{height: '100%', width: `${pct}%`, background: 'var(--gw-navy)', borderRadius: 6}} />
                           </div>
                           {/* Three numbers a person can check, rather than a share of a target that
                               means the opposite thing on a ceiling. */}
@@ -984,21 +983,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             "12, up from 0, aiming for 12" and "up 12 this session" read as
                             fragments strung together rather than something said to a reader.
                           */}
-                          <div style={{ fontSize: 12, color: 'var(--gw-sub)', minWidth: 96, textAlign: 'right' }}>
+                          <div className="gwui-fs-12 gwui-ink-sub" style={{minWidth: 96, textAlign: 'right'}}>
                             {o.journey?.start != null
-                              ? (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` now, up from ${o.journey.start}. The aim is ${o.target}.`}</>)
-                              : (<><b style={{ color: 'var(--gw-dark)' }}>{o.count}</b>{` of ${o.target}.`}</>)}
+                              ? (<><b className="gwui-ink-dark">{o.count}</b>{` now, up from ${o.journey.start}. The aim is ${o.target}.`}</>)
+                              : (<><b className="gwui-ink-dark">{o.count}</b>{` of ${o.target}.`}</>)}
                           </div>
-                          <div style={{ fontSize: 10.5, fontWeight: 700, minWidth: 92, textAlign: 'right', color: o.delta > 0 ? 'var(--gw-green-t)' : 'var(--gw-muted)' }}>
+                          <div className={`gwui-fs-10-5 ${o.delta > 0 ? 'gwui-ink-green' : 'gwui-ink-muted'}`} style={{fontWeight: 700, minWidth: 92, textAlign: 'right'}}>
                             {o.delta > 0 ? `Up ${o.delta} this session.` : 'No change.'}
                           </div>
                         </>
                       ) : (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', minWidth: 92, textAlign: 'right' }}>No number is set yet.</div>
+                        <div className="gwui-fs-11-5 gwui-ink-muted" style={{minWidth: 92, textAlign: 'right'}}>No number is set yet.</div>
                       )}
                     </div>
                     {o.notSettled && (
-                      <div style={{ fontSize: 12, color: 'var(--gw-amber-t)', marginTop: 5, lineHeight: 1.55, maxWidth: '68ch' }}>{o.notSettled}</div>
+                      <div className="gwui-fs-12 gwui-ink-amber gwui-mt-5" style={{lineHeight: 1.55, maxWidth: '68ch'}}>{o.notSettled}</div>
                     )}
                     {/* What the target assumes, the lead's lines from Context (U.7), under the number they qualify. */}
                     <WhatTheTargetAssumes
@@ -1013,7 +1012,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         as a word a sighted person can read.
                       */}
                       {b.canEditFrame && (
-                        <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span className="gwui-gap-6" style={{display: 'flex', alignItems: 'center'}}>
                           <UIButton
                             kind="secondary" size="small"
                             onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: Math.max(0, o.count - 1) })}
@@ -1044,7 +1043,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     {/* The record suggests, the lead decides. Never auto-applied:
                         a number a person set is theirs until they change it. */}
                     {o.suggestedCount != null && b.canEditFrame && (
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-navy)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div className="gwui-fs-11-5 gwui-ink-navy gwui-mt-6 gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
                         <span>
                           The record shows <b>{o.suggestedCount}</b> for this, not {o.count}.
                         </span>
@@ -1052,14 +1051,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             way to judge. Asking somebody to accept a figure without showing them
                             what it was read from is asking them to trust rather than to check. */}
                         {o.suggestedSaid && (
-                          <span style={{ display: 'block', width: '100%', color: 'var(--gw-sub)', fontStyle: 'italic' }}>
+                          <span className="gwui-ink-sub" style={{display: 'block', width: '100%', fontStyle: 'italic'}}>
                             &ldquo;{o.suggestedSaid}&rdquo;
                           </span>
                         )}
                         <button
                           onClick={() => bumpObjective.mutate({ objectiveId: o.id, count: o.suggestedCount! })}
                           disabled={bumpObjective.isPending && bumpObjective.variables?.objectiveId === o.id}
-                          style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 11, border: '1px solid var(--gw-blue-b)', background: 'var(--gw-blue-bg)', color: 'var(--gw-blue-t)', cursor: 'pointer', fontFamily: 'inherit' }}
+                          className="gwui-fs-11 gwui-pt-2 gwui-pr-9 gwui-pb-2 gwui-pl-9 gwui-rule-blue gwui-ink-blue" style={{fontWeight: 700, borderRadius: 11, background: 'var(--gw-blue-bg)', cursor: 'pointer', fontFamily: 'inherit'}}
                         >
                           Use {o.suggestedCount}
                         </button>
@@ -1067,7 +1066,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     )}
                     {/* A new target means nothing until people have checked in against it. */}
                     {o.isNew && o.askedOf && (
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
+                      <div className="gwui-fs-11-5 gwui-ink-sub gwui-mt-6">
                         {(() => {
                           const asked = o.askedOf.filter((a) => a.asked).map((a) => a.name)
                           const notYet = o.askedOf.filter((a) => !a.asked).map((a) => a.name)
@@ -1081,18 +1080,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               })}
               {/* The lead sets the frame. A target, never an assessment of a person. */}
               {b.canEditFrame && (
-                <div className="gwui-panel-row" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="gwui-panel-row gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
                   <input
                     value={newObjName}
                     onChange={(e) => setNewObjName(e.target.value)}
                     placeholder="Add a target, e.g. Paying companies"
-                    style={{ flex: 1, minWidth: 200, padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none' }}
+                    className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-12-5 gwui-rule" style={{flex: 1, minWidth: 200, borderRadius: 7, fontFamily: 'inherit', outline: 'none'}}
                   />
                   <input
                     value={newObjTarget}
                     onChange={(e) => setNewObjTarget(e.target.value.replace(/[^0-9]/g, ''))}
                     placeholder="how many"
-                    style={{ width: 96, padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none' }}
+                    className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-12-5 gwui-rule" style={{width: 96, borderRadius: 7, fontFamily: 'inherit', outline: 'none'}}
                   />
                   <UIButton
                     kind="primary" size="small"
@@ -1133,7 +1132,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.startingState && b.startingState && (
           <Section heading="What was agreed at the start" note="Set when this was opened, before any check-in.">
             <Panel>
-              <div style={{ fontSize: 13.5, color: 'var(--gw-dark)', lineHeight: 1.55 }}>{b.startingState}</div>
+              <div className="gwui-fs-13-5 gwui-ink-dark" style={{lineHeight: 1.55}}>{b.startingState}</div>
             </Panel>
           </Section>
         )}
@@ -1157,7 +1156,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 /* WHY IT IS EMPTY, NOT ONE SENTENCE FOR EVERY REASON. This said "This fills in once
                    more than one person has checked in" on a round where everybody had, three inches
                    under a tile that said so. The server computes it from the one counter. */
-                <div className="gwui-panel-row"><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></div>
+                <div className="gwui-panel-row"><div className="gwui-fs-12-5 gwui-ink-muted">{onlyOnePersonHere ? 'There is nothing to compare yet.' : (b.divergence.whyNothingYet ?? 'There is nothing to compare yet. This fills in once more than one person has answered.')}</div></div>
               ) : (
                 <>
                   {b.divergence.items.map((d: any, i: number) => (
@@ -1168,11 +1167,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         them, which is invisible to a screen reader and to anybody copying the text.
                         The kind is said as its own sentence now, on its own line.
                       */}
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                      <div className="gwui-fs-13 gwui-ink-dark" style={{fontWeight: 600}}>
                         {d.topic ?? d.tag ?? 'Somewhere you see it differently'}
                       </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-amber-t)', marginTop: 2 }}>{whoSeesThisDifferently(d.positions, myName)}</div>
-                      {d.text && <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 3 }}>{d.text}</div>}
+                      <div className="gwui-fs-11-5 gwui-ink-amber gwui-mt-2">{whoSeesThisDifferently(d.positions, myName)}</div>
+                      {d.text && <div className="gwui-fs-12 gwui-ink-sub gwui-mt-3">{d.text}</div>}
                       {/*
                         WHAT EACH ACCOUNT ACTUALLY SAID, WHICH THE BOARD USED TO SEND YOU ELSEWHERE FOR.
 
@@ -1194,11 +1193,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         every other name-then-quote on this page is already shown.
                       */}
                       {Array.isArray(d.positions) && d.positions.length > 0 && (
-                        <div style={{ display: 'grid', gap: 4, marginTop: 6 }}>
+                        <div className="gwui-gap-4 gwui-mt-6" style={{display: 'grid'}}>
                           {d.positions.map((pos: any, j: number) => (
-                            <div key={j} style={{ fontSize: 12, lineHeight: 1.55, color: 'var(--gw-text)' }}>
-                              <div style={{ fontWeight: 700 }}>{pos.who ?? 'A colleague'}</div>
-                              {pos.view && <div style={{ color: 'var(--gw-sub)' }}>{pos.view}</div>}
+                            <div key={j} className="gwui-fs-12 gwui-ink-text" style={{lineHeight: 1.55}}>
+                              <div style={{fontWeight: 700}}>{pos.who ?? 'A colleague'}</div>
+                              {pos.view && <div className="gwui-ink-sub">{pos.view}</div>}
                             </div>
                           ))}
                         </div>
@@ -1209,8 +1208,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         caption is now its own line, like every other caption on this page.
                       */}
                       {d.atStake && (
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 5, lineHeight: 1.55 }}>
-                          <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>Why it matters</span>
+                        <div className="gwui-fs-12 gwui-ink-sub gwui-mt-5" style={{lineHeight: 1.55}}>
+                          <span className="gwui-fs-10-5 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>Why it matters</span>
                           {d.atStake}
                         </div>
                       )}
@@ -1218,10 +1217,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   ))}
                   {b.divergence.agreements.map((a: any, i: number) => (
                     <div key={`a${i}`} className="gwui-panel-row">
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>
+                      <div className="gwui-fs-13 gwui-ink-dark" style={{fontWeight: 600}}>
                         {typeof a === 'string' ? a : a.topic ?? 'Agreed'}
                       </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--gw-green-t)', marginTop: 2 }}>Everybody agrees on this.</div>
+                      <div className="gwui-fs-11-5 gwui-ink-green gwui-mt-2">Everybody agrees on this.</div>
                     </div>
                   ))}
                 </>
@@ -1259,10 +1258,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.whatTheRoomIsAbout && (
           <Section heading="What people are after, and where" note="Built from what everybody said.">
             {b.whatTheRoomIsAboutNote && (
-              <Panel><div style={{ fontSize: 12.5, color: 'var(--gw-sub)' }}>{b.whatTheRoomIsAboutNote}</div></Panel>
+              <Panel><div className="gwui-fs-12-5 gwui-ink-sub">{b.whatTheRoomIsAboutNote}</div></Panel>
             )}
             {b.whatTheRoomIsAbout && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 14, marginTop: b.whatTheRoomIsAboutNote ? 14 : 0 }}>
+              <div className={`gwui-gap-14 ${b.whatTheRoomIsAboutNote ? 'gwui-mt-14' : 'gwui-mt-0'}`} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))'}}>
                 {/*
                   THE AIMS COME FIRST AND TAKE THE WIDTH THEY NEED. On a board where nobody set a
                   target, what each person is trying to do is the only thing there is to align on,
@@ -1271,21 +1270,21 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   the same fact about a room.
                 */}
                 {/* The aims run the full width; Panel takes no style, so the span lives on a wrapper. */}
-                <div style={{ gridColumn: '1 / -1' }}>
+                <div style={{gridColumn: '1 / -1'}}>
                 <Panel pad={false}>
-                  <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)', fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>
+                  <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-fs-15 gwui-ink-dark gwui-rule-bottom" style={{fontWeight: 700}}>
                     What people are trying to do
                   </div>
-                  <div style={{ padding: '2px 15px 12px' }}>
+                  <div className="gwui-pt-2 gwui-pr-15 gwui-pb-12 gwui-pl-15">
                     {b.whatTheRoomIsAbout.aims.length === 0 ? (
-                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody has said what they are after yet.</div>
-                    ) : b.whatTheRoomIsAbout.aims.map((a, i) => (
-                      <div key={a.aim} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)', flex: 1 }}>{a.aim}</div>
+                      <div className="gwui-fs-12 gwui-ink-muted gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0">Nobody has said what they are after yet.</div>
+                    ) : b.whatTheRoomIsAbout.aims.map((a) => (
+                      <div key={a.aim} className="gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0 gwui-inner-row">
+                        <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
+                          <div className="gwui-fs-13 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{a.aim}</div>
                           <Tag>{a.held.length === 1 ? '1 person' : `${a.held.length} people`}</Tag>
                         </div>
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{a.held.join(', ')}</div>
+                        <div className="gwui-fs-11-5 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{a.held.join(', ')}</div>
                       </div>
                     ))}
                   </div>
@@ -1293,17 +1292,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
                 {([['Places named', b.whatTheRoomIsAbout.places], ['What it is about', b.whatTheRoomIsAbout.things]] as const).map(([label, rows]) => (
                   <Panel key={label} pad={false}>
-                    <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)', fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{label}</div>
-                    <div style={{ padding: '2px 15px 12px' }}>
+                    <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-fs-15 gwui-ink-dark gwui-rule-bottom" style={{fontWeight: 700}}>{label}</div>
+                    <div className="gwui-pt-2 gwui-pr-15 gwui-pb-12 gwui-pl-15">
                       {rows.length === 0 ? (
-                        <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>Nobody named one.</div>
-                      ) : rows.map((r, i) => (
-                        <div key={r.name} style={{ padding: '9px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                          <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)', flex: 1 }}>{r.name}</div>
+                        <div className="gwui-fs-12 gwui-ink-muted gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0">Nobody named one.</div>
+                      ) : rows.map((r) => (
+                        <div key={r.name} className="gwui-pt-9 gwui-pr-0 gwui-pb-9 gwui-pl-0 gwui-inner-row">
+                          <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline'}}>
+                            <div className="gwui-fs-13 gwui-ink-dark" style={{fontWeight: 600, flex: 1}}>{r.name}</div>
                             <Tag>{r.named.length}</Tag>
                           </div>
-                          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 3, lineHeight: 1.5 }}>{r.named.join(', ')}</div>
+                          <div className="gwui-fs-11-5 gwui-ink-sub gwui-mt-3" style={{lineHeight: 1.5}}>{r.named.join(', ')}</div>
                         </div>
                       ))}
                     </div>
@@ -1345,18 +1344,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 shape (label/value/sub), from the same server function (atAGlanceTiles). The label
                 stays for a screen reader, without being shown as its own heading.
               */}
-              {b.quickRead.map((q, i) => {
-                const tone = q.tone === 'bad' ? 'var(--gw-red-t)' : q.tone === 'warn' ? 'var(--gw-amber-t)' : q.tone === 'good' ? 'var(--gw-green-t)' : 'var(--gw-text)'
+              {b.quickRead.map((q) => {
+                const toneClass = q.tone === 'bad' ? 'gwui-ink-red' : q.tone === 'warn' ? 'gwui-ink-amber' : q.tone === 'good' ? 'gwui-ink-green' : 'gwui-ink-text'
                 const said = tileSentence(q)
                 return onAPhone ? (
-                  <div key={q.label} style={{ padding: '11px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
+                  <div key={q.label} className="gwui-pt-11 gwui-pr-0 gwui-pb-11 gwui-pl-0 gwui-inner-row">
                     <span className="gw-sr-only">{q.label}</span>
-                    <div style={{ fontSize: 14, lineHeight: 1.5, color: tone }}>{said}</div>
+                    <div className={`gwui-fs-14 ${toneClass}`} style={{lineHeight: 1.5}}>{said}</div>
                   </div>
                 ) : (
-                  <div key={q.label} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px' }}>
+                  <div key={q.label} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{background: 'white', borderRadius: 12}}>
                     <span className="gw-sr-only">{q.label}</span>
-                    <div style={{ fontSize: 13, lineHeight: 1.5, color: tone }}>{said}</div>
+                    <div className={`gwui-fs-13 ${toneClass}`} style={{lineHeight: 1.5}}>{said}</div>
                   </div>
                 )
               })}
@@ -1443,11 +1442,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               {b.stillUnanswered.map((g) => (
                 <div key={`${g.who}-${g.what}`} className="gwui-panel-row">
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13.5, color: 'var(--gw-dark)' }}>
-                      <b style={{ fontWeight: 700 }}>{g.who}</b> &mdash; {g.what}
+                  <div className="gwui-gap-12" style={{display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap'}}>
+                    <span className="gwui-fs-13-5 gwui-ink-dark">
+                      <b style={{fontWeight: 700}}>{g.who}</b> &mdash; {g.what}
                     </span>
-                    <span style={{ fontSize: 12, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>
+                    <span className="gwui-fs-12 gwui-ink-sub" style={{whiteSpace: 'nowrap'}}>
                       {/* Some of these cannot be confirmed either way - the check-in asked and
                           nothing on the record can prove the answer. Saying "they did not answer"
                           about somebody who answered in their first sentence would be worse than
@@ -1466,14 +1465,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               {b.decisions.map((d, i) => (
                 <div key={i} className="gwui-panel-row">
-                  <div style={{ display: 'flex', gap: 11, alignItems: 'baseline' }}>
-                    <span style={{ fontFamily: 'var(--gw-font-name)', fontSize: 17, color: 'var(--gw-navy)', minWidth: 18 }}>{i + 1}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: 'var(--gw-dark)', fontSize: 13 }}>{d.question}</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 2 }}>{d.why}</div>
+                  <div className="gwui-gap-11" style={{display: 'flex', alignItems: 'baseline'}}>
+                    <span className="gwui-fs-17 gwui-ink-navy" style={{fontFamily: 'var(--gw-font-name)', minWidth: 18}}>{i + 1}</span>
+                    <div style={{flex: 1}}>
+                      <div className="gwui-ink-dark gwui-fs-13" style={{fontWeight: 600}}>{d.question}</div>
+                      <div className="gwui-fs-12 gwui-ink-muted gwui-mt-2">{d.why}</div>
                     </div>
                     {/* U.10: a name, not a verdict - the owner is who this is for, not a label on them. */}
-                    <span style={{ fontSize: 12.5, color: 'var(--gw-sub)', whiteSpace: 'nowrap' }}>{d.owner}</span>
+                    <span className="gwui-fs-12-5 gwui-ink-sub" style={{whiteSpace: 'nowrap'}}>{d.owner}</span>
                   </div>
                 </div>
               ))}
@@ -1496,25 +1495,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             heading={b.family === 'UPDATE' ? 'What each person said' : 'Who owns what'}
             note={b.family === 'UPDATE' ? 'Their own answers to the question, in their words.' : 'Read from what people said in their check-ins.'}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 14 }}>
+            <div className="gwui-gap-14" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))'}}>
               {b.whoOwnsWhat.map((p) => (
                 <Panel key={p.participantId} pad={false}>
-                  <div style={{ padding: '13px 15px 10px', borderBottom: '1px solid var(--gw-border)' }}>
+                  <div className="gwui-pt-13 gwui-pr-15 gwui-pb-10 gwui-pl-15 gwui-rule-bottom">
                     {/*
                       The server falls back from a missing name to the ROLE rather than the email
                       address (W-UX-4), so the subtitle has to stop repeating it - otherwise a person
                       with no account yet reads "Engineer" over "Engineer".
                     */}
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{nameOnTheBoard(b, p.participantId, p.name)}</div>
-                    {p.role && p.role !== p.name && <div data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 1 }}>{theLeadsNote(p.role)}</div>}
+                    <div className="gwui-fs-15 gwui-ink-dark" style={{fontWeight: 700}}>{nameOnTheBoard(b, p.participantId, p.name)}</div>
+                    {p.role && p.role !== p.name && <div data-leads-note className="gwui-fs-12 gwui-ink-sub gwui-mt-1">{theLeadsNote(p.role)}</div>}
                   </div>
-                  <div style={{ padding: '2px 15px 10px' }}>
+                  <div className="gwui-pt-2 gwui-pr-15 gwui-pb-10 gwui-pl-15">
                     {(() => { const said = p.items.filter((it) => theWordsOfALine(it.text)); return said.length === 0 ? (
-                      <div style={{ fontSize: 12, color: 'var(--gw-muted)', padding: '10px 0' }}>{b.family === 'UPDATE' ? 'Has not answered yet.' : 'Nobody has said anything about this yet.'}</div>
-                    ) : said.map((it, i) => (
-                      <div key={it.id} style={{ padding: '10px 0', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)' }}>
-                        <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>{theWordsOfALine(it.text)}</div>
-                        <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                      <div className="gwui-fs-12 gwui-ink-muted gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0">{b.family === 'UPDATE' ? 'Has not answered yet.' : 'Nobody has said anything about this yet.'}</div>
+                    ) : said.map((it) => (
+                      <div key={it.id} className="gwui-pt-10 gwui-pr-0 gwui-pb-10 gwui-pl-0 gwui-inner-row">
+                        <div className="gwui-fs-12-5" style={{lineHeight: 1.45}}>{theWordsOfALine(it.text)}</div>
+                        <div className="gwui-mt-4 gwui-gap-6" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
                           {/*
                             RECORD TYPES ARE THE GOAL VOCABULARY, SAID AS A SENTENCE. "success
                             definition", "commitment", "intent" and "progress" as bare tags are the
@@ -1522,9 +1521,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             to them. The lookup is the record type; the reader gets a sentence.
                           */}
                           {b.family !== 'UPDATE' && WHAT_THIS_ITEM_IS[it.type] && (
-                            <span style={{ fontSize: 11, color: 'var(--gw-sub)' }}>{WHAT_THIS_ITEM_IS[it.type]}</span>
+                            <span className="gwui-fs-11 gwui-ink-sub">{WHAT_THIS_ITEM_IS[it.type]}</span>
                           )}
-                          {it.sessionNumber && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>Said in session {it.sessionNumber}.</span>}
+                          {it.sessionNumber && <span className="gwui-fs-10-5 gwui-ink-muted">Said in session {it.sessionNumber}.</span>}
                         </div>
                       </div>
                     )) })()}
@@ -1554,9 +1553,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               for it. W8-24.
             */}
             {b.dependencies.length === 0 ? (
-              <Panel><div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Panel>
+              <Panel><div className="gwui-fs-12-5 gwui-ink-sub" style={{lineHeight: 1.6}}>Nothing here yet. Handoffs appear when somebody says in a check-in that they are waiting on another person.</div></Panel>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div className="gwui-gap-10" style={{display: 'flex', flexDirection: 'column'}}>
                 {b.dependencies.filter((d) => (d.what ?? '').trim().toLowerCase() !== (d.on ?? '').trim().toLowerCase()).map((d) => {
                   const onWhom = d.on ?? 'someone outside this check-in'
                   const statusSaid = d.status === 'BLOCKING' ? 'This is blocking work.' : d.status === 'CLEARED' ? 'This is cleared.' : 'This is waiting.'
@@ -1565,18 +1564,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   const word = d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'
                   return (
                     <Panel key={d.id}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-dark)' }}>{title}</div>
+                      <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between'}}>
+                        <div className="gwui-fs-15 gwui-ink-dark" style={{fontWeight: 700}}>{title}</div>
                         <Tag tone={tone}>{word}</Tag>
                       </div>
-                      <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 8 }}>
-                        Waiting on: <span style={{ color: 'var(--gw-dark)', fontWeight: 600 }}>{onWhom}</span>
+                      <div className="gwui-fs-12-5 gwui-ink-sub gwui-mt-8">
+                        Waiting on: <span className="gwui-ink-dark" style={{fontWeight: 600}}>{onWhom}</span>
                       </div>
-                      <div style={{ fontSize: 13, color: 'var(--gw-dark)', lineHeight: 1.5, marginTop: 4 }}>
+                      <div className="gwui-fs-13 gwui-ink-dark gwui-mt-4" style={{lineHeight: 1.5}}>
                         <b>{d.from}</b> needs {d.what} from <b>{onWhom}</b>. {statusSaid}
                       </div>
                       {d.then && (
-                        <div style={{ background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '8px 10px', marginTop: 8, fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.5 }}>
+                        <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-12-5 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: 1.5}}>
                           When this arrives, {d.from} says: “{String(d.then).replace(/[.\s]+$/, '')}.”
                         </div>
                       )}
@@ -1646,17 +1645,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                           : undefined,
                       }}
                     >
-                      <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
+                      <div className="gwui-gap-5" style={{display: 'flex', justifyContent: 'flex-end'}}>
                         {squaresFor(r.participantId).map((sq) => (
                           <span
                             key={sq.key}
                             aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
                             title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
-                            style={{
-                              display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-                              background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent',
-                              border: sq.state === 'empty' ? '1.5px solid var(--gw-border)' : 'none',
-                            }}
+                            className={sq.state === 'empty' ? 'gwui-rule-square' : undefined}
+                            style={{display: 'inline-block', width: 14, height: 14, borderRadius: 3, flexShrink: 0, background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent'}}
                           />
                         ))}
                       </div>
@@ -1683,7 +1679,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           for itself would be a second copy of the rule, and the wrong one to get wrong.
         */}
         {(b as any).whyYouOnlySeeYourself && (
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 10, maxWidth: 620 }}>
+          <div className="gwui-fs-12-5 gwui-ink-sub gwui-rule gwui-pt-11 gwui-pr-13 gwui-pb-11 gwui-pl-13 gwui-mb-10" style={{lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, maxWidth: 620}}>
             {(b as any).whyYouOnlySeeYourself}
           </div>
         )}
@@ -1691,7 +1687,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.contribution && b.contribution && (
           <Section heading="Contribution against role" note="Measured against each person’s own role.">
             <Panel>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
+              <div className="gwui-fs-12 gwui-ink-sub gwui-pt-6 gwui-pr-0 gwui-pb-2 gwui-pl-0">
                 Is the role clear, and what does the record actually hold for each person, read in their own function's terms.
               </div>
               {/*
@@ -1700,23 +1696,23 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 record gets no card, because a card for nobody says nothing.
               */}
               {b.contribution.every((c) => !c.remitDefined) && b.contribution.length > 1 ? (
-                <div style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>Everyone here</span>
-                    <span style={{ fontSize: 12, color: 'var(--gw-amber-t)', fontWeight: 600 }}>no role clearly defined yet</span>
+                <div className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
+                  <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                    <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>Everyone here</span>
+                    <span className="gwui-fs-12 gwui-ink-amber" style={{fontWeight: 600}}>no role clearly defined yet</span>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 9, padding: '8px 10px', marginTop: 8, lineHeight: 1.5 }}>
+                  <div className="gwui-fs-12 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.5}}>
                     {b.contribution[0].note}
                   </div>
                 </div>
               ) : b.contribution.filter((c) => c.name || c.remitDefined).map((c) => (
-                <div key={c.participantId} style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{nameOnTheBoard(b, c.participantId, c.name)}</span>
+                <div key={c.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
+                  <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                    <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{nameOnTheBoard(b, c.participantId, c.name)}</span>
                     {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
                     {c.remitDefined
-                      ? (b.canEditFrame && c.remit ? <span data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(c.remit)}</span> : null)
-                      : <span style={{ fontSize: 12, color: 'var(--gw-amber-t)', fontWeight: 600 }}>role not clearly defined</span>}
+                      ? (b.canEditFrame && c.remit ? <span data-leads-note className="gwui-fs-12 gwui-ink-sub">{theLeadsNote(c.remit)}</span> : null)
+                      : <span className="gwui-fs-12 gwui-ink-amber" style={{fontWeight: 600}}>role not clearly defined</span>}
 
                   </div>
 
@@ -1725,32 +1721,32 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   {c.shown === false && c.remitDefined ? (
                     /* Too little on record to say anything about a person yet. A
                        hedge still reads as a verdict, so nothing is shown at all. */
-                    <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 8, lineHeight: 1.45, fontStyle: 'italic' }}>
+                    <div className="gwui-fs-12 gwui-ink-muted gwui-mt-8" style={{lineHeight: 1.45, fontStyle: 'italic'}}>
                       Not enough on record yet to say anything about this person's contribution. {c.basis}
                     </div>
                   ) : !c.remitDefined ? (
-                    <div style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 9, padding: '8px 10px', marginTop: 8, lineHeight: 1.45 }}>
+                    <div className="gwui-fs-12 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.45}}>
                       {c.note}
                     </div>
                   ) : (
                     <>
                       {/* A position is never shown without its reason. */}
-                      <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.45 }}>
+                      <div className="gwui-mt-7 gwui-fs-12" style={{lineHeight: 1.45}}>
                         {c.reason}
                       </div>
                       {c.basis && (
-                        <div style={{ marginTop: 6, fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45 }}>
+                        <div className="gwui-mt-6 gwui-fs-10-5 gwui-ink-muted" style={{lineHeight: 1.45}}>
                           {c.basis}
                         </div>
                       )}
                       {c.fnLabel && (
-                        <div style={{ marginTop: 6, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className="gwui-mt-6 gwui-gap-6" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
                           <Tag tone="action">read as {c.fnLabel.toLowerCase()}</Tag>
-                          {!c.fnConfident && <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic' }}>still provisional</span>}
+                          {!c.fnConfident && <span className="gwui-fs-10-5 gwui-ink-muted" style={{fontStyle: 'italic'}}>still provisional</span>}
                           {c.isBlocked && <Tag tone="attention">part of this is blocked</Tag>}
                         </div>
                       )}
-                      <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.4, background: c.ownVoice ? 'var(--gw-blue-bg)' : 'transparent', border: c.ownVoice ? '1px solid var(--gw-blue-b)' : '1px dashed var(--gw-border)', borderRadius: 9, padding: '6px 10px', color: c.ownVoice ? 'var(--gw-blue-t)' : 'var(--gw-muted)', fontStyle: c.ownVoice ? 'normal' : 'italic' }}>
+                      <div className={`gwui-mt-8 gwui-fs-12 gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 ${c.ownVoice ? 'gwui-ownvoice' : 'gwui-ownvoice-none'}`} style={{lineHeight: 1.4, borderRadius: 9, fontStyle: c.ownVoice ? 'normal' : 'italic'}}>
                         {c.ownVoice ?? 'No note. This person can add their own context through their next check-in.'}
                       </div>
                     </>
@@ -1758,7 +1754,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
               ))}
               {b.contribution[0]?.guard && (
-                <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', marginTop: 11, paddingTop: 9, borderTop: '1px dashed var(--gw-border)', lineHeight: 1.5 }}>
+                <div className="gwui-fs-10-5 gwui-ink-muted gwui-mt-11 gwui-pt-9 gwui-rule-top-dashed" style={{fontStyle: 'italic', lineHeight: 1.5}}>
                   {b.contribution[0].guard}
                 </div>
               )}
@@ -1769,33 +1765,28 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {shown.coverage && b.coverage && (
           <Section heading="Where work is landing" note="Whose work is landing where.">
             <Panel>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '6px 0 2px' }}>
+              <div className="gwui-fs-12 gwui-ink-sub gwui-pt-6 gwui-pr-0 gwui-pb-2 gwui-pl-0">
                 A drop in ownership shows up as your responsibilities landing more and more in what other people describe as theirs.
                 Rising is the early warning, often before targets are missed, because the work still gets done, by someone else.
               </div>
 
               {/* Both variants ship so the "does a bar read as a verdict" question
                   gets answered by real use rather than a guess. */}
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', margin: '8px 0 4px' }}>
-                <span style={{ fontSize: 11.5, color: 'var(--gw-muted)', fontWeight: 700, letterSpacing: '.1px' }}>Showing</span>
+              <div className="gwui-gap-6 gwui-mt-8 gwui-mr-0 gwui-mb-4 gwui-ml-0" style={{display: 'flex', alignItems: 'center'}}>
+                <span className="gwui-fs-11-5 gwui-ink-muted" style={{fontWeight: 700, letterSpacing: '.1px'}}>Showing</span>
                 {(['text', 'bar'] as CoverageVariant[]).map((v) => (
-                  <button key={v} onClick={() => setVariant(v)} style={{
-                    fontSize: 10.5, fontWeight: 700, padding: '3px 10px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
-                    border: '1px solid ' + (b.coverageVariant === v ? 'var(--gw-dark)' : 'var(--gw-border)'),
-                    background: b.coverageVariant === v ? 'var(--gw-dark)' : 'white',
-                    color: b.coverageVariant === v ? 'white' : 'var(--gw-sub)',
-                  }}>{v === 'text' ? 'words only' : 'with a bar'}</button>
+                  <button key={v} onClick={() => setVariant(v)} className={`gwui-fs-10-5 gwui-pt-3 gwui-pr-10 gwui-pb-3 gwui-pl-10 ${b.coverageVariant === v ? 'gwui-toggle-chip-on' : 'gwui-toggle-chip-off'}`} style={{fontWeight: 700, borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit'}}>{v === 'text' ? 'words only' : 'with a bar'}</button>
                 ))}
               </div>
 
               {b.coverage.reads.filter((r) => r.shown !== false).map((r) => (
-                <div key={r.participantId} style={{ border: '1px solid var(--gw-border)', borderRadius: 12, padding: '12px 14px', marginTop: 9, background: 'var(--gw-bg)' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--gw-dark)', fontSize: 14 }}>{nameOnTheBoard(b, r.participantId, r.name)}</span>
+                <div key={r.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
+                  <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                    <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{nameOnTheBoard(b, r.participantId, r.name)}</span>
                     {/* "ROLE LEVEL" read as a heading over a single word; it is a small note beside
                         the name, not a section of its own, so it no longer renders in capitals. */}
-                    <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>at {r.scope} level</span>
-                    <span style={{ marginLeft: 'auto' }}>
+                    <span className="gwui-fs-11 gwui-ink-muted">at {r.scope} level</span>
+                    <span className="gwui-ml-auto">
                       <Tag tone={r.kind === 'LEAKING' ? 'attention' : r.kind === 'ABSORBING' ? 'action' : 'plain'}>
                         {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : 'Staying with them'}
                       </Tag>
@@ -1803,43 +1794,43 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   </div>
 
                   {b.coverageVariant === 'bar' && r.remitDefined && (
-                    <div style={{ height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden', marginTop: 9 }}>
-                      <div style={{ height: '100%', width: `${r.pct}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)' }} />
+                    <div className="gwui-mt-9" style={{height: 7, borderRadius: 6, background: '#D6DBEA', overflow: 'hidden'}}>
+                      <div style={{height: '100%', width: `${r.pct}%`, borderRadius: 6, background: r.kind === 'LEAKING' ? 'var(--gw-amber-b)' : r.kind === 'ABSORBING' ? 'var(--gw-navy)' : 'var(--gw-muted)'}} />
                     </div>
                   )}
 
                   {/* "WHAT PEOPLE SAID The role..." read live as one run-on line, the same bug as
                       "Why it matters" above. Its own line now. */}
-                  <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45 }}>
-                    <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>What people said</span>
+                  <div className="gwui-mt-8 gwui-fs-12" style={{lineHeight: 1.45}}>
+                    <span className="gwui-fs-10-5 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>What people said</span>
                     {r.what}
                   </div>
 
                   {/* The signal is ALWAYS coupled to the reason it cannot self-determine. */}
-                  <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.4, background: 'white', border: '1px solid var(--gw-border)', borderRadius: 9, padding: '7px 10px' }}>
-                    <span style={{ fontSize: 10.5, letterSpacing: '.1px', fontWeight: 700, color: 'var(--gw-sub-d)', display: 'block', marginBottom: 2 }}>
+                  <div className="gwui-mt-7 gwui-fs-12 gwui-rule gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10" style={{lineHeight: 1.4, background: 'white', borderRadius: 9}}>
+                    <span className="gwui-fs-10-5 gwui-ink-subd gwui-mb-2" style={{letterSpacing: '.1px', fontWeight: 700, display: 'block'}}>
                       Which of these this is
                     </span>
                     {r.reasonText}
                   </div>
 
                   {r.basis && (
-                    <div style={{ marginTop: 6, fontSize: 10.5, color: 'var(--gw-muted)', lineHeight: 1.45 }}>{r.basis}</div>
+                    <div className="gwui-mt-6 gwui-fs-10-5 gwui-ink-muted" style={{lineHeight: 1.45}}>{r.basis}</div>
                   )}
 
-                  <div style={{ marginTop: 7, fontSize: 12, lineHeight: 1.4, border: '1px dashed var(--gw-border)', borderRadius: 9, padding: '6px 10px', color: 'var(--gw-muted)', fontStyle: 'italic' }}>
+                  <div className="gwui-mt-7 gwui-fs-12 gwui-rule-dashed gwui-pt-6 gwui-pr-10 gwui-pb-6 gwui-pl-10 gwui-ink-muted" style={{lineHeight: 1.4, borderRadius: 9, fontStyle: 'italic'}}>
                     {r.ownVoice ?? 'No note. This person can add context through their next check-in.'}
                   </div>
                 </div>
               ))}
 
               {b.coverage.reads.some((r) => r.shown === false) && (
-                <div style={{ fontSize: 11, color: 'var(--gw-muted)', marginTop: 9, lineHeight: 1.45 }}>
+                <div className="gwui-fs-11 gwui-ink-muted gwui-mt-9" style={{lineHeight: 1.45}}>
                   {b.coverage.reads.filter((r) => r.shown === false).map((r) => r.name).join(', ')} {b.coverage.reads.filter((r) => r.shown === false).length === 1 ? 'is' : 'are'} not shown here yet. There is too little on record to say anything about where their work is landing, and a guess about that would be worse than a gap.
                 </div>
               )}
 
-              <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', marginTop: 11, paddingTop: 9, borderTop: '1px dashed var(--gw-border)', lineHeight: 1.5 }}>
+              <div className="gwui-fs-10-5 gwui-ink-muted gwui-mt-11 gwui-pt-9 gwui-rule-top-dashed" style={{fontStyle: 'italic', lineHeight: 1.5}}>
                 Other people doing your work can mean several different things. Nobody may own it any more, and others are quietly
                 covering the gap. It may be healthy work shared by design. You may be blocked or carrying too much. Or someone else may
                 be taking over your role without being asked to. This shows the signal, but it cannot tell which of these is happening on
@@ -1863,13 +1854,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {viewerRunsThisCheckIn && b.managerAlignment && b.managerAlignment.length > 0 && (
           <Section heading="How the leading is landing" note="Two sides of the same leadership.">
             <Panel pad={false}>
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', padding: '16px 22px 2px' }}>
+              <div className="gwui-fs-12 gwui-ink-sub gwui-pt-16 gwui-pr-22 gwui-pb-2 gwui-pl-22">
                 Where one person's read of how this team is being led differs from another's. Neither is called wrong.
               </div>
               {b.managerAlignment.map((m, i) => (
                 <div key={i} className="gwui-panel-row">
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>{m.label}</span>
+                  <div className="gwui-gap-8" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+                    <span className="gwui-fs-13 gwui-ink-dark" style={{fontWeight: 600}}>{m.label}</span>
                     {/* The pole matters more than the gap: holding on to everything
                         and holding nobody need opposite responses, and telling one
                         to do the other makes it worse. */}
@@ -1879,16 +1870,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                       </Tag>
                     )}
                     {seenAcross(m.periods, b.phaseSpine?.currentSession ?? null) && (
-                      <span style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 'auto' }}>
+                      <span className="gwui-fs-10-5 gwui-ink-muted gwui-ml-auto">
                         {seenAcross(m.periods, b.phaseSpine?.currentSession ?? null)}
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-text)', marginTop: 4, lineHeight: 1.45 }}>{m.gap}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 4, lineHeight: 1.45 }}>{m.note}</div>
+                  <div className="gwui-fs-12-5 gwui-ink-text gwui-mt-4" style={{lineHeight: 1.45}}>{m.gap}</div>
+                  <div className="gwui-fs-12 gwui-ink-sub gwui-mt-4" style={{lineHeight: 1.45}}>{m.note}</div>
                 </div>
               ))}
-              <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 22px 16px', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
+              <div className="gwui-fs-10-5 gwui-ink-muted gwui-pt-10 gwui-pr-22 gwui-pb-16 gwui-pl-22 gwui-rule-top-dashed gwui-mt-4" style={{fontStyle: 'italic', lineHeight: 1.5}}>
                 Neither read is called wrong. Something can be set clearly and still not land, and both people can be describing
                 their own experience honestly. This shows that two sides of the same leadership differ, never who said what, and it
                 is a prompt for a conversation rather than a finding about anyone.
@@ -1913,12 +1904,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Panel pad={false}>
               {b.hiddenContributors.rows.map((r, i) => (
                 <div key={r.label + i} className="gwui-panel-row">
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)', marginBottom: 4 }}>{r.label}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{r.evidence}</div>
+                  <div className="gwui-fs-13 gwui-ink-text gwui-mb-4" style={{fontWeight: 600}}>{r.label}</div>
+                  <div className="gwui-fs-12-5 gwui-ink-sub" style={{lineHeight: 1.55}}>{r.evidence}</div>
                 </div>
               ))}
               <div className="gwui-panel-row">
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>{b.hiddenContributors.why}</div>
+                <div className="gwui-fs-12 gwui-ink-sub" style={{lineHeight: 1.6}}>{b.hiddenContributors.why}</div>
               </div>
             </Panel>
           </Section>
@@ -1937,11 +1928,11 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             <Section heading="What keeps coming up" note="Named after three check-ins in a row, never after one. Each describes the work.">
               <Panel pad={false}>
                 {visiblePatterns.length === 0 ? (
-                  <div className="gwui-panel-row"><div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></div>
+                  <div className="gwui-panel-row"><div className="gwui-fs-12-5 gwui-ink-muted">Nothing to show here yet. A pattern appears only after three check-ins in a row, and the person it is about always sees it first.</div></div>
                 ) : (
                   <>
                     <div className="gwui-panel-row">
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>About each person’s work</div>
+                      <div className="gwui-fs-12-5 gwui-ink-dark" style={{fontWeight: 700}}>About each person’s work</div>
                     </div>
                     {visiblePatterns.map((p) => (
                       <div key={p.id} className="gwui-panel-row">
@@ -1954,7 +1945,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     ))}
                   </>
                 )}
-                <div style={{ fontSize: 10.5, color: 'var(--gw-muted)', fontStyle: 'italic', padding: '10px 22px', borderTop: '1px dashed var(--gw-border)', marginTop: 4, lineHeight: 1.5 }}>
+                <div className="gwui-fs-10-5 gwui-ink-muted gwui-pt-10 gwui-pr-22 gwui-pb-10 gwui-pl-22 gwui-rule-top-dashed gwui-mt-4" style={{fontStyle: 'italic', lineHeight: 1.5}}>
                   Patterns about the work only. Anything that would read as a judgement about a person stays in the lead's private report and never appears here.
                 </div>
               </Panel>
@@ -1967,24 +1958,24 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <Section heading="Find a time" note={b.canEditFrame ? 'The only thing on this board you set up yourself.' : `${(groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'} can set up a poll to find a time.`}>
             <Panel>
               {b.canEditFrame && (
-                <div style={{ padding: '8px 0', borderBottom: b.poll ? '1px solid var(--gw-border)' : 'none' }}>
+                <div className={`gwui-pt-8 gwui-pr-0 gwui-pb-8 gwui-pl-0 ${b.poll ? 'gwui-rule-bottom' : 'gwui-rule-bottom-none'}`}>
                   {!showPollForm ? (
                     <button onClick={() => { setShowPollForm(true); setPollQ(b.poll?.question ?? 'Weekly sync, best time'); setPollOpts((b.poll?.options ?? []).map((o) => o.label).join('\n')) }}
-                      style={{ fontSize: 12, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
+                      className="gwui-fs-12 gwui-ink-navy gwui-rule-none gwui-pt-0 gwui-pr-0 gwui-pb-0 gwui-pl-0" style={{background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, textDecoration: 'underline'}}>
                       {b.poll ? 'Change the times' : 'Set up an availability poll'}
                     </button>
                   ) : (
-                    <form noValidate onSubmit={(e) => { e.preventDefault(); if (pollQ.trim() && pollOpts.trim() && !savePoll.isPending) savePoll.mutate() }} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <form noValidate onSubmit={(e) => { e.preventDefault(); if (pollQ.trim() && pollOpts.trim() && !savePoll.isPending) savePoll.mutate() }} className="gwui-gap-8" style={{display: 'flex', flexDirection: 'column'}}>
                       <input value={pollQ} onChange={(e) => setPollQ(e.target.value)} placeholder="What are you finding a time for?"
-                        style={{ padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none' }} />
+                        className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-12-5 gwui-rule" style={{borderRadius: 7, fontFamily: 'inherit', outline: 'none'}} />
                       <textarea value={pollOpts} onChange={(e) => setPollOpts(e.target.value)} placeholder={'One time per line\nTue 16:00\nWed 09:00'}
-                        style={{ minHeight: 68, padding: '7px 10px', fontSize: 12.5, border: '1px solid var(--gw-border)', borderRadius: 7, fontFamily: 'inherit', outline: 'none', resize: 'vertical' }} />
+                        className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-12-5 gwui-rule" style={{minHeight: 68, borderRadius: 7, fontFamily: 'inherit', outline: 'none', resize: 'vertical'}} />
                       {b.poll && (
-                        <div style={{ fontSize: 11, color: 'var(--gw-amber-t)' }}>
+                        <div className="gwui-fs-11 gwui-ink-amber">
                           Changing the times clears everyone's availability, because an answer to a question that changed is not an answer.
                         </div>
                       )}
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div className="gwui-gap-8" style={{display: 'flex'}}>
                         <UIButton kind="primary" size="small" type="submit" disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}>
                           {savePoll.isPending ? 'Saving...' : 'Save'}
                         </UIButton>
@@ -1999,45 +1990,45 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 </div>
               )}
               {!b.poll ? (
-                <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No availability poll yet.</div>
+                <div className="gwui-fs-12-5 gwui-ink-muted">No availability poll yet.</div>
               ) : (
                 <>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', padding: '4px 0' }}>
+                  <div className="gwui-fs-14 gwui-ink-dark gwui-pt-4 gwui-pr-0 gwui-pb-4 gwui-pl-0" style={{fontWeight: 700}}>
                     {b.poll.question}
-                    <span style={{ fontSize: 10.5, color: 'var(--gw-navy)', fontWeight: 600, marginLeft: 8 }}>tap your name to mark availability</span>
+                    <span className="gwui-fs-10-5 gwui-ink-navy gwui-ml-8" style={{fontWeight: 600}}>tap your name to mark availability</span>
                   </div>
-                  {b.poll.options.map((o, i) => {
+                  {b.poll.options.map((o) => {
                     const max = Math.max(...b.poll!.options.map((x) => x.count))
                     const win = o.count === max && max > 0
                     return (
-                      <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-border)', background: win ? 'var(--gw-green-bg)' : 'transparent', borderRadius: win ? 9 : 0, margin: win ? '2px -8px' : 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, minWidth: 110 }}>{o.label}</div>
+                      <div key={o.id} className={`gwui-gap-10 gwui-pt-8 gwui-pr-8 gwui-pb-8 gwui-pl-8 gwui-inner-row ${win ? 'gwui-win-row' : ''}`} style={{display: 'flex', alignItems: 'center'}}>
+                        <div className="gwui-fs-13" style={{fontWeight: 600, minWidth: 110}}>{o.label}</div>
                         {/* Only YOUR OWN availability is clickable. Everyone else is a
                             read-only indicator: the toggle endpoint acts on the caller,
                             so a clickable chip bearing someone else's name would set
                             your availability while appearing to set theirs. */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, flex: 1, alignItems: 'center' }}>
-                          <button
-                            onClick={() => togglePoll.mutate(o.id)}
-                            disabled={togglePoll.isPending}
-                            title="Toggle your own availability for this time"
-                            style={{
-                              fontSize: 10.5, fontWeight: 700, borderRadius: 13, padding: '3px 10px',
-                              cursor: togglePoll.isPending ? 'wait' : 'pointer', fontFamily: 'inherit',
-                              background: o.whoIds.some((w) => myIds.has(w)) ? 'var(--gw-blue-bg)' : '#F1F2F5',
-                              color: o.whoIds.some((w) => myIds.has(w)) ? 'var(--gw-blue-t)' : 'var(--gw-sub)',
-                              border: '1px solid ' + (o.whoIds.some((w) => myIds.has(w)) ? 'var(--gw-blue-b)' : 'var(--gw-border)'),
-                            }}
-                          >
-                            {o.whoIds.some((w) => myIds.has(w)) ? '✓ you can make this' : 'I can make this'}
-                          </button>
+                        <div className="gwui-gap-5" style={{display: 'flex', flexWrap: 'wrap', flex: 1, alignItems: 'center'}}>
+                          {(() => {
+                            const iCanMakeThis = o.whoIds.some((w) => myIds.has(w))
+                            return (
+                              <button
+                                onClick={() => togglePoll.mutate(o.id)}
+                                disabled={togglePoll.isPending}
+                                title="Toggle your own availability for this time"
+                                className={`gwui-fs-10-5 gwui-pt-3 gwui-pr-10 gwui-pb-3 gwui-pl-10 ${iCanMakeThis ? 'gwui-poll-chip-on' : 'gwui-poll-chip-off'}`}
+                                style={{fontWeight: 700, borderRadius: 13, cursor: togglePoll.isPending ? 'wait' : 'pointer', fontFamily: 'inherit'}}
+                              >
+                                {iCanMakeThis ? '✓ you can make this' : 'I can make this'}
+                              </button>
+                            )
+                          })()}
                           {o.who.filter(Boolean).length > 0 && (
-                            <span style={{ fontSize: 10.5, color: 'var(--gw-muted)' }}>
+                            <span className="gwui-fs-10-5 gwui-ink-muted">
                               also: {o.who.filter(Boolean).join(', ')}
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: 12, color: win ? 'var(--gw-green-t)' : 'var(--gw-sub)', minWidth: 42, textAlign: 'right', fontWeight: win ? 700 : 400 }}>{o.count} in</div>
+                        <div className={`gwui-fs-12 ${win ? 'gwui-ink-green' : 'gwui-ink-sub'}`} style={{minWidth: 42, textAlign: 'right', fontWeight: win ? 700 : 400}}>{o.count} in</div>
                       </div>
                     )
                   })}
@@ -2073,7 +2064,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             return (
               <Section heading="Alignment feed">
                 <Panel>
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>
+                  <div className="gwui-fs-12-5 gwui-ink-muted">
                     {sigs.length === 1
                       ? 'One pattern has come up so far. It is shown above, under What keeps coming up.'
                       : `${sigs.length} patterns have come up so far. They are shown above, under What keeps coming up.`}
@@ -2166,7 +2157,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               "38 sessions in all." And `btnGhost` (thin grey border, grey text) drew as a pale bar
               rather than the prototype's wide outlined white button with a border and bold text.
             */}
-            <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gw-sub)' }}>
+            <div className="gwui-mt-10 gwui-fs-12-5 gwui-ink-sub">
               {sessionRows.length} session{sessionRows.length === 1 ? '' : 's'} in all.
             </div>
             <Link
@@ -2189,7 +2180,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {!shown.checkInGrid && b.myParticipantId && (
           <Link
             to={`/grounds/${id}?tab=record`}
-            style={{ ...wideOutlineBtn, marginTop: 20 }}
+            className="gwui-mt-20" style={{...wideOutlineBtn}}
           >
             {EVERY_SESSION.heading}
           </Link>
@@ -2213,12 +2204,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           here since Sec's own right-hand slot only takes text, not a "Show"/"Hide" control), with
           "Show" on the right.
         */}
-        <div style={{ marginTop: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--gw-text)', margin: 0 }}>Over time</h2>
+        <div className="gwui-mt-28">
+          <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'baseline', justifyContent: 'space-between'}}>
+            <h2 className="gwui-fs-22 gwui-ink-text gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{fontWeight: 700}}>Over time</h2>
             <button
               onClick={() => setShowOverTime((v) => !v)}
-              style={{ background: 'none', border: 'none', padding: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0 }}
+              className="gwui-rule-none gwui-pt-0 gwui-pr-0 gwui-pb-0 gwui-pl-0 gwui-fs-13 gwui-ink-navy" style={{background: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', flexShrink: 0}}
             >
               {showOverTime ? 'Hide' : 'Show'}
             </button>
@@ -2251,7 +2242,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
             way - is the panel's own, because only it knows whether anybody has picked.
           */
           return (
-            <div style={{ marginTop: 14 }}>
+            <div className="gwui-mt-14">
               {/* U.11: for everyone except the lead while it is open. The lead decides on the
                   ending page, and once it has ended it shows at the top of the board. */}
               <ResolutionPanel groundId={id!} nearTheEnd={nearTheEnd} place="board-bottom" />
@@ -2273,17 +2264,17 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           produced. It is for the person who wants to know where a line came from, and that person
           goes looking after they have read it, not before.
         */}
-        <details className="gw-legend" style={{ marginTop: 28 }}>
-          <summary style={{ fontSize: 12, color: 'var(--gw-sub)', cursor: 'pointer' }}>How this board is put together</summary>
-          <div style={{ display: 'grid', gap: 12, marginTop: 10 }}>
+        <details className="gw-legend gwui-mt-28">
+          <summary className="gwui-fs-12 gwui-ink-sub" style={{cursor: 'pointer'}}>How this board is put together</summary>
+          <div className="gwui-gap-12 gwui-mt-10" style={{display: 'grid'}}>
             {[
               { h: 'What is open, first', p: 'It leads with what is still unresolved and what everyone already agrees on. The read across everything people said follows it.' },
               { h: 'Each gap names both sides', p: "Every disagreement carries each person's position in their own words, and what is at stake if it holds. The most significant comes first." },
               { h: 'Honest closes', p: 'Decisions rarely finish clean, so it names what is aligned, what is open, and the question the whole thing turns on. It never gives a verdict on a person.' },
             ].map((cell, i) => (
               <div key={i}>
-                <div style={{ fontSize: 12, letterSpacing: '.1px', color: 'var(--gw-muted)', fontWeight: 700, marginBottom: 4 }}>{cell.h}</div>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>{cell.p}</div>
+                <div className="gwui-fs-12 gwui-ink-muted gwui-mb-4" style={{letterSpacing: '.1px', fontWeight: 700}}>{cell.h}</div>
+                <div className="gwui-fs-12 gwui-ink-sub" style={{lineHeight: 1.55}}>{cell.p}</div>
               </div>
             ))}
           </div>
@@ -2333,7 +2324,7 @@ function AskTheBoard({ firstBlocker }: { firstBlocker: { from: string | null; wh
         showWith(m)
         setDraft('')
       }}
-      style={{ display: 'flex', gap: 8, marginTop: 22 }}
+      className="gwui-gap-8 gwui-mt-22" style={{display: 'flex'}}
     >
       <input
         type="text"
@@ -2341,12 +2332,9 @@ function AskTheBoard({ firstBlocker }: { firstBlocker: { from: string | null; wh
         onChange={(e) => setDraft(e.target.value)}
         placeholder={`Ask about this board, for example “${example}”`}
         aria-label="Ask about this board"
-        style={{
-          flex: 1, padding: '11px 14px', borderRadius: 8, border: '1px solid var(--gw-border)',
-          background: 'white', fontSize: 13.5, fontFamily: 'inherit', color: 'var(--gw-text)',
-        }}
+        className="gwui-pt-11 gwui-pr-14 gwui-pb-11 gwui-pl-14 gwui-rule gwui-fs-13-5 gwui-ink-text" style={{flex: 1, borderRadius: 8, background: 'white', fontFamily: 'inherit'}}
       />
-      <button type="submit" style={btn}>Ask</button>
+      <UIButton kind="primary" type="submit">Ask</UIButton>
     </form>
   )
 }

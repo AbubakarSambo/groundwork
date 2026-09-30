@@ -95,36 +95,36 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
             {/* The number, where they have one. A person with no target of their own still has a
                 row: what to do about them does not depend on somebody having set them a figure. */}
             {r.target != null && (
-              <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', fontVariantNumeric: 'tabular-nums' }}>
+              <div className="gwui-fs-12-5 gwui-ink-sub" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {r.count} of {r.target}
               </div>
             )}
-            <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 2, lineHeight: 1.5 }}>{r.says}</div>
+            <div className="gwui-fs-13 gwui-ink-sub gwui-mt-2" style={{ lineHeight: 1.5 }}>{r.says}</div>
             {/* `ask` and `finding`, kept as one quiet line rather than dropped - not in the
                 prototype's table, but the whole point of a row for a lead who can act on it. */}
             {(r.ask || r.finding) && (
-              <div style={{ fontSize: 12, color: r.hasGap ? 'var(--gw-amber-t)' : 'var(--gw-muted)', marginTop: 4, lineHeight: 1.5 }}>
+              <div className={`gwui-fs-12 gwui-mt-4 ${r.hasGap ? 'gwui-ink-amber' : 'gwui-ink-muted'}`} style={{ lineHeight: 1.5 }}>
                 {[r.ask, r.finding].filter(Boolean).join(' ')}
               </div>
             )}
             {r.keepsComingUp && (
-              <div style={{ fontSize: 12, color: 'var(--gw-muted)', marginTop: 4, lineHeight: 1.5 }}>{r.keepsComingUp}</div>
+              <div className="gwui-fs-12 gwui-ink-muted gwui-mt-4" style={{ lineHeight: 1.5 }}>{r.keepsComingUp}</div>
             )}
           </div>
           <Tag tone={TONE[r.reason]}>{LABEL[r.reason]}</Tag>
           {/* The last-10 squares, the same mark and the same data "Who checked in" draws, in their
               own fixed-width column so they line up across every row. */}
           {squaresFor ? (
-            <div style={{ display: 'flex', gap: 5, width: 170, justifyContent: 'flex-end', flexShrink: 0 }}>
+            <div className="gwui-gap-5" style={{ display: 'flex', width: 170, justifyContent: 'flex-end', flexShrink: 0 }}>
               {squaresFor(r.participantId).map((sq) => (
                 <span
                   key={sq.key}
                   aria-label={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
                   title={sq.state === 'upcoming' ? 'Not open yet' : sq.state === 'done' ? 'Checked in' : 'Missed'}
+                  className={sq.state === 'empty' ? 'gwui-rule-square' : undefined}
                   style={{
                     display: 'inline-block', width: 12, height: 12, borderRadius: 3, flexShrink: 0,
                     background: sq.state === 'done' ? 'var(--gw-navy)' : 'transparent',
-                    border: sq.state === 'empty' ? '1.5px solid var(--gw-border)' : 'none',
                   }}
                 />
               ))}

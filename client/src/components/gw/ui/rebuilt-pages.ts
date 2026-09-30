@@ -36,4 +36,7 @@ export const REBUILT_PAGES: string[] = [
   'pages/org/WhoCanOpenACheckIn.tsx',
   'pages/org/OnePersonPage.tsx',
   'pages/grounds/CheckInPeopleAndSetup.tsx',
+  'pages/board/BoardPage.tsx',
+  'pages/board/WorkRecords.tsx',
+  'components/gw/where-each-person-is.tsx',
 ]

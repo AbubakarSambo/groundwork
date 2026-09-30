@@ -177,8 +177,8 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
       : 'Nobody has said what kind of work this check-in is about yet.')
 
   return (
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', margin: '8px 0 0' }}>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sentence}</p>
+    <div className="gwui-gap-10 gwui-mt-8 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
+      <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13 gwui-ink-text" style={{lineHeight: 1.55}}>{sentence}</p>
       {canEdit && (
         <Button kind="quiet" size="small" onClick={() => setOpen(true)} aria-label={kindOfWork ? 'Change the kind of work' : 'Choose the kind of work'}>
           {kindOfWork ? 'Change' : 'Choose'}
@@ -186,7 +186,7 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
       )}
       {open && (
         <Modal title="What kind of work is this check-in about?" onClose={() => setOpen(false)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="gwui-gap-14" style={{display: 'flex', flexDirection: 'column'}}>
             <div>
               <FieldLabel htmlFor="kind-of-work-select">Kind of work</FieldLabel>
               <Select id="kind-of-work-select" value={kind} onChange={(e) => setKind(e.target.value)}>
@@ -203,7 +203,7 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
                 onChange={(e) => setStagesText(e.target.value)}
               />
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="gwui-gap-8" style={{display: 'flex'}}>
               <Button onClick={() => save.mutate()} disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</Button>
               <Button kind="quiet" onClick={() => setOpen(false)}>Cancel</Button>
             </div>
@@ -221,13 +221,13 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
  */
 function WhatShowsIt({ row, leadFirstName }: { row: AServedWorkRow; leadFirstName: string | null }) {
   if (row.from === 'lead') {
-    return <p style={{ margin: 0, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{`${leadFirstName ?? 'The person running this check-in'} added it.`}</p>
+    return <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${leadFirstName ?? 'The person running this check-in'} added it.`}</p>
   }
   const who = row.owner ? firstWord(row.owner) : null
   return (
-    <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.5 }}>
+    <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>
       <div>{who ? `In ${who}'s words,` : 'In their own words,'}</div>
-      {row.said && <p style={{ margin: '2px 0 0', fontStyle: 'italic' }}>{`“${row.said}”`}</p>}
+      {row.said && <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
     </div>
   )
 }
@@ -267,7 +267,7 @@ function WorkItemForm({ section, participants, editing, onClose, onSaved, onRemo
 
   return (
     <Modal title={editing ? 'Change this record' : `Add ${section.holds === 'the parties' ? 'a party' : 'a record'}`} onClose={onClose}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="gwui-gap-14" style={{display: 'flex', flexDirection: 'column'}}>
         {kinds.length > 1 && (
           <div>
             <FieldLabel htmlFor="work-item-kind">What kind of record is this?</FieldLabel>
@@ -300,17 +300,17 @@ function WorkItemForm({ section, participants, editing, onClose, onSaved, onRemo
           <FieldLabel htmlFor="work-item-due">Due date (leave empty for none)</FieldLabel>
           <TextField id="work-item-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1 }}>
+        <div className="gwui-gap-10" style={{display: 'flex'}}>
+          <div style={{flex: 1}}>
             <FieldLabel htmlFor="work-item-field-label">A detail's label (optional)</FieldLabel>
             <TextField id="work-item-field-label" value={fieldLabel} onChange={(e) => setFieldLabel(e.target.value)} placeholder="Value" />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{flex: 1}}>
             <FieldLabel htmlFor="work-item-field-value">Its value</FieldLabel>
             <TextField id="work-item-field-value" value={fieldValue} onChange={(e) => setFieldValue(e.target.value)} placeholder="KES 90,000" />
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
           <Button onClick={submit} disabled={!name.trim()}>{editing ? 'Save the change' : 'Add it'}</Button>
           <Button kind="quiet" onClick={onClose}>Cancel</Button>
           {editing && onRemove && (
@@ -347,24 +347,24 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
   const fieldEntries = Object.entries(row.fields ?? {})
   return (
     <div
-      style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto', gap: 14, padding: '12px 16px', borderTop: '1px solid var(--gw-border)', alignItems: 'start' }}
+      className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto', alignItems: 'start'}}
       role="row"
       aria-label={row.name}
     >
       <div>
-        <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gw-text)' }}>{row.name}</div>
+        <div className="gwui-ink-text gwui-fs-14-5" style={{fontWeight: 700}}>{row.name}</div>
         {fieldEntries.map(([label, value]) => (
-          <div key={label} style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2 }}>{label} {value}</div>
+          <div key={label} className="gwui-fs-12-5 gwui-ink-sub gwui-mt-2">{label} {value}</div>
         ))}
-        {dueSentence(row.due) && <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', marginTop: 2 }}>{dueSentence(row.due)}</div>}
+        {dueSentence(row.due) && <div className="gwui-fs-12-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--gw-text)' }}>
-        {row.owner ?? <span style={{ color: 'var(--gw-muted)' }}>Nobody named yet.</span>}
+      <div className="gwui-fs-13 gwui-ink-text">
+        {row.owner ?? <span className="gwui-ink-muted">Nobody named yet.</span>}
       </div>
       <div aria-label="Stage now">
         {row.stage
           ? <Tag tone="plain">{row.stage}</Tag>
-          : <span style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>No stage said yet.</span>}
+          : <span className="gwui-fs-12-5 gwui-ink-muted">No stage said yet.</span>}
       </div>
       <div>
         <WhatShowsIt row={row} leadFirstName={leadFirstName} />
@@ -381,7 +381,7 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
 /** The column headings above the rows - the item's own noun, the kind's own word for whose it is. */
 function WorkTableHead({ itemNoun, ownerLabel, canEdit }: { itemNoun: string; ownerLabel: string; canEdit: boolean }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto', gap: 14, padding: '10px 16px', fontSize: 12.5, color: 'var(--gw-sub)' }} role="row">
+    <div className="gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-12-5 gwui-ink-sub" style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto'}} role="row">
       <span>{itemNoun}</span>
       <span>{ownerLabel}</span>
       <span>Stage now</span>
@@ -406,12 +406,12 @@ function TimelineList({ rows, canEdit, leadFirstName, onEdit }: {
   return (
     <Panel pad={false}>
       {ordered.map((row) => (
-        <div key={row.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '12px 16px', borderTop: '1px solid var(--gw-border)', alignItems: 'flex-start' }} role="row" aria-label={row.name}>
+        <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
           <div>
-            <p style={{ margin: 0, fontSize: 14.5, color: 'var(--gw-text)' }}>
+            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-14-5">
               {row.due ? `${row.name} is due on ${whenItWas(row.due, 'weekdayAndDay')}.` : `${row.name}. No date said yet.`}
             </p>
-            <div style={{ marginTop: 4 }}><WhatShowsIt row={row} leadFirstName={leadFirstName} /></div>
+            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} /></div>
           </div>
           {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
         </div>
@@ -433,14 +433,14 @@ function PartiesList({ rows, canEdit, leadFirstName, onEdit }: {
   return (
     <Panel pad={false}>
       {rows.map((row) => (
-        <div key={row.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '12px 16px', borderTop: '1px solid var(--gw-border)', alignItems: 'flex-start' }} role="row" aria-label={row.name}>
+        <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
           <div>
-            <p style={{ margin: 0, fontSize: 14.5, fontWeight: 700, color: 'var(--gw-text)' }}>{row.name}</p>
+            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-14-5" style={{fontWeight: 700}}>{row.name}</p>
             {/* What the record says about this party, as the prototype does ("Pwani Mills, the other side"): each field's value, in words. */}
             {Object.values(row.fields ?? {}).filter(Boolean).length > 0 && (
-              <p style={{ margin: '2px 0 0', fontSize: 14, color: 'var(--gw-sub)' }}>{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
+              <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-14 gwui-ink-sub">{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
             )}
-            <div style={{ marginTop: 4 }}><WhatShowsIt row={row} leadFirstName={leadFirstName} /></div>
+            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} /></div>
           </div>
           {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
         </div>
@@ -489,7 +489,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   if (section.state === 'not-known') {
     return (
       <Section heading={heading}>
-        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--gw-muted)', fontStyle: 'italic', lineHeight: 1.5 }}>{section.why}</p>
+        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-12-5 gwui-ink-muted" style={{fontStyle: 'italic', lineHeight: 1.5}}>{section.why}</p>
       </Section>
     )
   }
@@ -499,11 +499,11 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   if (section.state === 'none-yet') {
     return (
       <Section heading={heading}>
-        <p style={{ margin: 0, fontSize: 14.5, color: 'var(--gw-sub)', lineHeight: 1.55 }}>
+        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-sub gwui-fs-14-5" style={{lineHeight: 1.55}}>
           {`No ${section.holds} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`}
         </p>
         {canAdd && (
-          <div style={{ marginTop: 10 }}>
+          <div className="gwui-mt-10">
             <Button kind="secondary" size="small" onClick={() => setAdding(true)}>Add one</Button>
           </div>
         )}
@@ -553,14 +553,14 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       )}
 
       {!!section.stages?.length && (
-        <div style={{ marginTop: 14 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 13.5, fontWeight: 700, color: 'var(--gw-text)' }}>The shape of the work</p>
+        <div className="gwui-mt-14">
+          <p className="gwui-mt-0 gwui-mr-0 gwui-mb-8 gwui-ml-0 gwui-fs-13-5 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
           <StageTrack stages={section.stages} counts={stageCounts} />
         </div>
       )}
 
       {canAdd && (
-        <div style={{ marginTop: 14 }}>
+        <div className="gwui-mt-14">
           <Button kind="secondary" size="small" onClick={() => setAdding(true)}>Add a record</Button>
         </div>
       )}
