@@ -243,6 +243,37 @@ export function commitmentsKeptInTheLastFourWeeks(
 
 const SETTLED_BY: Record<string, 'said' | 'proven' | 'confirmed'> = { SAID: 'said', PROVEN: 'proven', CONFIRMED: 'confirmed' };
 
+/**
+ * WHEN, IN ONE FORM (screens request 96). The record holds the same kind of answer as "on 9 October"
+ * on one row and "9 October" on the next, because it is a reading of what was said. The prototype
+ * draws it bare ("Friday", "This Friday", C2 you-board screens), so a leading "on" is dropped
+ * wherever the You board serves a time: promises, expectations and to-dos alike. Nothing else of
+ * the person's words is changed.
+ */
+export function whenInOneForm(said: string | null | undefined): string | null {
+  const t = String(said ?? '').trim().replace(/^on\s+/i, '').trim();
+  return t || null;
+}
+
+const wordsOf = (text: string, when: string | null) => ` ${aCommitmentKey(text, when)} `;
+
+/**
+ * THE SAME PROMISE, SAID SHORT AND THEN SAID WHOLE (screens request 96). "I will deliver the Tuskys
+ * cookers" and "I will deliver the Tuskys cookers on 9 October and ask for the signed order form that
+ * day." are one promise kept as two rows. Two open promises in one check-in are the same when the
+ * words of one (three or more of them) sit whole inside the other and they do not name two
+ * different times. The fuller one is served, in its own words, with the time of either.
+ */
+function theFullerOf<T extends { text: string; when: string | null; open: boolean; groundId: string }>(a: T, b: T): T | null {
+  if (!a.open || !b.open || a.groundId !== b.groundId) return null;
+  const x = aCommitmentKey(a.text, a.when);
+  const y = aCommitmentKey(b.text, b.when);
+  const [short, long, fuller, shorter] = x.length <= y.length ? [x, y, b, a] : [y, x, a, b];
+  if (short.split(' ').length < 3 || !` ${long} `.includes(` ${short} `)) return null;
+  if (a.when && b.when && whenInOneForm(a.when)!.toLowerCase() !== whenInOneForm(b.when)!.toLowerCase()) return null;
+  return { ...fuller, when: fuller.when ?? shorter.when };
+}
+
 const STATE_SAYS: Record<SaidState, string> = { open: 'Open', kept: 'Kept', not_done: 'Not done' };
 
 export function yourBoard(
@@ -321,7 +352,7 @@ export function yourBoard(
   }
 
   /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere. */
-  const said: (SomethingYouSaid & { t: number })[] = [];
+  const said: (SomethingYouSaid & { t: number; open: boolean; groundId: string })[] = [];
   const saidKey = new Map<string, number>();
   const mineCommitments: GroundCommitmentRow[] = [];
   for (const c of rows.commitments) {
@@ -332,13 +363,21 @@ export function yourBoard(
     const text = (c.text ?? '').trim();
     if (!state || !text) continue;
     const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
-    const item = { id: c.id, text, when: c.whenSaid?.trim() || null, checkIn: labelOf.get(c.groundId)!, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt) };
+    const item = { id: c.id, text, when: whenInOneForm(c.whenSaid), checkIn: labelOf.get(c.groundId)!, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt), open: state === 'open', groundId: c.groundId };
     /* The same promise written twice ("...again" and "...again by tomorrow.") is listed once; where
        one copy is settled, that one is shown. See aCommitmentKey. */
     const key = `${c.groundId}\u0000${aCommitmentKey(text, c.whenSaid)}`;
     const at = saidKey.get(key);
     if (at !== undefined) {
       if (said[at].state === 'open' && state !== 'open') said[at] = item;
+      continue;
+    }
+    /* The same promise said short and then whole is listed once, as the fuller one (request 96). */
+    const sameAs = said.findIndex((x) => theFullerOf(x, item));
+    if (sameAs >= 0) {
+      const one = theFullerOf(said[sameAs], item)!;
+      said[sameAs] = one;
+      saidKey.set(key, sameAs);
       continue;
     }
     saidKey.set(key, said.length);
@@ -350,7 +389,7 @@ export function yourBoard(
     const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
     const text = (o.text ?? '').trim();
     if (!state || !text) continue;
-    said.push({ id: o.id, text, when: o.dueSaid?.trim() || null, checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt) });
+    said.push({ id: o.id, text, when: whenInOneForm(o.dueSaid), checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt), open: false, groundId: o.groundId });
   }
   const order: Record<SaidState, number> = { open: 0, kept: 1, not_done: 2 };
   said.sort((a, b) => order[a.state] - order[b.state] || a.t - b.t);
@@ -370,10 +409,10 @@ export function yourBoard(
     checkIns,
     turns,
     goals,
-    saidYoudDo: said.map(({ t: _t, ...s }) => s),
+    saidYoudDo: said.map(({ t: _t, open: _o, groundId: _g, ...s }) => s),
     todos: rows.todos
       .filter((t) => (t.text ?? '').trim())
-      .map((t) => ({ id: t.id, text: t.text.trim(), when: t.dueSaid?.trim() || null })),
+      .map((t) => ({ id: t.id, text: t.text.trim(), when: whenInOneForm(t.dueSaid) })),
     coaching,
     ownReports: ownReports.sort((a, b) => b.t - a.t).map(({ t: _t, ...r }) => r),
     keptLately: keptLately(mineCommitments, now),
