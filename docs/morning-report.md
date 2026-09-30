@@ -10,6 +10,21 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settled as proposed (60), the first threshold for week 10 (61), old patterns start the person-first process on release day (62), only the lead confirms setup unless the lead has left the organisation (63), the setup part of "how the leading is landing" restored without the three-period rule (64), and Ask Groundwork opened inside a check-in knows which one (65).
 
+**The six setup faults are fixed, checked live by me on a fresh build** (`2be05495` to `ced4b110`, 1,829 tests pass in grounds, assistant and ask). On both doors now:
+- Item 15: "This check-in runs for 12 weeks and people check in once a week." then the next question. No greeting, no error.
+- Item 10: the answer after "what have you seen" carries on and becomes Ada's expectation of Ben ("the update in by every Friday"), kept as hers and unseen by Ben.
+- Item 11: "close 3 renewals by the end of December" is kept as Ada's expectation; on the old chat "should be more proactive" is offered and kept as a private note only Ada sees.
+- Item 16: restating success with a reason keeps both versions, the second with its reason.
+
+**Seven smaller faults, seen by reading what Ada reads, going back to the builder:**
+1. Both doors still promise "I'll record what you tell me as your perspective on Ben" with nothing offered to keep (the guard misses "I'll").
+2. The saved words still differ slightly from what was said back: an added full stop, or "Every" against "every".
+3. The model's own sentence can contradict the offer beside it: "I can add that you expect Ben to be more proactive" next to an offer to keep it as a private note, and "Ben expects to close three renewals" where Ada expects it. What is being saved should be said once, by the product.
+4. On the old chat, after Ada says yes to a private note, she reads the question again instead of being told it was kept.
+5. Ask Groundwork repeats "This check-in runs for 12 weeks ..." part-way through a conversation.
+6. The confirmation of a restated success is a fragment: `Recorded. What doing well looks like now: "..." (the board kept going stale)`.
+7. The two doors differed on "should be more proactive": Ask Groundwork asked what it means instead of offering a private note. This is the model varying, recorded, not changed.
+
 **Patterns: more reads do not reach 8 in 10. Needs Hafsah.** Through the product's own code, all twelve scenarios, each check-in read 14 times so different numbers of reads could be compared on the same reads. "Beyond the real ones" counts patterns kept that fewer than half of 12 earlier reads found.
 
 | Reads, and how many must agree | The same | Real patterns still found | Beyond the real ones |
