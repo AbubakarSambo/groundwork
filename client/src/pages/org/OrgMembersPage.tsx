@@ -1,5 +1,5 @@
 import { WhoCanJoin } from './WhoCanJoin'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/api/client'
 import { authApi } from '@/api/auth'
@@ -118,14 +118,9 @@ export function OrgMembersPage() {
     ? 'Somebody is on a check-in with no seat'
     : `${seatQueue.data?.length ?? 0} people are on check-ins with no seat`
 
-  /* HAFSAH, ITEM (FOLLOWING THE PROTOTYPE'S OWN ROW): the prototype does draw this warning after
-     all - source/s11.js, "Somebody is on a check-in with no seat" - as one EdgeRow per person,
-     a red edge, "<name> is on <check-in> but has no seat", "They can't check in until there's
-     room. <count> of <cap> seats are taken.", with a quiet "Free a seat" link to that person's own
-     page and a secondary "Move to a larger plan" link to billing (secondary, not the prototype's
-     second navy button, since Hafsah's one-navy-button rule - already followed on the board - wins
-     over the mock). Filled from what the server actually sends, not the prototype's fictional
-     "Tom Odhiambo"/"25 of 25". */
+  /* One row per person waiting, a red edge, "<email> is on <check-in> but has no seat" and how many
+     seats are taken, filled from what the server sends. No buttons on the rows: the warning's one
+     action is the quiet text link under them (Hafsah, 30 September). */
   const seatsTakenSaying = people?.cap != null ? `${people.count} of ${people.cap} seats are taken.` : null
 
   return (
@@ -153,36 +148,31 @@ export function OrgMembersPage() {
                     </p>
                   </>
                 )}
-                actions={(
-                  <div className="gwui-edge-acts">
-                    <Button kind="quiet" onClick={() => navigate(`/org/members/${person.id}`)}>Free a seat</Button>
-                    {/*
-                      SECONDARY, NOT THE PROTOTYPE'S OWN "btn pri" (Hafsah, 30 September, item 2,
-                      carried forward here): a second navy button beside "Send their invitations"
-                      below and "Invite a colleague" further down would give this one page three
-                      navy buttons at once. "Move to a larger plan" stays the one real link to
-                      billing; "See the plans" is not repeated a second time on this page.
-                    */}
-                    <Button kind="secondary" onClick={() => navigate('/settings/billing')}>Move to a larger plan</Button>
-                  </div>
-                )}
               />
             )}
           </ShowAFew>
           {/*
-            THE PRODUCT'S OWN ACTION, WITH NO PLACE IN THE PROTOTYPE'S ROW. "Send their
-            invitations" sends every held invitation there is room for in one go - a genuinely
-            different thing from either button above - so it stays, as a quiet text link inside
-            the warning rather than a second `Button` on any one row.
+            ONE QUIET TEXT LINK, NO BUTTONS (Hafsah, 30 September): "its action is a quiet text link
+            inside the warning, not a second button, unless the prototype's People page shows that
+            warning with a button". The prototype's People screen as it finally reads
+            (screens/A4-people-roles-and-access/people.txt, "you have 73 free") does not show this
+            warning at all; source/s11.js drew one earlier, and later screens replaced it. So: a
+            text link. With no room, the one thing to do here is get more seats (the sentence above
+            already says a seat can be freed too, from each person's own page); with room, send
+            the invitations.
           */}
-          <button
-            type="button"
-            className="gwui-plain-link"
-            onClick={() => sendHeld.mutate()}
-            disabled={sendHeld.isPending}
-          >
-            {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
-          </button>
+          {seatsFree === 0 ? (
+            <Link className="gwui-plain-link" to="/settings/billing">Move to a larger plan</Link>
+          ) : (
+            <button
+              type="button"
+              className="gwui-plain-link"
+              onClick={() => sendHeld.mutate()}
+              disabled={sendHeld.isPending}
+            >
+              {sendHeld.isPending ? 'Sending…' : 'Send their invitations'}
+            </button>
+          )}
         </EdgeList>
       )}
 

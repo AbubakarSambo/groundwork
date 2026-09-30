@@ -168,6 +168,12 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
       /* An on/off switch is a setting, not a button, on both sides (ours is a button with
          role="switch", the prototype's a checkbox); like a chosen chip, it is not counted. */
       if (e.getAttribute('role') === 'switch' || e.getAttribute('role') === 'checkbox') return false;
+      /* A quiet text link is a link, not a button (Hafsah, 30 September: the no-seat warning's
+         action is "a quiet text link inside the warning, not a second button"). Ours is drawn
+         by `.gwui-plain-link`, underlined words with no box, sometimes on a <button> because it
+         does something rather than go somewhere; the prototype's own text links are plain <a>s,
+         which were never counted. Only the class decides, so a boxed button can't slip through. */
+      if (e.classList.contains('gwui-plain-link')) return false;
       const cs = getComputedStyle(e);
       const looksLikeAButton = e.tagName === 'BUTTON' || cs.display.includes('flex') || cs.display.includes('inline-flex') || e.className.toString().includes('btn');
       return looksLikeAButton && isVisible(e);
