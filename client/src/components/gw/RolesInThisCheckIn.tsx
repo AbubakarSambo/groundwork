@@ -58,7 +58,9 @@ export function RolesInThisCheckIn({
           /* NEVER A NAME GUESSED OUT OF THE ADDRESS (U.4 re-review, item 4): with no real name on
              record, this shows the plain address (visible here only to whoever the server already
              lets see it), never "Zawadi U8" out of "zawadi.u8@example.test". See WhosInItRoster.tsx. */
-          const name = !hasARealName(p) && p.email ? p.email : atTheStart(onePersonsLabel(p))
+          /* The same naming as the roster above: an address this reader may see, or, with neither a
+             name nor an address, "Somebody invited by email" rather than a made-up "A colleague". */
+          const name = !hasARealName(p) ? (p.email || 'Somebody invited by email') : atTheStart(onePersonsLabel(p))
           return (
             <PersonRow
               key={p.id}

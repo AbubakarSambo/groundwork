@@ -106,3 +106,20 @@ describe('somebody with no name and no account', () => {
     expect(screen.queryByText('Zawadi U8')).toBeNull()
   })
 })
+
+describe('somebody with no name, whose address this reader may not see', () => {
+  it('is "Somebody invited by email", never "A colleague"', () => {
+    render(
+      <MemoryRouter><RolesInThisCheckIn
+        updateRole={{ mutate: () => {}, isPending: false }}
+        ground={{ initiatorId: 'lead-1', participants: [
+          { id: 'p-lead', userId: 'lead-1', email: null, user: { firstName: 'Rukia', lastName: 'Otieno' } },
+          { id: 'p-zawadi', userId: null, email: null, awaitingSeat: true, user: null },
+        ] } as any}
+        isInitiator={false}
+      /></MemoryRouter>,
+    )
+    expect(screen.getAllByText('Somebody invited by email').length).toBeGreaterThan(0)
+    expect(document.body.textContent).not.toMatch(/A colleague/)
+  })
+})
