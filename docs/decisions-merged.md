@@ -133,3 +133,10 @@ These are settled. Do not change them. If one seems to block the work, stop and 
 64. **"How the leading is landing": the part about setup shows to the lead without the three-period rule** (decided 30 September). It is about the lead's own setup, not a pattern about a person. It is restored properly.
 65. **Ask Groundwork opened from inside a check-in knows which check-in it is** (decided 30 September). The screen tells it, so a setup conversation starts without the lead having to say the word "context". The screens workspace is told exactly what to send.
 66. **A shared note on the Context and resources tab lifts the "nobody can be invited yet" block** (decided 30 September), the same as a private note, an expectation, a document or a long enough brief. The refusal's sentence stays as it is.
+67. **"How what people say can run ahead of what happened" (screens request 82)** (decided 30 September). The section uses these patterns only: D1, D2, D3, D5, D8, B1, B2, B3 and E2. The manager (the lead) sees them framed as what to coach the person on. For every pattern the lead sees, in this section and every other, the lead reads:
+    - its plain name and one sentence about what happened;
+    - what to coach the person towards: the good behaviour, in one sentence, from the pattern and the person's role map;
+    - one small, concrete step the person could take, in the same style as Groundwork's coaching steps;
+    - the pattern's own question to open the conversation.
+
+    It never reads as a verdict or a score, and nothing is decided from it. Every pattern rule still holds: only after three periods, the person sees their own first and can answer, and the lead sees the person's answer beside it. No participant or colleague ever sees another person's pattern; for them the section shows nothing about named people. A test serves the section as the lead, the person, a colleague and an admin who does not run the check-in.
