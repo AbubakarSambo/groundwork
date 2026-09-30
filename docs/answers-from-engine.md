@@ -583,3 +583,16 @@ Table `company_pictures`, one row per organisation, no names (an owner is held a
 ### Not built
 
 (e) The company context picked up from check-ins is `docs/weekly-plan.md` week 20, "Memory that lasts beyond one check-in". It would be kept at the organisation's level, confirmed by a lead before it counts. (f) and (g) wait for Hafsah.
+
+
+## Request 28: where each customer stands, from the sales check-ins
+
+Nothing changes in what the board serves: `GET /suites/customers/board` still gives `standing` for each customer, and it is now the latest line the engine wrote, else the organisation's own word.
+
+The line reads like "Quote sent. Buys in January.", "Said yes. The deposit is waiting." or "Asked to wait until the new shop opens.". Each is one or two plain full sentences about the customer. It never names a person, never says "I" or "you", carries no label or score, and holds no date or number that the person did not say.
+
+When it is written: once, when a sales check-in completes. A sales check-in is one whose kind of work is "sales org" (the kind set at setup, which the lead can change), and is not a performance plan, a promotion or a renewal. A check-in with no kind of work is not read. It reads only the person's own words in their own check-in, never a report, never a question to Ask Groundwork, never a lead's private note. A name that matches no customer, or more than one customer, writes nothing. The same line twice in a row writes one row.
+
+Who reads it: the same readers who are served the customer. An admin reads every customer's line. A lead reads the lines for the customers owned by their own team and themselves. A member and a guest are refused the board.
+
+Not built: (b), "changing something here tells the person who owns the customer, in their next check-in." It waits for Hafsah.
