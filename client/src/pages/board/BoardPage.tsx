@@ -338,6 +338,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   if (isLoading) {
     return <div role="status" className="gwui-pt-40 gwui-pr-40 gwui-pb-40 gwui-pl-40 gwui-ink-muted" style={{textAlign: 'center'}}>Loading the board…</div>
   }
+  /*
+   * PRIMARY-BUTTONS-NEVER-TOGETHER: the four `kind="primary"` buttons below ("Try again", "Read
+   * the report", "Do my check-in", and the ordinary board's own "Your check-in" in the header)
+   * are each an early `return` from this function - the error state, the no-shared-board state,
+   * the withheld-until-you-check-in state, and the ordinary board. Exactly one of these four
+   * branches ever runs for a given render, so only one of these four buttons is ever on screen at
+   * once, whatever the reader is looking at.
+   */
   if (error || !data) {
     /*
      * WHICH OF THE THINGS HAPPENED. One branch rendered a permission-flavoured accusation for every
@@ -1112,8 +1120,14 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     placeholder="how many"
                     className="gwui-pt-7 gwui-pr-10 gwui-pb-7 gwui-pl-10 gwui-fs-13-5 gwui-rule" style={{width: 96, borderRadius: 7, fontFamily: 'inherit', outline: 'none'}}
                   />
+                  {/*
+                    SECONDARY, NOT NAVY (Hafsah, 30 September, item 2: "at most one primary
+                    (navy) button per screen"). The board's one primary is "Your check-in", in
+                    the header, as the prototype's own board-as-lead.txt draws it; every other
+                    action on this page, including adding a target, is secondary or quiet.
+                  */}
                   <UIButton
-                    kind="primary" size="small"
+                    kind="secondary" size="small"
                     onClick={() => addObjective.mutate()}
                     disabled={!newObjName.trim() || addObjective.isPending}
                   >
@@ -2035,7 +2049,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         </div>
                       )}
                       <div className="gwui-gap-8" style={{display: 'flex'}}>
-                        <UIButton kind="primary" size="small" type="submit" disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}>
+                        {/* Secondary, not navy: the board's one primary is "Your check-in", in the header. */}
+                        <UIButton kind="secondary" size="small" type="submit" disabled={!pollQ.trim() || !pollOpts.trim() || savePoll.isPending}>
                           {savePoll.isPending ? 'Saving...' : 'Save'}
                         </UIButton>
                         <UIButton kind="secondary" size="small" onClick={() => { if (pollQ.trim() || pollOpts.trim()) setPollCancelArmed(true); else setShowPollForm(false) }}>Cancel</UIButton>
@@ -2216,8 +2231,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   actions={(
                     <>
                       <Tag tone={r.closed ? 'proven' : 'attention'}>{r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared}</Tag>
+                      {/* Secondary, not navy: the board's one primary is "Your check-in", in the header. */}
                       <UIButton
-                        kind={r.closed ? 'secondary' : 'primary'} size="small"
+                        kind="secondary" size="small"
                         onClick={() => navigate(r.myCheckInId ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)}
                       >
                         {r.closed ? 'Open' : 'Share it'}
@@ -2412,7 +2428,14 @@ function AskTheBoard({ firstBlocker }: { firstBlocker: { from: string | null; wh
         aria-label="Ask about this board"
         className="gwui-pt-11 gwui-pr-14 gwui-pb-11 gwui-pl-14 gwui-rule gwui-fs-13-5 gwui-ink-text" style={{flex: 1, borderRadius: 8, background: 'white', fontFamily: 'inherit'}}
       />
-      <UIButton kind="primary" type="submit">Ask</UIButton>
+      {/*
+        Secondary, not navy: the board's one primary is "Your check-in", in the header. The
+        prototype's own board injects this "Ask" as a second navy button of its own
+        (groundwork-prototype.html, R.board's regex, `class="btn pri"`) - but Hafsah's rule (30
+        September, item 2) is "at most one primary button per screen", so this follows that rule
+        rather than the prototype's own quirk here.
+      */}
+      <UIButton kind="secondary" type="submit">Ask</UIButton>
     </form>
   )
 }
