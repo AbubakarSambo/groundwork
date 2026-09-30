@@ -880,3 +880,57 @@ The checks, in code: any option that uses a number, a number in words, a name, a
 Who reads what: a participant's options come from their own targets and commitments only, and no check-in report is opened for them. A lead or an admin also has what the check-ins they may read serve to them (the same read as "what did Femi say"), so an admin with no access to a performance plan, promotion or renewal gets nothing from it. Private reports, questions to Ask Groundwork, a lead's private notes and a person's load across check-ins are never read.
 
 Code: `api/src/modules/assistant/think-it-through.ts`, the lane in `assistant.service.ts`, the rule in `the-router-is-deterministic.ts`, the capability in `what-the-assistant-can-do.ts`, the seed in `conversation/prompt-library.ts`. Tests: `think-it-through.spec.ts`.
+
+## Week 20: memory that lasts beyond one check-in (request 17 part e), and leave dates said in chat
+
+### What the lead is asked, and what is kept
+
+When the lead says something in the setup conversation (the context chat, also reached through Ask Groundwork) that is true of the whole company, the setup conversation offers to keep it for the organisation. It is a rule, a definition, a principle, who owns something, or something about a client. The offer is its own say-back, in the lead's own words, and only a yes keeps it:
+
+- "Shall I keep "Every quote over 1 million needs Amina's sign-off" as a rule for the whole organisation, so later check-ins and Ask Groundwork can use it?"
+- The kind reads "a rule", "a definition", "a principle", "who owns something" or "something about a client".
+- After the yes: "I have kept "Every quote over 1 million needs Amina's sign-off" as a rule for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Company page."
+- After the no: "I have not kept that for the organisation. It stays only on this check-in." The offer is deleted; nothing of it is kept.
+
+On the two doors the screens already use:
+
+- `POST /grounds/:id/context-chat` returns `proposal: { gap: 'organisation_memory', say, offerId }`. `POST /grounds/:id/context-chat/confirm` takes `{ said, offerId }` for the yes. New: `POST /grounds/:id/context-chat/decline` takes `{ offerId }` for the no. Only the person who was asked can answer. A yes that carries an `offerId` never reads a value from the screen; what is kept is the row that was offered.
+- Through Ask Groundwork nothing changes for the screens: the say-back arrives as the usual `proposal` block, and the yes or no goes to `POST /ask/answer`.
+- Only one question waits at a time. When the lead's turn has already produced another proposal (an answer to the open question, a target for a person), nothing is offered on that turn.
+
+Never offered: anything in a message where the lead asked for privacy ("keep this between us", "private", "off the record" and the like); a sentence that names someone on the check-in and judges or worries about them; a sentence that is not, word for word, what the lead typed; anything said by a participant (the setup conversation is the lead's, and an admin covering for a lead who has left); and anything a lead's private note carries, because private notes have their own road and never come here.
+
+### Where it is kept, and who reads it
+
+Kept in the new table `organization_memories` (`OrganizationMemory`): `kind`, `text` (the lead's own words), `status` (`OFFERED` until the yes, then `KEPT`), `sourceLine`, `offeredById`, `keptById`, `keptAt`. It sits next to the knowledge cards ("how we do it here") and is kept apart from them on purpose: a card is what the company wrote down, and what a person says is held up against it; this is what a lead said, and it is only context. An offer that has not been said yes to is read by nothing.
+
+`GET /company` carries a new field, `whatWeKeep`, for an admin, a lead (organisation role), and anybody who runs a check-in. For everyone else the field is absent, not empty. It reads:
+
+```
+whatWeKeep: {
+  readBy: "Admins, leads and anyone who runs a check-in can read this. Everyone else cannot.",
+  items: [
+    { id, kind: "rule", says: "Every quote over 1 million needs Amina's sign-off", source: "Picked up from your check-in on 22 September" }
+  ]
+}
+```
+
+`readBy` is ready to show, so the page can say who reads it. Newest first. The prototype's "Waiting for your confirmation" list with Confirm, Edit and Not now is not served: the question is asked and answered in the conversation, where the yes is said. If you want those three buttons on the page, tell me and I will add the waiting list and its routes.
+
+### Who is given it
+
+- Ask Groundwork: a question about how something is done is answered from the kept words too, for the same readers as the page: "Your organisation has kept this from a setup conversation." and then the sentence in quotation marks. It never says who said it or when. Anybody else is told "Your organisation has not written anything down about that here. If it should have, whoever set Groundwork up can add it."
+- Later check-ins: the session's instructions carry the kept sentences as context, under "WHAT THIS ORGANISATION HAS ASKED US TO KEEP IN MIND", with the rule that they are never quoted, never attributed, and never treated as what the person said. They are kept out of "how this company says it works", so a person's account is never compared with them.
+
+### Leave dates said in chat
+
+Leave dates said in the setup conversation or to Ask Groundwork ("I need next Thursday and Friday off") go to the leave suite, never to the record. The days are read by rules from what was said and today's date, and nothing is guessed: "Monday and Wednesday" is not read, because it could include Tuesday. It is said back and sent only on a yes:
+
+- "You asked for leave from Thursday 8 October to Friday 9 October, which is 2 working days. You have 16 days of leave left this year, and nobody else in Sales is off then. Shall I send it to Wairimu to approve?" (the approver's first name where the organisation has said "their manager" and that manager is a lead or admin; otherwise "an admin". The days left and the team clause are left out when they are not known.)
+- After the yes, through `LeaveBoardService.ask`: "I have sent your leave request from Thursday 8 October to Friday 9 October to Wairimu. It is not approved until they decide, and you will see it under your leave."
+- After the no: "I have not sent it. Nothing was kept."
+- While the suite is off: "Leave requests are not switched on in your organisation, so I have not sent or kept these dates. An admin can switch them on under Suites." Nothing is parked, recorded or remembered, not even in the person's private Ask Groundwork history.
+
+Through the setup route it arrives as `proposal: { gap: 'leave_request', say }` and the yes is `confirm` with `{ said, leave: true }`. Through Ask Groundwork it is lane `ask_for_leave`.
+
+Code: `api/src/modules/knowledge/what-the-organisation-keeps.ts` (the rules and the words), `organisation-memory.ts` (the table), `api/src/modules/suites/leave-said-in-chat.ts`, the hooks in `grounds.service.ts` (`contextChat`, `applyContextProposal`, `declineContextOffer`), `assistant.service.ts`, `conversation.service.ts` and `company.service.ts`. Tests: `organisation-memory.spec.ts`, `organisation-memory-through-the-setup-chat.spec.ts`, `organisation-memory-and-leave-through-ask-groundwork.spec.ts`, `kept-organisation-memory-reaches-the-prompt.spec.ts`, `leave-said-in-chat.spec.ts`, and the company page spec for each reader.
