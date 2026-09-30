@@ -2980,7 +2980,7 @@ export class ConversationService {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { id: checkIn.participantId, user: { id: userId } },
       /* A participant has no display name of its own; the account behind it does. */
-      select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
     });
     if (!participant) throw new ForbiddenException('This check-in is not yours.');
 
@@ -2988,7 +2988,9 @@ export class ConversationService {
       data: {
         organizationId: checkIn.ground.organizationId,
         byParticipantId: participant.id,
-        byName: [participant.user?.firstName, participant.user?.lastName].filter(Boolean).join(' ').trim() || participant.email,
+        /* Never an address as a name (week 12c): what was offered is read later in sentences. */
+        byName: [participant.user?.firstName, participant.user?.lastName].filter(Boolean).join(' ').trim()
+          || ((participant as any).nameGiven ?? '').trim() || 'a colleague',
         about: about.trim(),
         what: what.trim(),
       },
@@ -9280,13 +9282,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
-      select: { email: true, user: { select: { firstName: true, lastName: true } } },
+      select: { email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
     });
     /* `from` is which side stated it and `statedBy` is who. Both are the customer's own handles
        rather than row ids, because a figure has to stay readable after anybody leaves. */
+    /* Never an address as a name (week 12c): it is read back later in sentences. */
     const who = [participant?.user?.firstName, participant?.user?.lastName].filter(Boolean).join(' ')
-      || participant?.email
-      || participantId;
+      || ((participant as any)?.nameGiven ?? '').trim()
+      || 'a colleague';
 
     for (const f of figures) {
       await this.prisma.reportedFigure.create({

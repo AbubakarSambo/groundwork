@@ -66,6 +66,8 @@ function theyReallyCalledThem(said: string | null | undefined): string | null {
   const t = (said ?? '').trim();
   if (!t) return null;
   if (A_SLOT_IN_A_TEMPLATE.test(t)) return null;
+  /* An address somebody typed is not what anybody is called (week 12c). */
+  if (/\S+@\S+\.\S+/.test(t)) return null;
   return t;
 }
 

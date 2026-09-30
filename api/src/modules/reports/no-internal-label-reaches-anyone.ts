@@ -39,7 +39,16 @@ export function whatEachLabelIsCalled(parties: LabelParty[], reader: WhoIsReadin
   for (const p of parties ?? []) {
     const label = labels.get(p.id);
     const said = (label && visible.get(label)) || plain.get(p.id) || 'a colleague';
-    for (const addr of [p.email, p.user?.email]) if (addr && addr.includes('@')) out.set(`@${addr.trim().toLowerCase()}`, said);
+    for (const addr of [p.email, p.user?.email]) {
+      if (!addr || !addr.includes('@')) continue;
+      out.set(`@${addr.trim().toLowerCase()}`, said);
+      /* And the front of it, which a model writes when it is handed an address: "zawadi.u8". */
+      const local = addr.trim().toLowerCase().split('@')[0];
+      const unnamed = !(label && visible.get(label));
+      const looksLikeAWord = /^[a-z]+$/.test(local);
+      const worthCatching = looksLikeAWord ? unnamed && local.length >= 4 && !A_ROLE_ADDRESS.test(local) : true;
+      if (local.length >= 3 && worthCatching) out.set(`~${local}`, said);
+    }
   }
   return out;
 }
@@ -51,16 +60,29 @@ const startsASentence = (whole: string, at: number) => {
 const withACapital = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const andList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
+/** A mailbox that names a job, not a person; its front is an ordinary word and is left in a sentence. */
+const A_ROLE_ADDRESS = /^(info|sales|team|admin|hello|support|office|contact|hr|finance|ops|accounts|jobs|careers|help|mail|people|staff|all|everyone)$/;
 const AN_ADDRESS = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 /** A participant's address where a name belongs becomes what this reader may call them. Any other address is left. */
 export function withoutAddressesAsNames(text: string, called: Map<string, string>): string {
-  if (!text || !text.includes('@')) return text;
-  return text.replace(AN_ADDRESS, (addr, offset: number, whole: string) => {
-    const said = called.get(`@${addr.toLowerCase()}`);
-    if (!said) return addr;
-    return startsASentence(whole, offset) ? withACapital(said) : said;
-  });
+  if (!text) return text;
+  let out = text;
+  if (text.includes('@')) {
+    out = out.replace(AN_ADDRESS, (addr, offset: number, whole: string) => {
+      const said = called.get(`@${addr.toLowerCase()}`);
+      if (!said) return addr;
+      return startsASentence(whole, offset) ? withACapital(said) : said;
+    });
+  }
+  /* The front of an address on its own, in any case: "zawadi.u8", "Zawadi.u8". */
+  for (const [k, said] of called) {
+    if (k[0] !== '~') continue;
+    const local = k.slice(1).replace(/[.+*?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(`(?<![\\w.@+-])${local}(?![\\w@])`, 'gi'), (m, offset: number, whole: string) =>
+      startsASentence(whole, offset) ? withACapital(said) : said);
+  }
+  return out;
 }
 
 /** One string with every label in it said the way this reader may read it. */
@@ -102,8 +124,8 @@ export function withoutInternalLabelsIn<T>(value: T, called: Map<string, string>
        label becomes the same words as the text. Nothing on the screens looks these up by label. */
     for (const [k, x] of Object.entries(v)) {
       const key = typeof k === 'string' && A_WHOLE_LABEL.test(k) ? withoutInternalLabels(k, called) : k;
-      /* A field that is an address by design stays one: it is not a name in a sentence. */
-      out[key in out ? k : key] = /^(email|address|replyTo|to)$/i.test(k) ? x : walk(x);
+      /* A field that is an address by design stays one, and an id is a handle, not a sentence. */
+      out[key in out ? k : key] = /^(email|address|replyTo|to)$/i.test(k) || /^id$|Ids?$/.test(k) ? x : walk(x);
     }
     return out;
   };

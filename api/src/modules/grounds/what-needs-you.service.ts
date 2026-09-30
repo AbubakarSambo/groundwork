@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
 import { whatNeedsYou, type WhatNeedsYou } from './what-needs-you';
+import { peersAreNamedOn } from '../reports/peers-are-named';
+import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 
 /**
  * THE ONE READ OF "WHAT NEEDS YOU" (C1, U.5), for Today and for "Choose an organisation".
@@ -33,7 +35,15 @@ export class WhatNeedsYouService {
      * "N new" on Choose an organisation. Another organisation's needs are counted there, not here.
      */
     const here = (list as any[]).filter((g) => g.organizationId === organizationId);
-    return whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval }, waiting.map((w) => ({ ...w, organizationId })));
+    const told = whatNeedsYou(here as any, { userId, role, organizationId, notLetIn: !!me?.awaitingOrgApproval }, waiting.map((w) => ({ ...w, organizationId })));
+    /* A net: no address stands in for a name in any sentence on Today (week 12c). */
+    const called = new Map<string, string>();
+    for (const g of here as any[]) {
+      const runsIt = g.initiatorId === userId || role === 'ADMIN';
+      const me = (g.participants ?? []).find((p: any) => p.userId === userId);
+      for (const [k, v] of whatEachLabelIsCalled(g.participants ?? [], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsIt, peersAreNamed: runsIt || peersAreNamedOn(g) })) if (k[0] === '@' || k[0] === '~') called.set(k, v);
+    }
+    return called.size ? withoutInternalLabelsIn(told, called) : told;
   }
 
   /**
