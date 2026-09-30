@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth'
@@ -69,6 +70,91 @@ describe('Grace, an admin', () => {
     open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
     await screen.findByText('Keys')
     expect(screen.getByAltText('A check-in over WhatsApp')).toBeTruthy()
+  })
+})
+
+/**
+ * GROUP 1 FIX: THE APPROVED STATE, READ AS PLAIN SENTENCES. The reviewer sent this page back
+ * because several lines a customer reads were developer notes ("Not on the prototype's own
+ * screen..."), jargon ("Register where to be told.", "Your system authenticates..."), or pieces
+ * joined with a dash instead of a sentence ("Replaced - revoke this one..."). This checks the
+ * fixed wording renders, with mocked data, and that nothing on the page still says "prototype".
+ */
+describe('the approved state, with keys, webhooks, deliveries, embed and retention', () => {
+  beforeEach(() => {
+    served.myApiAccess = { status: 'APPROVED', approved: true, whatFor: 'syncing sales', requestedAt: null, decidedAt: '2026-09-12T00:00:00Z', note: null, says: '' }
+    served.listCredentials = [
+      { id: 'c1', clientId: 'gwc_billing', name: 'Billing system', scopes: ['subjects:write'], revokedAt: null, lastUsedAt: '2026-09-29T10:00:00Z', replacedByClientId: null },
+      { id: 'c2', clientId: 'gwc_old', name: 'Old HR feed', scopes: ['graph:write'], revokedAt: null, lastUsedAt: null, replacedByClientId: 'gwc_new' },
+    ]
+    served.webhookEvents = { available: ['report.shared', 'checkin.completed'], notYetEmitted: ['blocker.raised', 'commitment.due'] }
+    served.listEndpoints = [{ id: 'e1', url: 'https://crm.example.com/hooks/groundwork', events: ['checkin.completed'], active: true, rotatedAt: null }]
+    served.deliveries = [{ id: 'd1', createdAt: '2026-09-29T10:42:00Z', eventType: 'report.shared', status: 'DELIVERED', attempts: 1, responseCode: 200, nextAttemptAt: null }]
+    served.embedConfig = { allowedDomains: ['intranet.baridi.co.ke'], placement: 'floating', outOfScopeDepartments: [] }
+    served.retention = { turnRetentionDays: 90, floor: 30, ceiling: 365 }
+    served.issueCredential = { clientId: 'gwc_new123', clientSecret: 'gws_supersecret456' }
+  })
+
+  it('names what an import could not take in, in a plain sentence, with no developer note and no mention of "the prototype"', async () => {
+    served.listImports = { jobs: [{ id: 'j1', sourceSystem: 'HubSpot', total: 10, succeeded: 8, failed: 2, state: 'DONE', createdAt: '2026-09-20T00:00:00Z', error: null }], detectionQuietUntil: null }
+    const { container } = open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
+    await screen.findByText('Keys')
+    expect(screen.getByText('What an import could not take in, so nothing sent is lost without you knowing')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/prototype/i)
+  })
+
+  it('says plainly that two more events are coming, without claiming they can be ticked', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
+    await screen.findByText('Keys')
+    expect(screen.getByText('The list comes from Groundwork, so new events appear here.')).toBeTruthy()
+    expect(screen.getByText(/2 more are coming\. They will appear here when they are ready\./)).toBeTruthy()
+    expect(screen.queryByText(/can be ticked now/)).toBeNull()
+  })
+
+  it('says a key was replaced as a full sentence, never joined with a dash', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
+    await screen.findByText('Old HR feed')
+    expect(screen.getByText(/This key has been replaced\. Revoke it once the new one is live\./)).toBeTruthy()
+  })
+
+  it('never says "authenticates" or "Register" for the setup steps', async () => {
+    const { container } = open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
+    await screen.findByText('Keys')
+    expect(screen.getByText(/Your system signs in and sends something\./)).toBeTruthy()
+    expect(screen.getByText(/Tell us where you want to be told\./)).toBeTruthy()
+    expect(container.textContent).not.toMatch(/authenticates/)
+    expect(container.textContent).not.toMatch(/Register where/)
+  })
+
+  it('reads the webhook, its recent delivery, and the retention sentence as full sentences, with no dash join', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
+    await screen.findByText('Keys')
+    expect(screen.getByText('https://crm.example.com/hooks/groundwork')).toBeTruthy()
+    expect(screen.getByText('Recent deliveries')).toBeTruthy()
+    expect(screen.getAllByText('report.shared').length).toBeGreaterThan(0)
+    await userEvent.click(screen.getByRole('button', { name: 'Change' }))
+    expect(screen.getByText(/When your roster tells us somebody has left, we delete their raw words after this many days\./)).toBeTruthy()
+    expect(screen.getByText(/That is always after any handover brief has been built, never before\./)).toBeTruthy()
+  })
+
+  it('a new key’s value is shown once and gone once you say you have saved it', async () => {
+    open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
+    await screen.findByText('Keys')
+    await userEvent.click(screen.getByRole('button', { name: 'Create a key' }))
+    await userEvent.type(screen.getByLabelText('What is it for?'), 'A new system')
+    const form = screen.getByLabelText('What is it for?').closest('form') as HTMLElement
+    await userEvent.click(within(form).getByRole('button', { name: 'Create a key' }))
+    expect(await screen.findByText('gwc_new123')).toBeTruthy()
+    expect(screen.getByText('gws_supersecret456')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'I have saved it' }))
+    expect(screen.queryByText('gws_supersecret456')).toBeNull()
+  })
+
+  it('the engineer reference is introduced in a plain sentence, with no mention of "the prototype"', async () => {
+    const { container } = open({ id: 'u-g', role: 'ADMIN', organizationName: 'Baridi Appliances' })
+    await screen.findByText('Keys')
+    expect(screen.getByText('The calls your developer can send directly, if this page’s own buttons are not enough')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/prototype/i)
   })
 })
 

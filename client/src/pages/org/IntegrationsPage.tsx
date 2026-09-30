@@ -308,8 +308,8 @@ export function IntegrationsPage() {
              */}
             <Steps>
               <Step done={setupDone.key}>Create a key. One per system you connect, so you can turn one off later without breaking the others.</Step>
-              <Step done={setupDone.used}>Your system authenticates and sends something. This ticks when we have actually seen it used.</Step>
-              <Step done={setupDone.webhook}>Register where to be told. We sign every message so you can prove it came from us.</Step>
+              <Step done={setupDone.used}>Your system signs in and sends something. This ticks once we have actually seen it come through.</Step>
+              <Step done={setupDone.webhook}>Tell us where you want to be told. We sign every message, so you can prove it came from us.</Step>
               <Step done={setupDone.delivered}>Receive one. This ticks the first time we deliver successfully.</Step>
             </Steps>
           </Panel>
@@ -358,7 +358,7 @@ export function IntegrationsPage() {
                       <b>{c.name}</b>{c.revokedAt && <> <Tag tone="concern">Revoked</Tag></>}
                       <span className="gwui-field-help">
                         {whatItCanDo(c.scopes)} {c.lastUsedAt ? `Last used ${whenItWas(c.lastUsedAt, 'dayAndTime')}.` : 'Never used.'}
-                        {c.replacedByClientId && ' Replaced - revoke this one once the new one is live.'}
+                        {c.replacedByClientId && ' This key has been replaced. Revoke it once the new one is live.'}
                       </span>
                     </p>
                     {!c.revokedAt && (
@@ -408,7 +408,7 @@ export function IntegrationsPage() {
         </Section>
 
         {!!(imports.data?.jobs ?? []).length && (
-          <Folded summary="What your imports could not take" note="Not on the prototype's own screen; kept here so nothing sent in is silently lost">
+          <Folded summary="What your imports could not take" note="What an import could not take in, so nothing sent is lost without you knowing">
             <Stack gap={12}>
               {imports.data?.detectionQuietUntil && (
                 <p className="gwui-panel-text-muted">
@@ -492,9 +492,12 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
                   <p className="gwui-fine">The list comes from Groundwork, so new events appear here.</p>
                   {!!(events.data?.notYetEmitted ?? []).length && (
                     /* Said out loud rather than hidden. An admin who has read the contract and cannot
-                       find blocker.raised here should learn why from this page, not a support thread. */
+                       find blocker.raised here should learn why from this page, not a support thread.
+                       NEVER THE PROTOTYPE'S "can be ticked now": these are not shown as checkboxes at
+                       all (only the `available` events above are), so ticking them is not something a
+                       person here can actually do yet. */
                     <p className="gwui-fine">
-                      Not offered yet, because nothing sends them: <span className="gwui-mono">{(events.data?.notYetEmitted ?? []).join(', ')}</span>. They are in the contract and will appear here when the parts that raise them are built.
+                      {(events.data?.notYetEmitted ?? []).length === 1 ? 'One more is coming.' : `${(events.data?.notYetEmitted ?? []).length} more are coming.`} They will appear here when they are ready.
                     </p>
                   )}
                 </div>
@@ -643,7 +646,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
             <Panel>
               <form onSubmit={e => { e.preventDefault(); if (retentionDays.trim()) saveRetention.mutate() }}>
                 <Stack gap={10}>
-                  <p className="gwui-panel-text-muted">When your roster tells us somebody has left, their raw words are deleted after this many days - after any handover brief is built, never before. Between {retention.data.floor} and {retention.data.ceiling} days.</p>
+                  <p className="gwui-panel-text-muted">When your roster tells us somebody has left, we delete their raw words after this many days. That is always after any handover brief has been built, never before. Choose a number between {retention.data.floor} and {retention.data.ceiling} days.</p>
                   <div className="gwui-invite-actions">
                     <TextField type="number" min={retention.data.floor} max={retention.data.ceiling} step={1} placeholder={String(retention.data.turnRetentionDays)} value={retentionDays} onChange={e => setRetentionDays(e.target.value)} aria-label="Days to keep a departed person's words" />
                     <Button kind="secondary" size="small" type="submit" disabled={!retentionDays.trim() || saveRetention.isPending}>{saveRetention.isPending ? 'Saving…' : 'Save'}</Button>
@@ -655,7 +658,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
           )}
         </Section>
 
-        <Folded summary="For your engineer" note="Not on the prototype's own screen; the working calls, kept reachable">
+        <Folded summary="For your engineer" note="The calls your developer can send directly, if this page’s own buttons are not enough">
           <Stack gap={12}>
             <p className="gwui-panel-text-muted">Two requests. The first swaps your key for a token that lasts an hour; the second uses it.</p>
             <pre className="gwui-code-block-light">{`curl -X POST ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/oauth/token \\
