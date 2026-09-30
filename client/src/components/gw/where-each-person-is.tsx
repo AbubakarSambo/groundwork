@@ -99,7 +99,7 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
                 {r.count} of {r.target}
               </div>
             )}
-            <div className="gwui-fs-13 gwui-ink-sub gwui-mt-2" style={{ lineHeight: 1.5 }}>{r.says}</div>
+            <div className="gwui-fs-15 gwui-ink-sub gwui-mt-2" style={{ lineHeight: 1.5 }}>{r.says}</div>
             {/* `ask` and `finding`, kept as one quiet line rather than dropped - not in the
                 prototype's table, but the whole point of a row for a lead who can act on it. */}
             {(r.ask || r.finding) && (

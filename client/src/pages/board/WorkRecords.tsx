@@ -178,7 +178,7 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
 
   return (
     <div className="gwui-gap-10 gwui-mt-8 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-      <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13 gwui-ink-text" style={{lineHeight: 1.55}}>{sentence}</p>
+      <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-text" style={{lineHeight: 1.55}}>{sentence}</p>
       {canEdit && (
         <Button kind="quiet" size="small" onClick={() => setOpen(true)} aria-label={kindOfWork ? 'Change the kind of work' : 'Choose the kind of work'}>
           {kindOfWork ? 'Change' : 'Choose'}
@@ -352,13 +352,13 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
       aria-label={row.name}
     >
       <div>
-        <div className="gwui-ink-text gwui-fs-14-5" style={{fontWeight: 700}}>{row.name}</div>
+        <div className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</div>
         {fieldEntries.map(([label, value]) => (
           <div key={label} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{label} {value}</div>
         ))}
         {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
       </div>
-      <div className="gwui-fs-13 gwui-ink-text">
+      <div className="gwui-fs-15 gwui-ink-text">
         {row.owner ?? <span className="gwui-ink-muted">Nobody named yet.</span>}
       </div>
       <div aria-label="Stage now">
@@ -381,7 +381,7 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
 /** The column headings above the rows - the item's own noun, the kind's own word for whose it is. */
 function WorkTableHead({ itemNoun, ownerLabel, canEdit }: { itemNoun: string; ownerLabel: string; canEdit: boolean }) {
   return (
-    <div className="gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13-5 gwui-ink-sub" style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto'}} role="row">
+    <div className="gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub" style={{display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1.8fr auto'}} role="row">
       <span>{itemNoun}</span>
       <span>{ownerLabel}</span>
       <span>Stage now</span>
@@ -408,7 +408,7 @@ function TimelineList({ rows, canEdit, leadFirstName, onEdit }: {
       {ordered.map((row) => (
         <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
           <div>
-            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-14-5">
+            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-15">
               {row.due ? `${row.name} is due on ${whenItWas(row.due, 'weekdayAndDay')}.` : `${row.name}. No date said yet.`}
             </p>
             <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} /></div>
@@ -435,10 +435,10 @@ function PartiesList({ rows, canEdit, leadFirstName, onEdit }: {
       {rows.map((row) => (
         <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
           <div>
-            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-14-5" style={{fontWeight: 700}}>{row.name}</p>
+            <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</p>
             {/* What the record says about this party, as the prototype does ("Pwani Mills, the other side"): each field's value, in words. */}
             {Object.values(row.fields ?? {}).filter(Boolean).length > 0 && (
-              <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-14 gwui-ink-sub">{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
+              <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-sub">{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
             )}
             <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} /></div>
           </div>
@@ -499,7 +499,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   if (section.state === 'none-yet') {
     return (
       <Section heading={heading}>
-        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-sub gwui-fs-14-5" style={{lineHeight: 1.55}}>
+        <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-sub gwui-fs-15" style={{lineHeight: 1.55}}>
           {`No ${section.holds} have come up yet. They appear here when someone names one in a check-in${canAdd ? ', or when you add one below.' : '.'}`}
         </p>
         {canAdd && (
@@ -554,7 +554,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
       {!!section.stages?.length && (
         <div className="gwui-mt-14">
-          <p className="gwui-mt-0 gwui-mr-0 gwui-mb-8 gwui-ml-0 gwui-fs-13-5 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
+          <p className="gwui-mt-0 gwui-mr-0 gwui-mb-8 gwui-ml-0 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
           <StageTrack stages={section.stages} counts={stageCounts} />
         </div>
       )}
