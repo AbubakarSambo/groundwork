@@ -228,3 +228,60 @@ describe('point 10: a length answer is only ever read as a length', () => {
     expect(writes.filter((w) => w.startsWith('groundBaseline'))).toEqual([]);
   });
 });
+
+/* ------------------------------------------------------------------------------------------------ */
+
+describe('point 11: a question for one person, through the real grounds code', () => {
+  const PEOPLE2 = PEOPLE.map((p) => ({ ...p }));
+  function withPeople(extract?: (s: string, h: any[], t: any) => any, seed: Record<string, any> = {}) {
+    return aSetupConversation({
+      ground: { participants: PEOPLE2, status: 'ACTIVE', endState: null },
+      seed: {
+        groundParticipant: { findMany: async () => PEOPLE2, findFirst: async ({ where }: any) => PEOPLE2.find((p) => p.id === where?.id) ?? null },
+        ...seed,
+      },
+      extract,
+    });
+  }
+
+  it('finds the person, and works out the question Groundwork would ask, writing nothing', async () => {
+    const { service, writes } = withPeople(() => ({ question: 'Have the Kilimani shops paid their deposits yet?' }));
+    const out = await service.theQuestionForAPerson('g1', 'userLead', { name: 'Amani', leadWords: 'Ask Amani whether the Kilimani shops have paid' });
+    expect(out).toEqual({ participantId: 'pA', who: 'Amani Wekesa', exactQuestion: 'Have the Kilimani shops paid their deposits yet?' });
+    expect(writes).toEqual([]);
+  });
+
+  it('her own question, written to the person, is kept in her words', async () => {
+    const { service } = withPeople(() => ({ question: 'Do you know if the Kilimani shops have paid their deposits yet?' }));
+    const out = await service.theQuestionForAPerson('g1', 'userLead', { name: 'Amani', leadWords: 'Ask Amani: Have the Kilimani shops paid their deposits yet?' });
+    expect(out.exactQuestion).toBe('Have the Kilimani shops paid their deposits yet?');
+  });
+
+  it('a name that is not on the check-in is said plainly, and nothing is asked', async () => {
+    const { service } = withPeople();
+    await expect(service.theQuestionForAPerson('g1', 'userLead', { name: 'Zawadi', leadWords: 'Ask Zawadi whether the shops paid' }))
+      .rejects.toThrow('I cannot find anybody called Zawadi on this check-in, so nothing was asked. Say the name as it is on the check-in and I will try again.');
+  });
+
+  it('a participant cannot ask anybody anything through it', async () => {
+    const { service } = withPeople();
+    await expect(service.theQuestionForAPerson('g1', 'uA', { name: 'Rukia', leadWords: 'Ask Rukia whether the shops paid' }))
+      .rejects.toThrow('Only the person who runs this check-in can ask people things through it. Nothing was asked.');
+  });
+
+  it('the yes keeps the question for the lead alone and confirms the very sentence she read', async () => {
+    const created: any[] = [];
+    const lines: any[] = [];
+    const { service } = withPeople(undefined, {
+      groundContextItem: {
+        create: async ({ data }: any) => { const row = { id: 'q1', ...data }; created.push(row); lines.push(row); return row; },
+        findFirst: async ({ where }: any) => lines.find((l) => l.id === where.id) ?? null,
+        update: async ({ where, data }: any) => { Object.assign(lines.find((l) => l.id === where.id), data); return lines.find((l) => l.id === where.id); },
+      },
+    });
+    const out: any = await service.keepAQuestionForAPerson('g1', 'userLead', { participantId: 'pA', leadWords: 'Ask Amani whether the Kilimani shops have paid', exactQuestion: 'Have the Kilimani shops paid their deposits yet?' });
+    expect(created[0]).toMatchObject({ kind: 'QUESTION_FOR_PERSON', audience: 'LEAD_ONLY', aboutParticipantId: 'pA', exactQuestion: 'Have the Kilimani shops paid their deposits yet?' });
+    expect(lines[0].questionConfirmedAt).toBeInstanceOf(Date);
+    expect(out.say).toBe('I have confirmed it. Groundwork will ask Amani Wekesa "Have the Kilimani shops paid their deposits yet?" in their next check-in, word for word.');
+  });
+});

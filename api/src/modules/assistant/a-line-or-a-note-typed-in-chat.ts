@@ -100,3 +100,33 @@ export function parseChangeContextLine(
   if (/\bretire\s+the\s+line\b/i.test(raw)) return { action: 'retire', fragment: null };
   return null;
 }
+
+/**
+ * A QUESTION FOR ONE PERSON, SAID IN ONE SENTENCE (request 92, point 11).
+ *
+ * "I want to ask Amani whether the Kilimani shops have paid", "ask Amani if the shops have paid",
+ * "ask Amani about the price list" and "ask Amani: Have the shops paid?". Until now a question for a
+ * person could only come out of a paste of 400 characters or more, and this short sentence was read
+ * as something expected of Amani. Nothing is written here: the caller says the exact sentence back
+ * and waits for the lead's yes (decision 34).
+ *
+ * `leadWords` is the sentence as the lead said it, without "I want to", because that is what the
+ * drafter is given for every other question ("ask her whether she has sent the Client B proposal").
+ * A quoted question after a name is a different thing (it changes one already waiting) and is not
+ * read here. Asking Groundwork, or asking "me" or "you", is not asking a person.
+ */
+const NAME = "(?!(?:me|you|us|them|groundwork|everyone|everybody|anyone|anybody|someone|somebody|her|him)\\b)([\\p{L}][\\p{L}'’.-]*(?:\\s+[\\p{L}][\\p{L}'’.-]*){0,2}?)";
+const WANTING = "(?:(?:i\\s+(?:want|would\\s+like|need|wish)\\s+to|i'd\\s+like\\s+to|i\\s+will|i'll|let's|let\\s+us|can\\s+you|could\\s+you|please)\\s+)*";
+const INDIRECT = new RegExp(`^\\s*${WANTING}ask\\s+${NAME}\\s+((?:whether|if|about|how|what|which|why|when|where|who)\\b[\\s\\S]*?)[.!]?\\s*$`, 'iu');
+const DIRECT = new RegExp(`^\\s*${WANTING}ask\\s+${NAME}\\s*[:,–-]\\s*([\\s\\S]+?)\\s*$`, 'iu');
+
+export function parseAskAPerson(message: string): { name: string; leadWords: string } | null {
+  const raw = (message ?? '').trim();
+  if (!raw || /["'“”‘’][^"'“”‘’]{3,}["'“”‘’]\s*(?:instead)?\s*[.!]?\s*$/.test(raw) && /\bask\s+\S+\s+["'“‘]/i.test(raw)) return null;
+  const m = INDIRECT.exec(raw) ?? DIRECT.exec(raw);
+  if (!m) return null;
+  const name = m[1].trim();
+  const rest = m[2].trim();
+  if (!name || !rest) return null;
+  return { name, leadWords: `Ask ${name}${INDIRECT.test(raw) ? ' ' : ': '}${rest}` };
+}

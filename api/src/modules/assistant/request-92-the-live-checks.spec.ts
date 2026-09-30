@@ -219,3 +219,72 @@ describe('point 10: after a No, the setup conversation carries on with the same 
     ], { yesOrNo: true });
   });
 });
+
+import { parseAskAPerson } from './a-line-or-a-note-typed-in-chat';
+import { route } from './the-router-is-deterministic';
+
+describe('point 11: "ask NAME whether ..." is a question for that person', () => {
+  it.each([
+    ['I want to ask Amani whether the Kilimani shops have paid', 'Amani', 'Ask Amani whether the Kilimani shops have paid'],
+    ['ask Amani Wekesa if the shops have paid their deposits.', 'Amani Wekesa', 'Ask Amani Wekesa if the shops have paid their deposits'],
+    ['Can you ask Amani about the price list', 'Amani', 'Ask Amani about the price list'],
+    ['ask Amani: Have the Kilimani shops paid their deposits yet?', 'Amani', 'Ask Amani: Have the Kilimani shops paid their deposits yet?'],
+  ])('"%s" is read as a question for %s', (said, name, words) => {
+    expect(parseAskAPerson(said)).toEqual({ name, leadWords: words });
+    expect(route(said).lane).toBe('questions_for_people');
+  });
+
+  it.each([
+    'ask me what is on my list',
+    'ask Groundwork about the rota',
+    'what should I ask Amani about',
+    'I want to know whether the Kilimani shops have paid',
+    `ask Ben 'how are the Lagos numbers looking?' instead`,
+  ])('"%s" is not', (said) => {
+    expect(parseAskAPerson(said)).toBeNull();
+  });
+
+  const theGrounds = () => ({
+    theQuestionForAPerson: jest.fn(async () => ({ participantId: 'pA', who: 'Amani Wekesa', exactQuestion: 'Have the Kilimani shops paid their deposits yet?' })),
+    keepAQuestionForAPerson: jest.fn(async () => ({ say: 'I have confirmed it. Groundwork will ask Amani Wekesa "Have the Kilimani shops paid their deposits yet?" in their next check-in, word for word.' })),
+    contextChat: jest.fn(),
+  });
+
+  it('the lead reads the exact question back and nothing is kept before the yes', async () => {
+    const groundsService = theGrounds();
+    const { service, created } = askGroundwork({ groundsService });
+    const reply = await service.respond('org-a', 'p1', 'I want to ask Amani whether the Kilimani shops have paid', 'g1');
+    expect(textOf(reply)).toBe('Groundwork will ask Amani Wekesa, word for word, "Have the Kilimani shops paid their deposits yet?" in Amani\'s next check-in. Shall I send it?');
+    expect(reply.blocks.some((b: any) => b.type === 'proposal')).toBe(true);
+    expect(groundsService.keepAQuestionForAPerson).not.toHaveBeenCalled();
+    expect(created[0].kind).toBe('question_for_person');
+  });
+
+  it('inside the setup conversation it is still a question for a person, never something expected of one', async () => {
+    const groundsService = theGrounds();
+    const { service } = askGroundwork({ groundsService });
+    const reply = await service.respond('org-a', 'p1', 'I want to ask Amani whether the Kilimani shops have paid', 'g1', true);
+    expect(groundsService.contextChat).not.toHaveBeenCalled();
+    expect(textOf(reply)).toContain('Groundwork will ask Amani Wekesa, word for word,');
+  });
+
+  it('the yes keeps it and confirms it, and says so in a full sentence', async () => {
+    const groundsService = theGrounds();
+    const { service } = askGroundwork({
+      groundsService,
+      parked: { id: 'pr1', kind: 'question_for_person', state: 'PARKED', summary: 's', payload: { groundId: 'g1', action: 'keep', participantId: 'pA', leadWords: 'Ask Amani whether the Kilimani shops have paid', exactQuestion: 'Have the Kilimani shops paid their deposits yet?' } },
+    });
+    const reply = await service.respond('org-a', 'p1', 'yes', 'g1');
+    expect(groundsService.keepAQuestionForAPerson).toHaveBeenCalledWith('g1', 'lead-1', { participantId: 'pA', leadWords: 'Ask Amani whether the Kilimani shops have paid', exactQuestion: 'Have the Kilimani shops paid their deposits yet?' });
+    expect(textOf(reply)).toBe('I have confirmed it. Groundwork will ask Amani Wekesa "Have the Kilimani shops paid their deposits yet?" in their next check-in, word for word.');
+  });
+
+  it('somebody who does not run a check-in is answered as ever, and nothing is made', async () => {
+    const groundsService = theGrounds();
+    const { service, created } = askGroundwork({ userId: 'member-1', groundsService, grounds: [{ id: 'g1', label: 'Sales team, Q3', initiatorId: 'lead-1', organizationId: 'org-a' }] });
+    const reply = await service.respond('org-a', 'p1', 'I want to ask Amani whether the Kilimani shops have paid', 'g1');
+    expect(reply.lane).toBe('unplaced');
+    expect(groundsService.theQuestionForAPerson).not.toHaveBeenCalled();
+    expect(created).toEqual([]);
+  });
+});

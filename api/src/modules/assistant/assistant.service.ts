@@ -66,7 +66,7 @@ import { isAGuestsKey } from './a-guests-questions-are-kept-apart';
 import { targetsHiddenFrom, withoutHiddenTargetsIn, namesOnTheRoster } from '../board/a-hidden-target-stays-hidden';
 import { runsIt } from '../grounds/who-may-read-this-check-in';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
-import { parseContextLine, parseLeadNote, labelForContextKind, parseChangeContextLine } from './a-line-or-a-note-typed-in-chat';
+import { parseContextLine, parseLeadNote, labelForContextKind, parseChangeContextLine, parseAskAPerson } from './a-line-or-a-note-typed-in-chat';
 import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 import { theContextWeHave, WhatLanded } from '../documents/what-a-document-holds';
 import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
@@ -232,6 +232,9 @@ export class AssistantService {
       if (parked) return this.resolveParked(organizationId, personId, who, parked, message);
     }
 
+    /* Asking one person something is not an answer to the question the setup conversation has open,
+       even inside it (request 92, point 11): it is said back as the exact question and confirmed. */
+    if (forceAddContext && parseAskAPerson(message)) return this.questionsForPeopleByChat(organizationId, who, userId ?? null, groundId, message);
     if (forceAddContext) return this.addContext(organizationId, who, userId ?? null, groundId, message);
 
     const routed = route(message);
@@ -2135,6 +2138,7 @@ export class AssistantService {
     if (!person?.linkedUserId) {
       return rules('add_context', text('I could not continue that, because I can no longer see you in your organisation records.'));
     }
+    if (parseAskAPerson(message)) return this.questionsForPeopleByChat(organizationId, who, person.linkedUserId, payload.groundId, message);
     return this.runContextChat(organizationId, who, person.linkedUserId, payload.groundId, message, payload.history);
   }
 
@@ -2731,6 +2735,9 @@ export class AssistantService {
     const resolved = await this.resolveGroundFor(organizationId, who, userId, groundId, message, 'questions_for_people');
     if ('lane' in resolved) return resolved;
 
+    const askedOfOne = parseAskAPerson(message);
+    if (askedOfOne) return this.proposeAQuestionForAPerson(organizationId, who, userId, resolved.id, askedOfOne);
+
     let cards: { id: string; who: string; exactQuestion: string; status: 'waiting' | 'confirmed' }[];
     try {
       cards = (await this.grounds.questionsForPeople(resolved.id, userId)) as any;
@@ -2804,19 +2811,52 @@ export class AssistantService {
     );
   }
 
+  /**
+   * "ASK AMANI WHETHER THE KILIMANI SHOPS HAVE PAID", SAID BACK AS THE EXACT QUESTION (request 92,
+   * point 11; decision 34). Nothing is kept and nobody is asked until the lead says yes to the
+   * sentence, and a lead's own question, written to the person, is kept in her words.
+   */
+  private async proposeAQuestionForAPerson(
+    organizationId: string,
+    who: string,
+    userId: string,
+    groundId: string,
+    asked: { name: string; leadWords: string },
+  ): Promise<Reply> {
+    let q: { participantId: string; who: string; exactQuestion: string };
+    try {
+      q = await this.grounds.theQuestionForAPerson(groundId, userId, asked);
+    } catch (err: any) {
+      return rules('add_context', text(err?.message ?? 'I could not work out that question, so nothing was asked.'));
+    }
+    const first = q.who.split(/\s+/)[0];
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId, personExternalId: who, kind: 'question_for_person',
+        summary: `Groundwork will ask ${q.who}, word for word, "${q.exactQuestion}" in ${first}'s next check-in. Shall I send it?`,
+        payload: { groundId, action: 'keep', participantId: q.participantId, leadWords: asked.leadWords, exactQuestion: q.exactQuestion } as never,
+      },
+    });
+    return { lane: 'add_context', composedBy: 'rules', blocks: [text(proposal.summary), { type: 'proposal', proposalId: proposal.id, summary: proposal.summary }] };
+  }
+
   private async resolveParkedQuestionForPerson(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
       return rules('add_context', text('I have left it as it was. Nothing was asked.'));
     }
-    const payload = parked.payload as { groundId: string; itemId: string; action: 'confirm' | 'decline'; exactQuestion?: string | null };
+    const payload = parked.payload as { groundId: string; itemId: string; action: 'confirm' | 'decline' | 'keep'; exactQuestion?: string | null; participantId?: string; leadWords?: string };
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
     if (!person?.linkedUserId) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text('I could not save that, because I can no longer see you in your organisation records.'));
     }
     try {
-      const result = payload.action === 'decline'
+      const result = payload.action === 'keep'
+        ? await this.grounds.keepAQuestionForAPerson(payload.groundId, person.linkedUserId, {
+            participantId: payload.participantId as string, leadWords: payload.leadWords as string, exactQuestion: payload.exactQuestion as string,
+          })
+        : payload.action === 'decline'
         ? await this.grounds.declineQuestionForPerson(payload.groundId, person.linkedUserId, payload.itemId)
         /* THE LEAD'S OWN CHANGED WORDING (decision 34; decision 50, piece 3, item 3): with
            `exactQuestion` set, `confirmQuestionForPerson` takes it word for word as the question,

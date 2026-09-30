@@ -4465,6 +4465,71 @@ export class GroundsService {
   }
 
   /**
+   * A QUESTION FOR ONE PERSON, SAID IN ONE SENTENCE (request 92, point 11): "ask Amani whether the
+   * Kilimani shops have paid". Finds the person on this check-in and works out the sentence Groundwork
+   * would ask, word for word, and writes nothing. The lead is shown that sentence and confirms it
+   * (decision 34) before anything is kept or asked; `keepAQuestionForAPerson` is the yes.
+   */
+  async theQuestionForAPerson(
+    groundId: string,
+    requestingUserId: string,
+    said: { name: string; leadWords: string },
+  ): Promise<{ participantId: string; who: string; exactQuestion: string }> {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, organizationId: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const viewer = await this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true } });
+    if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
+      throw new ForbiddenException('Only the person who runs this check-in can ask people things through it. Nothing was asked.');
+    }
+    const people = await this.prisma.groundParticipant.findMany({
+      where: { groundId },
+      select: { id: true, email: true, nameGiven: true, roleAsDescribed: true, managingOnly: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+    });
+    const onIt = people.filter((p) => !p.managingOnly);
+    const found = whoThisNameIs(said.name, onIt as any);
+    if (!found) {
+      throw new BadRequestException(`I cannot find anybody called ${said.name.trim()} on this check-in, so nothing was asked. Say the name as it is on the check-in and I will try again.`);
+    }
+    const privateWords = [found.roleAsDescribed, ...(await this.theLeadsOwnWordsAbout(groundId, found.id))];
+    const exactQuestion = await this.theExactQuestionFor(found.id, found as any, said.leadWords, privateWords, said.leadWords);
+    if (!exactQuestion) throw new BadRequestException('I could not work out the question to ask, so nothing was asked. Say it again in a sentence.');
+    return { participantId: found.id, who: theNameWeUseFor(found as any), exactQuestion };
+  }
+
+  /**
+   * THE YES TO THAT SENTENCE: the question is kept as a line only the lead reads, and confirmed in the
+   * same step, because the lead has just read exactly what will be asked and said yes to it. The door
+   * is the one every other confirmation goes through, so an admin is refused while the lead is here.
+   */
+  async keepAQuestionForAPerson(
+    groundId: string,
+    requestingUserId: string,
+    dto: { participantId: string; leadWords: string; exactQuestion: string },
+  ) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { initiatorId: true, status: true, endState: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
+    const refused = whyItRefuses(ground.status, ground.endState, confirm.as === 'lead' ? 'the lead' : 'anybody else');
+    if (refused) throw new BadRequestException(refused);
+    const person = await this.prisma.groundParticipant.findFirst({ where: { id: dto.participantId, groundId }, select: { id: true } });
+    if (!person) throw new NotFoundException('That person is not on this check-in.');
+    const made = await this.prisma.groundContextItem.create({
+      data: {
+        groundId,
+        kind: ContextItemKind.QUESTION_FOR_PERSON,
+        text: (withoutBankDetails(dto.leadWords) as string).trim().slice(0, 400),
+        audience: ContextNoteAudience.LEAD_ONLY,
+        aboutParticipantId: dto.participantId,
+        source: 'CHAT',
+        authorUserId: requestingUserId,
+        exactQuestion: dto.exactQuestion.slice(0, 400),
+      },
+      select: { id: true },
+    });
+    return this.confirmQuestionForPerson(groundId, requestingUserId, made.id, { exactQuestion: dto.exactQuestion });
+  }
+
+  /**
    * THE LEAD'S YES TO ONE QUESTION, IN THE WORDS THEY READ OR THE WORDS THEY CHANGED IT TO.
    *
    * With no `exactQuestion`, the sentence on the card is what is confirmed - the stored one, or for a
