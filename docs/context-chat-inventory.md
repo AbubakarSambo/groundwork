@@ -503,8 +503,8 @@ it in:
 | 5 | Say-back and confirm before saving | grounds.service.ts `applyContextProposal`; nothing-proposed-that-nobody-said.ts | Yes | Partly (mechanism exists, not wired to setup) |
 | 6 | Reading a whole "dump" at once | a-dump-is-many-things.ts | Yes | No |
 | 7 | Hearing a change to something already recorded | grounds.service.ts `whatTheyWantChanged`/`makeTheChange` | Yes | No |
-| 8 | Exact question for a person, confirmed (decision 34) | a-question-asked-word-for-word.ts; grounds.service.ts `confirmQuestionForPerson` | Yes | Yes, as shown (piece 2, point 1); confirming with changed wording not yet |
-| 9 | Private lead notes, LEAD_ONLY, never shared if about a person | grounds.service.ts `addLeadContext`/`shareLeadContext` | Yes | Yes for adding (piece 2, point 1); `shareLeadContext` still only the old route |
+| 8 | Exact question for a person, confirmed (decision 34) | a-question-asked-word-for-word.ts; grounds.service.ts `confirmQuestionForPerson` | Yes | Yes, as shown and with the lead's own changed wording (piece 2 point 1; piece 3 point 3) |
+| 9 | Private lead notes, LEAD_ONLY, never shared if about a person | grounds.service.ts `addLeadContext`/`shareLeadContext` | Yes | Yes, adding and sharing (piece 2 point 1; piece 3 point 2) |
 | 10 | Coaching the lead about a named person, kept private | the-context-chat.ts prompt rule 2 (prompt-only) | No dedicated spec found | No |
 | 11 | Setting an expectation of a named person | what-setup-agreed.ts; what-the-context-chat-heard.ts | Yes | No |
 | 12 | Documents private to the lead | grounds.service.ts `openDocuments` query; a-document-is-context.ts | Yes | No |
@@ -512,7 +512,7 @@ it in:
 | 14 | Who may use it (lead/admin, never participant) | repeated guard in grounds.service.ts | Yes | Partly (different gate, same shape) |
 | 15 | Opening on what's already there, not a greeting | the-context-chat.ts prompt | Yes | No |
 | 16 | Setting success (GroundBaseline), versioned | grounds.service.ts `stateBaseline`/`baselineHistory` | Not confirmed by name | No |
-| 17 | Typing a context line directly (door with no chat) | grounds.service.ts `addContextLine`/`changeContextLine` | Yes | Yes for adding (piece 2, point 1); `changeContextLine` still only the old route |
+| 17 | Typing a context line directly (door with no chat) | grounds.service.ts `addContextLine`/`changeContextLine` | Yes | Yes, adding and changing (piece 2 point 1; piece 3 point 2) |
 | 18 | Bank/card details hidden everywhere | bank-details-are-never-kept.ts | Yes | Unclear/not found |
 | 19 | Setup sign-offs (own only) | grounds.service.ts `setupSignOffs` | Not identified by name | No (unrelated surface) |
 | 20 | Client Context page route cross-reference | client/src/api/grounds.ts | n/a | n/a |
@@ -677,3 +677,66 @@ about, through the `context_turn` proposal. What is still real remaining work is
 a conversation that has not opened yet ("twelve weeks", said cold, with nothing to link it to any
 check-in) - that one genuinely has nothing to route on, the same way it would mean nothing typed cold
 into any other chat.
+
+**Step (b), piece 3 (30 September 2026). Wording fixed, and items 8, 9 and 17 finished.**
+
+1. **The say-back sentences are rewritten as full sentences, never clipped or colon-joined**, in
+   `assistant.service.ts`: adding a line now says `Shall I add "we will drop the pilot" to this
+   check-in's context as a decision?`; a private note says `Shall I keep "keep an eye on Ben's
+   workload" as a private note that only you can see?`; confirming a question says `Groundwork will
+   ask Ben, word for word, "How is the Lagos pitch going?" in Ben's next check-in. Shall I send it?`;
+   leaving one out says `Shall I leave out the question for Ben, "How is the Lagos pitch going?"?`;
+   and the "which one did you mean" refusal on an ambiguous name reads `I cannot tell which question
+   you mean. The people waiting are Ben, Ada.` rather than the old `Waiting: Ben, Ada.` Proven in
+   `decision-50-piece-3-through-ask-groundwork.spec.ts`, "point 1".
+2. **`shareLeadContext` and `changeContextLine`, each through the exact function the old route calls.**
+   - **`shareLeadContext` (item 9's other half).** A new command, "share the note ..." (matched in the
+     `lead_note` lane, alongside its existing "private note:" pattern), lists only the lead's own notes
+     about the whole check-in (`participantId: null`) - a note about a named person is never even read
+     into the list, so the chat never relies on `shareLeadContext`'s own refusal to catch a guess it
+     should not have offered in the first place. The matched note is said back
+     (`Shall I share "..." with everybody on this check-in?`) and only a yes calls
+     `GroundsService.shareLeadContext` - the same function the old Context and resources page's own
+     share button calls. See `shareLeadNoteByChat`/`resolveParkedShareLeadNote`.
+   - **`changeContextLine` (item 17's other half).** A new command family in the `context_line` lane -
+     "reword the line 'X' to 'Y'", "share the line 'X'", "make the line 'X' private", "retire the line
+     'X'" - reads only the lines this same door can create (`STRATEGY`/`WAY_OF_WORKING`/`DECISION`/
+     `UNSETTLED`/`NOTE`, `closedAt: null`), so a line about a named person has no way in through this
+     lane, the same as when it is first typed. The matched line and the change are said back before
+     anything happens, and only a yes calls `GroundsService.changeContextLine` - the same function the
+     old page's own edit/share/retire controls call, so the "a line about a person can never be shared"
+     rule (`mayBeShared`, inventory item 17) is `changeContextLine`'s own, not a copy of it here. See
+     `manageContextLineByChat`/`resolveParkedChangeContextLine`.
+   - Both are new `AssistantProposal` kinds, `share_lead_note` and `change_context_line`, dispatched in
+     `resolveParked` the same way every other kind here is, and both are in `SETUP_LANES`'s effect
+     already (they park under the existing `lead_note`/`context_line` lanes, so item 2's rule - nothing
+     from a setup door reaches `AssistantTurn` - already covers them without a separate list).
+   - Fragment matching never guesses: an unquoted "retire the line" with more than one open line lists
+     what is open and asks for enough of its own words, the same refusal-to-guess discipline as items 4,
+     6 and 9's own name matching.
+3. **Confirming the lead's exact question with their own changed wording (decision 34), the item 8 gap
+   piece 2 named as not yet closed.** A new pattern in the `questions_for_people` lane, `ask NAME
+   "..." instead`, reads the lead's new sentence, says it back in the same "Groundwork will ask ...
+   word for word ..." sentence used for confirming as shown, and only a yes calls the very same
+   `confirmQuestionForPerson` - now passing the lead's new wording as `exactQuestion`, the same field
+   the old Context and resources page's own "edit and confirm" flow already used
+   (`confirmQuestionForPerson`'s own `dto.exactQuestion` was there all along; nothing about the
+   function changed). Confirming "as shown", with no reword, still sends no `exactQuestion` and behaves
+   exactly as piece 2 left it.
+   Proven in `decision-50-piece-3-through-ask-groundwork.spec.ts`, "point 3".
+4. **A router collision, found and fixed while wiring "share the note".** The `add_a_document` lane's
+   own word list included bare `notes?`, so "share the note ..." was being read as adding a document,
+   before `lead_note`'s new pattern ever got a turn - `add_a_document` sits earlier in the router's
+   ordered list. Fixed by narrowing that word to plural `notes` only (a document like "the meeting
+   notes" still routes to `add_a_document`; a single private or shared "note" no longer collides with
+   it). No existing test named a singular "note" case for `add_a_document`, and the full `assistant` and
+   `grounds` suites pass with the change (`api/src/modules/assistant/the-router-is-deterministic.ts`).
+
+**What is left.** Nothing in the router or the write paths - `add-context-is-the-context-chat.spec.ts`,
+`items-8-9-17-through-ask-groundwork.spec.ts` and the new
+`decision-50-piece-3-through-ask-groundwork.spec.ts` between them now exercise every item this
+inventory names as reachable through Ask Groundwork at all (1, 2, 3 (inside `contextChat`), 5, 8, 9, 14,
+17 and the "which check-in" mechanism), each through the exact function its old route calls. The one
+piece still outstanding is unchanged from piece 2, step (c): the live proof script,
+`api/journey/context-chat-equivalence.ts`, has not been run, because the local API this checkout would
+hit is running a scenario suite. Hafsah runs it once that finishes.

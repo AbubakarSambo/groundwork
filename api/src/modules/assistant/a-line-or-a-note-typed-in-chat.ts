@@ -63,3 +63,38 @@ export function parseLeadNote(message: string): { about: string | null; text: st
   }
   return null;
 }
+
+/**
+ * A CHANGE TO A LINE ALREADY ON THE RECORD (decision 50, piece 3, item 2: `changeContextLine`).
+ *
+ * "reword the line 'X' to 'Y'", "share the line 'X'", "make the line 'X' private", "retire the line
+ * 'X'" - the quoted words are enough of the line for `manageContextLineByChat` to find it among what
+ * is open on the check-in; nothing here decides which line that is, or whether it may be shared (the
+ * chat's `mayBeShared` rule for a line about a person lives entirely inside `changeContextLine`
+ * itself). With no quoted words at all, `fragment` comes back null and the caller lists what is open
+ * instead of guessing.
+ */
+export function parseChangeContextLine(
+  message: string,
+): { action: 'reword' | 'share' | 'private' | 'retire'; fragment: string | null; newText?: string } | null {
+  const raw = (message ?? '').trim();
+
+  const reword = /\b(?:reword|change)\s+the\s+line\s+["'“](.+?)["'”]\s+to\s+["'“](.+?)["'”]/i.exec(raw);
+  if (reword) return { action: 'reword', fragment: reword[1].trim(), newText: reword[2].trim() };
+
+  const share = /\bshare\s+the\s+line\s+["'“](.+?)["'”]/i.exec(raw);
+  if (share) return { action: 'share', fragment: share[1].trim() };
+
+  const priv = /\bmake\s+the\s+line\s+["'“](.+?)["'”]\s+private\b/i.exec(raw);
+  if (priv) return { action: 'private', fragment: priv[1].trim() };
+
+  const retire = /\bretire\s+the\s+line\s+["'“](.+?)["'”]/i.exec(raw);
+  if (retire) return { action: 'retire', fragment: retire[1].trim() };
+
+  /* The action is clear but nothing is quoted - the caller lists the open lines instead of guessing. */
+  if (/\b(?:reword|change)\s+the\s+line\b/i.test(raw)) return { action: 'reword', fragment: null };
+  if (/\bshare\s+the\s+line\b/i.test(raw)) return { action: 'share', fragment: null };
+  if (/\bmake\s+the\s+line\s+private\b/i.test(raw)) return { action: 'private', fragment: null };
+  if (/\bretire\s+the\s+line\b/i.test(raw)) return { action: 'retire', fragment: null };
+  return null;
+}

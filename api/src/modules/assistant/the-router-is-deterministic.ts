@@ -88,7 +88,12 @@ const RULES = [
      * directions and the send lane owns the word "send". Narrow: it wants a word that names a FILE
      * or an act of adding one, not any mention of a document.
      */
-    /\b(?:upload|attach|add|put\s+in|share)\s+(?:a|an|our|my|the|this)?\s*(?:file|document|doc|pdf|deck|handbook|policy|contract|notes?)\b/i,
+    /*
+     * "notes" (plural) still reads as a document, e.g. "share the meeting notes" - but singular
+     * "note" does not, so it is free for the lead_note/context_line lanes' own "share the note ..."
+     * (decision 50, piece 3, item 2), which would otherwise never be reached from here.
+     */
+    /\b(?:upload|attach|add|put\s+in|share)\s+(?:a|an|our|my|the|this)?\s*(?:file|document|doc|pdf|deck|handbook|policy|contract|notes)\b/i,
     /\bhere\s+is\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf|handbook|policy|contract)\b/i,
     /\bi\s+(?:have|want\s+to\s+(?:add|upload|attach))\s+(?:a|an|our|my|the)\s+(?:file|document|doc|pdf)\b/i,
     /*
@@ -312,6 +317,15 @@ const RULES = [
     /^\s*decision\s*[:\-]\s*.{2,400}$/i,
     /^\s*unsettled\s*[:\-]\s*.{2,400}$/i,
     /^\s*context\s+note\s*[:\-]\s*.{2,400}$/i,
+    /*
+     * CHANGING A LINE ALREADY ON THE RECORD (decision 50, piece 3, item 2: `changeContextLine`).
+     * "the line" keeps this apart from changing an objective, a commitment or a to-do, each of which
+     * has its own lane and its own words for the same action.
+     */
+    /\b(?:reword|change)\s+the\s+line\b/i,
+    /\bshare\s+the\s+line\b/i,
+    /\bmake\s+the\s+line\s+private\b/i,
+    /\bretire\s+the\s+line\b/i,
   ]),
   rule('lead_note', [
     /*
@@ -321,6 +335,10 @@ const RULES = [
      */
     /\b(?:private|personal)\s+note\b/i,
     /\bnote\s+(?:privately|only\s+for\s+me|just\s+for\s+me)\b/i,
+    /*
+     * SHARING A PRIVATE NOTE WITH EVERYBODY (decision 50, piece 3, item 2: `shareLeadContext`).
+     */
+    /\bshare\s+(?:the|my|this)\s+note\b/i,
   ]),
   rule('questions_for_people', [
     /*
@@ -330,6 +348,12 @@ const RULES = [
      */
     /\bquestions?\s+for\s+(?:people|someone|somebody|him|her|them)\b/i,
     /\b(?:confirm|decline|leave\s+out)\s+(?:the\s+)?question\s+for\s+.+/i,
+    /*
+     * CONFIRMING WITH THE LEAD'S OWN CHANGED WORDING (decision 34; decision 50, piece 3, item 3).
+     * "ask Ben 'how are the Lagos numbers looking?' instead" - a name, then the lead's own sentence in
+     * quotes, replacing whatever question was waiting for that person.
+     */
+    /\bask\s+\S.*["'“].+["'”]\s*(?:instead)?\s*[.!]?\s*$/i,
   ]),
   rule('add_context', [
     /*
