@@ -133,7 +133,7 @@ export class WhatIsTrueService {
         /* Not yet open is not the same as nothing, and it is not something to
            offer either — so it is simply not a session that is true for them
            right now. The date is the product's, not a judgement. */
-        .filter((c) => !c.availableFrom || c.availableFrom <= now)
+        .filter((c) => c.status === CheckInStatus.IN_PROGRESS || !c.availableFrom || c.availableFrom <= now)
         .map((c): ASession => ({
           checkInId: c.id,
           groundId: c.participant.ground.id,
