@@ -438,10 +438,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
     'pages/org/OrgMembersPage.tsx': 2,
     'pages/org/InvitePeople.tsx': 2,
     'pages/grounds/CheckInPeopleAndSetup.tsx': 5,
-    'pages/board/BoardPage.tsx': 6,
-    'pages/board/WorkRecords.tsx': 2,
     'components/gw/Suggestions.tsx': 4,
-    'pages/settings/SettingsPage.tsx': 4,
     'pages/billing/BillingPage.tsx': 7,
   }
   it('no listed page writes more than one primary button beyond what is already named as not fixed yet', () => {
