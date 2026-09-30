@@ -6729,3 +6729,5 @@ The reviewer read 22 boards, every kind as its lead and a participant, and "Sale
 **One refusal, the reviewer's.** Its first script was refused by the safety check: it held two writes meant to be refused by the server, as a participant and an admin, and it read the names in the client's `.env` file. The reviewer did not retry, and judged who may write from the code instead. Nothing was changed.
 
 Items 1 and part of 6 are the engine's (request 88); the rest are with a fresh builder.
+
+**A refusal of mine (30 September).** The safety check refused my morning-report entry for the board review's fixes, saying protected files cannot be changed. I did not retry or reword it. What was fixed is described in the commits from e9039c4d to b6e78c6e, and I told Hafsah in the chat.
