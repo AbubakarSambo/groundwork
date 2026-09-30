@@ -185,6 +185,8 @@ describe('it runs on every scenario, which is why it lives here', () => {
     // none of them ever had an atStake field. Running the pass over
     // `result.divergences` after extraction reaches all four; adding the field
     // to a schema would have reached one.
-    expect(SRC).toMatch(/await this\.fillAtStake\(result\.divergences\)/);
+    /* Week 25: started without waiting, so it runs beside the picture; the judgement awaits it. */
+    expect(SRC).toMatch(/this\.fillAtStake\(result\.divergences\)/);
+    expect(SRC).toMatch(/await atStakePass/);
   });
 });

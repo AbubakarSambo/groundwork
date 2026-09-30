@@ -34,6 +34,8 @@ import { whatToProbe } from './what-to-probe';
 import { wordedByTheModel, type Drafted, type Compose } from './the-engine-drafts-it-the-model-words-it';
 import { rememberedCompose } from './a-line-worded-once-is-kept';
 import { wordPatternEvidence } from './pattern-evidence-in-plain-words';
+import { runAtOnce, READERS_WARMED_TOGETHER } from './run-at-once-with-a-cap';
+import { Syntheses, theSentenceWhileItIsWritten } from './the-report-is-being-written';
 import { OneAtATime } from './one-warm-up-at-a-time';
 import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
@@ -920,9 +922,22 @@ export class ReportsService {
      nothing the second would not have. */
   private readonly synthesisWaiting = new Map<string, Promise<any>>();
 
+  /* Which check-ins have a synthesis out or waiting, for the lead's "being written" line. Module-level
+     fallback below so a service made without its constructor still reads "not being written". */
+  private readonly synthesesOut = new Syntheses();
+
   async synthesize(groundId: string) {
     const waiting = this.synthesisWaiting.get(groundId);
     if (waiting) return waiting;
+    this.synthesesOut?.begin(groundId);
+    try {
+      return await this.synthesizeInTurn(groundId);
+    } finally {
+      this.synthesesOut?.end(groundId);
+    }
+  }
+
+  private async synthesizeInTurn(groundId: string) {
     const after = this.synthesisQueue.get(groundId) ?? Promise.resolve();
     const mine = after.then(() => {
       this.synthesisWaiting.delete(groundId);
@@ -1813,7 +1828,12 @@ Close the report by framing - neutrally, without recommending one - the choice n
        duplicate) and leaves the mangled topic standing. See a-field-name-is-not-a-heading.ts. */
     result.divergences = everyDivergenceReadable(result.divergences) as any;
 
-    await this.fillAtStake(result.divergences);
+    /* WEEK 25. The sentence on what each gap costs is independent of the picture below it (which is
+       given only the gaps' topics, which this pass never changes), so both are asked at once and the
+       judgement waits for this one. Each call is given exactly what it was given before. */
+    const atStakePass = this.fillAtStake(result.divergences).catch((err: any) => {
+      this.logger.warn(`The what-is-at-stake pass failed, so the gaps read without it: ${err?.message}`);
+    });
 
     // Engagement-quality + confidence header (B4/B5a). Factual, not a verdict -
     // it tells both parties what the report is built on (session counts, record
@@ -2234,6 +2254,51 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const inRoundIds = new Set(inTheRound.map((p: any) => p.id));
     const answered = [...answeredThisRound].filter((id) => inRoundIds.has(id)).length || Math.min(peopleWhoAnswered, inTheRound.length);
     const expected = inTheRound.length || answered;
+    /*
+     * AND THE SECOND READ, WHERE THERE ARE ENOUGH SEPARATE ACCOUNTS FOR IT TO MEAN ANYTHING.
+     *
+     * The report above is an alignment read and it is capped at five hundred words, which is right
+     * for two people and useless for a hundred organisations. So the network picture is its own
+     * call with its own shape and its own room. See a-hundred-accounts-are-not-two.
+     *
+     * BEST EFFORT, ALWAYS. A report that already succeeded must never be lost to this: if the
+     * second read fails the first one is still written, and the column is simply null.
+     */
+    /*
+     * WEEK 25. Started here, before the picture is written, and waited for after the judgement: it
+     * reads the roster and the record lines, none of which the picture or the judgement changes, so
+     * the two calls no longer queue behind each other. It is asked exactly what it was asked before.
+     */
+    const networkRead = (async () => {
+    const howManyAnswered = await this.prisma.checkIn.findMany({
+      where: { groundId, status: CheckInStatus.COMPLETED },
+      select: { participantId: true },
+    }).then((rows) => new Set(rows.map((r) => r.participantId)).size).catch(() => 0);
+    let networkPicture: any = null;
+    if (readAsANetwork(howManyAnswered)) {
+      const asked = ((ground as any).brief ?? '').trim() || ground.label;
+      try {
+        const began = Date.now();
+        networkPicture = await this.anthropic.extract<any>(
+          theNetworkInstruction(howManyAnswered, asked),
+          [{ role: 'user', content: `${roster}\n\n${records.map((r) => {
+            const label = labelById.get(r.participant.id) ?? 'a party';
+            return `[${label}] (${r.type}) ${r.text}`;
+          }).join('\n')}` }],
+          THE_NETWORK_REPORT_SCHEMA as any,
+          /* Nobody is sitting in front of this, and a hundred accounts do not fit in a minute.
+             See A_HUNDRED_ACCOUNTS_WAIT - it timed out three times at sixty seconds and the
+             report was written with an empty picture in it, saying nothing had gone wrong. */
+          { patient: true },
+        );
+        this.logger.log(`Read ${howManyAnswered} accounts on ${groundId} as a network in ${Date.now() - began}ms.`);
+      } catch (err: any) {
+        this.logger.warn(`The network read on ${groundId} failed, so the report is the alignment one alone: ${err?.message}`);
+      }
+    }
+    return { howManyAnswered, networkPicture };
+    })();
+
     const picture = await this.pictureInPlainSentences(theFacts, {
       peopleAnswered: answered,
       peopleExpected: expected,
@@ -2282,43 +2347,6 @@ Close the report by framing - neutrally, without recommending one - the choice n
     (result as any).theOpening = picture.opening || null;
 
     /*
-     * AND THE SECOND READ, WHERE THERE ARE ENOUGH SEPARATE ACCOUNTS FOR IT TO MEAN ANYTHING.
-     *
-     * The report above is an alignment read and it is capped at five hundred words, which is right
-     * for two people and useless for a hundred organisations. So the network picture is its own
-     * call with its own shape and its own room. See a-hundred-accounts-are-not-two.
-     *
-     * BEST EFFORT, ALWAYS. A report that already succeeded must never be lost to this: if the
-     * second read fails the first one is still written, and the column is simply null.
-     */
-    const howManyAnswered = await this.prisma.checkIn.findMany({
-      where: { groundId, status: CheckInStatus.COMPLETED },
-      select: { participantId: true },
-    }).then((rows) => new Set(rows.map((r) => r.participantId)).size).catch(() => 0);
-    let networkPicture: any = null;
-    if (readAsANetwork(howManyAnswered)) {
-      const asked = ((ground as any).brief ?? '').trim() || ground.label;
-      try {
-        const began = Date.now();
-        networkPicture = await this.anthropic.extract<any>(
-          theNetworkInstruction(howManyAnswered, asked),
-          [{ role: 'user', content: `${roster}\n\n${records.map((r) => {
-            const label = labelById.get(r.participant.id) ?? 'a party';
-            return `[${label}] (${r.type}) ${r.text}`;
-          }).join('\n')}` }],
-          THE_NETWORK_REPORT_SCHEMA as any,
-          /* Nobody is sitting in front of this, and a hundred accounts do not fit in a minute.
-             See A_HUNDRED_ACCOUNTS_WAIT - it timed out three times at sixty seconds and the
-             report was written with an empty picture in it, saying nothing had gone wrong. */
-          { patient: true },
-        );
-        this.logger.log(`Read ${howManyAnswered} accounts on ${groundId} as a network in ${Date.now() - began}ms.`);
-      } catch (err: any) {
-        this.logger.warn(`The network read on ${groundId} failed, so the report is the alignment one alone: ${err?.message}`);
-      }
-    }
-
-    /*
      * AND THE JUDGEMENT OVER EVERY ANSWER: CLASSIFY, ASSESS, THEN RECOMMEND, IN THAT ORDER.
      *
      * Two customers read a report that listed what people said and called it worthless - "it did not
@@ -2332,6 +2360,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * last part is written, and it is handed nothing but the table, with every sentence required to
      * carry a number that is already in it.
      */
+    await atStakePass;
     const theJudgement = await this.judgeTheAnswers(groundId, {
       /*
        * THE ROOM, for a ground too small for counts to mean anything. Built from what synthesis has
@@ -2372,6 +2401,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
       this.logger.warn(`The longitudinal read on ${groundId} did not run: ${err?.message}`);
       return null;
     });
+
+    const { howManyAnswered, networkPicture: networkRead0 } = await networkRead;
+    let networkPicture: any = networkRead0;
 
     /*
      * EVERY QUOTE IS THE RECORD'S WORDS, OR IS NOT A QUOTE, BEFORE ANYTHING IS STORED.
@@ -5372,12 +5404,14 @@ happened, and what is in the way.`;
         select: { id: true },
       }) ?? Promise.resolve(null)).catch(() => null);
       const readers = [...inTheCheckIn, ...(anAdmin?.id ? [anAdmin.id] : [])];
-      const out: { userId: string; sessionReport: any }[] = [];
-      for (const userId of readers) {
+      /* WEEK 25. Each reader's two reads are independent of every other reader's, and of each other, so
+         readers are warmed together, four at a time, and handed back in the order they were listed.
+         A line two readers share is still asked once (a-line-worded-once-is-kept shares it). */
+      const out = await runAtOnce(readers, READERS_WARMED_TOGETHER, async (userId) => {
         const sessionReport = await this.sessionReport(groundId, sessionNumber, userId, ground).catch(() => undefined);
         await this.get(groundId, userId, ground).catch(() => undefined);
-        out.push({ userId, sessionReport });
-      }
+        return { userId, sessionReport };
+      });
       /* Logged here, where the work is done, so a warm-up that was shared or skipped is not counted. */
       this.logger.log(`Reads warmed for ${groundId}, session ${sessionNumber}, ${readers.length} reader(s).`);
       return out;
@@ -6135,7 +6169,29 @@ happened, and what is in the way.`;
   async get(groundId: string, requestingUserId: string, requestingUserOrgId?: string) {
     await this.refuseSomeoneNotYetLetIn(requestingUserId);
     const served = await this.getAsBuilt(groundId, requestingUserId, requestingUserOrgId);
-    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withWhatTodayReads(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served)));
+    return this.whatTheLeadHasNotShared(groundId, requestingUserId, requestingUserOrgId, await this.withBeingWritten(groundId, requestingUserId, await this.withWhatTodayReads(groundId, requestingUserId, requestingUserOrgId, await this.withWhatHasStayedTheSame(groundId, requestingUserId, served))));
+  }
+
+  /**
+   * `beingWritten` ON THE LEAD'S READ, WHILE A SYNTHESIS OF THIS CHECK-IN IS OUT OR WAITING (week 25).
+   * Only the person who runs the check-in; nobody else is told. Read from the service's own record of
+   * what is running: it asks no model and starts nothing. Its sentence carries labels, and the wrapper
+   * after this turns them into the names this reader may see. See the-report-is-being-written.
+   */
+  private async withBeingWritten<T>(groundId: string, requestingUserId: string, served: T): Promise<T> {
+    if (!served || typeof served !== 'object') return served;
+    const since = this.synthesesOut?.since(groundId);
+    if (!since) return served;
+    const ground = await (this.prisma.ground.findUnique({
+      where: { id: groundId },
+      select: { initiatorId: true, participants: { select: { id: true, userId: true, partyType: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, roleAsDescribed: true, remitAsGiven: true, managingOnly: true, user: { select: { firstName: true, lastName: true } } } } } as any,
+    }) as Promise<any>).catch(() => null);
+    if (!ground || ground.initiatorId !== requestingUserId) return served;
+    const answered = await this.prisma.checkIn.findMany({ where: { groundId, status: CheckInStatus.COMPLETED }, select: { participantId: true } }).catch(() => [] as { participantId: string }[]);
+    const answeredIds = new Set(answered.map((c) => c.participantId));
+    const labels = labelsForParties(ground.participants ?? []);
+    const who = (ground.participants ?? []).filter((p: any) => answeredIds.has(p.id) && !p.managingOnly && p.userId !== requestingUserId).map((p: any) => labels.get(p.id) as string).filter(Boolean);
+    return { ...(served as any), beingWritten: { since: since.toISOString(), sentence: theSentenceWhileItIsWritten(who) } };
   }
 
   /**
