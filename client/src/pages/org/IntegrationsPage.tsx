@@ -504,7 +504,7 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
                        all (only the `available` events above are), so ticking them is not something a
                        person here can actually do yet. */
                     <p className="gwui-fine">
-                      {(events.data?.notYetEmitted ?? []).length === 1 ? 'One more is coming.' : `${(events.data?.notYetEmitted ?? []).length} more are coming.`} Nothing sends them yet, so they will appear here once Groundwork can.
+                      {(() => { const n = (events.data?.notYetEmitted ?? []).length; const w = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'][n] ?? String(n); return n === 1 ? 'One more is coming.' : `${w} more are coming.` })()} Nothing sends them yet, so they will appear here once Groundwork can.
                     </p>
                   )}
                 </div>

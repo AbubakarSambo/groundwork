@@ -207,7 +207,7 @@ describe('group 1 review fixes', () => {
   it('introduces Sahar by the prototype’s own words for her, before naming her', async () => {
     renderIt()
     await waitFor(() => expect(screen.getByText('A coach in the room')).toBeTruthy())
-    expect(screen.getByText(/Sahar, Groundwork’s partner, coach and setup, reads the report/)).toBeTruthy()
+    expect(screen.getByText(/Sahar Jamal, a partner at Groundwork who coaches teams and helps them set up, reads the report/)).toBeTruthy()
   })
 
   it('says what "Things our team does by hand" costs, in full sentences', async () => {

@@ -84,7 +84,7 @@ function ThingsWeDoByHand() {
 
   const open: Record<string, string> = asked.data?.open ?? {}
   const rows = [
-    { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar, Groundwork’s partner, coach and setup, reads the report with your team and turns what it found into a decision somebody owns.' },
+    { subject: 'COACHING', title: 'A coach in the room', what: 'Sahar Jamal, a partner at Groundwork who coaches teams and helps them set up, reads the report with your team and turns what it found into a decision somebody owns.' },
     { subject: 'HANDS_ON', title: 'Setting you up', what: 'A named person to get you running and train your team, over the first month.' },
   ]
 
