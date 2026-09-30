@@ -53,7 +53,7 @@ describe('the role interview in Ask Groundwork', () => {
     for (const m of ['start', 'My own customers and their deals.', 'What discount I give up to 10 percent', 'The Sales lead and Operations for stock']) await say(h, m);
     const reply = await say(h, 'The customers I sign, for their first delivery');
     const said = textOf(reply);
-    expect(said).toBe('You own My own customers and their deals, you decide What discount I give up to 10 percent, you depend on The Sales lead and Operations for stock, and The customers I sign, for their first delivery depend on you. Shall I save this for the role map?');
+    expect(said).toBe('You said you own "my own customers and their deals", you decide "what discount I give up to 10 percent", you depend on "the Sales lead and Operations for stock", and "the customers I sign, for their first delivery" depend on you. Shall I save this for the role map?');
     expect(reply.blocks.some((b: any) => b.type === 'proposal')).toBe(true);
     expect(h.rows).toHaveLength(0);
   });
@@ -61,7 +61,13 @@ describe('the role interview in Ask Groundwork', () => {
   it('reads her own leading words back as one sentence, not twice', async () => {
     const h = miriam();
     for (const m of ['start', 'I own my own customers', 'I decide the discount', 'I depend on the Sales lead']) await say(h, m);
-    expect(textOf(await say(h, 'New customers depend on me'))).toBe('You own my own customers, you decide the discount, you depend on the Sales lead, and New customers depend on you. Shall I save this for the role map?');
+    expect(textOf(await say(h, 'New customers depend on me'))).toBe('You said you own "my own customers", you decide "the discount", you depend on "the Sales lead", and "new customers" depend on you. Shall I save this for the role map?');
+  });
+
+  it('keeps a name\'s capital and only lowers the first letter of a plain word', async () => {
+    const h = miriam();
+    for (const m of ['start', 'Kwame\'s deliveries', 'Whatever I think fair', 'Operations and Finance']) await say(h, m);
+    expect(textOf(await say(h, 'All new customers'))).toBe('You said you own "Kwame\'s deliveries", you decide "whatever I think fair", you depend on "Operations and Finance", and "all new customers" depend on you. Shall I save this for the role map?');
   });
 
   it('a yes writes one row, her words exactly as she typed them, and says what it is for', async () => {

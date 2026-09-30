@@ -70,10 +70,24 @@ export const forTheSayBack = (key: TheFourKeys, typed: string): string => {
   return withoutEndStop(t.replace(LEAD_INS[key], '')) || t;
 };
 
-/** All four said back in one plain paragraph, then the question. The person's words are not reworded. */
+/* Words that start a sentence and are never a name. Only these lose their capital in the say-back. */
+const PLAIN_FIRST_WORDS = new Set(['the', 'a', 'an', 'my', 'our', 'your', 'their', 'his', 'her', 'its', 'what', 'who', 'whom', 'which', 'when', 'where', 'how', 'all', 'any', 'every', 'each', 'some', 'no', 'nobody', 'everyone', 'everybody', 'anyone', 'people', 'customers', 'new', 'other', 'both', 'whatever', 'whoever', 'this', 'that', 'these', 'those', 'one', 'it', 'we', 'they', 'he', 'she']);
+
+/** Only the first letter of the answer may change, and only when its word is a plain one and not a name. */
+const inTheMiddleOfASentence = (t: string) => {
+  const first = /^[A-Z][a-z']*\b/.exec(t)?.[0];
+  return first && PLAIN_FIRST_WORDS.has(first.toLowerCase()) ? `${t[0].toLowerCase()}${t.slice(1)}` : t;
+};
+
+const quoted = (t: string) => `"${inTheMiddleOfASentence(t).replace(/["\u201c\u201d]/g, "'")}"`;
+
+/**
+ * All four said back in one plain paragraph, then the question. The person's words are quoted and not
+ * reworded, so their own "I" and "my" sit inside quotation marks and not inside a sentence about "you".
+ */
 export function sayItBack(a: TheFourAnswers): string {
-  const s = (k: TheFourKeys) => forTheSayBack(k, a[k]);
-  return `You own ${s('owns')}, you decide ${s('decides')}, you depend on ${s('dependsOn')}, and ${s('dependedOnBy')} depend on you. Shall I save this for the role map?`;
+  const s = (k: TheFourKeys) => quoted(forTheSayBack(k, a[k]));
+  return `You said you own ${s('owns')}, you decide ${s('decides')}, you depend on ${s('dependsOn')}, and ${s('dependedOnBy')} depend on you. Shall I save this for the role map?`;
 }
 
 export const SAVED = (role: string) => `I have saved this for the role map. It shows what the ${role} job owns. It is about the job and not about you.`;
