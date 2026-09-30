@@ -34,4 +34,18 @@ describe('what each person says success is', () => {
     render(<WhatSuccessLooksLike data={data([{ who: null, text: 'Twelve signed supply contracts by December.' }])} yourName="You" />)
     expect(screen.getAllByText(fullTextOf('You say twelve signed supply contracts by December.')).length).toBeGreaterThan(0)
   })
+
+  /* Board review, 30 September, item 1: BoardPage.tsx never passed `yourName`, so Amani read
+     "Amani Wekesa said i am aiming for 3 shops" - both the missing "You" and "I" lower-cased into
+     "i", never a real word. Fixed in two places: BoardPage.tsx now passes `yourName`, and this
+     component no longer lower-cases a leading "I" (or "I'm"/"I've"...). */
+  it('never turns "I" into "i" when lower-casing a colleague\'s line', () => {
+    render(<WhatSuccessLooksLike data={data([{ who: 'Amani Wekesa', text: 'I am aiming for 3 shops.' }])} />)
+    expect(screen.getAllByText(fullTextOf('Amani Wekesa said I am aiming for 3 shops.')).length).toBeGreaterThan(0)
+  })
+
+  it('keeps "You" for the reader\'s own line, said with "I"', () => {
+    render(<WhatSuccessLooksLike data={data([{ who: 'Rukia Otieno', text: 'I want us to sign 12 shops.' }])} yourName="Rukia Otieno" />)
+    expect(screen.getAllByText(fullTextOf('You say I want us to sign 12 shops.')).length).toBeGreaterThan(0)
+  })
 })

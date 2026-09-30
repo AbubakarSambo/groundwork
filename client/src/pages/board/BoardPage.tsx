@@ -537,8 +537,13 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     const last10 = b.checkInGrid.sessions.slice(-10)
     return last10.map((s) => {
       const v = row.cells[String(s)] ?? 'na'
-      const upcoming = v === 'na' && sessionState.get(s) === 'upcoming'
-      const checkedIn = v === 'done' || v === 'in-progress'
+      /* Board review, 30 September, item 6: a session only STARTED, not finished, was drawn as a
+         filled, done square - Amani and Rukia read two filled squares while the board itself said
+         "Session 2 has not opened yet." Only "done" is a finished check-in; a session the phase
+         spine still calls "upcoming" reads as not open yet, whatever a stray in-progress cell
+         says, and only "done" ever fills the square. */
+      const upcoming = sessionState.get(s) === 'upcoming'
+      const checkedIn = v === 'done'
       return { key: s, state: upcoming ? 'upcoming' : checkedIn ? 'done' : 'empty' }
     })
   }
@@ -900,7 +905,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
         {(shown.objectives || shown.divergence) && (
           <Section heading="What success looks like">
             <Panel>
-              <WhatSuccessLooksLikeFor groundId={id!} headingIsTheCallers />
+              <WhatSuccessLooksLikeFor groundId={id!} yourName={myName} headingIsTheCallers />
             </Panel>
           </Section>
         )}
@@ -1112,6 +1117,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           sections={b.workRecords}
           participants={(b.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
           leadFirstName={(groundForSignals as any)?.leadFirstName ?? null}
+          readerIsLead={viewerRunsThisCheckIn}
           canEdit={b.canEditFrame}
         />
 
@@ -1554,6 +1560,15 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                   const title = d.what ? d.what.charAt(0).toUpperCase() + d.what.slice(1) : 'Waiting on something'
                   const tone: TagTone = d.status === 'BLOCKING' ? 'concern' : d.status === 'CLEARED' ? 'proven' : 'attention'
                   const word = d.status === 'BLOCKING' ? 'Blocking' : d.status === 'CLEARED' ? 'Cleared' : 'Waiting'
+                  /* Board review, 30 September, item 1: "Amani Wekesa needs the price list from
+                     Rukia Otieno." to Amani himself, and "Waiting on: Rukia Otieno" to Rukia
+                     herself - the reader is "you" here too, on whichever side of the handoff they
+                     are on. */
+                  const readerIsFrom = !!myName && d.from === myName
+                  const readerIsOnWhom = !!myName && onWhom === myName
+                  const fromWord = readerIsFrom ? 'You' : d.from
+                  const needsWord = readerIsFrom ? 'need' : 'needs'
+                  const onWhomInSentence = readerIsOnWhom ? 'you' : onWhom
                   return (
                     <Panel key={d.id}>
                       <div className="gwui-gap-10" style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between'}}>
@@ -1561,14 +1576,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                         <Tag tone={tone}>{word}</Tag>
                       </div>
                       <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-8">
-                        Waiting on: <span className="gwui-ink-dark" style={{fontWeight: 600}}>{onWhom}</span>
+                        {readerIsOnWhom
+                          ? 'This is waiting on you.'
+                          : <>Waiting on: <span className="gwui-ink-dark" style={{fontWeight: 600}}>{onWhom}</span></>}
                       </div>
                       <div className="gwui-fs-15 gwui-ink-dark gwui-mt-4" style={{lineHeight: 1.5}}>
-                        <b>{d.from}</b> needs {d.what} from <b>{onWhom}</b>. {statusSaid}
+                        <b>{fromWord}</b> {needsWord} {d.what} from <b>{onWhomInSentence}</b>. {statusSaid}
                       </div>
                       {d.then && (
                         <div className="gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8 gwui-fs-15 gwui-ink-text" style={{background: 'var(--gw-blue-bg)', borderRadius: 8, lineHeight: 1.5}}>
-                          When this arrives, {d.from} says: “{String(d.then).replace(/[.\s]+$/, '')}.”
+                          When this arrives, {readerIsFrom ? 'you say' : `${d.from} says`}: “{String(d.then).replace(/[.\s]+$/, '')}.”
                         </div>
                       )}
                     </Panel>
@@ -1680,7 +1697,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <Section heading="Contribution against role" note="Measured against each person’s own role.">
             <Panel>
               <div className="gwui-fs-15 gwui-ink-sub gwui-pt-6 gwui-pr-0 gwui-pb-2 gwui-pl-0">
-                Is the role clear, and what does the record actually hold for each person, read in their own function's terms.
+                {/* Board review, 30 September, item 7: "Is the role clear, and what does the record
+                    actually hold..." opened as a question and trailed off into a noun phrase - not
+                    a question, and not a plain sentence either. */}
+                This shows whether each person's role is clear, and what the record actually holds for them, read in their own function's terms.
               </div>
               {/*
                 THE SAME PARAGRAPH THREE TIMES IS A MAIL MERGE. When nobody's role is defined the note
@@ -1691,20 +1711,26 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 <div className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
                   <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
                     <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>Everyone here</span>
-                    <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>no role clearly defined yet</span>
+                    {/* Board review, 30 September, item 7: a two-word tag beside a name, not a
+                        sentence a person reads. */}
+                    <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>Nobody here has said what their role covers yet.</span>
                   </div>
                   <div className="gwui-fs-15 gwui-ink-navy gwui-rule-blue gwui-pt-8 gwui-pr-10 gwui-pb-8 gwui-pl-10 gwui-mt-8" style={{background: 'var(--gw-blue-bg)', borderRadius: 9, lineHeight: 1.5}}>
                     {b.contribution[0].note}
                   </div>
                 </div>
-              ) : b.contribution.filter((c) => c.name || c.remitDefined).map((c) => (
+              ) : b.contribution.filter((c) => c.name || c.remitDefined).map((c) => {
+                const displayName = nameOnTheBoard(b, c.participantId, c.name)
+                return (
                 <div key={c.participantId} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14 gwui-mt-9" style={{borderRadius: 12, background: 'var(--gw-bg)'}}>
                   <div className="gwui-gap-9" style={{display: 'flex', alignItems: 'baseline', flexWrap: 'wrap'}}>
-                    <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{nameOnTheBoard(b, c.participantId, c.name)}</span>
+                    <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{displayName}</span>
                     {/* "Your note" to the lead who wrote it, never to an admin (U.7 review). */}
                     {c.remitDefined
                       ? (b.canEditFrame && c.remit ? <span data-leads-note className="gwui-fs-13-5 gwui-ink-sub">{theLeadsNote(c.remit)}</span> : null)
-                      : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>role not clearly defined</span>}
+                      /* Board review, 30 September, item 7: "role not clearly defined" beside a
+                         name is a tag, not a sentence about that person. */
+                      : <span className="gwui-fs-13-5 gwui-ink-amber" style={{fontWeight: 600}}>{displayName === 'You' ? "Nobody has said what your role covers yet." : `Nobody has said what ${(displayName ?? 'their').split(' ')[0]}'s role covers yet.`}</span>}
 
                   </div>
 
@@ -1744,7 +1770,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     </>
                   )}
                 </div>
-              ))}
+              )})}
               {b.contribution[0]?.guard && (
                 <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-11 gwui-pt-9 gwui-rule-top-dashed" style={{fontStyle: 'italic', lineHeight: 1.5}}>
                   {b.contribution[0].guard}
@@ -1758,7 +1784,10 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           <Section heading="Where work is landing" note="Whose work is landing where.">
             <Panel>
               <div className="gwui-fs-15 gwui-ink-sub gwui-pt-6 gwui-pr-0 gwui-pb-2 gwui-pl-0">
-                A drop in ownership shows up as your responsibilities landing more and more in what other people describe as theirs.
+                {/* Board review, 30 September, item 7: this section lists everyone's coverage, not
+                    only the reader's - "your responsibilities" was wrong for every other row on
+                    the list, since it is about whichever person that row names. */}
+                A drop in someone's ownership shows up as their work landing more and more in what other people describe as theirs.
                 Rising is the early warning, often before targets are missed, because the work still gets done, by someone else.
               </div>
 
@@ -1777,7 +1806,9 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                     <span className="gwui-ink-dark gwui-fs-14" style={{fontWeight: 700}}>{nameOnTheBoard(b, r.participantId, r.name)}</span>
                     {/* "ROLE LEVEL" read as a heading over a single word; it is a small note beside
                         the name, not a section of its own, so it no longer renders in capitals. */}
-                    <span className="gwui-fs-13 gwui-ink-muted">at {r.scope} level</span>
+                    {/* Board review, 30 September, item 7: "at role level" is a fragment, not
+                        something a person reads as a sentence. */}
+                    <span className="gwui-fs-13 gwui-ink-muted">{`This is measured at the ${String(r.scope).toLowerCase()} level.`}</span>
                     <span className="gwui-ml-auto">
                       <Tag tone={r.kind === 'LEAKING' ? 'attention' : r.kind === 'ABSORBING' ? 'action' : 'plain'}>
                         {r.kind === 'LEAKING' ? 'Landing with others' : r.kind === 'ABSORBING' ? "Taking on others' work" : 'Staying with them'}
@@ -1823,12 +1854,18 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               )}
 
               <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-11 gwui-pt-9 gwui-rule-top-dashed" style={{fontStyle: 'italic', lineHeight: 1.5}}>
-                Other people doing your work can mean several different things. Nobody may own it any more, and others are quietly
-                covering the gap. It may be healthy work shared by design. You may be blocked or carrying too much. Or someone else may
-                be taking over your role without being asked to. This shows the signal, but it cannot tell which of these is happening on
-                its own, so it is shown alongside what you are waiting on, how clearly your role is defined, and your own voice. It never
-                concludes that you have stopped contributing. It raises a question for the team to discuss, never a verdict about a
-                person. It is only shown where the role is defined, because an undefined boundary has no coverage to measure.
+                {/* Board review, 30 September, item 7: this note sits under a list of several
+                    people, not only the reader - "your work"/"your role" was wrong for every row
+                    that is not the reader's own. It now speaks about whoever's row it sits under.
+                    Item 6: the old last sentence ("It is only shown where the role is defined")
+                    was not true - the card above still shows without a defined role, only the bar
+                    (a few lines up) waits for one. */}
+                Somebody else doing a person's work can mean several different things. Nobody may own it any more, and others are quietly
+                covering the gap. It may be healthy work shared by design. They may be blocked or carrying too much. Or somebody else may
+                be taking over their role without being asked to. This shows the signal, but it cannot tell which of these is happening on
+                its own, so it is shown alongside what that person is waiting on, how clearly their role is defined, and their own voice.
+                It never concludes that somebody has stopped contributing. It raises a question for the team to discuss, never a verdict
+                about a person. The bar above is only shown once a role is defined; the words are shown either way.
               </div>
             </Panel>
           </Section>
@@ -2113,7 +2150,16 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           rule that could drift from the server's.
         */}
         {shown.checkInGrid && sessionRows.length > 0 && (
-          <Section heading="Reports" note="Every session has two: each person's own, and the team's once you share it.">
+          <Section
+            heading="Reports"
+            /* Board review, 30 September, item 1: only the lead shares a session's report, so
+               "once you share it" said to a participant was simply wrong - they cannot share
+               anything here. The lead keeps the prototype's own words; a participant reads who
+               actually does the sharing. */
+            note={viewerRunsThisCheckIn
+              ? "Every session has two: each person's own, and the team's once you share it."
+              : `Each session has two reports, your own and the team's, once ${(groundForSignals as any)?.leadFirstName ?? 'the person running this check-in'} shares it.`}
+          >
             {/*
               U.10 (c2): FROM THE SHARED PARTS - the prototype's own list shape (board-as-lead.jpg:
               a session's date and who has checked in on the left, Share/Open on the right), which

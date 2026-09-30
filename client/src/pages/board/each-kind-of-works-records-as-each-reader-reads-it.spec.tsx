@@ -95,7 +95,9 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     /* The prototype's own heading, not the switchboard's internal "Deal grid". */
     const dealGrid = screen.getByRole('region', { name: 'Every sale, and what shows it' })
     expect(within(dealGrid).getByText('Nyama Choma Palace')).toBeTruthy()
-    expect(within(dealGrid).getByText('Value KES 90K')).toBeTruthy()
+    /* Board review, 30 September, item 3: a detail read as a label stuck to a bare value
+       ("Value KES 90K") - now a plain sentence. */
+    expect(within(dealGrid).getByText('The value is KES 90K.')).toBeTruthy()
     /* The owner in its own column; a row with none reads plainly, never blank. */
     expect(within(dealGrid).getByText('Akinyi Otieno')).toBeTruthy()
     expect(within(dealGrid).getByText('Nobody named yet.')).toBeTruthy()
@@ -103,15 +105,22 @@ describe('the sales org’s Deal grid: filled, with stages, and a not-known Fore
     expect(within(dealGrid).getByText('Won')).toHaveClass('gwui-tag')
     expect(within(dealGrid).getByText('No stage said yet.')).toBeTruthy()
     /* The person's own words, in their own name, never a colon join and never a status tag. */
-    expect(within(dealGrid).getByText("In Akinyi's words,")).toBeTruthy()
+    /* Board review, 30 September, item 1: the row's `owner` (Akinyi, whose deal this is) is not
+       necessarily who said it in their check-in - the API carries no separate field for that, so
+       this reads "In the words of someone in this check-in," rather than guess a name. Wairimu is
+       both the lead AND the reader here, so the record they added reads "You added it.", not
+       "Wairimu added it." */
+    expect(within(dealGrid).getByText('In the words of someone in this check-in,')).toBeTruthy()
     expect(within(dealGrid).getByText('“Nyama Choma Palace paid KES 90K on 22 September, so that one is won.”')).toBeTruthy()
     expect(within(dealGrid).queryByText("Someone's word")).toBeNull()
-    expect(within(dealGrid).getByText('Wairimu added it.')).toBeTruthy()
+    expect(within(dealGrid).getByText('You added it.')).toBeTruthy()
 
     /* The shape of the work: every stage, once, with how many rows sit at each. */
     expect(within(dealGrid).getByText('The shape of the work')).toBeTruthy()
-    expect(within(dealGrid).getByText('Won (1)')).toBeTruthy()
-    expect(within(dealGrid).getByText('Contacted (0)')).toBeTruthy()
+    /* Board review, 30 September, item 3: "Quoted (1)" read as a label with a number, not a
+       sentence - now "Won: 1 deal" / "Contacted: none yet". */
+    expect(within(dealGrid).getByText('Won: 1 deal')).toBeTruthy()
+    expect(within(dealGrid).getByText('Contacted: none yet')).toBeTruthy()
     /* Never drawn as "proven" or "criteria met" - nothing served here says that. */
     expect(screen.queryByText(/proven/i)).toBeNull()
     expect(screen.queryByText(/criteria met/i)).toBeNull()
@@ -178,13 +187,14 @@ describe('the law firm matter’s Timeline and Obligations, both without stages'
     const rows = within(timeline).getAllByRole('row')
     expect(rows[0]).toHaveTextContent('File the counterclaim is due on Friday 25 September.')
     expect(rows[1]).toHaveTextContent('Reply to the defence is due on Friday 2 October.')
-    expect(within(timeline).getAllByText('Wairimu added it.').length).toBe(2)
+    /* Wairimu is the lead AND the reader here, so what they added reads "You added it.". */
+    expect(within(timeline).getAllByText('You added it.').length).toBe(2)
 
     const obligations = screen.getByRole('region', { name: 'The parties' })
     expect(within(obligations).getByText('Pwani Mills')).toBeTruthy()
     /* Each party's side, as the prototype shows it. */
     expect(within(obligations).getByText('The other side.')).toBeTruthy()
-    expect(within(obligations).getByText("In Amani's words,")).toBeTruthy()
+    expect(within(obligations).getByText('In the words of someone in this check-in,')).toBeTruthy()
     expect(within(obligations).getByText('“Pwani Mills is the defendant in this matter.”')).toBeTruthy()
   })
 })

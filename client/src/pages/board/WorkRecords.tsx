@@ -27,17 +27,25 @@ const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
   'a government programme': 'This check-in is about a government programme.',
 }
 
-/** The same eleven names, for a select option's own label (plain words, not the sentence). */
-const KIND_OF_WORK_LABEL: Record<KindOfWork, string> = {
-  'sales org': 'Sales org',
-  'engineering release': 'Engineering release',
-  'support desk': 'Support desk',
+/**
+ * THE SAME ELEVEN NAMES, FOR THE CHOOSER'S OWN OPTIONS (board review, 30 September, item 4). The
+ * chooser used to show the engine's internal names verbatim ("Sales org", "MarketView, where
+ * next", "MarketView Q4") - a switchboard key, not something a person picking a kind of work reads.
+ * Each option now says the same plain words as `KIND_OF_WORK_SENTENCE` above, just without the
+ * "This check-in is about" lead-in a dropdown option does not need. The value the form actually
+ * sends is still one of the engine's own eleven names (`KIND_OF_WORK_OPTIONS`) - only the label a
+ * person reads changes.
+ */
+const KIND_OF_WORK_OPTION_LABEL: Record<KindOfWork, string> = {
+  'sales org': 'A sales team and its deals',
+  'engineering release': 'An engineering release',
+  'support desk': 'A support desk and its tickets',
   'distribution operations': 'Distribution operations',
-  'trader training programme': 'Trader training programme',
-  "founder's own check-in": "Founder's own check-in",
-  'asset loans': 'Asset loans',
-  'MarketView where next': 'MarketView, where next',
-  'MarketView Q4': 'MarketView Q4',
+  'trader training programme': 'A trader training programme',
+  "founder's own check-in": "A founder's own check-in, about their own commitments and decisions",
+  'asset loans': 'Asset loans and their repayments',
+  'MarketView where next': 'MarketView, choosing where to focus next',
+  'MarketView Q4': "MarketView's Q4 numbers",
   'a law firm matter': 'A law firm matter',
   'a government programme': 'A government programme',
 }
@@ -99,11 +107,16 @@ const ITEM_NOUN_FOR_KIND: Record<KindOfWork, string> = {
   'distribution operations': 'Incident',
   'trader training programme': 'Group',
   "founder's own check-in": 'Item',
-  'asset loans': 'Trader',
+  /* Board review, 30 September, item 3: this section's rows are loans, not traders - the column
+     used to say "Trader", matching the section's OWNER label ("Owner" below), not what the row
+     itself is. */
+  'asset loans': 'Loan',
   'MarketView where next': 'Priority',
   'MarketView Q4': 'Subscription',
   'a law firm matter': 'Item',
-  'a government programme': 'County',
+  /* Board review, 30 September, item 3: this section holds counties AND their projects (kind
+     "county" or "project" rows, side by side) - "County" alone was wrong for half the rows. */
+  'a government programme': 'County or project',
 }
 
 /** The word for whose it is, at the head of the owner column ("Rep" for sales, "Agent" for support desk...). */
@@ -140,7 +153,6 @@ function sectionHeading(kindOfWork: KindOfWork | null, section: AServedWorkSecti
 }
 
 const dueSentence = (due: string | null) => (due ? `Due on ${whenItWas(due, 'dayAndMonthLong')}.` : null)
-const firstWord = (s: string) => s.trim().split(' ')[0]
 
 /**
  * THE KIND OF WORK, NEAR THE TOP OF THE BOARD (item 4). One plain sentence, said once. The lead, or
@@ -191,7 +203,7 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
               <FieldLabel htmlFor="kind-of-work-select">Kind of work</FieldLabel>
               <Select id="kind-of-work-select" value={kind} onChange={(e) => setKind(e.target.value)}>
                 <option value="">Not known yet</option>
-                {KIND_OF_WORK_OPTIONS.map((k) => <option key={k} value={k}>{KIND_OF_WORK_LABEL[k]}</option>)}
+                {KIND_OF_WORK_OPTIONS.map((k) => <option key={k} value={k}>{KIND_OF_WORK_OPTION_LABEL[k]}</option>)}
               </Select>
             </div>
             <div>
@@ -217,16 +229,27 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
 /**
  * ONE RECORD'S "WHAT SHOWS IT" (item 6): the person's own words, in their own name, never a colon
  * join and never drawn as a status tag - "In Amani's words," on its own line, the quote below it.
- * Added by the lead is plain text too: "Rukia added it."
+ * Added by the lead is plain text too: "You added it." to the lead who added it, "Rukia added it."
+ * to everybody else.
+ *
+ * BOARD REVIEW, 30 SEPTEMBER, ITEM 1: THE READER IS "YOU". Two bugs here, both about calling the
+ * reader by name instead of "you": "Rukia added it." shown to Rukia herself (fixed with
+ * `readerIsLead`, since the lead is the only one who adds a record); and "In Amani's words," which
+ * guessed the speaker FROM THE OWNER FIELD - `row.owner` is whose the record is, not who said it in
+ * their check-in, and a record about Amani's deal can just as easily have been said by somebody
+ * else. `AServedWorkRow` (client/src/api/board.ts) carries no field for who actually spoke, so
+ * rather than keep guessing, this now says "In the words of someone in this check-in," when the row
+ * does not say who said it - engine request: a `saidBy` (or similarly named) field on a "said" row,
+ * separate from `owner`, naming who spoke it.
  */
-function WhatShowsIt({ row, leadFirstName }: { row: AServedWorkRow; leadFirstName: string | null }) {
+function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   if (row.from === 'lead') {
-    return <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${leadFirstName ?? 'The person running this check-in'} added it.`}</p>
+    const addedBy = readerIsLead ? 'You' : (leadFirstName ?? 'The person running this check-in')
+    return <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${addedBy} added it.`}</p>
   }
-  const who = row.owner ? firstWord(row.owner) : null
   return (
     <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>
-      <div>{who ? `In ${who}'s words,` : 'In their own words,'}</div>
+      <div>In the words of someone in this check-in,</div>
       {row.said && <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
     </div>
   )
@@ -290,24 +313,28 @@ function WorkItemForm({ section, participants, editing, onClose, onSaved, onRemo
           </div>
         )}
         <div>
-          <FieldLabel htmlFor="work-item-owner">Whose is it</FieldLabel>
+          <FieldLabel htmlFor="work-item-owner">Whose is it?</FieldLabel>
           <Select id="work-item-owner" value={owner} onChange={(e) => setOwner(e.target.value)}>
             <option value="">Nobody in particular</option>
             {participants.filter((p) => p.name?.trim()).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </Select>
         </div>
         <div>
-          <FieldLabel htmlFor="work-item-due">Due date (leave empty for none)</FieldLabel>
+          <FieldLabel htmlFor="work-item-due">When is it due? Leave this empty if there is no date.</FieldLabel>
           <TextField id="work-item-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
         </div>
-        <div className="gwui-gap-10" style={{display: 'flex'}}>
-          <div style={{flex: 1}}>
-            <FieldLabel htmlFor="work-item-field-label">A detail's label (optional)</FieldLabel>
-            <TextField id="work-item-field-label" value={fieldLabel} onChange={(e) => setFieldLabel(e.target.value)} placeholder="Value" />
-          </div>
-          <div style={{flex: 1}}>
-            <FieldLabel htmlFor="work-item-field-value">Its value</FieldLabel>
-            <TextField id="work-item-field-value" value={fieldValue} onChange={(e) => setFieldValue(e.target.value)} placeholder="KES 90,000" />
+        <div>
+          {/* Board review, 30 September, item 5: two field labels for what is, on the page, one
+              plain question - "A detail's label (optional)" and "Its value" as pieces, not
+              sentences. One label now covers the pair (a name for the detail, and what it is). */}
+          <FieldLabel htmlFor="work-item-field-label">Anything else to note, such as its value</FieldLabel>
+          <div className="gwui-gap-10" style={{display: 'flex'}}>
+            <div style={{flex: 1}}>
+              <TextField id="work-item-field-label" value={fieldLabel} onChange={(e) => setFieldLabel(e.target.value)} placeholder="e.g. Amount" aria-label="What to call this detail" />
+            </div>
+            <div style={{flex: 1}}>
+              <TextField id="work-item-field-value" value={fieldValue} onChange={(e) => setFieldValue(e.target.value)} placeholder="e.g. KES 90,000" aria-label="What it is" />
+            </div>
           </div>
         </div>
         <div className="gwui-gap-8" style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap'}}>
@@ -338,36 +365,79 @@ function WorkItemForm({ section, participants, editing, onClose, onSaved, onRemo
  * `WorkRecordSectionBlock`); the owner in its own column, "Nobody named yet" when there is none; a
  * single quiet "Change" opens the form, where "Remove" lives, behind its own confirmation.
  */
-function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
+/** The word this kind uses for "nobody" in the owner column, at phone width, where the column
+    names are hidden and a bare "Nobody named yet." no longer says whose it is (item 3, item 6). */
+const NOBODY_SENTENCE_FOR_KIND: Record<KindOfWork, string> = {
+  'sales org': 'No rep is named yet.',
+  'engineering release': 'No owner is named yet.',
+  'support desk': 'No agent is named yet.',
+  'distribution operations': 'No owner is named yet.',
+  'trader training programme': 'No officer is named yet.',
+  "founder's own check-in": 'No owner is named yet.',
+  'asset loans': 'No owner is named yet.',
+  'MarketView where next': 'No owner is named yet.',
+  'MarketView Q4': 'No owner is named yet.',
+  'a law firm matter': 'No owner is named yet.',
+  'a government programme': 'No owner is named yet.',
+}
+
+function WorkRow({ row, leadFirstName, readerIsLead, kindOfWork, hasStageColumn, canEdit, onEdit }: {
   row: AServedWorkRow
   leadFirstName: string | null
+  readerIsLead: boolean
+  kindOfWork: KindOfWork | null
+  /** Whether this section's rows carry a stage, or (the founder's own check-in) a kind, at all. */
+  hasStageColumn: boolean
   canEdit: boolean
   onEdit: () => void
 }) {
   const fieldEntries = Object.entries(row.fields ?? {})
+  const isFounder = kindOfWork === "founder's own check-in"
+  /* Board review, 30 September, item 3: the founder IS the owner of their own check-in, so an
+     unnamed row there reads "You", never "Nobody named yet." - there is nobody else it could be. */
+  const nobody = isFounder ? 'You' : (NOBODY_SENTENCE_FOR_KIND[kindOfWork ?? 'sales org'] ?? 'Nobody named yet.')
   return (
     <div
-      className="gwui-work-row gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top"
+      className={`gwui-work-row gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top${hasStageColumn ? '' : ' gwui-work-row-nostage'}`}
       role="row"
       aria-label={row.name}
     >
       <div>
         <div className="gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{row.name}</div>
         {fieldEntries.map(([label, value]) => (
-          <div key={label} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{label} {value}</div>
+          /* Board review, 30 September, item 3: a detail read as a label and a bare value stuck
+             together ("Amount KES 45,000") - now a sentence ("The amount is KES 45,000."). */
+          <div key={label} className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{`The ${label.toLowerCase()} is ${value}.`}</div>
         ))}
         {dueSentence(row.due) && <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-2">{dueSentence(row.due)}</div>}
       </div>
       <div className="gwui-fs-15 gwui-ink-text">
-        {row.owner ?? <span className="gwui-ink-muted">Nobody named yet.</span>}
+        {row.owner ?? (
+          isFounder
+            /* The founder is always the owner of their own check-in, on every width - "You" is
+               never ambiguous, so it needs no narrow/wide pair. */
+            ? <span className="gwui-ink-muted">You</span>
+            : (
+              <span className="gwui-ink-muted">
+                <span className="gwui-nobody-wide">Nobody named yet.</span>
+                <span className="gwui-nobody-narrow">{nobody}</span>
+              </span>
+            )
+        )}
       </div>
-      <div aria-label="Stage now">
-        {row.stage
-          ? <Tag tone="plain">{row.stage}</Tag>
-          : <span className="gwui-fs-13-5 gwui-ink-muted">No stage said yet.</span>}
-      </div>
+      {hasStageColumn && (
+        isFounder
+          ? <div aria-label="Kind"><Tag tone="plain">{row.kind === 'decision' ? 'Decision' : 'Commitment'}</Tag></div>
+          : (
+            <div aria-label="Stage now">
+              {row.stage
+                ? <Tag tone="plain">{row.stage}</Tag>
+                : <span className="gwui-fs-13-5 gwui-ink-muted">No stage said yet.</span>}
+            </div>
+          )
+      )}
       <div>
-        <WhatShowsIt row={row} leadFirstName={leadFirstName} />
+        <WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} />
       </div>
       {canEdit && (
         <div>
@@ -378,13 +448,21 @@ function WorkRow({ row, leadFirstName, canEdit, onEdit }: {
   )
 }
 
-/** The column headings above the rows - the item's own noun, the kind's own word for whose it is. */
-function WorkTableHead({ itemNoun, ownerLabel, canEdit }: { itemNoun: string; ownerLabel: string; canEdit: boolean }) {
+/** The column headings above the rows - the item's own noun, the kind's own word for whose it is.
+    A kind with no stages carries no "Stage now" column at all (item 3); the founder's own
+    check-in has no stages either, but keeps that slot for "Kind" (Commitment or Decision). */
+function WorkTableHead({ itemNoun, ownerLabel, hasStageColumn, isFounder, canEdit }: {
+  itemNoun: string
+  ownerLabel: string
+  hasStageColumn: boolean
+  isFounder: boolean
+  canEdit: boolean
+}) {
   return (
-    <div className="gwui-work-head gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub" role="row">
+    <div className={`gwui-work-head gwui-gap-14 gwui-pt-10 gwui-pr-16 gwui-pb-10 gwui-pl-16 gwui-fs-13 gwui-ink-sub${hasStageColumn ? '' : ' gwui-work-head-nostage'}`} role="row">
       <span>{itemNoun}</span>
       <span>{ownerLabel}</span>
-      <span>Stage now</span>
+      {hasStageColumn && <span>{isFounder ? 'Kind' : 'Stage now'}</span>}
       <span>What shows it</span>
       {canEdit && <span />}
     </div>
@@ -392,10 +470,11 @@ function WorkTableHead({ itemNoun, ownerLabel, canEdit }: { itemNoun: string; ow
 }
 
 /** Every deadline, in date order, with its date in words (matter.txt: "Our reply is due on Friday 2 October"). */
-function TimelineList({ rows, canEdit, leadFirstName, onEdit }: {
+function TimelineList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
   rows: AServedWorkRow[]
   canEdit: boolean
   leadFirstName: string | null
+  readerIsLead: boolean
   onEdit: (row: AServedWorkRow) => void
 }) {
   const ordered = [...rows].sort((a, b) => {
@@ -411,7 +490,7 @@ function TimelineList({ rows, canEdit, leadFirstName, onEdit }: {
             <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-15">
               {row.due ? `${row.name} is due on ${whenItWas(row.due, 'weekdayAndDay')}.` : `${row.name}. No date said yet.`}
             </p>
-            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} /></div>
+            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
           </div>
           {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
         </div>
@@ -424,10 +503,11 @@ function TimelineList({ rows, canEdit, leadFirstName, onEdit }: {
 /** The first letter up, so a value typed as "the other side" reads as a sentence. */
 function atTheStartOf(t: string): string { return t ? t[0].toUpperCase() + t.slice(1) : t }
 
-function PartiesList({ rows, canEdit, leadFirstName, onEdit }: {
+function PartiesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
   rows: AServedWorkRow[]
   canEdit: boolean
   leadFirstName: string | null
+  readerIsLead: boolean
   onEdit: (row: AServedWorkRow) => void
 }) {
   return (
@@ -440,11 +520,49 @@ function PartiesList({ rows, canEdit, leadFirstName, onEdit }: {
             {Object.values(row.fields ?? {}).filter(Boolean).length > 0 && (
               <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-15 gwui-ink-sub">{atTheStartOf(Object.values(row.fields ?? {}).filter(Boolean).join('. '))}.</p>
             )}
-            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} /></div>
+            <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
           </div>
           {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
         </div>
       ))}
+    </Panel>
+  )
+}
+
+/**
+ * "WHERE NEXT, RANKED" (item 3): the prototype's own shape for MarketView's priorities
+ * (mvnext.txt) is a plain ranked list, not a table with "Stage now" and "Owner" columns that
+ * mean nothing for a priority nobody owns and nothing stages. Each row is numbered in the order
+ * the server serves it (its rank), with whatever the server sends about it under "From how many
+ * said it, and who" - drawn only from `row.fields`, nothing invented.
+ */
+function ThemesList({ rows, canEdit, leadFirstName, readerIsLead, onEdit }: {
+  rows: AServedWorkRow[]
+  canEdit: boolean
+  leadFirstName: string | null
+  readerIsLead: boolean
+  onEdit: (row: AServedWorkRow) => void
+}) {
+  return (
+    <Panel pad={false}>
+      {rows.map((row, i) => {
+        const details = Object.values(row.fields ?? {}).filter(Boolean)
+        return (
+          <div key={row.id} className="gwui-gap-14 gwui-pt-12 gwui-pr-16 gwui-pb-12 gwui-pl-16 gwui-rule-top" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}} role="row" aria-label={row.name}>
+            <div>
+              <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-ink-text gwui-fs-16" style={{fontWeight: 700}}>{`${i + 1}. ${row.name}`}</p>
+              {details.length > 0 && (
+                <div className="gwui-mt-4">
+                  <div className="gwui-fs-13 gwui-ink-muted">From how many said it, and who</div>
+                  {details.map((v, di) => <div key={di} className="gwui-fs-15 gwui-ink-sub gwui-mt-2">{v}</div>)}
+                </div>
+              )}
+              <div className="gwui-mt-4"><WhatShowsIt row={row} leadFirstName={leadFirstName} readerIsLead={readerIsLead} /></div>
+            </div>
+            {canEdit && <Button kind="quiet" size="small" onClick={() => onEdit(row)}>Change</Button>}
+          </div>
+        )
+      })}
     </Panel>
   )
 }
@@ -455,12 +573,13 @@ function PartiesList({ rows, canEdit, leadFirstName, onEdit }: {
  * nothing has come up, "not-known" says this is not something Groundwork knows, in the server's own
  * words, quieter.
  */
-function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, leadFirstName, canEdit }: {
+function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, leadFirstName, readerIsLead, canEdit }: {
   groundId: string
   kindOfWork: KindOfWork | null
   section: AServedWorkSection
   participants: { id: string; name: string | null }[]
   leadFirstName: string | null
+  readerIsLead: boolean
   canEdit: boolean
 }) {
   const qc = useQueryClient()
@@ -522,6 +641,11 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
 
   const isTimeline = section.section === 'Timeline'
   const isObligations = section.section === 'Obligations'
+  const isThemes = section.section === 'Themes' && kindOfWork === 'MarketView where next'
+  const isFounder = kindOfWork === "founder's own check-in"
+  /* A kind with no stages has no "Stage now" column at all (item 3) - except the founder's own
+     check-in, which has no stages either but keeps that slot for "Kind" (Commitment/Decision). */
+  const hasStageColumn = !!section.stages?.length || isFounder
   const itemNoun = kindOfWork ? ITEM_NOUN_FOR_KIND[kindOfWork] : 'Item'
   const ownerLabel = kindOfWork ? OWNER_LABEL_FOR_KIND[kindOfWork] : 'Owner'
   const stageCounts: Record<string, number> = {}
@@ -532,18 +656,23 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
   return (
     <Section heading={heading}>
       {isTimeline ? (
-        <TimelineList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} onEdit={setEditingRow} />
+        <TimelineList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
       ) : isObligations ? (
-        <PartiesList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} onEdit={setEditingRow} />
+        <PartiesList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
+      ) : isThemes ? (
+        <ThemesList rows={section.rows} canEdit={canEdit} leadFirstName={leadFirstName} readerIsLead={readerIsLead} onEdit={setEditingRow} />
       ) : (
         <Panel pad={false}>
           <div role="table" aria-label={heading}>
-            <WorkTableHead itemNoun={itemNoun} ownerLabel={ownerLabel} canEdit={canEdit} />
+            <WorkTableHead itemNoun={itemNoun} ownerLabel={ownerLabel} hasStageColumn={hasStageColumn} isFounder={isFounder} canEdit={canEdit} />
             {section.rows.map((row) => (
               <WorkRow
                 key={row.id}
                 row={row}
                 leadFirstName={leadFirstName}
+                readerIsLead={readerIsLead}
+                kindOfWork={kindOfWork}
+                hasStageColumn={hasStageColumn}
                 canEdit={canEdit}
                 onEdit={() => setEditingRow(row)}
               />
@@ -555,7 +684,7 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
       {!!section.stages?.length && (
         <div className="gwui-mt-14">
           <p className="gwui-mt-0 gwui-mr-0 gwui-mb-8 gwui-ml-0 gwui-fs-16 gwui-ink-text" style={{fontWeight: 700}}>The shape of the work</p>
-          <StageTrack stages={section.stages} counts={stageCounts} />
+          <StageTrack stages={section.stages} counts={stageCounts} itemNoun={itemNoun} />
         </div>
       )}
 
@@ -598,12 +727,13 @@ function WorkRecordSectionBlock({ groundId, kindOfWork, section, participants, l
  * rebuilt pages already use - `Section` itself carries no spacing of its own, so without this a
  * button at the foot of one section sits flush against the next section's heading.
  */
-export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, canEdit }: {
+export function WorkRecordsSections({ groundId, kindOfWork, sections, participants, leadFirstName, readerIsLead, canEdit }: {
   groundId: string
   kindOfWork?: KindOfWork | null
   sections?: AServedWorkSection[]
   participants: { id: string; name: string | null }[]
   leadFirstName: string | null
+  readerIsLead: boolean
   canEdit: boolean
 }) {
   if (!sections?.length) return null
@@ -617,6 +747,7 @@ export function WorkRecordsSections({ groundId, kindOfWork, sections, participan
           section={s}
           participants={participants}
           leadFirstName={leadFirstName}
+          readerIsLead={readerIsLead}
           canEdit={canEdit}
         />
       ))}

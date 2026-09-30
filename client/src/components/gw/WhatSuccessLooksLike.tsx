@@ -219,7 +219,13 @@ export function WhatSuccessLooksLike({
                * sentence a person reads. "You" keeps its own voice ("You say..."); a named
                * colleague gets a plain sentence that says who is speaking.
                */
-              const text = d.text ? d.text.charAt(0).toLowerCase() + d.text.slice(1) : d.text
+              /* Board review, 30 September, item 1: lower-casing the first letter turned "I" (and
+                 "I'm", "I've"...) into "i" - never a real word, and never what a person typed.
+                 The pronoun, like a name, keeps its own capital; everything else still joins the
+                 "You say"/"Rukia said" lead-in as a plain sentence. */
+              const text = d.text && !/^I(?=[\s'’]|$)/.test(d.text)
+                ? d.text.charAt(0).toLowerCase() + d.text.slice(1)
+                : d.text
               return (
                 <div key={i} className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.55 }}>
                   <span className="gwui-ink-text" style={{ fontWeight: 600 }}>{who}</span>{' '}
