@@ -62,15 +62,15 @@ const SCREENS: Record<string, Counterpart> = {
   'pages/invite/InvitationExpired.tsx': null, // same
   'pages/join/WaitingForAnAdminPage.tsx': null, // same
   'pages/grounds/OutOfTime.tsx': null, // needs a check-in that has actually run out of time
-  'pages/org/OrgMembersPage.tsx': { productPath: '/settings/people', reader: 'admin', hash: '#/settings/people', persona: 'admin' },
+  'pages/org/OrgMembersPage.tsx': { productPath: '/org/members', reader: 'admin', hash: '#/settings/people', persona: 'admin' },
   'pages/org/WaitingToBeLetIn.tsx': null, // a panel of the people screen above, not its own prototype screen
   'pages/org/EveryoneHere.tsx': null, // a panel of the people screen above
   'pages/org/InvitePeople.tsx': null, // a panel of the people screen above
   'pages/org/WhoCanJoin.tsx': null, // a panel of the people screen above
   'pages/org/TheInviteLink.tsx': null, // a panel of the people screen above
   'pages/org/WhoCanOpenACheckIn.tsx': null, // a panel of the people screen above
-  'pages/org/OnePersonPage.tsx': { productPath: '/settings/people/local-test-person', reader: 'admin', hash: '#/settings/people/miriam', persona: 'admin' },
-  'pages/grounds/CheckInPeopleAndSetup.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd/people', reader: 'lead', hash: '#/c/sales/people', persona: 'lead' },
+  'pages/org/OnePersonPage.tsx': { productPath: '/org/members/f5d37595-4a15-41e9-9c2e-f9b7e52a30a3', reader: 'admin', hash: '#/settings/people/miriam', persona: 'admin' },
+  'pages/grounds/CheckInPeopleAndSetup.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd?tab=settings', reader: 'lead', hash: '#/c/sales/people', persona: 'lead' },
   'pages/board/BoardPage.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd/board', reader: 'lead', hash: '#/c/sales/board', persona: 'lead' },
   'pages/board/WorkRecords.tsx': null, // a section of the board screen above
   'components/gw/where-each-person-is.tsx': null, // a section of the board screen above
@@ -215,6 +215,10 @@ test.describe('the two button rules, screen by screen', () => {
       await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
       await page.waitForTimeout(2000);
       const product = await countButtons(page);
+      /* A page that did not load, or an address that does not exist, shows almost nothing and would
+         pass every count. It must show the page itself: its own words inside #main. */
+      const shown = await page.evaluate(() => (document.querySelector('#main') as HTMLElement | null)?.innerText.trim().length ?? 0);
+      expect(shown, `${counterpart.productPath} shows its page (not an empty or missing one)`).toBeGreaterThan(300);
 
       const proto = await context.newPage();
       await proto.goto(PROTOTYPE_FILE);
