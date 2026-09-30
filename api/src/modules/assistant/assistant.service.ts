@@ -148,8 +148,16 @@ export class AssistantService {
    * `groundId` IS THE CHECK-IN CHOSEN UNDER "ABOUT" (see ask.service.ts). Only the `add_context`
    * lane reads it - every other lane answers from the person's whole record, unchanged. Optional and
    * backward compatible: every other caller of `respond` still calls it with three arguments.
+   *
+   * `openedFromSetup` (decision 65) is Ask Groundwork opened from inside a check-in's own Context
+   * and resources page or setup. `ask.service.ts` has already checked, before calling this, that the
+   * sender may confirm setup on `groundId` (decision 63's rule, `GroundsService.mayOpenSetupChatFor`)
+   * - this only skips the word "context" the ordinary door still needs, it does not itself decide
+   * who may reach the setup conversation, so nothing else should set it true without that same check.
+   * With it true, the message is routed straight to `addContext` for `groundId`, whatever it says,
+   * empty included - `addContext` already opens on what is missing when there is nothing to answer.
    */
-  async respond(organizationId: string, personId: string, message: string, groundId?: string): Promise<Reply> {
+  async respond(organizationId: string, personId: string, message: string, groundId?: string, openedFromSetup = false): Promise<Reply> {
     /* Decision 35: a bank or card number typed here is hidden before it is kept or read by a model. See documents/bank-details-are-never-kept. */
     message = withoutBankDetails(message);
     const me = await this.prisma.person.findFirst({
@@ -163,7 +171,7 @@ export class AssistantService {
        can answer. Ask Groundwork always links the two (see ask.service.ts whoIsAsking). */
     const userId = me?.linkedUserId ?? null;
 
-    const reply = await this.answer(organizationId, personId, who, message, false, groundId, userId);
+    const reply = await this.answer(organizationId, personId, who, message, false, groundId, userId, openedFromSetup);
 
     /*
      * NOTHING FROM THE CONTEXT LANE IS REMEMBERED HERE. The setup conversation has never kept its
@@ -205,6 +213,15 @@ export class AssistantService {
     groundId?: string,
     /** The signed-in user behind `who`. Read only by `addContext`. See `respond`. */
     userId?: string | null,
+    /**
+     * DECISION 65. True only when `respond` was called with `openedFromSetup`, itself only set by
+     * `ask.service.ts` once it has confirmed the sender may confirm setup on `groundId`. Skips the
+     * keyword router entirely and goes straight to `addContext` - not just prioritised above the
+     * other lanes below, replacing the routing decision outright, because the screen has already
+     * said what this message is for and a message like "twelve weeks" or "" must not be read as
+     * `unplaced` or anything else just because it does not happen to contain the word "context".
+     */
+    forceAddContext = false,
   ): Promise<Reply> {
     if (who && !afterDrop) {
       const parked = await this.prisma.assistantProposal.findFirst({
@@ -213,6 +230,8 @@ export class AssistantService {
       });
       if (parked) return this.resolveParked(organizationId, personId, who, parked, message);
     }
+
+    if (forceAddContext) return this.addContext(organizationId, who, userId ?? null, groundId, message);
 
     const routed = route(message);
 

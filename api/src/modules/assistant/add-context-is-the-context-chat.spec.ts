@@ -311,3 +311,47 @@ describe('inventory item 2: a multi-turn setup conversation continues (decision 
     expect(prisma.assistantTurn.createMany).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * DECISION 65 (30 September 2026): ASK GROUNDWORK OPENED FROM INSIDE A CHECK-IN.
+ *
+ * `respond`'s fifth argument, `openedFromSetup`, is `ask.service.ts` telling the assistant that the
+ * screen opened Ask Groundwork from inside `groundId`'s own Context and resources page or setup -
+ * after `ask.service.ts` has already checked, through `GroundsService.mayOpenSetupChatFor`, that the
+ * sender may confirm setup there (decision 63's rule). These tests are at the level `respond` itself
+ * decides: given that flag is true, does it skip the "context" keyword and go straight to the setup
+ * conversation, with whatever was typed, empty included? Whether the flag is set correctly for a
+ * lead versus a participant is `ask.service.ts`'s job, covered in ask/opened-from-check-in-setup.spec.ts.
+ */
+describe('decision 65: openedFromSetup skips the keyword and goes straight to the setup conversation', () => {
+  it('an empty message opens on what the setup is missing, the same as opening the old context chat', async () => {
+    const { service, contextChat } = svc();
+    const r = await service.respond('org-a', 'p1', '', 'g1', true);
+    expect(r.lane).toBe('add_context');
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [{ role: 'user', content: '' }]);
+  });
+
+  it('a message with none of the "context" wording is still treated as an answer in the setup conversation', async () => {
+    const { service, contextChat } = svc();
+    const r = await service.respond('org-a', 'p1', 'twelve weeks', 'g1', true);
+    expect(r.lane).toBe('add_context');
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [{ role: 'user', content: 'twelve weeks' }]);
+  });
+
+  it('without the flag, the same message ("twelve weeks") is not read as setup at all', async () => {
+    const { service, contextChat } = svc();
+    const r = await service.respond('org-a', 'p1', 'twelve weeks', 'g1');
+    expect(r.lane).not.toBe('add_context');
+    expect(contextChat).not.toHaveBeenCalled();
+  });
+
+  it('still goes through the ordinary confirmation, not straight to writing anything', async () => {
+    const { service, contextChat, prisma } = svc({
+      contextChat: jest.fn(async () => ({ reply: 'I will set this to run for twelve weeks.', gaps: [], done: true, proposal: { field: 'timelineDays', value: 84 } })),
+    });
+    const r = await service.respond('org-a', 'p1', 'twelve weeks', 'g1', true);
+    expect(r.blocks.some((b: any) => b.type === 'proposal')).toBe(true);
+    expect(prisma.assistantProposal.create).toHaveBeenCalled();
+    expect(contextChat).toHaveBeenCalled();
+  });
+});

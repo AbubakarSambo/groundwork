@@ -429,6 +429,27 @@ export class GroundsService {
   }
 
   /**
+   * THE SAME QUESTION, ASKED WITHOUT THROWING (decision 65). Ask Groundwork, opened from inside a
+   * check-in, needs to know whether the sender may even start the setup conversation for it before
+   * it decides how to route their message - a plain "may they, or not", not an exception to catch.
+   * Exactly `mayConfirmSetupOn`'s rule (decision 63): the lead, or an admin once the lead has left.
+   * A check-in that does not exist, or does not belong to this organisation, is "no" as well.
+   */
+  async mayOpenSetupChatFor(groundId: string, requestingUserId: string, organizationId: string): Promise<boolean> {
+    const checkIn = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId },
+      select: { initiatorId: true },
+    });
+    if (!checkIn) return false;
+    try {
+      await this.mayConfirmSetupOn(checkIn, requestingUserId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * REPORT TEXT, SERVED THROUGH THE REPORT'S OWN DOOR AND NO OTHER (U.5 re-review).
    *
    * Reports are stored with labels ("the initiator", "Participant A"). Names go in only when the text

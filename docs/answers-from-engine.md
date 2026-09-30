@@ -420,3 +420,23 @@ Decision 61 sets the first threshold, support, from the start: extra support is 
 ```
 
 `overPeriods` is the API field name the admin `PATCH` already uses, and it stays exactly as it is - it is not being renamed. The admin page should show `labels.overPeriods` ("At least this many settled commitments") beside that field's value instead of the field name itself, and the same for `labels.keptBelow`. The labels are the same for every verdict (keep, reward, support, plan, exit); there is one `labels` object, not one per verdict.
+
+## 30 September, later still: Ask Groundwork opened from inside a check-in knows which one (decision 65)
+
+The gap this closes: opening Ask Groundwork from inside a check-in's own Context and resources page or setup used to need the lead to type the word "context" (or one of a short list of close phrasings) before the setup conversation would start. Decision 65 removes that: the screen tells Ask Groundwork which check-in it was opened from, and the setup conversation opens straight away.
+
+**What to send.** `POST /ask`, with two extra things alongside the ordinary `message`:
+
+```json
+{ "message": "", "groundId": "g-tobi", "openedFrom": "check_in_setup" }
+```
+
+- `groundId` is the check-in's id - the same field the "About" picker already sends on an ordinary question.
+- `openedFrom: "check_in_setup"` is the one recognised value. Send it only when Ask Groundwork was opened from that check-in's own Context and resources page or setup, never on an ordinary question typed from the general Ask Groundwork panel.
+- `message` may be empty ("") for the very first message of that opening - Ask Groundwork reads that as "start", and opens on whatever the setup is still missing, the same way the old context chat opened with nothing typed. Every later message in the same conversation is typed normally, still sent with the same `groundId` and `openedFrom`.
+
+**What comes back.** The ordinary Ask Groundwork reply shape (`lane`, `composedBy`, `blocks`) - nothing new to parse. `lane` will be `"add_context"`. Draw it exactly as the setup conversation's replies are already drawn: text, and a "Yes"/"No" through `POST /ask/answer` when a block is a `proposal`.
+
+**Who this reaches.** Only somebody who may confirm setup on that check-in (decision 63): the lead who runs it, or, once the lead has left the organisation, an admin of it. Sent by anybody else - a participant, most often - `openedFrom` is quietly ignored and Ask Groundwork gives its ordinary answer to whatever was typed. There is no separate refusal to show: nothing about the reply says whether `openedFrom` was acted on, so do not build a screen that assumes it always was. If the screen only ever offers this opening from a place a participant cannot reach (the lead's own Context and resources page), this will not come up in practice.
+
+**Everything else about the setup conversation is unchanged**: it is not kept in the person's ordinary Ask Groundwork history (`GET /ask` will not show these turns), and a concrete change is said back and waits for a "Yes" before anything is saved, exactly as the table earlier in this document describes for the "context" keyword itself.

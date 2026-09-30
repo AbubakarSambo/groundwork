@@ -6,6 +6,7 @@ import { join } from 'path';
 import { AMessageIntoACheckInDto, ATurnDto, A_MESSAGE_MAX, A_REPLAYED_TURN_MAX } from './a-message-into-a-check-in.dto';
 import { SendMessageDto } from '../../modules/conversation/conversation.controller';
 import { EntryChatDto } from '../../modules/entry/entry.controller';
+import { AQuestionDto } from '../../modules/ask/ask.controller';
 
 /**
  * EVERY DOOR INTO A CONVERSATION CHECKS THE SAME THINGS.
@@ -23,6 +24,7 @@ describe('a message into a check-in', () => {
   const doors: [string, any][] = [
     ['the app', SendMessageDto],
     ['the panel and WhatsApp', AMessageIntoACheckInDto],
+    ['Ask Groundwork', AQuestionDto],
   ];
 
   it.each(doors)('%s refuses an empty message', (_door, cls) => {
@@ -34,6 +36,21 @@ describe('a message into a check-in', () => {
   it.each(doors)('%s refuses a message one character over the cap and takes one at it', (_door, cls) => {
     expect(bad(cls, { message: 'x'.repeat(A_MESSAGE_MAX + 1) })).toBe(true);
     expect(bad(cls, { message: 'x'.repeat(A_MESSAGE_MAX) })).toBe(false);
+  });
+
+  /*
+   * DECISION 65 (30 September 2026): ASK GROUNDWORK'S ONE EXCEPTION. Opened from inside a check-in
+   * (`openedFrom: 'check_in_setup'`), the first message may be empty - it means "start", the same way
+   * opening the old context chat needed nothing typed. Every other door, and Ask Groundwork itself
+   * with no `openedFrom`, keeps the rule above: a message has to say something.
+   */
+  it('Ask Groundwork alone allows an empty message, and only together with openedFrom: "check_in_setup"', () => {
+    expect(bad(AQuestionDto, { message: '', groundId: 'g1', openedFrom: 'check_in_setup' })).toBe(false);
+    expect(bad(AQuestionDto, { message: '', groundId: 'g1' })).toBe(true);
+    expect(bad(AQuestionDto, { groundId: 'g1', openedFrom: 'check_in_setup' })).toBe(false);
+    expect(bad(AQuestionDto, { message: 'twelve weeks', groundId: 'g1', openedFrom: 'check_in_setup' })).toBe(false);
+    /* A value that is not the one recognised opened-from is refused, not silently accepted. */
+    expect(bad(AQuestionDto, { message: '', groundId: 'g1', openedFrom: 'something_else' })).toBe(true);
   });
 
   it('the panel route declares the class, so the pipe sees it', () => {
