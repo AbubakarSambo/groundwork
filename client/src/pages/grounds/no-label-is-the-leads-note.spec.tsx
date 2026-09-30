@@ -117,7 +117,8 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     /* The lead reads their own note, beside the name, and says it is theirs. */
     expect(noNoteAsAName('lead, sessions').length).toBeGreaterThan(0)
 
-    expect(openTab(/^Context$/)).toBe(true)
+    /* Renamed "Context" to "Context and resources" so the tab's name says what it now holds. */
+    expect(openTab(/^Context and resources$/)).toBe(true)
     await waitFor(() => expect(screen.getAllByText('Send the price list.').length).toBeGreaterThan(0))
     expect(screen.getAllByText('A third colleague').length).toBeGreaterThan(0)
     noNoteAsAName('lead, context')
@@ -135,7 +136,7 @@ describe('the check-in’s page never names somebody with the lead’s note', ()
     ;(groundsApi.get as any).mockResolvedValue(groundFor('participant'))
     renderAt('/grounds/g1/p', '/grounds/:id/p', <GroundParticipantPage />)
     await waitFor(() => expect(screen.getAllByText(/Sales team, Q3/).length).toBeGreaterThan(0))
-    for (const tab of [null, /^My work$/, /^Context$/]) {
+    for (const tab of [null, /^My work$/, /^Context and resources$/]) {
       if (tab) openTab(tab)
       await waitFor(() => expect(document.body.textContent).toBeTruthy())
       expect(whereTheNoteIs()).toEqual({ asTheirNote: [], elsewhere: [] })

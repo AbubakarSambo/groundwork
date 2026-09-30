@@ -3436,7 +3436,7 @@ export function EntryChatPage() {
               */}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
                 <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '0 12px 12px', lineHeight: 1.5 }}>
-                  Anything else the check-ins should be held against - a plan, a brief, a spreadsheet - goes on the Context tab once this is saved. You can add it any time.
+                  Anything else the check-ins should be held against - a plan, a brief, a spreadsheet - goes on the Context and resources tab once this is saved. You can add it any time.
                 </div>
               )}
               {displayedHistory.map((m, i) => {

@@ -582,7 +582,7 @@ export function MagicVerifyPage() {
           */}
           <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', marginBottom: 8, lineHeight: 1.6 }}>
             Track their check-ins on your check-in page, and add documents or notes
-            for everyone to work from under <strong>Context</strong>.
+            for everyone to work from under <strong>Context and resources</strong>.
           </div>
           <button
             onClick={() => navigate(

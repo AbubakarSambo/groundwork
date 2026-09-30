@@ -57,7 +57,7 @@ export default function RoundReportPage() {
           tabs={[
             { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
             { key: 'chat', label: 'Check-in', to: `/grounds/${id}` },
-            { key: 'context', label: 'Context', to: `/grounds/${id}?tab=context` },
+            { key: 'context', label: 'Context and resources', to: `/grounds/${id}?tab=context` },
             { key: canRunThisCheckIn ? 'sessions' : 'record', label: 'My work', to: `/grounds/${id}?tab=${canRunThisCheckIn ? 'sessions' : 'record'}` },
             { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
             { key: 'report', label: 'Report', to: `/grounds/${id}?tab=report` },

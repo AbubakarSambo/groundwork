@@ -436,7 +436,7 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
   const headerTabs = [
     { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
     ...(viewerRunsThisCheckIn || isAParty ? [{ key: 'chat', label: 'Check-in', to: `/grounds/${id}` }] : []),
-    { key: 'context', label: 'Context', to: `/grounds/${id}?tab=context` },
+    { key: 'context', label: 'Context and resources', to: `/grounds/${id}?tab=context` },
     ...(viewerRunsThisCheckIn || isAParty ? [{ key: myWorkTab, label: 'My work', to: `/grounds/${id}?tab=${myWorkTab}` }] : []),
     { key: 'settings', label: 'People and setup', to: `/grounds/${id}?tab=settings` },
   ]

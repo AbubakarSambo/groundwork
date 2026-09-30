@@ -1359,7 +1359,7 @@ export function GroundAdminPage() {
             [
               { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
               { key: 'checkin', label: 'Check-in' },
-              { key: 'context', label: contextEnabled ? 'Context' : 'Documents' },
+              { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' },
               { key: 'mywork', label: 'My work' },
               { key: 'people', label: 'People and setup' },
             ].filter(t => (isInitiator || viewerIsAParty) || (t.key === 'board' || t.key === 'context' || t.key === 'people'))
@@ -2051,7 +2051,7 @@ export function GroundAdminPage() {
                           */}
                           <button
                             onClick={() => setTab('docs')}
-                            title="Read the expectations, on the Context tab"
+                            title="Read the expectations, on the Context and resources tab"
                             style={{ fontSize: 10.5, color: 'var(--gw-muted)', marginLeft: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline dotted' }}
                           >
                             {/* Read on the Sessions tab, directly under "Some sessions done, some still

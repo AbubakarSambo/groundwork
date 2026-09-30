@@ -139,7 +139,8 @@ describe('the board, as each reader reads it', () => {
     me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
     renderBoard(AS_AN_ADMIN)
     expect(await screen.findByRole('tab', { name: 'Board' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Context' })).toBeTruthy()
+    /* "Context" renamed to "Context and resources" so the tab's name says what it now holds. */
+    expect(screen.getByRole('tab', { name: 'Context and resources' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'People and setup' })).toBeTruthy()
     expect(screen.queryByRole('tab', { name: 'Check-in' })).toBeNull()
     expect(screen.queryByRole('tab', { name: 'My work' })).toBeNull()

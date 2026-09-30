@@ -509,7 +509,7 @@ export function GroundParticipantPage() {
           tabs={[
             { key: 'board', label: 'Board', to: `/grounds/${id}/board` },
             { key: 'checkin', label: 'Check-in' },
-            { key: 'context', label: contextEnabled ? 'Context' : 'Documents' },
+            { key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' },
             { key: 'mywork', label: 'My work' },
             { key: 'people', label: 'People and setup' },
           ]}

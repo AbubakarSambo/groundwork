@@ -100,7 +100,7 @@ export function groundTabs({ contextEnabled, canRunThisCheckIn, isAParty }: TabC
      'record': it is a route, not a word anybody reads. */
   if (isAParty) tabs.push({ key: 'record', label: 'What I shared' })
 
-  tabs.push({ key: 'context', label: contextEnabled ? 'Context' : 'Documents' })
+  tabs.push({ key: 'context', label: contextEnabled ? 'Context and resources' : 'Documents' })
   tabs.push({ key: 'settings', label: 'Setup' })
   return tabs
 }
