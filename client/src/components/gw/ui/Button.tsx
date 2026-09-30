@@ -15,13 +15,21 @@ import './gw-ui.css'
 export type ButtonKind = 'primary' | 'secondary' | 'quiet' | 'danger'
 
 export function Button({
-  kind = 'primary', size, wide, dangerSolid, to, onClick, type = 'button', disabled, children, ...rest
+  kind = 'primary', size, wide, dangerSolid, danger, to, onClick, type = 'button', disabled, children, ...rest
 }: {
   kind?: ButtonKind
   size?: 'big' | 'small'
   wide?: boolean
   /** Only meaningful with kind="danger": the filled red, for a pop-up's final "Remove". */
   dangerSolid?: boolean
+  /**
+   * Only meaningful with kind="quiet": red text instead of navy, for a row where a bordered
+   * danger button would read heavier than the thing it sits beside - a target's own Remove
+   * (board-as-lead.jpg), asked to be "much heavier than the prototype" and confirmed first the
+   * same way a bordered one is. Still asks first (`Confirm`, the caller's own job); this only
+   * changes the colour of the ask.
+   */
+  danger?: boolean
   to?: string
   onClick?: () => void
   type?: 'button' | 'submit'
@@ -31,7 +39,9 @@ export function Button({
 }) {
   const className = [
     'gwui-btn',
-    kind === 'danger' && dangerSolid ? 'gwui-btn-danger-solid' : `gwui-btn-${kind}`,
+    kind === 'danger' && dangerSolid ? 'gwui-btn-danger-solid'
+      : kind === 'quiet' && danger ? 'gwui-btn-quiet-danger'
+      : `gwui-btn-${kind}`,
     size && `gwui-btn-${size}`,
     wide && 'gwui-btn-wide',
   ].filter(Boolean).join(' ')

@@ -51,7 +51,7 @@ export function PersonRow({ extraColumns, to, help, person, children }: {
   extraColumns: string
   to?: string
   help?: { tone: 'look' | 'concern'; text: string; action?: React.ReactNode }
-  person: { initials: string; name: string; level?: string; email?: string }
+  person: { initials: string; name: string; level?: React.ReactNode; email?: string }
   /** The cells after the name column, in order (a role Tag, a status, and so on). */
   children?: React.ReactNode
 }) {
@@ -77,7 +77,10 @@ export function PersonRow({ extraColumns, to, help, person, children }: {
 export function PersonCell({ initials, name, level, email }: {
   initials: string
   name: string
-  level?: string
+  /** Usually a plain sentence; a caller that must mark this text specially (e.g. `data-leads-note`,
+      so a privacy test can tell a lead's own labelled note from a name shown to everyone) passes a
+      wrapped node instead of a bare string. */
+  level?: React.ReactNode
   email?: string
 }) {
   /*
