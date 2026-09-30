@@ -76,7 +76,8 @@ describe('the first question fits the situation, and the context tab exists', ()
 
   it('the closer says where documents and further context go', () => {
     expect(SRC).toMatch(/SAY WHERE THE REST OF THE CONTEXT GOES/);
-    expect(SRC).toMatch(/goes on the Context tab, any time/);
+    /* Decision 51: renamed to "Context and resources" (29 September). */
+    expect(SRC).toMatch(/goes on the Context and resources tab, any\s+time/);
   });
 });
 

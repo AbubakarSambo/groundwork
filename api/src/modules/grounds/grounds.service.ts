@@ -4136,7 +4136,7 @@ export class GroundsService {
       select: { id: true, text: true, aboutParticipantId: true, exactQuestion: true, closedAt: true },
     });
     if (!line) throw new NotFoundException('That question is not on this check-in.');
-    if (line.closedAt) throw new BadRequestException('You left this question out. Open it again on the Context page first if you want it asked.');
+    if (line.closedAt) throw new BadRequestException('You left this question out. Open it again on the Context and resources page first if you want it asked.');
     if (!line.aboutParticipantId) throw new BadRequestException('This question is not for anybody on this check-in, so there is nobody to ask it.');
     const edited = typeof dto?.exactQuestion === 'string' ? (withoutBankDetails(dto.exactQuestion) as string).replace(/\s+/g, ' ').trim() : '';
     if (typeof dto?.exactQuestion === 'string' && !edited) throw new BadRequestException('Write the question as you want it asked first.');
@@ -4587,9 +4587,9 @@ export class GroundsService {
         ? 'Nobody can be invited yet: nothing has been said about what this check-in is for. You are '
           + 'running this check-in rather than taking part in it, so it has to come from you in '
           + 'writing - write the brief, say what you expect of somebody, or add a document or a note '
-          + 'on the Context tab.'
+          + 'on the Context and resources tab.'
         : 'Nobody can be invited yet: nothing has been said about what this check-in is for. Write the '
-          + 'brief, say what you expect of somebody, add a document or a note on the Context tab, or do '
+          + 'brief, say what you expect of somebody, add a document or a note on the Context and resources tab, or do '
           + 'your own check-in first.',
     );
   }

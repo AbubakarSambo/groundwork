@@ -19,9 +19,9 @@ describe('what a person reads after a yes to a document\'s numbers', () => {
 
   it('the lead setting up a check-in is told they set it, and where to see it', () => {
     expect(whatWasRecordedFromADocument({ fileName: 'Q3 targets.pdf', forAPerson: 1, forEveryone: 0, reader: 'setup' }))
-      .toBe('I have recorded this from Q3 targets.pdf. One number is now set for the person it belongs to. It is marked as set by you, and that person has not seen it yet. You can see it on the Context page now, and every check-in will ask about it.');
+      .toBe('I have recorded this from Q3 targets.pdf. One number is now set for the person it belongs to. It is marked as set by you, and that person has not seen it yet. You can see it on the Context and resources page now, and every check-in will ask about it.');
     expect(whatWasRecordedFromADocument({ fileName: 'Q3 targets.pdf', forAPerson: 2, forEveryone: 1, reader: 'setup' }))
-      .toBe('I have recorded this from Q3 targets.pdf. Two numbers are now set, each for the person it belongs to. Each one is marked as set by you, and the person it belongs to has not seen it yet. One number is for the whole check-in, and everybody here sees it. You can see them on the Context page now, and every check-in will ask about them.');
+      .toBe('I have recorded this from Q3 targets.pdf. Two numbers are now set, each for the person it belongs to. Each one is marked as set by you, and the person it belongs to has not seen it yet. One number is for the whole check-in, and everybody here sees it. You can see them on the Context and resources page now, and every check-in will ask about them.');
   });
 
   it('nothing written twice says so in a sentence', () => {

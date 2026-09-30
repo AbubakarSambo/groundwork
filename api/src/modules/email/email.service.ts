@@ -712,7 +712,7 @@ export class EmailService implements OnModuleInit {
            nothing anywhere told anybody it was there, so it went unused. One
            sentence, in the email that gets opened before the check-in does.
          -->
-         <p>The Context tab on the check-in is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the check-in and everybody works from it, and their check-ins will have read it too.</p>
+         <p>The Context and resources tab on the check-in is where background goes - notes, and documents like a plan, a brief or a spreadsheet. What you upload is yours by default; mark it open to the check-in and everybody works from it, and their check-ins will have read it too.</p>
          <p><a href="${url}" style="display:inline-block;background:#0A1628;color:white;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">Review and begin →</a></p>`,
       ),
     }, context ?? { kind: 'LEAD_INVITE' }, 'sendLeadInvite');
