@@ -39,19 +39,19 @@ describe('a tile never cuts inside a sentence', () => {
 
   it('shows a one-sentence line whole', () => {
     expect(blockers({ theBlocker: 'I have heard about it but we have a meeting with the CEO to discuss monetisation next week' }).sub)
-      .toBe('I have heard about it but we have a meeting with the CEO to discuss monetisation next week');
+      .toBe('I have heard about it but we have a meeting with the CEO to discuss monetisation next week.');
   });
 
   it('shows the first sentence of a longer one, whole, with its closing mark, and never "..."', () => {
     expect(theFirstSentenceThatFits("I haven't explicitly said 'get me out of these meetings.' I did say he would own the relationships in his interview."))
       .toBe("I haven't explicitly said 'get me out of these meetings.'");
-    expect(blockers({ theBlocker: 'Legal has the contract. They said Friday, and it is now Tuesday.' }).sub).toBe('Legal has the contract');
+    expect(blockers({ theBlocker: 'Legal has the contract. They said Friday, and it is now Tuesday.' }).sub).toBe('Legal has the contract.');
   });
 
   it('and a first sentence too long for a tile is not shown: the tile says what it counts', () => {
     const long = `${'The pipeline is running on old names from before the summer '.repeat(3)}and nobody has picked it up.`;
     expect(theFirstSentenceThatFits(long)).toBeNull();
-    expect(blockers({ theBlocker: long }).sub).toBe('named as holding work up');
+    expect(blockers({ theBlocker: long }).sub).toBe('Something is named as holding work up.');
   });
 });
 
@@ -124,7 +124,7 @@ describe('movement before a round has closed', () => {
   it('says nothing has moved yet, and how many are set', () => {
     const t = tile({ targetsSet: 13 });
     expect(t.value).toBe('Nothing yet');
-    expect(t.sub).toBe('13 targets set, and no round has closed to measure from');
+    expect(t.sub).toBe('13 targets are set, and no round has closed to measure from.');
     expect(t.sub).not.toMatch(/nobody has set/);
   });
 
@@ -139,6 +139,6 @@ describe('movement before a round has closed', () => {
   });
 
   it('one target reads as one', () => {
-    expect(tile({ targetsSet: 1 }).sub).toContain('1 target set');
+    expect(tile({ targetsSet: 1 }).sub).toContain('1 target is set');
   });
 });

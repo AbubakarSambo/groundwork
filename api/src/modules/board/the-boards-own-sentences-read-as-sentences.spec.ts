@@ -139,7 +139,7 @@ describe('the lead reads the board in sentences', () => {
     const b = await boardFor('u-wairimu', 'MEMBER', {}, gNamed).board;
     expect(b.howItIsGoing.glance.inTheWay.oldest).toBe("the approval for Machakos's second tranche");
     const tile = b.quickRead.find((t: any) => t.label === 'Blockers');
-    expect(tile.sub).toContain("the approval for Machakos's second tranche");
+    expect(tile.sub).toContain("Work is held up by the approval for Machakos's second tranche.");
     expect(tile.sub).not.toContain('fuel allowance');
   });
 });

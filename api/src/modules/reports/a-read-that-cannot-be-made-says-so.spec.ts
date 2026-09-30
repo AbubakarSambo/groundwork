@@ -97,7 +97,7 @@ describe('the Movement read when a number has been said but nothing tracks it', 
     const g = glance([{ type: RecordEntryType.SUCCESS_DEFINITION, text: 'Each of them at eight closed deals.', who: 'Tunde', recallBased: true, threadKey: null }]);
     /* The tile's value answers the tile's label, and the label is Movement. See the-session-report. */
     expect(g.value).toBe('Not tracked');
-    expect(g.sub).toBe('somebody named a number and nothing is tracking it');
+    expect(g.sub).toBe('Somebody named a number, and nothing is tracking it.');
   });
 
   it('and reads digits as readily as words, because people say both', () => {
