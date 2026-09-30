@@ -158,8 +158,13 @@ export function OrgMembersPage() {
 
       <EveryoneHere orgName={orgName} ownerId={ownerId} />
 
+      {/* SECONDARY, NOT PRIMARY (Hafsah, 30 September): this only scrolls to "Invite people" below,
+          where "Send their invitations" is the page's real, single primary action. Kept primary,
+          it would sit navy on screen at the same time as the no-seat card's own "Send their
+          invitations" button above, whenever somebody is waiting for a seat. */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button
+          kind="secondary"
           onClick={() => {
             scrollToId('invite-list')
             document.getElementById('invite-list')?.focus()

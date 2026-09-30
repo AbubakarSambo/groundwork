@@ -150,9 +150,13 @@ export function InvitePeople() {
               )
             })}
           </div>
+          {/* SECONDARY, NOT PRIMARY (Hafsah, 30 September): the form's own "Send their invitations"
+              button above stays the one primary action on this section; this only appears once
+              that button has been pressed and some lines could not go, so two navy buttons would
+              otherwise sit on screen together while the reader decides what to do with the rest. */}
           {answer.preview && canGo > 0 && (
             <div className="gwui-invite-actions">
-              <Button disabled={send.isPending} onClick={() => send.mutate()}>
+              <Button kind="secondary" disabled={send.isPending} onClick={() => send.mutate()}>
                 {send.isPending ? 'Sending…' : canGo === 1 ? 'Send 1 invitation' : `Send ${canGo} invitations`}
               </Button>
             </div>
