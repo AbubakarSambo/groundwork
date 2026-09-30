@@ -20,11 +20,15 @@
  * any label on a person. A priority that has been deleted in the organisation's own system is not
  * shown; one whose wording has not been refreshed for a while says when it was.
  *
- * WHAT THE ENGINE WRITES, AND IS NOT HERE YET: how each priority is moving, where the strategy is
- * not reaching the work, what more than one team has named, and what leadership says next to what
- * the check-ins show. See docs/requests-to-engine.md, request 17.
+ * WHAT THE ENGINE WRITES (request 17, the-company-picture.ts): how each priority is moving, where
+ * the strategy is not reaching the work, what more than one team has named, and what leadership
+ * says next to what the check-ins show. It is written once when the record changes and only READ
+ * here. Each item is given to a reader only if they may open every check-in it was built from; the
+ * last two lists and the second are for readers who may read every check-in. Until a picture has
+ * been written for the organisation these are empty, and nothing is worked out on opening.
  */
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
+import { theShareFor, type StoredPicture } from './the-company-picture';
 
 export interface CompanyPriority {
   id: string;
@@ -39,6 +43,8 @@ export interface CompanyPriority {
   fedBy: string | null;
   /** When the wording was last brought in, if that was long enough ago to say so. */
   staleSays: string | null;
+  /** How this priority is moving, written from the record. Null when none is written yet, or when it rests on a check-in the reader may not open. */
+  reading: { tag: string; says: string } | null;
   /** Admins only: what success looks like. */
   measure?: string | null;
   target?: string | null;
@@ -50,7 +56,15 @@ export interface CompanyPage {
   priorities: CompanyPriority[];
   /** Whether this reader is served what success looks like for each priority. */
   readsTargets: boolean;
+  /** Where the strategy is not reaching the work. For readers who may read every check-in. */
+  notReaching: { id: string; observation: string; question: string; forWhom: string }[];
+  /** Something named by more than one team. Teams are in alphabetical order, never ranked. */
+  namedByTeams: { id: string; title: string; touches: string; teams: { team: string; says: string }[] }[];
+  /** What leadership says, next to what the check-ins show. For readers who may read every check-in. */
+  saidAndShown: { id: string; area: string; youSaid: string; checkInsShow: string }[];
 }
+
+export interface OwnerDetail { name: string; title: string | null; linkedUserId: string | null }
 
 export interface SubjectRow {
   id: string;
@@ -108,7 +122,16 @@ export function companyPage(input: {
   mayOpen: GroundRow[];
   counts: { teams: number; people: number; checkInsThisWeek: number | null };
   now: Date;
+  /** What was written when the record last changed, or null when nothing has been yet. */
+  picture?: StoredPicture | null;
+  /** Who owns what was asked of somebody, by the customer's own id. */
+  ownerDetails?: Map<string, OwnerDetail>;
+  readerUserId?: string;
 }): CompanyPage {
+  const share = input.picture
+    ? theShareFor(input.picture, { readsEverything: input.readsEverything, mayOpen: new Set(input.mayOpen.map((g) => g.id)) })
+    : null;
+
   const live = input.subjects.filter((s) => freshnessOf(s, input.now) !== 'disconnected');
   const top = live
     .filter((s) => s.type === 'OBJECTIVE' && !s.parentExternalId)
@@ -152,6 +175,7 @@ export function companyPage(input: {
       tag: s.ownerExternalId ? null : 'Nobody owns it yet',
       fedBy: nothingUnder ? 'No team feeds it' : named.length ? `Fed by ${andList([...new Set(named)])}` : null,
       staleSays: stale ? `This was last updated on ${onDay(s.syncedAt)}.` : null,
+      reading: (() => { const r = share?.readings.get(s.id); return r ? { tag: r.tag, says: r.says } : null; })(),
     };
     if (input.readsEverything) {
       p.measure = s.measure;
@@ -160,5 +184,21 @@ export function companyPage(input: {
     return p;
   });
 
-  return { name: input.name, line: countsLine(input.counts), priorities, readsTargets: input.readsEverything };
+  const forWhom = (w: { kind: string; externalId?: string }): string => {
+    if (w.kind !== 'owner' || !w.externalId) return 'For you';
+    const o = input.ownerDetails?.get(w.externalId);
+    if (!o) return 'For the person who owns it';
+    if (o.linkedUserId && o.linkedUserId === input.readerUserId) return 'For you';
+    return `For ${o.name}${o.title ? `, ${o.title}` : ''}`;
+  };
+
+  return {
+    name: input.name,
+    line: countsLine(input.counts),
+    priorities,
+    readsTargets: input.readsEverything,
+    notReaching: (share?.notReaching ?? []).map((n) => ({ id: n.id, observation: n.observation, question: n.question, forWhom: forWhom(n.forWhom) })),
+    namedByTeams: (share?.namedByTeams ?? []).map((g) => ({ id: g.id, title: g.title, touches: g.touches, teams: g.teams.map((t) => ({ team: t.team, says: t.says })) })),
+    saidAndShown: (share?.saidAndShown ?? []).map((x) => ({ id: x.id, area: x.area, youSaid: x.youSaid, checkInsShow: x.checkInsShow })),
+  };
 }

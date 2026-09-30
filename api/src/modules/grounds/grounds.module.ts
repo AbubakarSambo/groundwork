@@ -13,6 +13,7 @@ import { CheckInLinksController } from './check-in-links.controller';
 import { CheckInLinksService } from './check-in-links.service';
 import { CompanyController } from './company.controller';
 import { CompanyService } from './company.service';
+import { CompanyPictureService } from './the-company-picture.service';
 import { APlanIsManyProposalsService } from './a-plan-is-many-proposals.service';
 import { BillingModule } from '../billing';
 import { PatternsModule } from '../patterns/patterns.module';
@@ -32,7 +33,7 @@ import { SuggestionsModule } from '../suggestions/suggestions.module';
    */
   imports: [BillingModule, PatternsModule, UsageModule, ConversationModule, SuggestionsModule],
   controllers: [GroundsController, ParticipantRequestsController, AskingForMoreTimeController, TodayController, YouController, CompanyController, CheckInLinksController],
-  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService, CheckInLinksService, APlanIsManyProposalsService],
+  providers: [GroundsService, GroundsCron, AskingForMoreTimeService, WhatNeedsYouService, YourBoardService, CompanyService, CompanyPictureService, CheckInLinksService, APlanIsManyProposalsService],
   exports: [GroundsService],
 })
 export class GroundsModule {}

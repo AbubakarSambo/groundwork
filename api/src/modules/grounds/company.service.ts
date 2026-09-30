@@ -1,7 +1,8 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
-import { companyPage, type CompanyPage } from './the-company-page';
+import { companyPage, type CompanyPage, type OwnerDetail } from './the-company-page';
+import type { StoredPicture } from './the-company-picture';
 
 /** Said to somebody from another company, added to one of this organisation's check-ins. */
 export const NOT_YOUR_COMPANY = 'Only people in this organisation can read its company page.';
@@ -30,7 +31,7 @@ export class CompanyService {
     const readsEverything = reader.role === 'ADMIN';
     const now = new Date();
 
-    const [organisation, list, subjects, linked, memberships] = await Promise.all([
+    const [organisation, list, subjects, linked, memberships, stored] = await Promise.all([
       this.prisma.organization.findUnique({ where: { id: org }, select: { name: true } }),
       this.grounds.list(org, reader.userId, reader.email, reader.role),
       this.prisma.subject.findMany({
@@ -48,22 +49,35 @@ export class CompanyService {
         where: { organizationId: org, role: { not: 'GUEST' } },
         select: { team: true },
       }),
+      /* Only READ. The picture is written when the record changes (the-company-picture.service.ts), never here. */
+      this.prisma.companyPicture.findUnique({ where: { organizationId: org } }),
     ]);
 
     /* Only this organisation's check-ins: the list also carries other organisations' where the reader is a guest. */
     const mayOpen = ((list ?? []) as any[]).filter((g) => g.organizationId === org);
 
-    const ownerIds = [...new Set((subjects as any[]).map((s) => s.ownerExternalId).filter(Boolean))] as string[];
+    const picture: StoredPicture | null = stored
+      ? {
+          readings: (stored as any).readings ?? [], notReaching: (stored as any).notReaching ?? [],
+          namedByTeams: (stored as any).namedByTeams ?? [], saidAndShown: (stored as any).saidAndShown ?? [],
+        }
+      : null;
+    const askedOf = (picture?.notReaching ?? []).map((n) => (n.forWhom as any)?.externalId).filter(Boolean);
+    const ownerIds = [...new Set([...(subjects as any[]).map((s) => s.ownerExternalId), ...askedOf].filter(Boolean))] as string[];
     const people = ownerIds.length
       ? await this.prisma.person.findMany({
           where: { organizationId: org, externalId: { in: ownerIds } },
-          select: { externalId: true, displayName: true, givenName: true, familyName: true },
+          select: { externalId: true, displayName: true, givenName: true, familyName: true, title: true, linkedUserId: true },
         })
       : [];
     const owners = new Map<string, string>();
+    const ownerDetails = new Map<string, OwnerDetail>();
     for (const p of people as any[]) {
       const name = (p.displayName || [p.givenName, p.familyName].filter(Boolean).join(' ')).trim();
-      if (name) owners.set(p.externalId, name);
+      if (name) {
+        owners.set(p.externalId, name);
+        ownerDetails.set(p.externalId, { name, title: p.title?.trim() || null, linkedUserId: p.linkedUserId ?? null });
+      }
     }
 
     const teams = new Set((memberships as any[]).map((m) => (m.team ?? '').trim().toLowerCase()).filter(Boolean)).size;
@@ -81,6 +95,9 @@ export class CompanyService {
       mayOpen,
       counts: { teams, people: memberships.length, checkInsThisWeek },
       now,
+      picture,
+      ownerDetails,
+      readerUserId: reader.userId,
     });
   }
 }

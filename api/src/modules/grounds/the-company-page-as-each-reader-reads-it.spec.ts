@@ -94,6 +94,7 @@ function setup() {
     person: table(rows.person),
     organizationMembership: table(rows.organizationMembership),
     ground: table([sales, operations, elsewhere]),
+    companyPicture: { findUnique: jest.fn(async () => null) },
   };
   /* The check-ins list, as the real one gives it: an admin every check-in in the organisation,
      everybody else the ones they run or are in (and a guest the other company's one they are in). */
@@ -116,9 +117,9 @@ describe('Grace, an admin, reads the whole company page', () => {
     expect(page.line).toBe('2 teams, 5 people, 3 check-ins this week.');
     expect(page.readsTargets).toBe(true);
     expect(page.priorities).toEqual([
-      { id: 's1', number: 1, title: 'Grow revenue 50%, enterprise first', owner: 'Wairimu Kamau', tag: null, fedBy: 'Fed by Sales team, Q3', staleSays: null, measure: 'Qualified enterprise deals', target: '12 this quarter' },
-      { id: 's2', number: 2, title: 'Improve delivery', owner: 'Otieno Ouma', tag: null, fedBy: 'Fed by Operations, Q3', staleSays: expect.stringMatching(/^This was last updated on \d{1,2} [A-Z][a-z]+\.$/), measure: 'On-time delivery', target: '95%' },
-      { id: 's3', number: 3, title: 'Build a stronger organisation', owner: null, tag: 'Nobody owns it yet', fedBy: 'No team feeds it', staleSays: null, measure: null, target: null },
+      { id: 's1', number: 1, title: 'Grow revenue 50%, enterprise first', owner: 'Wairimu Kamau', tag: null, fedBy: 'Fed by Sales team, Q3', staleSays: null, reading: null, measure: 'Qualified enterprise deals', target: '12 this quarter' },
+      { id: 's2', number: 2, title: 'Improve delivery', owner: 'Otieno Ouma', tag: null, fedBy: 'Fed by Operations, Q3', staleSays: expect.stringMatching(/^This was last updated on \d{1,2} [A-Z][a-z]+\.$/), reading: null, measure: 'On-time delivery', target: '95%' },
+      { id: 's3', number: 3, title: 'Build a stronger organisation', owner: null, tag: 'Nobody owns it yet', fedBy: 'No team feeds it', staleSays: null, reading: null, measure: null, target: null },
     ]);
   });
 
