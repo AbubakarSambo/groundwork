@@ -18,3 +18,28 @@ describe('the People page, to somebody who is not an admin', () => {
     expect(screen.getByText('People')).toBeTruthy()
   })
 })
+
+/**
+ * EVERY `what` APP.TSX PASSES GETS ITS OWN TRUE SENTENCE. Before this fix, "connect your systems"
+ * fell through to the adding-people sentence, so a participant opening Connections, WhatsApp or
+ * Tools read that adding people was an admin's job - not that connecting systems was.
+ */
+describe('every refusal names the thing the person was actually trying to do', () => {
+  it('open a check-in', () => {
+    render(<MemoryRouter><ADoorYouCannotOpen may={false} what="open a check-in"><p>hidden</p></ADoorYouCannotOpen></MemoryRouter>)
+    expect(screen.getByText(/Opening a check-in is limited to people your admin has named\./)).toBeTruthy()
+  })
+  it('add people to your organisation', () => {
+    render(<MemoryRouter><ADoorYouCannotOpen may={false} what="add people to your organisation"><p>hidden</p></ADoorYouCannotOpen></MemoryRouter>)
+    expect(screen.getByText('Adding people is something your organisation’s admins do.')).toBeTruthy()
+  })
+  it('connect your systems', () => {
+    render(<MemoryRouter><ADoorYouCannotOpen may={false} what="connect your systems"><p>hidden</p></ADoorYouCannotOpen></MemoryRouter>)
+    expect(screen.getByText('Connecting your organisation’s systems is something its admins do.')).toBeTruthy()
+    expect(screen.queryByText('Adding people is something your organisation’s admins do.')).toBeNull()
+  })
+  it('open People', () => {
+    render(<MemoryRouter><ADoorYouCannotOpen may={false} what="open People"><p>hidden</p></ADoorYouCannotOpen></MemoryRouter>)
+    expect(screen.getByRole('heading', { name: 'Only an admin can open People.' })).toBeTruthy()
+  })
+})

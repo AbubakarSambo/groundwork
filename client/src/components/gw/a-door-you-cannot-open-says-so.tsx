@@ -61,6 +61,8 @@ export function ADoorYouCannotOpen({
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, margin: '0 0 8px' }}>
         {what === 'open a check-in'
           ? 'Opening a check-in is limited to people your admin has named. You can still take part in any check-in somebody adds you to.'
+          : what === 'connect your systems'
+          ? 'Connecting your organisation’s systems is something its admins do.'
           : 'Adding people is something your organisation’s admins do.'}
       </p>
       <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.65, margin: '0 0 20px' }}>
