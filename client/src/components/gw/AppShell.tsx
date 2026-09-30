@@ -325,7 +325,17 @@ function FeedbackWidget() {
    * entirely its own composer and nothing else. The panel still opens from "Send feedback" on
    * More, same as it does for every other page this hides it on.
    */
-  const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/')
+  /*
+   * ITEM 4: THE FLOATING BUTTON SAT OVER THE ASK PANEL'S OWN SEND BUTTON. The panel is a fixed
+   * drawer along the whole right edge (`.gw-ask-drawer`, AppShell's own render below), 400px wide;
+   * this button's own default rest position - bottom:20, right:20 - sits inside that same 400px
+   * strip, on top of whatever the drawer draws there. Measured at 1440px wide: a click meant for
+   * Send landed on Feedback instead. Hidden outright while the panel is open, the same way it is
+   * already hidden on /more and on the check-in's own conversation - a floating trigger is not
+   * worth defending a moving 400px-wide target for.
+   */
+  const askOpen = useAskStore((s) => s.open)
+  const hideTrigger = location.pathname === '/more' || location.pathname.startsWith('/checkin/') || askOpen
   const open = useFeedbackStore(s => s.open)
   const showPanel = useFeedbackStore(s => s.show)
   const hidePanel = useFeedbackStore(s => s.hide)

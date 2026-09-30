@@ -3,8 +3,10 @@ import { Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { askApi, type AskBlock, type AskReply, type TextBlock, type ClaimBlock, type ProposalBlock, type PickerBlock, type NextStepBlock } from '@/api/ask'
 import { documentsApi } from '@/api/documents'
+import { groundsApi } from '@/api/grounds'
 import { UPLOAD_ACCEPT_ATTR } from '@/lib/what-you-can-upload'
 import { Mark } from './kit'
+import { Composer } from './ui/Composer'
 import { PRIVATE_LINE, openingLine } from './what-ask-groundwork-says'
 
 /** What the Context page already says while a document's read has not landed yet (AddADocument.tsx). */
@@ -48,8 +50,18 @@ const isNextStep = (b: AskBlock): b is NextStepBlock =>
   b.type === 'next_step' && typeof b.href === 'string' && b.href.startsWith('/') && !b.href.startsWith('//') && typeof b.label === 'string'
 /** The one next step this panel performs itself rather than sending somebody to a page: the file
     picker, on the check-in named by `id` (decision 50). */
-const isUploadStep = (b: NextStepBlock): b is NextStepBlock & { id: string; context: { groundId: string } } =>
-  b.kind === 'upload_a_document' && typeof b.id === 'string' && typeof b.context?.groundId === 'string'
+const isUploadStep = (b: NextStepBlock): b is NextStepBlock & { id: string } =>
+  b.kind === 'upload_a_document' && typeof b.id === 'string'
+
+/**
+ * THE CHECK-IN THE UPLOAD BELONGS TO. `id` on this block is the assistant's own session id, not the
+ * check-in's - uploading there 404s, because the document route reads a check-in's id, not a
+ * session's. `context.groundId` is the check-in's own id, put there for the "I've uploaded it."
+ * message that follows; the upload itself was still going to the wrong address. Falls back to `id`
+ * only when there is no `context` at all, so an older reply without it still uploads somewhere.
+ */
+const uploadGroundId = (b: NextStepBlock & { id: string }): string =>
+  (typeof b.context?.groundId === 'string' && b.context.groundId) || b.id
 
 const bubble = (mine: boolean): React.CSSProperties => ({
   alignSelf: mine ? 'flex-end' : 'flex-start',
@@ -118,29 +130,68 @@ export function AskGroundwork({
 }) {
   const location = useLocation()
   const page = useQuery({ queryKey: ['ask'], queryFn: askApi.mine })
-  const about = useMemo(() => page.data?.about ?? [], [page.data])
+  /* The check-in the page is about, from its address, so the panel opens on it. */
+  const here = checkInOnThisPage(location.pathname)
+  /*
+   * WHEN THE PAGE'S OWN CHECK-IN IS NOT ONE THE ASKER RUNS OR TAKES PART IN, BUT THEY MAY STILL
+   * READ IT - an admin of its organisation, opening the panel on somebody else's check-in's page.
+   * `askApi.mine`'s "About" only lists check-ins the asker runs or takes part in (ask.service.ts,
+   * whatItMayBeAbout), so an admin on "Sales team, Q3" whose own check-ins are three others got a
+   * panel that defaulted to one of those three, and anything they typed acted on that one instead of
+   * the check-in they were actually reading. `/grounds` already lists every check-in a reader may
+   * read, admin or not (groundsAViewerMayList - the same rule the sidebar's own list uses), so if the
+   * page's check-in shows up there, the reader may read it, and it is added to "About" here and
+   * chosen by default. Only ever fetched when "About" does not already have this check-in on it.
+   * This is a screens-owned route (grounds, not ask or assistant); if it should instead come from
+   * the engine's own /ask, that is a question for the engine workspace.
+   */
+  const needsWiderAbout = !!here && !!page.data && !page.data.about.some((g) => g.id === here)
+  const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: needsWiderAbout })
+  const about = useMemo(() => {
+    const base = page.data?.about ?? []
+    if (!here || base.some((g) => g.id === here)) return base
+    const found = (grounds.data ?? []).find((g) => g.id === here)
+    return found ? [...base, { id: found.id, label: found.label }] : base
+  }, [page.data, here, grounds.data])
   const [chosen, setChosen] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [said, setSaid] = useState<Said[]>([])
   const [answered, setAnswered] = useState<Set<string>>(new Set())
   const [sending, setSending] = useState(false)
+  /* True once a reply has been outstanding long enough for somebody to start doubting it - the
+     check-in conversation's own four seconds (ChatPage.tsx, opening-is-slow.ts). */
+  const [waitedAWhile, setWaitedAWhile] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   /* Set the moment a file is chosen, cleared once "I've uploaded it." has been sent (or the
      upload itself failed). Drawn as its own line, in the Context page's own words. */
   const [reading, setReading] = useState(false)
   const end = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
   const sentInitial = useRef(false)
   const fileInput = useRef<HTMLInputElement>(null)
-  /* Which check-in the file just chosen belongs to, and which ground to say "I've uploaded it."
-     about afterwards - set when the button is pressed, read when the file picker returns. */
-  const uploadTarget = useRef<{ checkInId: string; groundId: string } | null>(null)
+  /* The check-in the file just chosen belongs to - uploaded to, polled, and said "I've uploaded
+     it." about afterwards, all the same one (see uploadGroundId). Set when the button is pressed,
+     read when the file picker returns. */
+  const uploadTarget = useRef<string | null>(null)
 
   /* What the person chose; otherwise the check-in the page is about, when they are in it; otherwise the first. */
-  const here = checkInOnThisPage(location.pathname)
   const isMine = (id: string | null): id is string => !!id && about.some((g) => g.id === id)
   const aboutId = isMine(chosen) ? chosen : isMine(here) ? here : (about[0]?.id ?? '')
 
-  useEffect(() => { end.current?.scrollIntoView?.({ block: 'end' }) }, [said.length, reading])
+  useEffect(() => { end.current?.scrollIntoView?.({ block: 'end' }) }, [said.length, reading, sending])
+
+  useEffect(() => {
+    if (!sending) { setWaitedAWhile(false); return }
+    const t = setTimeout(() => setWaitedAWhile(true), 4000)
+    return () => clearTimeout(t)
+  }, [sending])
+
+  /* The box grows as somebody types (see the Composer's onChange below) and needs to shrink back
+     once what was in it is sent - `send` clears `draft` only after a reply comes back, so this
+     watches for that rather than doing it optimistically. */
+  useEffect(() => {
+    if (draft === '' && composerRef.current) composerRef.current.style.height = '38px'
+  }, [draft])
 
   const label = about.find((g) => g.id === aboutId)?.label ?? null
 
@@ -157,6 +208,17 @@ export function AskGroundwork({
         if (isProposal(b)) last = b.proposalId
       }
     }
+    return last
+  }, [said])
+
+  /*
+   * ONLY THE NEWEST REPLY'S OPTION BUTTONS CAN BE PRESSED - the same reasoning as a proposal's Yes
+   * and No above: once a newer reply has arrived, an older one's picker chips stayed clickable
+   * forever, with nothing on screen to say they no longer reflected where the conversation was.
+   */
+  const latestGroundworkIndex = useMemo(() => {
+    let last = -1
+    said.forEach((s, i) => { if (s.from === 'groundwork') last = i })
     return last
   }, [said])
 
@@ -182,29 +244,30 @@ export function AskGroundwork({
   }
 
   /** The "Choose a file" button on a `next_step` block: opens the picker for that check-in. */
-  const startUpload = (checkInId: string, groundId: string) => {
+  const startUpload = (groundId: string) => {
     if (sending || reading) return
-    uploadTarget.current = { checkInId, groundId }
+    uploadTarget.current = groundId
     fileInput.current?.click()
   }
 
   /**
-   * THE FILE PICKER RETURNED. Upload it privately to the check-in named on the block, then poll that
-   * check-in's own document list - the Context page's own read - until the document has numbers
-   * waiting on a yes or the time given has passed, showing "Reading it now." meanwhile. Only then is
-   * "I've uploaded it." sent, so Ask Groundwork usually has something to say back (decision 50).
+   * THE FILE PICKER RETURNED. Upload it privately to the check-in the block named (uploadGroundId,
+   * not the assistant's session id), then poll that same check-in's own document list - the Context
+   * page's own read - until the document has numbers waiting on a yes or the time given has passed,
+   * showing "Reading it now." meanwhile. Only then is "I've uploaded it." sent, against that same
+   * check-in, so Ask Groundwork usually has something to say back (decision 50).
    */
   const onFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
-    const target = uploadTarget.current
+    const groundId = uploadTarget.current
     uploadTarget.current = null
-    if (!file || !target) return
+    if (!file || !groundId) return
     setProblem(null)
     setReading(true)
     try {
-      const uploaded = await documentsApi.upload(target.checkInId, file)
-      await pollNumbersWaiting(target.checkInId, uploaded.id, pollIntervalMs, pollTimeoutMs)
+      const uploaded = await documentsApi.upload(groundId, file)
+      await pollNumbersWaiting(groundId, uploaded.id, pollIntervalMs, pollTimeoutMs)
     } catch (err: unknown) {
       setReading(false)
       const msg = (err as { response?: { data?: { message?: unknown } } })?.response?.data?.message
@@ -212,7 +275,7 @@ export function AskGroundwork({
       return
     }
     setReading(false)
-    ask(SAID_AFTER_UPLOAD, false, target.groundId)
+    ask(SAID_AFTER_UPLOAD, false, groundId)
   }
 
   useEffect(() => {
@@ -229,7 +292,7 @@ export function AskGroundwork({
     void send(yes ? 'Yes' : 'No', () => askApi.answer(proposalId, yes ? 'yes' : 'no'), false)
   }
 
-  function drawBlocks(reply: AskReply, key: number) {
+  function drawBlocks(reply: AskReply, key: number, isLatest: boolean) {
     const texts = new Set(reply.blocks.filter(isText).map((b) => b.body))
     return reply.blocks.map((b: AskBlock, i) => {
       const k = `${key}-${i}`
@@ -255,7 +318,7 @@ export function AskGroundwork({
         return (
           <div key={k} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {b.options.map((o) => (
-              <button key={o.key} type="button" style={chip} disabled={sending} onClick={() => ask(o.label)}>{o.label}</button>
+              <button key={o.key} type="button" style={chip} disabled={sending || !isLatest} onClick={() => ask(o.label)}>{o.label}</button>
             ))}
           </div>
         )
@@ -266,7 +329,7 @@ export function AskGroundwork({
         if (isUploadStep(b)) {
           return (
             <button key={k} type="button" style={chip} disabled={sending || reading}
-              onClick={() => startUpload(b.id, b.context.groundId)}>
+              onClick={() => startUpload(uploadGroundId(b))}>
               {b.label}
             </button>
           )
@@ -291,10 +354,17 @@ export function AskGroundwork({
           )}
         </div>
         {about.length > 0 && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14, color: 'var(--gw-sub)' }}>
+          /*
+           * ITEM 6: THE PICKER RAN PAST THE PANEL'S RIGHT EDGE. A flex item's default minimum width
+           * is its content's own width, not zero, so a long check-in label ("Faith, first 90 days")
+           * could make the `<select>` wider than the 400px drawer, pushing it (and this row) past
+           * the edge instead of wrapping or shrinking. `minWidth: 0` on both the row and the select,
+           * with the select set to `flex: 1`, lets it shrink to the space actually available.
+           */
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 14, color: 'var(--gw-sub)', minWidth: 0 }}>
             About
             <select value={aboutId} onChange={(e) => setChosen(e.target.value)}
-              style={{ font: 'inherit', fontSize: 15, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--gw-line)', background: 'var(--gw-card)', color: 'var(--gw-text)', maxWidth: '100%' }}>
+              style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: 15, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--gw-line)', background: 'var(--gw-card)', color: 'var(--gw-text)', maxWidth: '100%' }}>
               {about.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
             </select>
           </label>
@@ -310,8 +380,34 @@ export function AskGroundwork({
         ))}
         {said.map((s, i) => s.from === 'you'
           ? <p key={`s-${i}`} style={bubble(true)}>{s.says}</p>
-          : <div key={`s-${i}`} style={{ display: 'contents' }}>{drawBlocks(s.reply, i)}</div>)}
+          : <div key={`s-${i}`} style={{ display: 'contents' }}>{drawBlocks(s.reply, i, i === latestGroundworkIndex)}</div>)}
         {reading && <p style={bubble(false)}>{STILL_READING}</p>}
+        {sending && (
+          /*
+           * ITEM 3: A SIGN OF WORK WHILE WAITING. A reply can take up to 90 seconds, and until now
+           * nothing showed at all in that time - the buttons went quietly unresponsive with no
+           * explanation. The same three dots the check-in's own conversation uses (ChatPage.tsx),
+           * and after four seconds the same sentence it says once a wait is long enough to need
+           * explaining.
+           */
+          <p style={bubble(false)}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              {[0, 1, 2].map((i) => (
+                <span key={i} style={{
+                  display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
+                  background: 'var(--gw-sub)', animation: 'gwAskDotBounce 1.2s ease-in-out infinite',
+                  animationDelay: `${i * 0.2}s`,
+                }} />
+              ))}
+              <style>{'@keyframes gwAskDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }'}</style>
+              {waitedAWhile && (
+                <span role="status" style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                  Still reading what you wrote. Nothing was lost, you do not need to send it again.
+                </span>
+              )}
+            </span>
+          </p>
+        )}
         <div ref={end} />
       </div>
 
@@ -320,21 +416,31 @@ export function AskGroundwork({
       <input ref={fileInput} type="file" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR} onChange={onFileChosen} />
 
       {page.data?.canAsk && (
-        <form onSubmit={(e) => { e.preventDefault(); ask(draft, true) }}
-          style={{ display: 'flex', gap: 8, padding: 12, borderTop: '1px solid var(--gw-line)', flexDirection: 'column' }}>
-          {problem && <p role="alert" style={{ margin: 0, fontSize: 14, color: 'var(--gw-red-t)' }}>{problem}</p>}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={label ? 'Ask about this check-in' : 'Ask a question'}
-              aria-label={label ? 'Ask about this check-in' : 'Ask a question'}
-              maxLength={8000}
-              style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: 15, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--gw-line)', background: 'var(--gw-card)', color: 'var(--gw-text)' }}
-            />
-            <button type="submit" className="gw-b gw-b-primary" disabled={sending || !draft.trim()}>Send</button>
-          </div>
-        </form>
+        /*
+         * ITEM 2: A MULTI-LINE MESSAGE BOX. This was a one-line `<input>`, so a pasted plan lost
+         * its own line breaks the moment it landed here. The shared `Composer` (already the check-in
+         * conversation's own footer, ChatPage.tsx) is a textarea that grows with its text - Enter
+         * sends, Shift+Enter starts a new line, the same as the prototype's chat.
+         */
+        <div style={{ borderTop: '1px solid var(--gw-line)' }}>
+          {problem && <p role="alert" style={{ margin: '8px 12px 0', fontSize: 14, color: 'var(--gw-red-t)' }}>{problem}</p>}
+          <Composer
+            inputRef={composerRef}
+            value={draft}
+            onChange={(v) => {
+              setDraft(v)
+              const el = composerRef.current
+              if (el) { el.style.height = '38px'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
+            }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(draft, true) } }}
+            onSend={() => ask(draft, true)}
+            disabled={sending}
+            sendDisabled={!draft.trim()}
+            placeholder={label ? 'Ask about this check-in' : 'Ask a question'}
+            ariaLabel={label ? 'Ask about this check-in' : 'Ask a question'}
+            maxLength={8000}
+          />
+        </div>
       )}
     </section>
   )
