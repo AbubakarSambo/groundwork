@@ -712,3 +712,25 @@ Until the threshold in decision 61 is crossed (fewer than half kept, at least 6 
 - `GET` the board: each `next[]` row now has `proposal`, a sentence when Groundwork proposed the review itself, else `null`. "Groundwork suggests a review for Kwame, because a check-in about Kwame's work has ended. Nothing is sent to Kwame unless you say yes." or "Groundwork suggests a review for Kwame, because your organisation asked for reviews on a regular date and this is the next one. Nothing is sent to Kwame unless you say yes." Show it beside "Start it". `mayStart` is unchanged: only whoever writes the review with the person may say yes.
 - `POST` start is unchanged, and is the only thing that starts a review. Nothing starts one on its own, and nothing is sent to the person before it.
 - One review: the writer's shape has `suggestion`, the week-10 lead shape for that person on a check-in the writer runs (or `null`). `noticed` is now written from the record when the writer says yes: "Wairimu decided on “Extend evaluation period” at the end of “Kwame, first 90 days” on 20 September 2026, and said why, “He needs another month on the supermarket accounts”." All marked `proven`. No rating, no label, no count of what was kept. A line from an evaluation check-in is read by the writer and the person only.
+
+### The four marks on every line of the reports (request 2, week 6b, decision 43)
+
+Every line a lead reads in a report now carries one of the four marks, decided by the product from the record lines behind it and never by the model. The wording is the prototype's: "Proven", "Confirmed by the person who received it", "Only someone’s word", "From memory only". Each mark is served as two fields, the machine word and the words to print: `mark: 'proven' | 'confirmed' | 'said' | 'memory'` and `markSays`.
+
+A line the model wrote is tied to the record lines it restates (at least two of a record line's own key words, and three quarters of them). It takes the mark of those lines. When several stand behind it and they are not all known the same way, it takes the weakest, in the order proven, confirmed, only someone's word, from memory. It then also carries `marksBehind` (the different marks, strongest first) and `markNote`: "This line rests on more than one thing people said, and they are not all known in the same way. It carries the mark of the one that is known least well." When no record line stands behind it, the mark is `said`, "Only someone’s word". A finding is marked from that person's own lines only. The marks never name a file, never say who said a line and never say how anybody's answers were rated.
+
+The older figure-only marks are kept. Where a line carries a figure, `figureIs` ("their estimate" or "from memory") is still there, and the line also reads `memory`.
+
+| Where | Field |
+| --- | --- |
+| Team report `GET /grounds/:id/report`, the shared picture | `sharedPictureLines: [{ text, mark, markSays, marksBehind?, markNote?, figureIs? }]`, one per sentence. `sharedPicture` itself is unchanged. |
+| Team report, agreements | `agreementMarks`, one per agreement, in the same order as `agreements` (which stay plain strings). |
+| Team report, differences (lead and admin, as before) | each item in `divergences` carries `mark`, `markSays` and the rest; each side in `positions` carries them for what that person said; `evidenceMarks` is in the same order as `evidence`. |
+| Team report, findings | each item in `findings` carries `mark` and `markSays` (only the reader's own for a participant, as before). |
+| Team report, lines from the record | `myRows[]` and `whatTheGroundCanTellYou.whatTheRecordHolds[]` now also carry `markSays`. |
+| Session report | each item in a section carries `markSays` beside `mark`; `whatEachPersonSaid[].lineMarksSay` goes with `lineMarks`; `whereThingsStand.settledMarks` and `openMarks` go with `settled` and `open`; each `openWithReasons[]` item carries `mark`, `markSays`, each of its `positions` carries them, and `restsOnMarks` goes with `restsOn`. |
+| Board | `divergence.items[]` carry the same marks as the report; `divergence.agreementMarks`, `divergence.settledMarks`, `divergence.stillOpenMarks`; `eachPerson[].findingMark`, `findingMarkSays` (and `findingMarkNote` when they differ); `whoOwnsWhat[].items[]` now also carry `markSays`. |
+
+When they are worked out. When the report is built from the record, and stored with it. Opening a report or a board reads what was stored and asks nothing. A report stored before this change has no marks on its model-written lines, and those lines simply carry none: the screens draw nothing when the field is absent. They fill in the next time something new comes in and the report is built again. A closed round's kept lines carry none either, because they were kept as they were.
+
+Code: `api/src/modules/reports/the-mark-on-every-line.ts`, written at the synthesis write in `reports.service.ts` and attached at `asItWasShared`, the door every report and board read goes through. Tests: `the-mark-on-every-line.spec.ts`.
