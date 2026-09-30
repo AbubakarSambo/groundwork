@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenEx
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
+import { theirOwnEarlierRecord, earlierRecordQuery } from './the-detector-reads-their-own-earlier-record';
 import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherCode, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
 import { AnthropicService } from '../conversation';
 import { runIntake } from '../conversation/intake';
@@ -124,6 +125,10 @@ export class PatternsService {
       }).catch(() => [] as { text: string }[]),
     ]);
     const statedGoals = statedGoalRows.map((r) => r.text);
+    /* Their own earlier record, for the codes that only show over time. Built once; all five reads get this same text. */
+    const earlierLines = await this.prisma.recordEntry
+      .findMany(earlierRecordQuery(checkIn.participantId, checkIn.sessionNumber) as any)
+      .catch(() => [] as any[]);
 
     if (turns.length === 0 && records.length === 0) {
       await this.markAnalyzed(checkInId);
@@ -132,7 +137,7 @@ export class PatternsService {
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const recordText = records.map((r) => `(${r.type}) ${r.text}`).join('\n');
-    const content = `PERIOD ${period}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}`;
+    const content = `PERIOD ${period}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}${theirOwnEarlierRecord(earlierLines as any, period)}`;
 
     // --- R3 positive signal (rule-based, no AI extraction needed) ---
     const allPriorText = records.map((r) => r.text);
