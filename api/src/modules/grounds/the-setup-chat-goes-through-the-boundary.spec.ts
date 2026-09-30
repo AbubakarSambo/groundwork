@@ -33,8 +33,15 @@ describe('the setup chat goes through the boundary', () => {
      * `changeSay ?? reply` with the opening turn's greeting stripped - still built from the same two
      * sources, and still returned through `forHumans` either way, so the boundary this test protects
      * is unchanged.
+     *
+     * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: `changeSay` is the PRODUCT's own
+     * sentence, built deterministically in this function (`restatesSuccess`/`whatTheyWantChanged`),
+     * never the model's - so it no longer passes through the model-sentence guard at all (rule 2 of
+     * the fix). Only `reply`, the model's own text, does, and only through `whatTheModelsReplyShows`,
+     * which reads structurally for a question rather than by pattern - see
+     * nothing-proposed-that-nobody-said.ts.
      */
-    expect(CHAT).toContain('const withoutFalsePromises = dropsAPromiseWithNothingToKeep(changeSay ?? reply, proposal.kind !== \'none\');');
+    expect(CHAT).toContain('const withoutFalsePromises = changeSay ?? whatTheModelsReplyShows(reply, proposal.kind !== \'none\');');
     expect(CHAT).toContain('const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;');
     expect(CHAT).toContain('reply: forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply)');
   });

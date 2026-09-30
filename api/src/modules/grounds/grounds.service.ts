@@ -65,7 +65,7 @@ import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
-import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, dropsAPromiseWithNothingToKeep } from './nothing-proposed-that-nobody-said';
+import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows } from './nothing-proposed-that-nobody-said';
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
 import {
@@ -2961,11 +2961,13 @@ export class GroundsService {
        */
       if (openGap !== 'objectives') {
         try {
-          const alsoHeard = await this.anthropic.extract<Heard>(
+          /* FIX 4: one reading of this sentence, kept and handed back to the confirm call rather
+             than re-asked - see heardAboutObjectivesOnce. */
+          const alsoHeard = await this.heardAboutObjectivesOnce(groundId, lastFromLead, () => this.anthropic.extract<Heard>(
             WHO_AND_WHAT_THEY_EXPECT,
             asContextThenTheSentence(history, lastFromLead),
             extractionToolFor('objectives'),
-          );
+          ));
           if (alsoHeard) {
             const forSomebody = proposalFrom('objectives', alsoHeard, await this.partiesForMatching(groundId), lastFromLead);
             if (forSomebody.kind === 'expectation' || forSomebody.kind === 'lead_read') proposal = forSomebody;
@@ -3029,8 +3031,16 @@ export class GroundsService {
      * "I will record this as your read of Ben" was once said with no `lead_read` or `expectation`
      * proposal attached - a false statement, since nothing was kept. See nothing-proposed-that-
      * nobody-said.ts.
+     *
+     * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: `changeSay` is never the model's
+     * own sentence - it is built in code, in this function, from `restatesSuccess`/`whatTheyWantChanged`
+     * (see FIX 6, inventory item 16, above) - and it was being run through the same guard built to
+     * catch the MODEL restating a promise it has no business making. On item 16's second turn that
+     * dropped the guard's OWN restatement clause and left the tail standing on its own: "What is on
+     * the record now stays too, as an earlier version." Rule 2: a sentence the product writes never
+     * passes through the model-sentence guard - only `reply`, the model's own text, does.
      */
-    const withoutFalsePromises = dropsAPromiseWithNothingToKeep(changeSay ?? reply, proposal.kind !== 'none');
+    const withoutFalsePromises = changeSay ?? whatTheModelsReplyShows(reply, proposal.kind !== 'none');
     const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;
     return {
       reply: forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply),
@@ -3342,6 +3352,49 @@ export class GroundsService {
   private get draftedQuestions(): Map<string, string> {
     if (!this._draftedQuestions) this._draftedQuestions = new Map();
     return this._draftedQuestions;
+  }
+
+  /**
+   * ONE READING OF A SENTENCE, NOT TWO THAT CAN DISAGREE. FIX 4 (found live, the four live checks,
+   * 30 September 2026).
+   *
+   * Driven live: "Ben should be more proactive." was said back as a private note quoting "should be
+   * more proactive", and saved as "be more proactive" - the word "should" present in what was shown
+   * and gone from what was written. `verbatimQuote` (0c61f02d) already locks the SAVED text to the
+   * literal characters of what the lead typed, for both `expectation` and `lead_read` alike - that
+   * was never the gap. The gap is one step earlier: `contextChat` (propose) and `applyContextProposal`
+   * (confirm) are two separate HTTP requests, and each runs its OWN call to the model against the
+   * exact same sentence, asking it to say again which words are the expectation. A model is not
+   * required to draw that boundary the same way twice, and on this run it did not - one call kept
+   * "should", the other trimmed it - so `verbatimQuote` anchored two different, both-real substrings
+   * of the same sentence and correctly reported two different results.
+   *
+   * The fix is not a third rule for `verbatimQuote` to apply - there is no ONE correct way to guess
+   * which model call was "right" after the fact. It is to stop asking twice: the propose call's
+   * reading of THIS sentence is kept, keyed on the ground and the sentence itself, and the confirm
+   * call - reading the identical `said` a few seconds later - is handed that same reading back
+   * instead of a second, independently-drawn one. Whichever call runs first decides; the words shown
+   * and the words saved are then, structurally, the same call's output, not two.
+   *
+   * Keyed on the ground and the trimmed, case-folded sentence rather than on a request or a session,
+   * so the confirm call needs to know nothing about which turn produced the proposal - only the same
+   * two things it already carries forward itself: which ground, and what the lead typed. Capped and
+   * aged out rather than kept forever, since this is a same-conversation convenience, not a record.
+   */
+  private readonly objectivesHeardCache = new Map<string, { heard: Heard | null; at: number }>();
+  private static readonly OBJECTIVES_HEARD_CACHE_MAX = 500;
+  private static readonly OBJECTIVES_HEARD_CACHE_FRESH_MS = 10 * 60 * 1000;
+  private async heardAboutObjectivesOnce(groundId: string, said: string, read: () => Promise<Heard | null>): Promise<Heard | null> {
+    const key = `${groundId}::${said.trim().toLowerCase()}`;
+    const cached = this.objectivesHeardCache.get(key);
+    if (cached && Date.now() - cached.at < GroundsService.OBJECTIVES_HEARD_CACHE_FRESH_MS) return cached.heard;
+    const heard = await read();
+    if (this.objectivesHeardCache.size >= GroundsService.OBJECTIVES_HEARD_CACHE_MAX) {
+      const oldest = [...this.objectivesHeardCache.entries()].sort((a, b) => a[1].at - b[1].at)[0]?.[0];
+      if (oldest) this.objectivesHeardCache.delete(oldest);
+    }
+    this.objectivesHeardCache.set(key, { heard, at: Date.now() });
+    return heard;
   }
 
   /** What the lead has written privately about this person: their notes and their read of them. */
@@ -3746,13 +3799,15 @@ export class GroundsService {
      */
     const triedTheSecondReading = openGap !== 'objectives';
     if (triedTheSecondReading) {
-      const alsoHeard = await this.anthropic
+      /* FIX 4: the same reading the propose turn already made of this exact sentence, not a second
+         one that could disagree with it - see heardAboutObjectivesOnce. */
+      const alsoHeard = await this.heardAboutObjectivesOnce(groundId, dto.said, () => this.anthropic
         .extract<Heard>(
           WHO_AND_WHAT_THEY_EXPECT,
           asContextThenTheSentence(dto.history, dto.said),
           extractionToolFor('objectives'),
         )
-        .catch(() => null);
+        .catch(() => null));
       if (alsoHeard) {
         const forSomebody = proposalFrom('objectives', alsoHeard, parties, dto.said);
         if (forSomebody.kind === 'expectation' || forSomebody.kind === 'lead_read') proposal = forSomebody;
