@@ -306,6 +306,10 @@ to find.
 - **Earlier decisions made in this workspace** are recorded where they were made in this report: the
   sign-in decisions (item 10), organisations and joining (item 11), no tour (item 8), the free trial and
   its one switch (items 10 and 30), the published plans (U.19), and how the reviewer signs in (item 14).
+- **30 September: three answers from Hafsah.**
+  1. Patterns (item 0-pat2): an admin who does not run a check-in does not see anyone's pattern or their answer, unless given access to that check-in, the same as performance plans. Only the person and the check-in's lead see it. The screens stay as they are. (Sent to the engine for the server side, request 84.)
+  2. The pattern switch (item 0-pat): patterns stay on in the work branches and on this Mac, for testing. Hafsah decides before release.
+  3. Email addresses: kept as it is. On a check-in's pages, admins follow the lead's "Hide email addresses between participants" setting. They still see emails on the organisation's People page, to manage the organisation.
 - **29 September: patterns, role behaviour, coaching strategies and the probe structure are protected.** They are the most powerful part of the product. No screen for them is ever removed, hidden or simplified to solve a problem. If something is wrong, it is fixed in place, or shown only to the most private reader, and Hafsah is told in this report. Every place where a screen for these was removed, hidden or simplified so far is listed below, under "The protected screens: what was removed, hidden or simplified", and restored.
 - **29 September: answers to "Decided for you to confirm" and to item 11, which is now closed.**
   1. All 16 decisions in "Decided for you to confirm" are confirmed. Where two disagree, the later one wins: My work follows the prototype's single "Your work" page, with no sub-tabs.
@@ -401,11 +405,11 @@ Then the reviews run one module at a time, oldest first, and U.20 starts after t
 
 ## Needs Hafsah
 
-### 0-pat2. Privacy: should an admin who does not run a check-in read a person's pattern?
+### 0-pat2. ANSWERED 30 September: an admin who does not run a check-in does not see anyone's pattern or answer, unless given access, like performance plans. Only the person and the lead. (Was: should an admin who does not run a check-in read a person's pattern?)
 
 The review found that Amani is told "Rukia Otieno will see it too, with anything you say about it", but Juma, an admin of the organisation who does not run the check-in, is also served her pattern once she has answered. The engine's rule counts an admin among the people who run a check-in; rule 5 lets admins read every board and report, including what people said. But the person is not told, and the server even gives Juma her words on one route and withholds them on another. **Please decide:** may an admin who does not run a check-in read a person's pattern and their answer? If yes, the person's sentence must name the admins too. If no, the server must stop sending it to them. Until you decide I took the more private option: the screens show another person's pattern only to the person who runs the check-in, and I asked the engine for one rule on the server (request 84).
 
-### 0-pat. URGENT: the engine switched patterns on tonight, though you said the switch stays off
+### 0-pat. ANSWERED 30 September: patterns stay on in the work branches and on this Mac, for testing; Hafsah decides before release. (Was: the engine switched patterns on, though you said the switch stays off)
 
 At 21:50 on 29 September the engine workspace switched patterns on (`19cdf9b0`, "Switch patterns on now that the plain names are approved"), taking your approval of the 49 names as the go-ahead ("decision 52"). Your later message to this workspace says the switch stays off until you understand how patterns work. The switch is the engine's code, so I have not touched it. It is on in both `wip/` branches and on this Mac's local product only; nothing has been deployed anywhere. **Please tell the engine workspace whether to switch it back off.** Until you do, the screens built tonight show patterns wherever the engine serves them, under the engine's rules (below).
 
