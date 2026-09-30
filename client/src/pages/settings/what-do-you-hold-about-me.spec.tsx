@@ -39,11 +39,21 @@ describe('the endpoints have a caller at last', () => {
 })
 
 describe('what the page shows', () => {
-  it('is loaded on demand, not on every visit to Settings', () => {
-    // This is somebody's whole record. Fetching it because they came to change a phone number is
-    // the wrong default for the one page meant to be careful with it.
-    expect(CODE).toMatch(/Show me/)
+  /*
+   * UPDATED (group 1 review): the button was "Show me" (view only); it is now the prototype's own
+   * "Download it" (own-settings.txt) - the button-count check (e2e/the-prototype-count-of-
+   * buttons.spec.ts) holds this screen to the prototype's own single button here, so "Show me" and
+   * a separate "Download it" beside the heading could not both stay visible at once. One press now
+   * both loads the record (so the sentence and the list below it still appear, exactly as "Show
+   * me" used to reveal them) and saves it as a file straight away - nothing the page did is lost,
+   * it is the same load with the file added to it. Still on demand, never on every visit: this is
+   * somebody's whole record, and fetching it because they came to change a phone number would be
+   * the wrong default for the one page meant to be careful with it.
+   */
+  it('is loaded on demand, not on every visit to Settings, and saved as a file the moment it loads', () => {
+    expect(CODE).toMatch(/Download it/)
     expect(CODE).toMatch(/loadMyData\.mutate\(\)/)
+    expect(CODE).toMatch(/onSuccess:\s*\(data\)\s*=>\s*\{\s*setMyData\(data\);\s*saveAsAFile\(data\)\s*\}/)
   })
 
   /*
@@ -64,13 +74,12 @@ describe('what the page shows', () => {
   })
 
   /*
-   * UPDATED (group 1 review, "Download it" beside the heading): the JSON-building code moved into
-   * a shared `saveAsAFile(data)` helper, used both by "Download all of it" (after "Show me" has
-   * loaded and shown `myData`) and by the new one-step "Download it" beside the heading (which
-   * fetches and saves without ever putting anything on screen, so there is no "screen" for it to
-   * match). The invariant this test protects - "Download all of it" saves the very data that is
-   * already on screen, not a second, possibly different, request - still holds: `downloadMyData`
-   * passes the `myData` state variable itself into the helper, never re-fetching.
+   * UPDATED (group 1 review): the JSON-building code moved into a shared `saveAsAFile(data)`
+   * helper, called once from "Download it" (`loadMyData`'s own `onSuccess`, with the data that
+   * request just returned) and again from "Download all of it" further down, once the record is
+   * already on screen. The invariant this test protects - "Download all of it" saves the very data
+   * that is already on screen, not a second, possibly different, request - still holds:
+   * `downloadMyData` passes the `myData` state variable itself into the helper, never re-fetching.
    */
   it('"Download all of it" is built from what is on screen', () => {
     // A second request could return something different from what the page just told them.

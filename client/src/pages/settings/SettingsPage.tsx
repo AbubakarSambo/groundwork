@@ -160,16 +160,6 @@ export function SettingsPage() {
 
   const [myData, setMyData] = useState<MyData | null>(null)
   const [showEraseConfirm, setShowEraseConfirm] = useState(false)
-  const loadMyData = useMutation({
-    mutationFn: myDataApi.get,
-    onSuccess: setMyData,
-    onError: () => toast.error('Could not load your data. Try again.'),
-  })
-  const eraseMyData = useMutation({
-    mutationFn: myDataApi.erase,
-    onSuccess: () => { toast.success('Your way in is gone. What you shared stays with the check-ins you were part of.'); logout(); navigate('/auth') },
-    onError: () => toast.error('That did not happen. Nothing has changed - try again.'),
-  })
   function saveAsAFile(data: MyData) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -179,18 +169,30 @@ export function SettingsPage() {
     a.click()
     URL.revokeObjectURL(url)
   }
+  /*
+   * THE PROTOTYPE'S OWN ONE BUTTON, "Download it" (own-settings.txt, beside the heading): loaded
+   * on demand, never on every visit to Settings, so this is somebody's whole record and fetching
+   * it because they came to change a phone number would be the wrong default. One press both
+   * saves the file straight away and fills in the sentence and the list below it, so nothing the
+   * page did before ("Show me") is lost - it is the same load, the file just comes with it now,
+   * matching the prototype's own single button rather than adding a second one beside it (the
+   * button-count check, e2e/the-prototype-count-of-buttons.spec.ts, holds the product to the
+   * prototype's own count for this screen).
+   */
+  const loadMyData = useMutation({
+    mutationFn: myDataApi.get,
+    onSuccess: (data) => { setMyData(data); saveAsAFile(data) },
+    onError: () => toast.error('Could not load your data. Try again.'),
+  })
+  const eraseMyData = useMutation({
+    mutationFn: myDataApi.erase,
+    onSuccess: () => { toast.success('Your way in is gone. What you shared stays with the check-ins you were part of.'); logout(); navigate('/auth') },
+    onError: () => toast.error('That did not happen. Nothing has changed - try again.'),
+  })
   function downloadMyData() {
     if (!myData) return
     saveAsAFile(myData)
   }
-  /* THE PROTOTYPE'S OWN "Download it", BESIDE THE HEADING (own-settings.txt): a one-step download
-     that does not require first pressing "Show me" to see the list. Reads your data and saves it
-     straight away, never showing it on screen. */
-  const downloadDirect = useMutation({
-    mutationFn: myDataApi.get,
-    onSuccess: saveAsAFile,
-    onError: () => toast.error('Could not download your data. Try again.'),
-  })
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const leaveOrg = useMutation({
@@ -309,18 +311,15 @@ export function SettingsPage() {
           <Stack gap={12}>
             <div className="gwui-sentence-row">
               <SubHeading>Everything you’ve written</SubHeading>
-              <Button kind="quiet" size="small" onClick={() => downloadDirect.mutate()} disabled={downloadDirect.isPending}>
-                {downloadDirect.isPending ? 'Downloading…' : 'Download it'}
-              </Button>
+              {!myData && (
+                <Button kind="quiet" size="small" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
+                  {loadMyData.isPending ? 'Downloading…' : 'Download it'}
+                </Button>
+              )}
             </div>
             <p className="gwui-panel-text-muted">
               Every answer, which check-in it came from, and nothing anyone else wrote. As a file you can open.
             </p>
-            {!myData && (
-              <Button kind="secondary" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
-                {loadMyData.isPending ? 'Loading…' : 'Show me'}
-              </Button>
-            )}
           </Stack>
           {myData && (
             <Stack gap={12}>

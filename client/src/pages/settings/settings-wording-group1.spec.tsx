@@ -61,12 +61,17 @@ describe('Your data', () => {
     expect(screen.getByRole('button', { name: 'Download it' })).toBeTruthy()
   })
 
-  it('after "Show me", the sentence names answers and check-ins, matching the list shown', async () => {
+  it('after "Download it", the sentence names answers and check-ins, matching the list shown', async () => {
     open({ id: 'u1', role: 'MEMBER', organizationName: 'Baridi Appliances', firstName: 'Grace', lastName: 'Achieng', email: 'grace@baridi.co.ke' })
-    await userEvent.click(screen.getByRole('button', { name: 'Show me' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Download it' }))
     expect(await screen.findByText('You have written 28 answers, in 7 check-ins.')).toBeTruthy()
     expect(screen.getAllByText(/^Check-in \d$/).length).toBe(7)
     expect(screen.queryByText(/grounds?:/)).toBeNull()
+    /* ONE BUTTON, MATCHING THE PROTOTYPE (e2e/the-prototype-count-of-buttons.spec.ts): "Show me"
+       and "Download it" used to be two separate always-visible buttons where the prototype's own
+       screen has one; they are now the same button, and it disappears once the record is loaded. */
+    expect(screen.queryByRole('button', { name: 'Download it' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Show me' })).toBeNull()
   })
 })
 
