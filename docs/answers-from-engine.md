@@ -622,3 +622,37 @@ No model words any of this, so `promptVersionId` on the row is empty. Who reads 
 `nobody[].why` on `GET /suites/roles/board` is now filled. It is written once when a check-in completes or a handoff is raised (and looked at once a night), never when the map is opened. It is built from a handoff a person raised in a check-in that waits on a role nobody holds, such as "Stock planning". It reads "That is why Kwame Mensah has been waiting three weeks for freezers." while the wait is open, and "That is why Kwame Mensah waited three weeks for freezers." once it has ended. The wait is at least one week, and the note is about the longest one for the role. It is stored with the check-in's label ("Participant A"), never a name, and the name goes in only when an admin who may open that check-in reads the map, through the wrapper reports use. If the name would not be theirs to see, or they may not open the check-in (a performance plan, a promotion or a renewal they do not run), `why` is `null` rather than a placeholder. It is checked in code: only numbers from the record, no name, no label, no score, no ranking. It is never built from a private report or from questions to Ask Groundwork.
 
 Schema: `role_gap_notes` gained `ground_id` and `input_key` (migration `20261001150000_role_gap_notes_rest_on_a_check_in`). No field on the map changed shape.
+
+
+## 1 October: the switchboard's 22 sections
+
+Your request 70. Before building anything, I read what the board and the reports serve today against each of the 22 sections. "Calls for it" is the number of the 24 situations that switch the section on or make it optional (`switchboardSectionsNotServed` in `what-the-switchboard-allows.ts`). The purple twelve are called for by four situations only: "Help a new hire get started", "Check in before a renewal", "Help someone get back on track" and "Get a project back on track" (the new hire and the renewal also carry most of them).
+
+"Served already" means the content is on the board under another field today, for the readers named. "Not served" means nothing carries it, and the last column says whether I build it, or why I serve nothing.
+
+| Section | Calls for it | State | Where, or what is missing |
+| --- | --- | --- | --- |
+| Lead actions | 22 | Served already | `theJudgement.whatToDo` (what to do and why, the lead only), `decisions` (what needs deciding, and who decides), `toLookAt` and `eachPersonToday[].conversationPoints` (what has stayed the same, and what to talk through, the lead only). |
+| Risks | 18 | Not served. Built. | Nothing gathers "what could go wrong". Built from the record, in plain sentences, with the facts behind each one. |
+| Work plan | 13 | Partly served. Built. | `whoOwnsWhat` has each person's commitments with no date and no state. `overTime.commitments` has the date and the state, for the lead only. `workRecords` has it for the founder's own check-in only. Built as `workPlan` for each reader under their own wall. |
+| Deal grid | 11 | Served already | `workRecords`, the section named "Deal grid", by the check-in's kind of work (request 76): sales org, engineering release, support desk, distribution operations, trader training programme, asset loans, MarketView Q4, a government programme. Served as `none-yet` when nothing has been recorded and as `not-known` when the kind is not set. |
+| Coaching | 10 | Served already | `coaching` (`yours` and `eachPerson`), request 79 b. |
+| Themes | 9 | Served already | `whatTheRoomIsAbout` (aims, places and things, each with who named it, nothing dropped), `whatTheAnswersSay` (the network read, where enough accounts came in) and, for MarketView where next, `workRecords` "Themes". For support desk it is served as not known, because the helpdesk's own counts are not in the record. |
+| Obligations | 6 | Partly served | A law firm matter's parties are in `workRecords` "Obligations". For the others, what each person promised is `workPlan` (built here) and what each waits on is `dependencies`. What a contract's own clauses require is not in the record (the record holds what people said, not the document), so that is not served. |
+| Timeline | 5 | Not served. Built. | `phaseSpine` has the sessions and their dates only, and a law firm's deadlines are in `workRecords`. Nothing puts what happened in order. Built as `timeline`. |
+| Person history | 5 | Not served. Built. | Built as `personHistory`, one person's record session by session, facts only, to the lead and to the person themselves. |
+| Forecast | 5 | Not served. Nothing built. | The record holds no projected figure. `objectives[].journey` says where a number started, where it is and what was aimed for, and `eachPerson` says whether the pace is behind. Neither is a forecast, and I will not invent one. `workRecords` already serves "Forecast" as `not-known` for sales org and MarketView Q4, with the reason. |
+| Blocker check | 4 | Not served. Built. | Built as `blockerCheck`: for each open handoff, whether it names a person, whether anybody went back about it, and whether a time was given. |
+| Evidence index | 4 | Not served. Built. | Built as `evidenceIndex`: every line on the board that a document proves or a colleague confirmed, with whose it is and the session. |
+| Busy or moving | 4 | Not served. Built. | Built as `busyOrMoving`: counts from the record, for the lead only, never a label. |
+| Where the time went | 4 | Not served. Nothing built. | The record holds no record of how anybody's time was spent, only what they said they would do. Anything I wrote here would be a guess. |
+| Requirements review | 3 | Served already | `overTime.gaps` (what the role was said to be, against what the record holds; the lead only), `startingState` and `objectives`. |
+| Actions and their results | 4 | Served already | `overTime.commitments` (the lead only) with the state and how it was settled. `workPlan` (built here) gives each other reader their own. |
+| The other side | 4 | Served already | `divergence.items`, `divergence.agreements`, `whoOwnsWhat` and `managerAlignment`. |
+| Who waited on whom | 4 | Served already | `dependencies` on the board, `GET /grounds/:id/links` (`dueSaid`, `dueOn`, `standing`), `GET /grounds/:id/blocker-trace`, and `overTime.dependencies` (sessions waiting, whether anybody went back). |
+| Commitments followed over time | 4 | Served already | `overTime.commitments` (said in which session, said again in which, how it ended), the lead only. |
+| Pattern history | 4 | Served already | `patterns[].sessions` and `patterns[].howOften`, under `who-reads-a-pattern.ts`, and `overTime.patterns` for the lead. |
+| Contradictions | 4 | Served already | `divergence.items` (where two people said different things). Where one person said two things across sessions, nothing is written yet. |
+| Questions for the lead | 4 | Served already | `decisions`, `coaching.eachPerson` (what to ask each person) and `eachPersonToday[].conversationPoints`, for the lead only. |
+
+Built in this pass, in order of how many situations call for them: Risks, Work plan, Timeline, Person history, then Blocker check, Evidence index and Busy or moving (four each).
