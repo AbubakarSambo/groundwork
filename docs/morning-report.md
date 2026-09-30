@@ -8,6 +8,29 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ## 30 SEPTEMBER, MORNING: HAFSAH'S FIVE STEPS (the old chat stays on, patterns, the disagreements, week 10)
 
+### Step 2, the fix
+
+I built the fix and could not measure it live, so it is not switched on. Here is exactly what happened.
+
+The two detector calls (the extraction in `analyzeCheckIn`, and the confirming call in `confirmDetection`) can now both be asked for the model's steadiest setting, temperature 0 with a fixed seed, through a small options argument added to `respond()` and `extract()` on `AnthropicService`. Nobody is asked for it by default; every other caller of those two methods keeps the model's own default sampling, exactly as before. The measurement script, `api/journey/the-detector-read-twice.ts`, gained a `STEADY=1` mode that reads run-20 twice at the steady setting instead of the default, and a `RECALL=1` mode that, for each check-in, does five reads at the default setting plus one steady read, and checks the steady read against the consensus of the five (a code counts as "in the consensus" when at least 3 of the 5 default reads kept it).
+
+I could not run either measurement. This sandboxed session can reach the general internet and several Google hosts, including the plain `aiplatform.googleapis.com`, but every call this app makes to Gemini goes to the regional host the product is configured to use, `us-central1-aiplatform.googleapis.com`, and every attempt to reach that host from here timed out trying to connect, on repeated tries over several minutes, with nothing else about the network looking wrong. I ran the plain default-only read-twice script first, which needs no new setting at all, and it failed the same way partway through: it reached Gemini successfully for a while and then stopped being able to, for the rest of the run. That is a property of this sandbox tonight, not of the code or of Gemini itself, and I did not work around it by changing which regional endpoint the product talks to, since that is a real product configuration decision, not a fix for a sandbox limit.
+
+So the numbers asked for in step 2a and step 2b are not in this report, because I do not have them and will not invent them. What is ready: the plumbing, both script modes, and three kinds of tests that do not need the live model at all, proving the mechanism is correct and that nothing already true was broken.
+- `respond()` and `extract()` send no `temperature` or `seed` to Gemini unless a caller passes them, and send exactly what is passed when it is (`api/src/modules/conversation/anthropic.service.spec.ts`).
+- `confirmDetection` forwards the same behaviour: nothing extra by default, the steady options through unchanged when asked for (`api/src/modules/patterns/the-detector-is-steady.spec.ts`).
+- With a stub model that returns the same detections twice, `analyzeCheckIn` writes the same (person, code) set both times, and all 49 codes (8 positive, 3 carrying, 38 bad-faith) are still in the library, still in the schema the model chooses from, and still named in the prompt. Nothing was removed, hidden, or made harder to reach.
+
+This is a "stop and ask Hafsah" moment in the sense the instructions describe: an engine-value number (steadiness) has a measured baseline (39% on run-20) and a fix that cannot be proven better without network access this session does not have. Whoever runs next with a working connection to Gemini can run, unchanged:
+```
+DATABASE_URL=postgresql://hafsahjumare@localhost:5432/gw_pw9_1786222102 STEADY=1 \
+  npx ts-node -T journey/the-detector-read-twice.ts all-24/run-20
+DATABASE_URL=postgresql://hafsahjumare@localhost:5432/gw_pw9_1786222102 RECALL=1 \
+  SCENARIOS=sales,seniorhire,pip,loans,handover,advisor,board,crisis,drift,project \
+  npx ts-node -T journey/the-detector-read-twice.ts all-24/run-20
+```
+and read the printed numbers against decision 2c: keep the steady setting only if steadiness is clearly higher and the steady read's recall against the five-read consensus is at least as good as a single default read's own recall against that consensus (the script prints both). If it fails on recall, try the extraction call alone at the steady setting with the confirming call left at default, which the script also supports by editing which calls receive `PATTERN_DETECTION_STEADY_OPTIONS` (currently both, in `readOnce`).
+
 **Requests 84, 83 and 81 are done** (`12777e64`, `78b139c4`, `4aa45ed0`, `2efd92cc`).
 - **84 (decision 58):** one rule now decides who reads a pattern or the person's answer. It is the check-in's lead, or the admin who set that check-in up for them, and nobody else. An admin who did neither used to get patterns on the board and on the check-in page; they now get none. A test serves the board and the check-in page as each reader, and the session report and the probe list use the same rule.
 - **83:** already fixed before tonight. The lead's description of a person reaches the lead alone on all four routes, and a person's own words go to their own job title.
