@@ -138,3 +138,38 @@ describe('the record over time, as the lead reads it on the board', () => {
     expect(three.overTime.inSessions).toBe('in 3 sessions');
   });
 });
+
+/**
+ * THE LEAD IS NAMED IN A COMMITMENT THE LEAD MADE FOR SOMEBODY ELSE, NEVER "THE LEAD".
+ * "In session 3, the lead committed Tobi to ..." (30 September 2026). The row keeps the lead's
+ * label, and it is named like every other label, so the lead reads "you" and nobody else reads this
+ * at all, because the record over time is the lead's own.
+ */
+const FOR_MIRIAM = {
+  ...GROUND,
+  report: { ...GROUND.report, overTime: { sessions: 3, commitments: [
+    { participantId: 'p-aisha', who: 'Participant A', leadLabel: 'the initiator', what: 'call the client', when: 'on Wednesday 30 September', statedInSession: 3, restatedIn: [], theySaidIt: false, status: 'UNKNOWN',
+      saidWordForWord: false, whenSaidWordForWord: false, say: 'stored' },
+  ], dependencies: [], patterns: [], gaps: [], stillOpen: [], cannotTellYou: [], toSettleFirst: [] } },
+};
+
+describe('the lead is named in what the lead committed somebody to', () => {
+  it('the lead reads "you", and the person is named', async () => {
+    const b = await boardFor('u-wairimu', 'MEMBER', {}, FOR_MIRIAM).board;
+    const say = b.overTime.commitments[0].say;
+    expect(say).toBe('In session 3, you committed Aisha Otieno to call the client. Aisha Otieno did not say it. The time you gave for it was on Wednesday 30 September. Nobody has said yet whether it happened.');
+    expect(say).not.toMatch(/the lead|the initiator/i);
+  });
+
+  it('the person and a colleague read none of it', async () => {
+    for (const uid of ['u-miriam', 'u-aisha']) {
+      const b = await boardFor(uid, 'MEMBER', {}, FOR_MIRIAM).board;
+      expect(b.overTime ?? null).toBeNull();
+    }
+  });
+
+  it('an admin who only reads gets none of it either', async () => {
+    const b = await boardFor('u-setup', 'ADMIN', {}, FOR_MIRIAM).board;
+    expect(JSON.stringify(b.overTime ?? null)).not.toMatch(/committed Aisha|the lead|the initiator/i);
+  });
+});
