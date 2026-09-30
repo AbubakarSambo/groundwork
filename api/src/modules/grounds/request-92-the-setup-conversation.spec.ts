@@ -126,3 +126,56 @@ describe('point 7: the reader is "you", and a number for somebody else names the
     expect(said).not.toContain('Rukia Otieno');
   });
 });
+
+/* ------------------------------------------------------------------------------------------------ */
+
+import { A_DUMP_SCHEMA } from './a-dump-is-many-things';
+import { theLeadsOwnQuestionIfAddressedToThem } from './a-question-asked-word-for-word';
+
+const PEOPLE = [
+  { id: 'pA', email: 'amani@example.test', nameGiven: null, roleAsDescribed: null, managingOnly: false, userId: 'uA', user: { firstName: 'Amani', lastName: 'Wekesa' } },
+  { id: 'pR', email: 'rukia@example.test', nameGiven: null, roleAsDescribed: null, managingOnly: false, userId: 'userLead', user: { firstName: 'Rukia', lastName: 'Otieno' } },
+];
+
+function readingOf(pasted: string, question: string, drafted: string) {
+  return aSetupConversation({
+    ground: { participants: PEOPLE },
+    extract: (_s, _h, tool) => tool.name === (A_DUMP_SCHEMA as any).name
+      ? { questionsForPeople: [{ personName: 'Amani Wekesa', question }] }
+      : { question: drafted },
+  });
+}
+
+describe('point 9: a question the lead wrote to the person is kept in her words', () => {
+  const DRAFT = 'Do you know if the Kilimani shops have paid their deposits yet?';
+
+  it('"Have the Kilimani shops paid their deposits yet?" stays exactly that', async () => {
+    const pasted = 'Amani, ' + 'x'.repeat(10) + '\nAsk Amani: Have the Kilimani shops paid their deposits yet?\n' + 'y'.repeat(400);
+    const { service, anthropic } = readingOf(pasted, 'whether the Kilimani shops have paid their deposits yet', DRAFT);
+    const got = await (service as any).whatAPasteGives('g1', pasted);
+    expect(got.questionsForPeople[0].exactQuestion).toBe('Have the Kilimani shops paid their deposits yet?');
+    /* No model was asked to tidy a question that was already one. */
+    expect(anthropic.extract.mock.calls.filter((c: any[]) => c[2].name !== (A_DUMP_SCHEMA as any).name)).toHaveLength(0);
+  });
+
+  it('the list the lead reads says the same words, and so does the stored proposal', async () => {
+    const pasted = 'Amani - Have the Kilimani shops paid their deposits yet?\n' + 'y'.repeat(450);
+    const { service } = readingOf(pasted, 'whether the Kilimani shops have paid their deposits yet', DRAFT);
+    const out: any = await service.contextChat('g1', 'userLead', [{ role: 'user', content: pasted }], { yesOrNo: true });
+    expect(out.proposal.say).toContain('Groundwork will ask Amani Wekesa: "Have the Kilimani shops paid their deposits yet?"');
+    expect(out.proposal.say).not.toContain('Do you know if');
+  });
+
+  it('a question written about them, not to them, is still drafted as before', async () => {
+    const pasted = 'Ask Amani whether the Kilimani shops have paid their deposits yet.\n' + 'y'.repeat(450);
+    const { service } = readingOf(pasted, 'whether the Kilimani shops have paid their deposits yet', DRAFT);
+    const got = await (service as any).whatAPasteGives('g1', pasted);
+    expect(got.questionsForPeople[0].exactQuestion).toBe(DRAFT);
+  });
+
+  it('a question that names the person, or says she, is not kept as written', () => {
+    expect(theLeadsOwnQuestionIfAddressedToThem('Has Amani sent the price list?', 'has Amani sent the price list', { name: 'Amani' })).toBeNull();
+    expect(theLeadsOwnQuestionIfAddressedToThem('Has she sent the price list?', 'has she sent the price list', { name: 'Amani' })).toBeNull();
+    expect(theLeadsOwnQuestionIfAddressedToThem('Have you sent the price list?', 'have you sent the price list', { name: 'Amani' })).toBe('Have you sent the price list?');
+  });
+});

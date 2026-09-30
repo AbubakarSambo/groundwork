@@ -81,7 +81,7 @@ import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
-import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
+import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
@@ -3458,11 +3458,19 @@ export class GroundsService {
     person: { nameGiven?: string | null; email?: string | null; user?: { firstName?: string | null; lastName?: string | null } | null } | null,
     leadQuestion: string,
     privateWords: (string | null | undefined)[],
+    /** What the lead actually typed, so a question she wrote to the person is kept in her words. */
+    pasted?: string,
   ): Promise<string> {
     const key = `${participantId}::${leadQuestion.replace(/\s+/g, ' ').trim().toLowerCase()}`;
     const held = this.draftedQuestions.get(key);
     if (held) return held;
     const name = (person?.user?.firstName ?? person?.nameGiven ?? '').trim().split(' ')[0] || 'them';
+    /* HER WORDS, WHERE SHE WROTE IT TO THEM. No model is asked to tidy a question that is already one. */
+    const hers = theLeadsOwnQuestionIfAddressedToThem(pasted, leadQuestion, { name, privateWords });
+    if (hers) {
+      this.draftedQuestions.set(key, hers);
+      return hers;
+    }
     const drafted = await this.anthropic.extract<{ question?: string }>(
       THE_EXACT_QUESTION_PROMPT(name),
       [{ role: 'user' as const, content: `The question as the person running the check-in wrote it: "${leadQuestion}"` }],
@@ -3554,7 +3562,7 @@ export class GroundsService {
         ...(read.aboutPeople ?? []).filter((a) => whoThisNameIs(a?.personName ?? '', people as any)?.id === q.participantId).map((a) => a.observation),
         ...(await this.theLeadsOwnWordsAbout(groundId, q.participantId)),
       ];
-      q.exactQuestion = await this.theExactQuestionFor(q.participantId, person, q.question, privateWords);
+      q.exactQuestion = await this.theExactQuestionFor(q.participantId, person, q.question, privateWords, pasted);
     }
     /* Both people have to be on the check-in, or it is not a pair this product can hold. */
     const betweenPeople: WhatAPasteGives['betweenPeople'] = [];
