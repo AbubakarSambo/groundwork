@@ -100,7 +100,7 @@ interface Found {
 }
 
 /** The check-ins this reader may read at all, by the one rule. Nothing else is looked at. */
-async function checkInsTheyMayRead(db: WhatItReads, reader: AReaderAsking & { userId: string }) {
+export async function checkInsTheyMayRead(db: WhatItReads, reader: AReaderAsking & { userId: string }) {
   const grounds = await db.ground.findMany({
     where: { organizationId: reader.organizationId },
     select: {
@@ -130,7 +130,7 @@ async function checkInsTheyMayRead(db: WhatItReads, reader: AReaderAsking & { us
 }
 
 /** The latest rounds of a check-in that somebody finished, newest first, each with the day it was finished. */
-async function latestRounds(db: WhatItReads, groundId: string): Promise<{ sessionNumber: number; on: Date | null }[]> {
+export async function latestRounds(db: WhatItReads, groundId: string): Promise<{ sessionNumber: number; on: Date | null }[]> {
   const rows = await db.checkIn.findMany({
     where: { groundId, status: 'COMPLETED' },
     select: { sessionNumber: true, completedAt: true },

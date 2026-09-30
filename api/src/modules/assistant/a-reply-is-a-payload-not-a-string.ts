@@ -146,6 +146,8 @@ export interface Reply {
   lane: string;
   /** Which wording rules produced it, when a model did. Absent on a rules-composed reply. */
   styleVersion?: string;
+  /** The stored prompt version that actually ran, when a stored prompt wrote part of the reply (week 19). */
+  promptVersionId?: string | null;
 }
 
 export const text = (body: string): TextBlock => ({ type: 'text', body });

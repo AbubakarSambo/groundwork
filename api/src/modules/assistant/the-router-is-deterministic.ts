@@ -39,6 +39,7 @@ export type Lane =
   | 'tick_off_a_to_do'
   | 'move_a_deadline'
   | 'add_a_commitment'
+  | 'think_it_through'
   | 'add_context'
   | 'context_line'
   | 'lead_note'
@@ -90,6 +91,19 @@ const RULES = [
   rule('add_a_commitment', [
     /\b(?:add|record|log|write\s+down)\s+(?:a\s+)?commitment[:,]?\s+(.{3,160})$/i,
     /\bcommit\s+me\s+to\s+(.{3,160})$/i,
+  ]),
+  /*
+   * WEEK 19: THINKING SOMETHING THROUGH. Below the three lanes that change something and above
+   * everything else, because "help me think through the Q4 target" holds the word target, which the
+   * objective lane would otherwise take and open a draft for. Narrow: it needs "think ... through",
+   * "my options", or "brainstorm". It writes nothing.
+   */
+  rule('think_it_through', [
+    /\b(?:help\s+(?:me|us)\s+)?think\s+(?:(?:it|this|that)\s+)?(?:through|over)\b\s*(.*)$/i,
+    /\bwhat\s+(?:are|were)\s+(?:my|our|the)\s+options\b\s*(?:for|on|with|about)?\s*(.*)$/i,
+    /\b(?:lay|set)\s+out\s+(?:my|our|the)\s+options\b\s*(?:for|on|with|about)?\s*(.*)$/i,
+    /\bweigh\s+(?:up\s+)?(?:my|our|the)\s+options\b\s*(?:for|on|with|about)?\s*(.*)$/i,
+    /\bbrainstorm\b\s*(.*)$/i,
   ]),
   rule('add_a_to_do', [
     /* A deadline may trail the list: "add the rota to my to-do list by Friday". The lane reads the whole message for when. */

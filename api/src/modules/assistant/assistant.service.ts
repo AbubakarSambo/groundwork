@@ -5,7 +5,8 @@ import { DependencyStatus } from '@prisma/client';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
 import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
 import { ReportsService } from '../reports/reports.service';
-import { whatSomeoneSaid } from './what-they-said-that-you-may-read';
+import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds } from './what-they-said-that-you-may-read';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
 import { theOneToDoFirst, whatMustSurviveIn } from './what-to-do-next';
 import { aReportSource, YOUR_TO_DOS_SOURCE, YOUR_COMMITMENTS_SOURCE, WHAT_NEEDS_YOU_SOURCE } from './a-source-says-where-it-came-from';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
@@ -70,6 +71,11 @@ import {
 import { whatIStillCannotDo } from './what-is-not-offered-in-chat';
 import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
 import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
+import {
+  THINK_IT_THROUGH_PROMPT, THINK_IT_THROUGH_PROMPT_KEY, THINK_IT_THROUGH_SCHEMA, WHAT_TO_THINK_ABOUT, COULD_NOT_LAY_OUT, NOT_ENOUGH_TO_GO_ON,
+  whatToThinkAbout, thePromptFor, theOptionsThatStay, theOptionsSaid,
+} from './think-it-through';
+import { PromptsService } from '../prompts/prompts.service';
 import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
 import { COOLING_DAYS } from '../detectors/a-conversation-the-record-suggests';
 import {
@@ -165,6 +171,8 @@ export class AssistantService {
      * missing, that question is answered "I cannot show you that".
      */
     @Optional() private readonly reports?: ReportsService,
+    /* The stored prompt for "think it through", so the version that ran is the one recorded (week 19). Optional like the above. */
+    @Optional() private readonly prompts?: PromptsService,
   ) {}
 
   /**
@@ -301,6 +309,8 @@ export class AssistantService {
         return this.moveADeadline(organizationId, who, userId ?? null, message);
       case 'add_a_commitment':
         return this.addACommitmentByChat(organizationId, who, message);
+      case 'think_it_through':
+        return this.thinkItThrough(organizationId, personId, userId ?? null, message, routed.subject);
       case 'what_you_can_see':
         return this.compose(await this.whatICanSee(organizationId));
       case 'what_am_i_on':
@@ -378,6 +388,71 @@ export class AssistantService {
         return rules('unplaced', text(line), picker(options));
       }
     }
+  }
+
+
+  /**
+   * "HELP ME THINK IT THROUGH" (week 19). See think-it-through.ts. Writes nothing, parks nothing and
+   * decides nothing: the lead is offered options and then a plain question. What the model is given is
+   * only what this reader may already read (their own objectives and commitments and, for a lead or an
+   * admin, what the check-ins they may read serve to them), and every number, name and date in what it
+   * returns is checked against that before anything is shown.
+   */
+  private async thinkItThrough(organizationId: string, personId: string, userId: string | null, message: string, captured: string | undefined): Promise<Reply> {
+    const lane = 'think_it_through';
+    const question = whatToThinkAbout(captured, message);
+    if (!question) return rules(lane, text(WHAT_TO_THINK_ABOUT));
+
+    const lines: string[] = [];
+    const truth: any = await this.truth.forPerson(organizationId, personId).catch(() => null);
+    for (const o of truth?.objectives?.value ?? []) {
+      const bits = [`Your target "${o.title}"`];
+      if (o.target) bits.push(`is ${o.target}`);
+      if (o.dueDate) bits.push(`and is due ${whenItWas(new Date(o.dueDate), 'dayAndMonthLong')}`);
+      lines.push(bits.join(' ') + (o.justification ? `. The reason written down is that ${String(o.justification).trim().replace(/[.]+$/, '')}.` : '.'));
+    }
+    for (const c of truth?.commitments?.value ?? []) {
+      if (c.state && c.state !== 'OPEN') continue;
+      lines.push(`You have committed to "${c.text}"${c.dueSaid ? `, which you said is due ${c.dueSaid}` : ''}.`);
+    }
+
+    /* A lead or an admin also reads what the check-ins they may read serve to them, by the same read as "what did Femi say". A participant thinks through their own work only. */
+    const membership = userId
+      ? await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null)
+      : null;
+    const role = membership?.role ?? null;
+    if (userId && this.reports && (role === 'LEAD' || role === 'ADMIN')) {
+      const asker = { userId, organizationId, role };
+      try {
+        for (const g of (await checkInsTheyMayRead(this.prisma as any, asker)).slice(0, 3)) {
+          const [round] = await latestRounds(this.prisma as any, g.id);
+          if (!round) continue;
+          let served: any;
+          try { served = await this.reports.sessionReport(g.id, round.sessionNumber, userId, organizationId); } catch { continue; }
+          for (const row of (Array.isArray(served?.whatEachPersonSaid) ? served.whatEachPersonSaid : []).slice(0, 6)) {
+            const said = (Array.isArray(row?.lines) ? row.lines : []).filter((l: unknown) => typeof l === 'string' && l.trim()).slice(0, 3);
+            if (!said.length || typeof row?.who !== 'string') continue;
+            lines.push(`In the check-in ${g.label}, ${row.isYou ? 'you' : row.who} said ${said.map((l: string) => `"${l.trim()}"`).join(' and ')}.`);
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Think it through could not read the check-ins: ${err?.message}`);
+      }
+    }
+
+    const version = await this.prompts?.getActive(THINK_IT_THROUGH_PROMPT_KEY).catch(() => null);
+    let result: any = null;
+    try {
+      result = await this.engine.extract(version?.content ?? THINK_IT_THROUGH_PROMPT, [{ role: 'user', content: thePromptFor(question, { lines }) }], THINK_IT_THROUGH_SCHEMA as any);
+    } catch (err: any) {
+      this.logger.warn(`Think it through unavailable: ${err?.message}`);
+    }
+    if (!result) return rules(lane, text(COULD_NOT_LAY_OUT));
+
+    const options = theOptionsThatStay(result, `${message}\n${question}\n${lines.join('\n')}`);
+    if (!options) return rules(lane, text(NOT_ENOUGH_TO_GO_ON));
+    const named = (captured ?? '').trim().replace(/^(?:for|on|about|with|through)\s+/i, '') || null;
+    return { blocks: [text(theOptionsSaid(named, options, lines.length === 0))], composedBy: 'model', lane, promptVersionId: version?.id ?? null };
   }
 
   /**

@@ -78,6 +78,14 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     refuses: ['add the rota to my to-do list', 'remind me to book the room'],
   },
   {
+    key: 'think_it_through',
+    does: 'Lay out two to four options for something you are deciding, such as a target, with what each would mean, what it assumes and what would show it is working. It never says which to choose and writes nothing.',
+    writes: 'nothing',
+    ordered: 'Above the objective lane, because "help me think through the Q4 target" holds the word target and must not open a draft. Below the lanes that change something.',
+    owns: ['help me think through the Q4 target', 'what are my options for the Atlas deadline', 'let us think it through', 'brainstorm how to hit the quarter'],
+    refuses: ['set a target for Q4', 'add a commitment: call the depot', 'what should we talk about'],
+  },
+  {
     key: 'add_a_to_do',
     does: 'Put a note to yourself on your own list. Nobody else reads it and no report weighs it.',
     writes: 'after you confirm it',
