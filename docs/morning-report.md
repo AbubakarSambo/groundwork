@@ -6,6 +6,15 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 30 SEPTEMBER, LATE MORNING: HAFSAH'S DECISIONS 60 TO 65, AND WHAT RUNS NEXT
+
+Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settled as proposed (60), the first threshold for week 10 (61), old patterns start the person-first process on release day (62), only the lead confirms setup unless the lead has left the organisation (63), the setup part of "how the leading is landing" restored without the three-period rule (64), and Ask Groundwork opened inside a check-in knows which one (65).
+
+**Order of work.**
+- **While the model is down:** 62, 63 and point 4 of 60 are with the builder now. Then 64, 61 and 65, and the tools to measure patterns read several times and by majority, ready for when the model answers.
+- **Once the model answers, patterns first:** measure the steady setting and the majority reading, keep whichever is steadiest while still finding real patterns, aiming for the same conversation giving the same patterns at least 8 times in 10, and say whether patterns are steady enough for release. Then the live checks for items 10, 11, 15 and 16.
+- The old context chat stays on until the screens workspace confirms Ask Groundwork's screens do everything live.
+
 ## 30 SEPTEMBER, MORNING: HAFSAH'S FIVE STEPS (the old chat stays on, patterns, the disagreements, week 10)
 
 ### Step 2, the fix
