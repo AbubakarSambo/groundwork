@@ -57,7 +57,9 @@ describe('the setup chat goes through the boundary', () => {
    * "shown once, not shown twice" test below.
    */
   it('and so does the proposal it asks you to confirm', () => {
-    expect(CHAT).toContain("const sayBack = proposal.kind === 'none' ? null : forHumans(proposal.say);");
+    /* Every proposal goes through the boundary except the paste's list, which the product writes itself
+       and which forHumans would run into one paragraph (request 92, point 6). */
+    expect(CHAT).toContain("(proposal.kind as string) === 'everything' ? (proposal.say as string) : forHumans(proposal.say);");
     expect(CHAT).toContain('say: sayBack as string,');
   });
 

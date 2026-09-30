@@ -3059,7 +3059,16 @@ export class GroundsService {
      * say-back already states, the say-back is what stays; the reply carries only what is left over
      * (the opening line, when this is the first turn).
      */
-    const sayBack = proposal.kind === 'none' ? null : forHumans(proposal.say);
+    /*
+     * THE LIST A PASTE GIVES IS THE PRODUCT'S OWN TEXT, NOT A MODEL'S, SO IT IS NOT RUN THROUGH
+     * `forHumans`. That pass runs a list's lines together and takes the bullets off, and this list is
+     * shown to the lead exactly as the confirmation after the yes shows it, one bullet to a line.
+     * Its wording is written in `whatWeTookFromThat`, where the lead's own words are quoted and must
+     * not be reworded either (request 92, point 6).
+     */
+    const sayBack = proposal.kind === 'none'
+      ? null
+      : (proposal.kind as string) === 'everything' ? (proposal.say as string) : forHumans(proposal.say);
     let replyText = forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply);
     if (sayBack && (replyText === sayBack || replyText.includes(sayBack))) {
       replyText = openedOn ? forHumans(openedOn) : '';

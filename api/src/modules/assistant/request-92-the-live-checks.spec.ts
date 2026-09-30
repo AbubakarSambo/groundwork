@@ -76,3 +76,17 @@ describe('point 5: making a line private, in either word order, finds the line b
     expect(textOf(reply)).toBe(`Shall I make the line "Rukia's plan is the plan." visible only to you?`);
   });
 });
+
+describe('point 6: what the lead is shown for a paste is stored as shown, with the list she will say yes to', () => {
+  it('the stored proposal keeps its bullets on separate lines, and the yes is given the list it answers', async () => {
+    const say = 'Here is what I took from that.\n\nFor the whole check-in:\n- Shops signed: 4\n- Deposits paid: 10\n\nRecord all of this?';
+    const contextChat = jest.fn(async () => ({ reply: '', gaps: [], done: true, proposal: { gap: 'everything', say } }));
+    const { service, created } = askGroundwork({ groundsService: { contextChat } });
+    const reply = await service.respond('org-a', 'p1', 'z'.repeat(500), 'g1', true);
+    const proposal = reply.blocks.find((b: any) => b.type === 'proposal') as any;
+    expect(proposal.summary).toBe(say);
+    expect(created[0].summary).toBe(say);
+    expect(created[0].summary).toContain('\n- Shops signed: 4\n- Deposits paid: 10\n');
+    expect(created[0].payload.history.at(-1)).toEqual({ role: 'assistant', content: say });
+  });
+});

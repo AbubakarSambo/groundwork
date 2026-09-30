@@ -2066,7 +2066,12 @@ export class AssistantService {
           personExternalId: who,
           kind: 'context',
           summary: result.proposal.say,
-          payload: { groundId, said, history } as never,
+          /*
+           * THE SAY-BACK IS PART OF THE HISTORY THE YES IS GIVEN, as it is on the old route, where the
+           * client holds the conversation. A yes to a paste's list writes what participants are told only
+           * when that sentence was in the list the lead read, and it can only tell from the list itself.
+           */
+          payload: { groundId, said, history: [...history, { role: 'assistant' as const, content: result.proposal.say }] } as never,
         },
       });
       return {
