@@ -680,3 +680,35 @@ Code: `api/src/modules/board/the-switchboards-own-sections.ts` (the builders) an
 For the screens. Thirteen of the 22 needed no new field, and are in the table above under "Served already" with the field to map each to (`G2_SECTION_TO_BOARD_SECTION` can now point Work plan to `workPlan`, Timeline to `timeline`, Person history to `personHistory`, Risks to `risks`, Blocker check to `blockerCheck`, Evidence index to `evidenceIndex`, Busy or moving to `busyOrMoving`, Coaching to `coaching`, Lead actions to `theJudgement.whatToDo`, Deal grid, Obligations and Themes to `workRecords`, Themes also to `whatTheRoomIsAbout`, The other side and Contradictions to `divergence`, Who waited on whom to `dependencies`, Commitments followed over time and Requirements review to `overTime`, Pattern history to `patterns`, Questions for the lead to `decisions`).
 
 Left, and why. Forecast: the record holds no projected figure, so nothing is served (the work-record section still says "not known" for sales org and MarketView Q4). Where the time went: the record does not hold how anybody's time was spent, so nothing is served. Contradictions inside one person's own answers across sessions, and a contract's own clauses for Obligations: not in the record, not served. `overTime` is still served to the lead only, so the lead's Commitments followed over time, Actions and their results and Requirements review read from it; the other readers get their own commitments in `workPlan`.
+
+## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
+
+### The ending page (`GET /grounds/:groundId/resolution`)
+
+The read the ending page already makes now also carries `theEndingPage`. It is built on the server for whoever is reading, after the read has refused anybody who may not read the check-in (an admin without access to a performance plan, a promotion or a renewal still gets "You are not part of this check-in." and nothing else).
+
+| Field | Who reads it | Shape |
+| --- | --- | --- |
+| `theEndingPage.reader` | everybody | `'lead'`, `'person'` or `'admin'` |
+| `theEndingPage.suggestions` | the lead only, and only once the person has had their turn (decision 53) | The week-10 `ForTheLead` shape: `id`, `aboutName`, `headline`, `why`, `whatWouldChangeIt`, `theirOwnAnswer`, `ifYouAgree`, `otherChoices`, `decision`, `mayChangeTheDecision`, `conversationPoints`. No count, no verdict. Decide with `POST /suggestions/:id/decision`. |
+| `theEndingPage.aboutYou` | the person, and a colleague only for what is about them | The week-10 `ForThePerson` shape: `facts` (their own count, theirs alone), `whatWouldChangeIt`, `decision` with `reasons`, `yourSide`, `mayAppeal`. Never the headline, the lead's why, or the verdict. |
+| `theEndingPage.appealed` | an admin | Suggestions only once appealed (`ForAnAdmin`). |
+| `theEndingPage.signals` | the lead, the admin who set the check-in up, and each person for their own | `[{ id, participantId, yours, heading, whatHappened, howOften, theirWords, whoSeesIt }]`. The same rule as every other pattern (three check-ins, the person first, never every admin). A person is an id for you to place, never joined to a name. |
+| `theEndingPage.questions` | the lead only | `[{ aboutName, question }]`. |
+
+What a lead reads, for a person the suggestion was reached for:
+
+- "Groundwork suggests extra support for Kwame"
+- Why: "Commitments have been kept less often than Groundwork looks for, over several check-ins."
+- What would change it: "Keeping more of what is agreed, over the next few check-ins."
+- Questions: "Were Kwame's goals clear enough from the first day?" and "Is there something Kwame needed from you or from the team that has not been given yet?"
+
+What the person reads: "In the last few check-ins, you kept 2 of 8 commitments. That is 25 in 100. When fewer are kept than Groundwork looks for, Groundwork suggests extra support to your lead." and, once decided, the decision with its reasons.
+
+Until the threshold in decision 61 is crossed (fewer than half kept, at least 6 settled), there is no suggestion, so `suggestions` and `aboutYou` are empty lists, and the page should draw nothing for them rather than a line saying nothing was found.
+
+### Reviews (`/suites/reviews`)
+
+- `GET` the board: each `next[]` row now has `proposal`, a sentence when Groundwork proposed the review itself, else `null`. "Groundwork suggests a review for Kwame, because a check-in about Kwame's work has ended. Nothing is sent to Kwame unless you say yes." or "Groundwork suggests a review for Kwame, because your organisation asked for reviews on a regular date and this is the next one. Nothing is sent to Kwame unless you say yes." Show it beside "Start it". `mayStart` is unchanged: only whoever writes the review with the person may say yes.
+- `POST` start is unchanged, and is the only thing that starts a review. Nothing starts one on its own, and nothing is sent to the person before it.
+- One review: the writer's shape has `suggestion`, the week-10 lead shape for that person on a check-in the writer runs (or `null`). `noticed` is now written from the record when the writer says yes: "Wairimu decided on “Extend evaluation period” at the end of “Kwame, first 90 days” on 20 September 2026, and said why, “He needs another month on the supermarket accounts”." All marked `proven`. No rating, no label, no count of what was kept. A line from an evaluation check-in is read by the writer and the person only.
