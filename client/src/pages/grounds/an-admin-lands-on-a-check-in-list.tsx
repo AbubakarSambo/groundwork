@@ -15,11 +15,15 @@ import { Button, Tag } from '@/components/gw/kit'
  * Plan and billing, each with its line. Suites came with its page (U.17). Connections names WhatsApp
  * only while WhatsApp is switched on in Groundwork.
  *
- * WHAT IS HELD. The welcome card's sentence "You can see every board and report. They never see
- * anyone's questions to Ask Groundwork, anyone's own report, or a lead's private notes." goes further
- * than the rule for people and access (an admin reads a performance plan or exact words only with
- * access to that check-in), and "They" points at nobody. It is left out until Hafsah decides, so the
- * card says who they are and "Got it".
+ * WHAT USED TO BE HELD, ANSWERED 29 September, item 11 conflict B. The welcome card's old sentence,
+ * "You can see every board and report. They never see anyone's questions to Ask Groundwork, anyone's
+ * own report, or a lead's private notes.", went further than decision 5 (an admin reads a performance
+ * plan only with access to that check-in) and "They" pointed at nobody. Hafsah's exact sentence
+ * replaces it, in the first person, naming the exceptions decision 5 now covers - a performance plan,
+ * a promotion or a renewal alike, corrected the same day (item 11 answer 4): "You can see every board
+ * and report, including what people said in them. You never see anyone's questions to Ask Groundwork,
+ * anyone's own report, or a lead's private notes, and never a performance plan, promotion or renewal
+ * unless given access to that check-in."
  *
  * WHAT IS OURS. The prototype's code has a line under each step and a "Do it" button; no screen
  * shows them, so only the step names, "Do it" and "Done" are used. "Connect WhatsApp (optional)" is
@@ -99,6 +103,11 @@ export function AdminFirstRun() {
             <h2>You’re an admin at {orgName}</h2>
             <Button kind="quiet" size="small" onClick={() => gotIt.mutate()} disabled={gotIt.isPending}>Got it</Button>
           </div>
+          <p className="gw-welcome-card-line">
+            You can see every board and report, including what people said in them. You never see anyone’s
+            questions to Ask Groundwork, anyone’s own report, or a lead’s private notes, and never a
+            performance plan, promotion or renewal unless given access to that check-in.
+          </p>
           <ul className="gw-welcome-doors">
             {doorsFor(data).map(d => (
               <li key={d.to}>

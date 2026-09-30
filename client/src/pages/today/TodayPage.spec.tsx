@@ -125,8 +125,12 @@ describe('Today, for a new organisation’s admin', () => {
     expect(screen.getByText('Nothing needs you right now.')).toBeTruthy()
     expect(screen.getByText('Wednesday 23 September.')).toBeTruthy()
     expect(screen.queryByText(/most important first/)).toBeNull()
-    /* The held sentence stays out until Hafsah decides it. */
-    expect(document.body.textContent).not.toMatch(/You can see every board and report|They never see/)
+    /* Answered 29 September, item 11 conflict B: Hafsah's exact sentence, naming the exceptions
+       decision 5 now covers (a performance plan, promotion or renewal alike), replaces the old
+       held sentence that pointed "They" at nobody. */
+    expect(screen.getByText(
+      'You can see every board and report, including what people said in them. You never see anyone’s questions to Ask Groundwork, anyone’s own report, or a lead’s private notes, and never a performance plan, promotion or renewal unless given access to that check-in.',
+    )).toBeTruthy()
   })
 })
 
