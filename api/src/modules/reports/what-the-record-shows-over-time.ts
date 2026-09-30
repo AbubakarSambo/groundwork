@@ -40,6 +40,14 @@ export interface ACommitmentOverTime {
   /** How it was settled: SAID, PROVEN or CONFIRMED (week 9). Null while open or not known. */
   settledBy?: string | null;
   fromAPaste?: boolean;
+  /**
+   * Whether `what` (and, separately, `when`) is a passage of what the person actually typed, stamped
+   * once when the commitment is written (conversation.service.ts, `saidWordForWord`/
+   * `whenSaidWordForWord`). A model's own copy of a commitment is usually close but not exact, so
+   * only a row stamped true here may be shown inside quotation marks. See aCommitmentSaid.
+   */
+  saidWordForWord?: boolean;
+  whenSaidWordForWord?: boolean;
   /** The product's sentence about it, sessions and all. */
   say: string;
 }
@@ -125,6 +133,9 @@ export interface ACommitmentRow {
   saidAgainIn: number[];
   /** How it was settled: SAID, PROVEN or CONFIRMED (week 9). Null while open. */
   settledBy?: string | null;
+  /** Stamped when the row is written; see ACommitmentOverTime above. */
+  saidWordForWord?: boolean | null;
+  whenSaidWordForWord?: boolean | null;
 }
 
 export function commitmentsOverTime(
@@ -147,9 +158,35 @@ export function commitmentsOverTime(
       theySaidIt: !!c.explicit,
       settledBy: c.settledBy ?? null,
       fromAPaste: c.source === 'PASTE',
+      saidWordForWord: c.saidWordForWord === true,
+      whenSaidWordForWord: c.whenSaidWordForWord === true,
     };
     return { ...row, say: aCommitmentSaid(row, sessionsSoFar) };
   });
+}
+
+/**
+ * A WORD SAYING WHETHER `s` READS AS A TIME OR A DATE, so a `whenSaid` that is not one of those is
+ * never read out as though it were.
+ *
+ * Caught on run 20 (24-scenario run, 30 September 2026): a commitment's `text` had landed in a report
+ * as though it were the time given for it, and "lead that review with the team" is not a time at all.
+ * Short, and holding a day, a month, a number, or a word like "next" or "soon" that only makes sense
+ * about when something happens: that is what a person's answer to "when" actually looks like.
+ */
+const A_TIME_OR_DATE = /\b(?:today|tomorrow|tonight|yesterday|next|this|last|by|before|after|soon|asap|now|end of|week|weeks|month|months|day|days|year|years|session|sessions|morning|afternoon|evening|night|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t)?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|q[1-4]|quarter|deadline|\d)\b/i;
+export function looksLikeATimeOrADate(s: string): boolean {
+  const words = s.trim().split(/\s+/).filter(Boolean);
+  if (!words.length || words.length > 8) return false;
+  return A_TIME_OR_DATE.test(s);
+}
+
+/** A fragment made into its own sentence: capitalised, and ending on a full stop. Their words, unchanged. */
+function asASentence(text: string): string {
+  const t = text.trim();
+  if (!t) return t;
+  const capped = t[0].toUpperCase() + t.slice(1);
+  return /[.!?]$/.test(capped) ? capped : `${capped}.`;
 }
 
 /**
@@ -161,9 +198,24 @@ export function commitmentsOverTime(
  * says how it was settled (SAID on the person's own word, PROVEN by a document they added, CONFIRMED
  * by the colleague who received it), and the sentence says that. The person's quoted words are kept
  * exactly. No pronoun is guessed: the name is used again.
+ *
+ * AND QUOTATION MARKS GO ROUND A COMMITMENT'S TEXT OR TIME ONLY WHEN THOSE ARE ITS OWN WORDS.
+ * `GroundCommitment.text` and `.whenSaid` are a model's reading of a check-in, and 6 of 604 served
+ * quotes in run 20 (30 September 2026) were not, character for character, in the record they claimed
+ * to be from - once a commitment's `text`, once a `whenSaid` that read like the commitment itself
+ * ("lead that review with the team"), never anybody's exact words. `saidWordForWord` and
+ * `whenSaidWordForWord` are stamped once, when the row is written (conversation.service.ts), true
+ * only where the words are a passage of what the person typed in that session. Where either is false,
+ * the marks come off and the sentence says plainly that it is what the person committed to, never
+ * that these are their words, and names the person again rather than guessing a pronoun. A `when`
+ * that does not read as a time or a date at all is left out rather than mislabelled as one.
  */
 export function aCommitmentSaid(
-  c: { who: string; what: string; when: string | null; statedInSession: number | null; restatedIn: number[]; status: string; theySaidIt: boolean; settledBy?: string | null; fromAPaste?: boolean },
+  c: {
+    who: string; what: string; when: string | null; statedInSession: number | null; restatedIn: number[];
+    status: string; theySaidIt: boolean; settledBy?: string | null; fromAPaste?: boolean;
+    saidWordForWord?: boolean; whenSaidWordForWord?: boolean;
+  },
   sessionsSoFar: number,
 ): string {
   const who = c.who;
@@ -172,16 +224,27 @@ export function aCommitmentSaid(
   const open = status === 'UNKNOWN';
   const sessionsOpen = stated !== null ? Math.max(0, sessionsSoFar - stated) : null;
   const out: string[] = [];
+  const quoteWhat = c.saidWordForWord === true;
+  const quoteWhen = c.whenSaidWordForWord === true;
 
   if (!c.theySaidIt) {
-    out.push(stated !== null
-      ? `In session ${stated}, the lead said that ${who} would do this, "${c.what}"`
-      : `The lead said that ${who} would do this, "${c.what}"`);
+    out.push(quoteWhat
+      ? (stated !== null
+        ? `In session ${stated}, the lead said that ${who} would do this, "${c.what}"`
+        : `The lead said that ${who} would do this, "${c.what}"`)
+      : (stated !== null
+        ? `In session ${stated}, the lead committed ${who} to this. ${asASentence(c.what)}`
+        : `The lead committed ${who} to this. ${asASentence(c.what)}`));
     out.push(`${who} did not say it.`);
-  } else if (stated !== null) out.push(`In session ${stated}, ${who} said, "${c.what}"`);
-  else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} is down to do this, "${c.what}"`);
-  else out.push(`${who} said, "${c.what}"`);
-  if (c.when) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was "${c.when}".`);
+  } else if (quoteWhat) {
+    if (stated !== null) out.push(`In session ${stated}, ${who} said, "${c.what}"`);
+    else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} is down to do this, "${c.what}"`);
+    else out.push(`${who} said, "${c.what}"`);
+  } else if (stated !== null) out.push(`In session ${stated}, ${who} committed to this. ${asASentence(c.what)}`);
+  else if (c.fromAPaste) out.push(`In what the lead pasted in, ${who} is down to do this. ${asASentence(c.what)}`);
+  else out.push(`${who} committed to this. ${asASentence(c.what)}`);
+  if (c.when && quoteWhen) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was "${c.when}".`);
+  else if (c.when && looksLikeATimeOrADate(c.when)) out.push(`The time ${c.theySaidIt ? who : 'the lead'} gave for it was ${c.when}.`);
   if (c.restatedIn.length) {
     out.push(`${who} said it again in ${c.restatedIn.length === 1 ? `session ${c.restatedIn[0]}` : `sessions ${listed(c.restatedIn)}`}.`);
   }
@@ -518,7 +581,11 @@ export function toSettleFirst(o: {
   const restated = theOnesStillOpen(o.commitments).filter((c) => c.restatedIn.length >= 2);
   if (restated.length) {
     const first = restated[0];
-    out.push(`"${first.what}" has been said again in ${first.restatedIn.length} sessions and nobody has said whether it happened. Ask ${first.who} what it is waiting on, and decide whether it is still wanted.`);
+    /* Quoted only where `what` is the person's own words; otherwise said plainly, unquoted. */
+    const what = first.saidWordForWord === true
+      ? `"${first.what}"`
+      : first.what.trim().replace(/[.!?]+$/, '').replace(/^\p{Ll}/u, (c) => c.toUpperCase());
+    out.push(`${what} has been said again in ${first.restatedIn.length} sessions and nobody has said whether it happened. Ask ${first.who} what it is waiting on, and decide whether it is still wanted.`);
   }
 
   const inside = o.dependencies.filter((d) => !d.chased && d.onParticipantId);

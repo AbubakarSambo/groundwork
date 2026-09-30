@@ -4121,6 +4121,7 @@ happened, and what is in the way.`;
         select: {
           participantId: true, text: true, whenSaid: true, explicit: true, status: true, source: true,
           statedInSession: true, saidAgainIn: true, settledBy: true,
+          saidWordForWord: true, whenSaidWordForWord: true,
         },
       }) ?? Promise.resolve([])).catch(() => [] as any[]),
       (this.prisma.groundDependency?.findMany?.({
