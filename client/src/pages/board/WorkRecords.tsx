@@ -21,8 +21,10 @@ const KIND_OF_WORK_SENTENCE: Record<KindOfWork, string> = {
   'trader training programme': 'This check-in is about a trader training programme.',
   "founder's own check-in": "This is a founder's own check-in, about their own commitments and decisions.",
   'asset loans': 'This check-in is about asset loans and their repayments.',
-  'MarketView where next': 'This check-in is about MarketView, choosing where to focus next.',
-  'MarketView Q4': "This check-in is about MarketView's Q4 numbers.",
+  /* Re-review, 30 September: "MarketView" is an example company's name, not a plain word for the
+     kind of work - the same fix already made to the chooser's own options, below. */
+  'MarketView where next': 'This check-in is about choosing where to focus next.',
+  'MarketView Q4': 'This check-in is about subscriptions, what was said and what was paid.',
   'a law firm matter': 'This check-in is about a law firm matter.',
   'a government programme': 'This check-in is about a government programme.',
 }
@@ -302,12 +304,12 @@ function WorkItemForm({ section, participants, editing, onClose, onSaved, onRemo
           </div>
         )}
         <div>
-          <FieldLabel htmlFor="work-item-name">Name</FieldLabel>
+          <FieldLabel htmlFor="work-item-name">What is it called?</FieldLabel>
           <TextField id="work-item-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Its name, as you would say it" />
         </div>
         {!!section.stages?.length && (
           <div>
-            <FieldLabel htmlFor="work-item-stage">Stage</FieldLabel>
+            <FieldLabel htmlFor="work-item-stage">Which stage is it at?</FieldLabel>
             <Select id="work-item-stage" value={stage} onChange={(e) => setStage(e.target.value)}>
               <option value="">No stage said yet</option>
               {section.stages.map((s) => <option key={s} value={s}>{s}</option>)}

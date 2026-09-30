@@ -28,6 +28,9 @@ export interface Row {
   nameIsTheirRole?: boolean
   target: number | null
   count: number
+  /** What the number counts (the matching objective's own name, e.g. "shops in Westlands") - so
+      the count reads as a sentence, not a bare "0 of 4" (re-review, 30 September). */
+  targetName?: string | null
   reason: Reason
   /** What happened and what would change it, a full sentence from the server. Shown under the pill in place of a fixed phrase. */
   says: string
@@ -37,6 +40,15 @@ export interface Row {
   hasGap?: boolean
   /** What keeps coming up about this person's work, one plain sentence (board-as-lead.txt, "The team today"). */
   keepsComingUp?: string | null
+  /**
+   * RE-REVIEW, 30 SEPTEMBER: "Nothing to do" beside Amani while the same board tells the reader
+   * "Amani Wekesa has been waiting 2 days on you for the price list." `reason` itself is the
+   * engine's own classification (board.service.ts), not invented here - but the board already
+   * knows, from its own "Waiting on" handoffs, when this person is waiting on the reader, and a
+   * tag that contradicts a sentence three sections down is still wrong to show. Only overrides
+   * the label when the engine's own reason is "nothing to do"; every other reason stands.
+   */
+  waitingOnReader?: boolean
 }
 
 /** The tag's label for each reason, sentence case throughout - not just "Nothing checkable". */
@@ -93,10 +105,13 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
         >
           <div style={{ minWidth: 0 }}>
             {/* The number, where they have one. A person with no target of their own still has a
-                row: what to do about them does not depend on somebody having set them a figure. */}
+                row: what to do about them does not depend on somebody having set them a figure.
+                RE-REVIEW, 30 SEPTEMBER: a bare "0 of 4" read as a stray fragment - it is what the
+                number counts, said as a sentence, using the matching objective's own name where
+                the server sent one. */}
             {r.target != null && (
-              <div className="gwui-fs-13-5 gwui-ink-sub" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {r.count} of {r.target}
+              <div className="gwui-fs-13-5 gwui-ink-sub" style={{ lineHeight: 1.5 }}>
+                {r.who} has {r.count === 0 ? 'none' : r.count} of {r.count === 0 ? 'their' : 'the'} {r.target} {r.targetName ?? (r.target === 1 ? 'target' : 'targets')}{r.count === 0 ? ' yet' : ' so far'}.
               </div>
             )}
             <div className="gwui-fs-15 gwui-ink-sub gwui-mt-2" style={{ lineHeight: 1.5 }}>{r.says}</div>
@@ -111,7 +126,9 @@ export function WhereEachPersonIs({ rows, squaresFor }: { rows: Row[]; squaresFo
               <div className="gwui-fs-13-5 gwui-ink-muted gwui-mt-4" style={{ lineHeight: 1.5 }}>{r.keepsComingUp}</div>
             )}
           </div>
-          <Tag tone={TONE[r.reason]}>{LABEL[r.reason]}</Tag>
+          {r.reason === 'nothing to do' && r.waitingOnReader
+            ? <Tag tone="attention">Waiting on you</Tag>
+            : <Tag tone={TONE[r.reason]}>{LABEL[r.reason]}</Tag>}
           {/* The last-10 squares, the same mark and the same data "Who checked in" draws, in their
               own fixed-width column so they line up across every row. */}
           {squaresFor ? (
