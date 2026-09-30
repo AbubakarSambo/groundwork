@@ -49,7 +49,7 @@ What was proven through Ask Groundwork, and what was not:
 - "Yes" saves them through the same code the old chat and the check-in use (now one shared piece, not three copies). "No" saves nothing, and a second "yes" saves nothing twice.
 - New tests through Ask Groundwork: a participant typing any setup message gets nothing said back and nothing saved; a pasted target lands on the named person, a team number on nobody, and two people with the same first name on neither; a change to a recorded line waits for a yes; a colleague is not told someone else's number; a bank number in a message never reaches the model or storage; the same paste confirmed twice is saved once. 2,063 tests pass in the four folders.
 - Still to check live, because they live only in the model's instructions: a lead saying someone is struggling, an expectation of a named person, opening on what is already there, and success restated with a reason. These wait for the model to be reachable.
-- One wording fault seen: the document's own description can be a fragment ("A Q4 sales target sheet."). The old Context page shows the same text. To fix with the next wording pass.
+- **Fixed:** a document's own description could be a fragment ("A Q4 sales target sheet."). It now reads "It looks like a Q4 sales target sheet.", and a description that is already a sentence is kept as it is. The same guard now covers the short points on a document's card on the Context page (`563d4f56`, `5e56d16e`). The instruction to the model asks for a full sentence too, and no stored version can override it.
 
 **Step 2: why patterns repeat so little between runs. The detector itself is unsteady.**
 
