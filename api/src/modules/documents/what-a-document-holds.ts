@@ -134,7 +134,7 @@ export interface WhatLanded {
   fileName: string;
   whatItIs?: string | null;
   /** Per-person rows that reached the record, with the person named as this reader may see them. */
-  forOnePerson: { who: string; what: string; target: number; by?: string | null; page?: number }[];
+  forOnePerson: { who: string; what: string; target: number; by?: string | null; page?: number; ownerParticipantId?: string | null }[];
   forEverybody: { what: string; target: number; kind?: string | null; by?: string | null; page?: number }[];
   dates: { what: string; when: string; page?: number }[];
   /** How many pages the file has, when its text carries them (a PDF with a text layer). */
@@ -165,7 +165,21 @@ export const BANK_DETAILS_LEFT_OUT = { what: 'Bank account details', why: 'Never
  * `asking` adds the question at the end, which the chat wants and a page does not: a page is a
  * statement of what is on record, and a question on a page is a question nobody can answer.
  */
-export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; willNoteIt?: { visibility?: string | null } } = {}): string | null {
+/**
+ * WHO IS READING IT. The reader is "you" in a sentence the product writes, so a number that is the
+ * reader's own reads "Your target for cookers delivered is 3." and never "Amani Wekesa's target" to
+ * Amani herself. Matched on the participant the number was kept against, and, for a read that
+ * predates that, on the reader's own name.
+ */
+export interface WhoIsReading { participantId?: string | null; name?: string | null }
+
+const sameName = (a?: string | null, b?: string | null): boolean =>
+  !!a && !!b && a.trim().toLowerCase().replace(/\s+/g, ' ') === b.trim().toLowerCase().replace(/\s+/g, ' ');
+
+export const isTheReader = (row: { who: string; ownerParticipantId?: string | null }, reader?: WhoIsReading | null): boolean =>
+  !!reader && ((!!reader.participantId && row.ownerParticipantId === reader.participantId) || sameName(row.who, reader.name));
+
+export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; willNoteIt?: { visibility?: string | null }; reader?: WhoIsReading | null } = {}): string | null {
   const something = held.forOnePerson.length || held.forEverybody.length || held.dates.length || held.unmatched.length;
   if (!something) return null;
   /*
@@ -186,7 +200,7 @@ export function theContextWeHave(held: WhatLanded, opts: { asking?: boolean; wil
   }
   if (held.forOnePerson.length) {
     lines.push('');
-    for (const t of held.forOnePerson) lines.push(`${t.who}'s target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`);
+    for (const t of held.forOnePerson) lines.push(`${isTheReader(t, opts.reader) ? 'Your' : `${t.who}'s`} target for ${t.what} is ${fmt(t.target)}${byWhen(t.by)}.`);
   }
   if (held.dates.length) {
     lines.push('');

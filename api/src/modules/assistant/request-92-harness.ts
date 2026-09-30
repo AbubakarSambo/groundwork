@@ -7,6 +7,9 @@ import { AssistantService } from './assistant.service';
  */
 export function askGroundwork(opts: {
   userId?: string;
+  displayName?: string;
+  participants?: any[];
+  documents?: any[];
   role?: string;
   sessions?: { groundId: string; label: string; checkInId: string; standing: string }[];
   groundsService?: any;
@@ -18,14 +21,14 @@ export function askGroundwork(opts: {
   const grounds = opts.grounds ?? [{ id: 'g1', label: 'Sales team, Q3', initiatorId: 'lead-1', organizationId: 'org-a' }];
   const created: any[] = [];
   const prisma: any = {
-    person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', displayName: 'Rukia Otieno', active: true, linkedUserId: opts.userId ?? 'lead-1' })) },
+    person: { findFirst: jest.fn(async () => ({ id: 'p1', externalId: 'u-1', displayName: opts.displayName ?? 'Rukia Otieno', active: true, linkedUserId: opts.userId ?? 'lead-1' })) },
     user: { findUnique: jest.fn(async () => ({ role: opts.role ?? 'MEMBER', organizationId: 'org-a' })) },
     ground: {
       findMany: jest.fn(async () => grounds),
       findFirst: jest.fn(async ({ where }: any) => grounds.find((g) => g.id === where.id) ?? null),
     },
-    groundParticipant: { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null) },
-    groundDocument: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({ id: 'd1' })) },
+    groundParticipant: { findMany: jest.fn(async () => opts.participants ?? []), findFirst: jest.fn(async () => null) },
+    groundDocument: { findMany: jest.fn(async () => opts.documents ?? []), create: jest.fn(async () => ({ id: 'd1' })) },
     documentElsewhere: { create: jest.fn(async () => ({ id: 'e1' })) },
     assistantTurn: { count: jest.fn(async () => 5), createMany: jest.fn(async () => ({ count: 2 })), findMany: jest.fn(async () => []) },
     assistantProposal: {

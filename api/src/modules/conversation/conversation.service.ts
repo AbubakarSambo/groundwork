@@ -9783,7 +9783,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         select: { id: true, holds: true },
       });
       if (!docs.length) return nowMatched;
-      const said = docs.map((d) => theContextWeHave(d.holds as any, { asking: true })).filter(Boolean) as string[];
+      const said = docs.map((d) => theContextWeHave(d.holds as any, { asking: true, reader: { participantId: checkIn.participantId } })).filter(Boolean) as string[];
       await this.prisma.groundDocument.updateMany({ where: { id: { in: docs.map((d) => d.id) } }, data: { holdsSaidAt: new Date() } });
       return [nowMatched, ...said].filter(Boolean).join('\n\n') || null;
     } catch (err: any) {

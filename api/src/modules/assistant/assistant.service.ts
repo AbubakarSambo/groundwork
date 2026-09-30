@@ -802,7 +802,7 @@ export class AssistantService {
     organizationId: string,
     personId: string,
     groundId?: string,
-  ): Promise<{ documentId: string; groundId: string; fileName: string; holds: WhatLanded; visibility: string | null } | null> {
+  ): Promise<{ documentId: string; groundId: string; fileName: string; holds: WhatLanded; visibility: string | null; participantId: string | null } | null> {
     const person = await this.prisma.person.findFirst({
       where: { id: personId, organizationId },
       select: { linkedUserId: true },
@@ -818,13 +818,13 @@ export class AssistantService {
       where: { participantId: { in: participants.map((p) => p.id) }, NOT: { holds: { equals: null as any } } },
       orderBy: { createdAt: 'desc' },
       take: 5,
-      select: { id: true, fileName: true, holds: true, groundId: true, visibility: true },
+      select: { id: true, fileName: true, holds: true, groundId: true, visibility: true, participantId: true },
     });
     for (const d of docs) {
       const holds = (d.holds ?? {}) as any;
       const waiting: { name: string; target: number; ownerParticipantId: string | null }[] = Array.isArray(holds.waiting) ? holds.waiting : [];
       if (holds.takenAt || !waiting.length) continue;
-      return { documentId: d.id, groundId: d.groundId, fileName: d.fileName, holds, visibility: (d as any).visibility ?? null };
+      return { documentId: d.id, groundId: d.groundId, fileName: d.fileName, holds, visibility: (d as any).visibility ?? null, participantId: (d as any).participantId ?? null };
     }
     return null;
   }
@@ -839,10 +839,15 @@ export class AssistantService {
   private async proposeDocumentNumbers(
     organizationId: string,
     who: string,
-    waiting: { documentId: string; groundId: string; fileName: string; holds: WhatLanded; visibility?: string | null },
+    waiting: { documentId: string; groundId: string; fileName: string; holds: WhatLanded; visibility?: string | null; participantId?: string | null },
   ): Promise<Reply> {
     /* The yes writes a note everyone reads (writeADocumentsNumbers, addNote), so it is said here first. */
-    const said = theContextWeHave(waiting.holds, { willNoteIt: { visibility: waiting.visibility } });
+    /* The reader is "you": a number of their own reads "Your target for ...", never their own name. */
+    const me = await this.prisma.person.findFirst({ where: { externalId: who, organizationId }, select: { displayName: true } }).catch(() => null);
+    const said = theContextWeHave(waiting.holds, {
+      willNoteIt: { visibility: waiting.visibility },
+      reader: { participantId: waiting.participantId ?? null, name: me?.displayName ?? null },
+    });
     /* Cannot happen in practice - `waitingDocumentFor` only returns a document whose `waiting` array
        is non-empty, and that is exactly what makes `theContextWeHave` return something. Guarded
        anyway rather than trusting that link never breaks. */
@@ -2057,7 +2062,7 @@ export class AssistantService {
     const history: { role: 'user' | 'assistant'; content: string }[] = said.trim()
       ? (priorHistory ? [...priorHistory, { role: 'user', content: said }] : [{ role: 'user', content: said }])
       : (priorHistory ?? []);
-    const result = await this.grounds.contextChat(groundId, userId, history);
+    const result = await this.grounds.contextChat(groundId, userId, history, { yesOrNo: true });
 
     if (result.proposal) {
       const proposal = await this.prisma.assistantProposal.create({

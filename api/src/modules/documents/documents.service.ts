@@ -128,9 +128,9 @@ function toDocShape(
     /* WHAT IT HOLDS, ON THE CARD. Read once at upload and kept, so the Context tab says the same
        sentence the chat said rather than a filename and a date. See what-a-document-holds. */
     holds: doc.holds ?? null,
-    theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any) : null,
+    theContextWeHave: doc.holds ? theContextWeHave(doc.holds as any, { reader: { participantId: viewerParticipantId } }) : null,
     /* The same sentence with the question on it, for the conversation that is waiting on the read. */
-    askingAboutIt: doc.holds ? theContextWeHave(doc.holds as any, { asking: true, willNoteIt: { visibility: (doc as any).visibility } }) : null,
+    askingAboutIt: doc.holds ? theContextWeHave(doc.holds as any, { asking: true, willNoteIt: { visibility: (doc as any).visibility }, reader: { participantId: viewerParticipantId } }) : null,
     /* ITEM BY ITEM, WITH PAGES (week 14, request 6c): what it took, and what it left out and why.
        Served on the same rows as `holds`, so to exactly the people who may see this document. */
     read: aDocumentReadItemByItem(doc.holds as any),
@@ -599,7 +599,7 @@ export class DocumentsService {
       if (held.has(`${who.id}::${name.toLowerCase()}`)) continue;
       held.add(`${who.id}::${name.toLowerCase()}`);
       toWrite.push({ groundId, name, target: Math.round(r.target), ownerParticipantId: who.id, setByParticipantId: participantId, sortOrder: sortOrder++ });
-      forOnePerson.push({ who: nameOf(who as any), what: name, target: Math.round(r.target), by: r.by?.trim() || null });
+      forOnePerson.push({ who: nameOf(who as any), what: name, target: Math.round(r.target), by: r.by?.trim() || null, ownerParticipantId: who.id });
     }
 
     /* The group's own numbers. A participant may add one: a total in a plan is not a claim about anybody. */

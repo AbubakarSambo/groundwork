@@ -90,3 +90,24 @@ describe('point 6: what the lead is shown for a paste is stored as shown, with t
     expect(created[0].payload.history.at(-1)).toEqual({ role: 'assistant', content: say });
   });
 });
+
+describe('point 7: a document said back to its own reader says "your"', () => {
+  it('Amani, on her own document, reads "Your target", never her own name', async () => {
+    const { service } = askGroundwork({
+      userId: 'member-1', displayName: 'Amani Wekesa',
+      participants: [{ id: 'pA', groundId: 'g1' }],
+      documents: [{
+        id: 'd1', fileName: 'Q3 targets.xlsx', groundId: 'g1', participantId: 'pA', visibility: 'OWN',
+        holds: {
+          fileName: 'Q3 targets.xlsx', whatItIs: 'It is a Q3 target sheet.', forEverybody: [], dates: [], unmatched: [],
+          forOnePerson: [{ who: 'Amani Wekesa', what: 'cookers delivered', target: 3, by: '9 October', ownerParticipantId: 'pA' }],
+          waiting: [{ name: 'cookers delivered', target: 3, ownerParticipantId: 'pA' }], takenAt: null,
+        },
+      }],
+    });
+    const reply = await service.respond('org-a', 'p1', "I've uploaded it");
+    expect(textOf(reply)).toContain('Your target for cookers delivered is 3 by 9 October.');
+    expect(textOf(reply)).not.toContain('Amani Wekesa');
+    expect(textOf(reply)).not.toMatch(/\bground\b/i);
+  });
+});

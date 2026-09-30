@@ -41,7 +41,10 @@ describe('the setup chat goes through the boundary', () => {
      * which reads structurally for a question rather than by pattern - see
      * nothing-proposed-that-nobody-said.ts.
      */
-    expect(CHAT).toContain('const withoutFalsePromises = changeSay ?? whatTheModelsReplyShows(reply, proposal.kind !== \'none\');');
+    /* Request 92, point 7: the model's own text also loses any sentence with the bare word "ground", and
+       says nothing at all beside a Yes and No answer (Ask Groundwork). */
+    expect(CHAT).toContain("whatTheModelsReplyShows(withoutTheWordGround(reply), proposal.kind !== 'none')");
+    expect(CHAT).toContain("const withoutFalsePromises = changeSay ?? (yesOrNoOnly ? '' :");
     expect(CHAT).toContain('const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;');
     expect(CHAT).toContain('let replyText = forHumans(openedOn ? `${openedOn} ${spokenReply}`.trim() : spokenReply);');
   });

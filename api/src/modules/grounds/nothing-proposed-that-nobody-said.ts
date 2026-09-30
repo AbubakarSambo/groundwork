@@ -128,7 +128,7 @@ export function traceableToWhatTheySaid(value: string | null | undefined, said: 
  * either way, so one piece of grammar covers it rather than a second copy of it.
  */
 const SUBJECT_AND_MODAL = "(?:i|we)(?:'ll|'m|'ve|\\s+will|\\s+am|\\s+have|\\s+are|\\s+can)";
-const RECORD_VERB = '(?:record(?:ing|ed)?|mark(?:ing|ed)?|keep(?:ing)?|kept|sav(?:e|ing|ed)|not(?:e|ing|ed)|log(?:ging|ged)|add(?:ing)?|write (?:that|this|it) down)';
+const RECORD_VERB = '(?:record(?:ing|ed)?|mark(?:ing|ed)?|keep(?:ing)?|kept|sav(?:e|ing|ed)|not(?:e|ing|ed)|log(?:ging|ged)|add(?:s|ed|ing)?|write (?:that|this|it) down)';
 /*
  * FOUND LIVE AGAIN, 30 September 2026, on the four live checks: a fifth phrasing slipped through
  * every door above, with a proposal attached that turn -
@@ -147,6 +147,8 @@ const PROMISES_TO_RECORD = new RegExp(
   `\\b${SUBJECT_AND_MODAL}\\b\\s*(?:going to\\s+)?(?:be\\s+)?(?:${RECORDING_ADVERB}\\s+){0,2}${RECORD_VERB}` +
     '|\\b(?:record|records|recording|recorded|mark|marks|marking|marked|note|notes|noting|noted|keep|keeps|keeping|kept)\\b(?:(?!\\.).){0,80}\\bas your (?:perspective|read|expectation|note)\\b' +
     '|(?:will be|has been|have been|is being) (?:recorded|marked|kept|saved|noted|logged)\\b' +
+    /* REQUEST 92, POINT 7: "... is added as what doing well looks like", said before any yes. */
+    '|\\b(?:is|are|was|were)\\s+(?:now\\s+|also\\s+|already\\s+)?(?:added|recorded|saved|stored|logged)\\b' +
     '|recording (?:that|this|it) as|keeping (?:that|this|it) as',
   'i',
 );
@@ -186,6 +188,17 @@ export function dropsAPromiseWithNothingToKeep(text: string, hasProposal: boolea
     }
   }
   return sentences.filter((_, i) => kept[i]).join('').trim();
+}
+
+/**
+ * THE PRODUCT'S WORD FOR A CHECK-IN IS "CHECK-IN". A sentence of the model's that still carries the
+ * bare word "ground" after the vocabulary pass (`forHumans` only converts it where a determiner
+ * governs it) is dropped rather than patched, because a person must never read it (request 92,
+ * point 7). Only the model's own text goes through this; a sentence the product writes never has it.
+ * "Groundwork" is a different word and is left alone.
+ */
+export function withoutTheWordGround(text: string): string {
+  return intoSentences(text).filter((s) => !/\bgrounds?\b/i.test(s)).join('').trim();
 }
 
 /** Whether a sentence, once its trailing whitespace is ignored, is a question. */

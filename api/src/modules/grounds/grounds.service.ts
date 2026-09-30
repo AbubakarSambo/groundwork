@@ -65,7 +65,7 @@ import { notTheWordParty } from '../reports/not-the-word-party';
 import { theSituationIn, theTellingHolds, THE_TELLING_PROMPT, withoutTheSetupAnswers } from './what-a-participant-is-told-about-this';
 import { whatSomeoneWhoDoesNotRunItReads } from './what-someone-who-does-not-run-it-reads';
 import { ABOUT_SOMEBODY, mayBeShared, theLinesFor, WHY_A_LINE_ABOUT_SOMEBODY_STAYS_YOURS } from './what-this-check-in-knows';
-import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows } from './nothing-proposed-that-nobody-said';
+import { nothingToTakeFrom, traceableToWhatTheySaid, aLengthTheyCouldHaveMeant, whatTheModelsReplyShows, withoutTheWordGround } from './nothing-proposed-that-nobody-said';
 import { whatTheyStillOweAShow } from './what-they-said-they-would-show';
 import { whatIsNotSettledAbout } from './a-target-nobody-has-defined';
 import {
@@ -2648,6 +2648,8 @@ export class GroundsService {
     groundId: string,
     requestingUserId: string,
     history: { role: 'user' | 'assistant'; content: string }[],
+    /** `yesOrNo`: the answer is given with a Yes and a No, as in Ask Groundwork. See the reply below. */
+    opts: { yesOrNo?: boolean } = {},
   ) {
     /* A pasted invoice or price list keeps no bank details, before the model reads it or any of it
        is kept. See documents/bank-details-are-never-kept. */
@@ -2658,11 +2660,13 @@ export class GroundsService {
         id: true, label: true, scenario: true, initiatorId: true, timelineDays: true,
         cadence: true, brief: true, timelineStated: true, cadenceStated: true,
         organizationId: true,
-        participants: { select: { id: true, managingOnly: true } },
+        participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* Who is reading what this says back: a line about them says "you". */
+    const reader = { participantId: ground.participants.find((p: any) => p.userId === requestingUserId)?.id ?? null };
     /**
      * SAME RULE AS THE NOTES. An admin in this organisation could release the report and close the
      * check-in and could not steer it - so covering for an absent lead meant being able to end the
@@ -2865,7 +2869,7 @@ export class GroundsService {
     if (fromAPaste) {
       /* What participants would be told, worked out now so it can be said back before the yes. */
       const told = await this.theTellingAPasteWouldWrite(groundId, fromAPaste).catch(() => null);
-      const say = whatWeTookFromThat(fromAPaste, { asking: true, told });
+      const say = whatWeTookFromThat(fromAPaste, { asking: true, told, reader });
       if (say) proposal = { kind: 'everything', say } as any;
     }
     /*
@@ -3048,7 +3052,14 @@ export class GroundsService {
      * the record now stays too, as an earlier version." Rule 2: a sentence the product writes never
      * passes through the model-sentence guard - only `reply`, the model's own text, does.
      */
-    const withoutFalsePromises = changeSay ?? whatTheModelsReplyShows(reply, proposal.kind !== 'none');
+    /*
+     * AND WHERE THE LEAD ANSWERS WITH A YES OR A NO, THE MODEL SAYS NOTHING BESIDE IT (request 92,
+     * point 7). The say-back is the one statement of what will be kept and ends in its own question,
+     * so a question of the model's beside it would be a second one the person must type to answer
+     * while two buttons wait under it. The next turn carries on with what is still open.
+     */
+    const yesOrNoOnly = opts?.yesOrNo === true && proposal.kind !== 'none';
+    const withoutFalsePromises = changeSay ?? (yesOrNoOnly ? '' : whatTheModelsReplyShows(withoutTheWordGround(reply), proposal.kind !== 'none'));
     const spokenReply = isOpeningTurn ? withoutTheOpeningGreeting(withoutFalsePromises) : withoutFalsePromises;
     /*
      * WHAT THE LEAD IS SHOWN, NOT SHOWN TWICE. Item 16, found live, the four live checks, 30
@@ -3625,7 +3636,7 @@ export class GroundsService {
       select: {
         id: true, initiatorId: true, timelineDays: true, cadence: true, brief: true, scenario: true,
         timelineStated: true, cadenceStated: true,
-        participants: { select: { id: true, managingOnly: true } },
+        participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
       },
     });
@@ -3793,7 +3804,7 @@ export class GroundsService {
         got = withoutWhatTheyLeftOut(got, leaves);
         const left = [...leaves.teamTargets, ...leaves.people, ...leaves.commitments];
         const wroteSome = await this.writeWhatThePasteGave(groundId, got, confirmedByAdminNote);
-        const say = `${whatWeTookFromThat(got, { told: got.toldToParticipants }) ?? 'Recorded.'}\n\nLeft out, as you said: ${left.join('; ')}.`;
+        const say = `${whatWeTookFromThat(got, { told: got.toldToParticipants, reader: { participantId: (ground.participants as any[]).find((p) => p.userId === requestingUserId)?.id ?? null } }) ?? 'Recorded.'}\n\nLeft out, as you said: ${left.join('; ')}.`;
         const questionsForPeople = got.questionsForPeople.length ? await this.theQuestionsForPeople(groundId).catch(() => []) : undefined;
         return { changed: wroteSome ? 'everything but what you left out' : 'nothing new', say, ...(questionsForPeople ? { questionsForPeople } : {}) };
       }
@@ -3803,7 +3814,7 @@ export class GroundsService {
         await (this.prisma.groundPaste?.create?.({ data: { groundId, hash } }) ?? Promise.resolve(null)).catch(() => null);
         /* And the questions it kept, each waiting for its own yes. See confirmQuestionForPerson. */
         const questionsForPeople = got.questionsForPeople.length ? await this.theQuestionsForPeople(groundId).catch(() => []) : undefined;
-        if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got, { told: got.toldToParticipants }) ?? 'Recorded.', ...(questionsForPeople ? { questionsForPeople } : {}) };
+        if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got, { told: got.toldToParticipants, reader: { participantId: (ground.participants as any[]).find((p) => p.userId === requestingUserId)?.id ?? null } }) ?? 'Recorded.', ...(questionsForPeople ? { questionsForPeople } : {}) };
         /* Nothing new to write means it is already on the record, which is not a failure to report as
            one: saying yes twice to the same list used to fall through to one-gap-at-a-time. */
         return { changed: 'nothing new', say: 'That is already on the record. Nothing was written twice.' };

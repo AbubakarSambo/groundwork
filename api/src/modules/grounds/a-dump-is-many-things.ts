@@ -250,7 +250,13 @@ export function theTellingInTheList(history: { role: 'user' | 'assistant'; conte
   return told || null;
 }
 
-export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolean; told?: string | null } = {}): string | null {
+export function whatWeTookFromThat(
+  got: WhatAPasteGives,
+  opts: { asking?: boolean; told?: string | null; /** Who is reading it: a line about them says "you". */ reader?: { participantId?: string | null } | null } = {},
+): string | null {
+  /* The reader is "you" in a sentence the product writes, never their own name. */
+  const called = (who: string | null, participantId?: string | null): string | null =>
+    opts.reader?.participantId && participantId && participantId === opts.reader.participantId ? 'You' : who;
   const anything = got.success || got.teamTargets.length || got.forPeople.length || got.dates.length || got.unmatched.length
     || got.waysOfWorking?.length || got.openDecisions?.length || got.notSettled?.length || got.aboutPeople?.length
     || got.commitments?.length || got.questionsForPeople?.length || got.betweenPeople?.length
@@ -269,7 +275,7 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
     /* One line per person, carrying every number of theirs: two numbers read as the same sentence twice. */
     for (const p of got.forPeople) {
       const numbers = p.targets.map((t) => `${t.name}: ${fmt(t.number)}`);
-      lines.push(`- ${p.who}: "${p.expectation}"${numbers.length ? ` (${numbers.join('; ')})` : ''}`);
+      lines.push(`- ${called(p.who, p.participantId)}: "${p.expectation}"${numbers.length ? ` (${numbers.join('; ')})` : ''}`);
     }
   }
   if (got.dates.length) {
@@ -298,14 +304,14 @@ export function whatWeTookFromThat(got: WhatAPasteGives, opts: { asking?: boolea
   }
   if (got.aboutPeople?.length) {
     lines.push('', `What you said about each person that is not a number. ${whoWillReadThese(ContextItemKind.ABOUT_A_PERSON)} These are never quoted to the person or in a report:`);
-    for (const a of got.aboutPeople) lines.push(`- ${a.who}: "${a.observation}"`);
+    for (const a of got.aboutPeople) lines.push(`- ${called(a.who, a.participantId)}: "${a.observation}"`);
   }
   if (got.commitments?.length) {
     const owned = got.commitments.filter((c) => c.participantId);
     const nobodys = got.commitments.filter((c) => !c.participantId);
     if (owned.length) {
       lines.push('', 'What people are down as doing. Nobody is marked as having done or not done any of it until they say:');
-      for (const c of owned) lines.push(`- ${c.who}: ${c.action}${c.when ? ` (${c.when})` : ''}${c.theySaidIt ? '' : ' - your words, not theirs'}`);
+      for (const c of owned) lines.push(`- ${called(c.who, c.participantId)}: ${c.action}${c.when ? ` (${c.when})` : ''}${c.theySaidIt ? '' : ' - your words, not theirs'}`);
     }
     if (nobodys.length) {
       lines.push('', `${nobodys.length === 1 ? 'One thing has' : `${nobodys.length} things have`} no owner. Kept as they are rather than put on the nearest person:`);

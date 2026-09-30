@@ -90,7 +90,7 @@ describe('who reaches the setup conversation at all (inventory item 14)', () => 
     const { service, contextChat } = svc();
     const r = await service.respond('org-a', 'p1', 'add this as context', 'g1');
     expect(r.lane).toBe('add_context');
-    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [{ role: 'user', content: 'add this as context' }]);
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [{ role: 'user', content: 'add this as context' }], { yesOrNo: true });
   });
 
   it('an admin of the same organisation, covering for the lead, reaches it too', async () => {
@@ -101,7 +101,7 @@ describe('who reaches the setup conversation at all (inventory item 14)', () => 
     });
     const r = await service.respond('org-a', 'p1', 'add this as context', 'g1');
     expect(r.lane).toBe('add_context');
-    expect(contextChat).toHaveBeenCalledWith('g1', 'admin-1', expect.anything());
+    expect(contextChat).toHaveBeenCalledWith('g1', 'admin-1', expect.anything(), { yesOrNo: true });
   });
 
   it('an admin of a DIFFERENT organisation is a stranger to this check-in, same rule as the old route', async () => {
@@ -139,7 +139,7 @@ describe('which check-in (a check-in chosen or named; ambiguous asks)', () => {
     const { service, contextChat } = svc();
     const r = await service.respond('org-a', 'p1', 'the context for our check-in');
     expect(r.lane).toBe('add_context');
-    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', expect.anything());
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', expect.anything(), { yesOrNo: true });
   });
 
   it('with more than one, an unnamed request asks which, rather than guessing', async () => {
@@ -164,7 +164,7 @@ describe('which check-in (a check-in chosen or named; ambiguous asks)', () => {
     });
     const r = await service.respond('org-a', 'p1', 'the context for Onboarding');
     expect(r.lane).toBe('add_context');
-    expect(contextChat).toHaveBeenCalledWith('g2', 'lead-1', expect.anything());
+    expect(contextChat).toHaveBeenCalledWith('g2', 'lead-1', expect.anything(), { yesOrNo: true });
   });
 
   it('answering the "which check-in" question by name continues into the same setup conversation', async () => {
@@ -179,7 +179,7 @@ describe('which check-in (a check-in chosen or named; ambiguous asks)', () => {
     const { service, contextChat } = svc({ parked });
     const r = await service.respond('org-a', 'p1', 'Onboarding');
     expect(r.lane).toBe('add_context');
-    expect(contextChat).toHaveBeenCalledWith('g2', 'lead-1', [{ role: 'user', content: 'add this as context' }]);
+    expect(contextChat).toHaveBeenCalledWith('g2', 'lead-1', [{ role: 'user', content: 'add this as context' }], { yesOrNo: true });
   });
 });
 
@@ -269,7 +269,7 @@ describe('say-back and confirm before saving (inventory item 5), by calling the 
       { role: 'user', content: 'twelve weeks' },
       { role: 'assistant', content: 'Set to twelve weeks.' },
       { role: 'user', content: 'Good means every stage has an owner.' },
-    ]);
+    ], { yesOrNo: true });
   });
 });
 
@@ -317,7 +317,7 @@ describe('inventory item 2: a multi-turn setup conversation continues (decision 
 
     const r1 = await service.respond('org-a', 'p1', 'the context for our check-in', 'g1');
     expect(r1.blocks.some((b) => b.type === 'proposal')).toBe(false);
-    expect(contextChat).toHaveBeenNthCalledWith(1, 'g1', 'lead-1', [{ role: 'user', content: 'the context for our check-in' }]);
+    expect(contextChat).toHaveBeenNthCalledWith(1, 'g1', 'lead-1', [{ role: 'user', content: 'the context for our check-in' }], { yesOrNo: true });
     const firstParked = proposals.find((p) => p.kind === 'context_turn' && p.state === 'PARKED');
     expect(firstParked).toBeTruthy();
 
@@ -329,7 +329,7 @@ describe('inventory item 2: a multi-turn setup conversation continues (decision 
       { role: 'user', content: 'the context for our check-in' },
       { role: 'assistant', content: 'How long does this check-in run for?' },
       { role: 'user', content: 'twelve weeks' },
-    ]);
+    ], { yesOrNo: true });
     const secondParked = proposals2.find((p) => p.kind === 'context_turn' && p.state === 'PARKED');
     expect(secondParked).toBeTruthy();
     /* The first parked row was superseded, not left dangling. */
@@ -345,7 +345,7 @@ describe('inventory item 2: a multi-turn setup conversation continues (decision 
       { role: 'user', content: 'twelve weeks' },
       { role: 'assistant', content: 'And how often do you want to check in?' },
       { role: 'user', content: 'weekly' },
-    ]);
+    ], { yesOrNo: true });
     const finalProposal = proposals3.find((p) => p.kind === 'context' && p.state === 'PARKED');
     expect(finalProposal).toBeTruthy();
     /* Still never written on its own - a concrete proposal at the end of a long conversation is
@@ -386,14 +386,14 @@ describe('decision 65: openedFromSetup skips the keyword and goes straight to th
     const { service, contextChat } = svc();
     const r = await service.respond('org-a', 'p1', '', 'g1', true);
     expect(r.lane).toBe('add_context');
-    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', []);
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [], { yesOrNo: true });
   });
 
   it('a message with none of the "context" wording is still treated as an answer in the setup conversation', async () => {
     const { service, contextChat } = svc();
     const r = await service.respond('org-a', 'p1', 'twelve weeks', 'g1', true);
     expect(r.lane).toBe('add_context');
-    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [{ role: 'user', content: 'twelve weeks' }]);
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [{ role: 'user', content: 'twelve weeks' }], { yesOrNo: true });
   });
 
   it('without the flag, the same message ("twelve weeks") is not read as setup at all', async () => {
@@ -428,7 +428,7 @@ describe('decision 65: openedFromSetup skips the keyword and goes straight to th
     });
     const { service } = svc({ contextChat });
     const r = await service.respond('org-a', 'p1', '', 'g1', true);
-    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', []);
+    expect(contextChat).toHaveBeenCalledWith('g1', 'lead-1', [], { yesOrNo: true });
     expect(r.lane).toBe('add_context');
   });
 });
@@ -471,7 +471,7 @@ describe('FIX 2, 30 September 2026: a setup conversation opened with openedFromS
       { role: 'user', content: 'Ben is struggling and honestly he is difficult to work with.' },
       { role: 'assistant', content: 'What have you seen that makes you say that, and what have you already tried with him?' },
       { role: 'user', content: 'He has missed the last two pipeline updates. I spoke to him once. I want the update in by every Friday.' },
-    ]);
+    ], { yesOrNo: true });
     expect(r2.blocks.some((b) => b.type === 'proposal')).toBe(true);
   });
 });
