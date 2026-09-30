@@ -27,14 +27,22 @@ export interface TheRecordOverTime {
   cannotTellYou?: string[]
 }
 
+/**
+ * U.10 (e/f): FROM THE SHARED PARTS, AT THE PROTOTYPE'S OWN SIZES. `Head` is a small muted kicker
+ * over one block inside a wider read (not a whole page section, so not `Section`'s 21px, and not
+ * `SubHeading`'s 15px ink fact-label either) - the prototype's own `.note`, 13.5px. `Line` is the
+ * record's own sentence, the main thing a reader is here for - the prototype's body/list-row line,
+ * 15px, with a rule above every row but the first (`gwui-inner-row`, a CSS `:first-child` rule,
+ * not an `i === 0` ternary).
+ */
 const Head = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1px', color: 'var(--gw-sub)', margin: '18px 0 7px' }}>
+  <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-18 gwui-mb-7" style={{ fontWeight: 700, letterSpacing: '.1px' }}>
     {children}
   </div>
 )
 
 const Line = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--gw-text)', padding: '6px 0', borderTop: '1px solid var(--gw-line)' }}>
+  <div className="gwui-fs-15 gwui-ink-text gwui-inner-row gwui-pt-6 gwui-pb-6" style={{ lineHeight: 1.55 }}>
     {children}
   </div>
 )
@@ -55,11 +63,9 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
       {!!it.toSettleFirst?.length && (
         <>
           <Head>Settle these before deciding anything</Head>
-          <div style={{
-            background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10, padding: '12px 14px',
-          }}>
+          <div className="gwui-rule-blue gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{ background: 'var(--gw-blue-bg)', borderRadius: 10 }}>
             {it.toSettleFirst.map((q, i) => (
-              <div key={i} style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--gw-text)', padding: '5px 0' }}>{q}</div>
+              <div key={i} className="gwui-fs-15 gwui-ink-text gwui-pt-5 gwui-pb-5" style={{ lineHeight: 1.55 }}>{q}</div>
             ))}
           </div>
         </>
@@ -85,7 +91,7 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
           {surfaced.map((p, i) => (
             <Line key={i}>
               <div>{p.observation}</div>
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3 }}>{p.who} · {p.name} · {p.say}</div>
+              <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-3">{p.who} · {p.name} · {p.say}</div>
             </Line>
           ))}
         </>
@@ -98,7 +104,7 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
           {candidates.map((p, i) => (
             <Line key={i}>
               <div>{p.observation}</div>
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', marginTop: 3 }}>{p.who} · {p.name} · {p.say}</div>
+              <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-3">{p.who} · {p.name} · {p.say}</div>
             </Line>
           ))}
         </>
@@ -114,11 +120,9 @@ export function WhatTheRecordShows({ it }: { it: TheRecordOverTime | null | unde
       {!!it.cannotTellYou?.length && (
         <>
           <Head>What this cannot tell you</Head>
-          <div style={{
-            background: 'var(--gw-paper-2)', border: '1px solid var(--gw-line)', borderRadius: 10, padding: '12px 14px',
-          }}>
+          <div className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{ background: 'var(--gw-paper-2)', borderRadius: 10 }}>
             {it.cannotTellYou.map((c, i) => (
-              <div key={i} style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--gw-sub)', padding: '4px 0' }}>{c}</div>
+              <div key={i} className="gwui-fs-13-5 gwui-ink-sub gwui-pt-4 gwui-pb-4" style={{ lineHeight: 1.55 }}>{c}</div>
             ))}
           </div>
         </>

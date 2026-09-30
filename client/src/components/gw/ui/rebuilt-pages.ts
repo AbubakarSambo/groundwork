@@ -39,4 +39,7 @@ export const REBUILT_PAGES: string[] = [
   'pages/board/BoardPage.tsx',
   'pages/board/WorkRecords.tsx',
   'components/gw/where-each-person-is.tsx',
+  'components/gw/WhatTheRecordShows.tsx',
+  'components/gw/TheJudgement.tsx',
+  'components/gw/WhatTheNetworkSaid.tsx',
 ]

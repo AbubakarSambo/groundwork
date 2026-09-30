@@ -24,8 +24,9 @@ export interface TheJudgementRead {
   whatWeFailedToAsk?: { about: string; howManyMissedIt?: number }[]
 }
 
+/** U.10 (e/f): a small muted kicker over one block - the prototype's own `.note`, 13.5px. */
 const Head = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1px', color: 'var(--gw-sub)', margin: '18px 0 7px' }}>
+  <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-18 gwui-mb-7" style={{ fontWeight: 700, letterSpacing: '.1px' }}>
     {children}
   </div>
 )
@@ -64,24 +65,21 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
     <div>
       {/* The gap, in the largest type on the board, because it is the one thing they will remember. */}
       {it.theGap && (
-        <div style={{
-          background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)', borderRadius: 10,
-          padding: '14px 16px', marginBottom: 4,
-        }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.4px', color: 'var(--gw-navy)', marginBottom: 5 }}>The gap</div>
-          <div style={{ fontSize: 15.5, color: 'var(--gw-text)', lineHeight: 1.55, fontWeight: 600 }}>{it.theGap}</div>
+        <div className="gwui-rule-blue gwui-pt-14 gwui-pr-16 gwui-pb-14 gwui-pl-16 gwui-mb-4" style={{ background: 'var(--gw-blue-bg)', borderRadius: 10 }}>
+          <div className="gwui-fs-13-5 gwui-ink-navy gwui-mb-5" style={{ fontWeight: 700, letterSpacing: '.4px' }}>The gap</div>
+          <div className="gwui-fs-16 gwui-ink-text" style={{ lineHeight: 1.55, fontWeight: 600 }}>{it.theGap}</div>
         </div>
       )}
 
       {!!it.whatTheNumbersSay?.length && (
         <>
           <Head>What the numbers say</Head>
-          <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
+          <div className="gwui-rule" style={{ background: 'white', borderRadius: 10, overflow: 'hidden' }}>
             {it.whatTheNumbersSay.map((l, i) => (
-              <div key={i} style={{ padding: '11px 14px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)' }}>
-                <div style={{ fontSize: 13.5, color: 'var(--gw-text)', lineHeight: 1.55 }}>{l.says}</div>
+              <div key={i} className="gwui-inner-row gwui-pt-11 gwui-pr-14 gwui-pb-11 gwui-pl-14">
+                <div className="gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>{l.says}</div>
                 {l.soWhat && (
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.5, marginTop: 3 }}>{l.soWhat}</div>
+                  <div className="gwui-fs-13-5 gwui-ink-sub gwui-mt-3" style={{ lineHeight: 1.5 }}>{l.soWhat}</div>
                 )}
               </div>
             ))}
@@ -93,21 +91,21 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
       {!!it.whatToDo?.length && (
         <>
           <Head>What to do</Head>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="gwui-gap-8" style={{ display: 'flex', flexDirection: 'column' }}>
             {it.whatToDo.map((m, i) => (
-              <div key={i} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
-                  <span style={{
-                    flexShrink: 0, width: 18, height: 18, borderRadius: 9, background: 'var(--gw-navy)', color: 'white',
-                    fontSize: 11, fontWeight: 800, textAlign: 'center', lineHeight: '18px',
+              <div key={i} className="gwui-rule gwui-pt-12 gwui-pr-14 gwui-pb-12 gwui-pl-14" style={{ background: 'white', borderRadius: 10 }}>
+                <div className="gwui-gap-10" style={{ display: 'flex', alignItems: 'baseline' }}>
+                  <span className="gwui-fs-13 gwui-ink-white" style={{
+                    flexShrink: 0, width: 18, height: 18, borderRadius: 9, background: 'var(--gw-navy)',
+                    fontWeight: 800, textAlign: 'center', lineHeight: '18px',
                   }}>{i + 1}</span>
-                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)', lineHeight: 1.5 }}>{m.move}</span>
+                  <span className="gwui-fs-16 gwui-ink-dark" style={{ fontWeight: 700, lineHeight: 1.5 }}>{m.move}</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.55, marginTop: 5, paddingLeft: 28 }}>
+                <div className="gwui-fs-15 gwui-ink-sub gwui-mt-5 gwui-pl-28" style={{ lineHeight: 1.55 }}>
                   {m.because}
                 </div>
                 {m.startWith && (
-                  <div style={{ fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55, marginTop: 3, paddingLeft: 28 }}>
+                  <div className="gwui-fs-15 gwui-ink-text gwui-mt-3 gwui-pl-28" style={{ lineHeight: 1.55 }}>
                     {startWith(m.startWith)}
                   </div>
                 )}
@@ -121,12 +119,12 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
       {!!it.whatThisCannotTellYou?.length && (
         <>
           <Head>What this cannot tell you</Head>
-          <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0' }}>
+          <div className="gwui-rule gwui-pt-4 gwui-pb-4" style={{ background: 'var(--gw-bg)', borderRadius: 10 }}>
             {it.whatThisCannotTellYou.map((w, i) => (
-              <div key={i} style={{ padding: '9px 14px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', fontSize: 12.5, color: 'var(--gw-text)', lineHeight: 1.55 }}>
+              <div key={i} className="gwui-inner-row gwui-pt-9 gwui-pr-14 gwui-pb-9 gwui-pl-14 gwui-fs-15 gwui-ink-text" style={{ lineHeight: 1.55 }}>
                 <div style={{ fontWeight: 600 }}>{w.about}</div>
-                {w.why && <div style={{ marginTop: 2 }}>{w.why}</div>}
-                {w.toKnow && <div style={{ color: 'var(--gw-sub)', marginTop: 2 }}>{w.toKnow}</div>}
+                {w.why && <div className="gwui-mt-2">{w.why}</div>}
+                {w.toKnow && <div className="gwui-ink-sub gwui-mt-2">{w.toKnow}</div>}
               </div>
             ))}
           </div>
@@ -141,11 +139,11 @@ export function TheJudgement({ it }: { it: TheJudgementRead | null | undefined }
       {!!it.whatWeFailedToAsk?.length && (
         <>
           <Head>What the check-ins did not get to</Head>
-          <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.7 }}>
+          <div className="gwui-fs-15 gwui-ink-sub" style={{ lineHeight: 1.6 }}>
             {it.whatWeFailedToAsk.map((w, i) => (
-              <div key={i} style={{ marginTop: i === 0 ? 0 : 6 }}>
-                <div style={{ color: 'var(--gw-text)' }}>{w.about}</div>
-                {typeof w.howManyMissedIt === 'number' && <div>{howManyNeverReachedIt(w.howManyMissedIt)}</div>}
+              <div key={i} className={i === 0 ? 'gwui-mt-0' : 'gwui-mt-6'}>
+                <div className="gwui-ink-text">{w.about}</div>
+                {typeof w.howManyMissedIt === 'number' && <div className="gwui-fs-13-5 gwui-ink-sub">{howManyNeverReachedIt(w.howManyMissedIt)}</div>}
               </div>
             ))}
           </div>

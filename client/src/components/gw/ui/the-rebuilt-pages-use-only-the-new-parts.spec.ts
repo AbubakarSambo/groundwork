@@ -150,6 +150,9 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/board/BoardPage.tsx',
       'pages/board/WorkRecords.tsx',
       'components/gw/where-each-person-is.tsx',
+      'components/gw/WhatTheRecordShows.tsx',
+      'components/gw/TheJudgement.tsx',
+      'components/gw/WhatTheNetworkSaid.tsx',
     ])
   })
 
