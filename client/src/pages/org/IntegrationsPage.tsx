@@ -729,8 +729,8 @@ Authorization: Bearer ${firstClientId ? 'gw_live_••••' : 'gw_live_••
             <pre className="gwui-code-block-light">{`curl ${API_ORIGIN || 'https://api.myground.work'}/api/org/v1/people/SAM-1/before-a-conversation \\
   -H 'authorization: Bearer $ACCESS_TOKEN'`}</pre>
             <p className="gwui-panel-text-muted">
-              It needs the same permission as reading one person’s desk, not the permission for findings. This is a great deal more than a finding, and no integration should get it by accident.
-              What comes back carries <span className="gwui-mono">sections</span> with where each came from, a note on how complete this picture is, and a{' '}
+              It needs the same permission as reading one person’s desk, not the findings one. This is a great deal more than a finding, and no integration should get it by accident.
+              What comes back carries <span className="gwui-mono">sections</span> with where each came from, a <span className="gwui-mono">completeness</span> reading saying how much of a picture this is, and a{' '}
               <span className="gwui-mono">refusal</span> stating that it is not an assessment. Show all three. Where the record holds nothing, you get that said plainly rather than an empty page,
               so a lead is never handed a blank screen about a person and left to read it as a verdict.
             </p>

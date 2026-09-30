@@ -1,5 +1,5 @@
 import { useWhatsAppIsOn } from '@/lib/whatsapp-is-on'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -166,7 +166,15 @@ export function SettingsPage() {
     const a = document.createElement('a')
     a.href = url
     a.download = 'groundwork-my-data.json'
+    /*
+     * ATTACHED BEFORE THE CLICK, REMOVED AFTER (group 1 re-review, fault G): clicking a link that
+     * was never part of the page is exactly the kind of thing a browser can handle inconsistently
+     * - including, on the picture that flagged this, focus drifting away from the button somebody
+     * actually pressed. A normal, connected element behaves like every other link on the page.
+     */
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }
   /*
@@ -179,9 +187,21 @@ export function SettingsPage() {
    * button-count check, e2e/the-prototype-count-of-buttons.spec.ts, holds the product to the
    * prototype's own count for this screen).
    */
+  const downloadItRef = useRef<HTMLButtonElement | HTMLAnchorElement>(null)
   const loadMyData = useMutation({
     mutationFn: myDataApi.get,
-    onSuccess: (data) => { setMyData(data); saveAsAFile(data) },
+    onSuccess: (data) => {
+      setMyData(data)
+      saveAsAFile(data)
+      /*
+       * GROUP 1 RE-REVIEW, FAULT G: a picture taken right after this press showed "Skip to
+       * content" over the Email label - the skip link briefly gaining focus once the download's
+       * own browser activity (a native file save) moved it away from this button. This keeps
+       * focus where the person's attention already is, on the button whose own text now confirms
+       * what happened, rather than leaving it to drift.
+       */
+      requestAnimationFrame(() => downloadItRef.current?.focus())
+    },
     onError: () => toast.error('Could not load your data. Try again.'),
   })
   const eraseMyData = useMutation({
@@ -311,7 +331,7 @@ export function SettingsPage() {
                * a quiet text link read as decoration, not something to press - "Download it" is
                * `kind="secondary"`, the same outlined weight the prototype draws it in.
                */}
-              <Button kind="secondary" size="small" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
+              <Button ref={downloadItRef} kind="secondary" size="small" onClick={() => loadMyData.mutate()} disabled={loadMyData.isPending}>
                 {loadMyData.isPending ? 'Downloading…' : 'Download it'}
               </Button>
             </div>

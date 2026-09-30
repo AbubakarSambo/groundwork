@@ -24,9 +24,7 @@ import './gw-ui.css'
  */
 export type ButtonKind = 'primary' | 'secondary' | 'quiet' | 'danger'
 
-export function Button({
-  kind = 'primary', size, wide, redText, to, onClick, type = 'button', disabled, children, ...rest
-}: {
+export const Button = React.forwardRef<HTMLButtonElement | HTMLAnchorElement, {
   kind?: ButtonKind
   /** Red words on a secondary button, as the prototype's "End this check-in". */
   redText?: boolean
@@ -38,7 +36,7 @@ export function Button({
   disabled?: boolean
   children: React.ReactNode
   'aria-label'?: string
-}) {
+}>(function Button({ kind = 'primary', size, wide, redText, to, onClick, type = 'button', disabled, children, ...rest }, ref) {
   const className = [
     'gwui-btn',
     `gwui-btn-${kind}`,
@@ -48,11 +46,11 @@ export function Button({
   ].filter(Boolean).join(' ')
 
   if (to && !disabled) {
-    return <Link to={to} className={className} onClick={onClick} aria-label={rest['aria-label']}>{children}</Link>
+    return <Link ref={ref as React.Ref<HTMLAnchorElement>} to={to} className={className} onClick={onClick} aria-label={rest['aria-label']}>{children}</Link>
   }
   return (
-    <button type={type} className={className} onClick={onClick} disabled={disabled} aria-label={rest['aria-label']}>
+    <button ref={ref as React.Ref<HTMLButtonElement>} type={type} className={className} onClick={onClick} disabled={disabled} aria-label={rest['aria-label']}>
       {children}
     </button>
   )
-}
+})

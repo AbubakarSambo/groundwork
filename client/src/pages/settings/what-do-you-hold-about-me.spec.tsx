@@ -53,7 +53,7 @@ describe('what the page shows', () => {
   it('is loaded on demand, not on every visit to Settings, and saved as a file the moment it loads', () => {
     expect(CODE).toMatch(/Download it/)
     expect(CODE).toMatch(/loadMyData\.mutate\(\)/)
-    expect(CODE).toMatch(/onSuccess:\s*\(data\)\s*=>\s*\{\s*setMyData\(data\);\s*saveAsAFile\(data\)\s*\}/)
+    expect(CODE).toMatch(/onSuccess:\s*\(data\)\s*=>\s*\{[\s\S]*?setMyData\(data\)[\s\S]*?saveAsAFile\(data\)[\s\S]*?\}/)
   })
 
   /*
