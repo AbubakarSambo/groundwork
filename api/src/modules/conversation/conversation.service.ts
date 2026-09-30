@@ -210,7 +210,7 @@ import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } fro
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
-import { whatWasRecordedFromADocument } from '../documents/what-was-recorded-from-a-document';
+import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
 import { notToldYet } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { wordTheAreaOfAGoal, areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { saysWhatAnUntoldGoalWithholds, IT_NAMED_THE_UNTOLD_NUMBER, type AnUntoldGoal } from './an-untold-goals-number-is-not-said';
@@ -1250,9 +1250,6 @@ export class ConversationService {
         const holds = (d.holds ?? {}) as any;
         const waiting: { name: string; target: number; ownerParticipantId: string | null }[] = Array.isArray(holds.waiting) ? holds.waiting : [];
         if (holds.takenAt || !waiting.length) continue;
-        /* Nothing already on the record twice: the same measure for the same owner is one target. */
-        const already = await this.prisma.groundObjective.findMany({ where: { groundId: checkIn.groundId }, select: { name: true, ownerParticipantId: true } });
-        const held = new Set(already.map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
         const yes = whatTheYesSays(answer, waiting);
         if (yes.kind === 'not a yes') return null;
         if (yes.kind === 'yes, but which one') {
@@ -1260,35 +1257,25 @@ export class ConversationService {
         }
         /* The person's number wins over the document's, on the one line their answer is about. */
         const corrected = yes.kind === 'yes, with a new number' ? waiting.map((w, i) => (i === yes.row ? { ...w, target: yes.target } : w)) : waiting;
-        const rows = corrected.filter((w) => !held.has(`${w.ownerParticipantId ?? 'team'}::${(w.name ?? '').trim().toLowerCase()}`));
-        if (rows.length) {
-          await this.prisma.groundObjective.createMany({
-            data: rows.map((w, i) => ({
-              groundId: checkIn.groundId,
-              name: w.name.slice(0, 120),
-              target: w.target,
-              ownerParticipantId: w.ownerParticipantId,
-              setByParticipantId: checkIn.participantId,
-              sortOrder: 200 + already.length + i,
-            })) as any,
-          }).catch((err: any) => this.logger.warn(`Could not take the numbers from ${d.fileName}: ${err?.message}`));
-        }
-        await this.prisma.groundDocument.update({
-          where: { id: d.id },
-          data: { holds: { ...holds, takenAt: new Date().toISOString() } as any },
-        }).catch(() => undefined);
-        this.logger.log(`Check-in ${checkIn.id}: took ${rows.length} number(s) from ${d.fileName} on a yes.`);
-        const mine = rows.filter((r) => r.ownerParticipantId).length;
-        const team = rows.length - mine;
-        return whatWasRecordedFromADocument({
+        const said = await writeADocumentsNumbers(this.prisma, {
+          groundId: checkIn.groundId,
+          documentId: d.id,
           fileName: d.fileName,
-          forAPerson: mine,
-          forEveryone: team,
-          corrected: yes.kind === 'yes, with a new number' && rows.length
+          waiting: corrected,
+          holds,
+          setByParticipantId: checkIn.participantId,
+          sortOrderBase: 200,
+          addNote: false,
+          reader: 'check-in',
+          corrected: yes.kind === 'yes, with a new number'
             ? { name: waiting[yes.row].name, theirs: yes.target, documents: waiting[yes.row].target }
             : null,
-          reader: 'check-in',
+        }).catch((err: any) => {
+          this.logger.warn(`Could not take the numbers from ${d.fileName}: ${err?.message}`);
+          return null;
         });
+        if (said) this.logger.log(`Check-in ${checkIn.id}: took number(s) from ${d.fileName} on a yes.`);
+        return said;
       }
       return null;
     } catch (err: any) {

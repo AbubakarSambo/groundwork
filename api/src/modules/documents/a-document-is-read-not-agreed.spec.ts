@@ -19,6 +19,13 @@ import { whatWasRecordedFromADocument } from './what-was-recorded-from-a-documen
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const DOCS = strip(fs.readFileSync(path.join(__dirname, 'documents.service.ts'), 'utf8'));
 const CONVO = strip(fs.readFileSync(path.join(__dirname, '..', 'conversation', 'conversation.service.ts'), 'utf8'));
+/*
+ * Decision 50, task A (30 Sep 2026): the write itself - createMany, the takenAt stamp, the dedupe -
+ * moved out of whatTheDocumentWaitsFor into write-a-documents-numbers.ts, so Ask Groundwork's yes
+ * writes through the SAME code the setup chat and the check-in already used, instead of a third
+ * copy. What used to be asserted inside whatTheDocumentWaitsFor's own text now lives here.
+ */
+const WRITER = strip(fs.readFileSync(path.join(__dirname, 'write-a-documents-numbers.ts'), 'utf8'));
 
 describe('a document is read, not agreed', () => {
   it('reading writes no target at all', () => {
@@ -30,15 +37,17 @@ describe('a document is read, not agreed', () => {
     expect(reader).toContain('takenAt: null');
   });
 
-  it('and the conversation writes them on a yes, once', () => {
+  it('and the conversation writes them on a yes, once, through the one shared writer', () => {
     const waits = CONVO.slice(CONVO.indexOf('private async whatTheDocumentWaitsFor('), CONVO.indexOf('private async composeSystemPrompt('));
-    expect(waits).toContain('groundObjective.createMany');
-    /* Only once: the document is stamped, so a second yes writes nothing. */
-    expect(waits).toContain('takenAt: new Date().toISOString()');
     expect(waits).toContain('if (holds.takenAt || !waiting.length) continue');
+    expect(waits).toContain('writeADocumentsNumbers(this.prisma');
+    /* The actual write - createMany, the takenAt stamp, dedupe - lives in the shared file, once. */
+    expect(WRITER).toContain('groundObjective.createMany');
+    /* Only once: the document is stamped, so a second yes writes nothing. */
+    expect(WRITER).toContain('takenAt: new Date().toISOString()');
     /* Nothing twice, and nothing this document did not hold. */
-    expect(waits).toContain('held.has(');
-    expect(waits).toContain('name: w.name.slice(0, 120)');
+    expect(WRITER).toContain('held.has(');
+    expect(WRITER).toContain('name: w.name.slice(0, 120)');
   });
 
   it('the yes is a yes, not any answer', () => {
@@ -51,9 +60,8 @@ describe('a document is read, not agreed', () => {
   });
 
   it('and the receipt says whose numbers went where, and what nobody is measured against yet', () => {
-    const waits = CONVO.slice(CONVO.indexOf('private async whatTheDocumentWaitsFor('), CONVO.indexOf('private async composeSystemPrompt('));
-    /* Changed 29 Sep 2026: the words are built in what-was-recorded-from-a-document, in plain full sentences; this checks the method uses it and reads what it says. */
-    expect(waits).toContain('whatWasRecordedFromADocument(');
+    /* Changed 30 Sep 2026: whatWasRecordedFromADocument is now called from the shared writer, once, for every caller. */
+    expect(WRITER).toContain('whatWasRecordedFromADocument(');
     const said = whatWasRecordedFromADocument({ fileName: 'Q3 targets.pdf', forAPerson: 2, forEveryone: 1, reader: 'check-in' });
     expect(said).toBe('I have recorded this from Q3 targets.pdf. Two numbers are now set, each for the person it belongs to. One number is for the whole check-in, and everybody here sees it. Nobody is measured against a number until they have seen it.');
   });

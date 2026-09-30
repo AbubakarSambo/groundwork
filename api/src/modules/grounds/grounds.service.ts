@@ -83,7 +83,7 @@ import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExa
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
 import { howCheckableIsYoursAlone } from './how-checkable-is-yours-alone';
-import { whatWasRecordedFromADocument } from '../documents/what-was-recorded-from-a-document';
+import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
 
 // Default timelines per scenario (Part 2 - timeline and cadence).
 export const DEFAULT_TIMELINE_DAYS: Record<GroundScenario, number> = {
@@ -3014,38 +3014,22 @@ export class GroundsService {
       const holds = (d.holds ?? {}) as any;
       const waiting: { name: string; target: number; ownerParticipantId: string | null }[] = Array.isArray(holds.waiting) ? holds.waiting : [];
       if (holds.takenAt || !waiting.length) continue;
-      const already = await this.prisma.groundObjective.findMany({ where: { groundId }, select: { name: true, ownerParticipantId: true } });
-      const held = new Set(already.map((o) => `${o.ownerParticipantId ?? 'team'}::${(o.name ?? '').trim().toLowerCase()}`));
-      const rows = waiting.filter((w) => !held.has(`${w.ownerParticipantId ?? 'team'}::${(w.name ?? '').trim().toLowerCase()}`));
-      if (rows.length) {
-        await this.prisma.groundObjective.createMany({
-          data: rows.map((w, i) => ({
-            groundId,
-            name: w.name.slice(0, 120),
-            target: w.target,
-            ownerParticipantId: w.ownerParticipantId,
-            setByParticipantId: me.id,
-            sortOrder: 300 + already.length + i,
-          })) as any,
-        }).catch((err: any) => this.logger.warn(`Could not take the numbers from ${d.fileName}: ${err?.message}`));
-      }
-      await this.prisma.groundContextItem?.create?.({
-        data: {
-          groundId,
-          kind: ContextItemKind.NOTE,
-          /* This note reaches everybody's check-in, so a file only the lead can open is not named (request 46). */
-          text: (d as any).visibility === 'OPEN'
-            ? `The numbers on this check-in come from ${d.fileName}.`
-            : 'The numbers on this check-in come from a document that was attached when it was set up.',
-          audience: ContextNoteAudience.EVERYONE,
-          source: 'PASTE',
-          authorUserId: requestingUserId,
-        },
-      }).catch(() => undefined);
-      await this.prisma.groundDocument.update({ where: { id: d.id }, data: { holds: { ...holds, takenAt: new Date().toISOString() } as any } }).catch(() => undefined);
-      const mine = rows.filter((r) => r.ownerParticipantId).length;
-      const team = rows.length - mine;
-      return whatWasRecordedFromADocument({ fileName: d.fileName, forAPerson: mine, forEveryone: team, reader: 'setup' });
+      return writeADocumentsNumbers(this.prisma, {
+        groundId,
+        documentId: d.id,
+        fileName: d.fileName,
+        documentVisibility: (d as any).visibility,
+        waiting,
+        holds,
+        setByParticipantId: me.id,
+        sortOrderBase: 300,
+        addNote: true,
+        authorUserId: requestingUserId,
+        reader: 'setup',
+      }).catch((err: any) => {
+        this.logger.warn(`Could not take the numbers from ${d.fileName}: ${err?.message}`);
+        return null;
+      });
     }
     return null;
   }
