@@ -1,6 +1,7 @@
 import { DependencyStatus } from '@prisma/client';
 import { blockerHasSubstance, dedupeDependencies, type ReadDependency } from '../board/reads';
 import { peersAreNamedOn } from '../reports/peers-are-named';
+import { theDueFields } from './when-a-handoff-is-due';
 
 /**
  * EVERYTHING ASKED OF YOU (D3, U.16): YOUR LOAD ACROSS CHECK-INS, FOR YOUR EYES ONLY.
@@ -32,6 +33,9 @@ export interface AskedOfYouRow {
   what: string;
   status: DependencyStatus;
   namedTheThing?: boolean | null;
+  dueSaid?: string | null;
+  dueOn?: Date | string | null;
+  blockerKind?: string | null;
   createdAt: Date | string;
   fromParticipant?: {
     userId: string | null;
@@ -55,6 +59,14 @@ export interface SomethingAskedOfYou {
   what: string;
   /** When it was first asked, as a moment. The screen says it in the reader's time. */
   asked: string;
+  /** The person's own words for when, word for word; null where they gave none. */
+  dueSaid: string | null;
+  /** The day those words meant, as YYYY-MM-DD; null where the words name no day. */
+  dueOn: string | null;
+  /** "Overdue", "Today", a short weekday ("Fri") or a short date; null where no day is known. */
+  dueWord: string | null;
+  /** One plain sentence of where it stands, written from the record. */
+  standing: string;
 }
 
 export interface AskedOfYou {
@@ -75,6 +87,7 @@ export function askedOfYou(
   rows: AskedOfYouRow[],
   reader: { userId: string; role?: string | null },
   mine: { groundIds: Set<string>; participantIds: Set<string> },
+  today: Date = new Date(),
 ): AskedOfYou | null {
   /* Only open handoffs on you, in your own check-ins, and never one you raised yourself. */
   const onYou = rows.filter((r) =>
@@ -99,6 +112,7 @@ export function askedOfYou(
       checkIn: (g?.label ?? '').trim(),
       what: r.what.trim(),
       asked: new Date(r.createdAt).toISOString(),
+      ...theDueFields(r, today),
     };
   });
 

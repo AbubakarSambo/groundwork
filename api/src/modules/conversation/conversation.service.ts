@@ -45,6 +45,9 @@ import { thePeriodTheyNamed } from './when-words-mean-a-date';
 import { wordsWeDoNotUse, sayItWithoutThose } from './words-we-do-not-use';
 import { asksForAShapeWithoutShowingOne, SHOW_WHAT_ONE_LOOKS_LIKE } from './a-question-that-invents-a-shape-shows-one';
 import { theLineWithoutItsDanglingJoin } from './half-a-sentence-is-not-a-line-in-a-report';
+import { theCheckInItWaitsOn } from './which-check-in-it-waits-on';
+import { theDayTheyMeant } from '../grounds/when-a-handoff-is-due';
+import { BLOCKER_TRACE_PROMPT, BLOCKER_TRACE_PROMPT_KEY, BLOCKER_TRACE_SCHEMA, theChainFrom, theInputKey, theRecordForTheModel, theTraceTheRecordSupports, type TheModelsTrace } from './where-the-blocker-started';
 import { buildScenarioPackForParty, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, COACHING_OBSERVATION_PROMPT, COACHING_OBSERVATION_SCHEMA, SESSION_CLOSE_MARKER, stripCloseMarker, buildIntakeBlock, RECORD_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_PROMPT, DEPENDENCY_EXTRACTION_SCHEMA, WORK_MENTION_PROMPT, WORK_MENTION_SCHEMA, EXPECTATION_PROMPT, EXPECTATION_SCHEMA, ALIGNMENT_PROMPT, ALIGNMENT_SCHEMA, OBJECTION_PROMPT, OBJECTION_SCHEMA } from './prompt-library';
 import { GroundworkEvents, CheckInCompletedEvent, BlockerEvent } from '../../common';
 import { onlyWhatWeCouldRead } from '../documents/a-document-we-could-not-read-is-not-a-source';
@@ -9394,7 +9397,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
   async extractDependencies(checkInId: string, participantId: string, groundId: string) {
     const ground = await this.prisma.ground.findUnique({
       where: { id: groundId },
-      select: { mode: true, scenario: true, participants: { select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } } } },
+      select: { mode: true, scenario: true, organizationId: true, participants: { select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } } } },
     });
     if (!ground) return;
     /**
@@ -9409,7 +9412,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const result = await this.anthropic.extract<{
-      dependencies: { what: string; onName?: string | null; onLabel?: string | null; status: string; then?: string | null; triedSaid?: string | null; namedTheThing?: boolean }[];
+      dependencies: { what: string; onName?: string | null; onLabel?: string | null; status: string; then?: string | null; triedSaid?: string | null; dueSaid?: string | null; namedTheThing?: boolean }[];
     }>(DEPENDENCY_EXTRACTION_PROMPT, [{ role: 'user', content: transcript }], DEPENDENCY_EXTRACTION_SCHEMA);
 
     const valid = (result?.dependencies ?? []).filter((d) => d.what?.trim());
@@ -9447,6 +9450,30 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true },
     });
 
+    /*
+     * WHAT THEY SAID ABOUT WHEN, ONLY IF THOSE EXACT WORDS ARE IN THE TRANSCRIPT (request 18). The
+     * model is asked to copy them; this keeps them only if it did, so a reworded or invented time
+     * is dropped and the handoff simply has no time, which is the truth.
+     */
+    const theirWords = turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content).join('\n').toLowerCase().replace(/\s+/g, ' ');
+    const dueSaidBy = (d: { dueSaid?: string | null }): string | null => {
+      const said = (d.dueSaid ?? '').trim().replace(/\s+/g, ' ');
+      return said && said.length <= 120 && theirWords.includes(said.toLowerCase()) ? said : null;
+    };
+    /* The other check-ins this company has running, read once, for the link each handoff may carry. */
+    let otherCheckIns: { id: string; organizationId: string; label: string | null }[] | null = null;
+    const waitingOnCheckIn = async (d: { onName?: string | null; onLabel?: string | null }, onParticipantId: string | null) => {
+      const said = (d.onLabel ?? d.onName ?? '').trim();
+      if (!said || onParticipantId || !(ground as any).organizationId) return null;
+      otherCheckIns ??= await this.prisma.ground.findMany({
+        where: { organizationId: (ground as any).organizationId, closedAt: null, resolvedAt: null },
+        select: { id: true, organizationId: true, label: true },
+      }).catch(() => []);
+      return theCheckInItWaitsOn(said, { id: groundId, organizationId: (ground as any).organizationId }, otherCheckIns ?? []);
+    };
+    /* Handoffs written or changed in this extraction: only these can change a trace. */
+    const touched: string[] = [];
+
     for (const d of valid) {
       const onParticipantId = matchParticipant(d.onName);
       const status = (['BLOCKING', 'WAITING', 'CLEARED'] as const).includes(d.status as any)
@@ -9482,8 +9509,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
                named it, whatever they said the first time. Undefined leaves what we had. */
             namedTheThing: typeof d.namedTheThing === 'boolean' ? d.namedTheThing : undefined,
             clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
+            /* Their newest words for when, and the newest certain link; left alone where this account says neither. */
+            ...(dueSaidBy(d) ? { dueSaid: dueSaidBy(d), dueOn: theDayTheyMeant(dueSaidBy(d), new Date()) } : {}),
+            ...((d.onLabel ?? d.onName)?.trim() ? { waitingOnGroundId: await waitingOnCheckIn(d, onParticipantId) } : {}),
           },
         });
+        touched.push(existing.id);
         /* The colleague they were waiting on delivered it, in the waiter's own words: that colleague's
            line saying so is confirmed by the person who received it (week 6). */
         if (aWaitThatConfirms({ status, previousStatus: existing.status, fromParticipantId: participantId, onParticipantId: existing.onParticipantId })) {
@@ -9512,9 +9543,15 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           status,
           sourceCheckInId: checkInId,
           clearedAt: status === DependencyStatus.CLEARED ? new Date() : null,
+          /* Their own words for when, word for word, and the day they name if they name one. */
+          dueSaid: dueSaidBy(d),
+          dueOn: theDayTheyMeant(dueSaidBy(d), new Date()),
+          /* The other check-in it waits on, only when that is certain from the names (request 18). */
+          waitingOnGroundId: await waitingOnCheckIn(d, onParticipantId),
         },
         select: { id: true, what: true, onParticipantId: true, onLabel: true, status: true, namedTheThing: true },
       });
+      touched.push(created.id);
       // So a second mention within the SAME extraction also dedupes.
       openForThisPerson.push(created);
 
@@ -9535,6 +9572,74 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           groundId,
         } as BlockerEvent);
       }
+    }
+
+    /* Something new came in, so the trace of any blocker it touches is looked at again. Never on opening. */
+    await this.followTheBlockersAcrossCheckIns(touched);
+  }
+
+  /**
+   * WHERE A BLOCKER STARTED, WRITTEN ONCE WHEN THE RECORD CHANGES (request 18, decision 7).
+   *
+   * For each handoff just written that waits on another check-in, follow it through the check-ins it
+   * passes through and have the steps written. `theInputKey` is what it was written from: the same
+   * record again means no second model call. The model is given people as tokens and nothing else,
+   * its answer is checked against the record in code (`theTraceTheRecordSupports`), and a trace that
+   * fails is not stored. The instructions come from the stored `blocker_trace` version, and its id is
+   * recorded on the row. Stored without names; the reports folder swaps them in when it serves.
+   */
+  async followTheBlockersAcrossCheckIns(touchedIds: string[]): Promise<void> {
+    try {
+      if (touchedIds.length === 0) return;
+      const fields = { id: true, groundId: true, waitingOnGroundId: true, fromParticipantId: true, onParticipantId: true, what: true, then: true, triedSaid: true, dueSaid: true, onLabel: true, createdAt: true, status: true, clearedAt: true } as const;
+      const touchedRows = await this.prisma.groundDependency.findMany({ where: { id: { in: touchedIds } }, select: { ...fields, ground: { select: { organizationId: true } } } });
+      const goneIds = touchedRows.filter((r) => r.status === DependencyStatus.CLEARED || r.clearedAt || !r.waitingOnGroundId).map((r) => r.id);
+      if (goneIds.length) await this.prisma.blockerTrace.deleteMany({ where: { anchorDependencyId: { in: goneIds } } });
+      /* And any open handoff elsewhere that waits on a check-in where something just changed: its chain runs through here. */
+      const groundsTouched = [...new Set(touchedRows.map((r) => r.groundId))];
+      const upstream = await this.prisma.groundDependency.findMany({
+        where: { waitingOnGroundId: { in: groundsTouched }, status: { in: [DependencyStatus.WAITING, DependencyStatus.BLOCKING] }, clearedAt: null, id: { notIn: touchedIds } },
+        select: { ...fields, ground: { select: { organizationId: true } } },
+      });
+      const anchors = [...touchedRows.filter((r) => !goneIds.includes(r.id)), ...upstream];
+      if (anchors.length === 0) return;
+
+      for (const anchor of anchors) {
+        const organizationId = (anchor as any).ground?.organizationId as string;
+        const open = await this.prisma.groundDependency.findMany({
+          where: { status: { in: [DependencyStatus.WAITING, DependencyStatus.BLOCKING] }, clearedAt: null, ground: { organizationId } },
+          select: fields,
+        });
+        const { handoffs, groundIds } = theChainFrom(anchor as any, open as any);
+        const inputKey = theInputKey(handoffs);
+        const had = await this.prisma.blockerTrace.findUnique({ where: { anchorDependencyId: anchor.id }, select: { inputKey: true } });
+        if (had?.inputKey === inputKey) continue;
+
+        const people = await this.prisma.groundParticipant.findMany({
+          where: { groundId: { in: groundIds } },
+          select: { id: true, groundId: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
+        });
+        const { text, tokens } = theRecordForTheModel(handoffs, groundIds);
+        const version = await this.prompts.getActive(BLOCKER_TRACE_PROMPT_KEY).catch(() => null);
+        const answer = await this.anthropic.extract<TheModelsTrace>(
+          version?.content ?? BLOCKER_TRACE_PROMPT, [{ role: 'user', content: text }], BLOCKER_TRACE_SCHEMA,
+        );
+        const trace = theTraceTheRecordSupports(answer, anchor as any, handoffs, people as any, tokens);
+        if (!trace) {
+          /* What was true before is not true of this record, and nothing checkable replaces it. */
+          await this.prisma.blockerTrace.deleteMany({ where: { anchorDependencyId: anchor.id } });
+          continue;
+        }
+        const data = {
+          organizationId, endGroundId: trace.endGroundId, startGroundId: trace.startGroundId,
+          steps: trace.steps as any, whereItStarted: trace.whereItStarted, decisionNeeded: trace.decisionNeeded,
+          decisionOwnerParticipantId: trace.decisionOwnerParticipantId, inputKey, promptVersionId: version?.id ?? null,
+        };
+        await this.prisma.blockerTrace.upsert({ where: { anchorDependencyId: anchor.id }, create: { anchorDependencyId: anchor.id, ...data }, update: data });
+      }
+    } catch (err: any) {
+      /* A trace is a courtesy on top of the record; it never fails what somebody just said. */
+      this.logger.warn(`Could not follow a blocker across check-ins: ${err?.message ?? err}`);
     }
   }
 

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroundsService } from './grounds.service';
+import { theDayIn } from './when-a-handoff-is-due';
 import { checkInLinks, type CheckInLinks, type OpenableCheckIn } from './check-in-links';
 
 /**
@@ -39,13 +40,13 @@ export class CheckInLinksService {
       },
       select: {
         id: true, groundId: true, waitingOnGroundId: true, fromParticipantId: true, onParticipantId: true,
-        onLabel: true, what: true, status: true, namedTheThing: true, createdAt: true,
+        onLabel: true, what: true, status: true, namedTheThing: true, createdAt: true, dueSaid: true, dueOn: true, blockerKind: true,
         fromParticipant: { select: { userId: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         onParticipant: { select: { userId: true } },
       },
       orderBy: { createdAt: 'asc' },
     });
 
-    return checkInLinks(here, rows as any, mayOpen, { userId: reader.userId, role: reader.role });
+    return checkInLinks(here, rows as any, mayOpen, { userId: reader.userId, role: reader.role }, theDayIn('Africa/Lagos', new Date()));
   }
 }
