@@ -63,6 +63,15 @@ Built in `f978d3cf`. **The old context chat still works, untouched, and stays un
   - sharing a note, and changing a line, are still only in the old chat;
   - changing the wording of a lead's question in chat is still to do.
 
+**Piece 3 is built** (`4a87183e`, `0e88b0d5`). Every item the context chat does can now be done through Ask Groundwork, each by calling the old code:
+- **The say-backs are full sentences.** For example: "Shall I add "we will drop the pilot" to this check-in's context as a decision?" and "Shall I keep "keep an eye on Ben's workload" as a private note that only you can see?"
+- **Sharing a note with everybody works through chat.** Only a note about the whole check-in is offered, so a note about one person is never shared.
+- **So do rewording, sharing, making private or retiring a line.** A line about a person has no way in.
+- **The lead can change the wording of a question.** "ask Ben 'How are the Lagos numbers looking?' instead" is said back word for word, and sent only on a yes.
+- **A routing fault is fixed.** "share the note…" was being read as adding a document.
+- **One test** still expected "Context tab" after the rename, and now expects "Context and resources". The list of people waiting reads "Ben and Ada", not "Ben, Ada".
+- **Left:** only the live proof, which runs after run-20. The old context chat stays on until it passes.
+
 ### Decision 57, part C: steadiness, a second source of evidence, and confirming a role
 
 **How steady patterns are: not steady.** This is the most important finding tonight. A new read-only script, `api/journey/pattern-steadiness.ts` (`e9e6edae`), compares which person got which pattern across two runs of the same scenarios:
