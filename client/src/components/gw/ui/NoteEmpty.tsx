@@ -21,8 +21,17 @@ export function Note({ tone, children }: { tone?: 'error'; children: React.React
   )
 }
 
-export function Callout({ children }: { children: React.ReactNode }) {
-  return <p className="gwui-callout">{children}</p>
+export function Callout({ tone, role, children }: {
+  /** 'success' for a fact that just became true, e.g. "You are in." (green, `role="status"`). */
+  tone?: 'success'
+  role?: React.AriaRole
+  children: React.ReactNode
+}) {
+  return (
+    <p className={tone === 'success' ? 'gwui-callout gwui-callout-success' : 'gwui-callout'} role={role}>
+      {children}
+    </p>
+  )
 }
 
 export function Empty({ title, children, action }: {

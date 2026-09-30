@@ -64,6 +64,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 .gwui-stack-12.gwui-stack-12 > * + * { margin-top: 12px; }
 .gwui-stack-18.gwui-stack-18 > * + * { margin-top: 18px; }
 .gwui-stack-19.gwui-stack-19 > * + * { margin-top: 19px; }
+.gwui-stack-30.gwui-stack-30 > * + * { margin-top: 30px; }
 
 /* ── PAGE TITLE (prototype: .t-title, .crumb, .t-small, .av at 56px) ────── */
 .gwui-pt-eyebrow { font-size: 14.5px; color: var(--gw-sub); margin: 0 0 6px; }
@@ -94,6 +95,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
    `background:var(--chat);border-radius:10px;padding:10px 14px`, class `t-small`) ─────────── */
 .gwui-callout { background: var(--gw-bg); color: var(--gw-text); border-radius: 10px; padding: 10px 14px; font-size: 14.5px; line-height: 1.45; margin: 0; }
+.gwui-callout-success { background: var(--gw-green-bg); color: var(--gw-green-t); }
 
 /* ── SUB-HEADING (join-invite.jpg: "What it asks", "Who sees your answers") ─────────── */
 .gwui-subheading { font-family: var(--gw-font-ui); font-size: 14.5px; font-weight: 700; color: var(--gw-text); margin: 0 0 6px; }
@@ -933,3 +935,79 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
   .gwui-console-nav { width: auto; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--gw-border); }
   .gwui-console-nav-item-active { border-right: none; border-bottom: 2px solid var(--gw-navy); }
 }
+
+/* ── GREETING (prototype: .t-greet, app.css - Today's own big heading, C1, U.5 group 2) ────── */
+.gwui-greet-block { margin: 0; }
+.gwui-greet { font-family: var(--gw-font-name); font-size: clamp(30px, 4vw, 38px); line-height: 1.12; font-weight: 500; letter-spacing: -.01em; margin: 0 0 8px; color: var(--gw-text); }
+.gwui-greet-sub { font-size: 17px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
+@media (max-width: 860px) {
+  .gwui-greet { font-size: 30px; }
+}
+
+/* ── TODAY'S TWO-COLUMN LAYOUT (prototype: .side, app.css line 78: "minmax(0,1fr) 340px", gap
+   44px; the check-ins list, board and other screens share the same shape) ─────────────────── */
+.gwui-side { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 44px; align-items: start; }
+@media (max-width: 1100px) {
+  .gwui-side { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── COMING UP (prototype: Today's own sidebar list, app.css) ───────────────────────────────── */
+.gwui-comingup-h { margin: 0 0 12px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-text); }
+.gwui-comingup-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--gw-border); }
+.gwui-comingup-list li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gw-border); font-size: 14.5px; line-height: 1.45; }
+.gwui-comingup-list b { color: var(--gw-text); }
+.gwui-comingup-list a { color: var(--gw-text); text-decoration: none; }
+.gwui-comingup-list a:hover, .gwui-comingup-list a:focus-visible { text-decoration: underline; }
+
+/* ── WELCOME CARD AND "GET <ORGANISATION> GOING" (prototype: the admin's first-run doors and
+   checklist, C1/A3, U.3 and U.5) ────────────────────────────────────────────────────────────── */
+.gwui-first-run { display: grid; gap: 14px; }
+.gwui-welcome-card { display: grid; gap: 12px; padding: 16px 20px; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 2px var(--gw-text); }
+.gwui-welcome-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gwui-welcome-card-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 600; color: var(--gw-text); }
+.gwui-welcome-card-line { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--gw-sub); }
+.gwui-welcome-doors { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.gwui-welcome-door { display: block; padding: 12px 14px; border: 1px solid var(--gw-border); border-radius: 10px; text-decoration: none; color: var(--gw-text); }
+.gwui-welcome-door:hover, .gwui-welcome-door:focus-visible { background: var(--gw-page); }
+.gwui-welcome-door b { display: block; font-size: 15.5px; }
+.gwui-welcome-door span { display: block; margin-top: 2px; font-size: 13.5px; color: var(--gw-sub); }
+.gwui-get-going { padding: 16px 20px; border: 1px solid var(--gw-border); border-radius: 12px; background: #fff; }
+.gwui-get-going-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.gwui-get-going-head h2 { margin: 0; font-family: var(--gw-font-name); font-size: 20px; font-weight: 600; color: var(--gw-text); }
+.gwui-get-going-head span { font-size: 14.5px; color: var(--gw-sub); }
+.gwui-get-going ul { list-style: none; margin: 0; padding: 0; }
+.gwui-get-going li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; border-top: 1px solid var(--gw-border); }
+.gwui-get-going-title { font-size: 15.5px; font-weight: 700; color: var(--gw-text); }
+
+/* ── CHECK-INS TABLE (prototype: check-ins.txt, C1, U.5 group 2) ────────────────────────────── */
+.gwui-ci-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.gwui-ci-table th { text-align: left; font-size: 13px; font-weight: 400; color: var(--gw-sub); padding: 12px 18px; border-bottom: 1px solid var(--gw-border); }
+.gwui-ci-table th:nth-child(1) { width: 34%; }
+.gwui-ci-table th:nth-child(2) { width: 26%; }
+.gwui-ci-table th:nth-child(3) { width: 19%; }
+.gwui-ci-table td { padding: 16px 18px; vertical-align: middle; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); border-top: 1px solid var(--gw-border); overflow-wrap: anywhere; }
+.gwui-ci-table tbody tr:first-child td { border-top: none; }
+.gwui-ci-table tbody tr { cursor: pointer; }
+.gwui-ci-table tbody tr:hover td { background: var(--gw-page); }
+.gwui-ci-table-name { display: block; font-size: 17px; font-weight: 700; color: var(--gw-text); text-decoration: none; }
+.gwui-ci-table-name:hover, .gwui-ci-table-name:focus-visible { text-decoration: underline; }
+.gwui-ci-table-about { margin-top: 2px; font-size: 14.5px; color: var(--gw-sub); }
+.gwui-ci-table-also { margin-top: 2px; font-size: 13px; color: var(--gw-sub); }
+.gwui-ci-table td a { color: var(--gw-text); }
+@media (max-width: 860px) {
+  .gwui-ci-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .gwui-ci-table, .gwui-ci-table tbody, .gwui-ci-table tr, .gwui-ci-table td { display: block; width: auto; }
+  .gwui-ci-table td { border-top: none; padding: 2px 16px; }
+  .gwui-ci-table td:first-child { padding-top: 14px; }
+  .gwui-ci-table td:last-child { padding-bottom: 14px; }
+  .gwui-ci-table tbody tr + tr { border-top: 1px solid var(--gw-border); }
+  .gwui-ci-table td:nth-child(2) { color: var(--gw-sub); }
+}
+
+/* ── WAITING FOR YOU (prototype: an admin's check-ins list, awaiting approval, C1, U.5 group 2) ── */
+.gwui-panel-caution { background: var(--gw-amber-bg); border-color: var(--gw-amber-b-soft); }
+.gwui-panel-caution h2 { margin: 0 0 4px; font-family: var(--gw-font-ui); font-size: 18px; line-height: 1.3; font-weight: 700; color: var(--gw-amber-t); }
+.gwui-waiting-one { background: #fff; border: 1px solid var(--gw-border); border-radius: 10px; padding: 12px 14px; }
+.gwui-waiting-one + .gwui-waiting-one { margin-top: 8px; }
+.gwui-waiting-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.gwui-waiting-acts textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--gw-border); font: inherit; font-size: 14.5px; resize: vertical; }
