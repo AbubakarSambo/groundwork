@@ -3,6 +3,8 @@ import { PATTERNS_ARE_SERVED } from './patterns-are-served';
 import { plainNameOf, type PlainKind } from './plain-pattern-names';
 import { plainVoice } from './plain-voice';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
+import { coachingForAPattern } from './what-to-coach-towards';
+import { whatAPatternIsAbout, type WhatAPatternIsAbout } from './what-a-pattern-is-about';
 
 /**
  * WHO READS A PATTERN, WHEN, AND IN WHAT WORDS. THE ONE PLACE THAT DECIDES IT.
@@ -166,6 +168,20 @@ export interface AServedPattern {
    * them, and null for a colleague, who never reaches this row at all.
    */
   secondReadNote: string | null;
+  /**
+   * WHICH PART OF "WHAT KEEPS COMING UP" IT BELONGS IN (screens request 82, decision 67): "the work"
+   * for "About each person's work", or "what is said against what happened" for "How what people say
+   * can run ahead of what happened". The same for every reader, since it says nothing about a person.
+   */
+  about: WhatAPatternIsAbout;
+  /**
+   * FOR WHOEVER RUNS THE CHECK-IN ONLY (decision 67): what to coach the person towards, the good
+   * version, in one plain sentence. Fixed text per pattern and role, never written by a model at read
+   * time. Null for the person it is about, since the coaching is framed for the manager.
+   */
+  coachTowards: string | null;
+  /** FOR WHOEVER RUNS THE CHECK-IN ONLY: one small, concrete step the person could take. Null for the person. */
+  oneStep: string | null;
 }
 
 /** The one place this sentence is written, so it is never paraphrased from one surface to the next. */
@@ -179,6 +195,8 @@ export interface WhoIsWho {
   firstNameOf?: (participantId: string) => string | null;
   /** Whether this ground's periods are calendar weeks, not sessions (decision 57, item 1). */
   isDaily?: boolean;
+  /** A person's detected function and how sure it is, so the coaching can use their role's own map (decision 67). */
+  roleOf?: (participantId: string) => { fn?: string | null; confidence?: number | null } | null;
 }
 
 /** The headings the page puts over the list, from the prototype's screens. */
@@ -351,6 +369,12 @@ export function servedPatterns(
         leadMark: yours ? null : (row.leadMark ?? null),
         talkedAbout: !!row.talkedAboutAt,
         secondReadNote: !yours && row.evidenceSource === 'both' ? TWO_SEPARATE_READS_NOTE : null,
+        about: whatAPatternIsAbout(row.code),
+        ...(() => {
+          if (yours) return { coachTowards: null, oneStep: null };
+          const c = coachingForAPattern(row.code, opts.roleOf?.(row.participantId) ?? null);
+          return { coachTowards: c?.coachTowards ?? null, oneStep: c?.oneStep ?? null };
+        })(),
       };
     })
     .sort((a, b) => Number(b.yours) - Number(a.yours));
@@ -434,6 +458,10 @@ export function whoIsWhoIn(
     leadName: first(lead),
     leadParticipantId: lead?.id ?? null,
     firstNameOf: (pid: string) => first(rows.find((p) => p.id === pid)),
+    roleOf: (pid: string) => {
+      const p = rows.find((x) => x.id === pid) as any;
+      return p ? { fn: p.detectedFunction ?? null, confidence: p.detectedFunctionConfidence ?? null } : null;
+    },
     isDaily: cadence === 'DAILY',
   };
 }
