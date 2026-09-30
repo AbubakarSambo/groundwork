@@ -476,3 +476,18 @@ The report's `theJudgement` can now carry `conversationPoints`, a list of plain 
 Draw each sentence under the judgement, as the lead reads it. The person, a colleague and an admin who only reads never receive it. The product writes it, not the model.
 
 Also from tonight: in "What the record shows over time", the lead is now named, or is "you" when the lead reads it ("In session 3, you committed Aisha Otieno to call the client."), never "the lead".
+
+## 30 September, late: admins and the three evaluation check-ins (request 78), coaching on the board (request 79)
+
+**Which check-ins are a performance plan, a promotion or a renewal (request 78).** Read the check-in's `scenario`. It is one of these three exactly when it is `PIP` (a performance plan), `RECOGNITION` (a promotion) or `CONTRACT_RENEWAL` (a renewal). The list is `EVALUATION_SCENARIOS` in `api/src/modules/reports/is-this-an-evaluation-check-in.ts`, built from the same test the engine uses, so it cannot drift. Leave the admins line out of the invitation on those three.
+
+What the server now does, so the screens need not hide anything: an admin of the organisation reads one of these three only when they run it, set it up, or take part in it. Without that they are treated as if they were not an admin of it. It is not in their list, on Today, in the roster or in the approval queue, and its page, board, report, session reports, earlier rounds, activation status, outcome and reasons answer "not found" or "not part of this check-in". An admin who set it up or runs it reads it as before. An admin who only takes part reads it as a person in it does. On every other kind of check-in an admin reads what they read today.
+
+**Coaching on the board (request 79 b).** The board response carries `coaching`, present only when there is something for this reader:
+
+- `coaching.yours` is the reader's own coaching note, exactly as the report serves it (the same note, about the reader only). It is there for anyone who takes part, the lead included.
+- `coaching.eachPerson` is what to ask each person, the list the report gives the person who runs the check-in. It is there for the lead, and for the admin who set the check-in up for them, and for nobody else. An admin who only reads, a colleague and the person themselves get `null`.
+
+I did not serve each person's own coaching note to the lead, because the report never does: a note written for one person is not given to their lead (the report's own comment says so). If Hafsah wants the lead to read each person's note too, that is a change to a privacy rule and is hers to decide.
+
+**Periods (request 79 a).** `managerAlignment[].periods` is now never more than the number of answered sessions as decision 57 counts them (a daily check-in counts calendar weeks). After a single session it reads 1.
