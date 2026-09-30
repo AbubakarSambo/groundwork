@@ -91,13 +91,18 @@ describe('what the page shows', () => {
   })
 
   /*
-   * "Erase it" IS REACHABLE WITHOUT DOWNLOADING FIRST (fault E): drawn as a plain text link
-   * (`.gwui-plain-link`, like "Cancel" and "Never mind" elsewhere on this page), so it does not
-   * need to wait for `myData` to become a second always-visible boxed button - see the rendered
-   * check in settings-wording-group1.spec.tsx, which confirms it actually works this way.
+   * REACHABLE WITHOUT DOWNLOADING FIRST (fault E): drawn as a plain text link (`.gwui-plain-link`,
+   * like "Cancel" and "Never mind" elsewhere on this page), so it does not need to wait for
+   * `myData` to become a second always-visible boxed button - see the rendered check in
+   * settings-wording-group1.spec.tsx, which confirms it actually works this way.
+   *
+   * RENAMED (group 1's third review): "Erase it" said the opposite of what it does - your
+   * answers stay, only your name and email go. Now "Remove your name and email", with a sentence
+   * saying so right beside it.
    */
   it('is a plain text link, not a second boxed button beside "Download it"', () => {
-    expect(CODE).toMatch(/className="gwui-plain-link" onClick=\{\(\) => setShowEraseConfirm\(true\)\}>Erase it</)
+    expect(CODE).toMatch(/className="gwui-plain-link" onClick=\{\(\) => setShowEraseConfirm\(true\)\}>Remove your name and email</)
+    expect(CODE).toMatch(/Your answers stay in the check-ins, without your name\./)
   })
 })
 

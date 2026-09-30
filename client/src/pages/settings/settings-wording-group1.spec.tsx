@@ -79,18 +79,23 @@ describe('Your data', () => {
   })
 
   /*
-   * "Erase it" IS REACHABLE WITHOUT DOWNLOADING FIRST (fault E), as it was before "Download it"
-   * started saving a file on press. It is a plain text link, not a second boxed button, which is
-   * how it stays off the button-count check without needing `myData` loaded first.
+   * "REMOVE YOUR NAME AND EMAIL" IS REACHABLE STRAIGHT AWAY (fault E), as it was before "Download
+   * it" started saving a file on press. It is a plain text link, not a second boxed button, which
+   * is how it stays off the button-count check without needing `myData` loaded first.
+   *
+   * RENAMED FROM "Erase it" (group 1's third review): the old label said the opposite of what it
+   * does - your answers stay, only your name and email go - so it now says exactly that, with a
+   * sentence saying so right beside the link, and the confirmation's own words agree.
    */
-  it('"Erase it" is reachable straight away, with no download needed first', async () => {
+  it('"Remove your name and email" is reachable straight away, with no download needed first', async () => {
     open({ id: 'u1', role: 'MEMBER', organizationName: 'Baridi Appliances', firstName: 'Grace', lastName: 'Achieng', email: 'grace@baridi.co.ke' })
-    const eraseLink = screen.getByText('Erase it')
+    expect(screen.getByText('Your answers stay in the check-ins, without your name.')).toBeTruthy()
+    const eraseLink = screen.getByText('Remove your name and email')
     expect(eraseLink.tagName).toBe('BUTTON')
     expect(eraseLink.className).toContain('gwui-plain-link')
     await userEvent.click(eraseLink)
     expect(await screen.findByText(/Your name and email are removed everywhere/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Yes, erase it' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Yes, remove them' })).toBeTruthy()
   })
 })
 

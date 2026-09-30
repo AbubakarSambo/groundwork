@@ -356,18 +356,24 @@ export function SettingsPage() {
             )}
           </Stack>
           {/*
-           * "Erase it" IS REACHABLE WITHOUT DOWNLOADING FIRST (fault E), as it was before "Download
-           * it" started saving a file on press: it no longer waits for `myData`. It is drawn as a
-           * plain text link (`.gwui-plain-link`), like "Cancel" and "Never mind" elsewhere on this
-           * page, rather than a second boxed button - the prototype's own screen has no erase flow
-           * at all, so a second always-visible button here would put this screen over the
-           * prototype's own button count (e2e/the-prototype-count-of-buttons.spec.ts already holds
-           * it to exactly the prototype's five).
+           * "REMOVE YOUR NAME AND EMAIL", NEVER "ERASE IT" (group 1's third review): the old label
+           * said the opposite of what this does - your answers stay on the record, only your name
+           * and email go. Said plainly before the link, not just inside the confirmation, and the
+           * confirmation's own words now agree with the label.
+           *
+           * REACHABLE WITHOUT DOWNLOADING FIRST (fault E), as it was before "Download it" started
+           * saving a file on press: it no longer waits for `myData`. Still a plain text link
+           * (`.gwui-plain-link`), like "Cancel" and "Never mind" elsewhere on this page, rather than
+           * a second boxed button - the prototype's own screen has no erase flow at all, so a second
+           * always-visible button here would put this screen over the prototype's own button count
+           * (e2e/the-prototype-count-of-buttons.spec.ts already holds it to exactly the prototype's
+           * five).
            */}
           <Stack gap={12}>
             {!showEraseConfirm && (
               <div>
-                <button type="button" className="gwui-plain-link" onClick={() => setShowEraseConfirm(true)}>Erase it</button>
+                <p className="gwui-panel-text-muted">Your answers stay in the check-ins, without your name.</p>
+                <button type="button" className="gwui-plain-link" onClick={() => setShowEraseConfirm(true)}>Remove your name and email</button>
               </div>
             )}
             {showEraseConfirm && (
@@ -380,7 +386,7 @@ export function SettingsPage() {
                 </p>
                 <div className="gwui-invite-actions">
                   <Button kind="danger" onClick={() => eraseMyData.mutate()} disabled={eraseMyData.isPending}>
-                    {eraseMyData.isPending ? 'Erasing…' : 'Yes, erase it'}
+                    {eraseMyData.isPending ? 'Removing…' : 'Yes, remove them'}
                   </Button>
                   <Button kind="quiet" onClick={() => setShowEraseConfirm(false)}>Cancel</Button>
                 </div>
