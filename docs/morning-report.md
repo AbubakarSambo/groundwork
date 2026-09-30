@@ -57,6 +57,8 @@ The patterns that flip most are the ones whose meanings sit close together: task
 
 The fix is next, after the current builder: read the patterns at the model's steadiest setting with a fixed seed, and measure it on both counts. It has to be steadier, and it must still find what a consensus of five ordinary reads finds, because an earlier measurement showed that a steadier setting can make judgements consistently wrong. No pattern is removed or weakened. A test will check that the same input gives the same patterns. The script is `api/journey/the-detector-read-twice.ts`.
 
+**Step 2, waiting on the model.** At 08:45 the regional address the product uses to reach the model (us-central1) stopped answering from this computer; an hour earlier the first measurement ran through it without trouble. Both new measurements (steadiness at the steady setting, and whether it still finds what five normal reads agree on) read nothing, so there are no numbers yet. The steady setting is built but switched off, and stays off until those numbers exist. I did not change which address the product uses, because that is a setting I may not touch. The measurements rerun as soon as the address answers again.
+
 **Step 4: the thresholds for week 10, explained. Nothing is set.**
 
 A suggestion about a person can only be reached when a threshold is set for it, and none is set. Each threshold has two numbers.
