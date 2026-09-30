@@ -24,6 +24,11 @@ import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
 import { readToDo, toDoProposal, whichToDo, listToDos, addedToYourToDos } from './a-to-do-is-yours';
 import { whatItTakesToStart } from './what-it-takes-to-start';
 import {
+  ROLE_INTERVIEW_KIND, ROLE_INTERVIEW_CONFIRM_KIND, THE_FOUR, INTERVIEW_INVITATION, theyWantToBegin, theyWantToStop,
+  LONGEST_ANSWER, tidy, sayItBack, SAVED, LEFT, NOT_NOW_SAID, TOO_LONG, EMPTY,
+  type InterviewPayload, type ConfirmPayload, type TheFourAnswers,
+} from './the-role-interview';
+import {
   whichSituation,
   askWhichSituation,
   whoWouldBeAsked,
@@ -182,7 +187,7 @@ export class AssistantService {
      * `addContext` and its parked-proposal handling carry what little continuity they need in the
      * proposal's own payload instead. See docs/context-chat-inventory.md, item 2.
      */
-    if (who && !SETUP_LANES.has(reply.lane)) {
+    if (who && !SETUP_LANES.has(reply.lane) && reply.lane !== 'role_interview') {
       await this.remember(organizationId, who, message, reply).catch(() => undefined);
     }
     return reply;
@@ -1282,6 +1287,86 @@ export class AssistantService {
   }
 
   /**
+   * THE ROLE INTERVIEW, ONE QUESTION AT A TIME (request 25).
+   *
+   * An admin sent it; it waits as a parked request for this person. Until they say "start" their own
+   * messages are answered as usual (with one reminder), because they did not come to be interviewed.
+   * After that, each message is the answer to the question just asked, kept exactly as typed. When the
+   * fourth is in, all four are said back and only a yes writes the row (decision 12).
+   */
+  private async resolveParkedInterview(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const p = parked.payload as InterviewPayload;
+    const typed = tidy(message);
+
+    if (theyWantToStop(typed)) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('role_interview', text(NOT_NOW_SAID));
+    }
+
+    if (p.answered === 0 && !p.started) {
+      if (!theyWantToBegin(typed)) {
+        /* They asked something else. Answer it, and say once that the interview is waiting. */
+        const reply = await this.answer(organizationId, personId, who, message, true);
+        if (p.reminded) return reply;
+        await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { payload: { ...p, reminded: true } as never } });
+        return { ...reply, blocks: [...reply.blocks, text(INTERVIEW_INVITATION(p.roleName))] };
+      }
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { payload: { ...p, started: true } as never } });
+      return rules('role_interview', text(THE_FOUR[0].asks(p.roleName)));
+    }
+
+    if (!typed) return rules('role_interview', text(EMPTY));
+    if (typed.length > LONGEST_ANSWER) return rules('role_interview', text(TOO_LONG));
+
+    const here = THE_FOUR[p.answered];
+    const answers = { ...p.answers, [here.key]: (message ?? '').trim() };
+    const answered = p.answered + 1;
+
+    if (answered < THE_FOUR.length) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { payload: { ...p, answers, answered } as never } });
+      return rules('role_interview', text(THE_FOUR[answered].asks(p.roleName)));
+    }
+
+    /* All four are in: said back, and nothing is written until a yes. */
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    const all = answers as TheFourAnswers;
+    const say = sayItBack(all);
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId, personExternalId: who, kind: ROLE_INTERVIEW_CONFIRM_KIND, summary: say,
+        payload: { roleName: p.roleName, answers: all } as never,
+      },
+    });
+    return rules('role_interview', text(say), { type: 'proposal', proposalId: proposal.id, summary: say });
+  }
+
+  /** The yes writes one row. The no writes nothing, and the interview can be started again. */
+  private async resolveParkedInterviewConfirm(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    const p = parked.payload as ConfirmPayload;
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      await this.prisma.assistantProposal.create({
+        data: { organizationId, personExternalId: who, kind: ROLE_INTERVIEW_KIND, summary: INTERVIEW_INVITATION(p.roleName), payload: { roleName: p.roleName, answered: 0, answers: {} } as never },
+      });
+      return rules('role_interview', text(LEFT));
+    }
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { id: true } });
+    if (!person) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('role_interview', text('I could not save that, because I can no longer see you in your organisation records.'));
+    }
+    await this.prisma.roleInterviewAnswer.create({
+      data: {
+        organizationId, personExternalId: who, roleName: p.roleName,
+        owns: p.answers.owns, decides: p.answers.decides, dependsOn: p.answers.dependsOn, dependedOnBy: p.answers.dependedOnBy,
+        promptVersionId: null,
+      },
+    });
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    return rules('role_interview', text(SAVED(p.roleName)));
+  }
+
+  /**
    * CONFIRM, RE-VERIFY, DELEGATE, AUDIT, READ BACK.
    *
    * The re-verification matters more than it looks: between the offer and the yes, the person may
@@ -1315,6 +1400,11 @@ export class AssistantService {
      */
     if (parked.kind === 'context_turn') {
       return this.resolveParkedContextTurn(organizationId, who, parked, message);
+    }
+
+    /* THE ROLE INTERVIEW (request 25): what is typed is an answer to its question, not a yes or a no. */
+    if (parked.kind === ROLE_INTERVIEW_KIND) {
+      return this.resolveParkedInterview(organizationId, personId, who, parked, message);
     }
 
     const decision = resolveConfirmation(message);
@@ -1380,6 +1470,9 @@ export class AssistantService {
     }
     if (parked.kind === 'question_for_person') {
       return this.resolveParkedQuestionForPerson(organizationId, who, parked, decision);
+    }
+    if (parked.kind === ROLE_INTERVIEW_CONFIRM_KIND) {
+      return this.resolveParkedInterviewConfirm(organizationId, who, parked, decision);
     }
 
     if (decision === 'decline') {
