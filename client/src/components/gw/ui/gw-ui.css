@@ -442,6 +442,9 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    and the "quiet danger" red-text variant are both gone now, so every danger button reads the
    same weight the prototype gives it. */
 .gwui-btn-danger { background: var(--gw-red-t); color: #fff; }
+/* The prototype's own "End this check-in" (s41.js): an ordinary secondary button, white with its
+   thin grey outline, whose words are red. Not a fifth kind: the secondary kind with red text. */
+.gwui-btn-secondary.gwui-btn-red-text { color: var(--gw-red-t); }
 .gwui-btn-big { min-height: 54px; font-size: 17px; padding: 0 22px; }
 .gwui-btn-small { min-height: 36px; font-size: 14.5px; padding: 0 12px; }
 .gwui-btn-wide { width: 100%; }
