@@ -44,6 +44,14 @@ Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settl
 - **90.** "Four of the six people have answered so far."
 - **86.** A session somebody has started is open, whatever its first-day date still says. Three places treated it as not open yet: Today listed it under "Coming up", the assistant left it out, and a guest was told it "opens on" a past date. All three are fixed.
 
+**Request 18 done: links between check-ins** (`d6abc666` to `65bb81ab`; 2,772 tests pass in board and reports, plus the new specs).
+- A handoff now knows which other check-in it waits on, but only when the words said name exactly one other check-in in the organisation ("Finance" matches "Finance, Q3"); otherwise it stays empty rather than guess.
+- Each handoff says when it is due in the person's own words, and where it stands in one plain sentence ("The Mombasa depot's count is due Friday.", "Not decided yet.").
+- "Where the blocker started" follows a blocker across check-ins, stored without names and built once when a handoff changes. Every step must come from a real handoff on record, or nothing is stored. A reader gets only the steps from check-ins they may open.
+- Also: a participant in a check-in that runs until the lead ends it now reads "Session 3. It runs until Wairimu Kamau ends it.", and the public API can create one.
+
+**Decided for Hafsah to confirm: who sees a blocker's whole chain.** The prototype shows the Sales lead the whole chain, through Finance and Leadership. Under the rule the screens asked for, a reader gets only the steps from check-ins they may open, so the Sales lead, who cannot open Finance, sees only the Sales steps, and not where it started. I kept the more private rule. Widening it would show the Sales lead what was said in Finance's check-in.
+
 **Request 37 done: a check-in can run until the lead ends it** (`9b49d0e6` to `e8ae6bbf`, 422 tests pass in its own specs and the public API). One field, `runsUntilEnded`, set at setup ("I will set this to run until you end it."). Such a check-in is never treated as having a last session, never says how far through it is, is never marked out of time, and the lead can end it at any session. The model is told there is no planned last check-in. Two gaps left: the public API cannot yet create one, only read it; and a participant would read "Session 3. It runs until you end it.", but only the lead ends it, so it should name the lead for them. That wording fix is next.
 
 **Request 5 answered** (`3526935c`). Six of the eight names already match the prototype; "contract" and "recognition" stay in the other two by Hafsah's own earlier decision. The eight newer conversations meet the conversation standard, apart from two small points.
