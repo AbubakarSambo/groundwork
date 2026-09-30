@@ -6681,3 +6681,5 @@ The admin's People page, the one-person page, the check-in's People and setup, "
 - Whether an admin should receive participants' email addresses on a check-in whose lead has turned on "Hide email addresses between participants". Kept as it was: they do not.
 
 **Next:** the board and reports for every kind of work, now that the engine serves the kind of work and each kind's records (request 76).
+
+**The engine's work, merged again (30 September).** 82 commits. The one conflict was in the You board's own file, where each side had added an import; both are kept. I applied the engine's three new database changes to the local database only (groundwork_dev on this Mac), rebuilt the local API and restarted it on 127.0.0.1. The whole API suite: 11,501 of 11,502 pass. The one failing is the engine's own test that reads the board's old pattern wording (request 81); a second file failed once under load and passes on its own.
