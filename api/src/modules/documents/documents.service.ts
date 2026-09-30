@@ -29,7 +29,7 @@ import {
 import { assertInviteLinkStillOpens } from '../participants/an-invite-link-still-opens';
 import {
   WHAT_A_DOCUMENT_HOLDS_PROMPT, WHAT_A_DOCUMENT_HOLDS_SCHEMA, MOST_OF_A_DOCUMENT_WE_READ,
-  theContextWeHave, BANK_DETAILS_LEFT_OUT, whoThisNameIs, theNameWeUseFor, type WhatADocumentHolds, type WhatLanded,
+  theContextWeHave, BANK_DETAILS_LEFT_OUT, whoThisNameIs, theNameWeUseFor, aSentence, type WhatADocumentHolds, type WhatLanded,
 } from './what-a-document-holds';
 
 const ALLOWED_MIME = [
@@ -319,7 +319,15 @@ export class DocumentsService {
         ASSESSMENT_TOOL,
       );
       if (!result?.suggests?.length) return null;
-      return { suggests: result.suggests, willDo: result.willDo ?? [] };
+      /*
+       * A FULL SENTENCE, EVEN WHEN THE MODEL HANDS BACK A FRAGMENT. Asked for "one plain sentence" per
+       * bullet, but a bare noun phrase ("Higher marketing spend than budgeted") still gets through
+       * sometimes, and the Context page joins these bullets straight after each other with nothing
+       * between them - a fragment there reads the same wrong way "whatItIs" used to. The same
+       * deterministic guard is used here, in code, rather than trusted to the model alone.
+       */
+      const asSentences = (xs: string[]): string[] => xs.map((x) => aSentence(x)).filter((x): x is string => !!x);
+      return { suggests: asSentences(result.suggests), willDo: asSentences(result.willDo ?? []) };
     } catch (err: any) {
       this.logger.warn(`Assessment failed for "${fileName}": ${err?.message}`);
       return null;

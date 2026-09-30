@@ -502,7 +502,13 @@ export class AnthropicService implements OnApplicationBootstrap {
     return { conversation: this.conversationModel, reports: this.model };
   }
 
-  async respond(systemPrompt: string, history: ChatTurn[]): Promise<string> {
+  /**
+   * `options` is for callers that need a steadier answer than the default sampling gives, such as
+   * the pattern detector's confirming call (see the-detector-read-twice.ts and the long comment
+   * above `temperature` in extract() for why this is opt-in, not a change to what anybody already
+   * gets). Every existing caller passes nothing and keeps the model's own default behaviour.
+   */
+  async respond(systemPrompt: string, history: ChatTurn[], options: { temperature?: number; seed?: number } = {}): Promise<string> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: t.content }],
@@ -518,7 +524,13 @@ export class AnthropicService implements OnApplicationBootstrap {
           this.client.models.generateContent({
             model: this.conversationModel,
             contents,
-            config: { systemInstruction: systemPrompt, maxOutputTokens: this.maxTokens, thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() } },
+            config: {
+              systemInstruction: systemPrompt,
+              maxOutputTokens: this.maxTokens,
+              thinkingConfig: { thinkingBudget: this.conversationThinkingBudget() },
+              ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+              ...(options.seed !== undefined ? { seed: options.seed } : {}),
+            },
           }),
           A_CALL_WAITS,
           'Gemini respond() timed out',
@@ -586,7 +598,7 @@ export class AnthropicService implements OnApplicationBootstrap {
     systemPrompt: string,
     history: ChatTurn[],
     tool: { name: string; description: string; input_schema: any },
-    options: { thinkingBudget?: number; fast?: boolean; patient?: boolean; temperature?: number } = {},
+    options: { thinkingBudget?: number; fast?: boolean; patient?: boolean; temperature?: number; seed?: number } = {},
   ): Promise<T | null> {
     const contents = history.map((t) => ({
       role: t.role === 'assistant' ? 'model' : 'user',
@@ -638,6 +650,7 @@ export class AnthropicService implements OnApplicationBootstrap {
            * on owes the same two columns, not just the first.
            */
           ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+          ...(options.seed !== undefined ? { seed: options.seed } : {}),
           ...(options.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: options.thinkingBudget } } : {}),
           tools: [{ functionDeclarations: [this.convertTool(tool)] }],
           toolConfig: {

@@ -182,7 +182,10 @@ const EXPECTED: [string, string, { board: string[]; page: string[]; record: stri
   ['the lead', 'u-tunde', { board: ['pd1'], page: ['pd1'], record: [] }],
   ['the person a pattern is about, who answered it', 'u-ngozi', { board: ['pd1'], page: ['pd1'], record: ['pd1'] }],
   ['a colleague, reading only his own, which only he has seen', 'u-femi', { board: ['pd2'], page: ['pd2'], record: ['pd2'] }],
-  ['an organisation admin who is not in the check-in', 'u-admin', { board: ['pd1'], page: ['pd1'], record: null }],
+  /* Decision 58 (screens request 84, 30 September 2026): an admin who does not run this check-in,
+     and was not the one who set it up for its lead, reads no pattern and no answer - not even the
+     lead's own, which an organisation admin used to read here under the wider `runsIt` class. */
+  ['an organisation admin who is not in the check-in and did not set it up', 'u-admin', { board: [], page: [], record: null }],
   ['a guest from another organisation', 'u-amaka', { board: ['pd6'], page: ['pd6'], record: ['pd6'] }],
 ];
 
@@ -237,6 +240,20 @@ describe('with the switch on, every reader reads patterns under the rules', () =
     }]);
     /* The lead reading is never the person being shown it. */
     expect(served.writes).toEqual([]);
+  });
+
+  /*
+   * DECISION 58: THE ONE ACCESS A CHECK-IN GIVES AN ADMIN WHO IS NOT ITS LEAD. Not every admin of
+   * the organisation - the admin who set this particular check-in up and handed it to its lead
+   * (`createdByUserId`), the same grant `who-may-read-this-check-in.ts` already uses for a check-in's
+   * write surfaces. She reads a pattern exactly as the lead does; the u-admin above, who did not set
+   * this one up, reads none.
+   */
+  it('the admin who set this check-in up for its lead reads a pattern as the lead does', async () => {
+    USERS['u-setup-admin'] = { role: 'ADMIN', organizationId: 'org-1' };
+    const ground = { ...groundWith(GROUNDS[0][1]), createdByUserId: 'u-setup-admin' };
+    const served = await everyPageAs(withTheSwitch(true), 'u-setup-admin', ground);
+    expect(idsOn(served)).toEqual({ board: ['pd1'], page: ['pd1'], record: null });
   });
 });
 

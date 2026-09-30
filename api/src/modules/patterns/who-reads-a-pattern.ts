@@ -25,8 +25,8 @@ import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
  *
  *   3. A PARTICIPANT READS ONLY THEIR OWN. A colleague's pattern is never served to a participant, on
  *      any page, named or not: on a team of four, the observation names them as surely as a name.
- *      Only somebody who runs the check-in (its lead, whoever set it up, an admin of its organisation)
- *      reads anybody else's.
+ *      Only somebody who runs the check-in reads anybody else's: its lead, or the admin who set it up
+ *      for them - NEVER every admin of the organisation (decision 58). See `runsItForAPattern`.
  *
  *   4. THREE PERIODS (decision 8). Counted from `seenInSessions`, every period it was really seen in,
  *      gaps included - never from `status`. SURFACED is the detector's word and is not the same rule:
@@ -85,8 +85,39 @@ export const PATTERN_ROW_SELECT = {
 export interface APatternReader {
   /** The reader's own participant row in this check-in, when they take part in it. */
   participantId: string | null;
-  /** Leads it, set it up, or is an admin of the organisation it belongs to. */
+  /** Leads it, or set it up for the lead. Never every admin of the organisation - see runsItForAPattern. */
   runsIt: boolean;
+}
+
+/** The one check-in fields a pattern's access rule ever needs. */
+export interface CheckInForPatternAccess {
+  initiatorId: string | null;
+  /** The admin who set this check-in up and handed it to its lead, when one did. */
+  createdByUserId?: string | null;
+}
+
+/**
+ * WHETHER THIS READER RUNS THE CHECK-IN, FOR A PATTERN OR ITS ANSWER (decision 58, screens request
+ * 84, Hafsah's answer of 30 September). Only the check-in's own lead, or the specific admin who set
+ * it up for them (`createdByUserId` - the one per-check-in grant the product already keeps; see
+ * `who-may-read-this-check-in.ts`, "the admin who SET IT UP and handed it to a lead reads at
+ * lead"). NEVER every admin of the organisation.
+ *
+ * The wider class, `adminsThisOrg`, is right for a board, a report, or a performance plan an admin
+ * has been given access to (decision 5) - but a pattern, and the person's own words behind it, are
+ * narrower. Decision 5's "never a performance plan unless given access to that check-in" is exactly
+ * this: the access a check-in already represents for an admin who does not run it is
+ * `createdByUserId`, nothing wider. Before this, `patternReaderOf` (grounds.service.ts) fell back to
+ * `adminsThisOrg` for anybody who was not the lead or the setup admin, so any admin of the
+ * organisation read every pattern and every person's answer to it - on the board, the check-in's own
+ * page (`signals`), the team report, session reports, the You board and the lead's probe list.
+ *
+ * THE ONE RULE EVERY ROUTE THAT SERVES A PATTERN OR ITS ANSWER MUST CALL, so "does this admin run
+ * it" is answered once rather than by each builder's own copy of `adminsThisOrg`.
+ */
+export function runsItForAPattern(checkIn: CheckInForPatternAccess, userId: string | null | undefined): boolean {
+  if (!userId) return false;
+  return checkIn.initiatorId === userId || (!!checkIn.createdByUserId && checkIn.createdByUserId === userId);
 }
 
 export interface AServedPattern {

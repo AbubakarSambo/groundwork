@@ -38,6 +38,16 @@ import {
 /** Lookup map from code -> description for the AI confirmation prompt. */
 const CODE_DESCRIPTIONS = new Map(BAD_FAITH_CODES.map((c) => [c.code, `${c.name}: ${c.signal}`]));
 
+/**
+ * THE STEADIEST SETTING THE MODEL HAS, FOR THE TWO DETECTOR CALLS.
+ *
+ * Measured live against run-20 of journey/all-24 (30 September 2026, step 2 - see
+ * api/journey/the-detector-read-twice.ts and docs/morning-report.md, "Step 2, the fix"). Kept
+ * here, not applied anywhere by default, until that measurement says which of the extraction call,
+ * the confirming call, or neither should use it.
+ */
+export const PATTERN_DETECTION_STEADY_OPTIONS = { temperature: 0, seed: 20260930 } as const;
+
 const THREE_PERIOD_RULE = 3;
 
 
@@ -870,13 +880,13 @@ export class PatternsService {
    * The excerpt is the observation text produced by the batch extraction step -
    * a plain-language description of what the record shows, never a verdict.
    */
-  private async confirmDetection(code: string, excerpt: string): Promise<boolean> {
+  private async confirmDetection(code: string, excerpt: string, options: { temperature?: number; seed?: number } = {}): Promise<boolean> {
     const description = CODE_DESCRIPTIONS.get(code) ?? code;
     const systemPrompt =
       'You are a pattern-detection verifier. Answer only YES or NO. No explanation. No preamble.';
     const question = `Does this text exhibit pattern ${code} (${description})?\nText: ${excerpt}\nAnswer YES or NO.`;
 
-    const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: question }]);
+    const reply = await this.anthropic.respond(systemPrompt, [{ role: 'user', content: question }], options);
     return reply.trim().toUpperCase().startsWith('YES');
   }
 

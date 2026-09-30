@@ -6,6 +6,90 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 
 ---
 
+## 30 SEPTEMBER, LATE MORNING: HAFSAH'S DECISIONS 60 TO 65, AND WHAT RUNS NEXT
+
+Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settled as proposed (60), the first threshold for week 10 (61), old patterns start the person-first process on release day (62), only the lead confirms setup unless the lead has left the organisation (63), the setup part of "how the leading is landing" restored without the three-period rule (64), and Ask Groundwork opened inside a check-in knows which one (65).
+
+**Order of work.**
+- **While the model is down:** 62, 63 and point 4 of 60 are with the builder now. Then 64, 61 and 65, and the tools to measure patterns read several times and by majority, ready for when the model answers.
+- **Once the model answers, patterns first:** measure the steady setting and the majority reading, keep whichever is steadiest while still finding real patterns, aiming for the same conversation giving the same patterns at least 8 times in 10, and say whether patterns are steady enough for release. Then the live checks for items 10, 11, 15 and 16.
+- The old context chat stays on until the screens workspace confirms Ask Groundwork's screens do everything live.
+
+## 30 SEPTEMBER, MORNING: HAFSAH'S FIVE STEPS (the old chat stays on, patterns, the disagreements, week 10)
+
+### Step 2, the fix
+
+I built the fix and could not measure it live, so it is not switched on. Here is exactly what happened.
+
+The two detector calls (the extraction in `analyzeCheckIn`, and the confirming call in `confirmDetection`) can now both be asked for the model's steadiest setting, temperature 0 with a fixed seed, through a small options argument added to `respond()` and `extract()` on `AnthropicService`. Nobody is asked for it by default; every other caller of those two methods keeps the model's own default sampling, exactly as before. The measurement script, `api/journey/the-detector-read-twice.ts`, gained a `STEADY=1` mode that reads run-20 twice at the steady setting instead of the default, and a `RECALL=1` mode that, for each check-in, does five reads at the default setting plus one steady read, and checks the steady read against the consensus of the five (a code counts as "in the consensus" when at least 3 of the 5 default reads kept it).
+
+I could not run either measurement. This sandboxed session can reach the general internet and several Google hosts, including the plain `aiplatform.googleapis.com`, but every call this app makes to Gemini goes to the regional host the product is configured to use, `us-central1-aiplatform.googleapis.com`, and every attempt to reach that host from here timed out trying to connect, on repeated tries over several minutes, with nothing else about the network looking wrong. I ran the plain default-only read-twice script first, which needs no new setting at all, and it failed the same way partway through: it reached Gemini successfully for a while and then stopped being able to, for the rest of the run. That is a property of this sandbox tonight, not of the code or of Gemini itself, and I did not work around it by changing which regional endpoint the product talks to, since that is a real product configuration decision, not a fix for a sandbox limit.
+
+So the numbers asked for in step 2a and step 2b are not in this report, because I do not have them and will not invent them. What is ready: the plumbing, both script modes, and three kinds of tests that do not need the live model at all, proving the mechanism is correct and that nothing already true was broken.
+- `respond()` and `extract()` send no `temperature` or `seed` to Gemini unless a caller passes them, and send exactly what is passed when it is (`api/src/modules/conversation/anthropic.service.spec.ts`).
+- `confirmDetection` forwards the same behaviour: nothing extra by default, the steady options through unchanged when asked for (`api/src/modules/patterns/the-detector-is-steady.spec.ts`).
+- With a stub model that returns the same detections twice, `analyzeCheckIn` writes the same (person, code) set both times, and all 49 codes (8 positive, 3 carrying, 38 bad-faith) are still in the library, still in the schema the model chooses from, and still named in the prompt. Nothing was removed, hidden, or made harder to reach.
+
+This is a "stop and ask Hafsah" moment in the sense the instructions describe: an engine-value number (steadiness) has a measured baseline (39% on run-20) and a fix that cannot be proven better without network access this session does not have. Whoever runs next with a working connection to Gemini can run, unchanged:
+```
+DATABASE_URL=postgresql://hafsahjumare@localhost:5432/gw_pw9_1786222102 STEADY=1 \
+  npx ts-node -T journey/the-detector-read-twice.ts all-24/run-20
+DATABASE_URL=postgresql://hafsahjumare@localhost:5432/gw_pw9_1786222102 RECALL=1 \
+  SCENARIOS=sales,seniorhire,pip,loans,handover,advisor,board,crisis,drift,project \
+  npx ts-node -T journey/the-detector-read-twice.ts all-24/run-20
+```
+and read the printed numbers against decision 2c: keep the steady setting only if steadiness is clearly higher and the steady read's recall against the five-read consensus is at least as good as a single default read's own recall against that consensus (the script prints both). If it fails on recall, try the extraction call alone at the steady setting with the confirming call left at default, which the script also supports by editing which calls receive `PATTERN_DETECTION_STEADY_OPTIONS` (currently both, in `readOnce`).
+
+**Requests 84, 83 and 81 are done** (`12777e64`, `78b139c4`, `4aa45ed0`, `2efd92cc`).
+- **84 (decision 58):** one rule now decides who reads a pattern or the person's answer. It is the check-in's lead, or the admin who set that check-in up for them, and nobody else. An admin who did neither used to get patterns on the board and on the check-in page; they now get none. A test serves the board and the check-in page as each reader, and the session report and the probe list use the same rule.
+- **83:** already fixed before tonight. The lead's description of a person reaches the lead alone on all four routes, and a person's own words go to their own job title.
+- **81:** the test still checked the old pattern shape and now checks the served one. That is the only reason it changed.
+
+**Step 1: the old context chat stays on.** Nothing switches it off until the screens workspace has built Ask Groundwork's document and confirmation screens and confirmed live that everything works through them. What those screens must show is now in `docs/answers-from-engine.md` (`2eb5fd42`).
+
+What was proven through Ask Groundwork, and what was not:
+- **Proven live, same result as the old chat:** the target a paste sets, and its number; who sees targets; lines typed directly; the lead's private notes; the refusal to share a note about a person; exact questions confirmed, reworded and left waiting; an admin refused at "Yes"; a document's text with the bank detail hidden; a document arriving private; the length and rhythm said back.
+- **Proven in tests only, not live:** a participant typing setup words gets nothing said back and nothing saved.
+- **Not proven, and found missing:** numbers read out of a document added through Ask Groundwork are never said back, so they can never be saved. The old chat takes them when the lead answers "yes" to the sentence "Here is the context we have from ...", which only the Context page shows. This is being built next.
+- **Not tested through Ask Groundwork yet:** that a target lands on the right person (the live check matched the number but did not print whose it is); a change to a line already on the record (item 7); a lead saying someone is struggling (item 10); an expectation of a named person (item 11); a colleague's private document staying out (item 12); a colleague asking about someone else's number (item 13); opening on what is already there (item 15); success restated with a reason (item 16); bank details in a message (item 18, the message is cleaned at the door, not yet shown live); a paste sent twice, and two people with the same first name (item 21). These are the next helper's work, after requests 84, 83 and 81.
+
+**Step 1, the gap closed: a document's numbers are now said back in Ask Groundwork** (`58960b6d`, `a17f61c1`, `5c7963f2`, `6eec35aa`).
+- After a document is added, Ask Groundwork says back what it holds, by name, and asks before saving. From the test: "Dayo Adebayo's target for Q3 sales is 45m." and "For everyone in this check-in, the target for New dealers is 12.", then "Shall I record these numbers on this check-in?"
+- "Yes" saves them through the same code the old chat and the check-in use (now one shared piece, not three copies). "No" saves nothing, and a second "yes" saves nothing twice.
+- New tests through Ask Groundwork: a participant typing any setup message gets nothing said back and nothing saved; a pasted target lands on the named person, a team number on nobody, and two people with the same first name on neither; a change to a recorded line waits for a yes; a colleague is not told someone else's number; a bank number in a message never reaches the model or storage; the same paste confirmed twice is saved once. 2,063 tests pass in the four folders.
+- Still to check live, because they live only in the model's instructions: a lead saying someone is struggling, an expectation of a named person, opening on what is already there, and success restated with a reason. These wait for the model to be reachable.
+- **Fixed:** a document's own description could be a fragment ("A Q4 sales target sheet."). It now reads "It looks like a Q4 sales target sheet.", and a description that is already a sentence is kept as it is. The same guard now covers the short points on a document's card on the Context page (`563d4f56`, `5e56d16e`). The instruction to the model asks for a full sentence too, and no stored version can override it.
+
+**Step 2: why patterns repeat so little between runs. The detector itself is unsteady.**
+
+I gave the detector the same stored conversations from run-20 twice, with no new scenario run: 87 check-ins, each with exactly the same input both times, the same filters, and the same second call that confirms a pattern. Nothing was written.
+- The two reads named exactly the same patterns on only 31 of the 87 check-ins.
+- Across whole scenarios, only 58 of 150 person-and-pattern pairs were found by both reads. That is 39%.
+- Between run-19 and run-20 it was 15%.
+
+So the same words, read twice, give the same patterns only about 4 times in 10. That is most of the problem. The simulated people saying different things each run takes it from about 4 in 10 down to about 1.5 in 10: the detector explains roughly 60 of the 85 points lost, and what people say explains the other 25 or so.
+
+The patterns that flip most are the ones whose meanings sit close together: tasks described without what they are for (K5), the same problem raised and never fixed (K3), good ideas and not much built (F1), and problems put down to things outside the team (B11). The cause is that the detector call runs at the model's default randomness, so each read samples slightly differently among 49 overlapping descriptions.
+
+The fix is next, after the current builder: read the patterns at the model's steadiest setting with a fixed seed, and measure it on both counts. It has to be steadier, and it must still find what a consensus of five ordinary reads finds, because an earlier measurement showed that a steadier setting can make judgements consistently wrong. No pattern is removed or weakened. A test will check that the same input gives the same patterns. The script is `api/journey/the-detector-read-twice.ts`.
+
+**Why the model has not answered since 08:45: the network on this computer, not a limit, billing or a key.** Nothing comes back at all: no status code and no message, because the connection never opens. A usage limit, quota, billing problem or dead key would each answer with a refusal (429, 403 or 401) and a message; none arrives. This computer cannot open a connection to the regional address the product uses (us-central1-aiplatform.googleapis.com), nor to the European one, while it reaches google.com, Google's status page, GitHub, and Google's global address normally. Google's status page shows no open incident. So something between this computer and Google, most likely the Wi-Fi router (192.168.68.1) or the internet provider, is dropping connections to part of Google's addresses. Nothing to top up. What would help: restart the router, turn off any security or filtering feature on it, or connect this computer to another network such as a phone's hotspot. No key or setting was changed. A check tries the address once every 15 minutes and restarts the measurements when it answers.
+
+**Step 2, waiting on the model.** At 08:45 the regional address the product uses to reach the model (us-central1) stopped answering from this computer; an hour earlier the first measurement ran through it without trouble. Both new measurements (steadiness at the steady setting, and whether it still finds what five normal reads agree on) read nothing, so there are no numbers yet. The steady setting is built but switched off, and stays off until those numbers exist. I did not change which address the product uses, because that is a setting I may not touch. The measurements rerun as soon as the address answers again.
+
+**Step 4: the thresholds for week 10, explained. Nothing is set.**
+
+A suggestion about a person can only be reached when a threshold is set for it, and none is set. Each threshold has two numbers.
+- **"Kept below"** decides how often a person must be keeping their commitments before Groundwork stays quiet. For example 0.6 means: if they kept fewer than 6 in 10, a suggestion is reached.
+- **"Over periods"** is misnamed: it is really how many commitments must have been settled, kept or not, in the last four weeks before the share is read at all. With too few, one missed commitment would swing the share wildly.
+
+Only "extra support" can be reached today. Keep, reward, a plan and exit have no reading of the record built yet, so a threshold set for them does nothing.
+
+My recommendations, for Hafsah to decide:
+- **Support: kept below 0.5, over at least 6 settled commitments.** Half is a clear line a person can see on their own board, and six is roughly three check-ins of two commitments each, so one bad week cannot reach it. A lower bar (0.4) would miss people who need help; a higher one (0.7) would reach people having an ordinary month.
+- **Keep, reward, plan, exit: leave empty.** Set them only once each has a reading of the record built and tested. Plan and exit most of all, because they are the least reversible.
+- **Rename "over periods" to "at least this many settled commitments"** on the admin page, so whoever sets it knows what it counts.
+
 ## SUMMARY OF THE NIGHT, 29 TO 30 SEPTEMBER (read this first)
 
 **Every decision Hafsah sent tonight is recorded in `docs/decisions-merged.md`, as decisions 44 to 57.** Clarifications were also added to decisions 4, 5, 6, 9, 12, 17, 21 and 27.

@@ -13,6 +13,20 @@
  * private notes are private, always. The row does not record who typed it, so it is served only to
  * the check-in's lead (its initiator), who is the person it is written by and for. Everyone else,
  * admins included, gets nothing in its place.
+ *
+ * REQUEST 83'S QUESTION, ANSWERED: HOW TO TELL THE LEAD'S WORDS FROM THE PERSON'S OWN. Since
+ * decision 30 (commits f39940dc, ae2b5a9e), a person's own statement of their own role never lands
+ * in this column, on any row, from any door: `participants.service.ts#updateRole` writes it to
+ * `User.jobTitle` when the caller is editing their own row, and the join flow
+ * (`entry.service.ts#joinConfirm`) writes what somebody typed about themselves on the join page
+ * (`PendingJoin.roleAsDescribed`, "for example 'I sell fridges in Kilimani'") to `User.jobTitle` as
+ * well, never to `GroundParticipant.roleAsDescribed`. So the two are not told apart by inspecting a
+ * row at read time - there is nothing left to tell apart. `GroundParticipant.roleAsDescribed` is
+ * always the lead's own words: about somebody else on that row, or about themselves on their own
+ * INITIATOR row (`aRoleInTheirOwnWords`, below). `theLeadsWordsAbout` serving it to the lead alone,
+ * on every row, is already the complete rule; a person's own words reach them through `jobTitle`,
+ * which is a different surface with no privacy question of this kind (it is exactly what the person
+ * themselves typed, about themselves).
  */
 export function theLeadsWordsAbout(p: { roleAsDescribed?: string | null }, readerLeadsThisCheckIn: boolean): string | null {
   return readerLeadsThisCheckIn ? (p.roleAsDescribed ?? null) : null;

@@ -67,6 +67,8 @@ import { targetsHiddenFrom, withoutHiddenTargetsIn, namesOnTheRoster } from '../
 import { runsIt } from '../grounds/who-may-read-this-check-in';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { parseContextLine, parseLeadNote, labelForContextKind, parseChangeContextLine } from './a-line-or-a-note-typed-in-chat';
+import { theContextWeHave, WhatLanded } from '../documents/what-a-document-holds';
+import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
 
 /**
  * THE LANES, AND EVERY ONE OF THEM WORKS WITH THE MODEL OFF.
@@ -94,6 +96,14 @@ const ROUNDS_RECALLED = 3;
  * spirit as `add_context` itself, which decision 50 already settled this way - see `respond`.
  */
 const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people'] satisfies Lane[]);
+
+/**
+ * SOMEBODY SAYING THEY JUST PUT A DOCUMENT IN, in the past tense - "I added the Q4 targets sheet",
+ * "I've uploaded it" - as opposed to `add_a_document`'s own patterns, which are about STARTING an
+ * upload ("upload the handbook"). Narrow on purpose: a word for having just done it, not a request.
+ */
+const JUST_ADDED_A_DOCUMENT =
+  /\bi(?:'ve| have)?\s+(?:just\s+)?(?:added|uploaded|attached|put\s+(?:up|in))\b/i;
 
 @Injectable()
 export class AssistantService {
@@ -205,6 +215,23 @@ export class AssistantService {
     }
 
     const routed = route(message);
+
+    /*
+     * A DOCUMENT'S NUMBERS, SAID BACK BEFORE ANYTHING ELSE IS ROUTED (decision 50, task A).
+     *
+     * `DocumentsService.whatItHolds` keeps what a document found as `holds.waiting`, with the owner
+     * resolved, and writes nothing - see a-document-is-read-not-agreed. The old context chat and the
+     * check-in conversation each have their own moment to say it back and ask. Ask Groundwork had
+     * neither: a lead who added a sheet through Ask Groundwork's own upload flow, or mentioned having
+     * just added one, was never told what it held, so the numbers could never be confirmed and never
+     * be written. This is that moment - checked here, before the ordinary lane switch, on either of
+     * the two ways somebody says a document just arrived: naming the act in the past tense, or asking
+     * to add one on a check-in where an earlier upload is still waiting on a yes.
+     */
+    if (who && (routed.lane === 'add_a_document' || JUST_ADDED_A_DOCUMENT.test(message))) {
+      const waiting = await this.waitingDocumentFor(organizationId, personId, groundId);
+      if (waiting) return this.proposeDocumentNumbers(organizationId, who, waiting);
+    }
 
     /*
      * AN OPEN DRAFT TAKES PLAIN ANSWERS.
@@ -743,6 +770,83 @@ export class AssistantService {
    * sitting in front of them is told there is nothing.
    */
   /**
+   * A DOCUMENT OF THEIRS THAT STILL HAS NUMBERS WAITING ON A YES.
+   *
+   * Only ever what THIS PERSON'S OWN participant record put on the document: `DocumentsService.
+   * whatItHolds` already resolved who may hold which number at read time (their own, and the
+   * group's; anybody's only when the uploader is the lead), so nothing about who may set whose
+   * number is decided again here - it only reads what is already on `holds.waiting`. Scoped to the
+   * chosen check-in when one was chosen (see ask.service.ts `checkTheCheckIn`), and to every check-in
+   * this person is on otherwise, most recently read first.
+   */
+  private async waitingDocumentFor(
+    organizationId: string,
+    personId: string,
+    groundId?: string,
+  ): Promise<{ documentId: string; groundId: string; fileName: string; holds: WhatLanded } | null> {
+    const person = await this.prisma.person.findFirst({
+      where: { id: personId, organizationId },
+      select: { linkedUserId: true },
+    });
+    if (!person?.linkedUserId) return null;
+    const participants = await this.prisma.groundParticipant.findMany({
+      where: { userId: person.linkedUserId, ...(groundId ? { groundId } : {}) },
+      select: { id: true, groundId: true },
+    });
+    if (!participants.length) return null;
+
+    const docs = await this.prisma.groundDocument.findMany({
+      where: { participantId: { in: participants.map((p) => p.id) }, NOT: { holds: { equals: null as any } } },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { id: true, fileName: true, holds: true, groundId: true },
+    });
+    for (const d of docs) {
+      const holds = (d.holds ?? {}) as any;
+      const waiting: { name: string; target: number; ownerParticipantId: string | null }[] = Array.isArray(holds.waiting) ? holds.waiting : [];
+      if (holds.takenAt || !waiting.length) continue;
+      return { documentId: d.id, groundId: d.groundId, fileName: d.fileName, holds };
+    }
+    return null;
+  }
+
+  /**
+   * SAYING BACK WHAT A DOCUMENT HOLDS, THE SAME WORDS THE CONTEXT PAGE USES, AND ASKING.
+   *
+   * `theContextWeHave` is the one place these sentences are written (see what-a-document-holds.ts):
+   * every number already says whose it is, by name, or that it is for everybody. Nothing is written
+   * until a yes reaches `resolveParkedDocumentNumbers`.
+   */
+  private async proposeDocumentNumbers(
+    organizationId: string,
+    who: string,
+    waiting: { documentId: string; groundId: string; fileName: string; holds: WhatLanded },
+  ): Promise<Reply> {
+    const said = theContextWeHave(waiting.holds);
+    /* Cannot happen in practice - `waitingDocumentFor` only returns a document whose `waiting` array
+       is non-empty, and that is exactly what makes `theContextWeHave` return something. Guarded
+       anyway rather than trusting that link never breaks. */
+    if (!said) return rules('add_a_document', text('I could not find anything to say about that document.'));
+    const summary = `${said}\n\nShall I record these numbers on this check-in?`;
+
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId,
+        personExternalId: who,
+        kind: 'document_numbers',
+        state: 'PARKED',
+        summary,
+        payload: { documentId: waiting.documentId, groundId: waiting.groundId, fileName: waiting.fileName } as never,
+      },
+    });
+    return {
+      lane: 'add_a_document',
+      composedBy: 'rules',
+      blocks: [text(summary), { type: 'proposal', proposalId: proposal.id, summary }],
+    };
+  }
+
+  /**
    * PUTTING A DOCUMENT IN.
    *
    * A chat cannot carry a file, which is why this was on the not-offered list. What it can do is
@@ -1195,6 +1299,9 @@ export class AssistantService {
     }
     if (parked.kind === 'context') {
       return this.resolveParkedContext(organizationId, who, parked, decision);
+    }
+    if (parked.kind === 'document_numbers') {
+      return this.resolveParkedDocumentNumbers(organizationId, who, parked, decision);
     }
     if (parked.kind === 'context_line') {
       return this.resolveParkedContextLine(organizationId, who, parked, decision);
@@ -1989,6 +2096,68 @@ export class AssistantService {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be saved.'));
     }
+  }
+
+  /**
+   * A DOCUMENT'S NUMBERS, WRITTEN ONLY ON A YES, THROUGH THE SAME CODE EVERY OTHER READER USES.
+   *
+   * `writeADocumentsNumbers` is the one place any of the three readers of a "yes" to a document
+   * actually writes - see write-a-documents-numbers.ts. A no leaves the document exactly where it
+   * was: still read, still waiting, nothing on the record.
+   *
+   * RE-READ AT EXECUTION, not trusted from the parked payload: between the offer and the yes,
+   * somebody else may have already taken the same numbers - the setup chat, the check-in, or a
+   * second yes through here - so this reads `holds` fresh and writes nothing a second time.
+   */
+  private async resolveParkedDocumentNumbers(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('add_a_document', text('Left it. Nothing was recorded.'));
+    }
+
+    const payload = parked.payload as { documentId: string; groundId: string; fileName: string };
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
+    const participant = person?.linkedUserId
+      ? await this.prisma.groundParticipant.findFirst({
+        where: { groundId: payload.groundId, userId: person.linkedUserId },
+        select: { id: true },
+      })
+      : null;
+
+    if (!participant) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('add_a_document', text('I could not record that, because I can no longer see you on that check-in.'));
+    }
+
+    const doc = await this.prisma.groundDocument.findFirst({
+      where: { id: payload.documentId, groundId: payload.groundId },
+      select: { id: true, fileName: true, holds: true, visibility: true },
+    });
+    const holds = (doc?.holds ?? {}) as any;
+    const waitingRows: { name: string; target: number; ownerParticipantId: string | null }[] = Array.isArray(holds.waiting) ? holds.waiting : [];
+
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+
+    if (!doc || holds.takenAt || !waitingRows.length) {
+      /* Somebody else already said yes to this document - the setup chat, the check-in, or an
+         earlier turn here. Answered honestly rather than written twice. */
+      return rules('add_a_document', text('Those numbers are already recorded, so I have not written them a second time.'));
+    }
+
+    const said = await writeADocumentsNumbers(this.prisma, {
+      groundId: payload.groundId,
+      documentId: doc.id,
+      fileName: doc.fileName,
+      documentVisibility: doc.visibility,
+      waiting: waitingRows,
+      holds,
+      setByParticipantId: participant.id,
+      sortOrderBase: 400,
+      addNote: true,
+      authorUserId: person?.linkedUserId,
+      reader: 'setup',
+    });
+    return rules('add_a_document', text(said));
   }
 
   /**

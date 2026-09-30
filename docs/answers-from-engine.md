@@ -334,3 +334,73 @@ Wording note: the `why` with the person's answer is being reworded, because it j
 - The person's own check-in also asks them once, in words: "It sounds like most of your work is sales. Is that right, or would you describe it differently?" Their answer is read after the check-in, so you need no screen for that part. A Context page confirm for the lead is yours to draw.
 
 **One more field on a served pattern, for the lead only:** `secondReadNote`. It is "Two separate reads of the record found this." when both the model and the number-based rule found the pattern, and otherwise `null`. The person it is about always gets `null`.
+
+## 30 September: what Ask Groundwork's screens need to show, so the old context chat can be switched off (decision 50)
+
+Hafsah, 30 September: the old context chat stays on until your Ask Groundwork screens for documents and for confirming things are built, and you have confirmed live that everything works through them. Nothing in the engine switches it off before you say so in this file.
+
+**Two routes, and one reply shape.**
+
+| What the person does | Route | Send | You get back |
+| --- | --- | --- | --- |
+| Types a message | `POST /ask` | `{ "message": "…", "groundId": "…" }` (`groundId` is optional, from "About") | a reply, below |
+| Presses yes or no on something said back | `POST /ask/answer` | `{ "proposalId": "…", "answer": "yes" }` or `"no"` | a reply, below |
+
+A reply is `{ "blocks": [...], "composedBy": "model" or "rules", "lane": "…" }`. Draw the blocks in order. The ones these screens need:
+
+- `{ "type": "text", "body": "…" }`: a paragraph. Show it as it is.
+- `{ "type": "proposal", "proposalId": "…", "summary": "…" }`: something said back that waits for the person. Show `summary` as it is, with two buttons, "Yes" and "No", which call `POST /ask/answer`. Nothing is saved until "Yes". Only the newest waiting proposal can be answered; an older one returns 409 with a plain sentence, which you show.
+- `{ "type": "next_step", "kind": "upload_a_document", "label": "Choose a file", "id": "<check-in id>", "context": { "groundId": "…", "label": "…" } }`: open the file picker and upload to that check-in with the upload route the Context and resources page already uses. The file arrives private to the person (`OWN`).
+
+**Three things said back are not yes or no.** For these, show the text and let the person type the answer; do not draw yes and no buttons, because `POST /ask/answer` refuses them:
+
+1. Which check-in they mean, when they run more than one and did not choose under "About". The person answers by naming one.
+2. Who a document is for, after it is read from a link or uploaded. The person answers in words ("only me", "everybody on it").
+3. The next question of a setup conversation ("How long should it run?"). The next message is the answer.
+
+**What has to be visible for each thing a lead can do through Ask Groundwork.** Every one ends with a proposal, and every proposal needs its "Yes" and "No":
+
+| The lead types, for example | Said back as | "Yes" does |
+| --- | --- | --- |
+| "Setting up the context for the sales check-in", then answers | "I will set this to run for 12 weeks." | sets the length, rhythm, success or target |
+| A long paste of a plan or message | everything it found, as one thing to say yes to | saves all of it together |
+| "decision: we will drop the pilot" (also strategy, way of working, unsettled, context note) | Shall I add "we will drop the pilot" to this check-in's context as a decision? | adds the line |
+| "reword the line 'X' to 'Y'", "share the line 'X'", "make the line 'X' private", "retire the line 'X'" | the line and the change | changes the line |
+| "private note about Ben: …" | Shall I keep "…" as a private note that only you can see? | keeps the note, for the lead only |
+| "share the note …" | Shall I share "…" with everybody on this check-in? | shares a note about the whole check-in (never one about a person) |
+| "questions for people" | the list of questions waiting, word for word | nothing; it is a list |
+| "confirm the question for Ben" or "ask Ben '…' instead" | Groundwork will ask Ben, word for word, "…" in Ben's next check-in. Shall I send it? | confirms the question |
+| "leave out the question for Ben" | Shall I leave out the question for Ben, "…"? | leaves it out |
+
+**Who sees these.** Only the lead who runs the check-in, or an admin of the same organisation, reaches any of these. Anyone else who types the same words gets Ask Groundwork's ordinary answer, and nothing is said back. An admin can hear something said back, and is then refused at "Yes" for the three things that are the lead's alone (setup values, a question for a person, and confirming it). The refusal is a plain sentence in a text block; show it.
+
+**Nothing from these conversations appears in the person's Ask Groundwork history.** The setup talk is not kept as questions. Do not expect it back from `GET /ask`.
+
+**What to confirm live before the old chat goes, and write here when it is done:**
+
+1. A document added through Ask Groundwork: the file picker opens, the file lands private, and what is read out of it is said back before anything from it is saved.
+2. A long paste: said back as one thing, "Yes" saves it, "No" saves nothing.
+3. Each row of the table above, as the lead.
+4. The same messages typed as a participant: nothing is said back and nothing is saved.
+5. As an admin who is not the lead: the refusal sentence shows at "Yes".
+
+## 30 September, later the same day: a document's numbers, said back through Ask Groundwork, and what to send after an upload
+
+The gap this closes: `DocumentsService.whatItHolds` reads a document and keeps the numbers it found on the document itself, resolved to the right person or to the whole check-in, and writes nothing - see `docs/context-chat-inventory.md`, item 3 and 4. The Context page already says this back (`theContextWeHave`, `askingAboutIt` on the upload response) and the check-in conversation already asks and saves it. Ask Groundwork now does the same third thing, through the same `POST /ask` and `POST /ask/answer` used for everything else - no new route.
+
+**A new kind of thing said back: `document_numbers`.** It arrives as an ordinary `proposal` block, the same shape as everything else in the table above:
+
+```json
+{ "type": "proposal", "proposalId": "…", "summary": "Here is the context we have from Q4 targets.xlsx. …\n\nShall I record these numbers on this check-in?" }
+```
+
+`summary` is the exact words the Context page already shows for that document (`theContextWeHave`), with the same rule: every number says whose it is, by name, or says it is for everybody. Draw it exactly as you draw every other proposal - the text, then "Yes" and "No" through `POST /ask/answer`. "Yes" writes the numbers, with each person's own number under their name and a team number under nobody. "No" leaves the document exactly as it was - still read, still on the document, still asking the next time somebody mentions it.
+
+**When it appears.** Either of two ways, and you do not have to tell them apart on the screen - Ask Groundwork decides:
+
+- The person says, in the ordinary chat box, that they have just put a document in - "I added the Q4 targets sheet", "I've uploaded it" - and that document (theirs, on a check-in they are part of) still has numbers nobody has said yes to.
+- The person starts to add a document through Ask Groundwork's own upload flow, and an earlier upload of theirs on that check-in is still waiting on a yes.
+
+**What the screen should send after an upload finishes: nothing, automatically.** `whatItHolds` runs in the background after the file is stored (`readTheRestOfIt`), so `holds` is not on the row yet when the upload's own response comes back (`numbersWaiting` is always `0` at that moment, by design - see `documents.service.ts`, "AND THE TWO SLOW READS, AFTER THE ANSWER"). Sending "I've uploaded it" straight after the upload call returns will usually find nothing waiting and say nothing. The decision, so every screen does the same thing: **poll the document (or the Context page's own read) until `numbersWaiting` is greater than zero or a reasonable time has passed (the Context page already shows "still reading"), and only then send the message "I've uploaded it." to `POST /ask`.** That is the one sentence to standardise on; Ask Groundwork recognises it (and close variants - "I added it", "I attached the file") whichever of the two ways above triggered it.
+
+**Who this reaches.** The same rule as everywhere a document's numbers may be set (`docs/context-chat-inventory.md`, item 4): only the uploader's own numbers, and a number for somebody else only when the uploader is the lead - decided when the document is read, not here, so nothing about who may set whose number changes by asking through Ask Groundwork instead of the Context page.

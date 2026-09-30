@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { theContextWeHave, WHAT_A_DOCUMENT_HOLDS_PROMPT, MOST_OF_A_DOCUMENT_WE_READ } from './what-a-document-holds';
+import { theContextWeHave, WHAT_A_DOCUMENT_HOLDS_PROMPT, MOST_OF_A_DOCUMENT_WE_READ, aSentence } from './what-a-document-holds';
 
 const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
 const DOCS = strip(readFileSync(join(__dirname, 'documents.service.ts'), 'utf8'));
@@ -29,7 +29,13 @@ describe('what a document holds', () => {
 
   it('says what we have, whose each number is, and which are the whole check-in’s, each as a plain sentence', () => {
     const said = theContextWeHave(held)!;
-    expect(said.startsWith('Here is the context we have from Sales team Q3 2026.xlsx. A quarterly sales target sheet, by rep.')).toBe(true);
+    /*
+     * UPDATED (30 Sep 2026, the fragment fault): `whatItIs` used to be appended as the model wrote it,
+     * so a bare noun phrase read as a second, clipped sentence straight after the first ("... A
+     * quarterly sales target sheet, by rep."). `aSentence` now turns a phrase with no verb of its own
+     * into a full sentence in the product's voice - see what-a-document-holds.ts.
+     */
+    expect(said.startsWith('Here is the context we have from Sales team Q3 2026.xlsx. It looks like a quarterly sales target sheet, by rep.')).toBe(true);
     expect(said).toContain('For everyone in this check-in, the target for Team sales is 153m.');
     expect(said).toContain('For everyone in this check-in, Credit ceiling must stay at or under 35.');
     expect(said).toContain("Dayo Adebayo's target for Q3 sales is 45m.");
@@ -49,6 +55,26 @@ describe('what a document holds', () => {
   it('asks whether that is right in the chat, and states it on a page', () => {
     expect(theContextWeHave(held, { asking: true })!.trimEnd().endsWith('Is that right?')).toBe(true);
     expect(theContextWeHave(held)).not.toContain('Is that right?');
+  });
+
+  it('turns whatItIs into a full sentence, never the model\'s fragment on its own (the fragment fault, 30 Sep 2026)', () => {
+    /* A bare noun phrase gets a verb, in the product's voice. */
+    expect(aSentence('A Q4 sales target sheet')).toBe('It looks like a Q4 sales target sheet.');
+    expect(aSentence('A Q4 sales target sheet.')).toBe('It looks like a Q4 sales target sheet.');
+    expect(aSentence('Quarterly sales target sheet, by rep')).toBe('It looks like quarterly sales target sheet, by rep.');
+    /* A word that is a verb elsewhere but a noun here ("a price list") is not mistaken for one. */
+    expect(aSentence('A price list for the 600L cookers')).toBe('It looks like a price list for the 600L cookers.');
+    /* A phrase that already has a verb is kept exactly as it is, only with its full stop made certain. */
+    expect(aSentence('This sheet sets the Q4 targets for each dealer.')).toBe('This sheet sets the Q4 targets for each dealer.');
+    expect(aSentence('This sheet sets the Q4 targets for each dealer')).toBe('This sheet sets the Q4 targets for each dealer.');
+    /* Empty or missing stays empty: no sentence is better than an invented one. */
+    expect(aSentence('')).toBeNull();
+    expect(aSentence('   ')).toBeNull();
+    expect(aSentence(null)).toBeNull();
+    expect(aSentence(undefined)).toBeNull();
+    /* Trailing punctuation, however it arrives, ends up as one full stop. */
+    expect(aSentence('A price list for the 600L cookers...')).toBe('It looks like a price list for the 600L cookers.');
+    expect(aSentence('A price list for the 600L cookers;')).toBe('It looks like a price list for the 600L cookers.');
   });
 
   it('and says nothing about a document that holds nothing', () => {
