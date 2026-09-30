@@ -88,7 +88,9 @@ describe('the check-ins list, as Hafsah reads it (she runs two and is in two)', 
     expect(screen.getByRole('heading', { level: 1, name: 'Check-ins' })).toBeTruthy()
     expect(screen.getByText('Every check-in you run or take part in. Each has its own board.')).toBeTruthy()
     await screen.findByRole('table', { name: 'You run' })
-    const sections = [...document.querySelectorAll('.gw-ci-section-head')].map(h => h.textContent)
+    /* Rebuilt from the shared parts (group 2): each section heading is now the shared `Section`
+       component (`gwui-section-h`), in place of the page's own `gw-ci-section-head`. */
+    const sections = [...document.querySelectorAll('.gwui-section-h')].map(h => h.textContent)
     expect(sections).toEqual(['You run2 open', 'You’re in2 open', 'Finished'])
   })
 

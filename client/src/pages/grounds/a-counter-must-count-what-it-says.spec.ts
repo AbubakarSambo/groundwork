@@ -40,9 +40,17 @@ describe('each count says what it counts', () => {
   })
 
   it('"N open" counts exactly the rows in that section', () => {
-    expect(CODE).toMatch(/<Section title="You run" count=\{youRun\.length\}><CheckInsTable label="You run" rows=\{youRun\} \/>/)
-    expect(CODE).toMatch(/count=\{youreIn\.length\}>\s*<CheckInsTable label="You’re in" rows=\{youreIn\} \/>/)
-    expect(CODE).toContain('{count} open')
+    /*
+     * UPDATED, GROUP 2 REBUILD: the page's own local `Section({ title, count })` is gone; each
+     * heading is now the SHARED `Section` (components/gw/ui/Section.tsx), whose prop is `note`, and
+     * the shared `CheckInsTable` takes its rows as children (`CheckInRow` elements), not a `rows`
+     * array prop. The finding this test is named for - each section's count is the length of the
+     * rows actually drawn under it, not a separate number that can drift from them - still holds,
+     * checked the same way, against the new component names.
+     */
+    expect(CODE).toMatch(/<Section heading="You run" note=\{`\$\{youRun\.length\} open`\}>/)
+    expect(CODE).toMatch(/note=\{`\$\{youreIn\.length\} open`\}/)
+    expect(CODE).toMatch(/\$\{others\.length\} open/)
     expect(CODE).toMatch(/const open = rows\.filter\(r => !isFinished\(r\.g\)\)/)
   })
 })
