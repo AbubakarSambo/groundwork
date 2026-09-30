@@ -334,3 +334,52 @@ Wording note: the `why` with the person's answer is being reworded, because it j
 - The person's own check-in also asks them once, in words: "It sounds like most of your work is sales. Is that right, or would you describe it differently?" Their answer is read after the check-in, so you need no screen for that part. A Context page confirm for the lead is yours to draw.
 
 **One more field on a served pattern, for the lead only:** `secondReadNote`. It is "Two separate reads of the record found this." when both the model and the number-based rule found the pattern, and otherwise `null`. The person it is about always gets `null`.
+
+## 30 September: what Ask Groundwork's screens need to show, so the old context chat can be switched off (decision 50)
+
+Hafsah, 30 September: the old context chat stays on until your Ask Groundwork screens for documents and for confirming things are built, and you have confirmed live that everything works through them. Nothing in the engine switches it off before you say so in this file.
+
+**Two routes, and one reply shape.**
+
+| What the person does | Route | Send | You get back |
+| --- | --- | --- | --- |
+| Types a message | `POST /ask` | `{ "message": "…", "groundId": "…" }` (`groundId` is optional, from "About") | a reply, below |
+| Presses yes or no on something said back | `POST /ask/answer` | `{ "proposalId": "…", "answer": "yes" }` or `"no"` | a reply, below |
+
+A reply is `{ "blocks": [...], "composedBy": "model" or "rules", "lane": "…" }`. Draw the blocks in order. The ones these screens need:
+
+- `{ "type": "text", "body": "…" }`: a paragraph. Show it as it is.
+- `{ "type": "proposal", "proposalId": "…", "summary": "…" }`: something said back that waits for the person. Show `summary` as it is, with two buttons, "Yes" and "No", which call `POST /ask/answer`. Nothing is saved until "Yes". Only the newest waiting proposal can be answered; an older one returns 409 with a plain sentence, which you show.
+- `{ "type": "next_step", "kind": "upload_a_document", "label": "Choose a file", "id": "<check-in id>", "context": { "groundId": "…", "label": "…" } }`: open the file picker and upload to that check-in with the upload route the Context and resources page already uses. The file arrives private to the person (`OWN`).
+
+**Three things said back are not yes or no.** For these, show the text and let the person type the answer; do not draw yes and no buttons, because `POST /ask/answer` refuses them:
+
+1. Which check-in they mean, when they run more than one and did not choose under "About". The person answers by naming one.
+2. Who a document is for, after it is read from a link or uploaded. The person answers in words ("only me", "everybody on it").
+3. The next question of a setup conversation ("How long should it run?"). The next message is the answer.
+
+**What has to be visible for each thing a lead can do through Ask Groundwork.** Every one ends with a proposal, and every proposal needs its "Yes" and "No":
+
+| The lead types, for example | Said back as | "Yes" does |
+| --- | --- | --- |
+| "Setting up the context for the sales check-in", then answers | "I will set this to run for 12 weeks." | sets the length, rhythm, success or target |
+| A long paste of a plan or message | everything it found, as one thing to say yes to | saves all of it together |
+| "decision: we will drop the pilot" (also strategy, way of working, unsettled, context note) | Shall I add "we will drop the pilot" to this check-in's context as a decision? | adds the line |
+| "reword the line 'X' to 'Y'", "share the line 'X'", "make the line 'X' private", "retire the line 'X'" | the line and the change | changes the line |
+| "private note about Ben: …" | Shall I keep "…" as a private note that only you can see? | keeps the note, for the lead only |
+| "share the note …" | Shall I share "…" with everybody on this check-in? | shares a note about the whole check-in (never one about a person) |
+| "questions for people" | the list of questions waiting, word for word | nothing; it is a list |
+| "confirm the question for Ben" or "ask Ben '…' instead" | Groundwork will ask Ben, word for word, "…" in Ben's next check-in. Shall I send it? | confirms the question |
+| "leave out the question for Ben" | Shall I leave out the question for Ben, "…"? | leaves it out |
+
+**Who sees these.** Only the lead who runs the check-in, or an admin of the same organisation, reaches any of these. Anyone else who types the same words gets Ask Groundwork's ordinary answer, and nothing is said back. An admin can hear something said back, and is then refused at "Yes" for the three things that are the lead's alone (setup values, a question for a person, and confirming it). The refusal is a plain sentence in a text block; show it.
+
+**Nothing from these conversations appears in the person's Ask Groundwork history.** The setup talk is not kept as questions. Do not expect it back from `GET /ask`.
+
+**What to confirm live before the old chat goes, and write here when it is done:**
+
+1. A document added through Ask Groundwork: the file picker opens, the file lands private, and what is read out of it is said back before anything from it is saved.
+2. A long paste: said back as one thing, "Yes" saves it, "No" saves nothing.
+3. Each row of the table above, as the lead.
+4. The same messages typed as a participant: nothing is said back and nothing is saved.
+5. As an admin who is not the lead: the refusal sentence shows at "Yes".
