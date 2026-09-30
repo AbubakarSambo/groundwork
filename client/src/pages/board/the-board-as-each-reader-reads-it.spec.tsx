@@ -19,6 +19,7 @@ let me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
 vi.mock('@/stores/auth', () => ({ useAuthStore: (sel: any) => sel({ user: me }) }))
 vi.mock('@/api/board', () => ({ boardApi: { get: vi.fn() } }))
 vi.mock('@/api/grounds', () => ({ groundsApi: { get: vi.fn().mockResolvedValue({ initiatorId: 'u-wairimu' }) } }))
+import { groundsApi } from '@/api/grounds'
 vi.mock('@/api/today', () => ({
   todayApi: {
     get: vi.fn().mockResolvedValue({
@@ -316,5 +317,78 @@ describe('what keeps coming up', () => {
     await screen.findByText('The team today')
     const card = cardAfter('The team today')
     expect(within(card).getByText(miriamsPattern.heading)).toBeTruthy()
+  })
+})
+
+/**
+ * THE ALIGNMENT FEED, REBUILT FROM THE ENGINE'S SERVED PATTERN SHAPE.
+ *
+ * It used to read the old shape (`sig.type`, `sig.text`, `sig.periodsObserved`), which the server no
+ * longer sends, so with one pattern it said "0 to look at · 0 good signs" and drew one empty card
+ * that only said "Seen across sessions". `groundsApi.get`'s `signals` is the very same
+ * `servedPatterns(...)` call as the board's own `patterns`, so whenever "What keeps coming up" is
+ * already on the page, the feed says once, truly, that the same pattern is shown there - it never
+ * draws the pattern a second time. Only lead only, and only when "What keeps coming up" is not shown
+ * at all, does it draw the pattern itself, with the shared `PatternPanel`.
+ */
+describe('the alignment feed', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const feedPattern = {
+    id: 'pat-feed', participantId: 'p-miriam', yours: false, kind: 'attention',
+    heading: 'Her qualified deals often don’t have a buying date', whatHappened: null,
+    howOften: '3 of 5, for three weeks running.', askThem: 'What would get a date on the deal?',
+    theirWords: null, canAnswer: false,
+    whoSeesIt: 'Miriam Wanjiku has not seen this yet, and has not answered yet.',
+  }
+
+  it('Wairimu, who runs it, reads a single true sentence, never the pattern a second time, when it is already shown above', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [feedPattern] })
+    await screen.findByText('What keeps coming up')
+    await screen.findByText('Alignment feed')
+    const feedCard = cardAfter('Alignment feed')
+    expect(within(feedCard).getByText('One pattern has come up so far. It is shown above, under What keeps coming up.')).toBeTruthy()
+    /* The pattern is not drawn a second time inside the alignment feed's own card. */
+    expect(within(feedCard).queryByText(feedPattern.heading)).toBeNull()
+    expect(within(feedCard).queryByRole('button', { name: /Say what/ })).toBeNull()
+  })
+
+  it('counts more than one truly, when they are already shown above', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    const second = { ...feedPattern, id: 'pat-feed-2', participantId: 'p-aisha', kind: 'good', heading: 'Leads the team on buying dates' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern, second] })
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives', 'patterns'], patterns: [feedPattern, second] })
+    await screen.findByText('What keeps coming up')
+    const feedCard = await (async () => { await screen.findByText('Alignment feed'); return cardAfter('Alignment feed') })()
+    expect(within(feedCard).getByText('2 patterns have come up so far. They are shown above, under What keeps coming up.')).toBeTruthy()
+  })
+
+  it('draws the pattern itself, with the shared panel, when "What keeps coming up" is not shown at all', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
+    renderBoard({ ...AS_THE_LEAD, sections: ['objectives'] })
+    expect(screen.queryByText('What keeps coming up')).toBeNull()
+    await screen.findByText('Alignment feed')
+    const feedCard = cardAfter('Alignment feed')
+    expect(within(feedCard).getByText(feedPattern.heading)).toBeTruthy()
+    expect(within(feedCard).getByText(/What would get a date on the deal\?/)).toBeTruthy()
+  })
+
+  it('Miriam, a participant who does not run it, never reads an alignment feed', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
+    renderBoard({ ...AS_MIRIAM, sections: ['objectives'] })
+    await screen.findByText('Sales team, Q3')
+    expect(screen.queryByText('Alignment feed')).toBeNull()
+  })
+
+  it('Grace, an admin who only reads and does not run it, never reads an alignment feed', async () => {
+    me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
+    ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
+    renderBoard({ ...AS_AN_ADMIN, sections: ['objectives'] })
+    await screen.findByText('Sales team, Q3')
+    expect(screen.queryByText('Alignment feed')).toBeNull()
   })
 })

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PeopleTable, PersonRow, Tag, Button, TextField, type TagTone } from '@/components/gw/ui'
-import { personLabel as onePersonsLabel, atTheStart } from '@/lib/utils'
+import { personLabel as onePersonsLabel, atTheStart, hasARealName } from '@/lib/utils'
 import { theLeadsNote } from '@/lib/the-leads-note'
 import { initialsOf } from '@/pages/org/people-here'
 
@@ -37,6 +37,11 @@ export function RolesInThisCheckIn({
   const statusFor = (p: any): { text: string; tone: TagTone } => {
     if (!p.userId && p.inviteDeliveryStatus === 'BOUNCED') return { text: 'The email bounced', tone: 'concern' }
     if (p.awaitingSeat) return { text: 'Waiting for a seat', tone: 'attention' }
+    /* SOMEBODY AN ADMIN HAS DECLINED IS NOT "WAITING" (U.4 re-review, item 2a). `p.notLetIn` is the
+       same field the roster (WhosInItRoster.tsx) already reads; without this check, this table kept
+       saying "Waiting for an admin" about somebody an admin had already said no to, which is untrue
+       once a decision has been made. */
+    if (p.notLetIn) return { text: 'Not let in', tone: 'concern' }
     if (p.userId && p.user?.awaitingOrgApproval) return { text: 'Waiting for an admin', tone: 'attention' }
     if (!p.userId) return { text: 'Not joined yet', tone: 'plain' }
     return { text: 'Checking in', tone: 'proven' }
@@ -50,7 +55,10 @@ export function RolesInThisCheckIn({
         {rows.map((p: any) => {
           const isLead = p.userId === ground.initiatorId
           const status = statusFor(p)
-          const name = atTheStart(onePersonsLabel(p))
+          /* NEVER A NAME GUESSED OUT OF THE ADDRESS (U.4 re-review, item 4): with no real name on
+             record, this shows the plain address (visible here only to whoever the server already
+             lets see it), never "Zawadi U8" out of "zawadi.u8@example.test". See WhosInItRoster.tsx. */
+          const name = !hasARealName(p) && p.email ? p.email : atTheStart(onePersonsLabel(p))
           return (
             <PersonRow
               key={p.id}

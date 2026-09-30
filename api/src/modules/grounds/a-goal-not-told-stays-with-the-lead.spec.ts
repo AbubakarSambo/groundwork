@@ -42,6 +42,8 @@ function contextFor(userId: string) {
     report: { id: 'r1', releasedAt: new Date(), sharedPicture: PICTURE, createdAt: new Date() },
   };
   const prisma: any = {
+    /* The You board reads the person's own patterns (29 September); none here. */
+    patternDetection: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     groundBaseline: { findFirst: jest.fn(async () => null) },
     personObjective: { findMany: jest.fn(async () => JSON.parse(JSON.stringify(GOALS))) },
     ground: { findFirst: async () => ground, findUnique: async () => ground },
@@ -65,6 +67,8 @@ function boardFor(userId: string) {
   const reads = { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), findUnique: jest.fn(async () => null), count: jest.fn(async () => 0), aggregate: jest.fn(async () => ({ _max: { sessionNumber: 1 } })) };
   const model = (own: Record<string, any> = {}) => ({ ...reads, ...own });
   const prisma: any = new Proxy({
+    /* The You board reads the person's own patterns (29 September); none here. */
+    patternDetection: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     ground: model({ findUnique: jest.fn(async () => {
       const g = JSON.parse(JSON.stringify(ground));
       g.dependencies = g.dependencies.map((d: any) => ({ ...d, createdAt: new Date(d.createdAt), updatedAt: new Date(d.updatedAt) }));
@@ -87,6 +91,8 @@ function boardFor(userId: string) {
 function reportFor(userId: string) {
   /* The wrapper every report read goes through (get and sessionReport both end in it). */
   const prisma: any = {
+    /* The You board reads the person's own patterns (29 September); none here. */
+    patternDetection: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     ground: { findUnique: jest.fn(async () => ({ initiatorId: WANJIRU, organizationId: 'org1', whoSeesTargets: 'EVERYBODY', scenario: 'OKR_ALIGNMENT', peersVisibleToEachOther: true, participants: people(), objectives: [] })) },
     user: { findUnique: jest.fn(async () => ({ role: role(userId), organizationId: 'org1' })), findFirst: jest.fn(async () => null) },
     groundDocument: { findMany: jest.fn(async () => []) },
@@ -101,7 +107,9 @@ function reportFor(userId: string) {
 function youBoardFor(userId: string) {
   const ground = { id: 'g1', label: 'Engagement Director, first 90 days', status: 'ACTIVE', organizationId: 'org1', initiatorId: WANJIRU, closedAt: null, resolvedAt: null, participants: people().map((p) => ({ id: p.id, userId: p.userId })), checkIns: [] };
   const table = (rows: any[]) => ({ findMany: jest.fn(async ({ where }: any) => rows.filter((r) => !where?.participantId?.in || where.participantId.in.includes(r.participantId))), findFirst: jest.fn(async () => null) });
-  const prisma: any = { personObjective: table(GOALS), groundObjective: table([]), groundCommitment: table([]), coachingState: table([]), person: table([]), todo: table([]), groundDependency: table([]) };
+  const prisma: any = {
+    /* The You board reads the person's own patterns (29 September); none here. */
+    patternDetection: { findMany: async () => [], updateMany: async () => ({ count: 0 }) }, personObjective: table(GOALS), groundObjective: table([]), groundCommitment: table([]), coachingState: table([]), person: table([]), todo: table([]), groundDependency: table([]) };
   const grounds: any = { list: jest.fn(async () => [ground]) };
   return new YourBoardService(prisma, grounds).forReader({ userId, email: `${userId}@x.test`, role: role(userId), organizationId: 'org1' } as any);
 }

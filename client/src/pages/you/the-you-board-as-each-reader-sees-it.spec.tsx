@@ -162,7 +162,7 @@ describe('when the engine serves its own parts (request 14)', () => {
       coachingOverTime: 'Last week we talked about asking for a buying date on the first visit. You did it at Lakeside.',
       contributed: ['Warned the team early that Green Mart would wait until January.'],
       patterns: [{
-        id: 'pat-1', participantId: 'p-m', yours: true,
+        id: 'pat-1', participantId: 'p-m', yours: true, kind: 'attention',
         heading: 'Your qualified deals often don’t have a buying date',
         whatHappened: 'Without a date they can’t count toward the quarter.',
         howOften: '3 of 5, for three weeks running.',
@@ -190,7 +190,7 @@ describe('when the engine serves its own parts (request 14)', () => {
     open(MIRIAM, {
       ...MIRIAMS,
       patterns: [{
-        id: 'pat-2', participantId: 'p-somebody-else', yours: false,
+        id: 'pat-2', participantId: 'p-somebody-else', yours: false, kind: 'attention',
         heading: 'Something about a colleague’s work', whatHappened: null,
         howOften: '3 of 5, for three weeks running.', askThem: 'Ask them about it.',
         theirWords: null, canAnswer: false,
@@ -213,7 +213,7 @@ describe('when the engine serves its own parts (request 14)', () => {
     open(MIRIAM, {
       ...MIRIAMS,
       patterns: [{
-        id: 'pat-1', participantId: 'p-m', yours: true,
+        id: 'pat-1', participantId: 'p-m', yours: true, kind: 'attention',
         heading: 'Your qualified deals often don’t have a buying date', whatHappened: null,
         howOften: '3 of 5, for three weeks running.', askThem: null,
         theirWords: null, canAnswer: true,

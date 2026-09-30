@@ -58,3 +58,51 @@ describe('the role-as-described column is the lead\'s to read', () => {
     expect(screen.getByText('Checks in')).toBeTruthy()
   })
 })
+
+/**
+ * U.4 RE-REVIEW, ITEM 2A: SOMEBODY DECLINED READS "NOT LET IN" HERE TOO.
+ *
+ * With Faraji declined by an admin, this table kept saying "Waiting for an admin" - the state he was
+ * in before the decision, not after it - because `statusFor` never read `p.notLetIn`, the same field
+ * `WhosInItRoster.tsx`'s own roster already reads for the same fact.
+ */
+describe('somebody an admin has declined', () => {
+  const groundWithADecline = {
+    initiatorId: 'lead-1',
+    participants: [
+      { id: 'p-lead', userId: 'lead-1', email: 'wairimu@example.test', roleAsDescribed: null },
+      { id: 'p-3', userId: 'user-3', email: 'faraji@example.test', roleAsDescribed: null, notLetIn: true, user: { awaitingOrgApproval: true } },
+    ],
+  }
+
+  it('reads "Not let in", not "Waiting for an admin"', () => {
+    render(
+      <MemoryRouter>
+        <RolesInThisCheckIn ground={groundWithADecline} isInitiator={false} updateRole={updateRole} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('Not let in')).toBeTruthy()
+    expect(screen.queryByText('Waiting for an admin')).toBeNull()
+  })
+})
+
+/** U.4 re-review, item 4: never a name guessed out of an email address, here too. */
+describe('somebody with no name and no account', () => {
+  const groundWithZawadi = {
+    initiatorId: 'lead-1',
+    participants: [
+      { id: 'p-lead', userId: 'lead-1', email: 'rukia@example.test', roleAsDescribed: null },
+      { id: 'p-zawadi', userId: null, email: 'zawadi.u8@example.test', roleAsDescribed: null, user: null },
+    ],
+  }
+
+  it('reads her plain address, never a guessed name', () => {
+    render(
+      <MemoryRouter>
+        <RolesInThisCheckIn ground={groundWithZawadi} isInitiator={false} updateRole={updateRole} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('zawadi.u8@example.test')).toBeTruthy()
+    expect(screen.queryByText('Zawadi U8')).toBeNull()
+  })
+})

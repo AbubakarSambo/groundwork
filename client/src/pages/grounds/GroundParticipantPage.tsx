@@ -558,13 +558,23 @@ export function GroundParticipantPage() {
                   FULL SENTENCES, NOT A DOT-JOINED FRAGMENT (U.8 review): "· Session 1 of 12" and
                   "· Next session opens 4 October" are pieces of a sentence stuck onto the front of
                   a heading with a dot, which CLAUDE.md's wording rule rules out same as anywhere
-                  else a person reads. */}
+                  else a person reads.
+
+                  "YOUR", NOT "THIS" (U.4 re-review, item 8). `completedCheckIns` and `openCheckIn`
+                  are this reader's own rows, staggered by when THEY personally started, never the
+                  team's shared phase (that is `phaseSpine.currentSession`, on the board, counted
+                  from sessions everybody has finished). Walked on one real check-in: the lead's
+                  board read "Session 1 of 12" because the team, as a whole, had not all finished
+                  session 1 yet, while Amani, who had, read the bare "This is session 2 of 12" here -
+                  two numbers for what read as one fact on two different screens of the same
+                  check-in. Each is true; only one of them was ever about the team. Saying "your"
+                  makes plain which one this is, on every reader's own page, lead included. */}
               {opensLater ? (
-                <span>The next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
+                <span>Your next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
               ) : totalSessions != null ? (
-                <span>This is session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}.</span>
+                <span>This is your session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}.</span>
               ) : (
-                <span>This is session {completedCheckIns.length + 1}.</span>
+                <span>This is your session {completedCheckIns.length + 1}.</span>
               )}
               {/* A finished run has nothing remaining. "0 days remaining" sat on a one-session check-in everybody
                   had done (21 Sep 2026); the count is for a run that is still going. */}

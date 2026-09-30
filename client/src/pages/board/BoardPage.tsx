@@ -32,6 +32,7 @@ import { theLeadsNote } from '@/lib/the-leads-note'
 import { whatTheSwitchboardAllows } from './what-the-switchboard-allows'
 import { tileSentence } from '@/components/gw/TheSessionsReport'
 import { PatternPanel } from '@/components/gw/ui'
+import type { ServedPattern } from '@/api/patterns'
 
 /**
  * WHO A ROW ON THE BOARD IS, WHERE THE SERVER HAS NO NAME TO GIVE. Request 36.
@@ -195,23 +196,6 @@ const HOW_TO_READ_KEY = 'gw-board-how-to-read'
  * So the route is the DEFAULT and not the only source. `/grounds/:id/board` passes nothing and is
  * byte-for-byte what it was; the boards page passes the tab somebody picked.
  */
-/*
- * THE THREE BADGES ON THE ALIGNMENT FEED.
- *
- * Good sign is green, a pattern to look at is amber, and carrying is neither: somebody holding
- * together what nobody else picked up has done nothing wrong and nothing to celebrate. Green would
- * congratulate them for absorbing a failure and amber would read as a mark against them, so it
- * gets the neutral blue the rest of the product uses for "here is a fact".
- *
- * A type this does not know falls to amber, which is where an unlabelled signal used to land
- * anyway - and a badge saying nothing is worse than one saying the cautious thing.
- */
-function badgeColoursFor(type: string): { background: string; color: string } {
-  if (type === 'Good sign') return { background: 'var(--gw-green-bg)', color: 'var(--gw-green-t)' }
-  if (type === 'Carrying') return { background: 'var(--gw-blue-bg)', color: 'var(--gw-blue-t)' }
-  return { background: 'var(--gw-amber-bg)', color: 'var(--gw-amber-t)' }
-}
-
 /**
  * WHERE THE RUN IS, counted from sessions everybody has finished (moved here from the foot of the
  * board so the top and the foot read the same answer).
@@ -1989,45 +1973,62 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           the tab about who has answered and when - where it competed with the session grid and had
           nothing to do with it. What it actually is: convergences and divergences accumulating
           across the run, which is the board's subject exactly.
+
+          REBUILT FOR THE ENGINE'S NEW PATTERN SHAPE (AServedPattern, patterns/who-reads-a-pattern.ts).
+          `groundForSignals.signals` is the very same `servedPatterns(...)` call as `b.patterns` above
+          - one call, on the same ground, for the same reader - so whenever "What keeps coming up" is
+          drawn (`shown.patterns`), every item here is already on the page. Drawing it twice would say
+          the same thing twice in different words, so this says once, truly, how many there are and
+          points at where they already are. Only when that section is not shown at all (the family or
+          the scenario hides it) does this draw the panels itself, with the shared `PatternPanel` so a
+          pattern never reads differently in two places. Kept for whoever runs the check-in only, as
+          before: nobody else's pattern is served here in the first place, but `viewerRunsThisCheckIn`
+          is kept too so a participant's own single pattern never turns into a feed of one.
         */}
-                {viewerRunsThisCheckIn && (((groundForSignals as any)?.signals ?? [])).length > 0 && (() => {
-                  const sigs = ((groundForSignals as any)?.signals ?? [])
-                  /* Every row is the library's own sentence for a surfaced pattern. The badge is a
-                     count: good signs against patterns to look at, never a verdict word. */
-                  const convergences = sigs.filter((s: any) => s.type === 'Good sign').length
-                  const divergences = sigs.filter((s: any) => s.type === 'Pattern').length
-                  /* A third kind, and it is neither. Somebody holding together what nobody else
-                     picked up is not a good sign and is not a problem with them; counted as either
-                     it says something untrue, and left out of both counts it vanishes off a badge
-                     that claims to say how many there are. */
-                  const carrying = sigs.filter((s: any) => s.type === 'Carrying').length
-                  const trendLabel = [
-                    `${divergences} to look at`,
-                    `${convergences} good sign${convergences === 1 ? '' : 's'}`,
-                    ...(carrying ? [`${carrying} carrying`] : []),
-                  ].join(' · ')
-                  const trendColor = divergences === 0 ? 'var(--gw-green-t)' : 'var(--gw-amber-t)'
-                  const trendBg = divergences === 0 ? 'var(--gw-green-bg)' : 'var(--gw-amber-bg)'
-                  return (
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>Alignment feed</span>
-                        <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: trendBg, color: trendColor }}>{trendLabel}</span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {sigs.map((sig: any) => (
-                          <div key={sig.id} style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px' }}>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
-                              <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, ...badgeColoursFor(sig.type) }}>{sig.type}</span>
-                              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>Seen across {sig.periodsObserved ?? sig.sessionNum} session{(sig.periodsObserved ?? sig.sessionNum) === 1 ? '' : 's'}</span>
-                            </div>
-                            <div style={{ fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.55 }}>{sig.text}</div>
-                          </div>
-                        ))}
-                      </div>
+        {viewerRunsThisCheckIn && (() => {
+          const sigs: ServedPattern[] = ((groundForSignals as any)?.signals ?? [])
+          if (sigs.length === 0) return null
+          if (shown.patterns) {
+            return (
+              <>
+                <Sec size="board" title="Alignment feed" />
+                <Card>
+                  <Row first>
+                    <div style={{ fontSize: 12.5, color: 'var(--gw-muted)' }}>
+                      {sigs.length === 1
+                        ? 'One pattern has come up so far. It is shown above, under What keeps coming up.'
+                        : `${sigs.length} patterns have come up so far. They are shown above, under What keeps coming up.`}
                     </div>
-                  )
-                })()}
+                  </Row>
+                </Card>
+              </>
+            )
+          }
+          const good = sigs.filter((s) => s.kind === 'good').length
+          const attention = sigs.filter((s) => s.kind === 'attention').length
+          const carrying = sigs.filter((s) => s.kind === 'carrying').length
+          const parts = [
+            good === 1 ? '1 good sign' : `${good} good signs`,
+            attention === 1 ? '1 pattern to look at' : `${attention} patterns to look at`,
+            ...(carrying ? [carrying === 1 ? '1 pattern of somebody carrying something' : `${carrying} patterns of somebody carrying something`] : []),
+          ]
+          return (
+            <>
+              <Sec size="board" title="Alignment feed" src={`${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}.`} />
+              <Card>
+                {sigs.map((sig, i) => (
+                  <Row key={sig.id} first={i === 0}>
+                    <PatternPanel
+                      pattern={sig}
+                      invalidateKey={['ground', id]}
+                      name={patternPersonName(sig.participantId, sig.yours)}
+                    />
+                  </Row>
+                ))}
+              </Card>
+            </>
+          )
+        })()}
 
         {/*
           U.10 ITEM 7: "REPORTS", THE PROTOTYPE'S WHITE TABLE (board-as-lead.jpg/.txt).

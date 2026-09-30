@@ -69,6 +69,42 @@ function chasingSentence(days: number[]): string {
   return `To anyone who has not answered, ${day(first)} after it opens, then after ${restText}.`
 }
 
+/**
+ * ONE CHANGE, AS ONE SENTENCE (U.4 re-review, item 5). This used to read "How long this runs: 4 to
+ * 12 weeks. How often people check in: WEEKLY to FORTNIGHTLY. Changed by the party on 30 September." -
+ * three pieces joined with colons, a raw setting name nobody chose to show a reader, and "the party",
+ * which is work jargon the rest of this page never uses. `c.by` ("you", "lead" or "admin") never
+ * names anyone (see the-audit-log-has-a-reader.spec.ts); this only turns it into the pronoun a
+ * sentence needs.
+ */
+/**
+ * "YOUR SESSIONS", AS ONE SENTENCE (U.4 re-review, item 6). Folded in from "You in this check-in",
+ * this used to read "1 of 12 done" beside its own label, a number with no sentence around it. Reads
+ * the way "Your status" beside it already does.
+ */
+export function yourSessionsSentence(done: number, planned: number | null): string {
+  if (planned == null) return `${done} session${done === 1 ? '' : 's'} done so far.`
+  return `${done} of ${planned} session${planned === 1 ? ' is' : 's are'} done.`
+}
+
+export function settingsChangeSentence(c: { changedAt: string; by: 'you' | 'lead' | 'admin'; weeks: { from: number | null; to: number } | null; cadence: { from: GroundCadence | null; to: GroundCadence } | null }): string {
+  const weeksText = (n: number) => `${n} week${n === 1 ? '' : 's'}`
+  const parts: string[] = []
+  if (c.weeks) {
+    parts.push(`changed how long it runs from ${c.weeks.from != null ? weeksText(c.weeks.from) : 'not set'} to ${weeksText(c.weeks.to)}`)
+  }
+  if (c.cadence) {
+    const from = c.cadence.from ? cadenceLabel(c.cadence.from).toLowerCase() : 'not set'
+    const to = cadenceLabel(c.cadence.to).toLowerCase()
+    parts.push(`changed how often people check in from ${from} to ${to}`)
+  }
+  const action = parts.length === 2 ? `${parts[0]} and ${parts[1]}` : (parts[0] ?? 'changed a setting')
+  const onDate = whenItWas(c.changedAt, 'dayAndMonthLong')
+  if (c.by === 'you') return `You ${action} on ${onDate}.`
+  const who = c.by === 'lead' ? 'the person who runs it' : 'an admin'
+  return `On ${onDate}, ${who} ${action}.`
+}
+
 export function CheckInPeopleAndSetup(props: {
   ground: any
   user: any
@@ -278,7 +314,7 @@ export function CheckInPeopleAndSetup(props: {
           {viewerIsAParty && (
             <>
               <FieldRow label="Your status" value={statusSentence(whatThisStatusMeans(ground.status))} />
-              <FieldRow label="Your sessions" value={`${mySessionsDone}${plannedSessions != null ? ` of ${plannedSessions}` : ''} done`} />
+              <FieldRow label="Your sessions" value={yourSessionsSentence(mySessionsDone, plannedSessions)} />
             </>
           )}
         </FieldRows>
@@ -455,11 +491,7 @@ export function CheckInPeopleAndSetup(props: {
             </summary>
             <div className="gwui-folded-body">
               {[...((ground as any).settingsChanges ?? [])].reverse().map((c: any, i: number) => (
-                <Note key={i}>
-                  {c.weeks && `How long this runs: ${c.weeks.from ?? 'not set'} to ${c.weeks.to} weeks. `}
-                  {c.cadence && `How often people check in: ${c.cadence.from ?? 'not set'} to ${c.cadence.to}. `}
-                  Changed by the {c.by} on {whenItWas(c.changedAt, 'day')}.
-                </Note>
+                <Note key={i}>{settingsChangeSentence(c)}</Note>
               ))}
             </div>
           </details>

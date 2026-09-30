@@ -65,7 +65,7 @@ function namesAnd(names: string[]): string {
  */
 export function howManyHere(
   count: number, plan: string | null | undefined, cap: number | null | undefined,
-  waitingToBeLetIn: string[] = [], heldForASeat: string[] = [],
+  waitingToBeLetIn: string[] = [], heldForASeat: string[] = [], notLetIn: string[] = [],
 ): string {
   const people = count === 1 ? '1 person' : `${count} people`
   const first = cap == null ? `${people}.` : (() => {
@@ -77,8 +77,20 @@ export function howManyHere(
     if (names.length <= 3) return `${namesAnd(names)} ${names.length === 1 ? 'is' : 'are'} ${few}.`
     return `${names.length} ${many}.`
   }
+  /*
+   * SOMEBODY DECLINED IS NOT "WAITING" (U.4 re-review, item 2b). Their row already reads "Not let
+   * in"; the count line used to say "Faraji is waiting to be let in." about the very same person,
+   * because it read `awaitingOrgApproval` alone, which an admin's "no" does not clear. Told apart
+   * here so the two sentences on the same page agree with each other.
+   */
+  const wasNotSentence = (names: string[]): string | null => {
+    if (names.length === 0) return null
+    if (names.length <= 3) return `${namesAnd(names)} ${names.length === 1 ? 'was' : 'were'} not let in.`
+    return `${names.length} were not let in.`
+  }
   const extra = [
     sentence(waitingToBeLetIn, 'waiting to be let in', 'more are waiting to be let in'),
+    wasNotSentence(notLetIn),
     sentence(heldForASeat, 'on a check-in with no seat for them', 'more are on a check-in with no seat for them'),
   ].filter((s): s is string => !!s)
   return [first, ...extra].join(' ')
@@ -153,8 +165,9 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
 
   /* Who the head count leaves out, and why (U.4 people-group review, item 1): named, so "N people"
      and the number of rows below it never quietly disagree. */
-  const waitingToBeLetIn = everybody.filter((m) => m.awaitingOrgApproval).map(firstNameOf)
+  const waitingToBeLetIn = everybody.filter((m) => m.awaitingOrgApproval && !m.notLetIn).map(firstNameOf)
   const heldForASeat = everybody.filter((m) => m.heldForASeat).map(firstNameOf)
+  const notLetIn = everybody.filter((m) => m.notLetIn).map(firstNameOf)
 
   return (
     <>
@@ -173,6 +186,7 @@ export function EveryoneHere({ orgName, ownerId }: { orgName: string; ownerId: s
           status.data?.people?.cap,
           waitingToBeLetIn,
           heldForASeat,
+          notLetIn,
         )}
       >
         <Stack gap={18}>

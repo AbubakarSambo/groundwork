@@ -143,3 +143,15 @@ export function firstNameOrLabel(p: APerson | null | undefined, forTheLead = tru
   const named = forTheLead ? theNameOrAddress(p) : theirName(p)
   return named ? named.split(' ')[0] : oneWithNoName(p)
 }
+
+/**
+ * WHETHER SOMEBODY HAS A REAL NAME ON RECORD - their own, or the one they typed at the end of an
+ * open link - never a name guessed out of an email address. `theNameOrAddress` guesses one for the
+ * lead's own pages ("zawadi.u8@example.test" becomes "Zawadi U8"), which is right where the lead
+ * typed the address themselves, but wrong wherever a screen would otherwise show the address itself
+ * (U.4 re-review, item 4): a guess mid-sentence reads as a name nobody gave, and it is worse than
+ * the plain address it stands in for.
+ */
+export function hasARealName(p: APerson | null | undefined): boolean {
+  return !!theirName(p)
+}

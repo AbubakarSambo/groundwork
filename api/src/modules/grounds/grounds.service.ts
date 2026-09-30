@@ -1757,14 +1757,35 @@ export class GroundsService {
 
     const rawTimeline: any[] =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object' ? (rawLog as any).timeline ?? [] : Array.isArray(rawLog) ? rawLog : [];
+    /*
+     * WHO CHANGED IT, NEVER RESOLVED TO A NAME (U.4 re-review, item 5; the-audit-log-has-a-reader.spec.ts
+     * is the test that keeps it that way). Peer visibility can be off on this ground, and resolving
+     * `changedBy` to a name here would walk straight around it - a party who is not supposed to know
+     * who else is here would learn one from a settings page. `updateTimeline`'s own guard only ever
+     * lets the lead or an admin of the organisation make this change, so those - and the reader
+     * themselves, when it was them - are the only three anybody needs: "you", "the lead" or "an
+     * admin" is true either way, and the page turns each into its own plain sentence.
+     *
+     * "PARTY" IS GONE. It read as work jargon on the page ("Changed by the party on..."), which is
+     * exactly the plain-English rule this file otherwise keeps.
+     */
     const settingsChanges = rawTimeline
       .filter(e => e && e.changedAt)
-      .map(e => ({
-        changedAt: e.changedAt,
-        by: e.changedBy === ground.initiatorId ? ('lead' as const) : ('party' as const),
-        weeks: e.changes?.timelineWeeks ?? null,
-        cadence: e.changes?.cadence ?? null,
-      }));
+      .map(e => {
+        /* STORED IN DAYS, READ AS WEEKS. `updateTimeline` writes `changes.timelineDays` - the one
+           authoritative timeline, in days (see the comment there) - but this used to read
+           `changes.timelineWeeks`, a key nothing ever wrote, so the week-to-week change this page
+           promises to show never actually appeared. */
+        const days = e.changes?.timelineDays;
+        return {
+          changedAt: e.changedAt,
+          by: e.changedBy === requestingUserId ? ('you' as const)
+            : e.changedBy === ground.initiatorId ? ('lead' as const)
+            : ('admin' as const),
+          weeks: days ? { from: days.from != null ? Math.round(days.from / 7) : null, to: Math.round(days.to / 7) } : null,
+          cadence: e.changes?.cadence ?? null,
+        };
+      });
 
     // Nest checkIns under each participant so the client can show per-party status.
     const checkInsByParticipant = new Map<string, typeof ground.checkIns>();

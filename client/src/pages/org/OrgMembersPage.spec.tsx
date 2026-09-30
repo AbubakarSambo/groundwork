@@ -302,6 +302,20 @@ describe('the head count', () => {
     open({ people: { count: 7, cap: 100 }, subscription: { plan: 'GROWTH' } })
     await screen.findByText('7 people, on the Growth plan, which is for up to 100.')
   })
+
+  /*
+   * U.4 RE-REVIEW, ITEM 2B: "FARAJI WAS NOT LET IN", NOT "FARAJI IS WAITING TO BE LET IN".
+   *
+   * Once an admin has said no, `awaitingOrgApproval` alone said the person was still waiting - which
+   * an admin's decision does not clear - while the row right below read "Not let in", the two
+   * sentences on the same page disagreeing about the same person.
+   */
+  it('says somebody an admin has declined was not let in, never that they are waiting', () => {
+    expect(howManyHere(5, null, 5, [], [], ['Faraji'])).toBe('5 people, on the free plan, which is for up to 5. Faraji was not let in.')
+    expect(howManyHere(5, null, 5, [], [], ['Faraji', 'Zawadi'])).toBe('5 people, on the free plan, which is for up to 5. Faraji and Zawadi were not let in.')
+    expect(howManyHere(5, null, 5, ['Peter'], [], ['Faraji']))
+      .toBe('5 people, on the free plan, which is for up to 5. Peter is waiting to be let in. Faraji was not let in.')
+  })
 })
 
 describe('somebody held for a seat, with no account of their own', () => {

@@ -69,8 +69,16 @@ export function nameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): 
   return `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() || m.email
 }
 
+/**
+ * THE FIRST WORD, NEVER THE WHOLE FIELD (U.4 re-review, item 7). Some accounts, Rukia's own owner
+ * account among them, hold a full name in the `firstName` field alone ("Rukia Otieno", `lastName`
+ * empty) - a record of how the account was created, not of what her first name is. Reading the
+ * field whole read "What Rukia Otieno can do..." and "Rukia Otieno owns this organisation..." where
+ * every other person on the same page reads their first name alone ("What Faraji can do...").
+ */
 export function firstNameOf(m: Pick<OrgMember, 'firstName' | 'lastName' | 'email'>): string {
-  return (m.firstName ?? '').trim() || nameOf(m)
+  const whole = (m.firstName ?? '').trim() || nameOf(m)
+  return whole.split(/\s+/)[0] || whole
 }
 
 export function initialsOf(name: string): string {

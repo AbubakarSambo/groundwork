@@ -87,6 +87,8 @@ const table = (rows: any[]) => ({
 
 function setup() {
   const prisma: any = {
+    /* The You board reads the person's own patterns (29 September); none here. */
+    patternDetection: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     personObjective: table([]), groundObjective: table([]), groundCommitment: table([]), coachingState: table([]),
     person: table([]), todo: table([]), groundDependency: table(dependencies),
   };

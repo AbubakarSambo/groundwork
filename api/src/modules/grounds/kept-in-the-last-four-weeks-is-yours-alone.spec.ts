@@ -95,6 +95,8 @@ const matches = (row: any, where: any) => Object.entries(where ?? {}).every(([k,
 function setup() {
   const none = { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null) };
   const prisma: any = {
+    /* The You board reads the person's own patterns (29 September); none here. */
+    patternDetection: { findMany: async () => [], updateMany: async () => ({ count: 0 }) },
     personObjective: none, groundObjective: none, coachingState: none, person: none, todo: none, groundDependency: none,
     groundCommitment: { findMany: jest.fn(async ({ where }: any) => DANIELS.filter((r) => matches(r, where))) },
   };

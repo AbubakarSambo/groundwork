@@ -19,11 +19,16 @@ describe('no total means no total', () => {
   it('the participant page no longer guesses six, and prints the session alone when the total is unknown', () => {
     expect(page).not.toMatch(/\?\? 6\b/)
     expect(page).toMatch(/const totalSessions: number \| null =/)
-    /* Full sentence, no dot (U.8 review): "This is session {n}.", not "· Session {n}". */
-    expect(page).toMatch(/<span>This is session \{completedCheckIns\.length \+ 1\}\.<\/span>/)
+    /*
+     * Full sentence, no dot (U.8 review): "This is your session {n}.", not "· Session {n}".
+     * "YOUR" (U.4 re-review, item 8): this is the reader's own count, staggered by when they
+     * personally started, never the team's shared phase - see the comment above `opensLater` in
+     * the component.
+     */
+    expect(page).toMatch(/<span>This is your session \{completedCheckIns\.length \+ 1\}\.<\/span>/)
   })
   it('and a session that opens later is dated, not numbered as current', () => {
-    expect(page).toMatch(/opensLater \? \(\s*<span>The next session opens on/)
+    expect(page).toMatch(/opensLater \? \(\s*<span>Your next session opens on/)
   })
   it('the resolution gate stays closed on an unknown total', () => {
     expect(code('../components/gw/MyRecord.tsx')).toMatch(/totalSessions != null && completedCount >= totalSessions - 1/)

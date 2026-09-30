@@ -33,8 +33,8 @@ export function statusSentence(label: string): string {
 /**
  * "SESSIONS COMPLETED" READ AS A LABEL AND A BARE NUMBER, NOT A SENTENCE (U.4 people-group review,
  * item 3): "Sessions completed" over "1 of 12" is a stat tile, the wording rule this page keeps to
- * everywhere else rules out. It is also easy to misread next to the header's "This is session 2 of
- * 12" as though the two disagreed, when they are simply two different counts (how many are done, and
+ * everywhere else rules out. It is also easy to misread next to the header's "This is your session 2
+ * of 12" as though the two disagreed, when they are simply two different counts (how many are done, and
  * which one is open now) - saying both in one sentence, with the words "completed" and "open", keeps
  * them from reading as a contradiction.
  */

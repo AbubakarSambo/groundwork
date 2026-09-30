@@ -2,8 +2,7 @@ import { PeopleTable, PersonRow, Tag, Button, type TagTone } from '@/components/
 import { PeoplePicker } from '@/components/gw/PeoplePicker'
 import { ShareSection } from '@/pages/grounds/ShareSection'
 import { looksLikeAnAddress } from '@/components/gw/an-address-that-can-receive-mail'
-import { personLabel as onePersonsLabel, atTheStart } from '@/lib/utils'
-import { oneWithNoName } from '@/lib/a-colleague'
+import { personLabel as onePersonsLabel, atTheStart, firstNameOrLabel, hasARealName } from '@/lib/utils'
 import { initialsOf } from '@/pages/org/people-here'
 import { waitsForItsStart } from '@/lib/the-leads-note'
 import { whenItWas } from '@/lib/a-date-reads-the-same-everywhere'
@@ -234,13 +233,24 @@ export function WhosInItRoster({
            * A ROW HEADING IS THE START OF A LINE, NOT THE MIDDLE OF A SENTENCE. `personLabel`'s
            * "a colleague" is written lower case for inside a sentence (a-colleague.ts); read as a
            * row heading it read as an uncapitalised fragment. `atTheStart` gives it the capital.
-           * An admin here already sees this person's email on People, so where there is no name at
-           * all to show, their address is more useful as the heading than "A colleague" (U.4
-           * review, item 6).
+           * Whoever can see this person's email (the server already nulls it for anyone who cannot,
+           * see `email: hideContact && ...` in grounds.service.ts) reads their plain address where
+           * there is no name at all to show, rather than "A colleague" (U.4 review, item 6).
+           *
+           * NEVER A NAME GUESSED OUT OF THE ADDRESS (U.4 re-review, item 4). `onePersonsLabel`
+           * (`personLabel`) reaches for the lead's own typed address and turns it into something
+           * that reads like a name - "zawadi.u8@example.test" becomes "Zawadi U8" - which is right
+           * where the lead is reading their OWN invitation back, but wrong here: it read as a name
+           * nobody gave, to a reader who had no part in typing it. `hasARealName` is checked first,
+           * so with no real name on record this always shows the plain address instead.
            */
-          const bareLabel = onePersonsLabel(p)
-          const noNameOnRecord = bareLabel === oneWithNoName(p)
-          const name = isOrgAdmin && noNameOnRecord && p.email ? p.email : atTheStart(bareLabel)
+          const noRealName = !hasARealName(p)
+          /* With no name and no address this reader may see, say so plainly rather than put a
+             made-up "A colleague" in the middle of a sentence: the row reads "Somebody invited by
+             email", and a sentence reads "this person". */
+          const nameless = noRealName && !p.email
+          const name = noRealName && p.email ? p.email : nameless ? 'Somebody invited by email' : atTheStart(onePersonsLabel(p))
+          const inASentence = nameless ? 'this person' : name
           const bounced = !p.userId && p.inviteDeliveryStatus === 'BOUNCED'
           const waitingForSeat = !!p.awaitingSeat
           const notLetIn = !!p.notLetIn
@@ -256,8 +266,15 @@ export function WhosInItRoster({
            * `waitingForSeat` both have one and are still outside it, so they read "Invited" like
            * anybody else waiting, not "Joined". And Zawadi, whose invitation the plan itself never
            * let go out, reads why rather than a bare "Invited".
+           *
+           * NEITHER IS SOMEBODY STILL WAITING AT THE DOOR (U.4 re-review, item 3). An account
+           * (`p.userId`) is created the moment somebody from outside the organisation accepts an
+           * invitation, before any admin has said yes - so Rukia and Juma read "Joined 27 September"
+           * about Faraji while he was still waiting for an admin, the same day the prototype's own
+           * Peter, in that exact state, reads "Invited 22 September". `waitingForAdmin` now holds
+           * that row out of "Joined" too, same as `notLetIn` and `waitingForSeat`.
            */
-          const inItAlready = !!p.userId && !notLetIn && !waitingForSeat
+          const inItAlready = !!p.userId && !notLetIn && !waitingForSeat && !waitingForAdmin
           const when = inItAlready
             ? (p.invitedAt
                 ? `Joined ${whenItWas(p.invitedAt, 'dayAndMonthLong')}`
@@ -278,7 +295,11 @@ export function WhosInItRoster({
              and this roster did not. Silent, exactly as the pills were, while the next session has
              not opened: nobody is late for one that has not started. */
           const session = sessionParties?.find((s) => s.id === p.id)
-          const sessionLine = notOpenYet || !session
+          /* SOMEBODY NOT LET IN CANNOT CHECK IN AT ALL (U.4 re-review, item 2b): "has not checked in
+             for this session yet" reads as if a session were open and waiting on them, which is
+             untrue of somebody an admin has refused. Left out entirely for them, same as before the
+             next session opens. */
+          const sessionLine = notOpenYet || !session || notLetIn
             ? null
             : session.done
               ? `${session.isSelf ? 'You have' : `${atTheStart(name)} has`} checked in for this session.`
@@ -326,8 +347,8 @@ export function WhosInItRoster({
             help = {
               tone: 'look',
               text: isOrgAdmin
-                ? `Your plan has no seat for ${name}. Free one or move to a larger plan, and the invitation goes out.`
-                : 'Your plan has no seat for them yet - an admin has to make room before their invitation goes out.',
+                ? `Your plan has no seat for ${inASentence}. Free one or move to a larger plan, and the invitation goes out.`
+                : 'Your plan has no seat for them yet. An admin has to make room before their invitation goes out.',
               action: isOrgAdmin
                 ? <Button size="small" kind="secondary" onClick={() => navigate('/billing')}>View plans</Button>
                 : undefined,
@@ -338,9 +359,13 @@ export function WhosInItRoster({
                button, because there is nothing left here for a lead to press. */
             help = {
               tone: 'concern',
+              /* THE SECOND MENTION USES THE FIRST NAME (U.4 re-review, item 2c), the way the
+                 person's own page already does: "did not let Faraji Odhiambo in" names them in full
+                 once, and the sentence then goes on as anyone would say it, "so Faraji cannot check
+                 in" - not the full name twice over. */
               text: p.notLetInAt
-                ? `${p.notLetInBy ?? 'An admin'} did not let ${name} in, on ${whenItWas(p.notLetInAt, 'dayAndMonthLong')}. ${atTheStart(name)} cannot check in.`
-                : `${p.notLetInBy ?? 'An admin'} did not let ${name} in, so ${atTheStart(name)} cannot check in.`,
+                ? `${p.notLetInBy ?? 'An admin'} did not let ${inASentence} in, on ${whenItWas(p.notLetInAt, 'dayAndMonthLong')}. ${nameless ? 'They' : atTheStart(firstNameOrLabel(p))} cannot check in.`
+                : `${p.notLetInBy ?? 'An admin'} did not let ${inASentence} in, so ${nameless ? 'they' : atTheStart(firstNameOrLabel(p))} cannot check in.`,
             }
           } else if (waitingForAdmin) {
             /* SPEAK TO AN ADMIN AS "YOU" (U.4 review, item 4). For a lead who is not an admin, no
@@ -348,7 +373,7 @@ export function WhosInItRoster({
             help = {
               tone: 'look',
               text: isOrgAdmin
-                ? `You can let ${name} in on People.`
+                ? `You can let ${inASentence} in on People.`
                 : `${atTheStart(name)} is from outside your organisation, so an admin has to let them in before they can check in.`,
               action: isOrgAdmin
                 ? <Button size="small" kind="secondary" onClick={() => navigate('/org/members')}>Go to People</Button>

@@ -13,6 +13,8 @@ export interface ServedPattern {
   participantId: string
   /** True when the reader is the person it is about. */
   yours: boolean
+  /** Good news, somebody carrying something, or worth the lead's attention. */
+  kind: 'good' | 'carrying' | 'attention'
   /** The plain name: what the record shows happening. */
   heading: string
   /** The engine's own sentence about the work, when it holds no internal name or code. */
