@@ -6862,4 +6862,17 @@ Not yet pictured: the page after API access is approved. No organisation on this
 
 A builder is fixing all of them now. The review's pictures are in the scratchpad's `pictures/review-g1/`.
 
+**Group 1's faults are fixed, and are being reviewed again.**
+- A participant is now told "Connecting your organisation's systems is something its admins do."
+- The example consoles are drawn with the prototype's made-up Baridi people, and no real name is anywhere.
+- The developer page's approved state is in plain sentences, with new tests for keys shown once, webhooks, deliveries, embedding and how long conversations are kept.
+- Settings has "Everything you've written", with one "Download it" button, and reads "You have written 28 answers, in 7 check-ins."
+- "Leave" is the white button with red words.
+- Plan and billing hides the sharing codes from people who cannot make one, says "Each of these is a free check-in" once instead of on every row, and introduces Sahar Jamal in a full sentence.
+- Connections says "Not set up" or "Needs a key", whichever is true.
+- WhatsApp and the developer page have the prototype's title area, and the WhatsApp steps sit flat on the page.
+- More says "Create an organisation".
+
+The whole screen suite passes (3,684 tests), and so do the button test (10 of 10) and the page-colour test (3 of 3).
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
