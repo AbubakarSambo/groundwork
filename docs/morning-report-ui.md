@@ -6665,3 +6665,15 @@ Both temporary database changes the reviewer made were put back and checked (Far
 **One thing the builder did that I did not take.** To give an admin Zawadi's address on People and setup, it let admins receive every participant's email on the check-in's own data, and rewrote a privacy test that asserted they get none. That changes a privacy rule, which only you decide, so I put both back exactly as they were. Admins do see addresses on the People page, so **please say whether they should also see them on a check-in whose lead has turned on "Hide email addresses between participants".** Until then, the more private rule stands.
 
 **Tests.** The whole API suite: 11,177 of 11,179 pass. I fixed six of our own tests on the way: three You-board tests lacked the pattern table our pattern work reads, and three read the old settings tab's code, now in its own file. The two still failing are the engine's (requests 80 and 81). The screen tests for every changed folder pass (2,176), and the type checks are clean.
+
+
+## The people group is done (30 September)
+
+The admin's People page, the one-person page, the check-in's People and setup, "Not let in", and the pattern screens are rebuilt from the shared parts, reviewed, re-reviewed, and fixed. My last check, as Rukia and Juma on the running product after a restart: Faraji waiting at the door reads "Invited 27 September"; Zawadi, with no name and an address Juma may not see, reads "Somebody invited by email" everywhere on the page, never "A colleague" or "Zawadi U8". The whole screen suite passes (3,582 tests in 515 files), the type checks are clean, the page-colour test passes for the participant, the lead and the admin, and the whole API suite passes apart from two of the engine's own tests (requests 80 and 81).
+
+**Still needing you, from this group:**
+- Item 0-pat2: may an admin who does not run a check-in read a person's pattern and their answer? Until you say, the screens show it only to whoever runs the check-in, but the server still sends it (request 84, marked first for the engine).
+- Item 0-pat: the engine switched patterns on, though you said the switch stays off.
+- Whether an admin should receive participants' email addresses on a check-in whose lead has turned on "Hide email addresses between participants". Kept as it was: they do not.
+
+**Next:** the board and reports for every kind of work, now that the engine serves the kind of work and each kind's records (request 76).
