@@ -65,7 +65,7 @@ export function addedToYourToDos(t: AToDo): string {
   const what = when && said.toLowerCase().endsWith(when.toLowerCase()) && said.length > when.length
     ? said.slice(0, said.length - when.length).trim().replace(/[,;]+$/, '')
     : said;
-  if (!when) return `Added to your to-dos: ${what}.`;
-  if (/^(?:by|before|end of)\b/i.test(when)) return `Added to your to-dos: ${what} ${when}.`;
-  return `Added to your to-dos for ${when.replace(/^(?:on)\s+(?:the\s+)?/i, '')}: ${what}.`;
+  if (!when) return `I have added "${what}" to your to-dos.`;
+  if (/^(?:by|before|end of)\b/i.test(when)) return `I have added "${what}" to your to-dos, ${when}.`;
+  return `I have added "${what}" to your to-dos for ${when.replace(/^(?:on)\s+(?:the\s+)?/i, '')}.`;
 }

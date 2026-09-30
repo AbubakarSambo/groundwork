@@ -1,6 +1,9 @@
 import { GroundsService } from './grounds.service';
 import { ContextItemKind } from '@prisma/client';
-import { ONLY_THE_LEAD_CONFIRMS_SETUP } from './who-may-confirm-setup';
+import { onlyTheLeadConfirmsSetup } from './who-may-confirm-setup';
+
+/* Request 92, point 8: the refusal names the lead, in full sentences. */
+const ONLY_THE_LEAD_CONFIRMS_SETUP = onlyTheLeadConfirmsSetup('Tunde Ade');
 
 /**
  * DECISION 63, 30 September 2026: "Only the lead confirms setup changes and questions for people,
@@ -67,6 +70,12 @@ function makeService(opts: { leadIsActive: boolean }) {
   return { service, prisma, createdLines, questionLine };
 }
 
+describe('the refusal an admin or a participant reads', () => {
+  it('names the lead and says plainly that nothing was changed', () => {
+    expect(ONLY_THE_LEAD_CONFIRMS_SETUP).toBe('Only Tunde Ade, who runs this check-in, can change how it is set up. An admin can only do that once Tunde has left the organisation. Nothing was changed.');
+  });
+});
+
 describe('decision 63: who may confirm setup on a check-in', () => {
   describe('door one: addContextLine', () => {
     it('the lead can add a context line', async () => {
@@ -102,14 +111,14 @@ describe('decision 63: who may confirm setup on a check-in', () => {
     it('the lead can confirm a question for somebody on the check-in', async () => {
       const { service } = makeService({ leadIsActive: true });
       const result = await service.confirmQuestionForPerson(GROUND_ID, LEAD_ID, 'q1', {});
-      expect(result.say).toContain('Confirmed');
+      expect(result.say).toContain('I have confirmed it.');
       expect(result.confirmedByAdminNote).toBeNull();
     });
 
     it('the lead can decline a question for somebody on the check-in', async () => {
       const { service } = makeService({ leadIsActive: true });
       const result = await service.declineQuestionForPerson(GROUND_ID, LEAD_ID, 'q1');
-      expect(result.say).toContain('Left out');
+      expect(result.say).toContain('I have left it out.');
     });
 
     it('an admin cannot confirm or decline a question while the lead is still in the organisation, and reads the plain refusal', async () => {
@@ -131,7 +140,7 @@ describe('decision 63: who may confirm setup on a check-in', () => {
     it('an admin can decline a question once the lead has left', async () => {
       const { service } = makeService({ leadIsActive: false });
       const result = await service.declineQuestionForPerson(GROUND_ID, ADMIN_ID, 'q1');
-      expect(result.say).toContain('Left out');
+      expect(result.say).toContain('I have left it out.');
     });
 
     it('a participant who is neither the lead nor an admin can never confirm or decline a question, whether or not the lead has left', async () => {

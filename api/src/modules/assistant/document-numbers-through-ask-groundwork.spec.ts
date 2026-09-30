@@ -162,7 +162,7 @@ describe('a document\'s numbers, said back through Ask Groundwork', () => {
 
     expect(created).toEqual([]);
     expect(prisma.groundObjective.createMany).not.toHaveBeenCalled();
-    expect((reply.blocks[0] as any).body).toBe('Left it. Nothing was recorded.');
+    expect((reply.blocks[0] as any).body).toBe('I have left it as it was. Nothing was recorded.');
     expect(prisma.assistantProposal.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ state: 'DECLINED' }) }),
     );

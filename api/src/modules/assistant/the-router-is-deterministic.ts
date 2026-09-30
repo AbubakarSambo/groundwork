@@ -9,6 +9,7 @@
  * WHAT THIS IS NOT: an attempt at understanding. It is a small set of confident matches and an
  * honest default. The default is the important half.
  */
+import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 
 export type Lane =
   | 'what_you_can_see'
@@ -439,7 +440,7 @@ export function whatICanDoWith(input: string): { line: string; options: { key: s
   const short = trimmed.length <= 60 ? trimmed : `${trimmed.slice(0, 57)}…`;
   return {
     line: trimmed
-      ? `I cannot answer that one yet. Here is what I can do with "${short}".`
+      ? `I cannot answer that one yet. Here is what I can do with ${quotedThenEnding(short)}`
       : 'Ask me something, or pick one of these.',
     options: [
       { key: 'what_you_can_see', label: 'Tell me what you can see' },

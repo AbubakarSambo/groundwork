@@ -93,4 +93,15 @@ export function confirmedByAnAdminSentence(byName: string, leadName: string): st
 
 /** The one refusal, for a caller who is neither the lead nor (the lead having left) an admin here. */
 export const ONLY_THE_LEAD_CONFIRMS_SETUP =
-  'Only the person who runs this check-in can confirm this. An admin can only once that person has left the organisation.';
+  'Only the person who runs this check-in can change how it is set up. An admin can only do that once that person has left the organisation. Nothing was changed.';
+
+/**
+ * THE SAME REFUSAL WITH THE LEAD'S REAL NAME, as a full sentence (request 92, point 8). Used wherever
+ * the lead's name is known; the constant above is what is said when it is not.
+ */
+export function onlyTheLeadConfirmsSetup(leadName: string | null | undefined): string {
+  const name = (leadName ?? '').trim();
+  if (!name) return ONLY_THE_LEAD_CONFIRMS_SETUP;
+  const first = name.split(/\s+/)[0];
+  return `Only ${name}, who runs this check-in, can change how it is set up. An admin can only do that once ${first} has left the organisation. Nothing was changed.`;
+}

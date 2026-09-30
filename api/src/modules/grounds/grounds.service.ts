@@ -77,7 +77,7 @@ import { aNameOutOfAnAddress } from '../users/a-name-out-of-an-address';
 import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
 import { adminsThisOrg, maySee, groundsAViewerMayList } from './who-may-read-this-check-in';
-import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, type SetupConfirmDecision } from './who-may-confirm-setup';
+import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
@@ -425,7 +425,7 @@ export class GroundsService {
       this.prisma.user.findUnique({ where: { id: requestingUserId }, select: { role: true, organizationId: true, firstName: true, lastName: true } }),
     ]);
     const decision = whoMayConfirmSetup(requestingUserId, checkIn, { lead, confirmer, organizationId: confirmer?.organizationId });
-    if (!decision.allowed) throw new ForbiddenException(ONLY_THE_LEAD_CONFIRMS_SETUP);
+    if (!decision.allowed) throw new ForbiddenException(onlyTheLeadConfirmsSetup([lead?.firstName, lead?.lastName].filter(Boolean).join(' ')));
     return decision;
   }
 
@@ -3804,7 +3804,7 @@ export class GroundsService {
         got = withoutWhatTheyLeftOut(got, leaves);
         const left = [...leaves.teamTargets, ...leaves.people, ...leaves.commitments];
         const wroteSome = await this.writeWhatThePasteGave(groundId, got, confirmedByAdminNote);
-        const say = `${whatWeTookFromThat(got, { told: got.toldToParticipants, reader: { participantId: (ground.participants as any[]).find((p) => p.userId === requestingUserId)?.id ?? null } }) ?? 'Recorded.'}\n\nLeft out, as you said: ${left.join('; ')}.`;
+        const say = `${whatWeTookFromThat(got, { told: got.toldToParticipants, reader: { participantId: (ground.participants as any[]).find((p) => p.userId === requestingUserId)?.id ?? null } }) ?? 'I have recorded it.'}\n\nAs you said, I have left out ${left.join('; ')}.`;
         const questionsForPeople = got.questionsForPeople.length ? await this.theQuestionsForPeople(groundId).catch(() => []) : undefined;
         return { changed: wroteSome ? 'everything but what you left out' : 'nothing new', say, ...(questionsForPeople ? { questionsForPeople } : {}) };
       }
@@ -3814,7 +3814,7 @@ export class GroundsService {
         await (this.prisma.groundPaste?.create?.({ data: { groundId, hash } }) ?? Promise.resolve(null)).catch(() => null);
         /* And the questions it kept, each waiting for its own yes. See confirmQuestionForPerson. */
         const questionsForPeople = got.questionsForPeople.length ? await this.theQuestionsForPeople(groundId).catch(() => []) : undefined;
-        if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got, { told: got.toldToParticipants, reader: { participantId: (ground.participants as any[]).find((p) => p.userId === requestingUserId)?.id ?? null } }) ?? 'Recorded.', ...(questionsForPeople ? { questionsForPeople } : {}) };
+        if (wrote) return { changed: 'everything', say: whatWeTookFromThat(got, { told: got.toldToParticipants, reader: { participantId: (ground.participants as any[]).find((p) => p.userId === requestingUserId)?.id ?? null } }) ?? 'I have recorded it.', ...(questionsForPeople ? { questionsForPeople } : {}) };
         /* Nothing new to write means it is already on the record, which is not a failure to report as
            one: saying yes twice to the same list used to fall through to one-gap-at-a-time. */
         return { changed: 'nothing new', say: 'That is already on the record. Nothing was written twice.' };
@@ -4437,7 +4437,7 @@ export class GroundsService {
       select: { role: true, organizationId: true },
     });
     if (ground.initiatorId !== requestingUserId && !adminsThisOrg(viewer, ground)) {
-      throw new ForbiddenException('The questions for people on this check-in are the lead\'s.');
+      throw new ForbiddenException('Only the person who runs this check-in can see or change the questions for people. Nothing was changed.');
     }
     return this.theQuestionsForPeople(groundId);
   }
@@ -4493,7 +4493,7 @@ export class GroundsService {
     });
     this.logger.log(`Ground ${groundId}: ${confirm.as === 'lead' ? 'the lead' : 'an admin, because the lead has left'} confirmed a question for somebody${edited ? ', in their own changed words' : ''}.`);
     const card = aQuestionAsTheLeadReadsIt(saved as any, who);
-    return { ...card, say: `Confirmed. Groundwork will ask ${who} "${exactQuestion}" in their next check-in, word for word.` };
+    return { ...card, say: `I have confirmed it. Groundwork will ask ${who} "${exactQuestion}" in their next check-in, word for word.` };
   }
 
   /** Not now: the question is left out, and is asked of nobody. Kept rather than deleted, like every line. */
@@ -4514,7 +4514,7 @@ export class GroundsService {
       ? await this.prisma.groundParticipant.findFirst({ where: { id: line.aboutParticipantId, groundId }, select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } }).catch(() => null)
       : null;
     const who = person ? theNameWeUseFor(person as any) : 'anybody';
-    return { id: line.id, status: 'left out', say: `Left out. Groundwork will not ask ${who} this question.` };
+    return { id: line.id, status: 'left out', say: `I have left it out. Groundwork will not ask ${who} this question.` };
   }
 
   async addLeadContext(groundId: string, requestingUserId: string, dto: { participantId?: string | null; text: string; audience?: 'LEAD_ONLY' | 'EVERYONE' }) {

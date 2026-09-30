@@ -67,6 +67,7 @@ import { targetsHiddenFrom, withoutHiddenTargetsIn, namesOnTheRoster } from '../
 import { runsIt } from '../grounds/who-may-read-this-check-in';
 import { A_GROUND_IS_OVER } from '../grounds/a-ground-that-has-ended';
 import { parseContextLine, parseLeadNote, labelForContextKind, parseChangeContextLine } from './a-line-or-a-note-typed-in-chat';
+import { quotedThenEnding } from './a-quote-takes-no-second-mark';
 import { theContextWeHave, WhatLanded } from '../documents/what-a-document-holds';
 import { writeADocumentsNumbers } from '../documents/write-a-documents-numbers';
 
@@ -1252,7 +1253,7 @@ export class AssistantService {
     if (open) {
       const next = whatToAskForNext(open);
       if (!next) return this.offerToSeed(organizationId, who, open);
-      return rules('set_an_objective', text(`Still on "${open.workingTitle}". ${next.asks}`));
+      return rules('set_an_objective', text(`We are still working on "${open.workingTitle}". ${next.asks}`));
     }
 
     /*
@@ -1273,7 +1274,7 @@ export class AssistantService {
 
     return rules(
       'set_an_objective',
-      text(`Started a draft: "${draft.workingTitle}". ${next ? next.asks : ''}`.trim()),
+      text(`I have started a draft called "${draft.workingTitle}". ${next ? next.asks : ''}`.trim()),
     );
   }
 
@@ -1383,7 +1384,7 @@ export class AssistantService {
         where: { id: parked.id },
         data: { state: 'DECLINED', resolvedAt: new Date() },
       });
-      return rules('confirm_commitment', text('Left it, then.'));
+      return rules('confirm_commitment', text('I have left it as it was. Nothing was recorded.'));
     }
 
     /* RE-VERIFY at execution: still a person here, still active. */
@@ -1421,7 +1422,7 @@ export class AssistantService {
     const confirmed = await this.prisma.commitment.findUnique({ where: { id: created.id } });
     if (!confirmed) return rules('confirm_commitment', text('I tried to note that and cannot see it on the record, so treat it as not written down.'));
 
-    return rules('confirm_commitment', text(`Noted: ${confirmed.text}. It will come back to you in your next check-in.`));
+    return rules('confirm_commitment', text(`I have written down "${confirmed.text}". It will come back to you in your next check-in.`));
   }
 
   /**
@@ -1509,7 +1510,7 @@ export class AssistantService {
       data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
     });
 
-    if (decision === 'decline') return rules('start_a_check_in', text('Left it. Nothing was sent.'));
+    if (decision === 'decline') return rules('start_a_check_in', text('I have left it as it was. Nothing was sent.'));
 
     const payload = parked.payload as { scenario: string; label: string; people: string[] };
 
@@ -1551,7 +1552,7 @@ export class AssistantService {
       });
     }
 
-    const said = [`Opened "${payload.label}". ${saidAsAList(reachable.map((p) => p.displayName ?? p.externalId))} ${reachable.length === 1 ? 'has' : 'have'} been invited.`];
+    const said = [`I have opened "${payload.label}". ${saidAsAList(reachable.map((p) => p.displayName ?? p.externalId))} ${reachable.length === 1 ? 'has' : 'have'} been invited.`];
     /* Named, not counted, in both directions — the same rule the offer runs on. */
     if (gone.length) said.push(`${saidAsAList(gone)} ${gone.length === 1 ? 'is' : 'are'} no longer on the roster, so ${gone.length === 1 ? 'they were' : 'they were'} left out.`);
     if (noAddress.length) said.push(`${saidAsAList(noAddress)} ${noAddress.length === 1 ? 'has' : 'have'} no email address on the roster and could not be invited.`);
@@ -1615,7 +1616,7 @@ export class AssistantService {
       data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
     });
 
-    if (decision === 'decline') return rules('send_me_that', text('Left it in here, then.'));
+    if (decision === 'decline') return rules('send_me_that', text('I have left it here. Nothing was sent to your email.'));
 
     const me = await this.prisma.person.findFirst({
       where: { organizationId, externalId: who, active: true },
@@ -1637,7 +1638,7 @@ export class AssistantService {
       return rules('send_me_that', text('I could not send it just now, so treat it as not sent. It is still here.'));
     }
 
-    return rules('send_me_that', text(`Sent to ${me.email}. Nobody else was copied.`));
+    return rules('send_me_that', text(`I have sent it to ${me.email}. Nobody else was copied.`));
   }
 
   private async resolveParkedScenario(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
@@ -1830,7 +1831,7 @@ export class AssistantService {
     if (!next) return null;
     try {
       const r = await this.drafts.answer(organizationId, open.id, who, next.piece, message);
-      if (r.askNext) return rules('set_an_objective', text(`Noted. ${r.askNext.asks}`));
+      if (r.askNext) return rules('set_an_objective', text(`I have noted that. ${r.askNext.asks}`));
       const fresh = await this.prisma.objectiveDraft.findUnique({ where: { id: open.id } });
       return this.offerToSeed(organizationId, who, fresh ?? open);
     } catch (err: any) {
@@ -1870,12 +1871,12 @@ export class AssistantService {
       data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
     });
     const payload = parked.payload as { draftId: string; title: string };
-    if (decision === 'decline') return rules('set_an_objective', text(`Left as a draft. "${payload.title}" is still here when you want it.`));
+    if (decision === 'decline') return rules('set_an_objective', text(`I have left it as a draft. "${payload.title}" is still here when you want it.`));
     try {
       const r = await this.drafts.seed(organizationId, payload.draftId, `chat-${payload.draftId}`, 'groundwork-chat', who);
       return rules(
         'set_an_objective',
-        text(`Set. "${payload.title}" is on your organisation's board as an objective you own (subject ${r.subjectExternalId}). Check-ins against it read your evidence from here on.`),
+        text(`I have set it. "${payload.title}" is on your organisation's board as an objective you own (subject ${r.subjectExternalId}). Check-ins against it read your evidence from here on.`),
       );
     } catch (err: any) {
       return rules('set_an_objective', text(`I could not set it: ${err?.message ?? 'something refused it'}. The draft is still here.`));
@@ -2153,7 +2154,7 @@ export class AssistantService {
   private async resolveParkedContext(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_context', text('Left it, then.'));
+      return rules('add_context', text('I have left it as it was. Nothing was changed.'));
     }
 
     const payload = parked.payload as {
@@ -2225,7 +2226,7 @@ export class AssistantService {
   private async resolveParkedDocumentNumbers(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_a_document', text('Left it. Nothing was recorded.'));
+      return rules('add_a_document', text('I have left it as it was. Nothing was recorded.'));
     }
 
     const payload = parked.payload as { documentId: string; groundId: string; fileName: string };
@@ -2417,7 +2418,7 @@ export class AssistantService {
         summary = `Shall I make the line "${line.text}" visible only to you?`;
         break;
       case 'retire':
-        summary = `Shall I retire the line "${line.text}"? It stays on the record but no longer counts as open.`;
+        summary = `Shall I retire the line ${quotedThenEnding(line.text, '?')} It stays on the record but no longer counts as open.`;
         break;
     }
     const proposal = await this.prisma.assistantProposal.create({
@@ -2439,7 +2440,7 @@ export class AssistantService {
   private async resolveParkedChangeContextLine(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_context', text('Left it as it was.'));
+      return rules('add_context', text('I have left the line as it was. Nothing was changed.'));
     }
     const payload = parked.payload as { groundId: string; itemId: string; action: 'reword' | 'share' | 'private' | 'retire'; newText: string | null };
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
@@ -2457,12 +2458,12 @@ export class AssistantService {
             : { closed: true };
     const said =
       payload.action === 'reword'
-        ? 'Changed.'
+        ? 'I have changed the line.'
         : payload.action === 'share'
-          ? 'Shared. Everybody on this check-in can now read that line.'
+          ? 'I have shared the line. Everybody on this check-in can now read it.'
           : payload.action === 'private'
-            ? 'Made private. Only you can see that line now.'
-            : 'Retired. It stays on the record but no longer counts as open.';
+            ? 'I have made the line private. Only you can see it now.'
+            : 'I have retired the line. It stays on the record but no longer counts as open.';
     try {
       await this.grounds.changeContextLine(payload.groundId, person.linkedUserId, payload.itemId, change);
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
@@ -2493,7 +2494,7 @@ export class AssistantService {
   private async resolveParkedContextLine(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_context', text('Left it out.'));
+      return rules('add_context', text('I have not added the line. Nothing was changed.'));
     }
     const payload = parked.payload as { groundId: string; kind: string; text: string };
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
@@ -2504,7 +2505,7 @@ export class AssistantService {
     try {
       await this.grounds.addContextLine(payload.groundId, person.linkedUserId, { kind: payload.kind, text: payload.text });
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
-      return rules('add_context', text('Added to the check-in.'));
+      return rules('add_context', text('I have added the line to this check-in.'));
     } catch (err: any) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be added.'));
@@ -2600,7 +2601,7 @@ export class AssistantService {
   private async resolveParkedShareLeadNote(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_context', text('Left it private, then.'));
+      return rules('add_context', text('I have left the note private. Nothing was changed.'));
     }
     const payload = parked.payload as { groundId: string; noteId: string };
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
@@ -2611,7 +2612,7 @@ export class AssistantService {
     try {
       await this.grounds.shareLeadContext(payload.groundId, person.linkedUserId, payload.noteId);
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
-      return rules('add_context', text('Shared. Everybody on this check-in can now read that note.'));
+      return rules('add_context', text('I have shared the note. Everybody on this check-in can now read it.'));
     } catch (err: any) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be shared.'));
@@ -2662,7 +2663,7 @@ export class AssistantService {
   private async resolveParkedLeadNote(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_context', text('Left it, then.'));
+      return rules('add_context', text('I have left it as it was. Nothing was saved.'));
     }
     const payload = parked.payload as { groundId: string; participantId: string | null; text: string };
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
@@ -2677,7 +2678,7 @@ export class AssistantService {
         audience: 'LEAD_ONLY',
       });
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
-      return rules('add_context', text('Saved, privately. Nobody else on this check-in sees it.'));
+      return rules('add_context', text('I have saved the note, and only you can read it.'));
     } catch (err: any) {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be saved.'));
@@ -2753,7 +2754,7 @@ export class AssistantService {
       const proposal = await this.prisma.assistantProposal.create({
         data: {
           organizationId, personExternalId: who, kind: 'question_for_person',
-          summary: `Shall I leave out the question for ${found[0].who}, "${found[0].exactQuestion}"?`,
+          summary: `Shall I leave out the question for ${found[0].who}, ${quotedThenEnding(found[0].exactQuestion ?? '', '?')}`,
           payload: { groundId: resolved.id, itemId: found[0].id, action: 'decline' } as never,
         },
       });
@@ -2783,7 +2784,7 @@ export class AssistantService {
   private async resolveParkedQuestionForPerson(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
     if (decision === 'decline') {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
-      return rules('add_context', text('Left it, then.'));
+      return rules('add_context', text('I have left it as it was. Nothing was asked.'));
     }
     const payload = parked.payload as { groundId: string; itemId: string; action: 'confirm' | 'decline'; exactQuestion?: string | null };
     const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
@@ -2832,7 +2833,7 @@ export class AssistantService {
       where: { id: parked.id },
       data: { state: decision === 'accept' ? 'ACCEPTED' : 'DECLINED', resolvedAt: new Date() },
     });
-    if (decision === 'decline') return rules('add_a_to_do', text('Left it, then.'));
+    if (decision === 'decline') return rules('add_a_to_do', text('I have left it as it was. Nothing was added.'));
     const payload = parked.payload as { text: string; dueSaid: string | null };
     await this.prisma.todo.create({
       data: { organizationId, personExternalId: who, text: payload.text, dueSaid: payload.dueSaid, dueAt: null, source: 'chat' },
@@ -2856,7 +2857,7 @@ export class AssistantService {
     if ('none' in which) return rules('tick_off_a_to_do', text(open.length ? `Nothing on your list reads like "${said}". ${listToDos(open)}` : 'Your list is empty, so there is nothing to close.'));
     if ('several' in which) return rules('tick_off_a_to_do', text(`More than one of these could be it. Which?\n${which.several.map((t) => `- ${t.text}`).join('\n')}`));
     await this.prisma.todo.update({ where: { id: which.one.id }, data: { state: 'DONE', doneAt: new Date() } });
-    return rules('tick_off_a_to_do', text(`Done: ${which.one.text}.`));
+    return rules('tick_off_a_to_do', text(`I have ticked off "${which.one.text}".`));
   }
 
   private async myCommitments(organizationId: string, personId: string): Promise<Reply> {

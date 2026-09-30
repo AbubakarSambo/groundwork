@@ -111,3 +111,81 @@ describe('point 7: a document said back to its own reader says "your"', () => {
     expect(textOf(reply)).not.toMatch(/\bground\b/i);
   });
 });
+
+describe('point 8: a no, and a yes to a change to a line, are answered in full sentences', () => {
+  const answer = async (kind: string, message = 'no', extra: any = {}) => {
+    const { service } = askGroundwork({
+      parked: { id: 'pr1', kind, state: 'PARKED', payload: { groundId: 'g1', itemId: 'l1', action: 'reword', newText: 'New words.', ...extra }, summary: 's' },
+    });
+    return textOf(await service.respond('org-a', 'p1', message, 'g1'));
+  };
+
+  it.each([
+    ['confirm_commitment_default', 'I have left it as it was. Nothing was recorded.'],
+    ['context', 'I have left it as it was. Nothing was changed.'],
+    ['document_numbers', 'I have left it as it was. Nothing was recorded.'],
+    ['context_line', 'I have not added the line. Nothing was changed.'],
+    ['change_context_line', 'I have left the line as it was. Nothing was changed.'],
+    ['lead_note', 'I have left it as it was. Nothing was saved.'],
+    ['share_lead_note', 'I have left the note private. Nothing was changed.'],
+    ['question_for_person', 'I have left it as it was. Nothing was asked.'],
+    ['todo', 'I have left it as it was. Nothing was added.'],
+  ])('a no to %s reads "%s"', async (kind, sentence) => {
+    expect(await answer(kind === 'confirm_commitment_default' ? 'commitment' : kind)).toBe(sentence);
+  });
+
+  it.each([
+    ['reword', 'I have changed the line.'],
+    ['share', 'I have shared the line. Everybody on this check-in can now read it.'],
+    ['private', 'I have made the line private. Only you can see it now.'],
+    ['retire', 'I have retired the line. It stays on the record but no longer counts as open.'],
+  ])('a yes to "%s" on a line reads "%s"', async (action, sentence) => {
+    const changeContextLine = jest.fn(async () => ({}));
+    const { service } = askGroundwork({
+      groundsService: { changeContextLine },
+      parked: { id: 'pr1', kind: 'change_context_line', state: 'PARKED', payload: { groundId: 'g1', itemId: 'l1', action, newText: 'New words.' }, summary: 's' },
+    });
+    expect(textOf(await service.respond('org-a', 'p1', 'yes', 'g1'))).toBe(sentence);
+    expect(changeContextLine).toHaveBeenCalled();
+  });
+
+  it('a yes to a line reads "I have added the line to this check-in."', async () => {
+    const addContextLine = jest.fn(async () => ({}));
+    const { service } = askGroundwork({
+      groundsService: { addContextLine },
+      parked: { id: 'pr1', kind: 'context_line', state: 'PARKED', payload: { groundId: 'g1', kind: 'NOTE', text: 'Visit every shop.' }, summary: 's' },
+    });
+    expect(textOf(await service.respond('org-a', 'p1', 'yes', 'g1'))).toBe('I have added the line to this check-in.');
+  });
+
+  it('a doubled mark is never written: a quote that ends in its own punctuation takes no second one', async () => {
+    const { service } = askGroundwork();
+    const reply = await service.respond('org-a', 'p1', "I've uploaded it.");
+    expect(textOf(reply)).toContain('Here is what I can do with "I\'ve uploaded it."');
+    expect(textOf(reply)).not.toContain('."."');
+    expect(textOf(reply)).not.toMatch(/\.\.\s*$/);
+    const other = await askGroundwork().service.respond('org-a', 'p1', 'blue elephants');
+    expect(textOf(other)).toContain('Here is what I can do with "blue elephants".');
+  });
+
+  it('a question left out is asked about in its own words with no second question mark', async () => {
+    const { quotedThenEnding } = await import('./a-quote-takes-no-second-mark');
+    expect(quotedThenEnding('Is there anything on the order forms?', '?')).toBe('"Is there anything on the order forms?"');
+    expect(quotedThenEnding('Visit every shop', '?')).toBe('"Visit every shop"?');
+  });
+});
+
+describe('point 8: the refusal an admin reads names the person who runs the check-in', () => {
+  it('says who can change how it is set up, and that nothing was changed', async () => {
+    const { onlyTheLeadConfirmsSetup } = await import('../grounds/who-may-confirm-setup');
+    const refused = new Error(onlyTheLeadConfirmsSetup('Rukia Otieno'));
+    const applyContextProposal = jest.fn(async () => { throw refused; });
+    const { service } = askGroundwork({
+      userId: 'admin-1', role: 'ADMIN',
+      groundsService: { applyContextProposal },
+      parked: { id: 'pr1', kind: 'context', state: 'PARKED', payload: { groundId: 'g1', said: 'twelve weeks', history: [] }, summary: 's' },
+    });
+    expect(textOf(await service.respond('org-a', 'p1', 'yes', 'g1')))
+      .toBe('Only Rukia Otieno, who runs this check-in, can change how it is set up. An admin can only do that once Rukia has left the organisation. Nothing was changed.');
+  });
+});
