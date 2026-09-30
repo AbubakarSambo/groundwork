@@ -36,6 +36,15 @@ const PLANS: SubscriptionPlan[] = ['STARTER', 'SMALL_TEAM', 'GROWTH', 'BUSINESS'
  * shared parts have no plan-card component of their own), and the standard `Button`/`Tag`/`Note`
  * everywhere else. "Share Groundwork with another organisation" is the product's access-code tool,
  * the working equivalent of the prototype's "A code they can use to start".
+ *
+ * NO PRIMARY (NAVY) BUTTON ANYWHERE ON THIS PAGE (Hafsah, 30 September), matching
+ * settings-billing.jpg exactly: every plan card reads "Move to this" in white, and "Pause",
+ * "Cancel", "Contact us" and "Copy" are the same weight. The alternate states this screen can be
+ * in but the prototype does not draw - a subscription ending ("Keep subscription"), paused
+ * ("Resume subscription"), the two confirm dialogs, and the platform admin's "Send code"/
+ * "Generate" - used to be `kind="primary"`, which put a navy button on screen the prototype never
+ * has. They are `kind="secondary"` now, the same weight this page already gives "Pause" and
+ * "Move to this" in the state the prototype does draw.
  */
 
 function ThingsWeDoByHand() {
@@ -208,7 +217,7 @@ export function BillingPage() {
             <p className="gwui-panel-text"><b>{n.heading}</b></p>
             <p className="gwui-panel-text-muted">{n.body}</p>
             <div className="gwui-invite-actions">
-              {n.choose && <Button kind="primary" disabled={busy} onClick={() => choosePlan(n.choose!)}>{`Choose ${PLAN_LABELS[n.choose]}`}</Button>}
+              {n.choose && <Button kind="secondary" disabled={busy} onClick={() => choosePlan(n.choose!)}>{`Choose ${PLAN_LABELS[n.choose]}`}</Button>}
               <Button kind="secondary" onClick={scrollToPlans}>{n.key === 'ending' ? 'See every plan' : 'See the plans'}</Button>
             </div>
           </Stack>
@@ -317,9 +326,9 @@ export function BillingPage() {
                       : 'Pause, or cancel at the end of this period. Either way, everything stays readable.'}
                 </p>
                 {endsAt ? (
-                  <Button kind="primary" disabled={keepSubscriptionMut.isPending} onClick={() => keepSubscriptionMut.mutate()}>{keepSubscriptionMut.isPending ? 'Keeping…' : 'Keep subscription'}</Button>
+                  <Button kind="secondary" disabled={keepSubscriptionMut.isPending} onClick={() => keepSubscriptionMut.mutate()}>{keepSubscriptionMut.isPending ? 'Keeping…' : 'Keep subscription'}</Button>
                 ) : isPaused ? (
-                  <Button kind="primary" disabled={resumeSubscriptionMut.isPending} onClick={() => resumeSubscriptionMut.mutate()}>{resumeSubscriptionMut.isPending ? 'Resuming…' : 'Resume subscription'}</Button>
+                  <Button kind="secondary" disabled={resumeSubscriptionMut.isPending} onClick={() => resumeSubscriptionMut.mutate()}>{resumeSubscriptionMut.isPending ? 'Resuming…' : 'Resume subscription'}</Button>
                 ) : (
                   <div className="gwui-invite-actions">
                     <Button kind="secondary" disabled={pauseSubscriptionMut.isPending} onClick={() => setConfirming('pause')}>Pause</Button>
@@ -336,7 +345,7 @@ export function BillingPage() {
                       Everything keeps working until {sayTheDate(orgSub?.periodEnd)}, and then it stops. Nothing more is charged, and nothing is refunded, because you are using what you have paid for. If you want to stop paying but keep the door open, pause instead: nothing is charged while paused, your check-ins stay exactly as they are, and you resume when you choose.
                     </p>
                     <div className="gwui-invite-actions">
-                      <Button kind="primary" onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending}>{pauseSubscriptionMut.isPending ? 'Pausing…' : 'Pause instead'}</Button>
+                      <Button kind="secondary" onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending}>{pauseSubscriptionMut.isPending ? 'Pausing…' : 'Pause instead'}</Button>
                       <Button kind="secondary" onClick={() => cancelSubscriptionMut.mutate()} disabled={cancelSubscriptionMut.isPending}>{cancelSubscriptionMut.isPending ? 'Scheduling…' : `End it on ${sayTheDate(orgSub?.periodEnd)}`}</Button>
                       <Button kind="quiet" onClick={() => setConfirming(null)}>Keep it</Button>
                     </div>
@@ -350,7 +359,7 @@ export function BillingPage() {
                     <p className="gwui-panel-text"><b>Pause the subscription?</b></p>
                     <p className="gwui-panel-text-muted">Nothing is charged while it is paused, and your check-ins stay exactly as they are. Collection starts again when you press Resume, and not before.</p>
                     <div className="gwui-invite-actions">
-                      <Button kind="primary" onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending}>{pauseSubscriptionMut.isPending ? 'Pausing…' : 'Pause'}</Button>
+                      <Button kind="secondary" onClick={() => pauseSubscriptionMut.mutate()} disabled={pauseSubscriptionMut.isPending}>{pauseSubscriptionMut.isPending ? 'Pausing…' : 'Pause'}</Button>
                       <Button kind="secondary" onClick={() => setConfirming(null)}>Not now</Button>
                     </div>
                   </Stack>
@@ -437,7 +446,7 @@ export function BillingPage() {
                 <FieldLabel htmlFor="billing-send-sessions">Check-ins to grant</FieldLabel>
                 <TextField id="billing-send-sessions" type="number" min={1} max={20} value={sendSessions} onChange={e => setSendSessions(Math.min(20, Math.max(1, Number(e.target.value))))} />
               </div>
-              <Button kind="primary" onClick={() => sendCode.mutate()} disabled={sendCode.isPending || !sendEmail.trim()}>{sendCode.isPending ? 'Sending…' : 'Send code'}</Button>
+              <Button kind="secondary" onClick={() => sendCode.mutate()} disabled={sendCode.isPending || !sendEmail.trim()}>{sendCode.isPending ? 'Sending…' : 'Send code'}</Button>
               {sentTo && <Note>Code sent to {sentTo}</Note>}
             </Stack>
           </Panel>
@@ -456,7 +465,7 @@ export function BillingPage() {
                 <FieldLabel htmlFor="billing-gen-note">Note (optional)</FieldLabel>
                 <TextField id="billing-gen-note" value={genNote} onChange={e => setGenNote(e.target.value)} placeholder="e.g. for the product team" />
               </div>
-              <Button kind="primary" onClick={() => { setNewCode(null); generateCode.mutate() }} disabled={generateCode.isPending}>{generateCode.isPending ? 'Generating…' : 'Generate'}</Button>
+              <Button kind="secondary" onClick={() => { setNewCode(null); generateCode.mutate() }} disabled={generateCode.isPending}>{generateCode.isPending ? 'Generating…' : 'Generate'}</Button>
               {newCode && (
                 <div className="gwui-secret-box">
                   <p className="gwui-secret-box-label">New code</p>
