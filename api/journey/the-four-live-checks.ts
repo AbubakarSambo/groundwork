@@ -101,16 +101,34 @@ function askDoor(groundId: string, token: string): Door {
 }
 
 async function saved(groundId: string, benId: string) {
-  const [notes, objectives, lines, baselines, participant] = await Promise.all([
+  const [notes, targets, personObjectives, lines, baselines, participant] = await Promise.all([
     prisma.leadContextNote.findMany({ where: { groundId }, select: { text: true, audience: true, participantId: true } }),
     prisma.groundObjective.findMany({ where: { groundId } }),
+    /**
+     * THE LEAD'S EXPECTATIONS OF A NAMED PERSON. `GroundObjective` (above, "team targets and
+     * measures") is a different table - one row for the whole check-in, no author, no seen-state.
+     * `PersonObjective` is the one item 11's fix actually writes to: `authoredBy` says who wrote it
+     * ('lead-setup' for a setup expectation) and `seenBySubject` is the flag every explanation reads
+     * to refuse pressing anybody about something nobody showed them. This script used to read
+     * GroundObjective for this row and print fields (authoredBy, seenBySubject) that table does not
+     * have at all - always undefined, so a wired write looked identical to a silently-failed one.
+     */
+    prisma.personObjective.findMany({
+      where: { groundId },
+      select: { text: true, participantId: true, authoredBy: true, seenBySubject: true, createdAt: true },
+    }),
     prisma.groundContextItem.findMany({ where: { groundId }, select: { kind: true, text: true, audience: true } }),
     prisma.groundBaseline.findMany({ where: { groundId }, orderBy: { version: 'asc' }, select: { version: true, successLooksLike: true, changeReason: true } }),
     prisma.groundParticipant.findUnique({ where: { id: benId } }),
   ]);
   const show = (label: string, rows: any[]) => console.log(`    ${label}: ${rows.length ? '' : 'none'}${rows.map((r) => `\n      ${JSON.stringify(r).slice(0, 300)}`).join('')}`);
-  show('private notes', notes.map((n) => ({ ...n, aboutBen: n.participantId === benId, participantId: undefined })));
-  show('goals and expectations', objectives.map((o: any) => ({ name: o.name, target: o.target, forBen: o.ownerParticipantId === benId, authoredBy: o.authoredBy, seenBySubject: o.seenBySubject })));
+  /* Private notes, named as being about Ben or not - the private note about Ben (item 10's fix,
+     kept LEAD_ONLY through addLeadContext) is exactly what this line is for. */
+  show('private notes (LEAD_ONLY, never shown to the person they are about)', notes.map((n) => ({ ...n, aboutBen: n.participantId === benId, participantId: undefined })));
+  show('team targets and measures (GroundObjective - for the whole check-in, not one person)', targets.map((o: any) => ({ name: o.name, target: o.target })));
+  show("the lead's expectations of a named person (PersonObjective)", personObjectives.map((o) => ({
+    text: o.text, forBen: o.participantId === benId, authoredBy: o.authoredBy, seenBySubject: o.seenBySubject,
+  })));
   show('context lines', lines);
   show('what doing well looks like, every version', baselines);
   const expectations = Object.entries(participant ?? {}).filter(([k, v]) => /expect|objective|goal/i.test(k) && v);
