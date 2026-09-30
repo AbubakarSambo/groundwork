@@ -734,3 +734,31 @@ The older figure-only marks are kept. Where a line carries a figure, `figureIs` 
 When they are worked out. When the report is built from the record, and stored with it. Opening a report or a board reads what was stored and asks nothing. A report stored before this change has no marks on its model-written lines, and those lines simply carry none: the screens draw nothing when the field is absent. They fill in the next time something new comes in and the report is built again. A closed round's kept lines carry none either, because they were kept as they were.
 
 Code: `api/src/modules/reports/the-mark-on-every-line.ts`, written at the synthesis write in `reports.service.ts` and attached at `asItWasShared`, the door every report and board read goes through. Tests: `the-mark-on-every-line.spec.ts`.
+
+## Request 9, part (d): the weekly report's sentence about each person (1 October 2026, week 12b)
+
+The engine now serves one part of the weekly report: what this week shows about each person, in one plain sentence each. The rest of the weekly report (the numbers, the three-in-a-row things, what changed, what to do next week) is still to come, so the screens should draw only this part for now.
+
+`GET /grounds/:groundId/report/week` returns:
+
+```
+{ weekStart: "2026-09-21" | null,      // the Monday, in Lagos
+  builtAt: date | null,
+  saying?: string,                      // said when there is nothing to show, for example "No check-in has come in this week yet, so there is nothing to say yet about what people named."
+  eachPerson: [{ who: string, isYou: boolean, says: string }] }
+```
+
+Who reads what. Whoever runs the check-in (and an admin of the organisation, on an ordinary check-in) reads every sentence, with names. A person in the check-in reads only the sentence about themselves, written to them ("You named Green Mart this week, and gave a next step and a date."), and never another person's. An admin who was not given access to a performance plan, a promotion or a renewal, and anybody outside the organisation, get the usual "Check-in not found". Nothing is ever said about how anybody's answers were rated.
+
+What it says, written from what people named (a customer or company, a date, a next step, a document behind it), never from a rating:
+- "Aisha named Green Mart and Nyama Choma Palace this week, and gave a next step and a date."
+- "Baraka named Mama Fresh this week, but gave no next step or date, so it is not yet clear what happens next."
+- "Baraka gave a date this week, but named no customer, so it is not yet clear who it is for."
+- "Baraka's account named no customer, date or next step this week, so there is nothing yet to follow up on."
+- "Baraka has not checked in this week, so there is nothing here yet about what Baraka is working on."
+
+There is one sentence per person and no sentence compares two people, so the screens should list them as they come and never group, sort or rank them. The prototype's "Aisha and Miriam consistently get to..." cannot be said from one week, so the engine does not say "consistently".
+
+When it is worked out. When a check-in comes in, and stored without names (by the report's labels; names go in when it is served). Opening the page builds nothing. The product writes the sentence from the record, so no model and no prompt version are involved.
+
+Code: `api/src/modules/reports/the-weekly-sentence-about-each-person.ts`, `the-weekly-report.service.ts`, `the-weekly-report.controller.ts`. Tests: `the-weekly-sentence-about-each-person.spec.ts`.
