@@ -261,13 +261,15 @@ describe('where people see it differently', () => {
  * `canAnswer`, `askThem`, `participantId` - no `label`, `code`, `text` or `periods`.
  */
 /**
- * THE HEADING'S OWN `<section>` AND ITS `Card` ARE SIBLINGS, NOT ONE NESTED IN THE OTHER (U.10 (b):
- * the heading is now the shared `Section`, a heading-only `<section>` with no body of its own - the
- * card that follows it is a sibling of that `<section>`, not of the inner heading row within it).
+ * U.10 (c1/c2): THE HEADING AND ITS CONTENT ARE ONE `<section>` NOW, not a heading-only `<section>`
+ * with the card as its next sibling (the shape this helper originally pinned, back when only the
+ * headings had moved to the shared `Section` and the insides were still built from the old kit).
+ * Every switchboard section on the board now puts its content inside `Section`'s own children, so
+ * the whole section (heading and body together) is what a caller wants back.
  */
 function cardAfter(headingText: string): HTMLElement {
   const heading = screen.getByText(headingText)
-  return heading.closest('section')!.nextElementSibling as HTMLElement
+  return heading.closest('section') as HTMLElement
 }
 
 describe('what keeps coming up', () => {

@@ -71,3 +71,30 @@ describe('a number nobody has defined', () => {
     expect(screen.queryByText('definition not settled')).toBeNull()
   })
 })
+
+/**
+ * U.10 (c1), HER REVIEW: "each target has three full-size buttons... much heavier than the
+ * prototype". Lower and Raise are the shared Button's small secondary size; Remove is small AND
+ * quiet-danger (red text, no box), so the row reads as the target and its number, not as three
+ * buttons. Still asks first - `Confirm` is unchanged.
+ */
+describe('a target row\'s own buttons, not three buttons', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('Lower and Raise are the small secondary size, and Remove is small and quiet, not a boxed danger button', async () => {
+    ;(boardApi.get as any).mockResolvedValue(board(null))
+    renderBoard()
+    const lower = await screen.findAllByRole('button', { name: /One fewer/ })
+    const raise = screen.getAllByRole('button', { name: /One more/ })
+    const remove = screen.getAllByRole('button', { name: /Remove target/ })
+    for (const b of [...lower, ...raise]) {
+      expect(b.className).toContain('gwui-btn-secondary')
+      expect(b.className).toContain('gwui-btn-small')
+    }
+    for (const b of remove) {
+      expect(b.className).toContain('gwui-btn-quiet-danger')
+      expect(b.className).toContain('gwui-btn-small')
+      expect(b.className.endsWith('gwui-btn-danger')).toBe(false)
+    }
+  })
+})
