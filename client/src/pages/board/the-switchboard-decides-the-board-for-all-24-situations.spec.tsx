@@ -116,7 +116,7 @@ describe('the switchboard decides the board, for all 24 situations', () => {
       const expectedTitles = expectedG2Names.map((n) => TITLE_FOR_BOARD_SECTION[G2_SECTION_TO_BOARD_SECTION[n]!])
 
       renderBoardFor(row.scenario)
-      await screen.findByText('Test check-in')
+      await screen.findByRole('heading', { name: 'Test check-in' })
 
       // Every section this situation names appears, and none of the other mapped 7 do.
       for (const title of Object.values(TITLE_FOR_BOARD_SECTION)) {

@@ -72,7 +72,7 @@ describe('contribution and coverage are lead only, pending 0f', () => {
   it('draws neither for a participant', async () => {
     me = { id: 'u-rukia', firstName: 'Rukia', role: 'MEMBER' }
     renderBoard()
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.queryByText('She has closed three of her four accounts this quarter.')).toBeNull()
     expect(screen.queryByText('Rukia said she closed the Nyali Fresh account this week.')).toBeNull()
     expect(screen.queryByText('Contribution against role')).toBeNull()

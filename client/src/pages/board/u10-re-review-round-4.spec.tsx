@@ -66,14 +66,14 @@ function renderBoard() {
 describe('U.10 re-review round 4', () => {
   it('item 3: the objective row reads as two sentences', async () => {
     renderBoard()
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.getByText('now, up from 0. The aim is 12.', { exact: false })).toBeTruthy()
     expect(screen.getByText('Up 12 this session.')).toBeTruthy()
   })
 
   it('item 4: the session strip says what is true, never "today" for a round that only opened days ago', async () => {
     renderBoard()
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.getByText('Session 1 opened on 27 Sept.')).toBeTruthy()
     expect(screen.getByText('Session 2 has not opened yet.')).toBeTruthy()
     expect(screen.queryByText(/is today/)).toBeNull()

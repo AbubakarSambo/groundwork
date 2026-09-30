@@ -127,6 +127,42 @@ describe('the board, as each reader reads it', () => {
     expect(screen.queryByText('Add target')).toBeNull()
   })
 
+  /*
+   * U.10 (a): THE BOARD BUILDS ITS OWN HEADER TABS NOW (moved off the retired TheCheckInHeader,
+   * which pinned these same three cases in components/gw/an-admin-who-only-reads-has-no-check-in-
+   * tab.spec.tsx - that file still passes unchanged, since components/gw/TheCheckInHeader.tsx still
+   * runs the report pages). Grace, an admin who neither runs this check-in nor takes part in it,
+   * gets the prototype's read-only three tabs (read-only-view.txt): Board, Context, People and
+   * setup - no Check-in, no My work, no "Your check-in"/"Start my check-in" button either.
+   */
+  it('Grace, an admin who only reads, gets the read-only three tabs and no way into a check-in', async () => {
+    me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
+    renderBoard(AS_AN_ADMIN)
+    expect(await screen.findByRole('tab', { name: 'Board' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Context' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'People and setup' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Check-in' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'My work' })).toBeNull()
+    expect(screen.queryByText('Your check-in')).toBeNull()
+    expect(screen.queryByText('Start my check-in')).toBeNull()
+  })
+
+  it('Wairimu, who runs it, still gets her Check-in and My work tabs, and "Your check-in"', async () => {
+    me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
+    renderBoard(AS_THE_LEAD)
+    expect(await screen.findByRole('tab', { name: 'Check-in' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'My work' })).toBeTruthy()
+    expect(screen.getByText('Your check-in')).toBeTruthy()
+  })
+
+  it('Miriam, a participant who is not the lead, reads "Start my check-in" instead', async () => {
+    me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
+    renderBoard(AS_MIRIAM)
+    expect(await screen.findByRole('tab', { name: 'Check-in' })).toBeTruthy()
+    expect(screen.getByText('Start my check-in')).toBeTruthy()
+    expect(screen.queryByText('Your check-in')).toBeNull()
+  })
+
   it('with no time on record yet, it still says the board only changes when something new comes in', async () => {
     me = { id: 'u-wairimu', firstName: 'Wairimu', role: 'MEMBER' }
     renderBoard({ ...AS_THE_LEAD, lastChangedAt: null })
@@ -201,10 +237,14 @@ describe('where people see it differently', () => {
  * "Patterns have a new shape"): `heading`, `whatHappened`, `howOften`, `whoSeesIt`, `theirWords`,
  * `canAnswer`, `askThem`, `participantId` - no `label`, `code`, `text` or `periods`.
  */
-/** `Sec`/`Card` are siblings, not nested in a `<section>`: the card is the heading's next sibling. */
+/**
+ * THE HEADING'S OWN `<section>` AND ITS `Card` ARE SIBLINGS, NOT ONE NESTED IN THE OTHER (U.10 (b):
+ * the heading is now the shared `Section`, a heading-only `<section>` with no body of its own - the
+ * card that follows it is a sibling of that `<section>`, not of the inner heading row within it).
+ */
 function cardAfter(headingText: string): HTMLElement {
   const heading = screen.getByText(headingText)
-  return heading.parentElement!.nextElementSibling as HTMLElement
+  return heading.closest('section')!.nextElementSibling as HTMLElement
 }
 
 describe('what keeps coming up', () => {
@@ -380,7 +420,7 @@ describe('the alignment feed', () => {
     me = { id: 'u-miriam', firstName: 'Miriam', role: 'MEMBER' }
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
     renderBoard({ ...AS_MIRIAM, sections: ['objectives'] })
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.queryByText('Alignment feed')).toBeNull()
   })
 
@@ -388,7 +428,7 @@ describe('the alignment feed', () => {
     me = { id: 'u-grace', firstName: 'Grace', role: 'ADMIN' }
     ;(groundsApi.get as any).mockResolvedValue({ initiatorId: 'u-wairimu', signals: [feedPattern] })
     renderBoard({ ...AS_AN_ADMIN, sections: ['objectives'] })
-    await screen.findByText('Sales team, Q3')
+    await screen.findByRole('heading', { name: 'Sales team, Q3' })
     expect(screen.queryByText('Alignment feed')).toBeNull()
   })
 })
