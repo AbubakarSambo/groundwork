@@ -95,7 +95,7 @@ import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
-import { theRisks, theWorkPlan, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
+import { theRisks, theWorkPlan, theTimeline, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -1768,6 +1768,8 @@ export class BoardService {
       if (risks.length) out.risks = risks;
       const workPlan = theWorkPlan(mine.commitments, sessions, reader);
       if (workPlan.length) out.workPlan = workPlan;
+      const timeline = theTimeline(mine.commitments, handoffs, sessions, (ground as any).closedAt ?? null, reader);
+      if (timeline.length) out.timeline = timeline;
       void people;
     }
 
