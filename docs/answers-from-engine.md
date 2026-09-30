@@ -350,7 +350,7 @@ A reply is `{ "blocks": [...], "composedBy": "model" or "rules", "lane": "…" }
 
 - `{ "type": "text", "body": "…" }`: a paragraph. Show it as it is.
 - `{ "type": "proposal", "proposalId": "…", "summary": "…" }`: something said back that waits for the person. Show `summary` as it is, with two buttons, "Yes" and "No", which call `POST /ask/answer`. Nothing is saved until "Yes". Only the newest waiting proposal can be answered; an older one returns 409 with a plain sentence, which you show.
-- `{ "type": "next_step", "kind": "upload_a_document", "label": "Choose a file", "id": "<check-in id>", "context": { "groundId": "…", "label": "…" } }`: open the file picker and upload to that check-in with the upload route the Context and resources page already uses. The file arrives private to the person (`OWN`).
+- `{ "type": "next_step", "kind": "upload_a_document", "label": "Choose a file", "id": "<check-in id>", "context": { "groundId": "…", "label": "…" } }`: open the file picker and upload to that check-in with the upload route the Context and resources page already uses. The `id` is the check-in's own id, the same as `context.groundId`, and never the id of a session. It is offered to whoever runs the check-in chosen under "About", whether or not that person has a session of their own open, and to anyone else who has a session of their own open. The file arrives private to the person (`OWN`).
 
 **Three things said back are not yes or no.** For these, show the text and let the person type the answer; do not draw yes and no buttons, because `POST /ask/answer` refuses them:
 

@@ -296,7 +296,7 @@ export class AssistantService {
       case 'send_me_that':
         return this.sendMeThat(organizationId, personId, who);
       case 'add_a_document':
-        return this.addADocument(organizationId, personId, who ?? '', message);
+        return this.addADocument(organizationId, personId, who ?? '', message, groundId, userId ?? null);
       case 'add_context':
         return this.addContext(organizationId, who, userId ?? null, groundId, message);
       case 'context_line':
@@ -879,17 +879,50 @@ export class AssistantService {
    * it is for is asked afterwards, when somebody is actually looking at it, and a conversation
    * abandoned halfway leaves it seen by nobody but its owner.
    */
-  private async addADocument(organizationId: string, personId: string, who: string, message: string): Promise<Reply> {
+  private async addADocument(
+    organizationId: string,
+    personId: string,
+    who: string,
+    message: string,
+    groundId?: string,
+    userId: string | null = null,
+  ): Promise<Reply> {
     const truth = await this.truth.forPerson(organizationId, personId);
     if (!truth) {
       return rules('add_a_document', text('I cannot see you in your organisation records, so I do not know where to put it.'));
     }
 
     const open = truth.sessions.value.filter((s) => s.standing === 'open to you');
-    const nowhere = whyThereIsNowhereToPutIt(open.length);
-    if (nowhere) return rules('add_a_document', text(nowhere));
 
-    const [first, ...rest] = open;
+    /*
+     * THE CHECK-IN CHOSEN UNDER "ABOUT" COUNTS, AND SO DOES RUNNING IT.
+     *
+     * A document goes with a check-in, and the person who runs one may put a document on it whether
+     * or not they have a session of their own that is open today (a session opened early, with a
+     * later first day, is not "open to you" yet, and a lead who only runs the check-in has none).
+     * The same `runsIt` rule the setup conversation uses decides; a person who does not run it falls
+     * back to the check-ins they have open, as before.
+     */
+    let chosen: { groundId: string; label: string } | null = null;
+    if (groundId && userId) {
+      const ground = await this.prisma.ground.findFirst({
+        where: { id: groundId, organizationId, status: { notIn: A_GROUND_IS_OVER } },
+        select: { id: true, label: true, initiatorId: true, organizationId: true },
+      });
+      const viewer = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, organizationId: true } });
+      if (ground && runsIt(userId, viewer, ground)) chosen = { groundId: ground.id, label: ground.label };
+    }
+    if (!chosen && groundId) {
+      const mine = open.find((s) => s.groundId === groundId);
+      if (mine) chosen = { groundId: mine.groundId, label: mine.label };
+    }
+    if (!chosen) {
+      const nowhere = whyThereIsNowhereToPutIt(open.length);
+      if (nowhere) return rules('add_a_document', text(nowhere));
+      chosen = { groundId: open[0].groundId, label: open[0].label };
+    }
+    const first = chosen;
+    const rest = open.filter((s) => s.groundId !== first.groundId);
 
     /*
      * THEY PASTED A LINK, so there is nothing to pick and nothing to upload.
@@ -1003,7 +1036,8 @@ export class AssistantService {
         label: 'Choose a file',
         href: '/grounds',
         kind: 'upload_a_document',
-        id: first.checkInId as string,
+        /* The check-in's own id, the ground. Not a session's. */
+        id: first.groundId,
         context: { groundId: first.groundId, label: first.label },
       },
     );
