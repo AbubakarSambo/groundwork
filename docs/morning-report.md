@@ -49,6 +49,20 @@ Built in `f978d3cf`. **The old context chat still works, untouched, and stays un
   - "Context and resources" in the engine's own sentences;
   - a script that puts the same documents and messages through both and compares everything saved. It runs after run-20, because the API is busy.
 
+**Piece 2 is built** (`ef2452c2`, `ae6b962b`, `74ecb622`, `51b0ee4d`):
+- **Through Ask Groundwork,** each by calling the existing code:
+  - the exact question for a person, lead only, said back word for word before it is sent;
+  - the lead's private notes, always private, and never guessing whose note it is when a name is unclear;
+  - typing a line of context directly.
+- **A setup conversation carries on over several turns.** A bare "twelve weeks" now answers the question it was given.
+- **"Context and resources"** is how the engine now names the page in its own sentences: two refusals, the document message and the lead's invitation email.
+  - One of these renames is in the instructions the setup chat's model is given. The 24-scenario runs do not go through the setup chat, so no scenario run can measure it. It only changes the page's name in a sentence the model is told to say.
+- **The live proof script,** `api/journey/context-chat-equivalence.ts`, is written and runs after run-20. It puts the same message, paste, line, note and document through the old context chat and through Ask Groundwork. Then it compares the saved rows in the database, item by item.
+- **Piece 3 is being built:**
+  - the say-back sentences are still clipped and joined with colons, for example "Add this to the check-in's context, as a decision: …? Yes to add it.";
+  - sharing a note, and changing a line, are still only in the old chat;
+  - changing the wording of a lead's question in chat is still to do.
+
 ### Decision 57, part C: steadiness, a second source of evidence, and confirming a role
 
 **How steady patterns are: not steady.** This is the most important finding tonight. A new read-only script, `api/journey/pattern-steadiness.ts` (`e9e6edae`), compares which person got which pattern across two runs of the same scenarios:
