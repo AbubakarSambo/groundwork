@@ -33,6 +33,12 @@ import { isEvaluationScenario } from '@/lib/scenario-catalog'
  * join-waiting.jpg, join-outoftime.jpg and join-expired.jpg all draw it - never the old
  * `Arrival`/`gw-hdr`/`gw-ttl` chrome. See `one-arrival.spec.ts`, updated in the same commit: it
  * used to pin every arrival route to `Arrival`, and now says why `/invite` is the one exception.
+ *
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: "Pick up where I left off" (the `preview.alreadyAccepted`
+ * return, above the main return) and "Answer today's check-in now" (the fresh-invitation return,
+ * below it) are the component's only two primary buttons, and they belong to two `return`
+ * statements that cannot both execute for one render - a link is either already accepted or it
+ * is not. Whichever one is true decides which single primary button, if any, reaches the screen.
  */
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']

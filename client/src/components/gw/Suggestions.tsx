@@ -19,6 +19,14 @@ import { Button } from '@/components/gw/kit'
  * under U.13.
  *
  * No label is ever drawn on a person, and the verdict is never sent to this screen at all.
+ *
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: this file writes four primary buttons - "Agree"
+ * (`ASuggestionForTheLead`, deciding, mode 'none'), "Save my decision" (the same component, mode
+ * not 'none' - the two are alternate states of one `mode` value, never rendered together), "Save"
+ * or "Send my appeal" (`WhereYouStand`, the person's own board), and "Save" (`AnAppealToDecide`,
+ * an admin's Today page). The last three each belong to a different reader on a different page -
+ * a lead's board, a participant's You board, an admin's Today - so no two of this file's primary
+ * buttons ever appear on the same screen at once.
  */
 
 const cardClass = 'gwui-fs-13-5 gwui-ink-text gwui-pt-16 gwui-pr-18 gwui-pb-16 gwui-pl-18 gwui-mb-18'
