@@ -871,3 +871,11 @@ DATABASE_URL="postgresql://hafsahjumare@localhost:5432/gw_pw9_1786222102?schema=
   npx ts-node -T journey/context-chat-equivalence.ts
 ```
 (run from `api/`, against a local build and a local database only - the script refuses anything else).
+
+**Items 10, 11, 15 and 16, proven live through both doors (30 September 2026).** `api/journey/the-four-live-checks.ts` sends the same words through the old context chat and through Ask Groundwork opened from inside a check-in (decision 65), on the real model, and prints what the lead reads and what was saved. The first run found six faults and the later runs smaller ones; all are fixed (`2be05495` to `f6256b71`). What the lead reads now, the same on both doors:
+- **Item 15.** "This check-in runs for 12 weeks and people check in once a week." then the question for the most important missing thing. No greeting, and nothing it already has is asked for again.
+- **Item 10.** The lead is asked what they have seen, tried and want. Their read of the person is offered as a private note ("Shall I keep "Ben is struggling" as a private note about Ben that only you can see?") and kept only on a yes, as a note only the lead reads.
+- **Item 11.** "Shall I record "close 3 renewals by the end of December" as what you expect of Ben? It is kept as your expectation, not as something Ben agreed to, and Ben has not seen it yet." Saved as the lead's expectation, unseen by Ben. A wish with nothing checkable ("more proactive") is not kept as an expectation.
+- **Item 16.** "Shall I change what doing well looks like to "every stage has an owner and a next date", because the board kept going stale? The earlier version is kept." Both versions are kept, the second with its reason.
+- Everywhere: what is saved is exactly what was said back, and the chat never says it has recorded something unless it is offering to.
+- One difference that is the model varying, not a door: on one run Ask Groundwork asked what "more proactive" means where the old chat offered a private note.
