@@ -95,6 +95,7 @@ import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { theRisks, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -1730,6 +1731,45 @@ export class BoardService {
     }
 
     /*
+     * THE SWITCHBOARD'S OWN SECTIONS (request 70): the ones no other field carries. Built from rows the
+     * record already holds, with no model and nothing written, under one rule for who reads what. See
+     * the-switchboards-own-sections.ts and the map in docs/answers-from-engine.md.
+     */
+    {
+      const evaluation = isEvaluationCheckIn(ground.scenario);
+      const runsIt = isInitiator || runsItForAPattern(ground as any, requestingUserId);
+      /* An admin of the organisation reads everyone on a check-in that is not an evaluation, as the board does
+         for every other row; on an evaluation one, only the lead and the admin who set it up (decision 58). */
+      const mayReadEveryone = runsIt || (runsThisGround && !evaluation);
+      const adminWithoutAccess = adminHere && !runsIt && evaluation;
+      const reader: WhoIsReading = {
+        meId: me?.id ?? null,
+        mayReadEveryone,
+        theLeadsId: theLeadsRow,
+        personMayBeRead: (pid) => {
+          if (adminWithoutAccess) return false;
+          if (mayReadEveryone) return true;
+          if (!pid) return !whoMaySee.peersHidden;
+          return pid === me?.id || pid === theLeadsRow || !whoMaySee.peersHidden;
+        },
+        handoffMayBeRead: (d) => {
+          if (adminWithoutAccess) return false;
+          if (mayReadEveryone || !whoMaySee.peersHidden) return true;
+          return !!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id);
+        },
+        nameOf: (pid) => nameOf(pid),
+        aColleague: (pid) => aColleague(pid),
+      };
+      const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId);
+      const sessions = (checkIns as any[]).map((c) => ({ participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup }));
+      const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
+      const handoffs = (ground.dependencies ?? []) as any[];
+      const risks = theRisks(mine.commitments, handoffs, sessions, typeof (out as any).targetsNobodyOwns === 'string' ? (out as any).targetsNobodyOwns : null, reader);
+      if (risks.length) out.risks = risks;
+      void people;
+    }
+
+    /*
      * AND LAST, WHAT THE LEAD HAS NOT SHARED, IN THE WORDS AS WELL AS THE FIELDS. Hafsah, 28 September
      * 2026: neither a private file's name nor a hidden target's number may reach anyone the lead has
      * not shared it with. The fields were already walled; the sentences were not (screens requests
@@ -1835,6 +1875,12 @@ export class BoardService {
    * is what turns the board from a status read into a meeting agenda. Nothing
    * new is detected here - it is a view over things already established.
    */
+  /** The rows the switchboard's own sections read, as stored. Read only: opening a board writes nothing. */
+  private async theRecordTheSwitchboardsSectionsRead(groundId: string): Promise<{ commitments: ACommitment[] }> {
+    const commitments = await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => []);
+    return { commitments: commitments as ACommitment[] };
+  }
+
   /**
    * The open decisions the lead wrote down, and only where they chose to share the note. A private
    * note is private: the audience is the lead's choice and this reads it rather than deciding it.
