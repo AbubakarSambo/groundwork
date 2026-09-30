@@ -2508,8 +2508,15 @@ model RoleGapNote {
   id              String   @id @default(uuid())
   organizationId  String   @map("organization_id")
   roleName        String   @map("role_name") @db.VarChar(200)
+  /// Stored with the check-in's own label for the person ("participant A"), never a name. The name is
+  /// swapped in only when an admin who may open that check-in reads it (the-role-map.service.ts).
   says            String   @db.Text
   promptVersionId String?  @map("prompt_version_id")
+  /// The check-in this rests on, so the reader's right to open it can be asked. Null for a note nobody
+  /// derived from a check-in.
+  groundId        String?  @map("ground_id")
+  /// What the notes were built from, so the same record again writes nothing.
+  inputKey        String?  @map("input_key")
   createdAt       DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

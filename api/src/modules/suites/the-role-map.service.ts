@@ -1,5 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { labelsForParties, namesVisibleTo, viewerLabelOf, withNames } from '../reports/party-labels';
+import { whatTheyMayRead } from '../grounds/who-may-read-this-check-in';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const ROLES_REFUSED = {
@@ -59,7 +61,7 @@ export class RoleMapService {
         select: { externalId: true, displayName: true, givenName: true, familyName: true, title: true },
       }) as Promise<Person[]>,
       this.prisma.roleInterviewAnswer.findMany({ where: { organizationId: org }, select: { roleName: true, owns: true, createdAt: true }, orderBy: { createdAt: 'desc' } }),
-      this.prisma.roleGapNote.findMany({ where: { organizationId: org }, select: { roleName: true, says: true, createdAt: true }, orderBy: { createdAt: 'desc' } }),
+      this.prisma.roleGapNote.findMany({ where: { organizationId: org }, select: { roleName: true, says: true, groundId: true, createdAt: true }, orderBy: { createdAt: 'desc' } }),
     ]);
     const byId = new Map(people.map((p) => [p.externalId, p]));
 
@@ -82,7 +84,11 @@ export class RoleMapService {
     const ownsOf = new Map<string, string>();
     for (const a of answers) if (a.owns?.trim() && !ownsOf.has(keyOf(a.roleName))) ownsOf.set(keyOf(a.roleName), a.owns.trim());
     const whyOf = new Map<string, string>();
-    for (const n of notes) if (n.says.trim() && !whyOf.has(keyOf(n.roleName))) whyOf.set(keyOf(n.roleName), n.says.trim());
+    for (const n of notes as any[]) {
+      if (!n.says.trim() || whyOf.has(keyOf(n.roleName))) continue;
+      const said = await this.withTheNamesThisReaderMayRead(reader, n.says.trim(), n.groundId ?? null);
+      if (said) whyOf.set(keyOf(n.roleName), said);
+    }
 
     const seen = new Set<object>();
     const out: ARole[] = [];
@@ -114,6 +120,32 @@ export class RoleMapService {
       select: { role: true },
     });
     if (m?.role !== 'ADMIN') throw new ForbiddenException(ROLES_REFUSED.onlyAnAdmin);
+  }
+
+  /**
+   * THE NAME GOES BACK IN HERE, AND ONLY HERE. A note the engine wrote from a check-in holds that
+   * check-in's label for the person ("participant A"), never a name. It is served only when this
+   * reader may open that check-in (the same rule the list of check-ins applies), with the names they
+   * may see swapped in through the wrapper reports use. A sentence that would still carry a label
+   * once the names are in is not served at all: a missing sentence, never a placeholder or a name
+   * this reader may not have. A note that names no check-in was written by hand and is served as it is.
+   */
+  private async withTheNamesThisReaderMayRead(reader: Reader, says: string, groundId: string | null): Promise<string | null> {
+    if (!groundId) return says;
+    const ground = await this.prisma.ground.findFirst({
+      where: { id: groundId, organizationId: reader.organizationId },
+      select: {
+        organizationId: true, scenario: true, initiatorId: true, createdByUserId: true, peersVisibleToEachOther: true,
+        participants: { select: { id: true, userId: true, partyType: true, roleAsDescribed: true, createdAt: true, email: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true, email: true } } } },
+      },
+    });
+    if (!ground) return null;
+    const viewer = { userId: reader.userId, role: 'ADMIN', organizationId: reader.organizationId };
+    if (!whatTheyMayRead(reader.userId, viewer, { ...ground, participants: ground.participants.map((p) => ({ userId: p.userId })) })) return null;
+    const me = ground.participants.find((p) => p.userId === reader.userId)?.id ?? null;
+    const visible = namesVisibleTo(me, ground.participants as any, ground.peersVisibleToEachOther ?? undefined);
+    const named = withNames(says, visible, labelsForParties(ground.participants as any).values(), { viewerLabel: viewerLabelOf(me, ground.participants as any) });
+    return /\bparticipant [A-Z]+\b|\bthe initiator\b/i.test(named) ? null : named;
   }
 
   private nameOf(p: Person): string {

@@ -24,6 +24,7 @@ import { BoardModule } from './modules/board';
 import { ResolutionModule } from './modules/resolution';
 import { SuggestionsModule } from './modules/suggestions';
 import { SuitesModule } from './modules/suites';
+import { RoleInterviewModule } from './modules/suites/the-role-interview.module';
 import { BillingModule } from './modules/billing';
 import { IntelligenceModule } from './modules/intelligence';
 import { DocumentsModule } from './modules/documents/documents.module';
@@ -81,6 +82,7 @@ import { ASyncLoopIsNotABrowser } from './common/guards/a-sync-loop-is-not-a-bro
     ResolutionModule,
     SuggestionsModule,
     SuitesModule,
+    RoleInterviewModule,
     BillingModule,
     IntelligenceModule,
     FeedbackModule,

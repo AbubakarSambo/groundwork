@@ -596,3 +596,29 @@ When it is written: once, when a sales check-in completes. A sales check-in is o
 Who reads it: the same readers who are served the customer. An admin reads every customer's line. A lead reads the lines for the customers owned by their own team and themselves. A member and a guest are refused the board.
 
 Not built: (b), "changing something here tells the person who owns the customer, in their next check-in." It waits for Hafsah.
+
+
+## Request 25: the role map, the role interview, and why a job nobody owns matters
+
+**(a) The role interview. Built.**
+
+To send it (admins only, refused for everybody else, decided on the server):
+
+    POST /suites/roles/interview
+    { "personId": "<the person's externalId>" }              // to one person, for each role they hold
+    { "personId": "<externalId>", "roleName": "Sales rep" }  // to one person, for this role
+    { "roleName": "Sales rep" }                              // to everyone who holds that role
+
+It answers `{ sent: [{ personId, name, roleName }], notSent: [{ name, why }] }`. `why` is a plain sentence, for example "Aisha Otieno has not signed in yet, so there is nowhere to ask them." or "Miriam Wanjiku already has the role interview waiting for Sales rep.". A refusal is one plain sentence too ("Say which person, or which role, the role interview is for."). Nothing is emailed: the interview waits for the person in Ask Groundwork.
+
+What the person reads in Ask Groundwork, when they say "start": "What do you own in your job as Sales rep? Tell me in your own words, for example "the sales target and the sales team"." Then "What do you decide yourself, without asking anybody first?", then "Who do you depend on to do your job?", then "And who depends on you to do theirs?". Then all four are said back: "You own ..., you decide ..., you depend on ..., and ... depend on you. Shall I save this for the role map?" (with a Yes and No on it, through `POST /ask/answer`). Only a yes writes one `role_interview_answers` row, with the person's words exactly as typed. A no writes nothing and offers to start again. If they ask something else first, it is answered, and once they are told the interview is waiting: "Your admin has asked you four short questions about your job as Sales rep, so that the role map can show what the job owns. It is about the job and not about you, and nobody is marked on it. Say "start" when you are ready, or "not now" if you would rather not."
+
+After a yes: "I have saved this for the role map. It shows what the Sales rep job owns. It is about the job and not about you."
+
+No model words any of this, so `promptVersionId` on the row is empty. Who reads the answers: an admin, on the role map (`owns` for each role, as before), and the person themselves at `GET /suites/roles/interview/mine` (`{ answers: [{ roleName, owns, decides, dependsOn, dependedOnBy, createdAt }] }`). A colleague and a lead who is not an admin read none of it. Nothing is read into any check-in's report.
+
+**(b) Why a job nobody owns matters. Built.**
+
+`nobody[].why` on `GET /suites/roles/board` is now filled. It is written once when a check-in completes or a handoff is raised (and looked at once a night), never when the map is opened. It is built from a handoff a person raised in a check-in that waits on a role nobody holds, such as "Stock planning". It reads "That is why Kwame Mensah has been waiting three weeks for freezers." while the wait is open, and "That is why Kwame Mensah waited three weeks for freezers." once it has ended. The wait is at least one week, and the note is about the longest one for the role. It is stored with the check-in's label ("Participant A"), never a name, and the name goes in only when an admin who may open that check-in reads the map, through the wrapper reports use. If the name would not be theirs to see, or they may not open the check-in (a performance plan, a promotion or a renewal they do not run), `why` is `null` rather than a placeholder. It is checked in code: only numbers from the record, no name, no label, no score, no ranking. It is never built from a private report or from questions to Ask Groundwork.
+
+Schema: `role_gap_notes` gained `ground_id` and `input_key` (migration `20261001150000_role_gap_notes_rest_on_a_check_in`). No field on the map changed shape.
