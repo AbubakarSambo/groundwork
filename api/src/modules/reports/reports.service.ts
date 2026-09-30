@@ -3044,6 +3044,13 @@ Close the report by framing - neutrally, without recommending one - the choice n
     const shape = theSessionReport({
       sessionNumber,
       runsUntilEnded: !!(ground as any).runsUntilEnded,
+      /* Only the person who runs it can end it, so anybody else is told who that is: by name where
+         this reader may read a name (the same rule as every other line), otherwise by the role. */
+      whoEndsIt: isInitiator ? null : (() => {
+        const lead = ground.participants.find((x) => !!ground.initiatorId && x.userId === ground.initiatorId);
+        const label = lead ? labels.get(lead.id) : null;
+        return (label && nameByLabel.get(label)) || 'the person running it';
+      })(),
       /* The same arithmetic the chat composer does when it says "session 3 of 6": the length over
          the rhythm. Null where either is unset, so the header omits the position rather than
          inventing a denominator. */

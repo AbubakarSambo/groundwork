@@ -300,6 +300,8 @@ export class ACheckInACustomerCanRunService {
       scenario?: string;
       moment?: string;
       timelineDays?: number;
+      /** True when it runs until the lead ends it: no length, no planned last session. */
+      runsUntilEnded?: boolean;
       cadence?: string;
       participants?: { personExternalId: string; roleAsDescribed?: string }[];
       startsAt?: string;
@@ -322,6 +324,7 @@ export class ACheckInACustomerCanRunService {
          own refusal named the three, which is what that error message is for. */
       moment: dto?.moment ?? 'STARTING',
       timelineDays: dto?.timelineDays,
+      runsUntilEnded: dto?.runsUntilEnded,
       cadence: dto?.cadence,
       participants: dto?.participants,
       startsAt: dto?.startsAt,

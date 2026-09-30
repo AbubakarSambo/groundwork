@@ -166,6 +166,8 @@ export interface SessionReportInputs {
   plannedSessions?: number | null;
   /** The check-in runs until the lead ends it (request 37). */
   runsUntilEnded?: boolean;
+  /** Who can end it, as the reader reads it: null when the reader is the one who runs it ("you"), otherwise a name or "the person running it". */
+  whoEndsIt?: string | null;
   /** Whether the round closed and was snapshotted. */
   closed: boolean;
   /**
@@ -582,7 +584,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
     plannedSessions: input.runsUntilEnded ? null : input.plannedSessions ?? null,
     runsUntilEnded: input.runsUntilEnded === true,
     position: input.runsUntilEnded
-      ? `Session ${input.sessionNumber}. It runs until you end it.`
+      ? `Session ${input.sessionNumber}. It runs until ${input.whoEndsIt ? input.whoEndsIt : 'you'} end${input.whoEndsIt ? 's' : ''} it.`
       : input.plannedSessions ? `Session ${input.sessionNumber} of ${input.plannedSessions}.` : `Session ${input.sessionNumber}.`,
     state: input.closed ? 'final' : 'forming',
     confidence,
