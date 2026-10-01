@@ -790,9 +790,12 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                 (board-as-participant.txt). Both go to the same place - the Check-in tab.
               */}
               {(viewerRunsThisCheckIn || isAParty) && (
-                <UIButton kind="primary" to={`/grounds/${id}`}>
+                <Link
+                  to={`/grounds/${id}`}
+                  className="gwui-pt-8 gwui-pr-14 gwui-pb-8 gwui-pl-14 gwui-ink-white gwui-fs-16" style={{borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, textDecoration: 'none', fontFamily: 'inherit'}}
+                >
                   {isAParty && !viewerRunsThisCheckIn ? 'Start my check-in' : 'Your check-in'}
-                </UIButton>
+                </Link>
               )}
               <button
                 type="button"
@@ -2414,35 +2417,59 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
               U.10 (c2): FROM THE SHARED PARTS - the prototype's own list shape (board-as-lead.jpg:
               a session's date and who has checked in on the left, Share/Open on the right), which
               is exactly what EdgeRow already draws for "anything that needs you" elsewhere on this
-              board. `kind="decide"` for a session still waiting to be shared (a decision for
-              whoever runs it), `kind="ready"` once it is (ready to read).
+              board. `kind="decide"` for a session still waiting to be shared, but only for whoever
+              runs this check-in - sharing is their decision, not a participant's. `kind="ready"`
+              once it is shared (ready to read); `kind="look"` for a participant whose session has
+              not been shared yet - nothing for them to decide, just something to wait on.
+
+              Board review, 1 October, item 1: every reader used to get the lead's own row - "A
+              decision for you.", "Not shared" and a "Share it" button that only the person running
+              the check-in can actually use. A participant cannot share a round, so they now read who
+              will ("Not shared yet. {name} shares it.") and get no button for a session that is not
+              theirs to open; "Open" still works for their own report once it exists.
             */}
             <EdgeList label="Reports">
-              {sessionRows.slice(0, 5).map((r) => (
-                <EdgeRow
-                  key={r.sessionNumber}
-                  kind={r.closed ? 'ready' : 'decide'}
-                  /* Re-review, 30 September, item 8: `sessionDay` already returns "Sun, 27 Sept"
-                     (weekday, comma, date) - wrapped in another ", " here it read "Session 1,
-                     Sun, 27 Sept", two commas doing the work of one. The prototype's own Reports
-                     row (board-as-lead.txt: "Today, 23 Sep") is a label, a comma, a short date -
-                     one comma, so this drops the weekday and keeps the short date. */
-                  title={`Session ${r.sessionNumber}${r.opened ? `, ${whenItWas(r.opened, 'dayAndMonth')}` : ''}`}
-                  detail={checkedIn(r.answered, r.total)}
-                  actions={(
-                    <>
-                      <Tag tone={r.closed ? 'proven' : 'attention'}>{r.closed ? EVERY_SESSION.shared : EVERY_SESSION.notShared}</Tag>
-                      {/* Secondary, not navy: the board's one primary is "Your check-in", in the header. */}
-                      <UIButton
-                        kind="secondary" size="small"
-                        onClick={() => navigate(r.myCheckInId ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)}
-                      >
-                        {r.closed ? 'Open' : 'Share it'}
-                      </UIButton>
-                    </>
-                  )}
-                />
-              ))}
+              {sessionRows.slice(0, 5).map((r) => {
+                const leadName = (groundForSignals as any)?.leadFirstName ?? 'The person running this check-in'
+                const notSharedText = viewerRunsThisCheckIn ? EVERY_SESSION.notShared : `Not shared yet. ${leadName} shares it.`
+                return (
+                  <EdgeRow
+                    key={r.sessionNumber}
+                    kind={r.closed ? 'ready' : (viewerRunsThisCheckIn ? 'decide' : 'look')}
+                    /* Re-review, 30 September, item 8: `sessionDay` already returns "Sun, 27 Sept"
+                       (weekday, comma, date) - wrapped in another ", " here it read "Session 1,
+                       Sun, 27 Sept", two commas doing the work of one. The prototype's own Reports
+                       row (board-as-lead.txt: "Today, 23 Sep") is a label, a comma, a short date -
+                       one comma, so this drops the weekday and keeps the short date. */
+                    title={`Session ${r.sessionNumber}${r.opened ? `, ${whenItWas(r.opened, 'dayAndMonth')}` : r.opensOn ? `, opens on ${whenItWas(r.opensOn, 'dayAndMonth')}` : ''}`}
+                    detail={checkedIn(r.answered, r.total)}
+                    actions={(
+                      <>
+                        <Tag tone={r.closed ? 'proven' : 'attention'}>{r.closed ? EVERY_SESSION.shared : notSharedText}</Tag>
+                        {/* Secondary, not navy: the board's one primary is "Your check-in", in the header.
+                            Only whoever runs this check-in can share a round, so only they get
+                            "Share it" for one that has not been shared yet - whether or not they also
+                            have their own report on it. A participant can open their own report once
+                            it exists (`myCheckInId`), shared or not; with neither - someone else's
+                            session, not yet shared - there is nothing of theirs to press. */}
+                        {(() => {
+                          const canShare = viewerRunsThisCheckIn && !r.closed
+                          const canOpenMine = !!r.myCheckInId
+                          if (!r.closed && !canShare && !canOpenMine) return null
+                          return (
+                            <UIButton
+                              kind="secondary" size="small"
+                              onClick={() => navigate(!canShare && canOpenMine ? `/checkin/${r.myCheckInId}/report` : `/grounds/${id}/session/${r.sessionNumber}`)}
+                            >
+                              {canShare ? 'Share it' : 'Open'}
+                            </UIButton>
+                          )
+                        })()}
+                      </>
+                    )}
+                  />
+                )
+              })}
             </EdgeList>
             {/*
               PICTURE-CHECK ROUND 6, ITEM F: "N SESSION(S) IN ALL", AND A REAL OUTLINED BUTTON.
