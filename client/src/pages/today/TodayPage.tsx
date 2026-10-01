@@ -9,6 +9,7 @@ import { partOfTheDay, whenItComes } from './when-it-comes'
 import { AppealsToDecide } from '@/components/gw/Suggestions'
 import { groundsApi } from '@/api/grounds'
 import { YouAreIn } from './YouAreIn'
+import { firstWordOfAName } from '@/lib/the-first-word-of-a-name'
 
 /**
  * TODAY (C1, #/today). The wording is copied from docs/prototype/screens/C1-today-and-check-ins/
@@ -51,7 +52,10 @@ export function TodayPage() {
   const grounds = useQuery({ queryKey: ['grounds'], queryFn: groundsApi.list, enabled: !!user && params.get('welcome') === '1', staleTime: 30_000 })
 
   const now = new Date()
-  const name = user?.firstName?.trim()
+  /* Signup asks for "Your name" in one field, stored whole as `firstName` (AuthPage.tsx), so a real
+     signup ("Rukia Otieno") used to greet "Morning, Rukia Otieno". The prototype's greeting is a
+     first name alone ("Morning, Wairimu") - firstWordOfAName takes only the first word of it. */
+  const name = firstWordOfAName(user?.firstName)
   const greeting = name ? `${partOfTheDay(now)}, ${name}` : partOfTheDay(now)
   const needs = data?.needs ?? []
 

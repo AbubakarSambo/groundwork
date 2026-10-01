@@ -80,6 +80,14 @@ describe('Today, as the lead', () => {
     expect(await screen.findByText('Wednesday 23 September. In Sales team, Q3, 5 of 6 have checked in for session 38; Omar hasn’t yet.')).toBeTruthy()
   })
 
+  /* Signup stores whatever was typed for "Your name" whole, in `firstName` (AuthPage.tsx), so an
+     account like Rukia's carries "Rukia Otieno" there. The greeting used to print it whole,
+     "Morning, Rukia Otieno" - group 2's review, fault D. It greets by the first word alone. */
+  it('greets by the first word alone, when the account holds a whole name', async () => {
+    open({ ...WAIRIMU, firstName: 'Rukia Otieno' }, LEAD_READ)
+    expect(screen.getByRole('heading', { level: 1, name: 'Morning, Rukia' })).toBeTruthy()
+  })
+
   it('lists what needs her, most important first, each with the one button that does it', async () => {
     open(WAIRIMU, LEAD_READ)
     expect(await screen.findByText('3 things, most important first')).toBeTruthy()
