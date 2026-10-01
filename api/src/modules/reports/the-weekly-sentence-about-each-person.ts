@@ -51,7 +51,7 @@ const NOT_THINGS_NAMED = new Set([
   'participant', 'initiator',
 ]);
 
-const A_DATE = /\b(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?|sun)(?:day)?\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep(?:t)?|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b|\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b|\b(?:today|tomorrow|tonight|next week|end of (?:the )?(?:week|month)|by (?:the )?end of)\b/i;
+const A_DATE = /\b(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?|sun)(?:day)?\b|\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}\b|\b\d{1,2}(?:st|nd|rd|th)?\s+(?:of\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b|\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b|\b(?:today|tomorrow|tonight|next week|end of (?:the )?(?:week|month)|by (?:the )?end of)\b/i;
 
 const A_NEXT_STEP = /\b(?:will|i'll|we'll|going to|plan(?:s|ning)? to|next step|follow(?:ing)? up|call(?:ing)? (?:them|him|her|back)|send(?:ing)?|book(?:ing)?|meet(?:ing)? (?:on|with)|confirm(?:ing)?|to do)\b/i;
 
