@@ -1556,3 +1556,34 @@ Decided for Hafsah to confirm:
 - Up to two team aims are asked in one question; the others are under "Where each target stands".
 
 Tests: `board/request-108-the-headline-and-where-each-target-stands.spec.ts` (22 cases, as every reader). The board cases fail without this change.
+
+## Request 108 (d): "Where this is heading" and "Record the decision" (2 October)
+
+Yes, it survives, built only from what the product already records. `GET /grounds/:id/board` now sends `whereThisIsHeading` to whoever runs the check-in.
+
+**What the product already had.** The lead closes a check-in by recording one of the endings its situation offers, with a reason (`POST /grounds/:id/resolution`, `END_STATES` in `resolution/end-states.ts`, decision 6). The lead also writes down what is still to decide, which the board serves in `decisions`. Nothing new is stored. Code: `board/where-this-is-heading.ts`.
+
+The field is `{ heading, about, outcomes, outcomesSays, signals, signalsSays, whatWouldSettleIt, whatWouldSettleItSays, whoDecides, groundworkDoesNotChoose, recordTheDecision, decided }`:
+- `heading`: "Where this is heading". `about`: the situation's own name, for example "Set goals and keep the team on track".
+- `outcomes`: exactly the endings "Record the decision" offers for this check-in, as `{ value, says, more }`. Nothing else is listed, and none is ranked or chosen. Where there are none, `outcomesSays` is "Nothing on record names the possible outcomes for this check-in yet."
+- `signals`: sentences this reader is already served on the board, each with where it comes from: the forecast of a team number, the blockers, and how many things people said different things about. They are not tied to one outcome, because nothing on record ties them. With none: "Nothing on record points towards one outcome or another yet."
+- `whatWouldSettleIt`: what the lead wrote down as still to decide, in the lead's own words. With none: "Nothing on record says yet what would settle it."
+- `whoDecides`: the lead. `groundworkDoesNotChoose`: the prototype's own sentence.
+- `recordTheDecision`: "Record the decision", to the lead only, the one person the resolution route lets record it, and only while nothing is recorded. Please open the existing ResolutionPanel from it. Once recorded, `decided` says which ending and when.
+
+**What Bisi reads on the sales run (re-f):**
+- "Where this is heading". "Set goals and keep the team on track".
+- The possible outcomes: "OKRs aligned to company direction.", "Gaps identified, revision needed.", "Not yet, more sessions needed."
+- The signals: "The team is aiming for 40 approved facilities this quarter. If it keeps moving at the pace it has since session 1, it would be about 31 by session 6, against an aim of 40." with "It was 6 in session 1 and 11 in session 2, and this check-in runs for 6 sessions."; "Femi Okonkwo is waiting for the bank statements." with "This was raised once, on 16 September."; "Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision." with "This was raised once, on 16 September."
+- What would settle it: "Whether to take the credit committee delays to the Head of Credit." with "You wrote this down as still to decide."
+- "You decide." "Groundwork lays out the outcomes and the proof. It doesn’t choose." "Record the decision".
+- Once recorded: "You recorded the decision on 30 September. The outcome is "Not yet, more sessions needed"."
+
+The admin who set it up reads the same with "Bisi Adeyemi decides." and "Bisi Adeyemi wrote this down as still to decide.", and no "Record the decision". Juma, an admin who only reads, is not sent it (decision 58: not the lead's list, not the aims). Femi, Ngozi and Kwame are not sent it, before or after the team picture is shared, as in the prototype's participant board. On an evaluation check-in nobody is sent it: the endings there are about a person ("Separation agreed"), and the suggestion, its reasons and the decision already have their own way (decision 6).
+
+Decided for Hafsah to confirm:
+- The possible outcomes are the endings the resolution flow offers, said with a comma where the stored label has a dash. Some of those labels are not plain words ("OKRs aligned to company direction"). They are shown on the resolution panel too, so changing them is a separate decision.
+- It is sent all through the check-in, as in the prototype, not only near the end. Decision 70 still decides when the resolution panel itself opens.
+- Not on an evaluation check-in, and not to an admin who only reads.
+
+Tests: `board/request-108-d-where-this-is-heading.spec.ts` (9 cases, as every reader). The board cases fail without this change.

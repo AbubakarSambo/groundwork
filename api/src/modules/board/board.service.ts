@@ -8,6 +8,7 @@ import { theBoardForThisKind } from './each-kind-gets-its-own-board';
 import { theGlanceAsThisReaderMayReadIt } from '../grounds/what-a-manager-needs-at-a-glance';
 import { howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happens-next-to-a-record';
 import { whereThisTargetStands, theHeadlineQuestion, theDirectionToReadIn, type ATeamAim } from './the-headline-and-where-each-target-stands';
+import { whereThisIsHeading } from './where-this-is-heading';
 import { deadlineOf } from '../grounds/when-the-clock-starts';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { theShareSays } from './your-share';
@@ -2163,6 +2164,26 @@ export class BoardService {
         });
         const headline = theHeadlineQuestion(aims, deadlineOf(ground as any));
         if (headline) out.headline = headline;
+      }
+      /*
+       * WHERE THIS IS HEADING (request 108 d). Only to whoever runs the check-in (the lead and the admin who set it
+       * up), never on an evaluation check-in, where the suggestion and the decision already have their own way
+       * (decision 6). Built from what this reader is already served and the endings the check-in's own way of
+       * recording a decision offers. See where-this-is-heading.
+       */
+      if (!evaluation && runsIt) {
+        const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
+        const leadName = [leadRow?.user?.firstName, leadRow?.user?.lastName].filter(Boolean).join(' ').trim() || (leadRow?.nameGiven ?? '').trim() || null;
+        out.whereThisIsHeading = whereThisIsHeading({
+          scenario: ground.scenario,
+          hadAnObjective: ((ground.objectives ?? []) as any[]).length > 0,
+          readerIsTheLead: isInitiator,
+          leadName,
+          board: out,
+          decided: (ground as any).status === 'CLOSED' || (ground as any).status === 'RESOLVED'
+            ? { endState: (ground as any).endState ?? null, on: (ground as any).resolvedAt ?? null }
+            : null,
+        });
       }
     }
 
