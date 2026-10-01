@@ -1,9 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { NOTHING_FLAGGED } from '../detectors/who-needs-you-this-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { DependencyStatus } from '@prisma/client';
 import { route, whatICanDoWith, Lane } from './the-router-is-deterministic';
-import { Reply, rules, text, picker } from './a-reply-is-a-payload-not-a-string';
+import { Reply, rules, text, picker, SourceBlock } from './a-reply-is-a-payload-not-a-string';
+import { ReportsService } from '../reports/reports.service';
+import { whatSomeoneSaid, checkInsTheyMayRead, latestRounds } from './what-they-said-that-you-may-read';
+import { whenItWas } from '../../common/a-date-reads-the-same-everywhere';
+import { theOneToDoFirst, whatMustSurviveIn } from './what-to-do-next';
+import { aReportSource, YOUR_TO_DOS_SOURCE, YOUR_COMMITMENTS_SOURCE, WHAT_NEEDS_YOU_SOURCE } from './a-source-says-where-it-came-from';
 import { freshnessOf } from '../subjects/a-pointer-goes-stale';
 import { quietUntil } from '../subjects/detection-holds-its-tongue';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -17,12 +22,31 @@ import {
   Load, Waiting, theOneMove, theMirror, goingCold, bankedWins, sayTheMoves,
 } from '../coaching/the-four-converting-moves';
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
+import { keptForTheOrganisation, keptThatTouches, mayReadWhatIsKept } from '../knowledge/organisation-memory';
+import { LeaveBoardService } from '../suites/the-leave-board.service';
+import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
+import { TimeSheetsService } from '../suites/the-time-sheets.service';
+import { SpendingService } from '../suites/the-spending.service';
+import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
+import { SPEND_NOT_SENT, SPEND_NOTHING_WAITING, SPEND_SUITE_OFF, readSpending, soundsLikeSpending, spendingSaidBack, spendingSent, type SpendSaid } from '../suites/spend-said-in-chat';
+import { NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
 import { howLongAgo, splitBySession } from './what-you-told-me-before';
 import { ScenariosService } from '../detectors/scenarios.service';
 import { DraftsService } from '../drafts/drafts.service';
 import { whatToAskForNext } from '../drafts/a-number-nobody-argued-for';
 import { readToDo, toDoProposal, whichToDo, listToDos, addedToYourToDos } from './a-to-do-is-yours';
+import {
+  readTheDay, readAMove, thereIsNoMoveToRead, moveProposal, moveDone, NOTHING_WAS_CHANGED, onlyTheyCanChangeIt,
+  readACommitment, noCommitmentToRead, additionProposal, additionDone, tickProposal, tickDone,
+  type AMove, type AnAddition, type ATick,
+} from './a-change-said-back-first';
+import { addACommitment, markACommitmentDone, moveACommitmentsDeadline } from './a-commitment-has-one-writer';
 import { whatItTakesToStart } from './what-it-takes-to-start';
+import {
+  ROLE_INTERVIEW_KIND, ROLE_INTERVIEW_CONFIRM_KIND, THE_FOUR, INTERVIEW_INVITATION, theyWantToBegin, theyWantToStop,
+  LONGEST_ANSWER, tidy, sayItBack, SAVED, LEFT, NOT_NOW_SAID, TOO_LONG, EMPTY,
+  type InterviewPayload, type ConfirmPayload, type TheFourAnswers,
+} from './the-role-interview';
 import {
   whichSituation,
   askWhichSituation,
@@ -55,6 +79,11 @@ import {
 import { whatIStillCannotDo } from './what-is-not-offered-in-chat';
 import { whatTheyWantToCallIt } from './what-they-want-to-call-it';
 import { asALine, whatIsMissingAcrossThem } from './what-a-target-was-for';
+import {
+  THINK_IT_THROUGH_PROMPT, THINK_IT_THROUGH_PROMPT_KEY, THINK_IT_THROUGH_SCHEMA, WHAT_TO_THINK_ABOUT, COULD_NOT_LAY_OUT, NOT_ENOUGH_TO_GO_ON,
+  whatToThinkAbout, thePromptFor, theOptionsThatStay, theOptionsSaid,
+} from './think-it-through';
+import { PromptsService } from '../prompts/prompts.service';
 import { recall, saidOf, NOTHING_FINISHED, NOTHING_AT_ALL } from './what-the-last-round-produced';
 import { COOLING_DAYS } from '../detectors/a-conversation-the-record-suggests';
 import {
@@ -96,7 +125,7 @@ const ROUNDS_RECALLED = 3;
  * (inventory item 2). All four are setup-side administration of a check-in a lead runs, in the same
  * spirit as `add_context` itself, which decision 50 already settled this way - see `respond`.
  */
-const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people'] satisfies Lane[]);
+const SETUP_LANES = new Set<string>(['add_context', 'context_line', 'lead_note', 'questions_for_people', 'ask_for_leave', 'log_hours', 'ask_to_spend'] satisfies Lane[]);
 
 /**
  * SOMEBODY SAYING THEY JUST PUT A DOCUMENT IN, in the past tense - "I added the Q4 targets sheet",
@@ -143,6 +172,20 @@ export class AssistantService {
     private readonly reader: ReadItIfWeCanService,
     private readonly email: EmailService,
     private readonly grounds: GroundsService,
+    /*
+     * THE REPORT AS IT IS SERVED TO ONE READER (week 17). Asked only as the person asking, for "what
+     * did Femi say", so a colleague's words reach this assistant only as far as that read serves
+     * them. Optional so the many tests that build the assistant without it still do; with it
+     * missing, that question is answered "I cannot show you that".
+     */
+    @Optional() private readonly reports?: ReportsService,
+    /* The stored prompt for "think it through", so the version that ran is the one recorded (week 19). Optional like the above. */
+    @Optional() private readonly prompts?: PromptsService,
+    /* The leave suite, for leave dates said in chat (week 20). Without it, leave is answered as not switched on. */
+    @Optional() private readonly leave?: LeaveBoardService,
+    /* The time sheets and spending suites, for hours and spending said in chat (weeks 21 and 22). Without them, each is answered as not switched on. */
+    @Optional() private readonly timeSheets?: TimeSheetsService,
+    @Optional() private readonly spending?: SpendingService,
   ) {}
 
   /**
@@ -182,7 +225,7 @@ export class AssistantService {
      * `addContext` and its parked-proposal handling carry what little continuity they need in the
      * proposal's own payload instead. See docs/context-chat-inventory.md, item 2.
      */
-    if (who && !SETUP_LANES.has(reply.lane)) {
+    if (who && !SETUP_LANES.has(reply.lane) && reply.lane !== 'role_interview') {
       await this.remember(organizationId, who, message, reply).catch(() => undefined);
     }
     return reply;
@@ -237,6 +280,28 @@ export class AssistantService {
     if (forceAddContext && parseAskAPerson(message)) return this.questionsForPeopleByChat(organizationId, who, userId ?? null, groundId, message);
     if (forceAddContext) return this.addContext(organizationId, who, userId ?? null, groundId, message);
 
+    /*
+     * LEAVE DATES GO TO THE LEAVE SUITE (week 20), said back and sent only on a yes. Read by rules,
+     * before any lane, so a day is never guessed and nothing about it reaches a record.
+     */
+    if (who && userId && soundsLikeLeave(message)) {
+      const dates = readLeaveDates(message);
+      if (dates) return this.proposeLeave(organizationId, who, userId, dates);
+    }
+
+    /*
+     * HOURS (week 21) AND SPENDING (week 22), SAID BACK AND SENT ONLY ON A YES. Read by rules, before
+     * any lane, so an amount, a project or a day is never guessed and nothing reaches a record.
+     */
+    if (who && userId && soundsLikeHours(message)) {
+      const proposed = await this.proposeHours(organizationId, who, userId, message);
+      if (proposed) return proposed;
+    }
+    if (who && userId && soundsLikeSpending(message)) {
+      const proposed = await this.proposeSpending(organizationId, who, userId, message);
+      if (proposed) return proposed;
+    }
+
     const routed = route(message);
 
     /*
@@ -275,6 +340,12 @@ export class AssistantService {
         return this.compose(await this.myToDos(organizationId, who));
       case 'tick_off_a_to_do':
         return this.tickOffAToDo(organizationId, who, routed.subject ?? message);
+      case 'move_a_deadline':
+        return this.moveADeadline(organizationId, who, userId ?? null, message);
+      case 'add_a_commitment':
+        return this.addACommitmentByChat(organizationId, who, message);
+      case 'think_it_through':
+        return this.thinkItThrough(organizationId, personId, userId ?? null, message, routed.subject);
       case 'what_you_can_see':
         return this.compose(await this.whatICanSee(organizationId));
       case 'what_am_i_on':
@@ -315,6 +386,10 @@ export class AssistantService {
         return this.compose(await this.whatIsStuck(organizationId, who, message));
       case 'how_am_i_doing':
         return this.compose(await this.howAmIDoing(organizationId, who));
+      case 'what_next':
+        return this.whatNext(organizationId, who);
+      case 'what_did_they_say':
+        return this.whatTheySaid(organizationId, userId ?? null, routed.subject, message);
       case 'what_did_i_say':
         return this.compose(await this.whatDidISay(organizationId, who, routed.subject ?? message));
       case 'how_we_work':
@@ -348,6 +423,71 @@ export class AssistantService {
         return rules('unplaced', text(line), picker(options));
       }
     }
+  }
+
+
+  /**
+   * "HELP ME THINK IT THROUGH" (week 19). See think-it-through.ts. Writes nothing, parks nothing and
+   * decides nothing: the lead is offered options and then a plain question. What the model is given is
+   * only what this reader may already read (their own objectives and commitments and, for a lead or an
+   * admin, what the check-ins they may read serve to them), and every number, name and date in what it
+   * returns is checked against that before anything is shown.
+   */
+  private async thinkItThrough(organizationId: string, personId: string, userId: string | null, message: string, captured: string | undefined): Promise<Reply> {
+    const lane = 'think_it_through';
+    const question = whatToThinkAbout(captured, message);
+    if (!question) return rules(lane, text(WHAT_TO_THINK_ABOUT));
+
+    const lines: string[] = [];
+    const truth: any = await this.truth.forPerson(organizationId, personId).catch(() => null);
+    for (const o of truth?.objectives?.value ?? []) {
+      const bits = [`Your target "${o.title}"`];
+      if (o.target) bits.push(`is ${o.target}`);
+      if (o.dueDate) bits.push(`and is due ${whenItWas(new Date(o.dueDate), 'dayAndMonthLong')}`);
+      lines.push(bits.join(' ') + (o.justification ? `. The reason written down is that ${String(o.justification).trim().replace(/[.]+$/, '')}.` : '.'));
+    }
+    for (const c of truth?.commitments?.value ?? []) {
+      if (c.state && c.state !== 'OPEN') continue;
+      lines.push(`You have committed to "${c.text}"${c.dueSaid ? `, which you said is due ${c.dueSaid}` : ''}.`);
+    }
+
+    /* A lead or an admin also reads what the check-ins they may read serve to them, by the same read as "what did Femi say". A participant thinks through their own work only. */
+    const membership = userId
+      ? await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } }).catch(() => null)
+      : null;
+    const role = membership?.role ?? null;
+    if (userId && this.reports && (role === 'LEAD' || role === 'ADMIN')) {
+      const asker = { userId, organizationId, role };
+      try {
+        for (const g of (await checkInsTheyMayRead(this.prisma as any, asker)).slice(0, 3)) {
+          const [round] = await latestRounds(this.prisma as any, g.id);
+          if (!round) continue;
+          let served: any;
+          try { served = await this.reports.sessionReport(g.id, round.sessionNumber, userId, organizationId); } catch { continue; }
+          for (const row of (Array.isArray(served?.whatEachPersonSaid) ? served.whatEachPersonSaid : []).slice(0, 6)) {
+            const said = (Array.isArray(row?.lines) ? row.lines : []).filter((l: unknown) => typeof l === 'string' && l.trim()).slice(0, 3);
+            if (!said.length || typeof row?.who !== 'string') continue;
+            lines.push(`In the check-in ${g.label}, ${row.isYou ? 'you' : row.who} said ${said.map((l: string) => `"${l.trim()}"`).join(' and ')}.`);
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Think it through could not read the check-ins: ${err?.message}`);
+      }
+    }
+
+    const version = await this.prompts?.getActive(THINK_IT_THROUGH_PROMPT_KEY).catch(() => null);
+    let result: any = null;
+    try {
+      result = await this.engine.extract(version?.content ?? THINK_IT_THROUGH_PROMPT, [{ role: 'user', content: thePromptFor(question, { lines }) }], THINK_IT_THROUGH_SCHEMA as any);
+    } catch (err: any) {
+      this.logger.warn(`Think it through unavailable: ${err?.message}`);
+    }
+    if (!result) return rules(lane, text(COULD_NOT_LAY_OUT));
+
+    const options = theOptionsThatStay(result, `${message}\n${question}\n${lines.join('\n')}`);
+    if (!options) return rules(lane, text(NOT_ENOUGH_TO_GO_ON));
+    const named = (captured ?? '').trim().replace(/^(?:for|on|about|with|through)\s+/i, '') || null;
+    return { blocks: [text(theOptionsSaid(named, options, lines.length === 0))], composedBy: 'model', lane, promptVersionId: version?.id ?? null };
   }
 
   /**
@@ -467,7 +607,7 @@ export class AssistantService {
 
     /* Never trimmed away when the list is long. A long list is when it matters most. */
     parts.push(week.whatThisIsNot.join(' '));
-    return rules('where_am_i_needed', text(parts.join('\n\n')));
+    return this.withItsSource(rules('where_am_i_needed', text(parts.join('\n\n'))), WHAT_NEEDS_YOU_SOURCE);
   }
 
   private async whatIsStuck(organizationId: string, who: string | null, question = ''): Promise<Reply> {
@@ -579,7 +719,7 @@ export class AssistantService {
        * an absence - the exact thing this lane must not do.
        */
       return rules('how_am_i_doing', text(
-        'There is no step waiting for you. That is not a verdict either way - the coaching in your check-in only offers one when there is something specific worth doing, and right now there is not.'
+        'There is no step waiting for you. That is not a verdict either way. The coaching in your check-in only offers a step when something specific is worth doing. Right now nothing is.'
         + moves,
       ));
     }
@@ -643,6 +783,53 @@ export class AssistantService {
       wins: bankedWins(load, unblocked._sum.weight ?? 0, since),
     });
     return said ? `\n\n${said}` : '';
+  }
+
+  /**
+   * ONE THING FIRST, AND WHY (week 17). Read as the person asking and nobody else: their own
+   * commitments and to-dos, and what is waiting on them. See what-to-do-next.ts.
+   */
+  private async whatNext(organizationId: string, who: string | null): Promise<Reply> {
+    if (!who) return rules('what_next', text('I cannot see you in your organisation records, so I have nothing to put first.'));
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { email: true } });
+    const [commitments, toDos] = await Promise.all([
+      this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { statedAt: 'asc' }] }),
+      this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
+    ]);
+    const key = person?.email?.toLowerCase() ?? null;
+    const week = key ? await this.board.whoNeedsYouThisWeek(organizationId, key) : { buckets: [] as any[] };
+    const waitingOnYou = (week.buckets as any[]).filter((b) => b.kind === 'WAITING_ON_YOU').flatMap((b) => b.needs as any[]);
+    const reply = theOneToDoFirst({ commitments: commitments as any, toDos: toDos as any, waitingOnYou, now: new Date() });
+    return this.compose(reply, whatMustSurviveIn(reply));
+  }
+
+  /**
+   * WHAT SOMEBODY ELSE SAID, AS MUCH AS THIS READER MAY ALREADY READ (week 17). See
+   * what-they-said-that-you-may-read.ts: nothing about a person is read here, only the report of each
+   * check-in as the asker is served it. Their exact lines survive any rewording.
+   */
+  private async whatTheySaid(organizationId: string, userId: string | null, subject: string | undefined, message: string): Promise<Reply> {
+    const membership = userId
+      ? await this.prisma.organizationMembership.findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } })
+      : null;
+    const reply = await whatSomeoneSaid(
+      { db: this.prisma as any, reports: this.reports as any },
+      { userId, organizationId, role: membership?.role ?? null },
+      subject,
+      message,
+    );
+    const first = reply.blocks[0];
+    const keep = first && first.type === 'text'
+      ? first.body.split('\n').filter((l) => l.startsWith('- "')).map((l) => l.slice(2))
+      : [];
+    return this.compose(reply, keep);
+  }
+
+  /** The answer, then where it came from, in a sentence and as a block. Used by every lane that reads a record. */
+  private withItsSource(reply: Reply, source: SourceBlock): Reply {
+    const first = reply.blocks[0];
+    if (!first || first.type !== 'text') return reply;
+    return { ...reply, blocks: [text(`${first.body}\n\n${source.says}`), ...reply.blocks.slice(1), source] };
   }
 
   /**
@@ -731,16 +918,37 @@ export class AssistantService {
 
     /* The topic, not the sentence: "how do I swap" scores against nothing and drags the rest down. */
     const { cards, truncated } = await this.knowledge.retrieve(organizationId, who, topic);
-    if (!cards.length) {
+    /*
+     * WHAT A LEAD CONFIRMED IS TRUE OF THE WHOLE COMPANY (week 20), for the people who may read it: an
+     * admin, a lead, and anybody who runs a check-in. It is said as what the organisation has kept,
+     * never as anybody's account and never with who said it.
+     */
+    const kept = await this.keptThatMatches(organizationId, who, topic);
+    if (!cards.length && !kept.length) {
       return rules('how_we_work', text('Your organisation has not written anything down about that here. If it should have, whoever set Groundwork up can add it.'));
     }
 
     const parts = cards.map((c) => `${c.title}\n${c.body}`);
+    if (kept.length) {
+      parts.push(`${kept.length === 1 ? 'Your organisation has kept this' : 'Your organisation has kept these'} from a setup conversation.\n${kept.map((k) => `"${k.text.replace(/[.!?]+$/, '')}".`).join('\n')}`);
+    }
     if (truncated) {
       /* Said rather than hidden: somebody acting on a partial policy should know it was partial. */
       parts.push('There is more written down about this than I have shown here.');
     }
     return rules('how_we_work', text(parts.join('\n\n')));
+  }
+
+  /** What the organisation has kept that touches a question, for the people who may read it. */
+  private async keptThatMatches(organizationId: string, who: string, topic: string) {
+    const me = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } }).catch(() => null);
+    if (!me?.linkedUserId) return [];
+    const m = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId: me.linkedUserId, organizationId } },
+      select: { role: true },
+    }).catch(() => null);
+    if (!(await mayReadWhatIsKept(this.prisma, { userId: me.linkedUserId, organizationId, role: m?.role }).catch(() => false))) return [];
+    return keptThatTouches(await keptForTheOrganisation(this.prisma, organizationId).catch(() => []), topic);
   }
 
   /**
@@ -1282,6 +1490,86 @@ export class AssistantService {
   }
 
   /**
+   * THE ROLE INTERVIEW, ONE QUESTION AT A TIME (request 25).
+   *
+   * An admin sent it; it waits as a parked request for this person. Until they say "start" their own
+   * messages are answered as usual (with one reminder), because they did not come to be interviewed.
+   * After that, each message is the answer to the question just asked, kept exactly as typed. When the
+   * fourth is in, all four are said back and only a yes writes the row (decision 12).
+   */
+  private async resolveParkedInterview(organizationId: string, personId: string, who: string, parked: any, message: string): Promise<Reply> {
+    const p = parked.payload as InterviewPayload;
+    const typed = tidy(message);
+
+    if (theyWantToStop(typed)) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('role_interview', text(NOT_NOW_SAID));
+    }
+
+    if (p.answered === 0 && !p.started) {
+      if (!theyWantToBegin(typed)) {
+        /* They asked something else. Answer it, and say once that the interview is waiting. */
+        const reply = await this.answer(organizationId, personId, who, message, true);
+        if (p.reminded) return reply;
+        await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { payload: { ...p, reminded: true } as never } });
+        return { ...reply, blocks: [...reply.blocks, text(INTERVIEW_INVITATION(p.roleName))] };
+      }
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { payload: { ...p, started: true } as never } });
+      return rules('role_interview', text(THE_FOUR[0].asks(p.roleName)));
+    }
+
+    if (!typed) return rules('role_interview', text(EMPTY));
+    if (typed.length > LONGEST_ANSWER) return rules('role_interview', text(TOO_LONG));
+
+    const here = THE_FOUR[p.answered];
+    const answers = { ...p.answers, [here.key]: (message ?? '').trim() };
+    const answered = p.answered + 1;
+
+    if (answered < THE_FOUR.length) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { payload: { ...p, answers, answered } as never } });
+      return rules('role_interview', text(THE_FOUR[answered].asks(p.roleName)));
+    }
+
+    /* All four are in: said back, and nothing is written until a yes. */
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    const all = answers as TheFourAnswers;
+    const say = sayItBack(all);
+    const proposal = await this.prisma.assistantProposal.create({
+      data: {
+        organizationId, personExternalId: who, kind: ROLE_INTERVIEW_CONFIRM_KIND, summary: say,
+        payload: { roleName: p.roleName, answers: all } as never,
+      },
+    });
+    return rules('role_interview', text(say), { type: 'proposal', proposalId: proposal.id, summary: say });
+  }
+
+  /** The yes writes one row. The no writes nothing, and the interview can be started again. */
+  private async resolveParkedInterviewConfirm(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    const p = parked.payload as ConfirmPayload;
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      await this.prisma.assistantProposal.create({
+        data: { organizationId, personExternalId: who, kind: ROLE_INTERVIEW_KIND, summary: INTERVIEW_INVITATION(p.roleName), payload: { roleName: p.roleName, answered: 0, answers: {} } as never },
+      });
+      return rules('role_interview', text(LEFT));
+    }
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { id: true } });
+    if (!person) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('role_interview', text('I could not save that, because I can no longer see you in your organisation records.'));
+    }
+    await this.prisma.roleInterviewAnswer.create({
+      data: {
+        organizationId, personExternalId: who, roleName: p.roleName,
+        owns: p.answers.owns, decides: p.answers.decides, dependsOn: p.answers.dependsOn, dependedOnBy: p.answers.dependedOnBy,
+        promptVersionId: null,
+      },
+    });
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    return rules('role_interview', text(SAVED(p.roleName)));
+  }
+
+  /**
    * CONFIRM, RE-VERIFY, DELEGATE, AUDIT, READ BACK.
    *
    * The re-verification matters more than it looks: between the offer and the yes, the person may
@@ -1315,6 +1603,11 @@ export class AssistantService {
      */
     if (parked.kind === 'context_turn') {
       return this.resolveParkedContextTurn(organizationId, who, parked, message);
+    }
+
+    /* THE ROLE INTERVIEW (request 25): what is typed is an answer to its question, not a yes or a no. */
+    if (parked.kind === ROLE_INTERVIEW_KIND) {
+      return this.resolveParkedInterview(organizationId, personId, who, parked, message);
     }
 
     const decision = resolveConfirmation(message);
@@ -1363,6 +1656,15 @@ export class AssistantService {
     if (parked.kind === 'context') {
       return this.resolveParkedContext(organizationId, who, parked, decision);
     }
+    if (parked.kind === 'leave_request') {
+      return this.resolveParkedLeave(organizationId, who, parked, decision);
+    }
+    if (parked.kind === 'hours_entry') {
+      return this.resolveParkedHours(organizationId, who, parked, decision);
+    }
+    if (parked.kind === 'spend_request') {
+      return this.resolveParkedSpending(organizationId, who, parked, decision);
+    }
     if (parked.kind === 'document_numbers') {
       return this.resolveParkedDocumentNumbers(organizationId, who, parked, decision);
     }
@@ -1378,8 +1680,14 @@ export class AssistantService {
     if (parked.kind === 'change_context_line') {
       return this.resolveParkedChangeContextLine(organizationId, who, parked, decision);
     }
+    if (parked.kind === 'move_deadline' || parked.kind === 'add_commitment' || parked.kind === 'tick_off') {
+      return this.resolveParkedChange(organizationId, who, parked, decision);
+    }
     if (parked.kind === 'question_for_person') {
       return this.resolveParkedQuestionForPerson(organizationId, who, parked, decision);
+    }
+    if (parked.kind === ROLE_INTERVIEW_CONFIRM_KIND) {
+      return this.resolveParkedInterviewConfirm(organizationId, who, parked, decision);
     }
 
     if (decision === 'decline') {
@@ -1717,6 +2025,7 @@ export class AssistantService {
         id: true,
         ground: {
           select: {
+            id: true,
             label: true,
             initiatorId: true,
             /*
@@ -1791,7 +2100,11 @@ export class AssistantService {
       body.push(`${finished.length - ROUNDS_RECALLED} earlier check-ins are on your check-ins page.`);
     }
 
-    return rules('what_came_of_it', text(body.join('\n').trim()));
+    const newest = finished[0];
+    return this.withItsSource(
+      rules('what_came_of_it', text(body.join('\n').trim())),
+      aReportSource({ on: newest.ground.report.releasedAt, label: newest.ground.label, groundId: (newest.ground as any).id }),
+    );
   }
 
   /** The running history, scoped to one person and never anybody else's turns. */
@@ -2080,7 +2393,12 @@ export class AssistantService {
            * client holds the conversation. A yes to a paste's list writes what participants are told only
            * when that sentence was in the list the lead read, and it can only tell from the list itself.
            */
-          payload: { groundId, said, history: [...history, { role: 'assistant' as const, content: result.proposal.say }], openQuestion: (result as any).openQuestion ?? null } as never,
+          payload: {
+            groundId, said, history: [...history, { role: 'assistant' as const, content: result.proposal.say }], openQuestion: (result as any).openQuestion ?? null,
+            /* What the yes is for when it is not a change to this check-in: a sentence to keep for the organisation, or leave (week 20). */
+            ...((result.proposal as any).offerId ? { offerId: (result.proposal as any).offerId } : {}),
+            ...(result.proposal.gap === 'leave_request' ? { leave: true } : {}),
+          } as never,
         },
       });
       return {
@@ -2164,8 +2482,13 @@ export class AssistantService {
        * message is read as its answer. The say-back that was just declined is not kept in what the
        * conversation carries forward, because nobody agreed to it.
        */
-      const declined = parked.payload as { groundId?: string; history?: { role: 'user' | 'assistant'; content: string }[]; openQuestion?: string | null };
-      const left = 'I have left it as it was. Nothing was changed.';
+      const declined = parked.payload as { groundId?: string; history?: { role: 'user' | 'assistant'; content: string }[]; openQuestion?: string | null; offerId?: string; leave?: boolean };
+      /* A no to keeping something for the organisation deletes the offer: it is kept nowhere. */
+      if (declined?.offerId && declined.groundId) {
+        const asker = await this.prisma.person.findFirst({ where: { organizationId, externalId: who }, select: { linkedUserId: true } });
+        if (asker?.linkedUserId) await this.grounds.declineContextOffer(declined.groundId, asker.linkedUserId, declined.offerId).catch(() => undefined);
+      }
+      const left = declined?.offerId ? NOT_KEPT : declined?.leave ? LEAVE_NOT_SENT : 'I have left it as it was. Nothing was changed.';
       const still = (declined?.openQuestion ?? '').trim();
       const spoken = still ? `${left}\n\n${still}` : left;
       if (declined?.groundId) {
@@ -2188,6 +2511,8 @@ export class AssistantService {
       groundId: string;
       said: string;
       history: { role: 'user' | 'assistant'; content: string }[];
+      offerId?: string;
+      leave?: boolean;
     };
 
     /* RE-VERIFY at execution, same as every other write here: still linked to a user at all. */
@@ -2201,6 +2526,8 @@ export class AssistantService {
       const applied = await this.grounds.applyContextProposal(payload.groundId, person.linkedUserId, {
         said: payload.said,
         history: payload.history,
+        ...(payload.offerId ? { offerId: payload.offerId } : {}),
+        ...(payload.leave ? { leave: true } : {}),
       });
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
       /*
@@ -2237,6 +2564,136 @@ export class AssistantService {
       await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
       return rules('add_context', text(err?.message ?? 'That could not be saved.'));
     }
+  }
+
+  /**
+   * LEAVE SAID TO ASK GROUNDWORK (week 20): said back with the days, the days left and who else is
+   * off, parked, and sent through the leave suite only on a yes. While the suite is off it says so
+   * and parks nothing, so nothing is kept. The days are not kept as context, a record line or a
+   * to-do, and no reason is asked for.
+   */
+  private async proposeLeave(organizationId: string, who: string, userId: string, dates: { startsOn: string; endsOn: string }): Promise<Reply> {
+    const said = await sayBackLeave(this.prisma, this.leave, { userId, organizationId }, dates);
+    if (!said.ok) return rules('ask_for_leave', text(said.say));
+    const row = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: 'leave_request', summary: said.say, payload: { ...dates } as never },
+      select: { id: true },
+    });
+    return {
+      lane: 'ask_for_leave',
+      composedBy: 'rules',
+      blocks: [text(said.say), { type: 'proposal', proposalId: row.id, summary: said.say }],
+    };
+  }
+
+  private async resolveParkedLeave(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('ask_for_leave', text(LEAVE_NOT_SENT));
+    }
+    const dates = parked.payload as { startsOn: string; endsOn: string };
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    if (!person?.linkedUserId || !dates?.startsOn || !dates?.endsOn) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('ask_for_leave', text(LEAVE_NOTHING_WAITING));
+    }
+    const say = await sendLeave(this.leave, this.prisma, { userId: person.linkedUserId, organizationId }, dates);
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    return rules('ask_for_leave', text(say));
+  }
+
+  /**
+   * HOURS SAID TO ASK GROUNDWORK (week 21, request 22): for billing only (decision 10). Said back with
+   * the real date and the project, parked, and written through the time sheets suite only on a yes,
+   * then waiting for the person's approver. Nothing is read back from the time sheets here, and
+   * nothing about the hours is said beyond what the person gave. With the suite off it says so and
+   * parks nothing. Returns null when the words only looked like hours, so the other lanes can answer.
+   */
+  private async proposeHours(organizationId: string, who: string, userId: string, message: string): Promise<Reply | null> {
+    if (!this.timeSheets) return rules('log_hours', text(HOURS_SUITE_OFF));
+    let facts: { clients: string[]; approverFirstName: string | null };
+    try { facts = await this.timeSheets.forChat(organizationId, userId); } catch { return rules('log_hours', text(HOURS_SUITE_OFF)); }
+    const read = readHours(message, facts.clients);
+    if (read.kind === 'none') return null;
+    if (read.kind === 'ask') return rules('log_hours', text(read.say));
+    const say = hoursSaidBack(read.said, facts.approverFirstName);
+    const row = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: 'hours_entry', summary: say, payload: { ...read.said } as never },
+      select: { id: true },
+    });
+    return { lane: 'log_hours', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  private async resolveParkedHours(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('log_hours', text(HOURS_NOT_SENT));
+    }
+    const said = parked.payload as HoursSaid;
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    if (!person?.linkedUserId || !said?.onDay || !Array.isArray(said.entries) || !said.entries.length) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('log_hours', text(HOURS_NOTHING_WAITING));
+    }
+    let reply: string;
+    try {
+      if (!this.timeSheets) throw new Error(HOURS_SUITE_OFF);
+      const facts = await this.timeSheets.forChat(organizationId, person.linkedUserId);
+      await this.timeSheets.record(organizationId, person.linkedUserId, said.entries.map((e) => ({ client: e.client, onDay: said.onDay, hours: e.hours })));
+      reply = hoursSent(said, facts.approverFirstName);
+    } catch (err: any) {
+      reply = typeof err?.message === 'string' && err.message && err.message !== HOURS_SUITE_OFF ? `I could not send it. ${err.message}` : HOURS_SUITE_OFF;
+    }
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    return rules('log_hours', text(reply));
+  }
+
+  /**
+   * A REQUEST TO SPEND SAID TO ASK GROUNDWORK (week 22, request 26): checked against the person's own
+   * team budget and the spending rule, said back with anything over either before the yes, parked,
+   * and written through the spending suite only on a yes. With the suite off it says so and parks
+   * nothing. It tells the person nothing about anybody else's spending.
+   */
+  private async proposeSpending(organizationId: string, who: string, userId: string, message: string): Promise<Reply | null> {
+    if (!this.spending) return rules('ask_to_spend', text(SPEND_SUITE_OFF));
+    const today = new Date();
+    let first: Awaited<ReturnType<SpendingService['checkForChat']>>;
+    try { first = await this.spending.checkForChat(organizationId, userId, 1, today); } catch { return rules('ask_to_spend', text(SPEND_SUITE_OFF)); }
+    const read = readSpending(message, first.currency);
+    if (read.kind === 'none') return null;
+    if (read.kind === 'ask') return rules('ask_to_spend', text(read.say));
+    const facts = await this.spending.checkForChat(organizationId, userId, read.said.amount, today);
+    const month = whenItWas(today, 'month', 'UTC');
+    const say = spendingSaidBack(read.said, { ...facts, approver: facts.approver }, month);
+    const row = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind: 'spend_request', summary: say, payload: { ...read.said } as never },
+      select: { id: true },
+    });
+    return { lane: 'ask_to_spend', composedBy: 'rules', blocks: [text(say), { type: 'proposal', proposalId: row.id, summary: say }] };
+  }
+
+  private async resolveParkedSpending(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    if (decision === 'decline') {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DECLINED', resolvedAt: new Date() } });
+      return rules('ask_to_spend', text(SPEND_NOT_SENT));
+    }
+    const said = parked.payload as SpendSaid;
+    const person = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    if (!person?.linkedUserId || !(said?.amount > 0) || !said?.what) {
+      await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'DROPPED', resolvedAt: new Date() } });
+      return rules('ask_to_spend', text(SPEND_NOTHING_WAITING));
+    }
+    let reply: string;
+    try {
+      if (!this.spending) throw new Error(SPEND_SUITE_OFF);
+      const facts = await this.spending.checkForChat(organizationId, person.linkedUserId, said.amount);
+      await this.spending.ask(organizationId, person.linkedUserId, { amount: said.amount, what: said.what });
+      reply = spendingSent(said, facts.currency, facts.approverFirstName);
+    } catch (err: any) {
+      reply = typeof err?.message === 'string' && err.message && err.message !== SPEND_SUITE_OFF ? `I could not send it. ${err.message}` : SPEND_SUITE_OFF;
+    }
+    await this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state: 'ACCEPTED', resolvedAt: new Date() } });
+    return rules('ask_to_spend', text(reply));
   }
 
   /**
@@ -2910,17 +3367,200 @@ export class AssistantService {
       where: { organizationId, personExternalId: who, state: 'OPEN' },
       orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }],
     });
-    return rules('my_to_dos', text(listToDos(open)));
+    const listed = rules('my_to_dos', text(listToDos(open)));
+    return open.length ? this.withItsSource(listed, YOUR_TO_DOS_SOURCE) : listed;
   }
 
+  /**
+   * TICKING SOMETHING OFF IS SAID BACK FIRST (week 18). It used to close on a matching sentence; now
+   * it parks a question, and only a yes through `POST /ask/answer` closes it. It reaches the
+   * person's own to-dos and their own commitments and nobody else's: not even a lead marks
+   * somebody's commitment done, because the person doing the thing owns the answer.
+   */
   private async tickOffAToDo(organizationId: string, who: string | null, said: string): Promise<Reply> {
     if (!who) return rules('tick_off_a_to_do', text('I cannot see you in your organisation records, so I have no list to close anything on.'));
-    const open = await this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const todos = await this.prisma.todo.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const commitments = await this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const open = [
+      ...todos.map((t: any) => ({ id: `todo:${t.id}`, text: t.text as string, dueSaid: (t.dueSaid ?? null) as string | null })),
+      ...commitments.map((c: any) => ({ id: `commitment:${c.id}`, text: c.text as string, dueSaid: (c.dueSaid ?? null) as string | null })),
+    ];
     const which = whichToDo(said, open);
-    if ('none' in which) return rules('tick_off_a_to_do', text(open.length ? `Nothing on your list reads like "${said}". ${listToDos(open)}` : 'Your list is empty, so there is nothing to close.'));
+    if ('none' in which) {
+      const colleague = await this.aColleagueNamedIn(organizationId, who, said);
+      if (colleague) return rules('tick_off_a_to_do', text(onlyTheyCanChangeIt(colleague)));
+      return rules('tick_off_a_to_do', text(open.length ? `Nothing on your list reads like "${said}". ${listToDos(todos)}` : 'Your list is empty, so there is nothing to close.'));
+    }
     if ('several' in which) return rules('tick_off_a_to_do', text(`More than one of these could be it. Which?\n${which.several.map((t) => `- ${t.text}`).join('\n')}`));
-    await this.prisma.todo.update({ where: { id: which.one.id }, data: { state: 'DONE', doneAt: new Date() } });
-    return rules('tick_off_a_to_do', text(`I have ticked off "${which.one.text}".`));
+    const [kind, id] = which.one.id.split(':');
+    const tick: ATick = { kind: kind as ATick['kind'], id, text: which.one.text };
+    return this.parkAChange('tick_off_a_to_do', organizationId, who, 'tick_off', tickProposal(tick), tick);
+  }
+
+  /** One question parked, and the same sentence shown, with the proposal the screen answers. */
+  private async parkAChange(lane: Lane, organizationId: string, who: string, kind: string, summary: string, payload: object): Promise<Reply> {
+    const proposal = await this.prisma.assistantProposal.create({
+      data: { organizationId, personExternalId: who, kind, summary, payload: payload as any },
+    });
+    return { lane, composedBy: 'rules', blocks: [text(proposal.summary), { type: 'proposal', proposalId: proposal.id, summary: proposal.summary }] };
+  }
+
+  /**
+   * THE FIRST NAME OF A COLLEAGUE THE ASKER NAMED, never anybody the asker did not name. A refusal
+   * built from what the asker typed tells them nothing they did not already say.
+   */
+  private async aColleagueNamedIn(organizationId: string, who: string, said: string): Promise<string | null> {
+    const people = await this.prisma.person.findMany({
+      where: { organizationId, active: true },
+      select: { externalId: true, displayName: true, givenName: true },
+    });
+    for (const p of people as any[]) {
+      if (p.externalId === who) continue;
+      const first = ((p.givenName ?? p.displayName ?? '') as string).trim().split(/\s+/)[0];
+      if (first.length >= 2 && new RegExp(`\\b${first.replace(/[^a-z0-9]/gi, '')}(?:['’]s)?\\b`, 'i').test(said)) return first;
+    }
+    return null;
+  }
+
+  /**
+   * THE COMMITMENTS THIS PERSON MAY MOVE. Their own, and - only for a lead - the ones the lead made
+   * for somebody on a check-in the lead runs. A commitment somebody made for themselves is theirs to
+   * move, whoever runs the check-in.
+   */
+  private async commitmentsIMayMove(organizationId: string, who: string, userId: string | null) {
+    const own = await this.prisma.commitment.findMany({ where: { organizationId, personExternalId: who, state: 'OPEN' } });
+    const out: { id: string; text: string; dueAt: Date | null; dueSaid: string | null; ownerExternalId: string; mine: boolean }[] =
+      (own as any[]).map((c) => ({ id: c.id, text: c.text, dueAt: c.dueAt ?? null, dueSaid: c.dueSaid ?? null, ownerExternalId: c.personExternalId, mine: true }));
+    if (userId) {
+      const setByMe = await this.prisma.personObjective.findMany({
+        where: { authoredBy: 'lead', status: 'OPEN', ground: { initiatorId: userId, organizationId } },
+        select: { id: true },
+      });
+      const ids = (setByMe as any[]).map((o) => o.id);
+      if (ids.length) {
+        const forOthers = await this.prisma.commitment.findMany({
+          where: { organizationId, state: 'OPEN', sourcePersonObjectiveId: { in: ids }, personExternalId: { not: who } },
+        });
+        for (const c of forOthers as any[]) {
+          out.push({ id: c.id, text: c.text, dueAt: c.dueAt ?? null, dueSaid: c.dueSaid ?? null, ownerExternalId: c.personExternalId, mine: false });
+        }
+      }
+    }
+    return out;
+  }
+
+  private async firstNameOf(organizationId: string, externalId: string): Promise<string> {
+    const p: any = await this.prisma.person.findFirst({ where: { organizationId, externalId }, select: { displayName: true, givenName: true } });
+    return ((p?.givenName ?? p?.displayName ?? 'them') as string).trim().split(/\s+/)[0];
+  }
+
+  /**
+   * MOVING A DEADLINE, SAID BACK. The day is read in code, by the reader the product uses for a date
+   * said in a check-in, or asked for. Nothing is moved here: the exact change is parked as a
+   * question, and only a yes moves it.
+   */
+  private async moveADeadline(organizationId: string, who: string | null, userId: string | null, message: string): Promise<Reply> {
+    if (!who) return rules('move_a_deadline', text('I cannot see you in your organisation records, so I have nothing of yours to move.'));
+    const move = readAMove(message);
+    if (!move) return rules('move_a_deadline', text(thereIsNoMoveToRead()));
+
+    const mine = await this.commitmentsIMayMove(organizationId, who, userId);
+    const which = whichToDo(move.what, mine);
+    if ('none' in which) {
+      const colleague = await this.aColleagueNamedIn(organizationId, who, move.what);
+      if (colleague) return rules('move_a_deadline', text(onlyTheyCanChangeIt(colleague)));
+      return rules('move_a_deadline', text(mine.length
+        ? `Nothing you may move reads like "${move.what}". Say part of the words of the commitment you mean.`
+        : 'You have no open commitments to move.'));
+    }
+    if ('several' in which) return rules('move_a_deadline', text(`More than one of these could be it. Which?\n${which.several.map((t) => `- ${t.text}`).join('\n')}`));
+
+    const day = readTheDay(move.whenSaid, new Date());
+    if ('ask' in day) return rules('move_a_deadline', text(day.ask));
+
+    const one = which.one as (typeof mine)[number];
+    const proposal: AMove = {
+      commitmentId: one.id,
+      text: one.text,
+      ownerExternalId: one.ownerExternalId,
+      ownerFirstName: one.mine ? null : await this.firstNameOf(organizationId, one.ownerExternalId),
+      was: { at: one.dueAt ? one.dueAt.toISOString() : null, said: one.dueAt ? null : one.dueSaid },
+      toISO: day.date.toISOString(),
+      toSaid: move.whenSaid,
+    };
+    return this.parkAChange('move_a_deadline', organizationId, who, 'move_deadline', moveProposal(proposal), proposal);
+  }
+
+  /** ADDING A COMMITMENT, SAID BACK. It is always the asker's own: nobody adds one in somebody else's name. */
+  private async addACommitmentByChat(organizationId: string, who: string | null, message: string): Promise<Reply> {
+    if (!who) return rules('add_a_commitment', text('I cannot see you in your organisation records, so I have nowhere to write that.'));
+    const c = readACommitment(message);
+    if (!c) return rules('add_a_commitment', text(noCommitmentToRead()));
+    let dueISO: string | null = null;
+    if (c.dueSaid) {
+      const day = readTheDay(c.dueSaid, new Date());
+      if ('ask' in day) return rules('add_a_commitment', text(day.ask));
+      dueISO = day.date.toISOString();
+    }
+    const addition: AnAddition = { text: c.text, dueSaid: c.dueSaid, dueISO };
+    return this.parkAChange('add_a_commitment', organizationId, who, 'add_commitment', additionProposal(addition), addition);
+  }
+
+  /**
+   * THE YES OR THE NO TO ONE OF THE THREE. Everything is checked again here, at the moment of the
+   * yes, because what a person could change when the question was asked is not what they may change
+   * now: the commitment may have closed, or the check-in may have passed to somebody else.
+   */
+  private async resolveParkedChange(organizationId: string, who: string, parked: any, decision: 'accept' | 'decline'): Promise<Reply> {
+    const lane: Lane = parked.kind === 'move_deadline' ? 'move_a_deadline' : parked.kind === 'add_commitment' ? 'add_a_commitment' : 'tick_off_a_to_do';
+    const settle = (state: 'ACCEPTED' | 'DECLINED' | 'DROPPED') =>
+      this.prisma.assistantProposal.update({ where: { id: parked.id }, data: { state, resolvedAt: new Date() } });
+    if (decision === 'decline') {
+      await settle('DECLINED');
+      return rules(lane, text(NOTHING_WAS_CHANGED));
+    }
+    const me: any = await this.prisma.person.findFirst({ where: { organizationId, externalId: who, active: true }, select: { linkedUserId: true } });
+    if (!me) {
+      await settle('DROPPED');
+      return rules(lane, text('I could not change that, because I can no longer see you in your organisation records. Nothing was changed.'));
+    }
+
+    if (parked.kind === 'add_commitment') {
+      const a = parked.payload as AnAddition;
+      await addACommitment(this.prisma, {
+        organizationId, personExternalId: who, text: a.text, dueSaid: a.dueSaid, dueAt: a.dueISO ? new Date(a.dueISO) : null, source: 'assistant',
+      });
+      await settle('ACCEPTED');
+      return rules(lane, text(additionDone(a)));
+    }
+
+    if (parked.kind === 'tick_off') {
+      const t = parked.payload as ATick;
+      const row: any = t.kind === 'todo'
+        ? await this.prisma.todo.findFirst({ where: { id: t.id, organizationId, personExternalId: who, state: 'OPEN' } })
+        : await this.prisma.commitment.findFirst({ where: { id: t.id, organizationId, personExternalId: who, state: 'OPEN' } });
+      if (!row) {
+        await settle('DROPPED');
+        return rules(lane, text(`"${t.text}" is no longer open on your list, so I have changed nothing.`));
+      }
+      if (t.kind === 'todo') await this.prisma.todo.update({ where: { id: t.id }, data: { state: 'DONE', doneAt: new Date() } });
+      else await markACommitmentDone(this.prisma, t.id);
+      await settle('ACCEPTED');
+      return rules(lane, text(tickDone(t)));
+    }
+
+    const m = parked.payload as AMove;
+    const allowed = (await this.commitmentsIMayMove(organizationId, who, me.linkedUserId ?? null)).find((c) => c.id === m.commitmentId);
+    if (!allowed) {
+      await settle('DROPPED');
+      const first = m.ownerFirstName ?? (await this.firstNameOf(organizationId, m.ownerExternalId));
+      return rules(lane, text(m.ownerExternalId === who
+        ? `"${m.text}" is no longer open, so I have changed nothing.`
+        : `${onlyTheyCanChangeIt(first)} You can no longer move it for them, so I have changed nothing.`));
+    }
+    await moveACommitmentsDeadline(this.prisma, m.commitmentId, new Date(m.toISO), m.toSaid);
+    await settle('ACCEPTED');
+    return rules(lane, text(moveDone(m)));
   }
 
   private async myCommitments(organizationId: string, personId: string): Promise<Reply> {
@@ -2948,7 +3588,7 @@ export class AssistantService {
     if (late.length) {
       parts.push(`\n${late.length} of those ${late.length === 1 ? 'is' : 'are'} past the date you gave. That is worth saying out loud in your next check-in rather than letting it sit.`);
     }
-    return rules('what_did_i_commit_to', text(parts.join('\n')));
+    return this.withItsSource(rules('what_did_i_commit_to', text(parts.join('\n'))), YOUR_COMMITMENTS_SOURCE);
   }
 
   private async whatICanSee(organizationId: string): Promise<Reply> {

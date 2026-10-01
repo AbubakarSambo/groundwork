@@ -1,4 +1,5 @@
 import { howALineIsKnown, type HowALineIsKnown } from './how-a-line-is-known';
+import { WHAT_EACH_MARK_SAYS, type AMarkOnALine, type TheMarksOfAReport } from './the-mark-on-every-line';
 import { WHERE_IT_WAS_READ_FROM } from '../conversation/how-checkable-a-session-was';
 import { COUNTS_AS_A_SOURCE } from '../documents/what-kind-of-thing-a-document-is';
 import { RecordEntryType } from '@prisma/client';
@@ -60,6 +61,8 @@ export interface SaidThing {
    * (week 6b, decision 43, screens request 2). The prototype's four marks; see how-a-line-is-known.
    */
   mark?: HowALineIsKnown;
+  /** The mark in the prototype's own words, ready to print. */
+  markSays?: string;
 }
 
 export interface SessionReportSection {
@@ -83,6 +86,8 @@ export interface WhatOnePersonSaid {
   lines: string[];
   /** How each line is known, in the same order as `lines`: proven, confirmed, said or memory. */
   lineMarks?: HowALineIsKnown[];
+  /** The same marks in the prototype's own words, in the same order. */
+  lineMarksSay?: string[];
   /** Said instead of lines when they answered and named nothing specific. */
   saying?: string;
 }
@@ -103,6 +108,10 @@ export interface SessionReportShape {
     saying: string;
     /** What is settled and what is not, named. A count with no subject is what the tiles are for. */
     settled: string[];
+    /** How each settled line is known, in the same order as `settled`. Absent where the report was stored before the marks. */
+    settledMarks?: AMarkOnALine[];
+    /** The same for `open`. */
+    openMarks?: AMarkOnALine[];
     /*
      * AND WHY EACH OPEN ONE IS OPEN, WHICH THIS THREW AWAY.
      *
@@ -118,10 +127,16 @@ export interface SessionReportShape {
     open: string[];
     openWithReasons: {
       topic: string;
+      mark?: HowALineIsKnown;
+      markSays?: string;
+      markNote?: string;
+      marksBehind?: HowALineIsKnown[];
       /** Where each person stands, in their own terms. */
-      positions: { who: string; view: string }[];
+      positions: ({ who: string; view: string } & Partial<AMarkOnALine>)[];
       /** The lines it rests on, from what people actually said. */
       restsOn: string[];
+      /** How each line in `restsOn` is known, in the same order. */
+      restsOnMarks?: AMarkOnALine[];
       /** What happens to the work if it holds. Never about a person. */
       atStake: string | null;
       /** What would settle it. The half a reader can act on. */
@@ -179,6 +194,8 @@ export interface SessionReportInputs {
    */
   agreements: unknown[];
   divergences: unknown[];
+  /** The marks the build stored for the report these came from (engagement.marksOnItsLines). Absent on a report stored before, and on a closed round. */
+  marksOnItsLines?: TheMarksOfAReport | null;
   /** This session's entries, already typed at extraction. */
   entries: { type: RecordEntryType; text: string; who: string | null; recallBased: boolean; threadKey: string | null; /** the origin of the document that backs it, when one does */ backedBy?: string | null; /** when the colleague who received it confirmed it */ confirmedAt?: Date | null; /** false when the backing document is somebody else's */ documentIsTheirOwn?: boolean }[];
   /** The previous session's entries, for what has changed and what was not spoken to again. */
@@ -235,12 +252,14 @@ function titleOf(x: unknown): string | null {
 
 const said = (e: { type?: string; text: string; who: string | null; recallBased: boolean; backedBy?: string | null; confirmedAt?: Date | null; documentIsTheirOwn?: boolean }): SaidThing => {
   const how = howSolid({ text: e.text, recallBased: e.recallBased });
+  const mark = howALineIsKnown({ type: String(e.type ?? ''), text: e.text, recallBased: e.recallBased, anchoredOrigin: e.backedBy ?? null, confirmedAt: e.confirmedAt ?? null, documentIsTheirOwn: e.documentIsTheirOwn });
   return {
     text: e.text,
     who: e.who,
     documented: !e.recallBased,
     ...(how === 'estimated' || how === 'from-memory' ? { figureIs: MARK[how] as 'their estimate' | 'from memory' } : {}),
-    mark: howALineIsKnown({ type: String(e.type ?? ''), text: e.text, recallBased: e.recallBased, anchoredOrigin: e.backedBy ?? null, confirmedAt: e.confirmedAt ?? null, documentIsTheirOwn: e.documentIsTheirOwn }),
+    mark,
+    markSays: WHAT_EACH_MARK_SAYS[mark],
   };
 };
 
@@ -259,22 +278,35 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
    * THE SAME DIFFERENCES, WITH THE REASONING KEPT. See the note on the shape above: everything
    * below was already on the object and was being dropped on the way to a bullet list.
    */
+  /* The stored marks fit only where they were worked out for these very lists. */
+  const theMarks = input.marksOnItsLines;
+  const agreementMarksFit = !!theMarks && theMarks.agreements?.length === input.agreements.length;
+  const divergenceMarksFit = !!theMarks && theMarks.divergences?.length === input.divergences.length;
+  const settledMarks = agreementMarksFit ? input.agreements.map((a, i) => (titleOf(a) ? theMarks!.agreements[i] : null)).filter(Boolean) as AMarkOnALine[] : undefined;
+  const openMarks = divergenceMarksFit ? input.divergences.map((d, i) => (titleOf(d) ? theMarks!.divergences[i].topic : null)).filter(Boolean) as AMarkOnALine[] : undefined;
   const openWithReasons = (input.divergences as any[])
-    .map((d) => {
+    .map((d, at) => {
       const topic = titleOf(d);
       if (!topic) return null;
+      const mine = divergenceMarksFit ? theMarks!.divergences[at] : null;
       const sides = Array.isArray(d?.positions) ? d.positions : Array.isArray(d?.perspectives) ? d.perspectives : [];
+      const theSides = sides
+        .map((p: any, j: number) => ({
+          who: String(p?.participantLabel ?? p?.who ?? '').trim(),
+          view: String(p?.view ?? p?.said ?? '').trim(),
+          ...(mine && mine.positions.length === sides.length ? mine.positions[j] : {}),
+        }))
+        .filter((p: { who: string; view: string }) => p.view);
+      const evidence = Array.isArray(d?.evidence) ? (d.evidence as unknown[]) : [];
+      const evidenceMarks = mine && mine.evidence.length === evidence.length
+        ? evidence.map((e, j) => (String(e ?? '').trim() ? mine.evidence[j] : null)).filter(Boolean) as AMarkOnALine[]
+        : undefined;
       return {
         topic,
-        positions: sides
-          .map((p: any) => ({
-            who: String(p?.participantLabel ?? p?.who ?? '').trim(),
-            view: String(p?.view ?? p?.said ?? '').trim(),
-          }))
-          .filter((p: { who: string; view: string }) => p.view),
-        restsOn: (Array.isArray(d?.evidence) ? d.evidence : [])
-          .map((e: unknown) => String(e ?? '').trim())
-          .filter(Boolean),
+        ...(mine ? mine.topic : {}),
+        positions: theSides,
+        restsOn: evidence.map((e) => String(e ?? '').trim()).filter(Boolean),
+        ...(evidenceMarks ? { restsOnMarks: evidenceMarks } : {}),
         atStake: typeof d?.atStake === 'string' && d.atStake.trim() ? d.atStake.trim() : null,
         settledBy: typeof d?.settledBy === 'string' && d.settledBy.trim() ? d.settledBy.trim() : null,
       };
@@ -551,12 +583,12 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       lines,
       /* How each of those lines is known, in the same order (week 6b, screens request 2). Beside
          `lines` rather than in it, so a screen that reads `lines` as words is unchanged. */
-      ...(lines.length ? { lineMarks: marked.get(keyOf(p)) ?? [] } : {}),
+      ...(lines.length ? { lineMarks: marked.get(keyOf(p)) ?? [], lineMarksSay: (marked.get(keyOf(p)) ?? []).map((m) => WHAT_EACH_MARK_SAYS[m]) } : {}),
       /* BEFORE RELEASE, ANOTHER PERSON'S LINES ARE WALLED, NOT ABSENT. A participant read "Answered, and nothing
          specific enough to record came out of it" beside twenty-three names whose lines he was not yet entitled
          to (run 10, 21 Sep 2026). The wall says so; it does not claim the person said nothing. */
       ...(lines.length === 0
-        ? { saying: !input.closed && !p.isYou ? 'Answered. What they said opens to you when the report releases.' : 'Answered, and nothing specific enough to record came out of it.' }
+        ? { saying: !input.closed && !p.isYou ? 'This person has answered, and what they said opens to you when the report is released.' : 'This person has answered, and nothing specific enough to record came out of it.' }
         : {}),
     };
   });
@@ -588,7 +620,7 @@ export function theSessionReport(input: SessionReportInputs): SessionReportShape
       : input.plannedSessions ? `Session ${input.sessionNumber} of ${input.plannedSessions}.` : `Session ${input.sessionNumber}.`,
     state: input.closed ? 'final' : 'forming',
     confidence,
-    whereThingsStand: { agreed, stillOpen, saying: standing, settled, open: openNow, openWithReasons },
+    whereThingsStand: { agreed, stillOpen, saying: standing, settled, ...(settledMarks ? { settledMarks } : {}), open: openNow, ...(openMarks ? { openMarks } : {}), openWithReasons },
     atAGlance,
     whatEachPersonSaid,
     sections,

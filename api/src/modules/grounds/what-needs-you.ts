@@ -61,7 +61,7 @@ export interface ListedCheckIn {
   endsAt?: string | Date | null;
   reportWaitingForMe?: boolean;
   latestSummary?: string | null;
-  participants?: { id: string; userId?: string | null; user?: { firstName?: string | null } | null }[];
+  participants?: { id: string; userId?: string | null; notLetIn?: boolean; user?: { firstName?: string | null } | null }[];
   checkIns?: {
     id: string;
     participantId: string;
@@ -136,16 +136,22 @@ function openSession(g: ListedCheckIn, now: number): number {
   return open.length ? Math.max(...open.map((c) => c.sessionNumber)) : 0;
 }
 
-/** "Omar", "Omar and Brian", "you", or a count when there are more, or no names on record. */
+/** "Omar has not checked in yet.", "Omar and Brian have not checked in yet.", "You have not checked in yet.", or a count. */
 function whoHasNotYet(missing: { name: string | null; isMe: boolean }[]): string {
   const said = missing.map((m) => (m.isMe ? 'you' : m.name));
   if (missing.length <= 2 && said.every(Boolean)) {
     const [a, b] = said as string[];
     const who = b ? `${a} and ${b}` : a;
     const onlyOne = missing.length === 1 && !missing[0].isMe;
-    return `${who} ${onlyOne ? 'hasn’t' : 'haven’t'} yet`;
+    return `${who[0].toUpperCase()}${who.slice(1)} ${onlyOne ? 'has' : 'have'} not checked in yet.`;
   }
-  return missing.length === 1 ? '1 person hasn’t yet' : `${missing.length} people haven’t yet`;
+  return missing.length === 1 ? '1 person has not checked in yet.' : `${missing.length} people have not checked in yet.`;
+}
+
+/** The session in the reader's words, as the board says it: "the second check-in". */
+const SESSION_WORDS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+function theSession(n: number): string {
+  return n >= 1 && n <= SESSION_WORDS.length ? `the ${SESSION_WORDS[n - 1]} check-in` : `check-in number ${n}`;
 }
 
 export function whatNeedsYou(
@@ -153,6 +159,8 @@ export function whatNeedsYou(
   reader: Reader,
   waiting: WaitingForApproval[] = [],
   now: Date = new Date(),
+  /** What is waiting for this reader to approve, already said (waiting-for-you-to-approve.ts). Only ever the approver's. */
+  toApprove: Need[] = [],
 ): WhatNeedsYou {
   const at = now.getTime();
   const isAdmin = reader.role === 'ADMIN';
@@ -262,7 +270,9 @@ export function whatNeedsYou(
     /* Who has checked in, for whoever runs it or an admin. The check-in with the most people wins. */
     if (!over && mayName) {
       const n = openSession(g, at);
-      const rows = sessions.filter((c) => c.sessionNumber === n);
+      /* Somebody an admin did not let in cannot be asked, so is neither counted nor named (request 95). */
+      const notLetInIds = new Set((g.participants ?? []).filter((p) => p.notLetIn).map((p) => p.id));
+      const rows = sessions.filter((c) => c.sessionNumber === n && !notLetInIds.has(c.participantId));
       /*
        * ONE COUNT (U.5 review). The list row says "1 of 2 answered" from the check-in's own rule for
        * who is expected this session (someone whose invitation has lapsed, or who has not joined, is
@@ -271,9 +281,10 @@ export function whatNeedsYou(
        */
       const counted = g.glance?.progress;
       const useCounted = !!counted && typeof counted.ofPeople === 'number' && Array.isArray(counted.waitingOn);
-      const total = useCounted ? counted!.ofPeople! : rows.length;
+      const heldOut = useCounted ? counted!.waitingOn!.filter((id) => notLetInIds.has(id)).length : 0;
+      const total = useCounted ? counted!.ofPeople! - heldOut : rows.length;
       const answered = useCounted ? counted!.answeredThisRound ?? 0 : rows.filter((c) => c.status === 'COMPLETED').length;
-      const waitingIds = useCounted ? counted!.waitingOn! : rows.filter((c) => c.status !== 'COMPLETED').map((c) => c.participantId);
+      const waitingIds = useCounted ? counted!.waitingOn!.filter((id) => !notLetInIds.has(id)) : rows.filter((c) => c.status !== 'COMPLETED').map((c) => c.participantId);
       if (n > 0 && total > 1 && answered < total && (!line || total > line.people)) {
         const byId = new Map((g.participants ?? []).map((p) => [p.id, p]));
         const missing = waitingIds.map((id) => {
@@ -283,8 +294,8 @@ export function whatNeedsYou(
         line = {
           people: total,
           text: answered === 0
-            ? `In ${g.label}, nobody has checked in for session ${n} yet.`
-            : `In ${g.label}, ${answered} of ${total} have checked in for session ${n}; ${whoHasNotYet(missing)}.`,
+            ? `In ${g.label}, nobody has checked in for ${theSession(n)} yet.`
+            : `In ${g.label}, ${answered} of ${total} have checked in for ${theSession(n)}. ${whoHasNotYet(missing)}`,
         };
       }
     }
@@ -328,6 +339,7 @@ export function whatNeedsYou(
     }
   }
 
+  decisions.push(...toApprove);
   const needs = [...firstTurns, ...lateTurns, ...reports, ...decisions, ...otherTurns, ...ownReports];
   const said = (line as { text: string } | null)?.text ?? (myOpenTurn ? `Your check-in for ${myOpenTurn} is open.` : null);
   return {

@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
-import { mayApprove } from './who-approves';
+import { mayApproveFor, whoApprovesFor } from './who-approves';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const TIME_REFUSED = {
@@ -23,7 +23,7 @@ export interface AWeek {
   weekOf: Day;
   /** The clients and projects with hours this week, in the order the admin listed them. */
   clients: string[];
-  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean }[];
+  people: { personId: string; name: string; minutes: Record<string, number>; total: number; approved: boolean; mayApprove: boolean; /** The days of this week that have hours, so a sentence can say which. */ days: Day[] }[];
 }
 
 export interface Agreement { client: string; work: string; hours: number; span: 'whole' | 'month'; usedMinutes: number }
@@ -51,7 +51,7 @@ type Entry = { userId: string; client: string; onDay: Date; minutes: number };
  *   - a lead reads only their own team's hours (a-leads-team.ts), which is what they need to approve;
  *   - each person reads only their own hours (`mine`);
  *   - a colleague and a guest are refused the board.
- * WHO APPROVES follows the admin's answer when they switched the suite on (who-approves.ts). A week is
+ * WHO APPROVES is the person's line manager in the staff directory, or an admin when there is none (who-approves.ts). A week is
  * approved with the total the approver saw; hours added later make it wait again.
  */
 @Injectable()
@@ -99,10 +99,11 @@ export class TimeSheetsService {
         if (!name) continue;
         rows.push({
           personId: userId, name, minutes, total,
+          days: [...new Set(theirs.map((e) => dayOf(e.onDay)))].sort(),
           approved: approvedAt.get(`${w}|${userId}`) === total,
-          mayApprove: await mayApprove(this.prisma, {
+          mayApprove: await mayApproveFor(this.prisma, {
             organizationId: reader.organizationId, readerId: reader.userId, readerRole: role, personUserId: userId,
-            approver: answers.approver, managerExternalId: people.get(userId)?.managerExternalId ?? null,
+            managerExternalId: people.get(userId)?.managerExternalId ?? null,
           }),
         });
       }
@@ -121,9 +122,9 @@ export class TimeSheetsService {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(weekOf ?? '')) throw new BadRequestException(TIME_REFUSED.nothingToApprove);
     const monday = mondayOf(atMidnight(weekOf));
     const people = await this.directory(reader.organizationId, [personId]);
-    const ok = await mayApprove(this.prisma, {
+    const ok = await mayApproveFor(this.prisma, {
       organizationId: reader.organizationId, readerId: reader.userId, readerRole: role, personUserId: personId,
-      approver: answers.approver, managerExternalId: people.get(personId)?.managerExternalId ?? null,
+      managerExternalId: people.get(personId)?.managerExternalId ?? null,
     });
     if (!ok) throw new ForbiddenException(TIME_REFUSED.notYours);
     const entries = await this.prisma.timeEntry.findMany({
@@ -162,6 +163,18 @@ export class TimeSheetsService {
       return { weekOf: w, minutes, total, approved: approvals.some((a) => dayOf(a.weekOf) === w && a.approvedMinutes === total) };
     });
     return { weeks };
+  }
+
+  /**
+   * For the engine's say-back (week 21): the clients and projects on the admin's list and the first
+   * name of the person who would approve these hours (null when it is an admin). Reads no hours.
+   */
+  async forChat(organizationId: string, userId: string): Promise<{ clients: string[]; approverFirstName: string | null }> {
+    const answers = await this.suiteAnswers(organizationId);
+    const role = await this.roleOf({ userId, organizationId });
+    if (!role || role === 'GUEST') throw new ForbiddenException(TIME_REFUSED.notInIt);
+    const who = await whoApprovesFor(this.prisma, { organizationId, personUserId: userId });
+    return { clients: answers.clients, approverFirstName: who.kind === 'manager' ? who.firstName : null };
   }
 
   /**

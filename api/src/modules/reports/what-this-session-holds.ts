@@ -15,6 +15,23 @@ import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-buil
  * all, and the tile says what it counts instead.
  */
 const A_TILE_HOLDS = 160;
+/* A phrase put inside a sentence: a topic that opens with "Whether" or "The" reads from a lower-case letter. */
+const inASentence = (phrase: string): string => {
+  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
+  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+};
+
+/* A line that opens a sentence of its own starts with a capital. */
+const up = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+/**
+ * A blocker as a sentence. It arrives as a short phrase ("the credit terms", "Legal to review the
+ * contract, on Tunde") or as a sentence somebody said ("I have heard about it but ..."). A phrase is
+ * put inside a sentence of ours. A sentence somebody said stays theirs and only gets its capital.
+ */
+const SAYS_SOMETHING = /^(?:I|We|They|He|She|It|There|Nobody|Nothing|Everyone)\b|\b(?:is|are|was|were|has|have|had|will|can|cannot|did|does|do|said|says|need|needs|waiting|stopped|heard)\b/;
+const blockerAsASentence = (b: string): string => (SAYS_SOMETHING.test(b) ? `${up(b)}.` : `Work is held up by ${inASentence(b)}.`);
+
 export function theFirstSentenceThatFits(s: string | null | undefined, max = A_TILE_HOLDS): string | null {
   const t = (s ?? '').trim().replace(/\s+/g, ' ');
   if (!t) return null;
@@ -139,7 +156,7 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
   const what = first?.what?.trim() ?? '';
   const on = first?.onLabel?.trim() ?? '';
   const alreadySaid = !!on && what.toLowerCase().includes(on.toLowerCase());
-  const theFirstBlocker = what ? `${what}${on && !alreadySaid ? `, on ${on}` : ''}` : null;
+  const theFirstBlocker = what ? `${what}${on && !alreadySaid ? `, which waits on ${on}` : ''}` : null;
 
   /* Movement is the difference between two snapshots, and nothing at all when there is only one. A
      session still in play has no snapshot of its own yet, so its live count stands in for it. */
@@ -221,14 +238,14 @@ export function atAGlanceTiles(a: {
        */
       sub: a.stillOpen
         ? (theDifference
-          ? `${theDifference}${a.stillOpen > 1 ? `, and ${a.stillOpen - 1} more` : ''}`
-          : 'still open, as the written report reads it')
-        : a.agreed ? 'no disagreement, as the written report reads it'
-          : a.stillToAnswer === 0 ? 'everybody answered, and the written report names no agreement and no gap yet'
+          ? `People said different things about ${inASentence(theDifference)}.${a.stillOpen > 1 ? ` ${a.stillOpen - 1} more ${a.stillOpen === 2 ? 'difference is' : 'differences are'} still open.` : ''}`
+          : 'The written report reads this as still open.')
+        : a.agreed ? 'The written report finds no disagreement.'
+          : a.stillToAnswer === 0 ? 'Everybody has answered, and the written report names no agreement and no gap yet.'
             /* And where nobody passed a count, say what is true of the report rather than guess at the
                roster: "not everybody has answered yet" went out on boards where everybody had. */
-            : a.stillToAnswer == null ? 'the written report names no agreement and no gap yet'
-              : `${a.stillToAnswer} ${a.stillToAnswer === 1 ? 'person has' : 'people have'} still to answer`,
+            : a.stillToAnswer == null ? 'The written report names no agreement and no gap yet.'
+              : `${a.stillToAnswer} ${a.stillToAnswer === 1 ? 'person has' : 'people have'} still to answer.`,
       tone: a.stillOpen ? 'warn' : a.agreed ? 'good' : 'flat',
     },
     {
@@ -255,11 +272,11 @@ export function atAGlanceTiles(a: {
       sub: a.movedOnTargets == null
         ? (a.targetsSet ?? 0) > 0
           /* Set, and nothing to subtract from yet: a round has to close before movement exists. */
-          ? `${a.targetsSet} target${a.targetsSet === 1 ? '' : 's'} set, and no round has closed to measure from`
+          ? `${a.targetsSet} ${a.targetsSet === 1 ? 'target is' : 'targets are'} set, and no round has closed to measure from.`
           : a.numberWasSaid
-            ? 'somebody named a number and nothing is tracking it'
-            : 'nobody has set something to measure this against'
-        : a.movedOnTargets > 0 ? 'targets moved this session' : 'no target moved this session',
+            ? 'Somebody named a number, and nothing is tracking it.'
+            : 'Nobody has set anything to measure this against.'
+        : a.movedOnTargets > 0 ? 'Targets moved this session.' : 'No target moved this session.',
       tone: a.movedOnTargets == null
         ? a.numberWasSaid && !(a.targetsSet ?? 0) ? 'warn' : 'flat'
         : a.movedOnTargets > 0 ? 'good' : 'flat',
@@ -272,15 +289,15 @@ export function atAGlanceTiles(a: {
       value: a.blocked ? `${a.blocked}` : (a.waiting ?? 0) > 0 ? `${a.waiting} waiting` : worries ? `${worries} worr${worries === 1 ? 'y' : 'ies'}` : 'None',
       sub: a.blocked
         ? (theBlocker
-          ? `${theBlocker}${a.blocked > 1 ? `, and ${a.blocked - 1} more` : ''}`
-          : 'named as holding work up')
+          ? `${blockerAsASentence(theBlocker)}${a.blocked > 1 ? ` ${a.blocked - 1} more ${a.blocked === 2 ? 'is' : 'are'} holding work up.` : ''}`
+          : a.blocked === 1 ? 'Something is named as holding work up.' : `${a.blocked} things are named as holding work up.`)
         : (a.waiting ?? 0) > 0
-          ? (theBlocker ? `${theBlocker}, nothing hard-blocked` : 'on someone else, nothing hard-blocked')
+          ? (theBlocker ? `${blockerAsASentence(theBlocker)} Nothing is hard-blocked.` : 'Work is waiting on someone else, and nothing is hard-blocked.')
           : worries
             ? (theWorry
               ? `${theWorry} ${theRestOfTheWorries(worries - 1)}`
               : `${worries} ${worries === 1 ? 'worry is' : 'worries are'} on record, and nobody is waiting on anybody.`)
-            : 'nobody named anything holding work up',
+            : 'Nobody named anything holding work up.',
       tone: a.blocked ? 'bad' : (a.waiting ?? 0) > 0 || worries ? 'warn' : 'good',
     },
     {
@@ -321,8 +338,8 @@ export function theBlockersTileNamesThis(tiles: AGlanceRead[], blocker: string |
   return tiles.map((t) => {
     if (t.label !== 'Blockers') return t;
     const hard = /^(\d+)$/.exec(String(t.value));
-    if (hard) return { ...t, sub: `${name}${Number(hard[1]) > 1 ? `, and ${Number(hard[1]) - 1} more` : ''}` };
-    if (/^\d+ waiting$/.test(String(t.value))) return { ...t, sub: `${name}, nothing hard-blocked` };
+    if (hard) return { ...t, sub: `${blockerAsASentence(name)}${Number(hard[1]) > 1 ? ` ${Number(hard[1]) - 1} more ${Number(hard[1]) === 2 ? 'is' : 'are'} holding work up.` : ''}` };
+    if (/^\d+ waiting$/.test(String(t.value))) return { ...t, sub: `${blockerAsASentence(name)} Nothing is hard-blocked.` };
     return t;
   });
 }

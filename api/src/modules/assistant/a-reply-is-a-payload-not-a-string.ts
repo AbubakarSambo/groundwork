@@ -19,7 +19,8 @@ export type BlockType =
   | 'picker'
   | 'finding_list'
   | 'freshness'
-  | 'next_step';
+  | 'next_step'
+  | 'source';
 
 export interface TextBlock {
   type: 'text';
@@ -83,6 +84,29 @@ export interface NextStepBlock {
   context?: Record<string, string>;
 }
 
+/**
+ * WHERE AN ANSWER CAME FROM, AS A LINK-LIKE BLOCK (week 17).
+ *
+ * An answer built from a record the reader may already read says which record, in a plain sentence
+ * in the text ("This is from Femi's check-in of 24 September on Sales team, Q3.") and again here, as
+ * something the panel can turn into a link. `label` is the link's own words, `says` is that same
+ * sentence, and `href` is a path within the Groundwork product, relative on purpose, exactly as for
+ * `next_step`. The record it points at is one this reader could already open: nothing is named here
+ * that the reader's own reads do not serve them.
+ */
+export interface SourceBlock {
+  type: 'source';
+  /** The link's words, such as "Femi's check-in of 24 September on Sales team, Q3". */
+  label: string;
+  /** The whole plain sentence, the same one the text carries. */
+  says: string;
+  /** Where that record lives in the Groundwork product. Relative on purpose. */
+  href: string;
+  kind: 'check_in' | 'report' | 'to_dos' | 'commitments' | 'today';
+  /** The check-in the record is on, where it is on one. */
+  id?: string;
+}
+
 export interface PickerBlock {
   type: 'picker';
   options: { key: string; label: string }[];
@@ -108,7 +132,7 @@ export interface FreshnessBlock {
 export type Block =
   | TextBlock | BoardBlock | ProposalBlock | DraftBlock
   | PickerBlock | FindingListBlock | FreshnessBlock
-  | NextStepBlock;
+  | NextStepBlock | SourceBlock;
 
 /**
  * `composedBy` IS NOT DIAGNOSTICS. It is stamped on every reply so a person always knows which
@@ -122,6 +146,8 @@ export interface Reply {
   lane: string;
   /** Which wording rules produced it, when a model did. Absent on a rules-composed reply. */
   styleVersion?: string;
+  /** The stored prompt version that actually ran, when a stored prompt wrote part of the reply (week 19). */
+  promptVersionId?: string | null;
 }
 
 export const text = (body: string): TextBlock => ({ type: 'text', body });
@@ -139,5 +165,5 @@ export function rules(lane: string, ...blocks: Block[]): Reply {
  */
 export const BLOCK_TYPES: Record<BlockType, true> = {
   text: true, board: true, proposal: true, draft: true,
-  picker: true, finding_list: true, freshness: true, next_step: true,
+  picker: true, finding_list: true, freshness: true, next_step: true, source: true,
 };

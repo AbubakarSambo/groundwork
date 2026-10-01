@@ -546,3 +546,479 @@ How it is built. Stored in `blocker_traces`, without names (each step holds its 
 
 **Also, from request 37.** A participant's session report now says "Session 3. It runs until Wairimu Kamau ends it." (the lead's name, or "the person running it" where the reader may not read a name); the lead still reads "Session 3. It runs until you end it." `POST /check-ins` on the public API takes `runsUntilEnded: true`, as the product's own create does.
 
+
+## Request 17: the Company page's company-wide picture (parts a to d)
+
+`GET /company` (the same read as before) now carries four more things. Everything is written once, when the record changes, and only read when the page opens. Until a picture has been written for the organisation, `reading` is `null` on every priority and the three lists are empty: draw nothing in their place.
+
+### The fields
+
+    GET /company
+    {
+      ...the fields you already have...,
+      priorities: [{ ...,
+        reading: { tag: string, says: string } | null    // (a)
+      }],
+      notReaching: [{ id, observation, question, forWhom }],                              // (b)
+      namedByTeams: [{ id, title, touches, teams: [{ team, says }] }],                    // (c)
+      saidAndShown: [{ id, area, youSaid, checkInsShow }]                                 // (d)
+    }
+
+(a) `reading.tag` is one of: "Nobody owns it yet", "Nothing is moving it yet", "At risk", "Quiet for a month", "Moving, but not enough of it", "Moving". It is about the priority and is decided in code from the record (owner, check-ins that feed it, handoffs stopping work, a date that has passed). `reading.says` is one or two full sentences, for example "1 check-in feeds this priority, and 3 were finished in the last 30 days. 1 handoff is stopping work on it." It is `null` when the reader may not open every check-in it was built from. `tag` (the old field, "Nobody owns it yet" or null) is unchanged.
+
+(b) `notReaching` comes in this order and is written from the shape of the organisation's priorities, for example "Priority 3 has no owner and nothing underneath it." with the question "Who owns priority 3, Build a stronger organisation?" and `forWhom` "For you". The other two kinds are "The customer portal sits under no current priority." with "Which priority does The customer portal serve?" and `forWhom` "For Lina Ali, Product lead" (the owner's name and title from the roster, or "For you" when the reader is that owner), and "Open the second warehouse is still open, and its date has passed." with "Should Open the second warehouse get a new date, or be closed?". Served only to readers who may read every check-in (admins). Draw "Decide" for `forWhom` "For you" and "Ask" for anybody else.
+
+(c) `namedByTeams[].title` is the thing in plain words ("No way for customers to order in bulk"), `touches` is "Touches priority 1 and priority 2." (or "It does not sit under any priority yet."), and each team's `says` is one sentence ("Sales raised this in 2 check-ins, with 3 open handoffs." when the model's sentence did not pass the checks). Teams come in alphabetical order and groups in order of their title, never by size. A thing is only here when at least two teams raised it. "Nobody owns it." is not written, because the record cannot say it of a thing.
+
+(d) `saidAndShown[]`: `area` is "Priority 1", `youSaid` is the priority as the organisation wrote it in its own system (not anybody's words from a check-in), `checkInsShow` is one or two sentences such as "1 of the 4 check-ins finished in the last 30 days that belong to a priority was about this one. 1 handoff is open in them." Served only to readers who may read every check-in, and only once at least three such check-ins were finished. The prototype's examples ("6 in 10 sales visits went to small shops.") need figures the record does not hold, so they are not written.
+
+### Who reads what
+
+Each item keeps the ids of the check-ins it was built from (`restsOn`, never served). A reader is given an item only if they may open every one of them, by the same list of check-ins that feeds `fedBy` (their role and their access, never their title). A lead who runs the sales check-in reads the reading of the priority it feeds, and a thing that only check-ins they may open named; a member in that check-in reads the same reading. `notReaching` and `saidAndShown` are for readers who may read every check-in, so a lead or a member is given empty lists. An admin who was not given a performance plan, promotion or renewal check-in is given nothing that rests on it, and such check-ins are never read into the picture at all.
+
+### How it is kept
+
+Table `company_pictures`, one row per organisation, no names (an owner is held as the customer's own id and named only when served). Written by `CompanyPictureService` (`api/src/modules/grounds/the-company-picture.service.ts`) when a check-in completes, when a handoff is raised, and once a night if the priorities changed in the organisation's own system. The same record again makes no second model call and no new row. The model is given priorities with counts and open handoffs with team and check-in numbers, and no person. Its sentences are kept only if every number is on the record, nobody is named, nothing is judged or ranked, there is no quotation and nothing is copied word for word; otherwise a plain sentence is written from the counts. The instructions are the stored prompt `company_picture` (seeded on boot); the row records `promptVersionId`.
+
+### Not built
+
+(e) The company context picked up from check-ins is `docs/weekly-plan.md` week 20, "Memory that lasts beyond one check-in". It would be kept at the organisation's level, confirmed by a lead before it counts. (f) and (g) wait for Hafsah.
+
+
+## Request 28: where each customer stands, from the sales check-ins
+
+Nothing changes in what the board serves: `GET /suites/customers/board` still gives `standing` for each customer, and it is now the latest line the engine wrote, else the organisation's own word.
+
+The line reads like "Quote sent. Buys in January.", "Said yes. The deposit is waiting." or "Asked to wait until the new shop opens.". Each is one or two plain full sentences about the customer. It never names a person, never says "I" or "you", carries no label or score, and holds no date or number that the person did not say.
+
+When it is written: once, when a sales check-in completes. A sales check-in is one whose kind of work is "sales org" (the kind set at setup, which the lead can change), and is not a performance plan, a promotion or a renewal. A check-in with no kind of work is not read. It reads only the person's own words in their own check-in, never a report, never a question to Ask Groundwork, never a lead's private note. A name that matches no customer, or more than one customer, writes nothing. The same line twice in a row writes one row.
+
+Who reads it: the same readers who are served the customer. An admin reads every customer's line. A lead reads the lines for the customers owned by their own team and themselves. A member and a guest are refused the board.
+
+Not built: (b), "changing something here tells the person who owns the customer, in their next check-in." It waits for Hafsah.
+
+
+## Request 25: the role map, the role interview, and why a job nobody owns matters
+
+**(a) The role interview. Built.**
+
+To send it (admins only, refused for everybody else, decided on the server):
+
+    POST /suites/roles/interview
+    { "personId": "<the person's externalId>" }              // to one person, for each role they hold
+    { "personId": "<externalId>", "roleName": "Sales rep" }  // to one person, for this role
+    { "roleName": "Sales rep" }                              // to everyone who holds that role
+
+It answers `{ sent: [{ personId, name, roleName }], notSent: [{ name, why }] }`. `why` is a plain sentence, for example "Aisha Otieno has not signed in yet, so there is nowhere to ask them." or "Miriam Wanjiku already has the role interview waiting for Sales rep.". A refusal is one plain sentence too ("Say which person, or which role, the role interview is for."). Nothing is emailed: the interview waits for the person in Ask Groundwork.
+
+What the person reads in Ask Groundwork, when they say "start": "What do you own in your job as Sales rep? Tell me in your own words, for example "the sales target and the sales team"." Then "What do you decide yourself, without asking anybody first?", then "Who do you depend on to do your job?", then "And who depends on you to do theirs?". Then all four are said back, in quotation marks, exactly as typed except that the first letter of a plain word loses its capital and a name keeps it: "You said you own "my own customers and their deals", you decide "what discount I give up to 10 percent", you depend on "the Sales lead and Operations for stock", and "the customers I sign, for their first delivery" depend on you. Shall I save this for the role map?" (with a Yes and No on it, through `POST /ask/answer`). Only a yes writes one `role_interview_answers` row, with the person's words exactly as typed. A no writes nothing and offers to start again. If they ask something else first, it is answered, and once they are told the interview is waiting: "Your admin has asked you four short questions about your job as Sales rep, so that the role map can show what the job owns. It is about the job and not about you, and nobody is marked on it. Say "start" when you are ready, or "not now" if you would rather not."
+
+After a yes: "I have saved this for the role map. It shows what the Sales rep job owns. It is about the job and not about you."
+
+No model words any of this, so `promptVersionId` on the row is empty. Who reads the answers: an admin, on the role map (`owns` for each role, as before), and the person themselves at `GET /suites/roles/interview/mine` (`{ answers: [{ roleName, owns, decides, dependsOn, dependedOnBy, createdAt }] }`). A colleague and a lead who is not an admin read none of it. Nothing is read into any check-in's report.
+
+**(b) Why a job nobody owns matters. Built.**
+
+`nobody[].why` on `GET /suites/roles/board` is now filled. It is written once when a check-in completes or a handoff is raised (and looked at once a night), never when the map is opened. It is built from a handoff a person raised in a check-in that waits on a role nobody holds, such as "Stock planning". It reads "That is why Kwame Mensah has been waiting three weeks for freezers." while the wait is open, and "That is why Kwame Mensah waited three weeks for freezers." once it has ended. The wait is at least one week, and the note is about the longest one for the role. It is stored with the check-in's label ("Participant A"), never a name, and the name goes in only when an admin who may open that check-in reads the map, through the wrapper reports use. If the name would not be theirs to see, or they may not open the check-in (a performance plan, a promotion or a renewal they do not run), `why` is `null` rather than a placeholder. It is checked in code: only numbers from the record, no name, no label, no score, no ranking. It is never built from a private report or from questions to Ask Groundwork.
+
+Schema: `role_gap_notes` gained `ground_id` and `input_key` (migration `20261001150000_role_gap_notes_rest_on_a_check_in`). No field on the map changed shape.
+
+
+## 1 October: the switchboard's 22 sections
+
+Your request 70. Before building anything, I read what the board and the reports serve today against each of the 22 sections. "Calls for it" is the number of the 24 situations that switch the section on or make it optional (`switchboardSectionsNotServed` in `what-the-switchboard-allows.ts`). The purple twelve are called for by four situations only: "Help a new hire get started", "Check in before a renewal", "Help someone get back on track" and "Get a project back on track" (the new hire and the renewal also carry most of them).
+
+"Served already" means the content is on the board under another field today, for the readers named. "Not served" means nothing carries it, and the last column says whether I build it, or why I serve nothing.
+
+| Section | Calls for it | State | Where, or what is missing |
+| --- | --- | --- | --- |
+| Lead actions | 22 | Served already | `theJudgement.whatToDo` (what to do and why, the lead only), `decisions` (what needs deciding, and who decides), `toLookAt` and `eachPersonToday[].conversationPoints` (what has stayed the same, and what to talk through, the lead only). |
+| Risks | 18 | Not served. Built. | Nothing gathers "what could go wrong". Built from the record, in plain sentences, with the facts behind each one. |
+| Work plan | 13 | Partly served. Built. | `whoOwnsWhat` has each person's commitments with no date and no state. `overTime.commitments` has the date and the state, for the lead only. `workRecords` has it for the founder's own check-in only. Built as `workPlan` for each reader under their own wall. |
+| Deal grid | 11 | Served already | `workRecords`, the section named "Deal grid", by the check-in's kind of work (request 76): sales org, engineering release, support desk, distribution operations, trader training programme, asset loans, MarketView Q4, a government programme. Served as `none-yet` when nothing has been recorded and as `not-known` when the kind is not set. |
+| Coaching | 10 | Served already | `coaching` (`yours` and `eachPerson`), request 79 b. |
+| Themes | 9 | Served already | `whatTheRoomIsAbout` (aims, places and things, each with who named it, nothing dropped), `whatTheAnswersSay` (the network read, where enough accounts came in) and, for MarketView where next, `workRecords` "Themes". For support desk it is served as not known, because the helpdesk's own counts are not in the record. |
+| Obligations | 6 | Partly served | A law firm matter's parties are in `workRecords` "Obligations". For the others, what each person promised is `workPlan` (built here) and what each waits on is `dependencies`. What a contract's own clauses require is not in the record (the record holds what people said, not the document), so that is not served. |
+| Timeline | 5 | Not served. Built. | `phaseSpine` has the sessions and their dates only, and a law firm's deadlines are in `workRecords`. Nothing puts what happened in order. Built as `timeline`. |
+| Person history | 5 | Not served. Built. | Built as `personHistory`, one person's record session by session, facts only, to the lead and to the person themselves. |
+| Forecast | 5 | Not served. Nothing built. | The record holds no projected figure. `objectives[].journey` says where a number started, where it is and what was aimed for, and `eachPerson` says whether the pace is behind. Neither is a forecast, and I will not invent one. `workRecords` already serves "Forecast" as `not-known` for sales org and MarketView Q4, with the reason. |
+| Blocker check | 4 | Not served. Built. | Built as `blockerCheck`: for each open handoff, whether it names a person, whether the person said what they had tried, and whether a time was given. |
+| Evidence index | 4 | Not served. Built. | Built as `evidenceIndex`: every line on the board that a document proves or a colleague confirmed, with whose it is and the session. |
+| Busy or moving | 4 | Not served. Built. | Built as `busyOrMoving`: counts from the record, for the lead only, never a label. |
+| Where the time went | 4 | Not served. Nothing built. | The record holds no record of how anybody's time was spent, only what they said they would do. Anything I wrote here would be a guess. |
+| Requirements review | 3 | Served already | `overTime.gaps` (what the role was said to be, against what the record holds; the lead only), `startingState` and `objectives`. |
+| Actions and their results | 4 | Served already | `overTime.commitments` (the lead only) with the state and how it was settled. `workPlan` (built here) gives each other reader their own. |
+| The other side | 4 | Served already | `divergence.items`, `divergence.agreements`, `whoOwnsWhat` and `managerAlignment`. |
+| Who waited on whom | 4 | Served already | `dependencies` on the board, `GET /grounds/:id/links` (`dueSaid`, `dueOn`, `standing`), `GET /grounds/:id/blocker-trace`, and `overTime.dependencies` (sessions waiting, whether anybody went back). |
+| Commitments followed over time | 4 | Served already | `overTime.commitments` (said in which session, said again in which, how it ended), the lead only. |
+| Pattern history | 4 | Served already | `patterns[].sessions` and `patterns[].howOften`, under `who-reads-a-pattern.ts`, and `overTime.patterns` for the lead. |
+| Contradictions | 4 | Served already | `divergence.items` (where two people said different things). Where one person said two things across sessions, nothing is written yet. |
+| Questions for the lead | 4 | Served already | `decisions`, `coaching.eachPerson` (what to ask each person) and `eachPersonToday[].conversationPoints`, for the lead only. |
+
+Built in this pass, in order of how many situations call for them: Risks, Work plan, Timeline, Person history, then Blocker check, Evidence index and Busy or moving (four each).
+
+### What is served now (request 70), and what is left
+
+Seven sections are new on `GET /grounds/:id/board`. Each is a top-level field, served only when it has something in it (the field is absent, never an empty list), built from rows the record already holds, with no model and nothing written, so opening the board never changes it. They are served on every board that renders, whatever the family, because the switchboard (your table) decides which a situation draws.
+
+Who reads what, for all seven. The person who runs the check-in, and the admin who set it up, read everyone's. An admin of the organisation reads everyone's on a check-in that is not an evaluation, as they read every other row on the board. On an evaluation check-in (a performance plan, a renewal, a promotion) any other admin has no access to the board at all, as before. Everybody else reads their own rows, the lead's, and (only where people see each other, and never on an evaluation check-in) rows with nobody's name on them. A person they may not name is "a colleague". A handoff is read only by someone in it, where people do not see each other.
+
+| Field | Shape | One real line, as a reader is served it |
+| --- | --- | --- |
+| `risks` | `[{ id, says, because }]`, at most 10 | says: "Rukia Mwangi cannot move on the credit terms until it comes from Finance." because: "It was first said on 3 September. About what has been tried, Rukia Mwangi said, "I emailed twice." The time given for it was "by Friday"." |
+| `workPlan` | `[{ id, participantId, who, says, when, state: 'open' \| 'done' \| 'not done' \| 'dropped', statedInSession }]`, open first | "In session 1, Rukia Mwangi committed to send the Westgate quote. The time Rukia Mwangi gave for it was by Friday. Nobody has said yet whether it happened." (Rukia reads "In session 1, you committed to send the Westgate quote." It is the sentence the report writes for the same commitment.) |
+| `timeline` | `[{ on: '2026-09-10', says }]`, oldest first, newest 40. `on` is the day for ordering; `says` starts with the day in words | "On 10 September, Baraka Otieno's commitment to call the Kisumu depot was marked done." |
+| `personHistory` | `[{ participantId, who, says, sessions: [{ n, on, says }] }]` | For whoever runs the check-in: "Rukia Mwangi has answered 2 sessions and made 3 commitments." and, for session 1, "In session 1, Rukia Mwangi made 1 commitment and named 1 thing the work was waiting on." How many were kept is the person's own (decision 24), so only they read the tally: "You have answered 2 sessions and made 3 commitments. 1 is done, 1 is not done or dropped, and 1 is still open." A person reads only their own; whoever runs the check-in reads each person who has answered, without a tally of kept against not kept. |
+| `blockerCheck` | `[{ id, who, says, namesWhoHoldsIt, saidWhatWasTried, timeGiven, checks: [sentence x 3] }]`, open waits only | checks: "Finance holds it.", "About what has been tried, Rukia Mwangi said, "I emailed twice." (or "Nobody has said what has been tried.")", "No time has been given for it." |
+| `evidenceIndex` | `[{ id, participantId, who, said, backedBy, sessionNumber }]` | said (word for word): "We paid out KES 90K to the Nyama Choma Palace account." backedBy: "A document Rukia Mwangi added shows this." or "The colleague who received this work confirmed it." Only lines somebody has not disputed, and only for those whose words the reader may read. |
+| `busyOrMoving` | `{ eachPerson: [{ participantId, who, says }], cannotTellYou }`, whoever runs the check-in only | "Rukia Mwangi has made 3 commitments across 2 answered sessions. Rukia Mwangi also named 2 things the work was waiting on." There is no count of how many were kept or cleared, because that is the person's own. cannotTellYou: "These are counts of what people said and what came of it. The record does not show how hard anybody worked, or whether the work itself moved, so nothing here says that." |
+
+No section rates, scores or labels a person, and each test checks that the words "score", "rating", "at risk", "slow", "busy", "behind" and the like are not in what is served. The `said` line of `evidenceIndex` is on the list of a person's own words, so the hidden-target rule leaves it as they said it.
+
+Code: `api/src/modules/board/the-switchboards-own-sections.ts` (the builders) and one block in `board.service.ts`. Tests, each read as Amina who runs it, Rukia, Baraka, an admin who only reads, the admin who set up an evaluation check-in, and an admin with no access to it: `risks-on-the-board-as-each-reader-reads-them.spec.ts`, `a-work-plan-on-the-board-as-each-reader-reads-it.spec.ts`, `a-timeline-on-the-board-as-each-reader-reads-it.spec.ts`, `a-person-history-on-the-board-as-each-reader-reads-it.spec.ts`, `a-blocker-check-on-the-board-as-each-reader-reads-it.spec.ts`, `an-evidence-index-on-the-board-as-each-reader-reads-it.spec.ts`, `busy-or-moving-on-the-board-as-each-reader-reads-it.spec.ts`.
+
+For the screens. Thirteen of the 22 needed no new field, and are in the table above under "Served already" with the field to map each to (`G2_SECTION_TO_BOARD_SECTION` can now point Work plan to `workPlan`, Timeline to `timeline`, Person history to `personHistory`, Risks to `risks`, Blocker check to `blockerCheck`, Evidence index to `evidenceIndex`, Busy or moving to `busyOrMoving`, Coaching to `coaching`, Lead actions to `theJudgement.whatToDo`, Deal grid, Obligations and Themes to `workRecords`, Themes also to `whatTheRoomIsAbout`, The other side and Contradictions to `divergence`, Who waited on whom to `dependencies`, Commitments followed over time and Requirements review to `overTime`, Pattern history to `patterns`, Questions for the lead to `decisions`).
+
+Left, and why. Forecast: the record holds no projected figure, so nothing is served (the work-record section still says "not known" for sales org and MarketView Q4). Where the time went: the record does not hold how anybody's time was spent, so nothing is served. Contradictions inside one person's own answers across sessions, and a contract's own clauses for Obligations: not in the record, not served. `overTime` is still served to the lead only, so the lead's Commitments followed over time, Actions and their results and Requirements review read from it; the other readers get their own commitments in `workPlan`.
+
+## Week 11: the ending page's suggestion, signals and questions, and reviews that fall due from inside the product
+
+### The ending page (`GET /grounds/:groundId/resolution`)
+
+The read the ending page already makes now also carries `theEndingPage`. It is built on the server for whoever is reading, after the read has refused anybody who may not read the check-in (an admin without access to a performance plan, a promotion or a renewal still gets "You are not part of this check-in." and nothing else).
+
+| Field | Who reads it | Shape |
+| --- | --- | --- |
+| `theEndingPage.reader` | everybody | `'lead'`, `'person'` or `'admin'` |
+| `theEndingPage.suggestions` | the lead only, and only once the person has had their turn (decision 53) | The week-10 `ForTheLead` shape: `id`, `aboutName`, `headline`, `why`, `whatWouldChangeIt`, `theirOwnAnswer`, `ifYouAgree`, `otherChoices`, `decision`, `mayChangeTheDecision`, `conversationPoints`. No count, no verdict. Decide with `POST /suggestions/:id/decision`. |
+| `theEndingPage.aboutYou` | the person, and a colleague only for what is about them | The week-10 `ForThePerson` shape: `facts` (their own count, theirs alone), `whatWouldChangeIt`, `decision` with `reasons`, `yourSide`, `mayAppeal`. Never the headline, the lead's why, or the verdict. |
+| `theEndingPage.appealed` | an admin | Suggestions only once appealed (`ForAnAdmin`). |
+| `theEndingPage.signals` | the lead, the admin who set the check-in up, and each person for their own | `[{ id, participantId, yours, heading, whatHappened, howOften, theirWords, whoSeesIt }]`. The same rule as every other pattern (three check-ins, the person first, never every admin). A person is an id for you to place, never joined to a name. |
+| `theEndingPage.questions` | the lead only | `[{ aboutName, question }]`. |
+
+What a lead reads, for a person the suggestion was reached for:
+
+- "Groundwork suggests extra support for Kwame"
+- Why: "Commitments have been kept less often than Groundwork looks for, over several check-ins."
+- What would change it: "Keeping more of what is agreed, over the next few check-ins."
+- Questions: "Were Kwame's goals clear enough from the first day?" and "Is there something Kwame needed from you or from the team that has not been given yet?"
+
+What the person reads: "In the last few check-ins, you kept 2 of 8 commitments. That is 25 in 100. When fewer are kept than Groundwork looks for, Groundwork suggests extra support to your lead." and, once decided, the decision with its reasons.
+
+Until the threshold in decision 61 is crossed (fewer than half kept, at least 6 settled), there is no suggestion, so `suggestions` and `aboutYou` are empty lists, and the page should draw nothing for them rather than a line saying nothing was found.
+
+### Reviews (`/suites/reviews`)
+
+- `GET` the board: each `next[]` row now has `proposal`, a sentence when Groundwork proposed the review itself, else `null`. "Groundwork suggests a review for Kwame, because a check-in about Kwame's work has ended. Nothing is sent to Kwame unless you say yes." or "Groundwork suggests a review for Kwame, because your organisation asked for reviews on a regular date and this is the next one. Nothing is sent to Kwame unless you say yes." Show it beside "Start it". `mayStart` is unchanged: only whoever writes the review with the person may say yes.
+- `POST` start is unchanged, and is the only thing that starts a review. Nothing starts one on its own, and nothing is sent to the person before it.
+- One review: the writer's shape has `suggestion`, the week-10 lead shape for that person on a check-in the writer runs (or `null`). `noticed` is now written from the record when the writer says yes: "Wairimu decided on “Extend evaluation period” at the end of “Kwame, first 90 days” on 20 September 2026, and said why, “He needs another month on the supermarket accounts”." All marked `proven`. No rating, no label, no count of what was kept. A line from an evaluation check-in is read by the writer and the person only.
+
+### The four marks on every line of the reports (request 2, week 6b, decision 43)
+
+Every line a lead reads in a report now carries one of the four marks, decided by the product from the record lines behind it and never by the model. The wording is the prototype's: "Proven", "Confirmed by the person who received it", "Only someone’s word", "From memory only". Each mark is served as two fields, the machine word and the words to print: `mark: 'proven' | 'confirmed' | 'said' | 'memory'` and `markSays`.
+
+A line the model wrote is tied to the record lines it restates (at least two of a record line's own key words, and three quarters of them). It takes the mark of those lines. When several stand behind it and they are not all known the same way, it takes the weakest, in the order proven, confirmed, only someone's word, from memory. It then also carries `marksBehind` (the different marks, strongest first) and `markNote`: "This line rests on more than one thing people said, and they are not all known in the same way. It carries the mark of the one that is known least well." When no record line stands behind it, the mark is `said`, "Only someone’s word". A finding is marked from that person's own lines only. The marks never name a file, never say who said a line and never say how anybody's answers were rated.
+
+The older figure-only marks are kept. Where a line carries a figure, `figureIs` ("their estimate" or "from memory") is still there, and the line also reads `memory`.
+
+| Where | Field |
+| --- | --- |
+| Team report `GET /grounds/:id/report`, the shared picture | `sharedPictureLines: [{ text, mark, markSays, marksBehind?, markNote?, figureIs? }]`, one per sentence. `sharedPicture` itself is unchanged. |
+| Team report, agreements | `agreementMarks`, one per agreement, in the same order as `agreements` (which stay plain strings). |
+| Team report, differences (lead and admin, as before) | each item in `divergences` carries `mark`, `markSays` and the rest; each side in `positions` carries them for what that person said; `evidenceMarks` is in the same order as `evidence`. |
+| Team report, findings | each item in `findings` carries `mark` and `markSays` (only the reader's own for a participant, as before). |
+| Team report, lines from the record | `myRows[]` and `whatTheGroundCanTellYou.whatTheRecordHolds[]` now also carry `markSays`. |
+| Session report | each item in a section carries `markSays` beside `mark`; `whatEachPersonSaid[].lineMarksSay` goes with `lineMarks`; `whereThingsStand.settledMarks` and `openMarks` go with `settled` and `open`; each `openWithReasons[]` item carries `mark`, `markSays`, each of its `positions` carries them, and `restsOnMarks` goes with `restsOn`. |
+| Board | `divergence.items[]` carry the same marks as the report; `divergence.agreementMarks`, `divergence.settledMarks`, `divergence.stillOpenMarks`; `eachPerson[].findingMark`, `findingMarkSays` (and `findingMarkNote` when they differ); `whoOwnsWhat[].items[]` now also carry `markSays`. |
+
+When they are worked out. When the report is built from the record, and stored with it. Opening a report or a board reads what was stored and asks nothing. A report stored before this change has no marks on its model-written lines, and those lines simply carry none: the screens draw nothing when the field is absent. They fill in the next time something new comes in and the report is built again. A closed round's kept lines carry none either, because they were kept as they were.
+
+Code: `api/src/modules/reports/the-mark-on-every-line.ts`, written at the synthesis write in `reports.service.ts` and attached at `asItWasShared`, the door every report and board read goes through. Tests: `the-mark-on-every-line.spec.ts`.
+
+## Request 9, part (d): the weekly report's sentence about each person (1 October 2026, week 12b)
+
+The engine now serves one part of the weekly report: what this week shows about each person, in one plain sentence each. The rest of the weekly report (the numbers, the three-in-a-row things, what changed, what to do next week) is still to come, so the screens should draw only this part for now.
+
+`GET /grounds/:groundId/report/week` returns:
+
+```
+{ weekStart: "2026-09-21" | null,      // the Monday, in Lagos
+  builtAt: date | null,
+  saying?: string,                      // said when there is nothing to show, for example "No check-in has come in this week yet, so there is nothing to say yet about what people named."
+  eachPerson: [{ who: string, isYou: boolean, says: string }] }
+```
+
+Who reads what. Whoever runs the check-in (and an admin of the organisation, on an ordinary check-in) reads every sentence, with names. A person in the check-in reads only the sentence about themselves, written to them ("You named Green Mart this week, and gave a next step and a date."), and never another person's. An admin who was not given access to a performance plan, a promotion or a renewal, and anybody outside the organisation, get the usual "Check-in not found". Nothing is ever said about how anybody's answers were rated.
+
+What it says, written from what people named (a customer or company, a date, a next step, a document behind it), never from a rating:
+- "Aisha named Green Mart and Nyama Choma Palace this week, and gave a next step and a date."
+- "Baraka named Mama Fresh this week, but gave no next step or date, so it is not yet clear what happens next."
+- "Baraka gave a date this week, but named no customer, so it is not yet clear who it is for."
+- "Baraka's account named no customer, date or next step this week, so there is nothing yet to follow up on."
+- "Baraka has not checked in this week, so there is nothing here yet about what Baraka is working on."
+
+There is one sentence per person and no sentence compares two people, so the screens should list them as they come and never group, sort or rank them. The prototype's "Aisha and Miriam consistently get to..." cannot be said from one week, so the engine does not say "consistently".
+
+When it is worked out. When a check-in comes in, and stored without names (by the report's labels; names go in when it is served). Opening the page builds nothing. The product writes the sentence from the record, so no model and no prompt version are involved.
+
+Code: `api/src/modules/reports/the-weekly-sentence-about-each-person.ts`, `the-weekly-report.service.ts`, `the-weekly-report.controller.ts`. Tests: `the-weekly-sentence-about-each-person.spec.ts`.
+
+## Week 17: Ask Groundwork answers "What should I do next?", "What did Femi say last week?", and says where every answer came from
+
+### A new block, `source`
+
+Every reply is still `{ blocks, composedBy, lane }`. There is one new block type, `source`, which is a link-like block saying which record an answer was built from:
+
+```
+{ "type": "source",
+  "label": "Femi's check-in of 24 September on Sales team, Q3",
+  "says": "This is from Femi's check-in of 24 September on Sales team, Q3.",
+  "href": "/grounds/<groundId>/session/2",
+  "kind": "check_in" | "report" | "to_dos" | "commitments" | "today",
+  "id": "<groundId>"            // only where the record is on a check-in
+}
+```
+
+- The same sentence (`says`) is already the last line of the text block, so a screen that draws only the text still tells the reader where it came from. Draw `label` as the link and do not print `says` a second time.
+- `href` is a path within Groundwork, relative on purpose, as for `next_step`. The four paths are the round's report (`/grounds/:id/session/:n`), the report on a check-in (`/grounds/:id/report`), your to-do list (`/suite/todos`), your commitments (`/you`) and Today (`/today`).
+- An answer can carry more than one `source` block, in the same order as the parts of the text, when it draws on more than one check-in.
+- The older answers that read a record now carry one too: "What is on my list?" (kind `to_dos`), "What did I commit to?" (`commitments`), "Where am I needed?" (`today`) and "What came of it?" (`report`). An answer with nothing behind it (an empty list, "I cannot show you that.") carries none.
+
+### "What should I do next?" (lane `what_next`)
+
+One thing first, with why, and the rest counted, never listed. Built only from the reader's own open commitments, their own to-dos, and what is waiting on them (what Today reads). The order is: a commitment whose date has passed, then somebody waiting on you, then the to-do with the nearest date (or the oldest), then the open commitment with the nearest date. What a person reads, for example:
+
+> Start with "Send the Westgate price list". You said you would do it by Friday, and the date you gave has passed, so whoever is counting on it is still waiting. Either do it, or tell them when it will happen. After that, one more thing is open. Ask me what is on your list, or where you are needed, to see them.
+>
+> This is from the commitments you have made in your check-ins.
+
+Or, when somebody is waiting on you: "Start with Femi. Femi is waiting on you for the discount approval, and has been for 6 days. Nobody else can clear this one." When nothing is open: "I have nothing to put first. You have no open commitments or to-dos, and nobody is waiting on you in the record. That can also mean something has been said somewhere I cannot see."
+
+### "What did Femi say last week?" (lane `what_did_they_say`)
+
+Answered only with what the asker may already read of Femi's words. The engine lists the check-ins the asker may read at all (the same rule as everywhere else, so an admin with no access to a performance plan, a promotion or a renewal gets nothing from it), and reads the newest round of each as the asker. So Femi's lines come word for word only where the report serves them to the asker; before a round is released a colleague gets the wall's own sentence instead; in an evaluation check-in the person being reviewed gets the facts sentence. Femi's own report, the questions anybody asked Ask Groundwork, a lead's private notes and anybody's load are never opened.
+
+What a person reads:
+
+> Here is what Femi said in their check-in of 24 September on Sales team, Q3.
+> - "Shipped the price list to Harbor Foods."
+> - "Still waiting on finance for the Green Mart terms."
+> This is from Femi's check-in of 24 September on Sales team, Q3.
+
+When the words are not served to the asker: "I cannot show you Yemi's words from their check-in of 30 September on Kilimani launch. Answered. What they said opens to you when the report releases." When there is nothing the asker may read: "I cannot show you that. I have nothing from Femi in the check-ins you can read." That sentence is the same whether Femi said nothing or said something the asker may not read, on purpose. When the asker named a time and nothing fits it, the answer says so ("I cannot find anything Femi said today in a check-in you can read. The most recent I can show you is below.") and gives the most recent, dated. Up to three check-ins are read out, newest first, each with its own source. A person's own words are read back as "you" and "your check-in".
+
+### The wording of the answers
+
+A model may reword these answers, but the engine refuses the reworded version, and sends its own words, if any name, number, date or quoted line is not exactly as the record gave it. The quoted-line check is new and applies to every answer Ask Groundwork words, not only these.
+
+### A guest
+
+A guest is still answered only about their own check-in (decision 36). "What did Femi say last week?" gets the plain list of what they can ask; "What should I do next?" gets their own commitments from their own check-in and nothing of anyone else's.
+
+Code: `api/src/modules/assistant/what-they-said-that-you-may-read.ts`, `what-to-do-next.ts`, `a-source-says-where-it-came-from.ts`, the `source` block in `a-reply-is-a-payload-not-a-string.ts`, the two lanes in `the-router-is-deterministic.ts`. Tests: `what-they-said-and-what-is-next-as-each-reader-reads-it.spec.ts`.
+
+## Week 18: Ask Groundwork changes things by talking, after a yes
+
+Three changes, each said back as a yes or no question and written only when the person answers yes through `POST /ask/answer` (the answer for the proposal block the reply carries, exactly as for adding a to-do). A no writes nothing. The question and the sentence after the yes are the product's own words. A model is never asked to word them, so there is nothing for the screen to reword either.
+
+**Who may change what.** A person changes only their own commitments and to-dos. A lead may also move the deadline of a commitment the lead made for somebody, on a check-in the lead runs. Nobody marks somebody else's commitment done, lead or not. The rule is checked again at the moment of the yes, not only when the question was asked.
+
+What a person reads, where the day is read in code (a day that cannot be read is asked for, and a day that has passed is asked about again):
+
+- Moving your own: "Shall I move "Send the Westgate price list" from Friday 2 October to Tuesday 6 October?" After a yes: "I have moved "Send the Westgate price list" to Tuesday 6 October."
+- A lead moving one they set for somebody: "Shall I move "Call the Kisumu depot", which you set for Baraka, from Monday 5 October to Wednesday 7 October?" After a yes: "I have moved "Call the Kisumu depot" to Wednesday 7 October."
+- With no day yet: "Shall I set "X" to be done by Tuesday 6 October?" and "I have set "X" to be done by Tuesday 6 October."
+- Adding one (always the asker's own): "Shall I add "Book the room for the launch" as something you will do by Friday 2 October?" After a yes: "I have added "Book the room for the launch" as something you will do by Friday 2 October." With no day said, none is made up: "Shall I add "Call the Naivasha depot" as something you will do?"
+- Marking done, now said back first for a to-do and for your own commitment: "Shall I mark "Call the Kisumu depot" as done?" After a yes: "I have marked "Call the Kisumu depot" as done."
+- On a no, for all three: "I have left it as it was. Nothing was changed."
+- A date that cannot be read: "I could not read a date from "next sprint". Which day do you mean? For example, Tuesday 7 October." A date that has passed: "Wednesday 2 September has already passed. Which day do you mean?" A day in another year carries the year.
+- Somebody else's, when the asker names them: "Only Baraka can change what Baraka said they would do." It is said only when the asker typed the name, so it tells them nothing they did not say.
+- If the lead has left the check-in by the time of the yes: "Only Baraka can change what Baraka said they would do. You can no longer move it for them, so I have changed nothing."
+
+Phrasings that start each: "move X to Tuesday", "push X back to Friday", "change the deadline on X to 7 October"; "add a commitment: X by Friday", "commit me to X"; "mark X as done", "tick off X", "done: X". The proposal kinds are `move_deadline`, `add_commitment` and `tick_off`, and the reply's `lane` is `move_a_deadline`, `add_a_commitment` or `tick_off_a_to_do`.
+
+Moving a deadline also moves the check-in's own record of it where the commitment came from a check-in, so the two never disagree. Not done this week: moving the date of a target that lives on the company's targets page (there is no route for it yet), and a route in the panel API to move a deadline (adding and marking done already share their writer with Ask Groundwork).
+
+Code: `api/src/modules/assistant/a-change-said-back-first.ts` (reading and wording), `a-commitment-has-one-writer.ts` (the one writer, also used by `/commitments`), the lanes in `assistant.service.ts`. Tests: `changing-things-by-talking-is-said-back-first.spec.ts`.
+
+## Week 25: the lead is told while the report is still being written
+
+The lead's read of the report (`GET /reports/:groundId`) carries a new field, `beingWritten`, for as long as a new report of that check-in is being written, and only then:
+
+```
+beingWritten: {
+  since: "2026-10-01T10:00:00.000Z",
+  sentence: "The report is being written with what Amani and Baraka said. It will include everyone in a few minutes."
+}
+```
+
+- It is there only for the person who runs the check-in. Nobody else reads it, and it is absent (not null) when nothing is being written.
+- The sentence is ready to show as it is. The names go through the same naming wrapper as every other line of the report, so a person the lead may not see named reads as "a colleague". With more than three people answered it reads "with what Amani, Baraka, Chidi and others said". With nobody answered yet it reads "The report is being written. It will include everyone in a few minutes."
+- It is removed by the engine when the report is finished. Screens should show it above the report and stop showing it when the field is gone; reading again after a minute or two is enough. Opening a report never starts one being written.
+- Until the very first report of a check-in exists, the read still answers "there is no report yet" with its reason, as before.
+
+Code: `api/src/modules/reports/the-report-is-being-written.ts`, `withBeingWritten` in `reports.service.ts`. Tests: `the-report-is-written-in-parallel.spec.ts`.
+
+## Week 19: think it through, in Ask Groundwork
+
+A new lane, `think_it_through`, lays out options before anything is written. It writes nothing, parks nothing and decides nothing (decisions 12 and 13). The reply has no `proposal` block and no `picker`: it is one `text` block, with `lane: "think_it_through"`, `composedBy: "model"`, and a new `promptVersionId` on the reply that says which stored prompt version ran (the prompt is stored as `think_it_through` and can be changed at `/prompts`). A reply that could not be made, or was refused by the checks, is a plain `text` block with `composedBy: "rules"` and no `promptVersionId`.
+
+It starts on "help me think through the Q4 target", "what are my options for the Atlas deadline", "let us think it through", "weigh up my options" or "brainstorm how to hit the quarter". "Set a target for Q4" still opens the target draft, and "add a commitment: X" still says the change back first.
+
+What a person reads (two to four options, the frame is the product's and the three sentences in each option are the model's, checked):
+
+- "Here are three options for the Q4 target. I am not choosing for you, and nothing has been written."
+- "The first option is to keep the target at 3." (then "The second option is to raise the target.", "The third option is to keep 3 and add a review point."; the model gives each title as a short phrase starting with a lower-case verb and code joins it after "The first option is to") then three sentences on their own lines, always starting "It would mean that", "It assumes that" and "You would know it is working if".
+- When nothing written down could be read: "I found nothing written down about this that you can read, so these options come only from what you told me."
+- The last paragraph, always: "Would you like me to turn one of these into something concrete? I can help you set it as a target, add it as a commitment, or keep it as a line of context. Tell me which option and which of those, and I will say exactly what I would write, and I will write nothing until you say yes." That is only a question. The next message is routed as usual, so each of the three is said back first and waits for a yes.
+- With nothing named: "What would you like to think through? Tell me the target, the decision or the plan, and I will lay out the options."
+- If the model cannot be reached: "I could not lay out options just now, so I have not suggested anything and nothing has been written. Ask me again in a moment."
+- If fewer than two options pass the checks: "I could not put together options that stay within what you told me and what you can already read, so I have not suggested any. Nothing has been written. Tell me a little more about what you are deciding, such as the number or the date you have in mind, and I will try again."
+
+The checks, in code: any option that uses a number, a number in words, a name, a month or a day that was not in the question or in what the reader may read is dropped. So is any option that does not keep its three sentences, or that recommends ("I recommend", "you should", "the best option" and similar). The screens need not reword or filter anything.
+
+Who reads what: a participant's options come from their own targets and commitments only, and no check-in report is opened for them. A lead or an admin also has what the check-ins they may read serve to them (the same read as "what did Femi say"), so an admin with no access to a performance plan, promotion or renewal gets nothing from it. Private reports, questions to Ask Groundwork, a lead's private notes and a person's load across check-ins are never read.
+
+Code: `api/src/modules/assistant/think-it-through.ts`, the lane in `assistant.service.ts`, the rule in `the-router-is-deterministic.ts`, the capability in `what-the-assistant-can-do.ts`, the seed in `conversation/prompt-library.ts`. Tests: `think-it-through.spec.ts`.
+
+## Week 20: memory that lasts beyond one check-in (request 17 part e), and leave dates said in chat
+
+### What the lead is asked, and what is kept
+
+When the lead says something in the setup conversation (the context chat, also reached through Ask Groundwork) that is true of the whole company, the setup conversation offers to keep it for the organisation. It is a rule, a definition, a principle, who owns something, or something about a client. The offer is its own say-back, in the lead's own words, and only a yes keeps it:
+
+- "Shall I keep "Every quote over 1 million needs Amina's sign-off" as a rule for the whole organisation, so later check-ins and Ask Groundwork can use it?"
+- The kind reads "a rule", "a definition", "a principle", "who owns something" or "something about a client".
+- After the yes: "I have kept "Every quote over 1 million needs Amina's sign-off" as a rule for the whole organisation. Later check-ins and Ask Groundwork can now use it. You can see it on the Company page."
+- After the no: "I have not kept that for the organisation. It stays only on this check-in." The offer is deleted; nothing of it is kept.
+
+On the two doors the screens already use:
+
+- `POST /grounds/:id/context-chat` returns `proposal: { gap: 'organisation_memory', say, offerId }`. `POST /grounds/:id/context-chat/confirm` takes `{ said, offerId }` for the yes. New: `POST /grounds/:id/context-chat/decline` takes `{ offerId }` for the no. Only the person who was asked can answer. A yes that carries an `offerId` never reads a value from the screen; what is kept is the row that was offered.
+- Through Ask Groundwork nothing changes for the screens: the say-back arrives as the usual `proposal` block, and the yes or no goes to `POST /ask/answer`.
+- Only one question waits at a time. When the lead's turn has already produced another proposal (an answer to the open question, a target for a person), nothing is offered on that turn.
+
+Never offered: anything in a message where the lead asked for privacy ("keep this between us", "private", "off the record" and the like); a sentence that names someone on the check-in and judges or worries about them; a sentence that is not, word for word, what the lead typed; anything said by a participant (the setup conversation is the lead's, and an admin covering for a lead who has left); and anything a lead's private note carries, because private notes have their own road and never come here.
+
+### Where it is kept, and who reads it
+
+Kept in the new table `organization_memories` (`OrganizationMemory`): `kind`, `text` (the lead's own words), `status` (`OFFERED` until the yes, then `KEPT`), `sourceLine`, `offeredById`, `keptById`, `keptAt`. It sits next to the knowledge cards ("how we do it here") and is kept apart from them on purpose: a card is what the company wrote down, and what a person says is held up against it; this is what a lead said, and it is only context. An offer that has not been said yes to is read by nothing.
+
+`GET /company` carries a new field, `whatWeKeep`, for an admin, a lead (organisation role), and anybody who runs a check-in. For everyone else the field is absent, not empty. It reads:
+
+```
+whatWeKeep: {
+  readBy: "Admins, leads and anyone who runs a check-in can read this. Everyone else cannot.",
+  items: [
+    { id, kind: "rule", says: "Every quote over 1 million needs Amina's sign-off", source: "Picked up from your check-in on 22 September" }
+  ]
+}
+```
+
+`readBy` is ready to show, so the page can say who reads it. Newest first. The prototype's "Waiting for your confirmation" list with Confirm, Edit and Not now is not served: the question is asked and answered in the conversation, where the yes is said. If you want those three buttons on the page, tell me and I will add the waiting list and its routes.
+
+### Who is given it
+
+- Ask Groundwork: a question about how something is done is answered from the kept words too, for the same readers as the page: "Your organisation has kept this from a setup conversation." and then the sentence in quotation marks. It never says who said it or when. Anybody else is told "Your organisation has not written anything down about that here. If it should have, whoever set Groundwork up can add it."
+- Later check-ins: the session's instructions carry the kept sentences as context, under "WHAT THIS ORGANISATION HAS ASKED US TO KEEP IN MIND", with the rule that they are never quoted, never attributed, and never treated as what the person said. They are kept out of "how this company says it works", so a person's account is never compared with them.
+
+### Leave dates said in chat
+
+Leave dates said in the setup conversation or to Ask Groundwork ("I need next Thursday and Friday off") go to the leave suite, never to the record. The days are read by rules from what was said and today's date, and nothing is guessed: "Monday and Wednesday" is not read, because it could include Tuesday. It is said back and sent only on a yes:
+
+- "You asked for leave from Thursday 8 October to Friday 9 October, which is 2 working days. You have 16 days of leave left this year, and nobody else in Sales is off then. Shall I send it to Wairimu to approve?" (the approver's first name where the organisation has said "their manager" and that manager is a lead or admin; otherwise "an admin". The days left and the team clause are left out when they are not known.)
+- After the yes, through `LeaveBoardService.ask`: "I have sent your leave request from Thursday 8 October to Friday 9 October to Wairimu. It is not approved until they decide, and you will see it under your leave."
+- After the no: "I have not sent it. Nothing was kept."
+- While the suite is off: "Leave requests are not switched on in your organisation, so I have not sent or kept these dates. An admin can switch them on under Suites." Nothing is parked, recorded or remembered, not even in the person's private Ask Groundwork history.
+
+Through the setup route it arrives as `proposal: { gap: 'leave_request', say }` and the yes is `confirm` with `{ said, leave: true }`. Through Ask Groundwork it is lane `ask_for_leave`.
+
+Code: `api/src/modules/knowledge/what-the-organisation-keeps.ts` (the rules and the words), `organisation-memory.ts` (the table), `api/src/modules/suites/leave-said-in-chat.ts`, the hooks in `grounds.service.ts` (`contextChat`, `applyContextProposal`, `declineContextOffer`), `assistant.service.ts`, `conversation.service.ts` and `company.service.ts`. Tests: `organisation-memory.spec.ts`, `organisation-memory-through-the-setup-chat.spec.ts`, `organisation-memory-and-leave-through-ask-groundwork.spec.ts`, `kept-organisation-memory-reaches-the-prompt.spec.ts`, `leave-said-in-chat.spec.ts`, and the company page spec for each reader.
+
+## Hours and spending said in chat (weeks 21 and 22, requests 21, 22 and 26)
+
+Who approves, for leave, hours and spending alike: the person's line manager in the staff directory when that manager is a lead or an admin here, otherwise an admin. The person who runs a check-in does not approve just because they run it, and nobody approves their own. It is one function (`whoApprovesFor` in `api/src/modules/suites/who-approves.ts`), and the leave board, the time sheets board and the spending board all follow it. This is recorded as decided for Hafsah to confirm. The suite's own answer to "Who approves?" no longer changes who decides for leave and hours, so that question can leave the suite's setup page when you next touch it; spending still has its limit and the named person above it.
+
+Both go through Ask Groundwork only (lanes `log_hours` and `ask_to_spend`), as a text block and a proposal block with Yes and No, exactly like leave. Neither is in a check-in's record, a report, a pattern, or the person's Ask Groundwork history.
+
+### Hours (lane `log_hours`)
+
+- Said: "I did 6 hours on Atlas today". Read by rules: the hours, a project from the admin's list, and a day that was said (today, yesterday, a weekday, a date). A day, a project or an amount that is not certain is asked, never guessed.
+- Said back: "Shall I log 6 hours on Atlas for Thursday 1 October and send it to Wairimu to approve?" (several projects: "Shall I log 3 hours on Naivas Ngong Road and 1 hour on Lakeside for Wednesday 30 September and send it to Wairimu to approve?"). With no line manager it says "an admin".
+- After the yes, through `TimeSheetsService.record`: "I have logged 6 hours on Atlas for Thursday 1 October and sent it to Wairimu to approve. It is not approved until they decide, and you will see it under your hours." The hours then wait for the approver on the time sheets board.
+- After the no: "I have not sent it. Nothing was kept."
+- Suite off: "Time sheets are not switched on in your organisation, so I have not sent or kept these hours. An admin can switch them on under Suites." Nothing is parked or kept.
+- Asked again: "I do not have Zebra on the list of clients and projects. Which one did you mean? The ones I have are Atlas, Naivas Ngong Road and Lakeside." / "Which day was that? Tell me the day, for example today, yesterday or a date, and I will ask again." / "Monday 5 October has not come yet. Tell me the day the hours were on, and I will ask again." / "I could not tell how many hours that was. Tell me the number of hours and the project, for example 6 hours on Atlas, and I will ask again."
+
+### Spending (lane `ask_to_spend`)
+
+- Said: "I spent 12,000 on fuel for the Kisumu trip" or "Can I spend KES 18,000 on fuel for the Kisumu deliveries?".
+- Fits: "You asked to spend KES 12,000 on fuel for the Kisumu trip. Operations has KES 38,000 left for October, so that fits. Shall I send it to Wairimu to approve?"
+- Over the budget: "You asked to spend KES 12,000 on fuel for the Kisumu trip. That is over the Operations budget left for October, which is KES 8,000. Shall I still send it to Wairimu to approve?" (It names the person's team, not a category: the budget in the product is per team.)
+- Over the rule: "... This is over KES 20,000, so Grace must approve it. Shall I still send it to Grace to approve?"
+- After the yes, through `SpendingService.ask`: "I have sent your request to spend KES 12,000 on fuel for the Kisumu trip to Wairimu. It is not approved until they decide, and nothing is spent until then."
+- After the no: "I have not sent it. Nothing was kept." Suite off: "Spending requests are not switched on in your organisation, so I have not sent or kept this. An admin can switch them on under Suites."
+- Asked again: more than one amount, a currency that is not the organisation's ("Your organisation counts spending in KES, and you wrote USD. Tell me the amount in KES and I will ask again."), or no reason ("What is the KES 12,000 for? Tell me in a few words and I will ask again."). A person is told only what their own team has left, never anybody else's spending.
+
+### Still open for the screens
+
+The approver is not yet told on Today. Today is built in `grounds/what-needs-you*`, which this work did not change, so it needs one new kind of item there ("Aisha has asked for leave", "Brian has sent hours to approve", "Kamau has asked to spend KES 18,000"), read from the leave, time sheets and spending boards for the person who may decide. Until then the approver finds them on the three suite boards, which already show Approve and Decline only to the right person.
+
+Code: `api/src/modules/suites/hours-said-in-chat.ts`, `spend-said-in-chat.ts`, `who-approves.ts`, and the lanes in `api/src/modules/assistant/assistant.service.ts`. Tests: `suites/hours-and-spending-said-in-chat.spec.ts` and `assistant/hours-and-spending-through-ask-groundwork.spec.ts`.
+
+## Being away (week 23)
+
+Approved leave is read by its dates only (decision 31): never the reason, never the kind of leave. Leave that is waiting, declined, not yet started or over changes nothing. The one read is `api/src/modules/suites/who-is-away.ts`.
+
+While somebody is away today:
+
+- **The round does not wait for them.** They are not counted as still to answer, the round closes and the report releases without them, and the board, the list and the report's count leave them out. If they answer anyway, they count like anybody.
+- **No reminder or "you have missed" mail goes to them.** The mail door refuses nudges, the absence mail, "your check-in is open", the invitation-about-to-lapse mail and the feedback request while they are away. The manual and scheduled chases skip them, and the lead's "who has not started" list leaves them out. A check-in that opened while they were on leave is never a missed one.
+- **Nothing counts against them.** A promise not kept on a day of leave is not a miss in the kept count (You board and suggestions), a pattern's streak is paused and not broken by a period spent on leave, and coaching is not offered while they are away.
+
+### What each person reads (decided for Hafsah to confirm)
+
+The ground read (`GET` of a check-in) and the board now carry `whoIsAway`, a list with one entry for each person who is away and not waited on: `{ participantId, until, says }`. It is empty when nobody is away. Please show `says` as it is.
+
+- **The lead (and an admin who runs it):** "Yemi is on leave until Friday 2 October, so this round does not wait for Yemi."
+- **A colleague:** "Yemi is away until Friday 2 October." Only where the check-in already shows that person to them by name. A colleague who is not shown the person by name reads nothing.
+- **The person themselves:** "You are on leave until Friday 2 October, so this round does not wait for you."
+
+The count a person reads ("Four of the five people have answered") now counts the people the round waits on, so it can drop by one while somebody is away. `sessionProgress` also carries `awayUntil` (participant id to last day) beside `missingParticipantIds`, which no longer lists somebody who is away.
+
+Tests: `suites/being-away-as-each-reader-reads-it.spec.ts`, `conversation/being-away-no-reminders.spec.ts`, `email/no-reminder-to-somebody-who-is-away.spec.ts`.
+
+## Week 24: Ask Groundwork for a guest, within their own check-in (decision 36)
+
+Nothing new is needed on your side to show a guest's answers: they come back in the same reply shape as a member's (`blocks` with a `text` block, and a `proposal` block when a change is said back). `GET /ask` and `POST /ask` already work for a guest and name the check-ins they may ask about in `about`. Two things to know.
+
+**What a guest can now ask, each answered only from their own check-in and their own part in it.** `lane` on the reply tells you which: `guest_said`, `guest_purpose`, `guest_who_reads`, `guest_next_step`, `guest_done`, `guest_move`, and the older `guest_agreed`, `guest_stuck`, `guest_mine`, `guest_report`, `guest_next`, `guest_help`, `guest_outside`, `guest_a_request`.
+
+- "What did I say?" reads: "This is what you said in Sales team, Q3, as it is on your record." and then their own lines, one to a line. A line they have disputed, or one the product only inferred, is left out.
+- "What is this check-in for?" reads: "This is what you were told about Sales team, Q3." and then the same description a participant is shown. Never the lead's own brief.
+- "Who reads what I say?" reads: "The people in Sales team, Q3, including the person who runs it, can see what you say in it. Admins of the organisation that runs this check-in can read every check-in. Your own report and your questions to Ask Groundwork stay private. What you say is used to build the shared picture for this check-in and nothing else, and it does not train a model. Your answers are stored on our servers, and they are processed by Google's models to build the record." The admins sentence is left out on a performance plan, a promotion or a renewal, and where the kind of check-in is not known.
+- "What should I do next?" puts one of their own open commitments first: `Start with "Send the Harbor Foods price list". You said you would do it, and you said Friday. After that, one more thing is still open in Sales team, Q3. Ask me what you said you would do to see them.` It carries no source link, because a guest has no "You" page to open.
+- "Mark the price list as done" is said back as a question with a `proposal` block: `Shall I mark "Send the Harbor Foods price list" as done?` Only `POST /ask/answer` with a yes writes it, and then: `I have marked "Send the Harbor Foods price list" as done.` A no says: `I have left it as it was. Nothing was changed.`
+- "Move the price list to Friday" is said back the same way: `Shall I move "Send the Harbor Foods price list" from "Friday" to Friday 9 October?` and after a yes `I have moved "Send the Harbor Foods price list" to Friday 9 October.` A day that cannot be read, or has passed, is asked for again.
+
+A guest can change only a commitment they said themselves, in the check-in they are in. Not a colleague's, not one the lead set for them, and not one already finished. Anything else is answered with: "You are a guest here from another organisation, so Ask Groundwork can only answer questions about your own check-in, such as what you said, what you said you would do, what the check-in is for, who reads what you say, and when your next check-in is." Asking it to add a to-do or change a target is answered with a sentence that also says what it can do.
+
+**Change for the screens.** `POST /ask/answer` used to refuse every guest with "There is nothing waiting for your yes." It now takes a guest's yes or no for the one change above that was said back to them last, and still refuses a stale yes, somebody else's, or a yes after they have asked something else. If the guest screen hid the yes and no buttons because a guest never had a `proposal` block, show them when one arrives, as for a member.
+
+Questions, answers and waiting requests for a guest are kept under their own key only, as before. Tests: `ask/ask-groundwork-as-each-reader-reads-it.spec.ts`, "a guest asks about their own work in their own check-in (week 24)". One older test changed: `assistant/what-they-said-and-what-is-next-as-each-reader-reads-it.spec.ts` pinned "What should I do next?" as the question "mine" for a guest, which listed everything they said they would do. It is now its own question, `next_step`.
+
+## Week 21: the approver is told on Today (requests 21, 22 and 26)
+
+Today now carries what is waiting for the reader to approve: leave requests, hours and requests to spend. It is a new kind of item in `needs`, with the same shape as the others: `kind: "decide"`, a `title`, a `detail`, an `action` and an empty `groundId` (there is no check-in behind it). The `key` is `approve-leave-N`, `approve-hours-N` or `approve-spend-N`, or `approve-leave`, `approve-hours` and `approve-spend` for a count. Please show `title` and then `detail` as they are.
+
+It is told only to the person who approves it, by the same rule as the boards (`mayApproveFor`): the person's manager in the directory when that manager is a lead or an admin, otherwise an admin, and never to the person themselves. A member, a guest, a colleague and an admin who is not the approver for that person read nothing. Nothing appears while a suite is switched off.
+
+Up to two of a kind are each said. Three or more are said once, with the count. Each links to its board.
+
+- Leave (title, then detail; dates only, never the reason or kind, and one day is said as "on"): "Amani asked for leave from Thursday 8 October to Friday 9 October." "It is waiting for you to approve." Action: "Look at it", `/suite/leave`. Count: "3 leave requests are waiting for you to approve." Action: "Look at them".
+- Hours (what was sent, never how much somebody works): "Baraka sent 6 hours on Atlas for Thursday 1 October." "They are waiting for you to approve." When the hours are on more than one day: "Baraka sent 9 hours on Atlas and Zeta for the week of Monday 28 September." Action: "Look at them", `/suite/time`. Count: "Hours from 3 people are waiting for you to approve."
+- Spending: "Baraka asked to spend KES 12,000 on fuel for the Kisumu trip." "It is waiting for you to approve." Action: "Look at it", `/suite/spend`. Count: "3 requests to spend are waiting for you to approve."
+
+These items are in the count beside Today and in the "new" count on "Choose an organisation", because they are in `needs`. The time sheets board rows also now carry `days`, the days of that week that have hours.
+
+Tests: `grounds/what-is-waiting-for-you-to-approve-as-each-reader-reads-it.spec.ts`.

@@ -123,7 +123,7 @@ describe('and never an address as a name (screens requests 56, 58, 65)', () => {
     const called = whatEachLabelIsCalled(parties, { viewerParticipantId: null, viewerIsLead: true, peersAreNamed: true });
     const said = withoutInternalLabels('x', called) && require('./no-internal-label-reaches-anyone').withoutAddressesAsNames('Start with zawadi.u8@example.test. The record holds nothing about zawadi.u8@example.test.', called);
     expect(said).not.toContain('@');
-    expect(said).toMatch(/^Start with (a|another) colleague\. The record holds nothing about (a|another) colleague\.$/);
+    expect(said).toMatch(/^Start with (a|one|another) colleague\. The record holds nothing about the same colleague\.$/);
   });
   it('and an address that is nobody here is left alone, as is a field that is an address', () => {
     const called = whatEachLabelIsCalled(parties, { viewerParticipantId: null, viewerIsLead: true, peersAreNamed: true });

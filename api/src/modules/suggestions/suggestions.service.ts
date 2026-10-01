@@ -225,6 +225,27 @@ export class SuggestionsService {
     };
   }
 
+  /**
+   * FOR A REVIEW (week 11): the newest suggestion about one person, on a check-in the reader runs, as
+   * that lead reads it. Exactly what `forGround` hands the lead, so the same rules hold - the person
+   * has had their turn (decision 53), no count in it, no verdict - and nothing at all for anybody who
+   * does not run a check-in the person is in. Null when there is none.
+   */
+  async latestForTheLeadAbout(personUserId: string, reader: Reader, now: Date = new Date()): Promise<ForTheLead | null> {
+    const rows = (await this.prisma.suggestion.findMany({
+      where: { organizationId: reader.organizationId, about: { userId: personUserId } },
+      orderBy: { createdAt: 'desc' },
+    })) as unknown as SuggestionRow[];
+    for (const r of rows) {
+      const ground = await this.theGround(r.groundId);
+      if (ground.initiatorId !== reader.userId) continue;
+      if (!theLeadMayReadIt(r, now)) continue;
+      const names = await this.deciders([r]);
+      return forTheLead(r, this.whoIsWho(ground, r, 'lead', names));
+    }
+    return null;
+  }
+
   /** For the You board: every suggestion about the reader, in this organisation, as they may read it. */
   async aboutYou(reader: Reader): Promise<ForThePerson[]> {
     const rows = (await this.prisma.suggestion.findMany({

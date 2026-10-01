@@ -27,6 +27,8 @@ export const THEIR_OWN_WORDS_ON_THE_BOARD: readonly APath[] = [
   ['whoOwnsWhat', '*', 'items', '*', 'text'],
   /* The line a record of the kind of work came from (request 76), word for word. */
   ['workRecords', '*', 'rows', '*', 'said'],
+  /* A line a document proves or a colleague confirmed, word for word (request 70, the evidence index). */
+  ['evidenceIndex', '*', 'said'],
 ];
 
 /**

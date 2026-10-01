@@ -4,6 +4,7 @@ import type { AServedPattern } from '../patterns/who-reads-a-pattern';
 import { aStepSaidToYou } from './a-step-said-to-you';
 import { asAnAction, asASentence } from './a-promise-as-an-action';
 import { sameRequest } from './a-fuller-promise-wins';
+import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
 
 /**
  * THE YOU BOARD (C2, U.12): WHAT IS YOURS, ACROSS YOUR CHECK-INS, FOR YOUR EYES ONLY.
@@ -219,7 +220,12 @@ export function keptLatelySays(kept: number, of: number): string {
  * into a date), so the day it was made, the day of the check-in it was said in, is the one used.
  * Open ones count in neither number, and a dropped one is not a miss.
  */
-export function keptLately(rows: readonly { status: string | null; createdAt?: Date | string | null }[], now: Date): KeptLately | null {
+export function keptLately(
+  rows: readonly { status: string | null; createdAt?: Date | string | null }[],
+  now: Date,
+  /** Approved leave, as whole days (week 23): a promise not kept from a day spent on leave is not a miss. */
+  leave: readonly { from: Date; to: Date }[] = [],
+): KeptLately | null {
   const from = now.getTime() - THE_LAST_FOUR_WEEKS_MS;
   let kept = 0;
   let of = 0;
@@ -227,6 +233,7 @@ export function keptLately(rows: readonly { status: string | null; createdAt?: D
     if (r.status !== 'DONE' && r.status !== 'NOT_DONE') continue;
     const t = time(r.createdAt);
     if (!t || t < from || t > now.getTime()) continue;
+    if (r.status === 'NOT_DONE' && leave.some((l) => t >= l.from.getTime() && t <= l.to.getTime())) continue;
     of++;
     if (r.status === 'DONE') kept++;
   }
@@ -249,12 +256,44 @@ export function keptLately(rows: readonly { status: string | null; createdAt?: D
 export function commitmentsKeptInTheLastFourWeeks(
   rows: readonly { status: string | null; createdAt?: Date | string | null }[],
   now: Date = new Date(),
+  leave: readonly { from: Date; to: Date }[] = [],
 ): { kept: number; of: number } | null {
-  const r = keptLately(rows, now);
+  const r = keptLately(rows, now, leave);
   return r ? { kept: r.kept, of: r.of } : null;
 }
 
 const SETTLED_BY: Record<string, 'said' | 'proven' | 'confirmed'> = { SAID: 'said', PROVEN: 'proven', CONFIRMED: 'confirmed' };
+
+/**
+ * WHEN, IN ONE FORM (screens request 96). The record holds the same kind of answer as "on 9 October"
+ * on one row and "9 October" on the next, because it is a reading of what was said. The prototype
+ * draws it bare ("Friday", "This Friday", C2 you-board screens), so a leading "on" is dropped
+ * wherever the You board serves a time: promises, expectations and to-dos alike. Nothing else of
+ * the person's words is changed.
+ */
+export function whenInOneForm(said: string | null | undefined): string | null {
+  const t = String(said ?? '').trim().replace(/^on\s+/i, '').trim();
+  return t || null;
+}
+
+const wordsOf = (text: string, when: string | null) => ` ${aCommitmentKey(text, when)} `;
+
+/**
+ * THE SAME PROMISE, SAID SHORT AND THEN SAID WHOLE (screens request 96). "I will deliver the Tuskys
+ * cookers" and "I will deliver the Tuskys cookers on 9 October and ask for the signed order form that
+ * day." are one promise kept as two rows. Two open promises in one check-in are the same when the
+ * words of one (three or more of them) sit whole inside the other and they do not name two
+ * different times. The fuller one is served, in its own words, with the time of either.
+ */
+function theFullerOf<T extends { text: string; when: string | null; open: boolean; groundId: string }>(a: T, b: T): T | null {
+  if (!a.open || !b.open || a.groundId !== b.groundId) return null;
+  const x = aCommitmentKey(a.text, a.when);
+  const y = aCommitmentKey(b.text, b.when);
+  const [short, long, fuller, shorter] = x.length <= y.length ? [x, y, b, a] : [y, x, a, b];
+  if (short.split(' ').length < 3 || !` ${long} `.includes(` ${short} `)) return null;
+  if (a.when && b.when && whenInOneForm(a.when)!.toLowerCase() !== whenInOneForm(b.when)!.toLowerCase()) return null;
+  return { ...fuller, when: fuller.when ?? shorter.when };
+}
 
 const STATE_SAYS: Record<SaidState, string> = { open: 'Open', kept: 'Kept', not_done: 'Not done' };
 
@@ -267,6 +306,8 @@ export function yourBoard(
     commitments: GroundCommitmentRow[];
     coaching: CoachingRow[];
     todos: TodoRow[];
+    /** The reader's own approved leave, whole days (week 23). Nothing from those days counts against them. */
+    leave?: { from: Date; to: Date }[];
   },
   now: Date = new Date(),
 ): YourBoard {
@@ -336,20 +377,32 @@ export function yourBoard(
   /* What you said you would do, in your own check-ins. Dropped ones are gone, as they are elsewhere.
      The same promise sometimes lives twice, in two different places - a GroundCommitment and a
      self-authored PersonObjective both saying "I will plan shorter routes", one of them fuller and
-     dated - so the two sources below are merged through the one `addSaid`, never kept apart. */
-  const said: (SomethingYouSaid & { t: number })[] = [];
+     dated - so the two sources below are merged through the one `addSaid`, never kept apart.
+     Merged (1 October) with the engine's own request 96 work: one form for every date
+     (whenInOneForm), the same promise matched by aCommitmentKey or theFullerOf as well as
+     sameRequest, and settled beating open. Matching reads the person's own words; what is shown is
+     the action form (asAnAction). */
+  const said: (SomethingYouSaid & { t: number; open: boolean; groundId: string })[] = [];
+  const rawOf: string[] = [];
   const mineCommitments: GroundCommitmentRow[] = [];
   /* Settled beats open, and between two the same way settled (or both open) the fuller words win -
      the dated, fuller copy of the same promise (request 96), never the shorter of the two. */
   const saidScore = (state: SaidState, text: string) => (state === 'open' ? 0 : 1000) + text.length;
-  const addSaid = (item: SomethingYouSaid & { t: number }) => {
-    const at = said.findIndex((s) => s.checkIn === item.checkIn && sameRequest(s.text, item.text));
+  const addSaid = (item: SomethingYouSaid & { t: number; open: boolean; groundId: string }, raw: string, whenSaid?: string | null) => {
+    const key = aCommitmentKey(raw, whenSaid ?? undefined);
+    const at = said.findIndex((s, i) => s.groundId === item.groundId && (
+      sameRequest(rawOf[i], raw)
+      || aCommitmentKey(rawOf[i], undefined) === aCommitmentKey(raw, undefined)
+      || keysOf[i] === key
+      || !!theFullerOf({ ...s, text: rawOf[i] }, { ...item, text: raw })
+    ));
     if (at !== -1) {
-      if (saidScore(item.state, item.text) > saidScore(said[at].state, said[at].text)) said[at] = item;
+      if (saidScore(item.state, raw) > saidScore(said[at].state, rawOf[at])) { said[at] = item; rawOf[at] = raw; keysOf[at] = key; }
       return;
     }
-    said.push(item);
+    said.push(item); rawOf.push(raw); keysOf.push(key);
   };
+  const keysOf: string[] = [];
   for (const c of rows.commitments) {
     if (!isMine(c.groundId, c.participantId)) continue;
     mineCommitments.push(c);
@@ -359,7 +412,7 @@ export function yourBoard(
     if (!state || !rawText) continue;
     const checkIn = labelOf.get(c.groundId)!;
     const by = state !== 'open' && c.settledBy ? SETTLED_BY[c.settledBy] : undefined;
-    addSaid({ id: c.id, text: asAnAction(rawText), when: c.whenSaid?.trim() || null, checkIn, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt) });
+    addSaid({ id: c.id, text: asAnAction(rawText), when: whenInOneForm(c.whenSaid), checkIn, state, stateSays: STATE_SAYS[state], ...(by ? { settledBy: by } : {}), t: time(c.createdAt), open: state === 'open', groundId: c.groundId }, rawText, c.whenSaid);
   }
   for (const o of rows.objectives) {
     if (!isMine(o.groundId, o.participantId)) continue;
@@ -367,7 +420,7 @@ export function yourBoard(
     const state: SaidState | null = (o.status ?? 'OPEN') === 'OPEN' ? 'open' : o.status === 'MET' ? 'kept' : null;
     const rawText = (o.text ?? '').trim();
     if (!state || !rawText) continue;
-    addSaid({ id: o.id, text: asAnAction(rawText), when: o.dueSaid?.trim() || null, checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt) });
+    addSaid({ id: o.id, text: asAnAction(rawText), when: whenInOneForm(o.dueSaid), checkIn: labelOf.get(o.groundId)!, state, stateSays: STATE_SAYS[state], t: time(o.createdAt), open: false, groundId: o.groundId }, rawText, o.dueSaid);
   }
   const order: Record<SaidState, number> = { open: 0, kept: 1, not_done: 2 };
   said.sort((a, b) => order[a.state] - order[b.state] || a.t - b.t);
@@ -387,12 +440,12 @@ export function yourBoard(
     checkIns,
     turns,
     goals,
-    saidYoudDo: said.map(({ t: _t, ...s }) => s),
+    saidYoudDo: said.map(({ t: _t, open: _o, groundId: _g, ...s }) => s),
     todos: rows.todos
       .filter((t) => (t.text ?? '').trim())
-      .map((t) => ({ id: t.id, text: t.text.trim(), when: t.dueSaid?.trim() || null })),
+      .map((t) => ({ id: t.id, text: t.text.trim(), when: whenInOneForm(t.dueSaid) })),
     coaching,
     ownReports: ownReports.sort((a, b) => b.t - a.t).map(({ t: _t, ...r }) => r),
-    keptLately: keptLately(mineCommitments, now),
+    keptLately: keptLately(mineCommitments, now, rows.leave ?? []),
   };
 }

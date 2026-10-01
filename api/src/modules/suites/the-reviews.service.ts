@@ -1,7 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
 import { mayApprove } from './who-approves';
+import { isProposedByGroundwork, theProposalSentence } from './a-review-falls-due';
+import { whatGroundworkNoticed } from './the-review-noticed-from-the-record';
+import type { SuggestionsService } from '../suggestions/suggestions.service';
+import type { ForTheLead } from '../suggestions/a-suggestion-told-like-a-signal';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const REVIEW_REFUSED = {
@@ -30,6 +34,12 @@ export interface NextReview {
   stands: 'ready' | 'started' | 'decided';
   reviewId: string | null;
   mayStart: boolean;
+  /**
+   * Said when Groundwork proposed this review itself, in plain words, so whoever runs it reads why it
+   * is here and that nothing goes to the person until they say yes. Null when the organisation's own
+   * system set the date.
+   */
+  proposal: string | null;
 }
 
 /** The whole review, for whoever writes it with the person, their lead or an admin. */
@@ -46,6 +56,11 @@ export interface ForTheWriter {
   theirView: string | null;
   decision: { says: string; reasons: string } | null;
   mayWrite: boolean;
+  /**
+   * Groundwork's suggestion about this person, when one was reached on a check-in this reader runs,
+   * and the person has had their turn. No count, no verdict, never a rating. Null for anybody else.
+   */
+  suggestion: ForTheLead | null;
 }
 
 /** The person's own review: the facts, their own view, and the decision with its reasons. */
@@ -83,7 +98,7 @@ type Person = { externalId: string; linkedUserId: string | null; displayName: st
  */
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, @Optional() private readonly suggestions?: SuggestionsService) {}
 
   async board(reader: Reader, today = new Date()): Promise<{ every: string | null; next: NextReview[] }> {
     const answers = await this.suiteAnswers(reader.organizationId);
@@ -92,7 +107,7 @@ export class ReviewsService {
     const dues = await this.prisma.evaluationDue.findMany({
       where: { organizationId: reader.organizationId, dueOn: { gte: new Date(today.getTime() - 90 * DAY), lte: new Date(today.getTime() + 365 * DAY) } },
       orderBy: { dueOn: 'asc' },
-      select: { id: true, personExternalId: true, dueOn: true },
+      select: { id: true, personExternalId: true, dueOn: true, source: true },
     });
     const directory = await this.directory(reader.organizationId);
     const me = [...directory.values()].find((p) => p.linkedUserId === reader.userId) ?? null;
@@ -116,6 +131,7 @@ export class ReviewsService {
         stands: !r ? 'ready' : r.decidedAt ? 'decided' : 'started',
         reviewId: r?.id ?? null,
         mayStart: !r && (await this.writes(reader, role, p, answers.writer)),
+        proposal: !r && isProposedByGroundwork(d.source) ? theProposalSentence(d.source, this.firstOf(p)) : null,
       });
     }
     return { every: answers.every, next: next.filter((n) => n.name) };
@@ -131,8 +147,13 @@ export class ReviewsService {
     if (!p || !(await this.writes(reader, role, p, answers.writer))) throw new ForbiddenException(REVIEW_REFUSED.onlyTheWriter);
     const existing = await this.prisma.performanceReview.findUnique({ where: { evaluationDueId: due.id }, select: { id: true } });
     if (existing) throw new BadRequestException(REVIEW_REFUSED.alreadyStarted);
+    /* Written once, when the writer says yes, from the record and nothing else (the-review-noticed-from-the-record.ts). */
+    const noticed = await whatGroundworkNoticed(this.prisma, reader.organizationId, p.linkedUserId).catch(() => []);
     const r = await this.prisma.performanceReview.create({
-      data: { organizationId: reader.organizationId, evaluationDueId: due.id, personExternalId: due.personExternalId, startedById: reader.userId },
+      data: {
+        organizationId: reader.organizationId, evaluationDueId: due.id, personExternalId: due.personExternalId, startedById: reader.userId,
+        ...(noticed.length ? { noticed: noticed as any } : {}),
+      },
       select: { id: true },
     });
     return { id: r.id };
@@ -144,25 +165,27 @@ export class ReviewsService {
     const { row, person, directory } = await this.theReview(reader, id);
     const role = await this.roleOf(reader);
     const manager = person.managerExternalId ? directory.get(person.managerExternalId) ?? null : null;
-    const noticed = this.noticedOf(row.noticed);
     const decision = row.decision && row.decisionReasons ? { says: row.decision, reasons: row.decisionReasons } : null;
     const dueOn = dayOf(row.due.dueOn);
 
     if (person.linkedUserId === reader.userId) {
       return {
         reader: 'person', id: row.id, firstName: this.firstOf(person), writtenWithFirstName: manager ? this.firstOf(manager) : null,
-        dueOn, noticed, theirView: row.theirView ?? null, decision,
+        dueOn, noticed: this.noticedOf(row.noticed, true), theirView: row.theirView ?? null, decision,
       };
     }
     const writes = await this.writes(reader, role, person, answers.writer);
     const me = [...directory.values()].find((p) => p.linkedUserId === reader.userId) ?? null;
     const readsIt = writes || role === 'ADMIN' || (role === 'LEAD' && !!me && inTheLeadsTeam(me, person));
     if (!readsIt) throw new ForbiddenException(REVIEW_REFUSED.notYours);
+    const suggestion = writes && person.linkedUserId && this.suggestions
+      ? await this.suggestions.latestForTheLeadAbout(person.linkedUserId, reader).catch(() => null)
+      : null;
     return {
       reader: writes ? 'writer' : role === 'ADMIN' ? 'admin' : 'lead',
       id: row.id, name: this.nameOf(person), firstName: this.firstOf(person),
       writtenWith: manager ? this.nameOf(manager) : null, writtenWithFirstName: manager ? this.firstOf(manager) : null,
-      dueOn, noticed, managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes,
+      dueOn, noticed: this.noticedOf(row.noticed, writes), managersWords: row.managersWords ?? null, theirView: row.theirView ?? null, decision, mayWrite: writes, suggestion,
     };
   }
 
@@ -224,10 +247,11 @@ export class ReviewsService {
   }
 
   /** Only lines the engine marked, and only the two marks a person may read. */
-  private noticedOf(raw: unknown): Noticed[] {
+  private noticedOf(raw: unknown, mayReadPrivate: boolean): Noticed[] {
     if (!Array.isArray(raw)) return [];
     return raw
-      .filter((x: any) => x && typeof x.says === 'string' && x.says.trim() && (x.mark === 'proven' || x.mark === 'said'))
+      /* A line from an evaluation check-in is for the writer and the person only (the-review-noticed-from-the-record.ts). */
+      .filter((x: any) => x && typeof x.says === 'string' && x.says.trim() && (x.mark === 'proven' || x.mark === 'said') && (mayReadPrivate || !x.private))
       .map((x: any) => ({ says: x.says.trim(), mark: x.mark }))
       .sort((a, b) => (a.mark === b.mark ? 0 : a.mark === 'proven' ? -1 : 1));
   }

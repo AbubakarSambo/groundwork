@@ -633,9 +633,20 @@ export class GroundsController {
     @CurrentUser('id') userId: string,
     /* `history` is how a pronoun resolves. The change is still derived on this side from the words
        themselves - there is no field here that names a person or carries a value. */
-    @Body() dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[] },
+    @Body() dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[]; offerId?: string; leave?: boolean },
   ) {
     return this.grounds.applyContextProposal(id, userId, dto);
+  }
+
+  /** A no to keeping something for the organisation. The offer is deleted and nothing is kept. */
+  @Post(':id/context-chat/decline')
+  @ApiOperation({ summary: 'Say no to keeping something for the organisation' })
+  async declineContextProposal(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: { offerId?: string },
+  ) {
+    return this.grounds.declineContextOffer(id, userId, dto?.offerId ?? '');
   }
 
   /**

@@ -4,7 +4,8 @@ import * as crypto from 'crypto';
 import { DeliveryService, DeliveryContext } from './delivery.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { STOP_LINE } from '../conversation/ignoring-it-should-be-enough';
-import { whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
+import { NOT_SENT_WHILE_AWAY, whatThisMailIs, whetherToSend } from './nothing-goes-out-that-was-turned-off';
+import { whoIsAwayOn } from '../suites/who-is-away';
 import { inQuietHours, nextAllowedMoment } from './nothing-lands-at-3am';
 import { Resend } from 'resend';
 import * as nodemailer from 'nodemailer';
@@ -165,6 +166,15 @@ export class EmailService implements OnModuleInit {
        refusing to write to them would mean nobody could ever be invited. */
     if (!user && !preference && !stopped) return null;
 
+    /* APPROVED LEAVE, BY DATES ONLY (week 23). A reminder or a "you have missed" mail does not go to
+       somebody who is away today. Only asked for the senders that chase a person to answer. */
+    const theirId = user && NOT_SENT_WHILE_AWAY.has(sender)
+      ? (await this.prisma.user.findUnique({ where: { email: address }, select: { id: true } }).catch(() => null))?.id ?? null
+      : null;
+    const awayUntil = theirId
+      ? (await whoIsAwayOn(this.prisma as any, [theirId], null).catch(() => new Map<string, string>())).get(theirId) ?? null
+      : null;
+
     const answer = whetherToSend(kind, {
       emailNotifications: user?.emailNotifications,
       unsubscribedAt: preference?.unsubscribedAt ?? null,
@@ -172,6 +182,7 @@ export class EmailService implements OnModuleInit {
       wantsDigest: preference?.roundDigest,
       wantsNudges: preference?.nudges,
       stillHere: user ? user.isActive && !user.deletedAt : undefined,
+      awayUntil,
     }, sender);
     return answer.send ? null : answer.because;
   }

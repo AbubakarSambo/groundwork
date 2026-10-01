@@ -3,6 +3,7 @@ import { areaOfGoalOrFallback } from './the-area-of-a-goal-is-worded-once';
 import { ForbiddenException, Injectable, Optional } from '@nestjs/common';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
+import { theirApprovedLeave } from '../suites/who-is-away';
 import { GroundsService } from './grounds.service';
 import { yourBoard, type YourBoard, type YourPattern } from './your-board';
 import { isShut } from './a-ground-that-has-ended';
@@ -153,6 +154,7 @@ export class YourBoardService {
       commitments: commitments as any,
       coaching: coaching as any,
       todos: todos as any,
+      leave: await theirApprovedLeave(this.prisma as any, reader.userId, reader.organizationId),
     });
     /* Only the check-ins still running: a request in a check-in that has ended, or not begun, is not on you now. */
     const running = new Set(mine.filter((g) => !isShut(g.status) && !['AWAITING_APPROVAL', 'DECLINED'].includes(g.status) && !g.closedAt && !g.resolvedAt).map((g) => g.id));

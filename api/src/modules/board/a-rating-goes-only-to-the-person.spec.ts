@@ -75,7 +75,7 @@ describe('contribution against role, for each reader', () => {
     const miriam = rows.find((r: any) => r.participantId === 'miriam');
     const aisha = rows.find((r: any) => r.participantId === 'aisha');
     expect(miriam.reason).toBeNull();
-    expect(aisha.reason).toBe('Nothing checkable. Nothing Aisha Otieno has said so far can be checked by somebody else yet. A number, a date or a document for what moved would change that.');
+    expect(aisha.reason).toBe('Nothing Aisha Otieno has said so far is checkable, because nobody else can check it yet. A number, a date or a document for what moved would change that.');
   });
 
   it('an admin reads what the lead reads, and no rating', async () => {
@@ -102,7 +102,7 @@ describe('contribution against role, for each reader', () => {
     ];
     const out = contributionAsThisReaderMayRead(rows, 'a')!;
     expect(out[0]).toBe(rows[0]);
-    expect(out[1].reason).toMatch(/^Nothing checkable\. Nothing C D has said/);
+    expect(out[1].reason).toMatch(/^Nothing C D has said so far is checkable/);
     expect((out[1] as any).confidence).toBeUndefined();
   });
 });

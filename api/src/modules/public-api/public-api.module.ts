@@ -53,6 +53,7 @@ import { ConversationModule } from '../conversation/conversation.module';
 import { EmailModule } from '../email/email.module';
 import { DocumentsModule } from '../documents/documents.module';
 import { UsersModule } from '../users/users.module';
+import { SuitesModule } from '../suites/suites.module';
 import { RolesService } from '../detectors/roles-and-their-action.service';
 import { DetectorsService } from '../detectors/detectors.service';
 import { EmbedSetupController } from '../embed/embed-setup.controller';
@@ -79,6 +80,8 @@ import { AskService } from '../ask/ask.service';
     EmailModule,
     DocumentsModule,
     UsersModule,
+    /* The leave suite, for leave dates said to Ask Groundwork (week 20). */
+    SuitesModule,
     /*
      * THE BOARD IS IMPORTED, NEVER PROVIDED HERE A SECOND TIME. BoardService listens for every
      * finished check-in and words the board ahead of the lead's open. Listed as a provider here as

@@ -110,8 +110,8 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
       isEmailVerified: r.userId !== 'u-uma',
     })),
     ground: [
-      { id: 'g-sales', organizationId: ORG, label: 'Sales team, Q3', status: 'ACTIVE', initiatorId: 'u-wairimu', participantUserIds: ['u-wairimu', 'u-miriam', 'u-kofi'], createdAt: new Date(1) },
-      { id: 'g-lead', organizationId: ORG, label: 'Leadership, Q3', status: 'ACTIVE', initiatorId: 'u-grace', participantUserIds: ['u-grace', 'u-wairimu'], createdAt: new Date(2) },
+      { id: 'g-sales', organizationId: ORG, label: 'Sales team, Q3', status: 'ACTIVE', scenario: 'REALIGN_TEAM', toldToParticipants: 'This check-in looks at how the sales pipeline is going this quarter.', brief: 'LEAD-BRIEF: push hard on the missed numbers.', initiatorId: 'u-wairimu', participantUserIds: ['u-wairimu', 'u-miriam', 'u-kofi'], createdAt: new Date(1) },
+      { id: 'g-lead', organizationId: ORG, label: 'Leadership, Q3', status: 'ACTIVE', scenario: 'PIP', brief: 'LEADERSHIP-ONLY: the brief.', initiatorId: 'u-grace', participantUserIds: ['u-grace', 'u-wairimu'], createdAt: new Date(2) },
       { id: 'g-old', organizationId: ORG, label: 'Supplier review', status: 'CLOSED', initiatorId: 'u-wairimu', participantUserIds: ['u-wairimu', 'u-miriam'], createdAt: new Date(0) },
     ],
     assistantTurn: [
@@ -127,9 +127,24 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
       { id: 'p-wairimu-lead', groundId: 'g-lead', userId: 'u-wairimu' },
     ],
     checkIn: [
-      { participantId: 'p-kofi', sessionNumber: 1, status: 'COMPLETED', availableFrom: new Date(0) },
-      { participantId: 'p-kofi', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: KOFI_NEXT },
+      { id: 'c-kofi-1', participantId: 'p-kofi', sessionNumber: 1, status: 'COMPLETED', availableFrom: new Date(0) },
+      { id: 'c-kofi-2', participantId: 'p-kofi', sessionNumber: 2, status: 'NOT_STARTED', availableFrom: KOFI_NEXT },
     ],
+    /* What each person said they would do, in the check-in's own record. Kofi's own, Kofi's that the lead set, a finished one, and Miriam's. */
+    personObjective: [
+      { id: 'o-price', groundId: 'g-sales', participantId: 'p-kofi', kind: 'COMMITMENT', authoredBy: 'self', status: 'OPEN', text: 'Send the Harbor Foods price list', dueSaid: 'Friday', dueDate: null, createdAt: new Date(20) },
+      { id: 'o-samples', groundId: 'g-sales', participantId: 'p-kofi', kind: 'TODO', authoredBy: 'self', status: 'OPEN', text: 'Ship the cold-chain samples', dueSaid: null, dueDate: null, createdAt: new Date(21) },
+      { id: 'o-lead-set', groundId: 'g-sales', participantId: 'p-kofi', kind: 'TODO', authoredBy: 'lead', status: 'OPEN', text: 'LEAD-SET: reach forty cartons', dueSaid: null, dueDate: null, createdAt: new Date(22) },
+      { id: 'o-finished', groundId: 'g-sales', participantId: 'p-kofi', kind: 'TODO', authoredBy: 'self', status: 'MET', text: 'Book the warehouse visit', dueSaid: null, dueDate: null, createdAt: new Date(23) },
+      { id: 'o-miriam', groundId: 'g-sales', participantId: 'p-miriam', kind: 'COMMITMENT', authoredBy: 'self', status: 'OPEN', text: 'MIRIAM-COMMITMENT: call Westgate Deli', dueSaid: null, dueDate: null, createdAt: new Date(24) },
+    ],
+    recordEntry: [
+      { participantId: 'p-kofi', checkInId: 'c-kofi-1', disputedAt: null, text: 'We shipped 40 cartons to Harbor Foods in August.', createdAt: new Date(30) },
+      { participantId: 'p-kofi', checkInId: 'c-kofi-1', disputedAt: new Date(5), text: 'DISPUTED-LINE: we shipped nothing.', createdAt: new Date(31) },
+      { participantId: 'p-kofi', checkInId: 'c-kofi-1', disputedAt: null, text: '[INFERRED: INFERRED-LINE nobody said this]', createdAt: new Date(32) },
+      { participantId: 'p-miriam', checkInId: 'c-miriam-1', disputedAt: null, text: 'MIRIAM-LINE: Westgate is slow to pay.', createdAt: new Date(33) },
+    ],
+    commitment: [],
   };
 
   const eq = (row: any, where: any): boolean =>
@@ -137,6 +152,7 @@ function fixture(opts: { leakyReport?: boolean } = {}) {
       if (k === 'OR') return (v as any[]).some((w) => eq(row, w));
       if (k === 'participants') return row.participantUserIds.includes(v.some.userId);
       if (v && typeof v === 'object' && 'notIn' in v) return !v.notIn.includes(row[k]);
+      if (v && typeof v === 'object' && 'in' in v) return v.in.includes(row[k]);
       if (v && typeof v === 'object' && 'equals' in v) return String(row[k] ?? '').toLowerCase() === String(v.equals).toLowerCase();
       return row[k] === v;
     });
@@ -627,6 +643,297 @@ describe('a guest from another organisation', () => {
     expect(reply.blocks.some((b: any) => b.type === 'proposal')).toBe(true);
     expect(db.person.filter((p) => p.linkedUserId === 'u-tom')).toHaveLength(1);
     expect(reports.get).not.toHaveBeenCalled();
+  });
+});
+
+/*
+ * WEEK 24 (decision 36): everything a guest can reach is scoped to their own check-in and their own
+ * work in it. Each lane the guest may use is read below as Kofi reads it, with the words he is shown,
+ * and each lane he may not use is refused. The host's member is checked last, to show nothing moved.
+ */
+describe('a guest asks about their own work in their own check-in (week 24)', () => {
+  const kofiAsks = async (f: ReturnType<typeof fixture>, message: string, groundId?: string) => {
+    const reply: any = await f.controller.question(f.asUser(readers.kofi), { message, groundId });
+    return reply.blocks.map((b: any) => b.body ?? b.summary).join('\n');
+  };
+  const kofiAnswers = async (f: ReturnType<typeof fixture>, proposalId: string, answer: 'yes' | 'no') =>
+    ((await f.controller.answer(f.asUser(readers.kofi), { proposalId, answer })) as any).blocks.map((b: any) => b.body).join('\n');
+  const proposalOf = async (f: ReturnType<typeof fixture>, message: string) => {
+    const reply: any = await f.controller.question(f.asUser(readers.kofi), { message });
+    return { reply, said: reply.blocks[0].body as string, id: reply.blocks.find((b: any) => b.type === 'proposal')?.proposalId as string };
+  };
+  const LEAKS = /MIRIAM-|LEAD-BRIEF|LEAD-SET|DISPUTED-LINE|INFERRED-LINE|LEADERSHIP-|LEAD-JUDGEMENT/;
+
+  describe('what he said', () => {
+    it('reads his own lines back, never a line he disputed, one the product only inferred, or anybody else\'s', async () => {
+      const f = fixture();
+      const said = await kofiAsks(f, 'What did I say?');
+      expect(said).toBe('This is what you said in Sales team, Q3, as it is on your record.\nWe shipped 40 cartons to Harbor Foods in August.');
+      expect(said).not.toMatch(LEAKS);
+    });
+
+    it('says plainly when there is nothing yet', async () => {
+      const f = fixture();
+      f.db.recordEntry.length = 0;
+      expect(await kofiAsks(f, 'what have I said so far?')).toBe(
+        'There is nothing from you on the record for Sales team, Q3 yet. What you say in a check-in is added once you have finished it.',
+      );
+    });
+  });
+
+  describe('what the check-in is for, and who reads what he says', () => {
+    it('tells him what a participant is told, never the lead\'s own brief', async () => {
+      const f = fixture();
+      const said = await kofiAsks(f, 'What is this check-in for?');
+      expect(said).toBe('This is what you were told about Sales team, Q3.\nThis check-in looks at how the sales pipeline is going this quarter.');
+      expect(said).not.toMatch(LEAKS);
+    });
+
+    it('where the lead wrote nothing for participants, says only what it has', async () => {
+      const f = fixture();
+      f.db.ground.find((g) => g.id === 'g-sales')!.toldToParticipants = null;
+      f.db.ground.find((g) => g.id === 'g-sales')!.brief = null;
+      expect(await kofiAsks(f, 'what was I told about this check-in?')).toBe(
+        'You were not given anything more about Sales team, Q3 than its name. If you want to know more, ask the person who invited you.',
+      );
+    });
+
+    it('tells him who reads it, in the words the join page uses, with the admins sentence only where it is true', async () => {
+      const f = fixture();
+      const said = await kofiAsks(f, 'Who reads what I say?');
+      expect(said).toBe(
+        'The people in Sales team, Q3, including the person who runs it, can see what you say in it. Admins of the organisation that runs this check-in can read every check-in. '
+        + 'Your own report and your questions to Ask Groundwork stay private. '
+        + 'What you say is used to build the shared picture for this check-in and nothing else, and it does not train a model. '
+        + 'Your answers are stored on our servers, and they are processed by Google\'s models to build the record.',
+      );
+      /* A performance plan: admins do not read it. */
+      f.db.ground.find((g) => g.id === 'g-sales')!.scenario = 'PIP';
+      expect(await kofiAsks(f, 'what happens with what I say?')).not.toContain('Admins');
+      /* A kind not known reads as the more private one. */
+      f.db.ground.find((g) => g.id === 'g-sales')!.scenario = undefined;
+      expect(await kofiAsks(f, 'is what I say private?')).not.toContain('Admins');
+    });
+
+    it('does not turn "does the organisation read it" into a refusal, and still refuses "who are the other people here"', async () => {
+      const f = fixture();
+      expect(await kofiAsks(f, 'Does the organisation see what I say?')).toContain('can see what you say in it');
+      expect(await kofiAsks(f, 'Who else can see the other check-ins?')).toBe(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN);
+    });
+  });
+
+  describe('what to do next', () => {
+    it('is one of his own commitments, with the rest counted, and never somebody else\'s or one the lead set', async () => {
+      const f = fixture();
+      const said = await kofiAsks(f, 'What should I do next?');
+      expect(said).toBe(
+        'Start with "Send the Harbor Foods price list". You said you would do it, and you said Friday. After that, one more thing is still open in Sales team, Q3. Ask me what you said you would do to see them.\n\n'
+        + 'This is from the commitments you have made in Sales team, Q3.',
+      );
+      expect(said).not.toMatch(LEAKS);
+    });
+
+    it('says so when nothing of his is open', async () => {
+      const f = fixture();
+      f.db.personObjective.filter((o) => o.participantId === 'p-kofi').forEach((o) => { o.status = 'MET'; });
+      expect(await kofiAsks(f, 'What should I do next?')).toBe(
+        'You have not said you would do anything in Sales team, Q3 that is still open, so I have nothing to put first.',
+      );
+    });
+  });
+
+  describe('marking his own commitment done, said back and written only on a yes', () => {
+    it('says it back first, and writes nothing until he says yes', async () => {
+      const f = fixture();
+      const { said, id } = await proposalOf(f, 'Mark the price list as done');
+      expect(said).toBe('Shall I mark "Send the Harbor Foods price list" as done?');
+      expect(f.db.personObjective.find((o) => o.id === 'o-price')!.status).toBe('OPEN');
+      expect(f.db.assistantProposal).toHaveLength(1);
+      expect(f.db.assistantProposal[0]).toMatchObject({ personExternalId: 'guest:u-kofi', organizationId: ORG, state: 'PARKED' });
+      expect(await kofiAnswers(f, id, 'yes')).toBe('I have marked "Send the Harbor Foods price list" as done.');
+      expect(f.db.personObjective.find((o) => o.id === 'o-price')!.status).toBe('MET');
+      expect(f.db.assistantProposal[0].state).toBe('ACCEPTED');
+    });
+
+    it('a no leaves it as it was', async () => {
+      const f = fixture();
+      const { id } = await proposalOf(f, 'done: the price list');
+      expect(await kofiAnswers(f, id, 'no')).toBe('I have left it as it was. Nothing was changed.');
+      expect(f.db.personObjective.find((o) => o.id === 'o-price')!.status).toBe('OPEN');
+    });
+
+    it('a yes cannot be used twice, nor after he asks something else', async () => {
+      const f = fixture();
+      const first = await proposalOf(f, 'Mark the price list as done');
+      await kofiAsks(f, 'When is my next check-in?');
+      await expect(kofiAnswers(f, first.id, 'yes')).rejects.toThrow(new ConflictException(NOTHING_WAITING));
+      expect(f.db.personObjective.find((o) => o.id === 'o-price')!.status).toBe('OPEN');
+      const second = await proposalOf(f, 'Mark the price list as done');
+      await kofiAnswers(f, second.id, 'yes');
+      await expect(kofiAnswers(f, second.id, 'yes')).rejects.toThrow(ConflictException);
+    });
+
+    it('reaches only what he said himself: not Miriam\'s, not one the lead set, not one already finished', async () => {
+      const f = fixture();
+      for (const q of ['Mark call Westgate Deli as done', 'Mark reach forty cartons as done', 'Mark book the warehouse visit as done']) {
+        const said = await kofiAsks(f, q);
+        expect(said).toMatch(/^Nothing you said you would do in Sales team, Q3 reads like/);
+        expect(said).not.toMatch(LEAKS);
+      }
+      expect(f.db.assistantProposal).toEqual([]);
+      expect(f.db.personObjective.map((o) => o.status)).toEqual(['OPEN', 'OPEN', 'OPEN', 'MET', 'OPEN']);
+    });
+
+    it('is dropped, and writes nothing, if the commitment is no longer his to close when he says yes', async () => {
+      const f = fixture();
+      const { id } = await proposalOf(f, 'Mark the price list as done');
+      f.db.personObjective.find((o) => o.id === 'o-price')!.status = 'DROPPED';
+      expect(await kofiAnswers(f, id, 'yes')).toBe('"Send the Harbor Foods price list" is no longer open for you here, so I have changed nothing.');
+      expect(f.db.personObjective.find((o) => o.id === 'o-price')!.status).toBe('DROPPED');
+    });
+
+    it('asks which, when more than one could be meant', async () => {
+      const f = fixture();
+      f.db.personObjective.push({ id: 'o-price-2', groundId: 'g-sales', participantId: 'p-kofi', kind: 'TODO', authoredBy: 'self', status: 'OPEN', text: 'Send the Westgate price list', dueSaid: null, dueDate: null, createdAt: new Date(25) });
+      const said = await kofiAsks(f, 'Mark the price list as done');
+      expect(said).toBe('More than one of these could be it. Which?\n- Send the Harbor Foods price list\n- Send the Westgate price list');
+    });
+  });
+
+  describe('moving the day on his own commitment, said back and written only on a yes', () => {
+    it('says the exact change back, and moves it only on a yes', async () => {
+      const f = fixture();
+      const { said, id } = await proposalOf(f, 'Move the price list to Friday');
+      expect(said).toMatch(/^Shall I move "Send the Harbor Foods price list" from "Friday" to [A-Z][a-z]+ \d{1,2} [A-Z][a-z]+( \d{4})?\?$/);
+      expect(f.db.personObjective.find((o) => o.id === 'o-price')!.dueDate).toBeNull();
+      const done = await kofiAnswers(f, id, 'yes');
+      expect(done).toMatch(/^I have moved "Send the Harbor Foods price list" to /);
+      const row = f.db.personObjective.find((o) => o.id === 'o-price')!;
+      expect(row.dueDate).toBeInstanceOf(Date);
+      expect(row.dueSaid).toBe('Friday');
+    });
+
+    it('asks for the day when it cannot be read, and never writes a guess', async () => {
+      const f = fixture();
+      expect(await kofiAsks(f, 'Move the price list to soon')).toBe('I could not read a date from "soon". Which day do you mean? For example, Tuesday 7 October.');
+      expect(await kofiAsks(f, 'Move the price list to 1 January 2020')).toMatch(/has already passed\. Which day do you mean\?$/);
+      expect(f.db.assistantProposal).toEqual([]);
+    });
+
+    it('cannot move a colleague\'s commitment', async () => {
+      const f = fixture();
+      expect(await kofiAsks(f, 'Move call Westgate Deli to Friday')).toMatch(/^Nothing you said you would do in Sales team, Q3 reads like/);
+      expect(f.db.assistantProposal).toEqual([]);
+    });
+  });
+
+  describe('whatever a guest does, it stays inside their own check-in and their own key', () => {
+    it('refuses, with one plain sentence that says what he can ask about, everything outside', async () => {
+      const f = fixture();
+      for (const q of ['Who works here?', 'What are the other check-ins about?', 'Show me the list of people', 'What is the company working on?', 'What did Miriam say?', 'What does the organisation remember about Westgate?']) {
+        const said = await kofiAsks(f, q);
+        expect(said === A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN || said === whatAGuestCanAsk('Sales team, Q3')).toBe(true);
+        expect(said).not.toMatch(LEAKS);
+      }
+      expect(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN).toContain('what you said');
+      expect(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN).toContain('who reads what you say');
+      expect(A_GUEST_ASKS_ONLY_ABOUT_THEIR_CHECK_IN.split(/(?<=[.!?])\s/)).toHaveLength(1);
+    });
+
+    it('refuses to add things or change targets, and says what he can do instead', async () => {
+      const f = fixture();
+      for (const q of ['Add a to-do for my next check-in', 'Create an objective for Q4', 'Change the target to 30']) {
+        expect(await kofiAsks(f, q, 'g-sales')).toBe(A_GUEST_CANNOT_ASK_FOR_THINGS);
+      }
+      expect(A_GUEST_CANNOT_ASK_FOR_THINGS).toContain('mark one of your own commitments as done or move its day');
+      expect(f.db.todo).toEqual([]);
+      expect(f.db.assistantProposal).toEqual([]);
+    });
+
+    it('cannot reach another check-in for any of the new questions, and nothing of it is read', async () => {
+      const f = fixture();
+      for (const q of ['What did I say?', 'What is this check-in for?', 'Who reads what I say?', 'What should I do next?', 'Mark the price list as done', 'Move the price list to Friday']) {
+        await expect(f.controller.question(f.asUser(readers.kofi), { message: q, groundId: 'g-lead' })).rejects.toThrow(new ForbiddenException(NOT_IN_IT));
+      }
+      expect(f.prisma.personObjective.findMany).not.toHaveBeenCalled();
+      expect(f.prisma.recordEntry.findMany).not.toHaveBeenCalled();
+    });
+
+    it('reads every record only with his own participant, in his own check-in', async () => {
+      const f = fixture();
+      for (const q of ['What did I say?', 'What should I do next?', 'Mark the price list as done']) await kofiAsks(f, q);
+      for (const [arg] of f.prisma.personObjective.findMany.mock.calls) expect(arg.where).toMatchObject({ groundId: 'g-sales', participantId: 'p-kofi', authoredBy: 'self' });
+      for (const [arg] of f.prisma.recordEntry.findMany.mock.calls) expect(arg.where).toMatchObject({ participantId: 'p-kofi', disputedAt: null });
+    });
+
+    it('reads nothing on the host\'s list, in the host\'s to-dos, commitments or subjects, and makes no entry for him', async () => {
+      const f = fixture();
+      const { id } = await proposalOf(f, 'Mark the price list as done');
+      await kofiAnswers(f, id, 'yes');
+      for (const q of ['What did I say?', 'What is this check-in for?', 'Who reads what I say?', 'What should I do next?']) await kofiAsks(f, q);
+      expect(f.prisma.person.create).not.toHaveBeenCalled();
+      expect(f.prisma.person.findFirst).not.toHaveBeenCalled();
+      expect(f.prisma.person.findMany).not.toHaveBeenCalled();
+      expect(f.prisma.todo.create).not.toHaveBeenCalled();
+      expect(f.prisma.todo.findMany).not.toHaveBeenCalled();
+      expect(f.prisma.subject.findMany).not.toHaveBeenCalled();
+      expect(f.db.person.filter((p) => p.linkedUserId === 'u-kofi')).toEqual([]);
+    });
+
+    it('keeps every question, every answer and every waiting request under his own key, and nobody else reads them', async () => {
+      const f = fixture();
+      const before = f.db.assistantTurn.length;
+      const { id } = await proposalOf(f, 'Mark the price list as done');
+      await kofiAnswers(f, id, 'yes');
+      await kofiAsks(f, 'KOFI-ASKED what did I say?');
+      expect(new Set(f.db.assistantTurn.slice(before).map((t) => t.personExternalId))).toEqual(new Set(['guest:u-kofi']));
+      expect(new Set(f.db.assistantProposal.map((r) => r.personExternalId))).toEqual(new Set(['guest:u-kofi']));
+      for (const who of ['wairimu', 'miriam', 'grace', 'sam']) {
+        expect(everything(await f.controller.mine(f.asUser(readers[who])))).not.toMatch(/KOFI-ASKED|Send the Harbor Foods price list/);
+      }
+    });
+
+    it('a request waiting for a guest\'s yes cannot be answered by anybody else, and a guest cannot answer anybody else\'s', async () => {
+      const f = fixture();
+      const { id } = await proposalOf(f, 'Mark the price list as done');
+      await expect(f.controller.answer(f.asUser(readers.miriam), { proposalId: id, answer: 'yes' })).rejects.toThrow(ConflictException);
+      await expect(f.controller.answer(f.asUser(readers.wairimu), { proposalId: id, answer: 'yes' })).rejects.toThrow(ConflictException);
+      expect(f.db.personObjective.find((o) => o.id === 'o-price')!.status).toBe('OPEN');
+      /* Miriam's own waiting request, which Kofi cannot answer. */
+      const reply: any = await f.controller.question(f.asUser(readers.miriam), { message: 'remind me to call Kariuki about the deposit' });
+      const hers = reply.blocks.find((b: any) => b.type === 'proposal').proposalId;
+      await expect(f.controller.answer(f.asUser(readers.kofi), { proposalId: hers, answer: 'yes' })).rejects.toThrow(new ConflictException(NOTHING_WAITING));
+    });
+
+    it('a guest whose place in the check-in has gone writes nothing on a yes', async () => {
+      const f = fixture();
+      const { id } = await proposalOf(f, 'Mark the price list as done');
+      f.db.ground.find((g) => g.id === 'g-sales')!.status = 'CLOSED';
+      await expect(kofiAnswers(f, id, 'yes')).resolves.toContain('no longer open for you here');
+      expect(f.db.personObjective.find((o) => o.id === 'o-price')!.status).toBe('OPEN');
+    });
+  });
+
+  describe('a member of the host organisation is unaffected', () => {
+    it('Miriam is still answered by the assistant, with no guest lane, and her own yes still works', async () => {
+      const f = fixture();
+      const reply: any = await f.controller.question(f.asUser(readers.miriam), { message: 'remind me to call Kariuki about the deposit' });
+      expect(reply.lane).not.toMatch(/^guest_/);
+      const id = reply.blocks.find((b: any) => b.type === 'proposal').proposalId;
+      const done: any = await f.controller.answer(f.asUser(readers.miriam), { proposalId: id, answer: 'yes' });
+      expect(done.lane).not.toMatch(/^guest_/);
+      expect(f.reports.get).not.toHaveBeenCalled();
+      expect(f.db.assistantProposal.every((r) => r.personExternalId !== 'guest:u-miriam')).toBe(true);
+    });
+
+    it('and the words that mean something to a guest still reach the assistant for a member', async () => {
+      const f = fixture();
+      for (const q of ['What should I do next?', 'What did I say?']) {
+        await f.controller.question(f.asUser(readers.miriam), { message: q }).catch(() => null);
+      }
+      expect(f.prisma.personObjective.findMany).not.toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ participantId: 'p-kofi' }) }));
+      expect(f.db.assistantTurn.filter((t) => t.personExternalId === 'guest:u-miriam')).toEqual([]);
+    });
   });
 });
 

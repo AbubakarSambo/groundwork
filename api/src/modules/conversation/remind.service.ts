@@ -1,4 +1,5 @@
 import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
+import { awayUntilOn, fallsInLeave, leaveOfThePeopleOn, theirApprovedLeave, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -134,7 +135,9 @@ export class RemindService {
         ? (Date.now() - p.lastNudgedAt.getTime()) / (1000 * 60 * 60)
         : null,
     }));
-    const incomplete = worthNudging(considered);
+    /* Somebody on approved leave today is not chased (week 23). */
+    const awayToday = await whoOnACheckInIsAway(this.prisma as any, ground.id);
+    const incomplete = worthNudging(considered).filter((p: any) => !awayToday.has(p.id));
 
     let count = 0;
     let reinvited = 0;
@@ -266,9 +269,15 @@ export class RemindService {
       organizationId: string;
     }>();
 
+    /* Approved leave, for every person in the sweep, in one read (week 23). */
+    const leave = await leaveOfThePeopleOn(this.prisma as any, [...new Set(notStarted.map((c) => c.groundId))]);
+
     for (const checkIn of notStarted) {
       // Skip if not yet available.
       if (checkIn.availableFrom && checkIn.availableFrom > now) continue;
+      /* Nobody on approved leave today is nudged, or counted among the people the lead is told have
+         not started. The round does not wait for them. */
+      if (checkIn.participantId && awayUntilOn(leave.get(checkIn.participantId), now)) continue;
 
       const daysElapsed = Math.floor((now.getTime() - checkIn.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -460,15 +469,22 @@ export class RemindService {
     const cutoff = new Date(Date.now() - MISSED_THRESHOLD_DAYS * 24 * 60 * 60 * 1000);
 
     // Count NOT_STARTED check-ins for this participant that are past the nudge window.
-    const missedCheckIns = await this.prisma.checkIn.findMany({
+    const allUnstarted = await this.prisma.checkIn.findMany({
       where: {
         participantId,
         status: CheckInStatus.NOT_STARTED,
         createdAt: { lt: cutoff },
       },
       orderBy: { sessionNumber: 'desc' },
-      select: { id: true, sessionNumber: true, createdAt: true },
+      select: { id: true, sessionNumber: true, createdAt: true, availableFrom: true },
     });
+    /* A check-in that opened while the person was on approved leave is not a missed one (week 23). */
+    const who = await this.prisma.groundParticipant.findUnique({
+      where: { id: participantId },
+      select: { userId: true, ground: { select: { organizationId: true } } },
+    });
+    const theirLeave = who?.userId ? await theirApprovedLeave(this.prisma as any, who.userId, who.ground?.organizationId ?? null) : [];
+    const missedCheckIns = allUnstarted.filter((c) => !fallsInLeave((c as any).availableFrom ?? c.createdAt, theirLeave) && !fallsInLeave(c.createdAt, theirLeave));
 
     // Walk back from the most recent session counting consecutive misses.
     let consecutiveMissed = 0;

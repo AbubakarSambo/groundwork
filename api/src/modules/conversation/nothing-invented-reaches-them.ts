@@ -19,6 +19,7 @@
  * repaired - a name with nothing of theirs underneath it - reaches this.
  */
 
+import { withoutAGuessedPronoun } from './no-guessed-pronoun-for-a-named-person';
 import { OneQuestionPerTurn } from './one-question-per-turn';
 import { asAnExample } from './a-turn-asks-one-thing';
 import { claimsTheNumbersDoNotSupport } from './a-claim-the-numbers-do-not-support';
@@ -279,7 +280,10 @@ export function screen(reply: string, personSaid: string[], readerName?: string 
   /* One per reply, never shared between them. See one-question-per-turn.ts. */
   const questions = new OneQuestionPerTurn();
 
-  for (const sentence of intoSentences(repaired)) {
+  let turnSoFar = '';
+  for (const raw of intoSentences(repaired)) {
+    const sentence = withoutAGuessedPronoun(raw, turnSoFar, personSaid, readerName);
+    turnSoFar += raw;
     const why = whyItFails(sentence, personSaid, readerName, conversation);
     if (why) {
       dropped.push(sentence);
@@ -313,6 +317,7 @@ export function screen(reply: string, personSaid: string[], readerName?: string 
  */
 export class SentenceGate {
   private buffer = '';
+  private turnSoFar = '';
   private readonly droppedSentences: string[] = [];
   private readonly hitRows: Hit[] = [];
   /* Stateful across the whole stream, because each sentence is judged with no view of the rest. */
@@ -369,6 +374,8 @@ export class SentenceGate {
     const out: string[] = [];
     for (const s of sentences) {
       let repaired = inYourPerson(restoreTheirWords(s, this.personSaid), this.personSaid);
+      repaired = withoutAGuessedPronoun(repaired, this.turnSoFar + out.join(''), this.personSaid, this.readerName);
+      this.turnSoFar += s;
       const why = whyItFails(repaired, this.personSaid, this.readerName, this.conversation ? [...this.conversation, ...out] : undefined);
       if (why) {
         this.droppedSentences.push(s);

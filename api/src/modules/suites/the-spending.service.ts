@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
+import { whoApprovesFor } from './who-approves';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const SPEND_REFUSED = {
@@ -189,6 +190,21 @@ export class SpendingService {
     return { currency: answers.currency, team, left, fits: left == null ? null : amount <= left, approver: who.kind };
   }
 
+  /**
+   * For the engine's say-back (week 22): what `check` gives, and also the most a lead may approve on
+   * their own and who exactly would approve, so the person is told before the yes if it is over a rule.
+   */
+  async checkForChat(organizationId: string, userId: string, amount: number, today = new Date()) {
+    const checked = await this.check(organizationId, userId, amount, today);
+    const answers = await this.suiteAnswers(organizationId);
+    const dir = await this.directory(organizationId);
+    const byUser = new Map([...dir.values()].filter((p) => p.linkedUserId).map((p) => [p.linkedUserId as string, p]));
+    const who = await this.approverOf(organizationId, { userId, amount } as any, answers, byUser, dir);
+    const approverId = who.kind === 'admin' ? null : who.userId;
+    const first = approverId ? (await this.names([approverId])).get(approverId)?.first || null : null;
+    return { ...checked, limit: answers.limit, approverFirstName: first };
+  }
+
   /** A request to spend, as the engine records it once the person has confirmed it (request 26). No route. */
   async ask(organizationId: string, userId: string, input: { amount: number; what: string }) {
     await this.suiteAnswers(organizationId);
@@ -215,12 +231,8 @@ export class SpendingService {
       if (answers.above && answers.above !== r.userId) return { kind: 'person', userId: answers.above };
       return { kind: 'admin' };
     }
-    const managerExt = byUser.get(r.userId)?.managerExternalId;
-    const manager = managerExt ? dir.get(managerExt)?.linkedUserId : null;
-    if (manager && manager !== r.userId) {
-      const m = await this.roleOf({ userId: manager, organizationId });
-      if (m === 'LEAD' || m === 'ADMIN') return { kind: 'manager', userId: manager };
-    }
+    const lead = await whoApprovesFor(this.prisma, { organizationId, personUserId: r.userId, managerExternalId: byUser.get(r.userId)?.managerExternalId ?? null });
+    if (lead.kind === 'manager') return { kind: 'manager', userId: lead.userId };
     return { kind: 'admin' };
   }
 

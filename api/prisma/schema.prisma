@@ -457,6 +457,8 @@ model Organization {
   suites             OrganizationSuite[]
   /// Requests for time off, for the leave suite (E2, U.17).
   leaveRequests      LeaveRequest[]
+  /// What a lead confirmed is true of the whole company (week 20), kept next to the knowledge cards.
+  memories           OrganizationMemory[]
   /// Hours for billing, for the time sheets suite (E3, U.17). Never evidence about anybody's work.
   timeEntries        TimeEntry[]
   timeWeeks          TimeWeek[]
@@ -1164,6 +1166,7 @@ model Ground {
   reportRounds      ReportRound[]
   reportNotices     ReportNotice[]
   report            Report?
+  weeklyReports     WeeklyReport[]
   patternDetections PatternDetection[]
   resolution        Resolution?
   /// Groundwork's suggestions from a verdict, about someone in this check-in (C3, U.13).
@@ -1593,6 +1596,11 @@ model CheckIn {
   /// the database and ordered in one place (conversation/how-checkable-a-session-was.ts). The map that
   /// ranked "managed" above "directional" is gone.
   specificityLevel            String?       @map("specificity_level")
+  /// Where the questions this session was given to work from came from, as plain keys such as
+  /// "situation:PERFORMANCE", "role:ENGINEERING" or "pattern:D1". Written when the plan is made, and
+  /// read only by the learning counts (week 8b), which set it beside how specific the answers were.
+  /// Keys of the product's own questions, never anybody's words.
+  probeSources                String[]      @default([]) @map("probe_sources")
   /// When scoring was TRIED. Set with a null level means the scorer failed; null means not scored yet.
   /// The two used to be one silence, and the report said "nobody was asked" about a fault of ours.
   specificityScoredAt         DateTime?     @map("specificity_scored_at")
@@ -2508,8 +2516,15 @@ model RoleGapNote {
   id              String   @id @default(uuid())
   organizationId  String   @map("organization_id")
   roleName        String   @map("role_name") @db.VarChar(200)
+  /// Stored with the check-in's own label for the person ("participant A"), never a name. The name is
+  /// swapped in only when an admin who may open that check-in reads it (the-role-map.service.ts).
   says            String   @db.Text
   promptVersionId String?  @map("prompt_version_id")
+  /// The check-in this rests on, so the reader's right to open it can be asked. Null for a note nobody
+  /// derived from a check-in.
+  groundId        String?  @map("ground_id")
+  /// What the notes were built from, so the same record again writes nothing.
+  inputKey        String?  @map("input_key")
   createdAt       DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -8141,4 +8156,119 @@ model BlockerTrace {
   @@index([endGroundId])
   @@index([organizationId])
   @@map("blocker_traces")
+}
+
+/// WHAT A LEAD CONFIRMED IS TRUE OF THE WHOLE COMPANY (week 20, request 17 e): a rule, a definition, a
+/// principle, an owner, something about a client. It sits next to the knowledge cards ("how we do it
+/// here") and is read the same way, but it is kept apart from them on purpose: a card is what the
+/// company wrote down, and a person's account is measured against it; this is what a lead said in
+/// setup, and it is only ever context. A row exists as OFFERED while the lead is being asked, and
+/// counts only once it is KEPT, on the lead's yes. A no deletes it. `text` is the lead's own words
+/// from the setup conversation: never a participant's words, never a private note (those are not
+/// offered at all). `sourceLine` is what the screen reads under it ("Picked up from your check-in on
+/// 22 September").
+model OrganizationMemory {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  /// The check-in whose setup conversation heard it. A pointer only; the words are copied here.
+  groundId       String?   @map("ground_id")
+  /// rule | definition | principle | owner | client.
+  kind           String    @db.VarChar(16)
+  text           String    @db.Text
+  /// OFFERED | KEPT.
+  status         String    @default("OFFERED") @db.VarChar(8)
+  offeredById    String    @map("offered_by_id")
+  sourceLine     String    @map("source_line") @db.Text
+  offeredAt      DateTime  @default(now()) @map("offered_at")
+  keptById       String?   @map("kept_by_id")
+  keptAt         DateTime? @map("kept_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("organization_memories")
+}
+
+/// THE COMPANY PAGE'S COMPANY-WIDE PICTURE (request 17, D2): how each priority is moving, where the
+/// strategy is not reaching the work, what more than one team named, and what leadership says next
+/// to what the check-ins show. Written once when the record changes, never when the page opens.
+/// One row per organisation. Every item keeps `restsOn`, the ids of the check-ins it was built
+/// from, and a reader is served an item only if they may open every one of them. No names are
+/// stored here: people appear as counts, and an owner is held as the customer's own id.
+model CompanyPicture {
+  id              String   @id @default(uuid())
+  organizationId  String   @unique @map("organization_id")
+  /// [{ priorityId, number, tag, says, restsOn: [groundId] }]
+  readings        Json
+  /// [{ id, observation, question, forWhom: { kind: 'leadership' | 'owner', externalId? }, restsOn }]
+  notReaching     Json     @map("not_reaching")
+  /// [{ id, title, touches, teams: [{ team, says }], restsOn }]
+  namedByTeams    Json     @map("named_by_teams")
+  /// [{ id, area, youSaid, checkInsShow, restsOn }]
+  saidAndShown    Json     @map("said_and_shown")
+  /// What it was built from. The same record again means no second model call.
+  inputKey        String   @map("input_key")
+  promptVersionId String?  @map("prompt_version_id")
+  builtAt         DateTime @default(now()) @map("built_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("company_pictures")
+}
+
+// ---------------------------------------------------------------------------
+// Self-learning counts (week 8b, decisions 55 and 57 point 9). COUNTS ONLY.
+// ---------------------------------------------------------------------------
+
+/// How each pattern, coaching step and probe source has fared, counted from records that already
+/// exist. One row per scope (an organisation's id, or "ALL" for the total) and per thing. It holds
+/// no person id, no name and no words: signals are counted, and nobody reads another person's
+/// answers through them (decision 55). `suggestedWeight` is stored and, while the switch in
+/// learning/a-suggested-weight.ts is off, read by nothing that detects, chooses or orders.
+model LearningSignalCount {
+  id              String   @id @default(uuid())
+  /// An organisation's id, or "ALL" for the total across organisations.
+  scope           String
+  /// PATTERN (by code), COACHING_STEP (by the step's own sentence from the role map), or PROBE (by its source).
+  kind            String
+  key             String
+  /// How many times there is an answer to "was it right" for this.
+  judged          Int      @default(0)
+  goodCount       Int      @default(0) @map("good_count")
+  badCount        Int      @default(0) @map("bad_count")
+  unsureCount     Int      @default(0) @map("unsure_count")
+  /// For a pattern, how many the person also answered. Zero for the other kinds.
+  answeredCount   Int      @default(0) @map("answered_count")
+  /// Did the conversation happen: how many were due one, and how many had it.
+  talkDue         Int      @default(0) @map("talk_due")
+  talkHappened    Int      @default(0) @map("talk_happened")
+  /// Did things change: how many show a later period, and in how many it did not come back or was done.
+  changeJudged    Int      @default(0) @map("change_judged")
+  changedCount    Int      @default(0) @map("changed_count")
+  suggestedWeight Float    @default(1) @map("suggested_weight")
+  /// False while there are too few signals for the weight to move from neutral.
+  weightMoved     Boolean  @default(false) @map("weight_moved")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([scope, kind, key])
+  @@index([kind, key])
+  @@map("learning_signal_counts")
+}
+
+/// THE WEEKLY REPORT'S SENTENCE ABOUT EACH PERSON (week 12b, decision 43). One row per check-in per week,
+/// built when a check-in comes in and never when somebody opens the page (decision 7). `eachPerson` holds
+/// `{ participantId, says }` with `says` written by report label ("Participant A named ..."), never a
+/// name: names are swapped in when it is served. It is written from what people named, never from how
+/// their answers were rated.
+model WeeklyReport {
+  id         String   @id @default(uuid())
+  groundId   String   @map("ground_id")
+  /// The Monday the week starts on, in Lagos, as a date: "2026-09-21".
+  weekStart  String   @map("week_start") @db.VarChar(10)
+  eachPerson Json     @map("each_person")
+  builtAt    DateTime @default(now()) @map("built_at")
+
+  ground Ground @relation(fields: [groundId], references: [id], onDelete: Cascade)
+
+  @@unique([groundId, weekStart])
+  @@map("weekly_reports")
 }

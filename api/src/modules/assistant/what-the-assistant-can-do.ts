@@ -55,11 +55,35 @@ export interface Capability {
 export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
   {
     key: 'tick_off_a_to_do',
-    does: 'Close one of your own to-dos by naming it',
+    does: 'Mark one of your own to-dos or commitments as done by naming it. It is said back first.',
     writes: 'after you confirm it',
     ordered: 'First, because "done: send the rota" holds the same words as the to-do it closes.',
     owns: ['done: send the rota', 'tick off the rota', 'mark the rota as done'],
     refuses: ['what did I commit to', 'what am I on'],
+  },
+  {
+    key: 'move_a_deadline',
+    does: 'Move the day on one of your own commitments, or on one you set for somebody on a check-in you run. It is said back with both days first.',
+    writes: 'after you confirm it',
+    ordered: 'Above adding a to-do, because "push the rota back to Friday" changes something that already has a day.',
+    owns: ['move the Westgate price list to Tuesday', 'push the rota back to Friday', 'change the deadline on the report to 7 October'],
+    refuses: ['what did I commit to', 'what is on my list?'],
+  },
+  {
+    key: 'add_a_commitment',
+    does: 'Write down something you will do, with the day if you give one. It is said back first, and it is yours.',
+    writes: 'after you confirm it',
+    ordered: 'Above adding a to-do, because a commitment is to somebody and a to-do is a note to yourself.',
+    owns: ['add a commitment: book the room by Friday', 'commit me to sending the report'],
+    refuses: ['add the rota to my to-do list', 'remind me to book the room'],
+  },
+  {
+    key: 'think_it_through',
+    does: 'Lay out two to four options for something you are deciding, such as a target, with what each would mean, what it assumes and what would show it is working. It never says which to choose and writes nothing.',
+    writes: 'nothing',
+    ordered: 'Above the objective lane, because "help me think through the Q4 target" holds the word target and must not open a draft. Below the lanes that change something.',
+    owns: ['help me think through the Q4 target', 'what are my options for the Atlas deadline', 'let us think it through', 'brainstorm how to hit the quarter'],
+    refuses: ['set a target for Q4', 'add a commitment: call the depot', 'what should we talk about'],
   },
   {
     key: 'add_a_to_do',
@@ -190,6 +214,24 @@ export const WHAT_THE_ASSISTANT_CAN_DO: Capability[] = [
     ordered: 'Below the suggestion lane, which offers something specific and expires.',
     owns: ['how am I doing', 'how are things going for me'],
     refuses: ['how does the freeze work', 'what should we talk about'],
+  },
+  {
+    key: 'what_next',
+    does: 'The one thing to do next, from your own commitments, to-dos and what is waiting on you, and why it is first',
+    writes: 'nothing',
+    ordered:
+      'Above where_am_i_needed. "What should I do this week" is where to spend attention across people; this is one next action, and needs the word next, now or first.',
+    owns: ['what should I do next?', 'what do I do next', 'what is next for me'],
+    refuses: ['what should I do this week', 'what is on my list?', 'what am I on'],
+  },
+  {
+    key: 'what_did_they_say',
+    does: 'What a named colleague said, only as much of it as you may already read, and which check-in it is from',
+    writes: 'nothing',
+    ordered:
+      'Above what_did_i_say, which owns the first person. The name cannot be I, we, the or any other pronoun, so "what did we agree" stays with what_came_of_it.',
+    owns: ['what did Femi say last week?', 'what has Femi said', 'what did Femi Adeyemi tell me yesterday'],
+    refuses: ['what did I say about pricing', 'what did we agree', 'what did the last check-in say'],
   },
   {
     key: 'what_did_i_say',

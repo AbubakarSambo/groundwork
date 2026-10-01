@@ -22,6 +22,8 @@ export type Lane =
   | 'what_did_i_commit_to'
   | 'how_we_work'
   | 'what_did_i_say'
+  | 'what_did_they_say'
+  | 'what_next'
   | 'how_am_i_doing'
   | 'where_am_i_needed'
   | 'what_is_stuck'
@@ -35,10 +37,19 @@ export type Lane =
   | 'add_a_to_do'
   | 'my_to_dos'
   | 'tick_off_a_to_do'
+  | 'move_a_deadline'
+  | 'add_a_commitment'
+  | 'think_it_through'
   | 'add_context'
   | 'context_line'
   | 'lead_note'
   | 'questions_for_people'
+  /** Time off said in chat: said back, and sent through the leave suite on a yes (week 20). */
+  | 'ask_for_leave'
+  /** Hours said in chat, for billing only: said back, and sent to the approver on a yes (week 21). */
+  | 'log_hours'
+  /** A request to spend said in chat, checked against the budget and the rule, sent on a yes (week 22). */
+  | 'ask_to_spend'
   | 'unplaced';
 
 export interface Routed {
@@ -73,6 +84,32 @@ const RULES = [
     /\b(?:tick|cross|strike)\s+(?:off\s+)?(.{3,120}?)(?:\s+off)?\s*$/i,
     /^(?:done|finished|did)[:,]\s+(.{3,120})$/i,
     /\bmark\s+(.{3,120}?)\s+(?:as\s+)?done\s*$/i,
+  ]),
+  /*
+   * WEEK 18: CHANGING A COMMITMENT BY TALKING. Above adding a to-do, because "push the rota back to
+   * Friday" names a change to something that already has a day, and nothing here is written until
+   * it has been said back and answered yes.
+   */
+  rule('move_a_deadline', [
+    /^\s*(?:please\s+)?(?:can\s+you\s+)?(?:move|push|postpone|reschedule|delay)\s+(?:the\s+(?:deadline|due\s+date|date)\s+(?:on|for|of)\s+)?(.{3,160}?)\s+(?:back\s+)?(?:to|until|till|out\s+to)\s+.{2,60}$/i,
+    /^\s*(?:please\s+)?(?:can\s+you\s+)?change\s+the\s+(?:deadline|due\s+date|date)\s+(?:on|for|of)\s+(.{3,160}?)\s+(?:to|until|till)\s+.{2,60}$/i,
+  ]),
+  rule('add_a_commitment', [
+    /\b(?:add|record|log|write\s+down)\s+(?:a\s+)?commitment[:,]?\s+(.{3,160})$/i,
+    /\bcommit\s+me\s+to\s+(.{3,160})$/i,
+  ]),
+  /*
+   * WEEK 19: THINKING SOMETHING THROUGH. Below the three lanes that change something and above
+   * everything else, because "help me think through the Q4 target" holds the word target, which the
+   * objective lane would otherwise take and open a draft for. Narrow: it needs "think ... through",
+   * "my options", or "brainstorm". It writes nothing.
+   */
+  rule('think_it_through', [
+    /\b(?:help\s+(?:me|us)\s+)?think\s+(?:(?:it|this|that)\s+)?(?:through|over)\b\s*(.*)$/i,
+    /\bwhat\s+(?:are|were)\s+(?:my|our|the)\s+options\b\s*(?:for|on|with|about)?\s*(.*)$/i,
+    /\b(?:lay|set)\s+out\s+(?:my|our|the)\s+options\b\s*(?:for|on|with|about)?\s*(.*)$/i,
+    /\bweigh\s+(?:up\s+)?(?:my|our|the)\s+options\b\s*(?:for|on|with|about)?\s*(.*)$/i,
+    /\bbrainstorm\b\s*(.*)$/i,
   ]),
   rule('add_a_to_do', [
     /* A deadline may trail the list: "add the rota to my to-do list by Friday". The lane reads the whole message for when. */
@@ -168,6 +205,18 @@ const RULES = [
     /\b(?:set|write|create|start|draft|agree)\s+(?:up\s+)?(?:an?|our|my|the|some)?\s*(?:new\s+)?(?:objectives?|okrs?|goals?|targets?)\b/i,
     /\bhelp\s+(?:me|us)\s+(?:to\s+)?(?:set|write|agree|work\s+out)\b.*\b(?:objectives?|okrs?|goals?|targets?)\b/i,
     /\b(?:objective|okr|goal)\s+setting\b/i,
+  ]),
+  rule('what_next', [
+    /*
+     * "WHAT SHOULD I DO NEXT" (week 17): one thing, from the reader's own commitments, to-dos and
+     * what is waiting on them. Above `where_am_i_needed`, whose "what should I do this week" is a
+     * question about where to spend attention across people; this one is a single next action.
+     * Narrow: it needs the word next, now or first beside "what should I do".
+     */
+    /\bwhat\s+(?:should|shall|do|can)\s+i\s+do\s+(?:next|now|first)\b/i,
+    /\bwhat(?:'s| is)\s+next\s+for\s+me\b/i,
+    /\bwhat(?:'s| is)\s+my\s+next\s+(?:step|move|thing)\b/i,
+    /^\s*what\s+next\s*\??\s*$/i,
   ]),
   rule('where_am_i_up_to', [
     /*
@@ -275,6 +324,14 @@ const RULES = [
     /\bi'?m\s+stuck\b/i,
     /\bhow\s+do\s+i\s+get\s+better\b/i,
     /\bwhat\s+should\s+i\s+(?:work on|focus on)\b/i,
+  ]),
+  rule('what_did_they_say', [
+    /*
+     * WHAT SOMEBODY ELSE SAID (week 17). Above `what_did_i_say`, which owns the first person; the
+     * name is refused the pronouns so "what did I say" and "what did we agree" never land here. The
+     * name is one or two words. It is answered only from what the asker may already read.
+     */
+    /\bwhat\s+(?:did|has|have|does)\s+(?!(?:i|we|you|they|he|she|it|the|our|my|everyone|everybody|anyone|anybody|people|someone|somebody)\b)([A-Za-z][\w'’-]*(?:\s+[A-Za-z][\w'’-]*)?)\s+(?:say|said|tell|told|mention(?:ed)?|write|wrote|report(?:ed)?)\b/i,
   ]),
   rule('what_did_i_say', [
     /*

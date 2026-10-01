@@ -23,17 +23,19 @@ export interface PatternCode {
  * The ones that can only be judged across time say so and point at the person's own earlier record.
  */
 export const WHAT_COUNTS_BY_CODE: Record<string, string> = {
-  K3: 'Counts only when the person\'s earlier record shows the same problem raised before and still not fixed, and this period raises it again. A problem raised for the first time does not count, and neither does one that was raised and then fixed.',
-  K5: 'Counts when the tasks they describe this period are never tied to any goal, target or result, even when asked. It does not count when they name a goal or what the work is for, even loosely.',
-  F2: 'Needs both sides in the record: a confident account of direction-setting, and the team\'s own record showing none of it. One side alone does not count.',
-  B9: 'Needs the team members\' own records to name different priorities from each other or from the leader. A leader saying the team is unclear, with nothing from the team, does not count.',
-  K2: 'Counts only when the earlier record shows the same spend or cost reported before and left unchallenged, and this period reports it again with no intervention. Tracking a cost once, or challenging it, does not count.',
+  B11: 'Counts when failures or delays are put down to other people or outside causes, and the person names nothing within their own control, in this check-in and in the earlier record. One outside cause named fairly, or a cause named alongside their own part, does not count.',
+  E2: 'Counts when a promise about the future is made again that the earlier record shows was promised before and not done. A first promise, or one that was kept, does not count.',
+  K3: 'Counts when the same problem has been raised before and is still not fixed. The earlier record shows that, or this period\'s check-in says it has been raised before or is still open. A problem raised for the first time does not count, and neither does one that was raised and then fixed.',
+  K5: 'Counts when the work is described as tasks and the person does not say what goal or result they serve, even when it would be easy to. It does not count when they say what the work is for.',
+  F2: 'Counts when the person describes direction-setting with confidence and the record also shows, in their own words or the team\'s, that the team works to its own priorities or shows no trace of it. Confident direction-setting alone does not count.',
+  B9: 'Counts when the record shows team members working on different priorities from each other or from the leader, including when the person says so. A leader only saying the team is busy does not count.',
+  K2: 'Counts when spend or cost is reported and left unchallenged, and the earlier record or this check-in shows it has been reported before with no intervention. Tracking a cost once, or challenging it, does not count.',
   C1: 'Counts when the record names something that was unclear for others and is now clear because of this person, and says what changed. Being clear about their own work, or explaining something once, does not count.',
-  B5: 'Counts when there is a lot of communication or coordination and the same blockers are still there afterwards. It does not count when blockers went down, or when there is little communication.',
-  B2: 'Needs the earlier record to show it: confident reporting in more than one period, with what was promised still not delivered. One period of confident talk, or one missed deliverable, does not count.',
-  B6: 'Needs the earlier record to show it: research, comparing or options still open from an earlier period, with no decision made since. Research that ended in a decision does not count, and neither does early research with no earlier record of it.',
-  K4: 'Counts when this period\'s work is mostly inbox, admin and small tasks, and nothing in it moves what the person is measured on. A busy period that still moved a main goal does not count.',
-  D4: 'Counts when planning and discussion are described and no plan, document or output came from them. It does not count when they can point to something produced.',
+  B5: 'Counts when there is a lot of communication or coordination and the record shows the same blockers still standing afterwards. A lot of messages alone does not count, and neither does a blocker that was cleared.',
+  B2: 'Counts when confident reporting sits beside what was promised still not delivered, and the earlier record or this check-in shows it has happened in more than one period. One period of confident talk, or one missed deliverable, does not count.',
+  B6: 'Counts when research, comparing or options are still open, and the earlier record or this check-in shows no decision has come from them across more than one period. Research that ended in a decision does not count.',
+  K4: 'Counts when nearly all of this period\'s work is inbox, admin and small tasks, and the person names nothing that moved what they are measured on. One busy stretch, or a period that still moved a main goal, does not count.',
+  D4: 'Counts when planning and discussion are described across more than one period and nothing has been produced from them that can be pointed to. It does not count when they can point to a plan, document or output.',
   A2: 'Counts when the person stepped in to fix a failure that should have been caught earlier by someone or something else. Ordinary help, or fixing their own work, does not count.',
   R2: 'Counts when others are named as coming back to ask, or as confused, because of this person\'s work or messages. The person being unclear about their own plans, with nobody affected, does not count.',
   B1: 'Counts when upbeat reporting upward sits beside a different picture from the team or the record. Good news that the record backs up does not count.',
@@ -381,7 +383,7 @@ Hard rules:
   Not:   "The record shows work was marked finished without downstream confirmation."
   The observation is already about the record; saying so adds nothing but distance.
 - Do not infer intent. A pattern is a reason to have a specific conversation, not a conclusion.
-- Some lines below say what counts and what does not. Follow them. Where a line says it needs the earlier record, use the section headed "WHAT THIS PERSON THEMSELVES RECORDED IN THE LAST TWO PERIODS" if there is one; when there is none, or it does not show the repeat, leave that code out.
+- Some lines below say what counts and what does not. Follow them. Where a line speaks of the earlier record, use the section headed "WHAT THIS PERSON THEMSELVES RECORDED IN THE LAST TWO PERIODS" if there is one, to tell a repeat from a first time. Their own words in this check-in about something being raised before count too.
 - One data point is not a pattern. You are emitting a per-period observation; the system applies the three-period rule across periods. Do not claim a pattern is established.
 
 The pattern codes and their signals:

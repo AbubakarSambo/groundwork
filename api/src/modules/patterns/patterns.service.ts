@@ -1,6 +1,9 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Optional, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { theirApprovedLeave } from '../suites/who-is-away';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { LEARNING_SIGNAL } from '../learning/learning-signal';
 import { shouldThisCodeBeAboutThem } from './a-chaser-is-not-the-blocker';
 import { theirOwnEarlierRecord, earlierRecordQuery } from './the-detector-reads-their-own-earlier-record';
 import { whatWasSeenLastPeriod, lastPeriodBlockFor, evidenceBorrowedFromAnotherCode, HOW_FAR_BACK } from './the-detector-has-no-memory-of-last-period';
@@ -86,7 +89,13 @@ export class PatternsService {
   constructor(
     private prisma: PrismaService,
     private anthropic: AnthropicService,
+    /* Optional so that a service built by hand (most specs) still works; tells the learning counts a new signal came in. */
+    @Optional() private events?: EventEmitter2,
   ) {}
+
+  private learnFrom(detectionId: string): void {
+    try { this.events?.emit(LEARNING_SIGNAL, { detectionId }); } catch { /* counting must never break a mark */ }
+  }
 
   /**
    * Analyse one completed check-in (one period for one party). Extracts pattern
@@ -608,7 +617,9 @@ export class PatternsService {
       //    is broken - reset the consecutive counter back to 0 so the next
       //    observation restarts the streak properly.
       const lastP = det.lastPeriodNumber ?? 0;
-      if (lastP < currentPeriod) {
+      /* A period spent on approved leave is not a period they went quiet in: the streak is paused,
+         not broken (week 23). */
+      if (lastP < currentPeriod && !(await this.wasAwayThisPeriod(det.participantId, latest?.createdAt ?? null))) {
         await this.prisma.patternDetection.update({
           where: { id: det.id },
           data: { periodsObserved: 0 },
@@ -620,6 +631,18 @@ export class PatternsService {
     await this.surfacePatterns(groundId);
 
     this.logger.log(`startNewPeriod: ground ${groundId}, period boundary at session ${currentPeriod}`);
+  }
+
+  /** Whether this person had approved leave at any time since the period began (week 23). */
+  private async wasAwayThisPeriod(participantId: string | null, since: Date | null): Promise<boolean> {
+    if (!participantId) return false;
+    const p = await this.prisma.groundParticipant
+      .findUnique({ where: { id: participantId }, select: { userId: true, ground: { select: { organizationId: true } } } })
+      .catch(() => null);
+    if (!p?.userId) return false;
+    const now = new Date();
+    const start = since ?? new Date(now.getTime() - 7 * 86_400_000);
+    return (await theirApprovedLeave(this.prisma as any, p.userId, p.ground?.organizationId ?? null)).some((l) => l.from <= now && l.to >= start);
   }
 
   /**
@@ -1071,6 +1094,7 @@ export class PatternsService {
       data: { leadMark: mark, leadMarkedAt: now, leadMarkedBy: userId },
       select: PATTERN_ROW_SELECT,
     });
+    this.learnFrom(row.id);
     return servedPatterns([saved], reader, { now })[0];
   }
 
@@ -1090,6 +1114,7 @@ export class PatternsService {
           data: { talkedAboutAt: now, talkedAboutBy: userId, talkedAboutAtPeriod: periodsSeen(row) },
           select: PATTERN_ROW_SELECT,
         });
+    if (!row.talkedAboutAt) this.learnFrom(row.id);
     return servedPatterns([saved], reader, { now })[0];
   }
 

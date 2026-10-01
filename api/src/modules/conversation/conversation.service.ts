@@ -110,6 +110,7 @@ import { FIGURE_PROMPT, FIGURE_SCHEMA, theFiguresTheyStated, theDayThisWasSaid }
 import { familyFor, BoardFamily } from '../board/board-families';
 import { theOneWorthAsking, askAboutItBlockFor } from './what-keeps-happening-becomes-a-question';
 import { mayCoach } from './participation-timeline';
+import { theirApprovedLeave } from '../suites/who-is-away';
 import { stillAsking } from './one-question-per-turn';
 import { oneThingAsked, wouldLeaveAQuestionOut, asksMoreThanOneThing, withTheOneMoreLine, ASK_ONE_THING } from './a-turn-asks-one-thing';
 import { A_CHECK_IN_TAKES_ANSWERS, theCeilingIsReached, howMuchRoomIsLeft } from './there-is-a-ceiling-and-it-is-not-a-surprise';
@@ -143,6 +144,8 @@ import { whenTheyMeant } from './when-words-mean-a-date';
 import { OWN_PROMISE_PROMPT, OWN_PROMISE_SCHEMA, OPERATING_DIFFERENCE_PROMPT, OPERATING_DIFFERENCE_SCHEMA, PROGRESS_PROMPT, PROGRESS_SCHEMA, THEY_SAY_HAPPENED_PROMPT, THEY_SAY_HAPPENED_SCHEMA } from './prompt-library';
 import { TheySay, worthRecording, WHEN_THEY_SAY_IT_IS_MISSING } from './what-they-say-happened';
 import { KnowledgeService } from '../knowledge/knowledge.service';
+import { keptForTheOrganisation, MOST_KEPT_IN_A_PROMPT } from '../knowledge/organisation-memory';
+import { whatTheOrganisationKeepsBlock } from '../knowledge/what-the-organisation-keeps';
 import { howThisCompanyDoesIt, whatToLookUp } from './how-this-company-does-it';
 import { whatTheirWeekLooksLike } from './what-their-week-looks-like';
 import { howThisSounds } from './how-this-sounds';
@@ -155,6 +158,7 @@ import { hardenedAGuess, DO_NOT_HARDEN_IT } from './a-hedge-is-not-a-fact';
 import { theGoodNewsIn, whatTheRecordAlreadyHolds } from './what-the-record-already-holds';
 import { whatThisSessionHasCovered, sayWhatHasBeenCovered, whereTheSpineIs, theyDeclined, THEY_DECLINED_IT, askedAbout, theyAlreadyAnsweredThat, type AThingToCover } from './what-this-session-has-covered';
 import { sayWhatDoesNotAddUp } from './what-does-not-add-up';
+import { probeSourcesOffered } from '../learning/how-signals-are-counted';
 import { theBriefForThePlanner, tidyThePlan, sayThePlan, howTheyAnswered, PLAN_PROMPT, PLAN_TOOL } from './the-plan-for-this-session';
 import { POSITIVE_CODES, CARRYING_CODES, BAD_FAITH_CODES } from '../patterns/pattern-library';
 import { periodOf } from '../patterns/period-of';
@@ -210,6 +214,7 @@ import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
+import { theFullerPromise, nameTwoDifferentDates } from './the-same-promise-said-more-fully';
 import { theSameMeasure } from '../grounds/a-dump-is-many-things';
 import { aRoleInTheirOwnWords } from '../grounds/the-leads-words-about-someone';
 import { withoutBankDetails } from '../documents/bank-details-are-never-kept';
@@ -2979,7 +2984,7 @@ export class ConversationService {
     const participant = await this.prisma.groundParticipant.findFirst({
       where: { id: checkIn.participantId, user: { id: userId } },
       /* A participant has no display name of its own; the account behind it does. */
-      select: { id: true, email: true, user: { select: { firstName: true, lastName: true } } },
+      select: { id: true, email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
     });
     if (!participant) throw new ForbiddenException('This check-in is not yours.');
 
@@ -2987,7 +2992,9 @@ export class ConversationService {
       data: {
         organizationId: checkIn.ground.organizationId,
         byParticipantId: participant.id,
-        byName: [participant.user?.firstName, participant.user?.lastName].filter(Boolean).join(' ').trim() || participant.email,
+        /* Never an address as a name (week 12c): what was offered is read later in sentences. */
+        byName: [participant.user?.firstName, participant.user?.lastName].filter(Boolean).join(' ').trim()
+          || ((participant as any).nameGiven ?? '').trim() || 'a colleague',
         about: about.trim(),
         what: what.trim(),
       },
@@ -3936,7 +3943,13 @@ export class ConversationService {
           .covering(ground.organizationId, lookUp)
           .catch(() => [])
       : [];
-    const howWeDoIt = howThisCompanyDoesIt(companyCards);
+    /*
+     * AND WHAT THE ORGANISATION'S LEAD CONFIRMED IS TRUE OF THE WHOLE COMPANY (week 20). Context to
+     * understand people with, in the same place as the written process and never mixed into it: it is
+     * not something a person's account is compared with, and it is not quoted to anybody.
+     */
+    const keptForTheOrg = await keptForTheOrganisation(this.prisma, ground.organizationId, MOST_KEPT_IN_A_PROMPT).catch(() => []);
+    const howWeDoIt = [howThisCompanyDoesIt(companyCards), whatTheOrganisationKeepsBlock(keptForTheOrg)].filter(Boolean).join('\n\n');
 
     /*
      * BOUNDED, AND HONEST ABOUT THE BOUND.
@@ -4367,7 +4380,7 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
 
 Work through, woven naturally into the conversation, not as a checklist:
 1. FINAL STATE vs THE TARGET. The target on record:
-${target ?? 'No pre-agreed target - ask the person what success was supposed to look like when this started, then measure their account against their own answer.'}
+${target ?? 'No target was agreed beforehand. Ask the person what success was supposed to look like when this started, then measure their account against their own answer.'}
 Ask where things actually landed against that, in their words.
 2. DELIVERED vs AGREED. For each thing they say was delivered: what exists, and what shows it? Ask for the artifact. If something is described but not evidenced, say plainly that a document would carry more weight than memory, and invite an upload.
 3. WHAT REMAINS OPEN. Unfinished items, handovers, loose ends - get them named, not smoothed over.
@@ -5215,6 +5228,12 @@ The ground will close toward one of these end states: ${endStates || 'the partie
           .map((l) => ({ from: new Date(l?.from), to: l?.to ? new Date(l.to) : null }))
           .filter((l) => !isNaN(l.from.getTime()))
       : [];
+    /* And the approved leave itself, by dates (week 23): nothing wrote leavePeriods, so this read the
+       field and found it empty for everybody. */
+    const asked = await this.prisma.groundParticipant.findUnique({ where: { id: participantId }, select: { userId: true, ground: { select: { organizationId: true } } } }).catch(() => null);
+    if (asked?.userId) {
+      for (const l of await theirApprovedLeave(this.prisma as any, asked.userId, asked.ground?.organizationId ?? null)) leaves.push({ from: l.from, to: l.to });
+    }
     if (!mayCoach(new Date(), {
       joinedAt: participant?.joinedAt ?? null,
       leftAt: participant?.leftAt ?? null,
@@ -6485,7 +6504,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       const raw = await this.anthropic.extract<any>(PLAN_PROMPT, [{ role: 'user', content: brief }], PLAN_TOOL, { fast: true });
       plan = tidyThePlan(raw, { coach: (patterns as any[]).length > 0 || !!(coaching as any)?.currentStep });
       if (plan) {
-        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionPlan: plan as any } }).catch(() => undefined);
+        /* Where the questions came from, kept as plain keys so the learning counts can set them beside how specific the answers were (week 8b). */
+        const probeSources = probeSourcesOffered({
+          scenario: String(ground.scenario ?? '') || null,
+          detectedFunction: checkIn.participant?.detectedFunction ?? null,
+          roleHasNeutralQuestions: !!roleMapFor(checkIn.participant?.detectedFunction ?? null)?.neutralProbes?.length,
+          patternCodesWithAQuestion: (patterns as any[]).filter((p) => codeOf(p.code)?.probe).map((p) => p.code),
+        });
+        await this.prisma.checkIn.update({ where: { id: checkIn.id }, data: { sessionPlan: plan as any, probeSources } as any }).catch(() => undefined);
         this.logger.log(`Check-in ${checkIn.id}: planned. Must establish: ${plan.mustEstablish}`);
       } else {
         this.logger.warn(`Check-in ${checkIn.id}: the planner returned nothing usable; the session runs without a plan.`);
@@ -6927,9 +6953,28 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     for (const kept of keep) {
       /* Their quotation marks, as in the record. See their-quotation-marks-are-theirs. */
       const c = { ...kept, action: theirQuotationMarksBack(kept.action, said), when: kept.when ? theirQuotationMarksBack(kept.when, said) : kept.when };
+      /* The same promise said short and then whole, in this one check-in, is one row in the fuller words. */
+      const fuller = (theirs as any[]).map((h) => ({ h, which: h.statedInSession === row.sessionNumber && h.status === 'UNKNOWN' ? theFullerPromise({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when }) : null })).find((x) => x.which);
+      if (fuller) {
+        if (fuller.which === 'existing') continue;
+        const wholeText = c.action.slice(0, 400);
+        const wholeWhen = c.when ?? fuller.h.whenSaid ?? null;
+        let moved = true;
+        await this.prisma.groundCommitment.update({
+          where: { id: fuller.h.id },
+          data: {
+            text: wholeText,
+            whenSaid: wholeWhen,
+            saidWordForWord: saidWordForWord(wholeText, said),
+            whenSaidWordForWord: wholeWhen ? saidWordForWord(wholeWhen, said) : false,
+          },
+        }).catch((err: any) => { moved = false; this.logger.warn(`Could not write a promise more fully on ${checkInId}: ${err?.message}`); });
+        if (moved) { fuller.h.text = wholeText; fuller.h.whenSaid = wholeWhen; }
+        continue;
+      }
       /* The same promise said twice in one breath, once with its time on the end, is one promise. */
-      const same = (theirs as any[]).find((h) => theSameMeasure(h.text ?? '', c.action)
-        || (!!aCommitmentKey(c.action, c.when) && aCommitmentKey(h.text ?? '', h.whenSaid) === aCommitmentKey(c.action, c.when)));
+      const same = (theirs as any[]).find((h) => !(h.statedInSession === row.sessionNumber && nameTwoDifferentDates({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when })) && (theSameMeasure(h.text ?? '', c.action)
+        || (!!aCommitmentKey(c.action, c.when) && aCommitmentKey(h.text ?? '', h.whenSaid) === aCommitmentKey(c.action, c.when))));
       if (same) {
         /* Already settled by a person: saying it again does not reopen it and is not counted. */
         if (same.status !== 'UNKNOWN') continue;
@@ -9272,13 +9317,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     const participant = await this.prisma.groundParticipant.findUnique({
       where: { id: participantId },
-      select: { email: true, user: { select: { firstName: true, lastName: true } } },
+      select: { email: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } },
     });
     /* `from` is which side stated it and `statedBy` is who. Both are the customer's own handles
        rather than row ids, because a figure has to stay readable after anybody leaves. */
+    /* Never an address as a name (week 12c): it is read back later in sentences. */
     const who = [participant?.user?.firstName, participant?.user?.lastName].filter(Boolean).join(' ')
-      || participant?.email
-      || participantId;
+      || ((participant as any)?.nameGiven ?? '').trim()
+      || 'a colleague';
 
     for (const f of figures) {
       await this.prisma.reportedFigure.create({

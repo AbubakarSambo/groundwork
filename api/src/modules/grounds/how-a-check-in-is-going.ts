@@ -1,5 +1,6 @@
 import { whichRoundIsOpen } from '../board/which-round-is-open';
 import { CheckInStatus } from '@prisma/client';
+import { awayUntilOn, type Stretch } from '../suites/who-is-away';
 import { atAGlance, type AtAGlance } from './what-a-manager-needs-at-a-glance';
 import { totalSessionsFor } from './session-count';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
@@ -42,6 +43,8 @@ export interface WhatItTakes {
   sharedPicture: string | null;
   /** The opening, written once as plain sentences. Preferred over slicing the picture. */
   theOpening?: string | null;
+  /** Each person's approved leave, by participant id (week 23). Somebody away is not waited on. */
+  leave?: Map<string, Stretch[]>;
 }
 
 export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): HowItIsGoing {
@@ -52,9 +55,19 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
    * page uses. Counting check-in rows instead reads as double on a two-party ground ("24 of 12").
    */
   const numbers = [...new Set(sessions.map((ci) => ci.sessionNumber))];
-  const roundsDone = numbers.filter((n) =>
-    sessions.filter((ci) => ci.sessionNumber === n).every((ci) => ci.status === CheckInStatus.COMPLETED),
-  ).length;
+  /* A row for somebody who was away when it opened, or is away now and has not answered, is not
+     waited on (week 23). Anything they did answer still counts. */
+  const excused = (ci: any): boolean => {
+    if (ci.status === CheckInStatus.COMPLETED || !it.leave || !ci.participantId) return false;
+    const mine = it.leave.get(ci.participantId);
+    if (!mine) return false;
+    const opened = ci.availableFrom ?? ci.createdAt;
+    return !!awayUntilOn(mine, now) || (!!opened && !!awayUntilOn(mine, new Date(opened)));
+  };
+  const roundsDone = numbers.filter((n) => {
+    const row = sessions.filter((ci) => ci.sessionNumber === n);
+    return row.every((ci) => ci.status === CheckInStatus.COMPLETED || excused(ci)) && row.some((ci) => ci.status === CheckInStatus.COMPLETED);
+  }).length;
 
   /*
    * Cut to three sentences here rather than on a screen, because a screen cannot tell where a
@@ -110,7 +123,7 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
     {
       roundsDone,
       roundsPlanned,
-      people: (it.participants ?? []) as any,
+      people: ((it.participants ?? []) as any[]).map((p: any) => ({ ...p, awayUntil: awayUntilOn(it.leave?.get(p.id), now) })) as any,
       /* Which round, and the situation, so the population rule can be asked rather than guessed at. */
       sessionNumber: openRound,
       scenario: (it as any).scenario ?? null,

@@ -85,10 +85,10 @@ describe('the wavering codes got clearer lines and nothing was lost', () => {
     for (const c of every) expect(PATTERN_DETECTION_PROMPT).toContain(`- ${c.code} (${c.name}): ${c.signal}`);
   });
   it('says what counts for each wavering code, after its unchanged signal', () => {
-    for (const code of ['K3', 'K5', 'F2', 'B9', 'K2', 'C1', 'B5', 'B2', 'B6', 'K4', 'D4', 'A2', 'R2', 'B1']) {
+    for (const code of ['B11', 'E2', 'K3', 'K5', 'F2', 'B9', 'K2', 'C1', 'B5', 'B2', 'B6', 'K4', 'D4', 'A2', 'R2', 'B1']) {
       expect(WHAT_COUNTS_BY_CODE[code]).toBeTruthy();
       expect(PATTERN_DETECTION_PROMPT).toContain(WHAT_COUNTS_BY_CODE[code]);
     }
-    expect(WHAT_COUNTS_BY_CODE.K3).toMatch(/earlier record shows the same problem raised before/);
+    expect(WHAT_COUNTS_BY_CODE.K3).toMatch(/earlier record shows that/);
   });
 });

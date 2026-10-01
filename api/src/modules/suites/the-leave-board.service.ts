@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { inTheLeadsTeam } from './a-leads-team';
-import { mayApprove } from './who-approves';
+import { mayApproveFor } from './who-approves';
 
 /** The words the server says when it refuses, in plain full sentences. */
 export const LEAVE_REFUSED = {
@@ -127,7 +127,7 @@ export class LeaveBoardService {
         team,
         alsoOff: [...new Set(alsoOff)],
         standIn: r.standInUserId ? names.get(r.standInUserId)?.full ?? null : null,
-        mayDecide: await this.mayDecide(reader, role, r, answers.approver, people),
+        mayDecide: await this.mayDecide(reader, role, r, people),
       });
     }
 
@@ -172,7 +172,7 @@ export class LeaveBoardService {
     const row = (await this.prisma.leaveRequest.findUnique({ where: { id } })) as Row | null;
     if (!row || row.organizationId !== reader.organizationId) throw new NotFoundException(LEAVE_REFUSED.notFound);
     const people = await this.directory(reader.organizationId, [row]);
-    if (!(await this.mayDecide(reader, role, row, answers.approver, people))) throw new ForbiddenException(LEAVE_REFUSED.notYours);
+    if (!(await this.mayDecide(reader, role, row, people))) throw new ForbiddenException(LEAVE_REFUSED.notYours);
     if (row.status !== 'waiting') throw new BadRequestException(LEAVE_REFUSED.alreadyDecided);
     await this.prisma.leaveRequest.update({
       where: { id },
@@ -213,10 +213,10 @@ export class LeaveBoardService {
     return Math.max(0, perYear - used);
   }
 
-  private mayDecide(reader: Reader, role: string | null, r: Row, approver: string | null, people: Map<string, any>): Promise<boolean> {
-    return mayApprove(this.prisma, {
+  private mayDecide(reader: Reader, role: string | null, r: Row, people: Map<string, any>): Promise<boolean> {
+    return mayApproveFor(this.prisma, {
       organizationId: r.organizationId, readerId: reader.userId, readerRole: role, personUserId: r.userId,
-      approver, managerExternalId: people.get(r.userId)?.managerExternalId ?? null,
+      managerExternalId: people.get(r.userId)?.managerExternalId ?? null,
     });
   }
 

@@ -585,7 +585,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         reasonParts.push(`${completed} check-in${completed === 1 ? '' : 's'} on record, nothing specific named yet.`);
       } else if (checkable === 0) {
         reasonParts.push(
-          `${completed} check-in${completed === 1 ? '' : 's'} on record. Nothing named so far could be checked by anyone else - no named people, organisations, numbers or dates.`,
+          `${completed} check-in${completed === 1 ? '' : 's'} on record. Nothing named so far could be checked by anyone else, because no people, organisations, numbers or dates were named.`,
         );
       } else {
         reasonParts.push(
@@ -711,7 +711,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         );
       }
       if (map) {
-        reasonParts.push(`Read against ${map.label}: on track here means ${map.onTrackMeans.toLowerCase()}`);
+        reasonParts.push(`Their work is read against what being on track means for ${map.label.charAt(0).toLowerCase()}${map.label.slice(1)}, which is ${map.onTrackMeans.charAt(0).toLowerCase()}${map.onTrackMeans.slice(1)}`);
         /*
          * AND WHERE THAT DISAGREES WITH THEIR STATED ROLE, SAY SO.
          *
@@ -733,8 +733,8 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         if (stated && stated.fn !== p.detectedFunction) {
           const statedMap = roleMapFor(stated.fn as any);
           reasonParts.push(
-            `Their stated role reads as ${(statedMap?.label ?? stated.fn.toLowerCase().replace(/_/g, ' '))}, and the account does not bear that out - `
-            + 'so they are being read against what the record shows rather than against the title. '
+            `Their stated role reads as ${(statedMap?.label ?? stated.fn.toLowerCase().replace(/_/g, ' '))}, and the account does not bear that out. `
+            + 'So they are being read against what the record shows rather than against the title. '
             + 'If the title is right, that difference is the thing to look at first.',
           );
         }

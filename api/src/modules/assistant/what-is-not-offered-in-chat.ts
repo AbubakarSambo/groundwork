@@ -34,6 +34,11 @@ export interface NotOffered {
 
 export const NOT_OFFERED_IN_CHAT: NotOffered[] = [
   {
+    area: 'learning',
+    why: 'not a person’s question',
+    because: 'Counts of how patterns, coaching steps and questions have gone, for Groundwork\'s own admin. Nobody inside a customer asks about them in chat.',
+  },
+  {
     area: 'admin',
     why: 'not a person’s question',
     because: 'The platform console. It belongs to us running Groundwork, not to anybody inside a customer.',

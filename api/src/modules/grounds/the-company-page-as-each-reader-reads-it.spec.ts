@@ -85,7 +85,17 @@ function matches(row: any, where: any): boolean {
     return row[k] === v;
   });
 }
-const table = (list: any[]) => ({ findMany: jest.fn(async ({ where }: any) => list.filter((r) => matches(r, where))) });
+const table = (list: any[]) => ({
+  findMany: jest.fn(async ({ where }: any) => list.filter((r) => matches(r, where))),
+  findFirst: jest.fn(async ({ where }: any) => list.find((r) => matches(r, where)) ?? null),
+});
+
+/* What a lead confirmed is true of the whole company (week 20). One kept, one only offered. */
+const memory = [
+  { id: 'mem1', organizationId: ORG, kind: 'rule', text: "Every quote over 1 million needs Amina's sign-off", status: 'KEPT', sourceLine: 'Picked up from your check-in on 22 September', keptAt: ago(9) },
+  { id: 'mem2', organizationId: ORG, kind: 'owner', text: 'THIS-WAS-ONLY-OFFERED', status: 'OFFERED', sourceLine: 'Picked up from your check-in on 23 September', keptAt: null },
+  { id: 'mem3', organizationId: 'org-other', kind: 'rule', text: 'SOMEBODY-ELSES-RULE', status: 'KEPT', sourceLine: 'x', keptAt: ago(1) },
+];
 
 function setup() {
   const prisma: any = {
@@ -94,6 +104,8 @@ function setup() {
     person: table(rows.person),
     organizationMembership: table(rows.organizationMembership),
     ground: table([sales, operations, elsewhere]),
+    companyPicture: { findUnique: jest.fn(async () => null) },
+    organizationMemory: table(memory),
   };
   /* The check-ins list, as the real one gives it: an admin every check-in in the organisation,
      everybody else the ones they run or are in (and a guest the other company's one they are in). */
@@ -116,9 +128,9 @@ describe('Grace, an admin, reads the whole company page', () => {
     expect(page.line).toBe('2 teams and 5 people work here, and there were 3 check-ins this week.');
     expect(page.readsTargets).toBe(true);
     expect(page.priorities).toEqual([
-      { id: 's1', number: 1, title: 'Grow revenue 50%, enterprise first', owner: 'Wairimu Kamau', tag: null, fedBy: 'Fed by Sales team, Q3', staleSays: null, measure: 'Qualified enterprise deals', target: '12 this quarter' },
-      { id: 's2', number: 2, title: 'Improve delivery', owner: 'Otieno Ouma', tag: null, fedBy: 'Fed by Operations, Q3', staleSays: expect.stringMatching(/^This was last updated on \d{1,2} [A-Z][a-z]+\.$/), measure: 'On-time delivery', target: '95%' },
-      { id: 's3', number: 3, title: 'Build a stronger organisation', owner: null, tag: 'Nobody owns it yet', fedBy: 'No team feeds it', staleSays: null, measure: null, target: null },
+      { id: 's1', number: 1, title: 'Grow revenue 50%, enterprise first', owner: 'Wairimu Kamau', tag: null, fedBy: 'Fed by Sales team, Q3', staleSays: null, reading: null, measure: 'Qualified enterprise deals', target: '12 this quarter' },
+      { id: 's2', number: 2, title: 'Improve delivery', owner: 'Otieno Ouma', tag: null, fedBy: 'Fed by Operations, Q3', staleSays: expect.stringMatching(/^This was last updated on \d{1,2} [A-Z][a-z]+\.$/), reading: null, measure: 'On-time delivery', target: '95%' },
+      { id: 's3', number: 3, title: 'Build a stronger organisation', owner: null, tag: 'Nobody owns it yet', fedBy: 'No team feeds it', staleSays: null, reading: null, measure: null, target: null },
     ]);
   });
 
@@ -200,5 +212,46 @@ describe('what nobody is served', () => {
       expect(said).not.toMatch(/checkab|rating|score|\bPIP\b|at risk|exit/i);
       expect(said).not.toMatch(/participants|checkIns|email/);
     }
+  });
+});
+
+
+describe('what the lead confirmed for the organisation, on the company page (week 20)', () => {
+  const kept = {
+    readBy: 'Admins, leads and anyone who runs a check-in can read this. Everyone else cannot.',
+    items: [{ id: 'mem1', kind: 'rule', says: "Every quote over 1 million needs Amina's sign-off", source: 'Picked up from your check-in on 22 September' }],
+  };
+
+  it('Grace, an admin, reads it with its source line, and who can read it', async () => {
+    expect((await setup().read('grace')).whatWeKeep).toEqual(kept);
+  });
+
+  it('Wairimu, a lead, reads it too', async () => {
+    expect((await setup().read('wairimu')).whatWeKeep).toEqual(kept);
+  });
+
+  it('Miriam, who only takes part in a check-in, is given no such part at all, not an empty one', async () => {
+    const page = await setup().read('miriam');
+    expect(page).not.toHaveProperty('whatWeKeep');
+    expect(JSON.stringify(page)).not.toContain('sign-off');
+  });
+
+  it('a question that was only asked, and another company\'s rule, are served to nobody', async () => {
+    for (const who of ['grace', 'wairimu'] as const) {
+      const said = JSON.stringify(await setup().read(who));
+      expect(said).not.toContain('THIS-WAS-ONLY-OFFERED');
+      expect(said).not.toContain('SOMEBODY-ELSES-RULE');
+    }
+  });
+
+  it('Kofi, a guest from another company, is refused the whole page', async () => {
+    await expect(setup().read('kofi')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('opening the page reads what was kept and writes nothing', async () => {
+    const { read, prisma } = setup();
+    await read('grace');
+    expect(prisma.organizationMemory.findMany).toHaveBeenCalled();
+    expect(prisma.organizationMemory).not.toHaveProperty('create');
   });
 });

@@ -1,4 +1,5 @@
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
+import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
@@ -81,6 +82,7 @@ import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
+import { leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
@@ -95,10 +97,12 @@ import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
+import { WHAT_EACH_MARK_SAYS } from '../reports/the-mark-on-every-line';
 
 /**
  * The board: a delivery-shaped rendering of the delivery-relevant parts of the
@@ -623,6 +627,7 @@ export class BoardService {
        * disagree about one week. Not a new read: the same summary, the same two facts.
        */
       howItIsGoing: howACheckInIsGoing({
+        leave: await leaveOfThePeopleOn(this.prisma as any, [groundId]),
         checkIns: (ground as any).checkIns ?? [],
         participants: ground.participants ?? [],
         dependencies: (ground as any).dependencies ?? [],
@@ -769,6 +774,19 @@ export class BoardService {
        * `aTeamReportComes` (grounds.service): a yes or no, never how many.
        */
       aTeamReportComes: ground.participants.filter((p) => !p.managingOnly).length > 1,
+      /* WHO IS AWAY AND NOT WAITED ON THIS ROUND (week 23). Dates only. The lead reads it for each person;
+         a colleague only for a person the board already names to them; a person reads their own. */
+      whoIsAway: theAwayLinesFor(
+        (await howManyHaveAnswered(this.prisma, groundId, openRound)).awayUntil ?? {},
+        ground.participants.map((p: any) => {
+          const shown = nameOf(p.id);
+          const first = (p.user?.firstName ?? '').trim();
+          const name = shown && shown !== 'A colleague' ? (first && shown.includes(first) ? first : shown) : null;
+          return { id: p.id, nameGiven: name, user: null };
+        }),
+        { viewerRunsThisGround: isInitiator || isSetupAdmin || adminHere, myParticipantId: me?.id ?? null },
+        true,
+      ),
     };
 
     if (has('phaseSpine')) {
@@ -968,6 +986,7 @@ export class BoardService {
             })
           : [],
         agreements: Array.isArray(reportSafe.agreements) ? reportSafe.agreements : [],
+        ...(Array.isArray((reportSafe as any).agreementMarks) ? { agreementMarks: (reportSafe as any).agreementMarks } : {}),
         /* Why it is empty, where it is, rather than one sentence for every reason - see the module. */
         whyNothingYet: whyNothingIsCrossReferenced({
           stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
@@ -976,6 +995,8 @@ export class BoardService {
         centralQuestion: sessionShape?.theConversationWorthHaving ?? reportSafe.centralQuestion ?? null,
         settled: sessionShape?.whereThingsStand?.settled ?? [],
         stillOpen: sessionShape?.whereThingsStand?.open ?? [],
+        ...(sessionShape?.whereThingsStand?.settledMarks ? { settledMarks: sessionShape.whereThingsStand.settledMarks } : {}),
+        ...(sessionShape?.whereThingsStand?.openMarks ? { stillOpenMarks: sessionShape.whereThingsStand.openMarks } : {}),
       };
     }
 
@@ -1064,25 +1085,14 @@ export class BoardService {
         .filter((p: any) => !!p.userId && p.user?.awaitingOrgApproval)
         .map((p: any) => p.userId as string);
       if (waitingUserIds.length && (ground as any).organizationId) {
-        const requests: any[] = (await (this.prisma as any).membershipRequest?.findMany?.({
-          where: { organizationId: (ground as any).organizationId, userId: { in: waitingUserIds } },
-          orderBy: { createdAt: 'desc' },
-          select: { userId: true, status: true, decidedByUserId: true, decidedAt: true },
-        })) ?? [];
-        const seen = new Set<string>();
-        const deciderIds = new Set<string>();
-        const declined: any[] = [];
-        for (const r of requests) {
-          if (seen.has(r.userId)) continue;
-          seen.add(r.userId);
-          if (r.status === 'DECLINED') { declined.push(r); if (r.decidedByUserId) deciderIds.add(r.decidedByUserId); }
-        }
+        const declined = await whoAnAdminDidNotLetIn(this.prisma, (ground as any).organizationId, waitingUserIds);
+        const deciderIds = new Set([...declined.values()].map((d) => d.decidedByUserId).filter((x): x is string => !!x));
         const deciders: any[] = deciderIds.size
           ? (await (this.prisma as any).user.findMany({ where: { id: { in: [...deciderIds] } }, select: { id: true, firstName: true, lastName: true } })) ?? []
           : [];
         const deciderName = new Map(deciders.map((d) => [d.id, [d.firstName, d.lastName].filter(Boolean).join(' ').trim() || null]));
-        for (const r of declined) {
-          notLetInByUser.set(r.userId, { by: deciderName.get(r.decidedByUserId ?? '') ?? null, at: r.decidedAt ?? null });
+        for (const [userId, d] of declined) {
+          notLetInByUser.set(userId, { by: deciderName.get(d.decidedByUserId ?? '') ?? null, at: d.decidedAt ?? null });
         }
       }
       out.eachPerson = whereEachPersonIs(
@@ -1177,7 +1187,7 @@ export class BoardService {
           const text = label
             ? String(f.text ?? '').replace(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), row.who ?? 'They')
             : String(f.text ?? '');
-          return { ...row, finding: text, hasGap: !!f.hasGap };
+          return { ...row, finding: text, hasGap: !!f.hasGap, ...(f.mark ? { findingMark: f.mark, findingMarkSays: f.markSays, ...(f.markNote ? { findingMarkNote: f.markNote } : {}) } : {}) };
         });
       }
     }
@@ -1242,6 +1252,7 @@ export class BoardService {
           items: entries.filter((e) => e.participantId === p.id).map((e) => ({
             id: e.id, type: e.type, text: cleanText(e.text),
             mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
+            markSays: WHAT_EACH_MARK_SAYS[theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded)],
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
           })),
         }));
@@ -1730,6 +1741,62 @@ export class BoardService {
     }
 
     /*
+     * THE SWITCHBOARD'S OWN SECTIONS (request 70): the ones no other field carries. Built from rows the
+     * record already holds, with no model and nothing written, under one rule for who reads what. See
+     * the-switchboards-own-sections.ts and the map in docs/answers-from-engine.md.
+     */
+    {
+      const evaluation = isEvaluationCheckIn(ground.scenario);
+      const runsIt = isInitiator || runsItForAPattern(ground as any, requestingUserId);
+      /* An admin of the organisation reads everyone on a check-in that is not an evaluation, as the board does
+         for every other row; on an evaluation one, only the lead and the admin who set it up (decision 58). */
+      const mayReadEveryone = runsIt || (runsThisGround && !evaluation);
+      const adminWithoutAccess = adminHere && !runsIt && evaluation;
+      /* On an evaluation check-in people never read each other's things, whatever was chosen about seeing each other (request 78, part 3). */
+      const peersWalled = whoMaySee.peersHidden || evaluation;
+      const reader: WhoIsReading = {
+        meId: me?.id ?? null,
+        mayReadEveryone,
+        theLeadsId: theLeadsRow,
+        personMayBeRead: (pid) => {
+          if (adminWithoutAccess) return false;
+          if (mayReadEveryone) return true;
+          if (!pid) return !peersWalled;
+          return pid === me?.id || pid === theLeadsRow || !peersWalled;
+        },
+        handoffMayBeRead: (d) => {
+          if (adminWithoutAccess) return false;
+          if (mayReadEveryone || !peersWalled) return true;
+          return !!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id);
+        },
+        nameOf: (pid) => nameOf(pid),
+        aColleague: (pid) => aColleague(pid),
+      };
+      const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId, checkIns as any[]);
+      const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup }));
+      const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
+      const handoffs = (ground.dependencies ?? []) as any[];
+      const risks = theRisks(mine.commitments, handoffs, sessions, typeof (out as any).targetsNobodyOwns === 'string' ? (out as any).targetsNobodyOwns : null, reader);
+      if (risks.length) out.risks = risks;
+      const workPlan = theWorkPlan(mine.commitments, sessions, reader);
+      if (workPlan.length) out.workPlan = workPlan;
+      const timeline = theTimeline(mine.commitments, handoffs, sessions, (ground as any).closedAt ?? null, reader);
+      if (timeline.length) out.timeline = timeline;
+      const personHistory = thePersonHistory(people, mine.commitments, handoffs, sessions, reader);
+      if (personHistory.length) out.personHistory = personHistory;
+      const blockerCheck = theBlockerCheck(handoffs, reader);
+      if (blockerCheck.length) out.blockerCheck = blockerCheck;
+      /* Their words, so only for those whose words this reader may read: their own, or everybody's where people see each other or the reader runs it. */
+      const evidenceIndex = theEvidenceIndex(
+        mine.lines.map((l) => ({ ...l, wordsMayBeRead: mayReadEveryone || l.participantId === me?.id || !peersWalled })),
+        reader,
+      );
+      if (evidenceIndex.length) out.evidenceIndex = evidenceIndex;
+      const busyOrMoving = theBusyOrMoving(people, mine.commitments, handoffs, sessions, reader);
+      if (busyOrMoving) out.busyOrMoving = busyOrMoving;
+    }
+
+    /*
      * AND LAST, WHAT THE LEAD HAS NOT SHARED, IN THE WORDS AS WELL AS THE FIELDS. Hafsah, 28 September
      * 2026: neither a private file's name nor a hidden target's number may reach anyone the lead has
      * not shared it with. The fields were already walled; the sentences were not (screens requests
@@ -1835,6 +1902,32 @@ export class BoardService {
    * is what turns the board from a status read into a meeting agenda. Nothing
    * new is detected here - it is a view over things already established.
    */
+  /** The rows the switchboard's own sections read, as stored. Read only: opening a board writes nothing. */
+  private async theRecordTheSwitchboardsSectionsRead(groundId: string, checkIns: { id: string; sessionNumber: number }[]): Promise<{
+    commitments: ACommitment[];
+    lines: { id: string; participantId: string | null; text: string; mark: string; sessionNumber: number | null }[];
+  }> {
+    const commitments = await ((this.prisma as any).groundCommitment?.findMany?.({ where: { groundId }, orderBy: { createdAt: 'asc' } }) ?? Promise.resolve([])).catch(() => []);
+    /* Only lines somebody has not disputed, marked by the same rule as the reports (how-a-line-is-known). */
+    const entries = await (this.prisma.recordEntry.findMany({
+      where: { disputedAt: null, participant: { groundId } },
+      select: { id: true, participantId: true, type: true, text: true, checkInId: true, ...WHAT_A_MARK_READS },
+      orderBy: { createdAt: 'asc' },
+    }) as Promise<any[]>).catch(() => [] as any[]);
+    const whoAdded = await whoAddedEachBackingDocument(this.prisma, entries as any[]).catch(() => new Map<string, string | null>());
+    const lines = (entries as any[]).map((e) => {
+      const text = cleanText(e.text);
+      return {
+        id: e.id,
+        participantId: e.participantId ?? null,
+        text,
+        mark: theMarkOf({ ...e, text }, whoAdded),
+        sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
+      };
+    });
+    return { commitments: commitments as ACommitment[], lines };
+  }
+
   /**
    * The open decisions the lead wrote down, and only where they chose to share the note. A private
    * note is private: the audience is the lead's choice and this reads it rather than deciding it.
@@ -1872,7 +1965,7 @@ export class BoardService {
       .filter((d) => d.status === DependencyStatus.BLOCKING)
       .map((d) => ({
         question: `Somebody is waiting on ${inASentence(d.what)}, so it needs deciding.`,
-        why: 'A hard blocker. Someone cannot move until this is decided.',
+        why: 'Someone cannot move until this is decided.',
         owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? NOBODY_NAMED_TO_DECIDE) : (d.onLabel ?? NOBODY_NAMED_TO_DECIDE),
         source: 'blocker' as const,
       }));

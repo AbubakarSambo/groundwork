@@ -7,6 +7,7 @@ import { SuggestionsService } from './suggestions.service';
 import { OneAtATime } from '../reports/one-warm-up-at-a-time';
 import { labelsForParties } from '../reports/party-labels';
 import { commitmentsKeptInTheLastFourWeeks } from '../grounds/your-board';
+import { theirApprovedLeave } from '../suites/who-is-away';
 
 /**
  * WEEK 10, WIRED IN: A SUGGESTION IS REACHED WHEN SOMETHING NEW COMES IN, NEVER WHEN A PAGE IS
@@ -52,7 +53,7 @@ export class SuggestionsListener {
         participants: {
           where: { managingOnly: false },
           select: {
-            id: true, partyType: true, roleAsDescribed: true, email: true, createdAt: true, nameGiven: true,
+            id: true, userId: true, partyType: true, roleAsDescribed: true, email: true, createdAt: true, nameGiven: true,
             user: { select: { firstName: true, lastName: true, email: true } },
           },
         },
@@ -74,10 +75,12 @@ export class SuggestionsListener {
             select: { turns: { where: { role: TurnRole.PERSON }, orderBy: { createdAt: 'desc' }, take: 1, select: { content: true } } },
           }),
         ]);
+        /* A promise not kept from a day on approved leave is not a miss (week 23). */
+        const theirLeave = p.userId ? await theirApprovedLeave(this.prisma as any, p.userId, null) : [];
         await this.suggestions.reachFromTheRecord(groundId, {
           aboutParticipantId: p.id,
           aboutLabel: labels.get(p.id) ?? 'This person',
-          commitmentsSettledRecently: commitmentsKeptInTheLastFourWeeks(commitments),
+          commitmentsSettledRecently: commitmentsKeptInTheLastFourWeeks(commitments, new Date(), theirLeave),
           ownWords: lastSaid?.turns?.[0]?.content?.trim() || null,
         });
       } catch (err: any) {

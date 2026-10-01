@@ -64,7 +64,7 @@ describe('the field name the model wrote into the field', () => {
     /* fillAtStake only fills an EMPTY atStake. Run it first and it sees the duplicate, calls the
        field populated, and leaves the mangled topic standing. */
     const repair = SERVICE.indexOf('everyDivergenceReadable(result.divergences)');
-    const fill = SERVICE.indexOf('await this.fillAtStake(result.divergences)');
+    const fill = SERVICE.indexOf('this.fillAtStake(result.divergences)');
     expect(repair).toBeGreaterThan(-1);
     expect(fill).toBeGreaterThan(repair);
   });

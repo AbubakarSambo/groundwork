@@ -132,6 +132,19 @@ export function safeToUse(draft: string, composed: string | null | undefined, mu
   }
 
   /*
+   * AND A QUOTATION IS WHAT THE RECORD SAID, LETTER FOR LETTER (week 17).
+   *
+   * Anything in quotation marks in the wording has to be somewhere in the draft exactly as it is
+   * written there. Rewording may move a quote, never change it: a line put in somebody's mouth by
+   * tidying it is invented testimony, and reads exactly like the true version. Straight and curly
+   * marks are both read; an apostrophe inside a word is not a quotation mark.
+   */
+  for (const m of text.matchAll(/"([^"\n]{2,})"|\u201c([^\u201d\n]{2,})\u201d/g)) {
+    const quoted = (m[1] ?? m[2]).trim();
+    if (!draft.includes(quoted)) return false;
+  }
+
+  /*
    * AND THE PRODUCT'S OWN REASONING IS NEVER PUT IN THE READER'S MOUTH.
    *
    * Read on a participant's own report, 20 Sep 2026: "You described how a sales representative

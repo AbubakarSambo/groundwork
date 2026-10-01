@@ -30,6 +30,11 @@ import { theNextDayTheyWork, workingDaysOf } from './which-days-this-team-works'
 import { targetsFor } from '../board/whose-number-is-whose-business';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
+import { LeaveBoardService } from '../suites/the-leave-board.service';
+import { leaveOfThePeopleOn, theAwayLinesFor, whoOnACheckInIsAway } from '../suites/who-is-away';
+import { LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
+import { offerToKeep, keepWhatWasOffered, dropWhatWasOffered } from '../knowledge/organisation-memory';
+import { keepable, soundsCompanyWide, MEMORY_PROMPT, MEMORY_TOOL, NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
 import { restatesSuccess, saidBackForRestatedSuccess, askToRestateSuccess } from './restating-what-good-means';
 import { forHumans } from '../presentation/outbound';
 import { AnthropicService } from '../conversation/anthropic.service';
@@ -1383,6 +1388,8 @@ export class GroundsService {
       }
     }
 
+    /* Who is away today, for every check-in in the list at once (week 23). */
+    const leaveOnTheList = await leaveOfThePeopleOn(this.prisma as any, [...orgGrounds, ...participantGrounds].map((g: any) => g.id));
     return [...orgGrounds, ...participantGrounds]
       .map(g => {
         // Only set when the ground belongs to a different organisation than the one
@@ -1453,6 +1460,7 @@ export class GroundsService {
           sharedPicture: ((rest as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
           /* The opening the report wrote, preferred over slicing the picture. See how-a-check-in-is-going. */
           theOpening: ((rest as any).report?.theOpening as string | null) ?? null,
+          leave: leaveOnTheList,
         });
         const roundsDone = going.glance.progress.roundsDone;
         /*
@@ -2579,6 +2587,14 @@ export class GroundsService {
       leadContextNotes,
       org: org ?? null,
       sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+      /* WHO IS AWAY, AND THAT THIS ROUND DOES NOT WAIT FOR THEM (week 23). Dates only, never a reason or
+         a kind of leave. The lead reads it for each person; a colleague reads only that the person is
+         away, and only for a person this reader is already shown by name; a person reads their own. */
+      whoIsAway: theAwayLinesFor(
+        sessionProgress?.awayUntil ?? {},
+        participantsWithCheckIns as any[],
+        { viewerRunsThisGround, myParticipantId: requestingParticipant?.id ?? null },
+      ),
       /**
        * The context flag, sent with the ground because that is where the tab
        * lives. The client cannot read an environment variable, and a screen that
@@ -2691,6 +2707,27 @@ export class GroundsService {
     const isOrgAdmin = adminsThisOrg({ ...viewer, userId: requestingUserId }, ground);
     if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
       throw new ForbiddenException('Setting this check-in up is for the lead or an admin in your organisation. Your own check-ins are on your page.');
+    }
+
+    /*
+     * LEAVE DATES GO TO THE LEAVE SUITE, NOT TO THIS CHECK-IN'S RECORD (week 20). Read by rules. Said
+     * back with the exact days, and sent to the person who approves only on a yes (applyContextProposal
+     * with `leave`). While the suite is off it says so, and nothing is kept: no context line, no
+     * proposal, no organisation memory. The rest of the setup conversation does not see this turn.
+     */
+    {
+      const lastLeadTurn = [...history].reverse().find((h) => h.role === 'user')?.content?.trim() ?? '';
+      const dates = soundsLikeLeave(lastLeadTurn) ? readLeaveDates(lastLeadTurn) : null;
+      if (dates) {
+        const said = await sayBackLeave(this.prisma, this.leaveSuite(), { userId: requestingUserId, organizationId: ground.organizationId }, dates);
+        return {
+          reply: said.ok ? '' : said.say,
+          gaps: [] as string[],
+          openQuestion: null,
+          done: false,
+          proposal: said.ok ? { gap: 'leave_request', say: said.say } : null,
+        };
+      }
     }
 
     /*
@@ -3027,6 +3064,31 @@ export class GroundsService {
       }
     }
 
+    /*
+     * SOMETHING TRUE OF THE WHOLE COMPANY IS OFFERED BACK FOR THE ORGANISATION (week 20).
+     *
+     * Only when nothing else is being proposed this turn (one question to say yes to at a time), only
+     * from the lead's own last message, and only when it reads like a rule, a definition, a principle,
+     * an owner or a client. The model reads it; the guards in what-the-organisation-keeps decide
+     * whether it may be offered (their words as typed, nothing private, nothing judging a person). The
+     * offer is a row marked OFFERED that nothing reads; only the lead's yes keeps it.
+     */
+    let memoryOfferId: string | null = null;
+    if (proposal.kind === 'none' && lastFromLead && soundsCompanyWide(lastFromLead)) {
+      try {
+        const heard = await this.anthropic.extract<{ items?: { kind?: string; text?: string }[] }>(MEMORY_PROMPT, [{ role: 'user' as const, content: lastFromLead }], MEMORY_TOOL);
+        const people = (await this.partiesForMatching(groundId)).flatMap((p: any) => [p.name, p.name?.split(' ')[0]].filter(Boolean)) as string[];
+        const [one] = keepable(heard?.items, lastFromLead, people);
+        if (one) {
+          const offered = await offerToKeep(this.prisma, { organizationId: ground.organizationId, groundId, userId: requestingUserId, item: one });
+          memoryOfferId = offered.offerId;
+          proposal = { kind: 'organisation_memory', say: offered.say } as any;
+        }
+      } catch {
+        /* nothing is offered; the conversation carries on */
+      }
+    }
+
     /**
      * THROUGH THE BOUNDARY, LIKE EVERY OTHER THING A MODEL SAYS TO SOMEBODY.
      *
@@ -3112,6 +3174,7 @@ export class GroundsService {
       proposal: proposal.kind === 'none' ? null : {
         gap: proposal.kind,
         say: sayBack as string,
+        ...(memoryOfferId ? { offerId: memoryOfferId } : {}),
         /*
          * EACH QUESTION FOR A PERSON, AS IT WILL BE ASKED. Not written yet, so no id: the yes to this
          * list keeps them, and each one is then confirmed, changed or left out on its own through
@@ -3645,6 +3708,19 @@ export class GroundsService {
     }));
   }
 
+  /** The leave suite, found when it is needed. Absent, leave is answered as not switched on. */
+  private leaveSuite(): LeaveBoardService | undefined {
+    try { return this.moduleRef?.get(LeaveBoardService, { strict: false }) ?? undefined; } catch { return undefined; }
+  }
+
+  /** A no to keeping something for the organisation: the offer is deleted and nothing is kept. */
+  async declineContextOffer(groundId: string, requestingUserId: string, offerId: string) {
+    const ground = await this.prisma.ground.findUnique({ where: { id: groundId }, select: { organizationId: true } });
+    if (!ground) throw new NotFoundException('Check-in not found');
+    await dropWhatWasOffered(this.prisma, { organizationId: ground.organizationId, offerId, userId: requestingUserId });
+    return { changed: 'nothing', say: NOT_KEPT };
+  }
+
   async applyContextProposal(
     groundId: string,
     requestingUserId: string,
@@ -3655,7 +3731,7 @@ export class GroundsService {
      * The change is still re-derived from their own words here - the client sends sentences, never
      * a participantId or a value - so the guarantee that made this a confirmation is unchanged.
      */
-    dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[] },
+    dto: { said: string; history?: { role: 'user' | 'assistant'; content: string }[]; offerId?: string; leave?: boolean },
   ) {
     /* The same words the chat was given, so no bank details are kept on a yes either. */
     dto = { ...dto, said: withoutBankDetails(dto?.said) as string, ...(dto?.history ? { history: withoutBankDetailsInEachTurn(dto.history) } : {}) };
@@ -3663,7 +3739,7 @@ export class GroundsService {
       where: { id: groundId },
       select: {
         id: true, initiatorId: true, timelineDays: true, runsUntilEnded: true, cadence: true, brief: true, scenario: true,
-        timelineStated: true, cadenceStated: true,
+        timelineStated: true, cadenceStated: true, organizationId: true,
         participants: { select: { id: true, managingOnly: true, userId: true } },
         objectives: { select: { id: true } },
       },
@@ -3678,6 +3754,21 @@ export class GroundsService {
      */
     const confirm = await this.mayConfirmSetupOn(ground, requestingUserId);
     const confirmedByAdminNote = confirm.as === 'admin' ? confirmedByAnAdminSentence(confirm.confirmedByName, confirm.leadName) : null;
+
+    /*
+     * A YES TO KEEPING SOMETHING FOR THE ORGANISATION (week 20). The row that was offered is what is
+     * kept, in the words the lead typed; the yes carries an id and never a value.
+     */
+    if (dto.offerId) {
+      const kept = await keepWhatWasOffered(this.prisma, { organizationId: ground.organizationId, groundId, offerId: dto.offerId, userId: requestingUserId });
+      return { changed: kept.kept ? 'organisation memory' : 'nothing new', say: kept.say };
+    }
+    /* And a yes to a leave request is sent through the leave suite, from the days in the lead's own words. */
+    if (dto.leave) {
+      const dates = readLeaveDates(dto.said);
+      if (!dates) throw new BadRequestException(LEAVE_NOTHING_WAITING);
+      return { changed: 'leave request', say: await sendLeave(this.leaveSuite(), this.prisma, { userId: requestingUserId, organizationId: ground.organizationId }, dates) };
+    }
 
     const openDocumentCount = await this.prisma.groundDocument.count({ where: { groundId, visibility: 'OPEN' } });
     const objectiveRowsForGaps = await this.prisma.personObjective.findMany({
@@ -7294,11 +7385,14 @@ export class GroundsService {
     /* Everybody has ANSWERED - and a decline is an answer (an-answer-includes-a-refusal.ts). Counting
        only COMPLETED here froze every round with one refusal in it, for that session and every one after. */
     let completed = 0;
+    /* Somebody on approved leave today is not waited on; if they answer anyway, they count (week 23). */
+    const away = await whoOnACheckInIsAway(this.prisma as any, groundId);
     for (const p of active) {
       const ci = await this.prisma.checkIn.findFirst({
         where: { participantId: p.id, sessionNumber, status: { in: AN_ANSWER } },
         select: { status: true },
       });
+      if (!ci && away.has(p.id)) continue;
       if (!ci) return false;
       if (ci.status === CheckInStatus.COMPLETED) completed += 1;
     }
@@ -7332,6 +7426,8 @@ export class GroundsService {
      * when it holds three, and the report's whole standing rests on not doing that.
      */
     declinedParticipantIds: string[];
+    /** Who is on approved leave today and not waited on, with the last day of it (week 23). Dates only. */
+    awayUntil: Record<string, string>;
   } | null> {
     /**
      * THE ROUND THIS IS ABOUT IS THE ONE PEOPLE HAVE ANSWERED, NOT THE NEWEST ONE OPENED.
@@ -7377,6 +7473,7 @@ export class GroundsService {
        */
       missingParticipantIds: counted.waitingOn,
       declinedParticipantIds: counted.expectedIds.filter((id) => declined.has(id)),
+      awayUntil: counted.awayUntil ?? {},
     };
   }
 

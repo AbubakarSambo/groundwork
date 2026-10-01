@@ -123,7 +123,7 @@ describe('the board: each line in who owns what carries its mark', () => {
     expect(aisha).toBeTruthy();
     expect(marksIn(aisha.items)).toEqual(EXPECTED);
     /* Only the line and how it is known: no file, and nothing about how anybody's answers were rated. */
-    for (const item of aisha.items) expect(Object.keys(item).sort()).toEqual(['id', 'mark', 'sessionNumber', 'text', 'type']);
+    for (const item of aisha.items) expect(Object.keys(item).sort()).toEqual(['id', 'mark', 'markSays', 'sessionNumber', 'text', 'type']);
     const served = JSON.stringify(board.whoOwnsWhat);
     expect(served).not.toContain(AISHAS_PHOTO);
     expect(served).not.toContain(LEADS_PLAN);

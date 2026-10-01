@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Optional, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { adminsThisOrg, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from '../grounds/who-may-read-this-check-in';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +7,9 @@ import { ReportsService } from '../reports';
 import { EmailService } from '../email/email.service';
 import { endStatesFor, isValidEndState, closingNeedsEveryone } from './end-states';
 import { GroundStatus, PartyType } from '@prisma/client';
+import { SuggestionsService } from '../suggestions/suggestions.service';
+import { ReviewsProposedService } from '../suites/the-reviews-proposed.service';
+import { theEndingPageFor } from './what-the-ending-page-reads';
 import { labelsForParties, namesVisibleTo, displayName, plainWordsByPerson, atTheStart } from '../reports/party-labels';
 
 /**
@@ -31,6 +34,8 @@ export class ResolutionService {
     private reports: ReportsService,
     private email: EmailService,
     private config: ConfigService,
+    @Optional() private suggestions?: SuggestionsService,
+    @Optional() private reviewsProposed?: ReviewsProposedService,
   ) {}
 
   /**
@@ -56,7 +61,7 @@ export class ResolutionService {
          (decision 5, request 78); otherwise it is as if there were no such check-in. */
       if (!admin || !adminsThisOrg({ ...admin, userId }, ground)) throw new ForbiddenException('You are not part of this check-in.');
     }
-    return this.buildState(groundId, userId);
+    return { ...(await this.buildState(groundId, userId)), theEndingPage: await theEndingPageFor({ prisma: this.prisma, suggestions: this.suggestions }, groundId, userId) };
   }
 
   /**
@@ -329,6 +334,12 @@ export class ResolutionService {
         ),
       );
     }
+
+    /* When the check-in was about one person and they carry on, a review is PROPOSED to whoever runs
+       reviews. Only their yes starts it, and nothing goes to the person. Best-effort, like the rest. */
+    await this.reviewsProposed?.whenACheckInEnds(groundId).catch((err: any) =>
+      this.logger.error(`Proposing a review after ground ${groundId} closed failed: ${err?.message}`),
+    );
 
     this.logger.log(`Ground ${groundId} closed with end state ${endState}. Billing stopped.`);
   }

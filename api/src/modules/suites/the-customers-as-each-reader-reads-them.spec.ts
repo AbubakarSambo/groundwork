@@ -64,8 +64,8 @@ function setup(opts: { on?: boolean } = {}) {
       update: write(), upsert: write(), create: write(),
     },
     customerStanding: { findMany: jest.fn(async () => [
-      { counterpartyExternalId: 'crm-green', says: 'Quote sent. Buys in January', createdAt: at('2026-09-23') },
-      { counterpartyExternalId: 'crm-green', says: 'Interested', createdAt: at('2026-09-01') },
+      { counterpartyExternalId: 'crm-green', says: 'Interested.', createdAt: at('2026-09-01') },
+      { counterpartyExternalId: 'crm-green', says: 'Quote sent. Buys in January.', createdAt: at('2026-09-23') },
     ]) },
     interaction: { findMany: jest.fn(async ({ where }: any) => INTERACTIONS
       .filter((i) => where.counterpartyExternalId.in.includes(i.counterpartyExternalId) && (where.disputedAt !== null || !i.disputedAt))
@@ -96,7 +96,7 @@ describe('Grace, an admin', () => {
   it('reads every customer, where it stands, who owns it and the last contact', async () => {
     const { svc, as } = setup();
     expect((await svc.board(as('u-grace'))).customers).toEqual([
-      { id: 's-green', name: 'Green Mart', standing: 'Quote sent. Buys in January', owner: 'Miriam Wanjiku', lastContact: '2026-09-23' },
+      { id: 's-green', name: 'Green Mart', standing: 'Quote sent. Buys in January.', owner: 'Miriam Wanjiku', lastContact: '2026-09-23' },
       { id: 's-kariuki', name: 'Kariuki Butchery', standing: 'Paid', owner: 'Aisha Otieno', lastContact: '2026-09-18' },
       { id: 's-naivas', name: 'Naivas Ngong Road', standing: 'First order placed', owner: 'Kwame Boateng', lastContact: null },
       { id: 's-westgate', name: 'Westgate Deli', standing: null, owner: 'Miriam Wanjiku', lastContact: null },
@@ -113,6 +113,22 @@ describe('a lead', () => {
   it('Kamau reads only Kwame’s', async () => {
     const { svc, as } = setup();
     expect((await svc.board(as('u-kamau'))).customers.map((c) => c.name)).toEqual(['Naivas Ngong Road']);
+  });
+});
+
+describe('where a customer stands, written from a sales check-in (request 28)', () => {
+  it('the board shows only the latest line for a customer, however the rows come back', async () => {
+    const { svc, as } = setup();
+    const green = (await svc.board(as('u-grace'))).customers.find((c) => c.name === 'Green Mart');
+    expect(green?.standing).toBe('Quote sent. Buys in January.');
+    expect(JSON.stringify(green)).not.toMatch(/Interested/);
+  });
+
+  it('is served only to the readers who are served that customer', async () => {
+    const { svc, as } = setup();
+    expect(JSON.stringify(await svc.board(as('u-kamau')))).not.toMatch(/Quote sent|Green Mart/);
+    expect(JSON.stringify(await svc.board(as('u-wairimu')))).toMatch(/Quote sent\. Buys in January\./);
+    await expect(svc.board(as('u-miriam'))).rejects.toThrow(ForbiddenException);
   });
 });
 
