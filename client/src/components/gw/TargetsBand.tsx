@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { boardApi } from '@/api/board'
 import { firstNameOrLabel, atTheStart } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
+import { Panel, RowList, Row, Tag, FieldLabel, TextArea } from '@/components/gw/ui'
 
 /**
  * TARGETS, AS THE PROTOTYPE'S CONTEXT PAGE DRAWS THEM (U.7, B2).
@@ -107,74 +108,75 @@ export function TargetsBand({
     const assumes = (t.assumes ?? []).filter((a) => a && a.trim())
     const figure = t.target == null ? null : t.target.toLocaleString('en-GB')
     return (
-      <div key={t.id} data-gw-target={t.id} className="gwui-inner-row gwui-pt-9 gwui-pr-13 gwui-pb-9 gwui-pl-13">
-        <div className="gwui-gap-12" style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <span className="gwui-fs-13 gwui-ink-dark" style={{ flex: '1 1 140px', fontWeight: 700 }}>{t.name}</span>
-          <span className="gwui-fs-13 gwui-ink-text" style={{ flex: '0 0 110px', fontVariantNumeric: 'tabular-nums' }}>
-            {figure ?? <span className="gwui-fs-13 gwui-ink-muted">No number set</span>}
-          </span>
-          <span className="gwui-fs-13 gwui-ink-sub" style={{ flex: '1 1 110px' }}>{whose(t)}</span>
-          <span className="gwui-fs-13 gwui-ink-sub" style={{ flex: '1 1 130px', textAlign: 'right' }}>{seenBy(t)}</span>
-          {onChangeTarget && (
+      <Row key={t.id} columns="1fr">
+        <div data-gw-target={t.id} className="gwui-pt-9 gwui-pr-13 gwui-pb-9 gwui-pl-13">
+          <div className="gwui-gap-12" style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap' }}>
+            <span className="gwui-fs-13 gwui-ink-dark" style={{ flex: '1 1 140px', fontWeight: 700 }}>{t.name}</span>
+            <span className="gwui-fs-13 gwui-ink-text" style={{ flex: '0 0 110px', fontVariantNumeric: 'tabular-nums' }}>
+              {figure ?? <span className="gwui-fs-13 gwui-ink-muted">No number set</span>}
+            </span>
+            <span style={{ flex: '1 1 110px' }}><Tag tone="plain">{whose(t)}</Tag></span>
+            <span className="gwui-fs-13 gwui-ink-sub" style={{ flex: '1 1 130px', textAlign: 'right' }}>{seenBy(t)}</span>
+            {onChangeTarget && (
+              <button
+                onClick={() => onChangeTarget(t)}
+                className="gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none"
+                style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Change this
+              </button>
+            )}
+          </div>
+          {/* A number nobody has defined is not an agreed number, said beside the number. */}
+          {t.notSettled && (
+            <div className="gwui-fs-13 gwui-ink-amber gwui-mt-4" style={{ lineHeight: 1.5, maxWidth: '62ch' }}>{t.notSettled}</div>
+          )}
+          {assumes.length > 0 && editing !== t.id && (
+            <WhatTheTargetAssumes figure={figure} name={t.name} assumes={assumes} />
+          )}
+          {isTheLead && editing !== t.id && (
             <button
-              onClick={() => onChangeTarget(t)}
-              className="gwui-fs-13 gwui-ink-sub gwui-p-0 gwui-rule-none"
-              style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              onClick={() => { setEditing(t.id); setDraft(assumes.join('\n')) }}
+              className="gwui-fs-13 gwui-ink-navy gwui-mt-6 gwui-p-0 gwui-rule-none"
+              style={{ fontWeight: 600, background: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
             >
-              Change this
+              {assumes.length ? 'Change what it assumes' : 'Say what it assumes'}
             </button>
           )}
-        </div>
-        {/* A number nobody has defined is not an agreed number, said beside the number. */}
-        {t.notSettled && (
-          <div className="gwui-fs-13 gwui-ink-amber gwui-mt-4" style={{ lineHeight: 1.5, maxWidth: '62ch' }}>{t.notSettled}</div>
-        )}
-        {assumes.length > 0 && editing !== t.id && (
-          <WhatTheTargetAssumes figure={figure} name={t.name} assumes={assumes} />
-        )}
-        {isTheLead && editing !== t.id && (
-          <button
-            onClick={() => { setEditing(t.id); setDraft(assumes.join('\n')) }}
-            className="gwui-fs-13 gwui-ink-navy gwui-mt-6 gwui-p-0 gwui-rule-none"
-            style={{ fontWeight: 600, background: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-          >
-            {assumes.length ? 'Change what it assumes' : 'Say what it assumes'}
-          </button>
-        )}
-        {isTheLead && editing === t.id && (
-          <div className="gwui-mt-8" style={{ maxWidth: 560 }}>
-            <label className="gwui-fs-13 gwui-ink-dark gwui-mb-4" style={{ display: 'block', fontWeight: 700 }} htmlFor={`assumes-${t.id}`}>
-              {figure ? `What the target of ${figure} assumes` : 'What this target assumes'}
-            </label>
-            <textarea
-              id={`assumes-${t.id}`}
-              className="gw-ta"
-              autoFocus
-              rows={3}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="One thing on each line."
-            />
-            <div className="gwui-gap-8 gwui-mt-8" style={{ display: 'flex' }}>
-              <button
-                onClick={() => saveAssumes.mutate({ id: t.id, lines: draft.split('\n').map((l) => l.trim()).filter(Boolean) })}
-                disabled={saveAssumes.isPending}
-                className="gwui-fs-13 gwui-ink-white gwui-pt-7 gwui-pr-13 gwui-pb-7 gwui-pl-13 gwui-rule-none"
-                style={{ borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                {saveAssumes.isPending ? 'Saving…' : 'Save'}
-              </button>
-              <button
-                onClick={() => { setEditing(null); setDraft('') }}
-                className="gwui-rule gwui-fs-13 gwui-ink-sub gwui-pt-7 gwui-pr-12 gwui-pb-7 gwui-pl-12"
-                style={{ borderRadius: 7, background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Cancel
-              </button>
+          {isTheLead && editing === t.id && (
+            <div className="gwui-mt-8" style={{ maxWidth: 560 }}>
+              <FieldLabel htmlFor={`assumes-${t.id}`}>
+                {figure ? `What the target of ${figure} assumes` : 'What this target assumes'}
+              </FieldLabel>
+              <TextArea
+                id={`assumes-${t.id}`}
+                autoFocus
+                rows={3}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="One thing on each line."
+              />
+              <div className="gwui-gap-8 gwui-mt-8" style={{ display: 'flex' }}>
+                <button
+                  onClick={() => saveAssumes.mutate({ id: t.id, lines: draft.split('\n').map((l) => l.trim()).filter(Boolean) })}
+                  disabled={saveAssumes.isPending}
+                  className="gwui-fs-13 gwui-ink-white gwui-pt-7 gwui-pr-13 gwui-pb-7 gwui-pl-13 gwui-rule-none"
+                  style={{ borderRadius: 7, background: 'var(--gw-navy)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  {saveAssumes.isPending ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => { setEditing(null); setDraft('') }}
+                  className="gwui-rule gwui-fs-13 gwui-ink-sub gwui-pt-7 gwui-pr-12 gwui-pb-7 gwui-pl-12"
+                  style={{ borderRadius: 7, background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </Row>
     )
   }
 
@@ -189,12 +191,14 @@ export function TargetsBand({
           </a>
         </div>
       )}
-      <div className="gwui-rule" style={{ background: 'white', borderRadius: 10, overflow: 'hidden' }}>
-        {theTeams.map(row)}
-        <ShowAFew rows={shares} few={8} what="shares of the target">
-          {(t: Target) => row(t)}
-        </ShowAFew>
-      </div>
+      <Panel pad={false}>
+        <RowList label="Targets">
+          {theTeams.map(row)}
+          <ShowAFew rows={shares} few={8} what="shares of the target">
+            {(t: Target) => row(t)}
+          </ShowAFew>
+        </RowList>
+      </Panel>
       {!numbersShared && (
         <div className="gwui-fs-13 gwui-ink-sub gwui-mt-8">
           Each person sees their own share and the team{'’'}s totals, never someone else{'’'}s share.
