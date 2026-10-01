@@ -8,9 +8,11 @@ import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row } from '@/c
  * TO-DOS (E8, #/suite/todos, group 2 piece 4). What each reader is given is the server's (GET
  * /suites/todos/board): only lines they may already read in the check-in each came from, for an admin
  * everybody, for a lead their own team and themselves, and nobody else. The wording follows
- * docs/prototype/screens/E-suites/suite-todos.txt: each person's name, each line, and "From her
- * check-in, 24 September", with "a check-in" for "her check-in" because the product does not know
- * anybody's pronouns.
+ * docs/prototype/screens/E-suites/suite-todos.txt: each person's name and each line. Group 2's review
+ * (fault B) changed the source line from "From her check-in, 24 September" to "From {first name}'s
+ * check-in in {check-in}, on {date}.": the prototype's "her" assumes a pronoun nothing in the product
+ * records, so the person's own first name is used instead, and the check-in itself is now named,
+ * since a person is often in more than one.
  *
  * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (crumbs, subtitle), `Section` for each person,
  * `RowList`/`Row` for their lines, and `Note`/`Empty` for loading, error and empty states. No new
@@ -67,7 +69,7 @@ export function TodosPage() {
               <Row key={t.id} columns="minmax(0, 1fr)">
                 <div>
                   <b>{t.text}</b>
-                  <p className="gwui-panel-text-muted">{`From a check-in, ${onDay(t.on)}`}</p>
+                  <p className="gwui-panel-text-muted">{`From ${p.firstName}’s check-in in ${t.checkIn}, on ${onDay(t.on)}.`}</p>
                 </div>
               </Row>
             ))}

@@ -205,7 +205,7 @@ export const spendApi = {
 
 /** To-dos (GET /suites/todos/board): what each person said they will do in their check-ins. */
 export interface TodoList {
-  people: { name: string; todos: { id: string; text: string; source: 'check-in'; on: string }[] }[]
+  people: { name: string; firstName: string; todos: { id: string; text: string; source: 'check-in'; on: string; checkIn: string }[] }[]
 }
 
 export const todosApi = {
