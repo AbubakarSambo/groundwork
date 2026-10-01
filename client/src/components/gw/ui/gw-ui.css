@@ -1354,3 +1354,85 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-record-list { display: flex; flex-direction: column; gap: 8px; }
 .gwui-ci-subject { font-size: 14.5px; line-height: 21px; color: var(--gw-text); margin: 0; font-weight: 700; }
 .gwui-ci-about { display: flex; flex-direction: column; }
+
+/* ── SETTING UP A CHECK-IN (group 3, piece 4, B1-starting-a-check-in) ───────
+   CreateGroundPage.tsx and SituationCard.tsx. No prototype screen matches this one exactly - the
+   prototype's own B1 screens (new.jpg, start.jpg) replace this picker-and-form wizard with a
+   conversation - so these values are carried over from the product's own old `cg-*` classes
+   (index.css), which this replaces everywhere they were used (both files; nothing else drew them). */
+
+.gwui-cg-body { max-width: 540px; margin: 0 auto; width: 100%; }
+.gwui-cg-body-wide { max-width: 1160px; }
+
+.gwui-wizard-dots { display: flex; gap: 6px; margin-bottom: 24px; }
+.gwui-wizard-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gw-border); transition: background 0.2s; }
+.gwui-wizard-dot-active { background: var(--gw-navy); }
+.gwui-wizard-dot-done { background: var(--gw-green-b); }
+
+/* The situation picker's own grid of groups - "A coach" is drawn in one too, since it is the same
+   one-group, one-question, one-grid shape as a situation group. */
+.gwui-situation-group { margin-top: 28px; }
+.gwui-situation-group-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.gwui-situation-group-head h3 { font-size: 16px; font-weight: 800; margin: 0; letter-spacing: -.01em; color: var(--gw-text); }
+.gwui-situation-group-q { font-size: 13px; color: var(--gw-sub); line-height: 1.55; margin: 4px 0 12px; max-width: 62ch; }
+.gwui-situation-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 700px)  { .gwui-situation-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .gwui-situation-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1240px) { .gwui-situation-grid { grid-template-columns: repeat(4, 1fr); } }
+.gwui-situation-grid-one { grid-template-columns: 1fr !important; }
+
+/* One situation card: title, the recognisable moment, an expandable "How it runs". */
+.gwui-situation-card {
+  border: 1px solid var(--gw-border); border-radius: 8px; padding: 14px; cursor: pointer;
+  transition: all 0.15s; background: white; display: flex; flex-direction: column; gap: 8px;
+}
+/* SELECTION IS NOT A SCALE VALUE. Green, amber and red are a scale in this product - aligned, needs
+   realignment, escalate - and blue sits beside them on notices meaning 'read this'. Selection uses
+   --gw-slate, a neutral surface the system already has, so no colour is invented and no colour does
+   two jobs. The navy border still carries 'this one'. */
+.gwui-situation-card:hover, .gwui-situation-card-selected { border-color: var(--gw-navy); background: var(--gw-slate); }
+.gwui-situation-check-row { display: flex; align-items: center; justify-content: flex-end; }
+/* AN EMPTY CIRCLE ON EVERY CARD READ AS A CHECKBOX LIST. It is a radio: one card, and picking one
+   decides the step, so there is not even a selected state to show on the entry chat's own door.
+   Space is held either way, or the heading jumps when a card is chosen. */
+.gwui-situation-check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid transparent; flex-shrink: 0; transition: all 0.15s; }
+.gwui-situation-card-selected .gwui-situation-check {
+  background: var(--gw-navy); border-color: var(--gw-navy);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='8' viewBox='0 0 10 8'%3E%3Cpath d='M1 4l3 3 5-6' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center;
+}
+.gwui-situation-title { font-size: 14.5px; font-weight: 700; line-height: 1.3; }
+/* The left rule replaces a heading - it says "this is an example" without a label. */
+.gwui-situation-moment { font-size: 13px; color: var(--gw-text); font-style: italic; line-height: 1.5; margin: 0; padding-left: 9px; border-left: 2px solid var(--gw-border); }
+.gwui-situation-card-selected .gwui-situation-moment { border-left-color: var(--gw-navy); }
+.gwui-situation-more { align-self: flex-start; background: none; border: none; padding: 2px 0; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--gw-navy); }
+.gwui-situation-more:focus-visible { outline: 2px solid var(--gw-navy); outline-offset: 2px; border-radius: 3px; }
+.gwui-situation-arc { margin: 6px 0 0; padding: 10px 11px; background: var(--gw-paper-2); border-radius: 6px; display: grid; gap: 8px; }
+.gwui-situation-arc dt { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin-bottom: 1px; }
+.gwui-situation-arc dd { margin: 0; font-size: 13px; color: var(--gw-sub); line-height: 1.5; }
+.gwui-situation-arc-warn dt { color: var(--gw-amber-t); }
+/* Cadence, length and count: three numbers a lead compares between two cards. */
+.gwui-situation-meta { display: flex; margin-top: auto; padding-top: 9px; border-top: 1px solid var(--gw-border); }
+.gwui-situation-meta > div { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.gwui-situation-meta dt { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gw-muted); margin: 0 0 1px; line-height: 1.3; min-height: 24px; }
+.gwui-situation-meta dd { font-size: 13px; font-weight: 600; color: var(--gw-text); margin: 0; font-variant-numeric: tabular-nums; }
+@media (max-width: 620px) {
+  .gwui-situation-grid { grid-template-columns: 1fr; }
+  .gwui-situation-meta { flex-wrap: wrap; gap: 8px; }
+  .gwui-situation-meta > div { flex: 0 0 30%; }
+  .gwui-situation-meta dt { min-height: 0; }
+}
+
+/* The fixed "Continue" bar at the foot of the picker, coach and describe-it steps. */
+.gwui-cg-fixed-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; background: var(--gw-page); border-top: 1px solid var(--gw-border); padding: 10px 20px; z-index: 20; }
+@media (min-width: 900px) { .gwui-cg-fixed-bar { left: var(--gw-sidebar-w, 256px); } }
+.gwui-cg-fixed-bar-inner { width: min(560px, 100%); }
+.gwui-cg-fixed-spacer { height: 76px; }
+
+/* A loading row, e.g. "Checking…" while the billing step asks the server. */
+@keyframes gwuiSpin { to { transform: rotate(360deg); } }
+.gwui-spinner { display: flex; align-items: center; gap: 10px; padding: 32px 0; color: var(--gw-sub); }
+.gwui-spinner-dot { width: 18px; height: 18px; border: 2px solid var(--gw-border); border-top-color: var(--gw-navy); border-radius: 50%; animation: gwuiSpin 0.7s linear infinite; }
+.gwui-situation-extra-note { font-size: 13px; color: var(--gw-navy); font-weight: 600; margin-top: 2px; }
+.gwui-cg-dimmed { opacity: 0.55; pointer-events: none; }
+.gwui-cg-checkbox-row { font-size: 13.5px; color: var(--gw-sub); display: flex; gap: 7px; align-items: flex-start; }
