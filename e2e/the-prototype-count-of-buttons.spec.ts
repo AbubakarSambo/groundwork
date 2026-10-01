@@ -270,11 +270,17 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
       return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
     };
     const root = document.querySelector('#main') ?? document.body;
-    const nodes = Array.from(root.querySelectorAll('button, a')).filter((e) => {
+    /* The prototype draws some screens as static pictures, with a reply chip as <span class="chip">;
+       in the product that chip is a tappable reply. Counted on both sides, so like is compared with
+       like (1 October, the between-check-ins screen). */
+    const nodes = Array.from(root.querySelectorAll('button, a, span.chip')).filter((e) => {
       if (e.closest('#dev, #devshow')) return false; // the prototype's own dev bar, not the screen
       /* An on/off switch is a setting, not a button, on both sides (ours is a button with
          role="switch", the prototype's a checkbox); like a chosen chip, it is not counted. */
       if (e.getAttribute('role') === 'switch' || e.getAttribute('role') === 'checkbox') return false;
+      /* A tab is the check-in page's own navigation between its views, like the sidebar this count
+         already leaves out (1 October): not a button on the screen being compared. */
+      if (e.getAttribute('role') === 'tab' || e.closest('[role="tablist"]')) return false;
       /* A quiet text link is a link, not a button (Hafsah, 30 September: the no-seat warning's
          action is "a quiet text link inside the warning, not a second button"). Ours is drawn
          by `.gwui-plain-link`, underlined words with no box, sometimes on a <button> because it
@@ -282,7 +288,7 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
          which were never counted. Only the class decides, so a boxed button can't slip through. */
       if (e.classList.contains('gwui-plain-link')) return false;
       const cs = getComputedStyle(e);
-      const looksLikeAButton = e.tagName === 'BUTTON' || cs.display.includes('flex') || cs.display.includes('inline-flex') || e.className.toString().includes('btn');
+      const looksLikeAButton = e.tagName === 'BUTTON' || (e.tagName === 'SPAN' && e.classList.contains('chip')) || cs.display.includes('flex') || cs.display.includes('inline-flex') || e.className.toString().includes('btn');
       return looksLikeAButton && isVisible(e);
     });
     const isPrimary = (e: Element) => {
