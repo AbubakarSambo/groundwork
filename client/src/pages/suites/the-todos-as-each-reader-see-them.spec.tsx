@@ -77,6 +77,18 @@ describe('Grace, an admin', () => {
     ])
   })
 
+  /* The re-review: when the check-in's own name already ends with the same date ("Help a new hire
+     get started, from 27 September"), ", on 27 September" is not said again. */
+  it('does not say the date twice when the check-in’s own name already ends with it', async () => {
+    open(GRACE, {
+      people: [{ name: 'Juma Kariuki', firstName: 'Juma', todos: [
+        { id: 'j-1', text: 'Ride Ngong Road with him again', source: 'check-in', on: '2026-09-27', checkIn: 'Help a new hire get started, from 27 September' },
+      ] }],
+    })
+    await screen.findByRole('heading', { name: 'Juma Kariuki' })
+    expect(screen.getByText('From Juma’s check-in in Help a new hire get started, from 27 September.')).toBeInTheDocument()
+  })
+
   it('cannot mark somebody else’s line done, and reads no chat example', async () => {
     open(GRACE, GRACES)
     await screen.findByRole('heading', { name: 'Miriam Wanjiku' })

@@ -12,7 +12,9 @@ import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row } from '@/c
  * (fault B) changed the source line from "From her check-in, 24 September" to "From {first name}'s
  * check-in in {check-in}, on {date}.": the prototype's "her" assumes a pronoun nothing in the product
  * records, so the person's own first name is used instead, and the check-in itself is now named,
- * since a person is often in more than one.
+ * since a person is often in more than one. Where the check-in's own name already ends with that
+ * date ("Help a new hire get started, from 27 September"), ", on 27 September" is left off rather
+ * than said twice (sourceLine, below).
  *
  * REBUILT FROM THE SHARED PARTS: `Page`/`PageTitle` (crumbs, subtitle), `Section` for each person,
  * `RowList`/`Row` for their lines, and `Note`/`Empty` for loading, error and empty states. No new
@@ -30,6 +32,16 @@ import { Page, PageTitle, Section, Button, Note, Empty, RowList, Row } from '@/c
  * load."
  */
 const onDay = (day: string) => whenItWas(new Date(`${day}T00:00:00.000Z`), 'dayAndMonthLong', 'UTC')
+
+/** "From Juma's check-in in Sales team, Q3, on 27 September.", unless the check-in's own name
+ *  already ends with that date ("Help a new hire get started, from 27 September"), in which case
+ *  the date is not said twice. */
+const sourceLine = (firstName: string, checkIn: string, on: string) => {
+  const day = onDay(on)
+  return checkIn.trim().endsWith(day)
+    ? `From ${firstName}’s check-in in ${checkIn}.`
+    : `From ${firstName}’s check-in in ${checkIn}, on ${day}.`
+}
 
 export function TodosPage() {
   const user = useAuthStore(s => s.user)
@@ -69,7 +81,7 @@ export function TodosPage() {
               <Row key={t.id} columns="minmax(0, 1fr)">
                 <div>
                   <b>{t.text}</b>
-                  <p className="gwui-panel-text-muted">{`From ${p.firstName}’s check-in in ${t.checkIn}, on ${onDay(t.on)}.`}</p>
+                  <p className="gwui-panel-text-muted">{sourceLine(p.firstName, t.checkIn, t.on)}</p>
                 </div>
               </Row>
             ))}
