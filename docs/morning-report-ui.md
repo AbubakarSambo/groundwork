@@ -7150,4 +7150,6 @@ Both are fixed, and group 3's pages are all built from the shared parts now.
 
 **Before group 3's review:** a dev-only preview page, `/dev/conversation`, is being added. It draws the check-in conversation from its real parts with the prototype's own example words, and calls the server for nothing. So the live conversation can finally be pictured against the prototype without starting anyone's session.
 
+The API tests after this merge pass 13,124 of 13,128. Three of the four failures are request 99: they are the engine's own tests, waiting to be pointed at the moved report sections, which the engine said it would do once this workspace's fixes landed, and they have now. The fourth is the engine's own new conversation test failing the comment guard, which is request 94 again.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
