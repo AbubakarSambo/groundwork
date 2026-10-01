@@ -101,7 +101,7 @@ const A_CLAUSE = /(?:^|[^\p{L}'’])(?:I|I'm|I’m|I've|I’ve|I'll|I’ll|my|My
 const A_VERB_FIRST = /^(?:hit|reach|close|sell|sign|get|win|deliver|launch|disburse|achieve|grow|cut|reduce|keep|make|finish|complete|ship|hire|raise|land|onboard|bring|build|book|recover|collect)\b/i;
 
 /** "I'm aiming for", "my", "me" as the reader: "You are aiming for", "your", "you". */
-function asTheReader(text: string): string {
+export function asTheReader(text: string): string {
   return text
     .replace(/(^|[^\p{L}'’])I(?:'|’)m\b/gu, '$1you are')
     .replace(/(^|[^\p{L}'’])I am\b/gu, '$1you are')

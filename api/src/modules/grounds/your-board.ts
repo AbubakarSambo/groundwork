@@ -4,6 +4,9 @@ import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 import type { AServedPattern } from '../patterns/who-reads-a-pattern';
 import { aStepSaidToYou } from './a-step-said-to-you';
 import { asAnAction, asASentence } from './a-promise-as-an-action';
+import { aNumberPeopleCanRead, theNumbersPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
+import { theMoneyItCountsIn } from '../reports/a-count-that-moved-is-one-sentence';
+import { asTheReader } from './what-a-participant-is-told-about-this';
 import { aCommitmentKey } from '../conversation/what-happened-to-what-they-said';
 
 /**
@@ -183,12 +186,21 @@ const A_BARE_WORD = /^[a-z][a-z-]*$/;
  * full stop: the sentence is built from the number and its unit instead ("You have 0 of 4 shops.").
  * A real phrase is kept, only capitalised and given a stop (asASentence), as it already was.
  */
+/*
+ * AND WITH NUMBERS A PERSON CAN READ (review of 1 October 2026). "N30m disbursed. You have 4000000 of
+ * 30000000." is now "30 million naira disbursed. You have 4 million naira of 30 million naira.", and a
+ * goal written in the first person ("I'm aiming for ...") is about the reader, whose goal it is.
+ */
 function goalFromTarget(t: OwnedTargetRow): string {
-  const name = t.name.trim().replace(/[.\s]+$/, '');
+  const readable = theNumbersPeopleCanRead(t.name.trim().replace(/[.\s]+$/, ''));
+  const asYours = asTheReader(readable);
+  const name = asYours.toLowerCase() === readable.toLowerCase() ? readable : asYours;
   const hasTarget = t.target !== null && t.target !== undefined;
-  if (A_BARE_WORD.test(name) && hasTarget) return `You have ${t.count ?? 0} of ${t.target} ${name}.`;
+  const money = theMoneyItCountsIn(name);
+  const n = (x: number) => `${aNumberPeopleCanRead(x)}${money && x !== 0 ? ` ${money}` : ''}`;
+  if (A_BARE_WORD.test(name) && hasTarget) return `You have ${n(t.count ?? 0)} of ${n(t.target as number)} ${name}.`;
   if (!hasTarget) return asASentence(name);
-  return `${asASentence(name)} You have ${t.count ?? 0} of ${t.target}.`;
+  return `${asASentence(name)} You have ${n(t.count ?? 0)} of ${n(t.target as number)}.`;
 }
 
 /** Four weeks, as the prototype counts them ("in the last 4 weeks", C2 you-board-daniel.txt). */

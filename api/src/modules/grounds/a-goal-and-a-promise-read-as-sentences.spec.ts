@@ -38,6 +38,18 @@ describe('a goal built from an owned target', () => {
     expect(b.goals.map((g) => g.says)).toEqual(['25 sales by 30 September. You have 23 of 25.']);
   });
 
+  it('says every number so a person can read it, and a goal in the first person is the reader\'s (review of 1 October 2026)', () => {
+    const b = board({ ownedTargets: [
+      { id: 't1', groundId: 'g1', name: 'N30m disbursed', target: 30_000_000, count: 4_000_000 },
+      { id: 't2', groundId: 'g1', name: "I'm aiming for 254000 in new business", target: 254_000, count: 31_000 },
+    ] });
+    expect(b.goals.map((g) => g.says)).toEqual([
+      '30 million naira disbursed. You have 4 million naira of 30 million naira.',
+      'You are aiming for 254,000 in new business. You have 31,000 of 254,000.',
+    ]);
+    expect(JSON.stringify(b.goals)).not.toMatch(/\d{5,}/);
+  });
+
   it('with no target at all, still reads as one capitalised sentence', () => {
     const b = board({ ownedTargets: [{ id: 't1', groundId: 'g1', name: 'keep the customer list tidy', target: null, count: null }] });
     expect(b.goals.map((g) => g.says)).toEqual(['Keep the customer list tidy.']);
