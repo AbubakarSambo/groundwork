@@ -1901,7 +1901,7 @@ export function GroundAdminPage() {
                   return (
                     <div key={p.id}>
                       <div className="ga-participant-row">
-                        <div className="ga-row-head">
+                        <div className="gwui-person-head">
                         <div className={`ga-status-dot ${statusDotClass}`} title={statusLabel} />
                         <Avatar initials={initialsOf(name)} />
                         <div className="ga-name-cell">

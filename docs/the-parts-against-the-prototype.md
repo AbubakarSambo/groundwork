@@ -270,3 +270,9 @@ there was out of scope for this piece.
 every spec touching `ReportPage.tsx`, `SessionReportPage.tsx` or `TheCheckInHeader.tsx` pass (39
 spec files, 246+ tests), none with an assertion changed beyond the guard's own false-positive fix
 above.
+
+## Group 3, piece 5 (the lead's check-in page): a part moved into the shared parts
+
+| Part | Where it is used | What it follows |
+| --- | --- | --- |
+| `gwui-person-head` | The roster row on the lead's check-in page (`GroundAdminPage.tsx`): the status dot, the avatar and the name kept on one line | The prototype's own avatar-to-name gap, 10px (app.css `.person`). It was first added to the old stylesheet as `ga-row-head`, outside both class guards; it is now a shared part, and the old stylesheet is frozen too. |

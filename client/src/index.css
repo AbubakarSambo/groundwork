@@ -831,7 +831,6 @@ body {
    line with the name on a phone: the name-cell (flex:1) wrapped onto its own line first, leaving
    the dot and avatar stranded above it. Grouping them keeps the row's head together and lets only
    the actions wrap underneath. */
-.ga-row-head { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px; }
 .ga-name-cell { flex: 1; min-width: 0; }
 /* The sessions grid, the help strip and the shared-report preview all sit indented under a row,
    lined up under its name rather than its status dot and avatar. */
