@@ -1,7 +1,7 @@
 import type { Cadence } from '@/components/gw/when-the-check-ins-land'
 import { workingDaysOf } from '@/components/gw/when-the-check-ins-land'
 import { HOW_OFTEN } from './TheSetup'
-import '@/components/gw/ui/gw-ui.css'
+import { Panel, SubHeading, Tag, Note, RowList, Row, Stack } from '@/components/gw/ui'
 
 /*
  * THE PANEL THAT FILLS IN AS YOU TALK (U.6, B1): the side of #/new and #/start/chat.
@@ -15,14 +15,14 @@ import '@/components/gw/ui/gw-ui.css'
  * save card) and "Add their emails in the chat" (people's addresses are added on the save card, not
  * in the chat). See item 17 of docs/morning-report-ui.md.
  *
- * 4D-4: every inline style moved to named classes on the shared gw-ui.css (gwui-fit-*), the same
- * sheet every other rebuilt part of this page already draws from - not a new one-off page-local
- * sheet copying the old pixel values, which the task's own rule against restyling this way calls
- * out by name. Its own sizes (10px corners, 16px inside) are a deliberate narrower choice for this
- * sidebar rather than the shared Panel's 12px/20-22px, the same kind of "nearest equivalent, not a
- * literal prototype rule" already recorded for other parts in
- * docs/the-parts-against-the-prototype.md. Every size under 13px (several rows were 12.5px) is now
- * 13px, the house style's own floor.
+ * GROUP 3 DRIFT LIST, PIECE 1 (Hafsah, 1 October 2026): the page-only gwui-fit-* classes (4D-4's own
+ * sheet, copying new.jpg's pixel values under a page name) are gone. The box is now the shared
+ * `Panel`; the name and its "N of 4 set" tag sit in a `gwui-sentence-row` (the same row other pages
+ * already use for a heading beside a trailing badge) with a real `Tag`; the situation and the "Fills
+ * in as you talk" sentence are each a `Note`; and the four rows are a `RowList` of `Row`s, each
+ * still carrying its own ✓/○ mark. The mark and its label/value keep their own small classes
+ * (`gwui-setrow-*`), written up in docs/the-parts-against-the-prototype.md, since no existing part
+ * draws a ticked two-line row inside one.
  */
 
 export const FILLS_IN = {
@@ -84,33 +84,42 @@ export function theRows(k: WhatSetupKnows): { label: string; set: boolean; value
 export function FillsInAsYouTalk(k: WhatSetupKnows) {
   const rows = theRows(k)
   const addedNotYet = k.added.length ? notYetAdded(k) : []
+  const howMuch = <Tag>{FILLS_IN.howMuch(rows.filter((r) => r.set).length)}</Tag>
   return (
-    <aside aria-label={FILLS_IN.help} className="gwui-fit-aside">
-      {k.name.trim() && <div className="gwui-fit-name">{k.name.trim()}</div>}
-      {k.situation && <div className="gwui-fit-situation">{k.situation}</div>}
-      <div className="gwui-fit-count">{FILLS_IN.howMuch(rows.filter((r) => r.set).length)}</div>
-      <p className="gwui-fit-help">{FILLS_IN.help}</p>
-      <ul className="gwui-fit-list">
-        {rows.map((r) => (
-          <li key={r.label} className="gwui-fit-row">
-            <span aria-hidden="true" className={`gwui-fit-mark ${r.set ? 'gwui-fit-mark-set' : 'gwui-fit-mark-unset'}`}>{r.set ? '✓' : '○'}</span>
-            <span>
-              <span className="gwui-fit-label">{r.label}</span>
-              {r.value && <span className="gwui-fit-value">{r.value}</span>}
-              {r.label === FILLS_IN.whoIsIn && k.added.length > 0 && (
-                <>
-                  {k.added.map((a) => <span key={a} className="gwui-fit-value gwui-fit-value-name">{a}</span>)}
-                  {addedNotYet.length > 0 && (
-                    <span className="gwui-fit-value gwui-fit-more">
-                      {`${addedNotYet.length} more you mentioned: ${andList(addedNotYet)}.`}
-                    </span>
+    <aside aria-label={FILLS_IN.help}>
+      <Panel>
+        <Stack gap={10}>
+          {k.name.trim() ? (
+            <div className="gwui-sentence-row">
+              <SubHeading>{k.name.trim()}</SubHeading>
+              {howMuch}
+            </div>
+          ) : howMuch}
+          {k.situation && <Note>{k.situation}</Note>}
+          <Note>{FILLS_IN.help}</Note>
+          <RowList label="What's set so far">
+            {rows.map((r) => (
+              <Row key={r.label} columns="16px 1fr">
+                <span aria-hidden="true" className={`gwui-setrow-mark ${r.set ? 'gwui-setrow-mark-set' : 'gwui-setrow-mark-unset'}`}>{r.set ? '✓' : '○'}</span>
+                <span>
+                  <span className="gwui-setrow-label">{r.label}</span>
+                  {r.value && <span className="gwui-setrow-value">{r.value}</span>}
+                  {r.label === FILLS_IN.whoIsIn && k.added.length > 0 && (
+                    <>
+                      {k.added.map((a) => <span key={a} className="gwui-setrow-value gwui-setrow-value-name">{a}</span>)}
+                      {addedNotYet.length > 0 && (
+                        <span className="gwui-setrow-value gwui-setrow-more">
+                          {`${addedNotYet.length} more you mentioned: ${andList(addedNotYet)}.`}
+                        </span>
+                      )}
+                    </>
                   )}
-                </>
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
+                </span>
+              </Row>
+            ))}
+          </RowList>
+        </Stack>
+      </Panel>
     </aside>
   )
 }
