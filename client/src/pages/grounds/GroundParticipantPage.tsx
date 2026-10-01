@@ -572,8 +572,17 @@ export function GroundParticipantPage() {
                   two numbers for what read as one fact on two different screens of the same
                   check-in. Each is true; only one of them was ever about the team. Saying "your"
                   makes plain which one this is, on every reader's own page, lead included. */}
+              {/*
+                GROUP 3'S REVIEW, CONTRADICTION 5: THE SAME DATE, SAID TWICE, ONE OF THEM LESS
+                TRUE. On the Check-in tab, between sessions, this header's "Your next session opens
+                on 7 October." sat right above BetweenCheckIns' own "Your next check-in opens on
+                Wednesday 7 October at 3:30pm." - the same fact, but this one left out the weekday
+                and the time BetweenCheckIns actually has. Said once is enough, so this header skips
+                it exactly where BetweenCheckIns is about to say the fuller version; every other tab
+                still reads the date here, since nothing else on those tabs says it at all.
+              */}
               {opensLater ? (
-                <span>Your next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
+                tab !== 'checkin' && <span>Your next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
               ) : totalSessions != null ? (
                 <span>This is your session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}.</span>
               ) : (
