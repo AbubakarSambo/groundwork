@@ -325,3 +325,52 @@ this same piece's next commit - see that commit for where it is actually drawn f
 | --- | --- | --- | --- |
 | `.gwui-auth-card` | spacing between a narrow account screen's mark, heading and form | `Page narrow`'s own `.gwui-page-narrow > * + * { margin-top: 30px }` (gw-ui.css), for a `Page narrow`'s direct children | the same 30px, moved one level deeper: `AuthCard` (auth-kit.tsx) now wraps its mark, heading and form in the shared `Panel` - the white card signup.jpg and verify-expired.jpg both draw and `AuthCard` had been missing entirely - so those three are no longer `Page narrow`'s own direct children, and need the same rhythm restated on the panel that now holds them |
 | `.gwui-mark-row` | the mark, with one action beside it | no prototype class; a plain flex row (`space-between`, `12px` gap, `16px 0` padding) for the one place the product needs `Mark` beside something else - a signed-out reader's "Sign in" on `/start` (`EntryChatPage.tsx`), now that that screen draws no sidebar of its own (start.jpg draws none either, and the sidebar used to be the only thing putting a mark and a way to sign in on that screen) | as listed |
+
+## Group 3's drift-list review, part 1 (1 October): `TheSessionsReport.tsx` rebuilt
+
+Hafsah's 1 October review of group 3's own earlier pages found about fifty one-off utility classes
+(`gwui-fs-*`, `gwui-gap-*`, `gwui-ink-*`, `gwui-m*`, `gwui-p*`, plus `gwui-rule-blue` and
+`gwui-rule-top`) still carrying this one session report's own values, alongside the inline styles
+sitting beside them. Rebuilt from `Panel`, `SubHeading`, `Stack`, `EdgeList`/`EdgeRow`, `Callout`
+and `Note` (B4-reports-and-sharing: team-report.txt, one-session.txt,
+team-report-as-participant.txt):
+
+- The outer card is now `Panel` (`pad={false}`, since the card needs full-bleed colour bands the
+  finding and the conversation-worth-having both use - a padded `Panel` would have padded those
+  bands too, which the prototype's own full-width tinted strips never do).
+- `withheldUntilYouAnswer`'s box - the one literally named `gwui-rule-blue` - and "The conversation
+  worth having now" are both now `Callout` (`tone="info"`), each with its own `title`, in place of a
+  hand-built tinted `<div>` with a hand-built label above a paragraph.
+- The loading line ("Reading everybody's side of this session...") is now `Note` (`role="status"`),
+  the same pattern `SessionReportPage.tsx`'s own "Getting your report…" already uses.
+- Each "still open" topic under "Where things stand" is now an `EdgeList`/`EdgeRow` (`kind="look"`,
+  amber), its accent spur standing in for the dot this file used to paint by hand with an inline
+  `style={{width:6,height:6,...}}`; everything the topic used to carry - each person's position as
+  its own sentence, the "why this matters"/"what would settle it" captions, and the folded "lines
+  this comes from" - now lives in the row's `detail`.
+- The local `Row` component (used for every other block - the cascade, the objective band, "what
+  people said this session", "the picture from everybody", "not raised again", "what this is built
+  from") keeps its exact name and its `label`/`n` props: `the-order-comes-from-one-place.spec.ts`
+  reads this file's own source for a literal `<Row ... label=...>` tag to prove the block order, so
+  renaming it or dropping its shape would have broken a test that is right to exist. It now draws
+  its label with `SubHeading` rather than a bespoke bold, muted span.
+- What is left after that is content this report alone has no other shared part for yet - the
+  quote-and-citation pairing (`Quotes`/`Cite`), the at-a-glance tiles, and the amber finding band.
+  Each now lives in one purpose-named local class scoped under `.gw-sr` in the component's own
+  `<style>` tag (`.gw-sr-quote`, `.gw-sr-cite`, `.gw-tile-grid`, `.gw-sr-row`, and the rest) - the
+  same pattern this file already used, before this rebuild, for `.gw-find`/`.gw-tile*` - rather than
+  a combination of atomic one-off utility classes. None of these are in `gw-ui.css`, so they add
+  nothing to either frozen class list; they are local to this one component, the same as the two
+  classes that were already there.
+- `Section` and `Tag` are deliberately not used here. This component has no page-level heading of
+  its own - every page that draws it (`SessionReportPage.tsx`, `RoundReportPage.tsx`) already
+  supplies one above it - and nothing on this screen is the short, unpunctuated fact `Tag` is for.
+  "Shared with the team." is a full sentence the prototype prints as plain text under the session
+  line (one-session.txt: "Shared with the team that evening"), not a pill, so it stays plain text
+  rather than being forced into a `Tag` just to use the part.
+
+`gwui-rule-blue` and `gwui-rule-top` are still used elsewhere (`TheJudgement.tsx`,
+`WhatTheRecordShows.tsx`, `ContextPage.tsx`, `WhatToWalkInWith.tsx`, `WhatSuccessLooksLike.tsx`,
+`where-to-focus.tsx`, `ResolutionPanel.tsx`, `split-one-total-across-people.tsx`, `BoardPage.tsx`,
+`WorkRecords.tsx`, `two-accounts-side-by-side.tsx`), so neither rule nor name comes off
+`one-off-style-classes.ts` yet.
