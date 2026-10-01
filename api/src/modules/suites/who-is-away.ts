@@ -155,15 +155,36 @@ export function theAwayLine(who: WhoReadsIt, name: string | null, until: LeaveDa
  * `served` is the people this reader is shown on the check-in; a colleague reads a line only for
  * someone in it who is shown by name. Nothing here names a reason or a kind of leave.
  */
+/**
+ * WHETHER THIS READER IS FROM OUTSIDE THE ORGANISATION THAT RUNS THE CHECK-IN: a guest (decision 36),
+ * or anybody with no membership in it. Somebody from outside is never told a colleague's leave or
+ * absence dates (the more private choice, 1 October 2026); only their own, which they already know.
+ */
+export async function isFromOutside(prisma: PrismaService, userId: string | null | undefined, organizationId: string | null | undefined): Promise<boolean> {
+  if (!userId || !organizationId) return true;
+  if (!(prisma as any).organizationMembership?.findUnique) return false;
+  const m = await prisma.organizationMembership
+    .findUnique({ where: { userId_organizationId: { userId, organizationId } }, select: { role: true } })
+    .catch(() => null);
+  return !m || m.role === 'GUEST';
+}
+
+/** The days each person is away, kept to the reader's own when the reader is from outside the organisation. */
+export function awayUntilAsServed(awayUntil: Record<string, string>, reader: { fromOutside?: boolean; myParticipantId: string | null }): Record<string, string> {
+  if (!reader.fromOutside) return awayUntil ?? {};
+  return Object.fromEntries(Object.entries(awayUntil ?? {}).filter(([id]) => id === reader.myParticipantId));
+}
+
 export function theAwayLinesFor(
   awayUntil: Record<string, string>,
   served: { id: string; nameGiven?: string | null; user?: { firstName?: string | null } | null }[],
-  reader: { viewerRunsThisGround: boolean; myParticipantId: string | null },
+  /** `fromOutside`: a guest from another organisation reads nobody's leave but their own. */
+  reader: { viewerRunsThisGround: boolean; myParticipantId: string | null; fromOutside?: boolean },
   /** True where the name is already the one this reader is shown, and must not be cut to a first word. */
   nameIsAsShown = false,
 ): { participantId: string; until: LeaveDay; says: string }[] {
   const out: { participantId: string; until: LeaveDay; says: string }[] = [];
-  for (const [participantId, until] of Object.entries(awayUntil ?? {})) {
+  for (const [participantId, until] of Object.entries(awayUntilAsServed(awayUntil, reader))) {
     const shown = served.find((p) => p.id === participantId);
     if (!shown) continue;
     const said = (shown.user?.firstName ?? shown.nameGiven ?? '').trim();

@@ -87,7 +87,7 @@ import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
+import { isFromOutside, leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
@@ -803,7 +803,12 @@ export class BoardService {
           const name = shown && shown !== 'A colleague' ? (first && shown.includes(first) ? first : shown) : null;
           return { id: p.id, nameGiven: name, user: null };
         }),
-        { viewerRunsThisGround: isInitiator || isSetupAdmin || adminHere, myParticipantId: me?.id ?? null },
+        {
+          viewerRunsThisGround: isInitiator || isSetupAdmin || adminHere,
+          myParticipantId: me?.id ?? null,
+          /* A guest from another organisation reads nobody's days away but their own (1 October 2026). */
+          fromOutside: !(isInitiator || isSetupAdmin || adminHere) && await isFromOutside(this.prisma, requestingUserId, ground.organizationId),
+        },
         true,
       ),
     };

@@ -31,7 +31,7 @@ import { targetsFor } from '../board/whose-number-is-whose-business';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
-import { leaveOfThePeopleOn, theAwayLinesFor, whoOnACheckInIsAway } from '../suites/who-is-away';
+import { leaveOfThePeopleOn, theAwayLinesFor, awayUntilAsServed, isFromOutside, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { offerToKeep, keepWhatWasOffered, dropWhatWasOffered } from '../knowledge/organisation-memory';
 import { keepable, soundsCompanyWide, MEMORY_PROMPT, MEMORY_TOOL, NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -2316,6 +2316,9 @@ export class GroundsService {
     const requestingParticipant = requestingUserId
       ? (ground.participants ?? []).find((p: any) => p.userId === requestingUserId)
       : null;
+    const readerIsFromOutside = sessionProgress && Object.keys(sessionProgress.awayUntil ?? {}).length
+      ? await isFromOutside(this.prisma, requestingUserId, ground.organizationId)
+      : false;
     const requestingUserIsMissing = !!(
       sessionProgress && requestingParticipant && sessionProgress.missingParticipantIds.includes(requestingParticipant.id)
     );
@@ -2638,14 +2641,19 @@ export class GroundsService {
       baseline,
       leadContextNotes,
       org: org ?? null,
-      sessionProgress: sessionProgress ? { ...sessionProgress, requestingUserIsMissing } : null,
+      /* A guest from another organisation is not told anybody's days away but their own (1 October 2026);
+         the count still leaves the person out, without saying why. */
+      sessionProgress: sessionProgress
+        ? { ...sessionProgress, awayUntil: awayUntilAsServed(sessionProgress.awayUntil ?? {}, { fromOutside: readerIsFromOutside, myParticipantId: requestingParticipant?.id ?? null }), requestingUserIsMissing }
+        : null,
       /* WHO IS AWAY, AND THAT THIS ROUND DOES NOT WAIT FOR THEM (week 23). Dates only, never a reason or
          a kind of leave. The lead reads it for each person; a colleague reads only that the person is
-         away, and only for a person this reader is already shown by name; a person reads their own. */
+         away, and only for a person this reader is already shown by name; a person reads their own.
+         Somebody from outside the organisation (a guest, decision 36) reads nobody's but their own. */
       whoIsAway: theAwayLinesFor(
         sessionProgress?.awayUntil ?? {},
         participantsWithCheckIns as any[],
-        { viewerRunsThisGround, myParticipantId: requestingParticipant?.id ?? null },
+        { viewerRunsThisGround, myParticipantId: requestingParticipant?.id ?? null, fromOutside: readerIsFromOutside },
       ),
       /**
        * The context flag, sent with the ground because that is where the tab
