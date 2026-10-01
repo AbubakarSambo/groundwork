@@ -756,7 +756,7 @@ export class DocumentsService {
       const base64 = buffer.toString('base64');
       const text = await this.anthropic.respondWithMedia(
         'You are extracting readable content from an uploaded file for a workplace record.',
-        'Transcribe all text visible in this file. If it is a chart, diagram, spreadsheet, or slide, describe the key data points, labels, and values. If it is a photo with no text or data, say so briefly. Do not summarize - transcribe faithfully.',
+        'Transcribe all text visible in this file. For a chart, diagram, spreadsheet, or slide, describe the key data points, labels, and values. For a photo with no text or data, say so briefly. Do not summarize. Transcribe faithfully.',
         { mimeType, base64 },
       );
       return text || `[Attached: ${fileName} - contained no readable text or data.]`;

@@ -4378,7 +4378,7 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
 
 Work through, woven naturally into the conversation, not as a checklist:
 1. FINAL STATE vs THE TARGET. The target on record:
-${target ?? 'No pre-agreed target - ask the person what success was supposed to look like when this started, then measure their account against their own answer.'}
+${target ?? 'No target was agreed beforehand. Ask the person what success was supposed to look like when this started, then measure their account against their own answer.'}
 Ask where things actually landed against that, in their words.
 2. DELIVERED vs AGREED. For each thing they say was delivered: what exists, and what shows it? Ask for the artifact. If something is described but not evidenced, say plainly that a document would carry more weight than memory, and invite an upload.
 3. WHAT REMAINS OPEN. Unfinished items, handovers, loose ends - get them named, not smoothed over.

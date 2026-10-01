@@ -699,7 +699,7 @@ export class AssistantService {
        * an absence - the exact thing this lane must not do.
        */
       return rules('how_am_i_doing', text(
-        'There is no step waiting for you. That is not a verdict either way - the coaching in your check-in only offers one when there is something specific worth doing, and right now there is not.'
+        'There is no step waiting for you. That is not a verdict either way. The coaching in your check-in only offers a step when something specific is worth doing. Right now nothing is.'
         + moves,
       ));
     }
