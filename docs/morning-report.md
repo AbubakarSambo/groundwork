@@ -36,6 +36,15 @@ This is written as I go, so if it stops mid-sentence that is where I got to.
 10. The learned weights of week 8b are counted but switched off until a scenario run proves them and Hafsah agrees.
 11. Still open from before: whether the "confirmed because the lead has left" sentence should also appear inside the person's own check-in (decision 63).
 
+**Run-21, tonight's one full run, scored against the baseline.** Every wording fault the scorer counts is at zero, jargon in reports and boards fell from 511 to 98, and patterns found (107 against 100), commitments recorded (40 against 33), judgements present (29 against 21), differences, agreements and findings all rose. One engine-value number fell: "specific detail asked for" was 77 against a baseline of 88 (run-20 had 85). The fall is spread thinly over many scenarios, the largest in realign (5 to 1) and loans (5 to 2). Because it is borderline, realign, loans, sales and seniorhire are being re-run twice on a build with everything from tonight; the result follows here.
+
+The quick checks on run-21: none of the lead's private words reached anyone else. Of 804 quotes, 784 are word for word in the record; the other 20 are real misquotes in two of tonight's new board sections ("risks" and "blocker check" quoted a tidied version of what a person said they tried), now being fixed so only exact words are ever quoted. Eight reports were updated after the run captured them; that was timing (the last report build finished after the runner had taken an earlier version), and the runner now waits until a report has finished being written.
+
+**Hafsah's three improvements of 1 October:**
+1. The duplicate-promise merge already applied within one session only; a test now also proves that a fuller promise said in a later session is kept as its own record. It was not: an older rule recorded it as "said again" on the earlier one and dropped the fuller words. Being fixed: a later, fuller promise becomes its own record; the very same words said again in a later session are still marked "said again", because some patterns rest on that.
+2. The quote checker now reads people's own messages too (28 of 48 flags were genuine quotes from messages).
+3. The runner waits until each report has finished being written before capturing it.
+
 ---
 
 ## 30 SEPTEMBER, LATE MORNING: HAFSAH'S DECISIONS 60 TO 65, AND WHAT RUNS NEXT
