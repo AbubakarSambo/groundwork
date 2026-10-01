@@ -126,6 +126,8 @@ import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTh
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
 import { withoutADateNobodyGave } from './a-date-nobody-gave';
+import { withoutCommentsOnTheAnswer } from './a-comment-is-not-a-question';
+import { withOneQuestionPerSentence } from './a-question-asks-one-thing-in-one-sentence';
 import { aNameNobodyTyped } from './a-record-line-with-a-name-nobody-typed';
 import { commitmentsTheyNeverMade } from './a-commitment-is-read-back-from-a-commitment';
 import { withoutAThingTheLeadListedAsTheirs } from './a-thing-the-lead-listed-is-not-theirs';
@@ -1234,6 +1236,14 @@ export class ConversationService {
         raw = notTheirs.text;
       }
     }
+    /*
+     * AND NO COMMENT ON THEIR ANSWER. "That is noted, and it is the kind of thing that changes how you go
+     * about the conversation" went out in seven scenarios, and "That is a very specific thing to not know"
+     * to a new hire. There was never a net for it, only a paragraph in the prompt. See a-comment-is-not-a-question.
+     */
+    const noComment = withoutCommentsOnTheAnswer(raw);
+    if (noComment.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noComment.cut.length} comment(s) on the answer.`);
+    raw = noComment.text;
     const asConfirmed = (checkIn as any)?.id ? this.withTheLeadsQuestionsAsConfirmed((checkIn as any).id, raw) : { text: raw, confirmed: [] as string[] };
     /*
      * AND ONE QUESTION, ON EVERY PATH. The opener, the turn and the stream all save through here, so
@@ -1242,8 +1252,11 @@ export class ConversationService {
      */
     const oneThing = oneThingAsked(asConfirmed.text, asConfirmed.confirmed);
     if (oneThing.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a turn asked more than one question; ${oneThing.saidAsAnExample} said as an example, ${oneThing.leftOut} left out.`);
+    /* AND ONE QUESTION IN A SENTENCE: two joined by "and" or "or" had one question mark and went through. */
+    const oneInASentence = withOneQuestionPerSentence(oneThing.text, asConfirmed.confirmed);
+    if (oneInASentence.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: ${oneInASentence.cut.length} question(s) joined to another by "and" or "or" were left out.`);
     /* AND NO SENTENCE STARTS IN LOWER CASE. See a-sentence-starts-with-a-capital. */
-    const capitalised = aSentenceStartsWithACapital(oneThing.text);
+    const capitalised = aSentenceStartsWithACapital(oneInASentence.text);
     if (capitalised.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a sentence started in lower case and was repaired before saving.`);
     const text = capitalised.text;
     if (!text || !mentionsTheLeadByALabel(text)) return text;
