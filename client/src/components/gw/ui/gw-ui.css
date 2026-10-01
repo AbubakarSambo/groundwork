@@ -1033,3 +1033,32 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 @media (max-width: 900px) {
   .gwui-row { grid-template-columns: minmax(0, 1fr) !important; }
 }
+
+/* ── COMPANY PAGE (D2, group 2 piece 3: docs/prototype/screens/D2-company). New parts this piece
+   added - see docs/the-parts-against-the-prototype.md for the full note. ────────────────────── */
+/* The head row (company.jpg): "Ask about the whole organisation" on the left, "Company context"
+   and "Ask about the strategy" on the right, on one row that wraps on a narrow screen - the same
+   shape as `.gwui-sentence-row` (You board, "Your data"), reused rather than duplicated. */
+/* A priority card's top row: "Priority N" beside its tag, before the title - no dedicated
+   prototype class (the prototype draws this by hand per screen); built at the sizes already used
+   by the rest of a Panel card. */
+.gwui-priority-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+/* "Named by more than one team" (company.jpg): each team's own column, set off by a thick top
+   rule - the product's own shape, no dedicated prototype class. */
+.gwui-team-col { border-top: 3px solid var(--gw-text); padding-top: 8px; }
+.gwui-team-col p { margin: 4px 0 0; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+/* "What you say, and where the time goes" (company.jpg): a plain comparison table - the prototype
+   itself never draws a real `<table>` (app.css has no table rule at all, only a mobile note that
+   "tables become stacked cards"), so this is the product's own shape, at the same sizes
+   `gwui-rows`/`gwui-row` already use for a plain list, with real table semantics so "You said" and
+   "The check-ins show" read as column headers. */
+.gwui-compare-table { width: 100%; border-collapse: collapse; font-size: 14.5px; line-height: 1.45; color: var(--gw-text); }
+.gwui-compare-table th, .gwui-compare-table td { text-align: left; padding: 12px 8px 12px 0; border-top: 1px solid var(--gw-border); vertical-align: top; }
+.gwui-compare-table th { font-weight: 700; }
+@media (max-width: 900px) {
+  .gwui-compare-table, .gwui-compare-table tbody, .gwui-compare-table tr, .gwui-compare-table th, .gwui-compare-table td { display: block; }
+  .gwui-compare-table thead { display: none; }
+}
+/* Company context's card bodies (the handbook, resources, and what the company has learned) keep
+   their own line breaks, as the product's `gw-company-body` already did. */
+.gwui-pre-line { white-space: pre-line; }
