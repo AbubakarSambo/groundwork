@@ -94,4 +94,15 @@ export const REBUILT_PAGES: string[] = [
    * docs/the-parts-against-the-prototype.md.
    */
   'pages/suites/SuitesPage.tsx',
+  'pages/suites/OnboardingBoardPage.tsx',
+  'pages/suites/LeaveBoardPage.tsx',
+  'pages/suites/TimeSheetsPage.tsx',
+  'pages/suites/ReviewsBoardPage.tsx',
+  'pages/suites/ReviewPage.tsx',
+  'pages/suites/LeavingBoardPage.tsx',
+  'pages/suites/RoleMapPage.tsx',
+  'pages/suites/SpendingPage.tsx',
+  'pages/suites/TodosPage.tsx',
+  'pages/suites/CustomersPage.tsx',
+  'pages/suites/EquipmentPage.tsx',
 ]

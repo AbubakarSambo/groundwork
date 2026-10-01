@@ -341,6 +341,17 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/company/CompanyContextPage.tsx',
       /* Group 2, piece 4: the Suites page and each suite's board (E-suites). */
       'pages/suites/SuitesPage.tsx',
+      'pages/suites/OnboardingBoardPage.tsx',
+      'pages/suites/LeaveBoardPage.tsx',
+      'pages/suites/TimeSheetsPage.tsx',
+      'pages/suites/ReviewsBoardPage.tsx',
+      'pages/suites/ReviewPage.tsx',
+      'pages/suites/LeavingBoardPage.tsx',
+      'pages/suites/RoleMapPage.tsx',
+      'pages/suites/SpendingPage.tsx',
+      'pages/suites/TodosPage.tsx',
+      'pages/suites/CustomersPage.tsx',
+      'pages/suites/EquipmentPage.tsx',
     ])
   })
 

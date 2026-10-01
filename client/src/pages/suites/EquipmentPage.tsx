@@ -109,7 +109,11 @@ function AnItem({ item, people }: { item: EquipmentBoard['items'][number]; peopl
       </td>
       <td>
         <span className="gwui-edge-acts">
-          <Button size="small" onClick={() => save.mutate()} disabled={save.isPending}>Save</Button>
+          {/* ONE NAVY BUTTON PER SCREEN: "Add an item" below stays the page's one primary action,
+              so a row being changed uses "secondary" here, the same way every other board's
+              row-level action (Approve, Mark done, Change) stays secondary beside the page's own
+              primary form. */}
+          <Button kind="secondary" size="small" onClick={() => save.mutate()} disabled={save.isPending}>Save</Button>
           <Button kind="quiet" size="small" onClick={() => { setEditing(false); setHolder(item.holderId ?? ''); setCondition(item.condition ?? '') }}>Cancel</Button>
         </span>
       </td>
