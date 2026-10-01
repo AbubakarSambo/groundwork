@@ -427,6 +427,16 @@ const THE_END_CARD_WAITS_MS = 90_000;
 /** How long finishing, or the screen asking for the card, waits for the card still being built. The live reads took 10 to 47 seconds. */
 const FINISHING_WAITS_FOR_THE_CARD_MS = 50_000;
 
+/** "3", "150k", "1.5m", "12,000" as a number, or null where it is not one plainly (request 107 c). */
+export function aNumberTheySaid(said: string | null | undefined): number | null {
+  const m = /^\s*([0-9][0-9,]*(?:\.[0-9]+)?)\s*(k|m|million|thousand)?\s*$/i.exec(said ?? '');
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, ''));
+  const times = /^k|thousand/i.test(m[2] ?? '') ? 1_000 : /^m/i.test(m[2] ?? '') ? 1_000_000 : 1;
+  const v = Math.round(n * times);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
 @Injectable()
 export class ConversationService {
   /** Answers being worked on right now, so the same answer arriving twice is answered once. See sendMessage. */
@@ -8838,11 +8848,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
     transcript: string,
     saidOn: Date,
     participants: { id: string; managingOnly: boolean; email: string | null; roleAsDescribed: string | null; user: { firstName: string | null; lastName: string | null } | null }[],
-  ) {
+  ): Promise<{ participantId: string; name: string; target: number }[]> {
+    /* Their own counted aims, returned so a participant's can be put on the board as theirs (request 107 c). */
+    const counted: { participantId: string; name: string; target: number }[] = [];
     const result = await this.anthropic.extract<{
       promises: { promise: string; kind?: string; check?: string; dueKind?: string; dueSaid?: string; owedTo?: string; target?: string; measure?: string }[];
     }>(OWN_PROMISE_PROMPT, [{ role: 'user', content: transcript }], OWN_PROMISE_SCHEMA);
-    if (!result?.promises?.length) return;
+    if (!result?.promises?.length) return counted;
 
     /* Same resolver as everywhere else: a name matching nobody is dropped, never guessed. */
     const others = participants.filter((p) => p.id !== participantId && !p.managingOnly);
@@ -8905,7 +8917,10 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       } else {
         await this.prisma.personObjective.create({ data: { ...data, groundId, participantId } });
       }
+      const asANumber = aNumberTheySaid(data.target);
+      if (data.kind === 'TARGET' && data.measure && asANumber != null) counted.push({ participantId, name: text, target: asANumber });
     }
+    return counted;
   }
 
   /**
@@ -9024,7 +9039,17 @@ The ground will close toward one of these end states: ${endStates || 'the partie
      * promises have their own prompt, their own schema, and one target: themselves.
      */
     if (me.partyType !== PartyType.INITIATOR) {
-      await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
+      const theirAims = await this.writeTheirOwnPromises(participantId, groundId, transcript, saidOn, ground.participants as any);
+      /*
+       * AND A NUMBER THEY SET FOR THEMSELVES IS A TARGET ON THE BOARD, AS THEIRS (request 107 c).
+       *
+       * "I am aiming for 3 shops in Kilimani" was kept as a promise of Amani's and went nowhere else:
+       * this branch returned before the only path that puts an owned target on the board, which
+       * read the lead's session alone. It is now hers, set by her, in her own words, and read like
+       * every owned target: by her and the person running it, or by everybody where the lead chose
+       * that. A number already on the board for her is never overwritten from here.
+       */
+      if (theirAims.length) await this.putOwnedTargetsOnTheRecord(groundId, theirAims, participantId);
       return;
     }
 

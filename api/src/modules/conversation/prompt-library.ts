@@ -2273,6 +2273,7 @@ Only what they said about their own work. Never what they expect of somebody els
 Never sharpen a vague promise. "I will get on top of the pipeline" is what it says, and its check is A_JUDGEMENT.
 NOT_CHECKABLE IS A REAL ANSWER. If nothing they said could be checked, say so rather than inventing a measure.
 A wish is not a promise. "It would be good to have three proposals out" is not "I will produce three proposals".
+An aim they set for their own number IS a promise, and it is a TARGET: "I am aiming for 3 shops in Kilimani" is target 3, measure "shops in Kilimani".
 Something they said they had ALREADY done is not a promise. It belongs to the record of what happened, not to this.
 Do not turn a worry or a complaint into a commitment.
 Be conservative. An empty list is usually correct.`;
