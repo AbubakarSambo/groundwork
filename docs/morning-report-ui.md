@@ -7095,4 +7095,15 @@ The entry chat's first part is done: the door, the frame, the header, the steps,
 
 One difference for group 3's review: signed out, the product shows the sidebar with a "Not saved yet" card, where the prototype shows no sidebar. The other three parts are with a fresh builder.
 
+**The entry chat is rebuilt in all four parts, and now counts as rebuilt.**
+- The attach menu's two overlays are now one shared dialog.
+- The save card and everything after saving are rebuilt.
+- The check-in phase's bubbles are now the prototype's cream and navy, where before they were white with a border.
+- Its clipped and joined labels became sentences ("Invite & finish →" became "Invite and finish").
+- No call to the server changed, and nothing was typed or sent.
+- The whole screen suite passes (3,750 tests). The button test passes on all 29 screens, and the page-colour test passes.
+- The lead's first-check-in briefing in the entry chat seems unreachable: nothing in the file opens it. It was left in place, with a note.
+
+But the builders moved the old page's values into 153 new page-only classes, and the check-in conversation did the same with 88. That is the same drift your one-off decision is about, under another name. A second guard now freezes every class there is today, and a new one must be a written-up shared part. Group 3's review replaces these copies, and the reasoning is under "Decided for Hafsah to confirm".
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
