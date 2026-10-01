@@ -37,7 +37,7 @@ import { Page, PageTitle, Section, Panel, Button, Tag, Note, Empty, RowList, Row
  * set up... It is never used to judge her work."), put in general terms for anybody who might be on
  * it.
  */
-const SUBTITLE = 'This board is only about getting new people set up: papers, equipment, training and meeting people. It is never used to judge anyone’s work.'
+const SUBTITLE = 'This board is only about getting new people set up, with their papers, equipment and training, and the people they need to meet. It is never used to judge anyone’s work.'
 export function OnboardingBoardPage() {
   const user = useAuthStore(s => s.user)
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({

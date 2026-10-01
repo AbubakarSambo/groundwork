@@ -96,7 +96,7 @@ describe('Grace, an admin, reads the onboarding board', () => {
   it('while the suite is off, still reads what the board is for, above the server’s sentence', async () => {
     open(GRACE, refusal(404, 'The onboarding suite is not switched on.'))
     expect(await screen.findByRole('alert')).toHaveTextContent('The onboarding suite is not switched on.')
-    expect(screen.getByText('This board is only about getting new people set up: papers, equipment, training and meeting people. It is never used to judge anyone’s work.')).toBeInTheDocument()
+    expect(screen.getByText('This board is only about getting new people set up, with their papers, equipment and training, and the people they need to meet. It is never used to judge anyone’s work.')).toBeInTheDocument()
     expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0)
   })
 })
