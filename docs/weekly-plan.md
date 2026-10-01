@@ -124,10 +124,10 @@ It needs week 8's marks, and week 9's kept and missed commitments, to have signa
 **Week 20. Memory that lasts beyond one check-in.** *Built 1 October (`81e22cb0`): kept only on the lead's yes, used as context, leave dates go to the leave suite.* What a lead tells the context chat that is true of the whole company, such as a client's rules or names, can be kept for the organisation after the lead confirms it. Ask Groundwork and the next check-ins can then use it. Leave dates said in chat go to the leave suite, not to the record.
 - **Needs Hafsah first:** what may move from one check-in to the whole company, and who confirms it.
 
-**Week 21. Leave and hours through chat.** "I need leave from 12 to 16 October" and "I did 6 hours on Atlas today" are said back with the real dates, the days left and who else is off, then sent to the right approver after a yes. The approver is told on Today. This is screens requests 21 and 22.
+**Week 21. Leave and hours through chat.** *Built 1 October: leave (week 20) and hours through Ask Groundwork, said back and sent on a yes; the approver's line on Today is still to do.* "I need leave from 12 to 16 October" and "I did 6 hours on Atlas today" are said back with the real dates, the days left and who else is off, then sent to the right approver after a yes. The approver is told on Today. This is screens requests 21 and 22.
 - **Needs Hafsah first:** whether the person who runs a check-in counts as a person's lead for approving (decision 33 says this is decided when the work starts).
 
-**Week 22. Spending through chat.** The same, checked against the budget and the rules. This is screens request 26.
+**Week 22. Spending through chat.** *Built 1 October: checked against the budget and the rules before the yes.* The same, checked against the budget and the rules. This is screens request 26.
 
 **Week 23. Being away.** The dates of approved leave, dates only (decision 31), are copied to where the engine reads them. While someone is away:
 - the board and the round count do not wait for them;

@@ -44,6 +44,8 @@ Recorded in `docs/decisions-merged.md` (`0220a0c9`): the six disagreements settl
 - **90.** "Four of the six people have answered so far."
 - **86.** A session somebody has started is open, whatever its first-day date still says. Three places treated it as not open yet: Today listed it under "Coming up", the assistant left it out, and a guest was told it "opens on" a past date. All three are fixed.
 
+**Weeks 21 and 22 built: hours and spending through Ask Groundwork** (925 tests pass in assistant and suites). "I did 6 hours on Atlas today" is read by rules, never guessed, and said back: "Shall I log 6 hours on Atlas for Thursday 1 October and send it to Wairimu to approve?"; only a yes logs it. Spending is checked against the team's budget and the spending rules before the yes: "That is over the Operations budget left for October, which is KES 8,000. Shall I still send it to Wairimu to approve?" Anything unclear is asked again, and nothing is kept when the suite is off. Hours never reach a check-in, a report or anything about how well someone works (decision 10). One function now decides who approves leave, hours and spending (decision above). Not built yet: telling the approver on Today, which needs Today's own files; it comes next.
+
 **Decided for Hafsah to confirm, for weeks 21 to 23 (being built now):**
 1. **Who approves leave, hours and spending:** the person's line manager in the staff directory, or an admin when there is none. The person who runs a check-in does not approve just because they run it.
 2. **What the lead reads when someone is away:** "Yemi is on leave until Friday 2 October, so this round does not wait for Yemi." Dates only, never the reason or the kind of leave (decision 31), and the name rather than a pronoun.
