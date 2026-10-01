@@ -307,8 +307,13 @@ describe('the end card, once Groundwork has closed the conversation', () => {
     expect(screen.getByRole('button', { name: 'Change something' })).toBeTruthy()
     // The engine sent no lines for the record, so none are made up.
     expect(screen.queryByText(/What is now in your record/)).toBeNull()
-    // Held until the question of who sees a person's words is answered (morning report, item 11).
-    expect(screen.queryByText(/Your team will see what you said today/)).toBeNull()
+    /*
+     * WORDING RESTORED (group 3's review, request batch A, fault 2): the question of who sees a
+     * person's words was settled 29 September (Conflict A) - the people in a check-in, including
+     * the lead, can see what you say in it once the shared report goes out. This fixture's ground
+     * has `aTeamReportComes: true` (line 68), so the prototype's own line is shown again.
+     */
+    expect(screen.getByText('Your team will see what you said today, and a short summary of what moved.')).toBeTruthy()
     // No suggested answers under the closing message: the card has its own buttons.
     expect(screen.queryByRole('group', { name: 'Suggested answers' })).toBeNull()
     expect(conversationApi.complete).not.toHaveBeenCalled()
