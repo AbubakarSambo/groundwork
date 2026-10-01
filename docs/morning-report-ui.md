@@ -244,6 +244,18 @@ Batch 2 is next: the prototype's own sections where their data is already sent, 
 - The before pictures of all eleven boards, as the lead and a participant at both widths (40 pictures), are in the scratchpad's `pictures/boards-before3/`.
 - The API tests after the sixth merge pass 13,385 of 13,386. The one failure, and a second suite that failed to load, both pass when run on their own, all 23 tests, so they were load during the full run.
 
+**Board batch 3, second part: five more files are built from shared parts.**
+- Each person's part on the board, the switchboard's sections, the pattern panel, what the record shows over time, and "Did this feel fair" are done. The pattern panel is protected, and every piece and reader of it is kept.
+- `Stack`, `Note` and `SubHeading` gained a few named options, at the prototype's values, written up in the parts table.
+- Three things look different, on purpose:
+  - "A question you could ask…" in a pattern is now the shared callout box.
+  - One switchboard sentence moved to its section's foot.
+  - "Did this feel fair" is a callout.
+- A few spots keep an inline background, or a one-off margin, where no shared part fits yet, such as the two tinted boxes in "What the record shows" and the green and amber pair on "Did this feel fair". The board's review will judge them.
+- All 1,306 board and component tests pass, and so does the whole screen suite, except the wording guard (request 95). The button test passes on every board.
+
+A mistake of mine with the pictures: my "before" pictures of the six u7 boards as their lead show the sign-in page, because that sign-in did not get through. The comparison for those six is therefore with the "after" set only, which is real. The after pictures, at both widths, are in the scratchpad's `pictures/boards-after3a/`, and they are now the baseline for the remaining files.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
