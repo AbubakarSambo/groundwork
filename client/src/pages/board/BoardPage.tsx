@@ -184,7 +184,20 @@ const WHAT_THIS_ITEM_IS: Record<string, string> = {
   COMMITMENT: 'This is a commitment.',
   SUCCESS_DEFINITION: 'This says what success looks like.',
   INTENT: 'This is something they intend to do.',
-  PROGRESS: 'This is progress they reported.',
+}
+
+/**
+ * BOARD REVIEW, 1 OCTOBER, ITEM 5: "YOU SAID, '…' THIS IS PROGRESS THEY REPORTED."
+ *
+ * The fixed `WHAT_THIS_ITEM_IS.PROGRESS` string said "they" even on a reader's own words, directly
+ * under a line that had just said "You said". The reader is "you" throughout the rest of this
+ * board; this line is the one place a record type's sentence needs to know who said it, so it is
+ * no longer a fixed lookup for PROGRESS - "This is progress you reported." when the reader said it
+ * themself, and "This is progress {name} reported." otherwise, by name, never "they".
+ */
+function whatThisItemIs(type: string, saidByTheReader: boolean, name: string): string | null {
+  if (type === 'PROGRESS') return saidByTheReader ? 'This is progress you reported.' : `This is progress ${name} reported.`
+  return WHAT_THIS_ITEM_IS[type] ?? null
 }
 
 // ---------------------------------------------------------------- page
@@ -1729,8 +1742,8 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
                             record's own internal words, printed at somebody rather than explained
                             to them. The lookup is the record type; the reader gets a sentence.
                           */}
-                          {b.family !== 'UPDATE' && WHAT_THIS_ITEM_IS[it.type] && (
-                            <span className="gwui-fs-13 gwui-ink-sub">{WHAT_THIS_ITEM_IS[it.type]}</span>
+                          {b.family !== 'UPDATE' && whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name)) && (
+                            <span className="gwui-fs-13 gwui-ink-sub">{whatThisItemIs(it.type, p.participantId === b.myParticipantId, nameOnTheBoard(b, p.participantId, p.name))}</span>
                           )}
                           {it.sessionNumber && <span className="gwui-fs-13 gwui-ink-muted">Said in session {it.sessionNumber}.</span>}
                         </div>
