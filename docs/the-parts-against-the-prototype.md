@@ -311,8 +311,9 @@ above, per the floor every rebuilt page keeps. `.gwui-line-row` is written up he
 added for the lines under "What people are down as doing" and "Strategy, notes and how we work" in
 this same piece's next commit - see that commit for where it is actually drawn from.
 
-## Group 3 review, batch B (1 October): a small part added
+## Group 3 review, batch B (1 October): two small parts added
 
 | Part | Property | Where it came from | Ours |
 | --- | --- | --- | --- |
 | `.gwui-auth-card` | spacing between a narrow account screen's mark, heading and form | `Page narrow`'s own `.gwui-page-narrow > * + * { margin-top: 30px }` (gw-ui.css), for a `Page narrow`'s direct children | the same 30px, moved one level deeper: `AuthCard` (auth-kit.tsx) now wraps its mark, heading and form in the shared `Panel` - the white card signup.jpg and verify-expired.jpg both draw and `AuthCard` had been missing entirely - so those three are no longer `Page narrow`'s own direct children, and need the same rhythm restated on the panel that now holds them |
+| `.gwui-mark-row` | the mark, with one action beside it | no prototype class; a plain flex row (`space-between`, `12px` gap, `16px 0` padding) for the one place the product needs `Mark` beside something else - a signed-out reader's "Sign in" on `/start` (`EntryChatPage.tsx`), now that that screen draws no sidebar of its own (start.jpg draws none either, and the sidebar used to be the only thing putting a mark and a way to sign in on that screen) | as listed |

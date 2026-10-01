@@ -102,6 +102,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
   font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 32px;
 }
 .gwui-mark:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 3px; border-radius: 4px; }
+/* GROUP 3 REVIEW, BATCH B: the mark, with one action beside it - a signed-out reader's "Sign in"
+   on /start (EntryChatPage.tsx), now that that screen draws no sidebar of its own (start.jpg
+   draws none either). A plain flex row; nothing here is specific to /start. */
+.gwui-mark-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; }
 
 /* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
    `background:var(--chat);border-radius:10px;padding:10px 14px`, class `t-small`) ─────────── */
@@ -1542,6 +1546,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-phase-bar { padding: 7px 20px; border-bottom: 1px solid var(--gw-border); background: var(--gw-paper); flex-shrink: 0; }
 .gwui-ec-refusal-band { padding: 12px 20px 0; flex-shrink: 0; max-width: 680px; margin: 0 auto; width: 100%; box-sizing: border-box; }
 .gwui-ec-door-slot { align-self: stretch; width: 100%; padding-top: 24px; }
+/* GROUP 3 REVIEW, BATCH B: w375-out-_start.png - the floating Feedback trigger's own mobile
+   position (`.gw-fb-trigger-chat-mobile-safe`, index.css, `bottom: 148px`) was tuned for a page
+   with a composer and the app's bottom nav below it; the door (TheDoor.tsx, EverySituation.tsx)
+   has neither, so its own last line, "Rather pick from a list? See every situation.", sat exactly
+   where that offset lands, covered. Clearance, not a repositioned button: the trigger's own
+   placement is shared with every other chat-like page, where 148px is right. */
+@media (max-width: 640px) {
+  .gwui-ec-door-slot { padding-bottom: 64px; }
+}
 .gwui-ec-thinking { margin-right: 6px; font-style: normal; color: var(--gw-muted); font-size: 13px; }
 .gwui-ec-fork { display: flex; flex-direction: column; gap: 8px; max-width: 82%; align-self: flex-start; margin-top: 4px; }
 .gwui-ec-fork-note { font-weight: 700; margin-top: 8px; }
