@@ -290,8 +290,14 @@ export function ContextChat({ groundId }: { groundId: string }) {
     */
     <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px', marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--gw-sub)' }}>
-          The context chat
+        {/*
+          GROUP 3'S REVIEW, BATCH A FAULT 6: "THE CONTEXT CHAT" WAS SHOUTED IN CAPITALS
+          (textTransform: uppercase), which the plain-wording rule treats the same as typing it in
+          capitals. The prototype's own heading for this (B2-context, context.txt) is "Tell
+          Groundwork how this team works", said at ordinary case and weight.
+        */}
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-text)' }}>
+          Tell Groundwork how this team works
         </div>
         <button
           onClick={() => setOpen(false)}
@@ -315,7 +321,11 @@ export function ContextChat({ groundId }: { groundId: string }) {
         write about a person is ever quoted to them or in a report.
       */}
       <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 14 }}>
-        Say it, paste it, or attach it: what lands here guides every check-in and the coaching.
+        {/*
+          GROUP 3'S REVIEW, BATCH A FAULT 6: "SAY IT, PASTE IT, OR ATTACH IT: WHAT LANDS HERE..."
+          JOINED TWO SENTENCES WITH A COLON.
+        */}
+        Say it, paste it, or attach it. What lands here guides every check-in and the coaching.
         Nothing is written until you say so.
       </div>
 

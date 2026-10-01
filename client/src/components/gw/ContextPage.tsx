@@ -418,7 +418,8 @@ export function ContextPage({
                   and hers was still "Not started" on the Sessions tab. Said once, under the conversation. */}
               {contextEnabled && isTheLead && (
                 <Note>
-                  This conversation sets the context. It is not your check-in: the report is written from check-ins, and yours is on the{' '}
+                  {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "IT IS NOT YOUR CHECK-IN: THE REPORT..." JOINED TWO SENTENCES WITH A COLON. */}
+                  This conversation sets the context. It is not your check-in. The report is written from check-ins, and yours is on the{' '}
                   <a href={`/grounds/${id}?tab=chat`} className="gwui-plain-link">Check-in tab</a>.
                 </Note>
               )}
