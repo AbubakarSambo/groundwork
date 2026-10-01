@@ -67,6 +67,23 @@ The quick checks on run-21: none of the lead's private words reached anyone else
 - **Being finished now:** three board tests that pinned the old behaviour, passing the reader to the names rule on the board and other screens so the switch still works for colleagues who are not under review, and objective names served as fragments or in the first person ("I stop being invited to every single call.", "0 at the start, 0 now, said 120000000.").
 - **Re-run:** pip, renewal, loans, sales, realign, discovery and seniorhire are being re-run on a build with all of this (`09170f96`), to check what people now read.
 
+**The re-run of the seven scenarios the review fixes touch** (pip, renewal, loans, sales, realign, discovery, seniorhire, on `09170f96`, before the contradiction and name fixes). What people read is better: Nathan no longer reads the untold goal or his lead's commitment; no participant reads a made-up "the record shows"; the stock sentence, "That is a very specific thing" and "That is a real answer" appear nowhere; no turn asks two questions; nothing a participant reads carries the lead's private words. On the same seven scenarios, compared with run-20 and run-21:
+
+| What | run-20 | run-21 | this re-run |
+| --- | --- | --- | --- |
+| patterns found | 55 | 67 | 75 |
+| per-person findings | 39 | 39 | 40 |
+| agreements found | 28 | 21 | 27 |
+| differences found | 13 | 17 | 15 |
+| past words brought back | 31 | 27 | 31 |
+| central question, judgement present | 12, 12 | 12, 12 | 12, 12 |
+| commitments recorded | 53 | 26 | 21 |
+| specific detail asked for | 56 | 46 | 36 |
+| blocker checked | 24 | 26 | 15 |
+| proof asked for | 23 | 22 | 14 |
+
+**Three conversation numbers are lower, and I have not yet shown that the change is not the cause.** I checked the new checks themselves: replaying run-20's and run-21's turns through the one-question check removes at most one counted question per run, and the comment check only removes sentences with no question in them. Most of the fall is in sales, and the second re-run, on the build before these fixes, was already as low there (sales asked for proof 4 times, specific detail 18 times). The same build gave 34 and 58 for specific detail on two runs, so these counts swing widely. The one real change in what the model is given is the instruction that replaced the stock sentence; it may make the model ask fewer follow-ups. I will re-run the scenarios that carry most of these counts (sales, loans, seniorhire) on the final build and compare again; if they stay low, the instruction is the first thing to change back.
+
 **The second re-run for "specific detail asked for"** (realign, loans, sales, seniorhire, before the fixes above): 34, against 58 in the first re-run, 50 in run-20 and 40 in run-21. The same build gave 34 and 58, so this count swings widely between runs of the same code. Taken together the two re-runs average 46, between run-20 and run-21. I cannot call it a real drop or a real recovery; the re-run now under way gives a fifth reading.
 
 **Requests 97 and 98 from the screens workspace done** (4,512 tests pass in grounds, reports and board). Privacy first: on a check-in where people are not named to each other, a participant no longer receives the team's summary and finding in the check-ins list. One check-in now reads the same on every screen, counted from the board's own clock: the lead's Today says "In Sales team, Q3, 4 of 6 have checked in for the second check-in. Brian and Faraji have not checked in yet.", the list says "It is on the second check-in of 12.", the You board says "You have finished two check-ins.", and Amani's Coming up says "Your third check-in for Sales team, Q3 opens." A stale stored count ("All three people have answered." when six were in it) is no longer served; starting your own check-in is no longer called a decision; "1 of 1 sessions done" became "The one check-in is finished."; and "Her login for the order system is holding it up." now names whose login, or says "A colleague's login" where the reader may not be told.
