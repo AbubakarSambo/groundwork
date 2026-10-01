@@ -41,6 +41,12 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 /* ── PAGE (prototype: .main, .wrap) ──────────────────────────────────────── */
 .gwui-page-main { padding: 32px 48px 72px; min-width: 0; }
 .gwui-page-wrap { max-width: 1150px; }
+/* THE PAGE'S OWN FULL-HEIGHT BACKGROUND (group 3, piece 5): no prototype class (the prototype's
+   `body` itself is the cream colour); for the rare page that renders outside `Page` altogether -
+   a sticky header's own wrapper, or a state with nothing else on screen - so the cream still
+   reaches the bottom of a short page. `--gw-page`, the same token `Page`'s own background rests
+   on. */
+.gwui-page-shell { min-height: 100vh; display: flex; flex-direction: column; background: var(--gw-page); }
 .gwui-page-narrow { max-width: 360px; margin: 0 auto; }
 /* Sections stacked 30px apart (prototype: .stack), for a Page's direct children. Doubled class
    (Hafsah's re-review, U.20 eighth round - same cause as the Stack fix): a direct child's own

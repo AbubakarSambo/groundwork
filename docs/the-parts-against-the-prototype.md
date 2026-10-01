@@ -32,6 +32,7 @@ Where a part has no rule of its own in the prototype's CSS (because the prototyp
 | **Page** (`.main`, `.wrap`) | main padding | `32px 48px 72px` | `32px 48px 72px` | same (already matched) |
 | | wrap max-width | `1150px` | `1150px` | same |
 | | narrow width | no rule (prototype draws sign-in/invite frames as `.stack` inside a plain centred column; nearest is `Arrival`'s own `maxWidth: wide ? 520 : 400`) | `360px` | same - a deliberate, narrower choice than `Arrival`'s 400px, unchanged by this task |
+| | **full-height shell** (`gwui-page-shell`, group 3, piece 5) | no prototype class (the prototype's `body` itself is cream); for a page's own wrapper that renders outside `Page` - a sticky header's flex column, or a state with nothing else on screen | n/a (new) | added: replaces `GroundAdminPage.tsx`'s own page-level `style={{ minHeight: '100vh', ... }}` and its local `Shell` helper's identical inline style |
 | **PageTitle** (`.t-title`, `.crumb`, `.t-small`) | title font/size | Literata, `clamp(24px,3vw,30px)`, weight 500, line-height 1.18 | `30px` fixed (not the clamp), weight 500, line-height 1.18 | same - the fixed 30px (24px under 640px via its own media query) is a deliberate simplification of the `clamp()`, already noted as intentional; not changed here |
 | | sub line | `16px`/1.5, muted | `16px`/1.5, muted | same |
 | **CheckInHeader** (PageTitle + `.tabs`) | gap under the title | `18px` (`.tabs{margin-top:18px}`) | `18px` | same |
