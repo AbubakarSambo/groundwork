@@ -37,8 +37,12 @@ export interface SessionRow {
   closed: boolean
   /** Names of the people who have not answered yet, for the line under the row. */
   waitingOn: string[]
-  /** When this session opened, for "Wed 23 Sept". Absent when nothing says. */
+  /** When this session really opened (its first completed check-in), for "Wed 23 Sept". Absent
+      when nobody has started it yet. */
   opened?: string | null
+  /** The day this session is scheduled to open, for a round nobody has started - "opens on 6
+      Oct", never shown once `opened` is known. */
+  opensOn?: string | null
 }
 
 export const EVERY_SESSION = {
@@ -127,7 +131,9 @@ export function TheReportIsAListOfSessions({
             >
               <span style={{ minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 16px' }}>
                 <span style={{ fontSize: 15, fontWeight: 700 }}>Session {r.sessionNumber}</span>
-                {r.opened && <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{sessionDay(r.opened)}</span>}
+                {r.opened
+                  ? <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{sessionDay(r.opened)}</span>
+                  : r.opensOn && <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>opens on {sessionDay(r.opensOn)}</span>}
                 <span style={{ fontSize: 13.5, color: 'var(--gw-sub)' }}>{checkedIn(r.answered, r.total)}</span>
                 {!r.closed && r.waitingOn.length > 0 && (
                   <span style={{ flexBasis: '100%', fontSize: 13, color: 'var(--gw-sub)' }}>{stillToCheckIn(r.waitingOn)}</span>
