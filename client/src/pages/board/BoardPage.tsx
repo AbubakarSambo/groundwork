@@ -63,6 +63,11 @@ import { initialsOf } from '@/pages/org/people-here'
 import { cadenceLabel } from '@/lib/cadence'
 import { phaseSpineSentence } from '@/lib/phase-spine-sentence'
 import { KindOfWorkBanner, WorkRecordsSections } from './WorkRecords'
+import {
+  RisksSection, WorkPlanSection, TimelineSection, PersonHistorySection, BlockerCheckSection,
+  EvidenceIndexSection, BusyOrMovingSection, LeadActionsSection, ObligationsSection, ForecastSection,
+  WhoWaitedOnWhomSection, ContradictionsSection, QuestionsForTheLeadSection,
+} from './TheSwitchboardsSections'
 
 /**
  * The delivery board.
@@ -636,6 +641,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
     contribution: has('contribution') && !!b.contribution && viewerRunsThisCheckIn,
     coverage: has('coverage') && !!b.coverage && viewerRunsThisCheckIn,
     patterns: has('patterns') && allowed('patterns') && !!b.patterns,
+    /*
+     * REQUEST 70, THE SWITCHBOARD'S 22 SECTIONS: THESE 13 ARE NOT IN ANY FAMILY'S `sections` LIST AT
+     * ALL (the server serves them to every family whenever the reader has data, the same way it
+     * already does `hiddenContributors` for some families) - so there is no `has(...)` to call here,
+     * only the per-situation `allowed(...)` gate and whether the server actually sent anything.
+     */
+    risks: allowed('risks') && !!b.risks?.length,
+    workPlan: allowed('workPlan') && !!b.workPlan?.length,
+    timeline: allowed('timeline') && !!b.timeline?.length,
+    personHistory: allowed('personHistory') && !!b.personHistory?.length,
+    blockerCheck: allowed('blockerCheck') && !!b.blockerCheck?.length,
+    evidenceIndex: allowed('evidenceIndex') && !!b.evidenceIndex?.length,
+    busyOrMoving: allowed('busyOrMoving') && !!b.busyOrMoving?.eachPerson?.length,
+    leadActions: allowed('leadActions') && !!b.leadActions?.length,
+    obligations: allowed('obligations') && !!b.obligations?.length,
+    forecast: allowed('forecast') && !!b.forecast?.length,
+    whoWaitedOnWhom: allowed('whoWaitedOnWhom') && !!b.whoWaitedOnWhom?.length,
+    contradictions: allowed('contradictions') && !!b.contradictions?.length,
+    questionsForTheLead: allowed('questionsForTheLead') && !!b.questionsForTheLead?.length,
   }
   // Only the caller's own availability is theirs to toggle.
   const myIds = new Set(b.myParticipantId ? [b.myParticipantId] : [])
@@ -1281,6 +1305,25 @@ export function BoardPage({ groundId }: { groundId?: string } = {}) {
           readerIsLead={viewerRunsThisCheckIn}
           canEdit={b.canEditFrame}
         />
+
+        {/*
+          REQUEST 70: THE SWITCHBOARD'S OWN SECTIONS, THE 13 THAT NOW HAVE A SERVED FIELD. Each
+          component draws nothing when its own rows are empty, so there is no heading-with-nothing-
+          under-it risk here beyond what `shown.*` already screens for. See TheSwitchboardsSections.tsx.
+        */}
+        {shown.workPlan && <WorkPlanSection rows={b.workPlan} />}
+        {shown.forecast && <ForecastSection rows={b.forecast} />}
+        {shown.timeline && <TimelineSection rows={b.timeline} />}
+        {shown.obligations && <ObligationsSection rows={b.obligations} />}
+        {shown.personHistory && <PersonHistorySection rows={b.personHistory} />}
+        {shown.risks && <RisksSection rows={b.risks} />}
+        {shown.leadActions && <LeadActionsSection rows={b.leadActions} />}
+        {shown.blockerCheck && <BlockerCheckSection rows={b.blockerCheck} />}
+        {shown.evidenceIndex && <EvidenceIndexSection rows={b.evidenceIndex} />}
+        {shown.whoWaitedOnWhom && <WhoWaitedOnWhomSection rows={b.whoWaitedOnWhom} />}
+        {shown.contradictions && <ContradictionsSection rows={b.contradictions} />}
+        {shown.busyOrMoving && <BusyOrMovingSection data={b.busyOrMoving} />}
+        {shown.questionsForTheLead && <QuestionsForTheLeadSection rows={b.questionsForTheLead} />}
 
         {/* What was agreed at the start, so the rest of the board has something
             to be read against. This section has been in the DELIVERY family's

@@ -17,9 +17,14 @@ import { SWITCHBOARD_MATRIX, G2_SECTION_TO_BOARD_SECTION, G2_SECTION_NAMES } fro
  * (`G2_SECTION_TO_BOARD_SECTION`): Targets, Starting agreement, Accounts side by side, Known and
  * unknown, Change since last, Blockers, Patterns - which map to the board's `objectives`,
  * `startingState`, `divergence`, `whatTheRoomIsAbout`, `quickRead`, `dependencies` and `patterns`.
- * The other 23 named sections (Work plan, Deal grid, Forecast, ...) have no served data at all
- * (request 70, docs/requests-to-engine.md) and the board correctly draws nothing for them - this
- * test only checks the 7 that exist.
+ * THE OTHER NAMED SECTIONS: request 70 (1 October) gave 13 more of them a served field (Risks, Work
+ * plan, Timeline, Person history, Blocker check, Evidence index, Busy or moving, Lead actions,
+ * Obligations, Forecast, Who waited on whom, Contradictions, Questions for the lead - see
+ * TheSwitchboardsSections.tsx), but `boardFor()` below carries no data for any of them, so they draw
+ * nothing here regardless of what G2 names for a situation - this test's own scope stays the
+ * original 7 (`TITLE_FOR_BOARD_SECTION`), which is also why `MAPPED_ORDER` is filtered down to only
+ * the names that map to one of those 7, rather than every name `G2_SECTION_TO_BOARD_SECTION` now
+ * resolves. Their own order-and-visibility coverage is in TheSwitchboardsSections.spec.tsx instead.
  *
  * G2's OWN TABLE ORDER IS FIXED, REGARDLESS OF SITUATION. `G2_SECTION_NAMES` lists all 30 in one
  * order; a situation only ever narrows WHICH of them it names (on, optional, or not named at all -
@@ -43,10 +48,7 @@ vi.mock('@/components/gw/WhatSuccessLooksLike', () => ({ WhatSuccessLooksLikeFor
 vi.mock('@/components/gw/TheOtherBoardsYouAreIn', () => ({ TheOtherBoardsYouAreIn: () => null }))
 vi.mock('@/components/gw/Suggestions', () => ({ SuggestionsForTheLead: () => null }))
 
-/** The 7 switchboard-mapped sections, in the fixed order BoardPage.tsx always renders them. */
-const MAPPED_ORDER = G2_SECTION_NAMES.filter((n) => G2_SECTION_TO_BOARD_SECTION[n] != null)
-
-/** The Sec title BoardPage.tsx actually renders for each of the 7 mapped board sections. */
+/** The Sec title BoardPage.tsx actually renders for each of the 7 mapped board sections this test covers. */
 const TITLE_FOR_BOARD_SECTION: Record<string, string> = {
   objectives: 'What we are aiming for',
   startingState: 'What was agreed at the start',
@@ -56,6 +58,12 @@ const TITLE_FOR_BOARD_SECTION: Record<string, string> = {
   dependencies: 'Waiting on',
   patterns: 'What keeps coming up',
 }
+
+/** The 7 switchboard-mapped sections this test covers, in the fixed order BoardPage.tsx always
+    renders them - restricted to names that resolve to one of the 7 above, so the 13 sections
+    request 70 later mapped (which `boardFor()` below carries no data for) are out of this test's
+    scope rather than producing stray `undefined` titles. */
+const MAPPED_ORDER = G2_SECTION_NAMES.filter((n) => TITLE_FOR_BOARD_SECTION[G2_SECTION_TO_BOARD_SECTION[n] ?? ''] != null)
 
 /** A served shape carrying real data for every one of the 7 mapped sections, whatever the scenario. */
 function boardFor(scenario: string) {
