@@ -41,6 +41,31 @@ describe('the arithmetic', () => {
   });
 });
 
+/*
+ * WHEN IT WAS SETTLED, AND LEAVE WHILE IT WAS OPEN (1 October). Week 9 added `settledAt` so this count
+ * reads the day a promise was settled, and both ways of settling stamp it, but the count read the day
+ * it was made. And a promise made on the Friday before a week of leave, missed while away and settled
+ * "not done" on return, was counted as a miss, because only the day it was made was checked against
+ * the leave (week 23: nothing counts against them).
+ */
+describe('read by the day it was settled, with leave over the whole time it was open', () => {
+  it('counts by the day it was settled, and by the day it was made where no day of settling is stored', () => {
+    expect(keptLately([{ status: 'NOT_DONE', createdAt: ago(35), settledAt: ago(6) }], NOW)).toMatchObject({ kept: 0, of: 1 });
+    expect(keptLately([{ status: 'DONE', createdAt: ago(20), settledAt: ago(30) }], NOW)).toBeNull();
+    expect(keptLately([{ status: 'DONE', createdAt: ago(20) }], NOW)).toMatchObject({ kept: 1, of: 1 });
+  });
+  it('a miss is not counted when leave fell between the day it was made and the day it was settled', () => {
+    const leave = [{ from: ago(14), to: ago(9) }];
+    const rows = [
+      { status: 'NOT_DONE', createdAt: ago(17), settledAt: ago(7) },
+      { status: 'NOT_DONE', createdAt: ago(25), settledAt: ago(20) },
+      { status: 'DONE', createdAt: ago(17), settledAt: ago(7) },
+    ];
+    expect(keptLately(rows, NOW, leave)).toMatchObject({ kept: 1, of: 2 });
+    expect(keptLately(rows, NOW)).toMatchObject({ kept: 1, of: 3 });
+  });
+});
+
 describe('the sentence, in the prototype’s words, all in words or all in figures', () => {
   it.each([
     [11, 20, 'In the last 4 weeks, you kept 11 of your 20 commitments.'],
