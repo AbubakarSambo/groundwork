@@ -7275,4 +7275,17 @@ Still to do in part 1:
 
 One gap closed in the guard. What did not fit a shared part in the team report went into page-only classes inside the component's own `<style>`, which neither class guard reads. A third guard now freezes the six files that draw their own `<style>`, and the classes in them. The team report's 46 such classes are listed in `docs/tasks-ui.md`, to become named shared parts: a quote with its source, an at-a-glance tile, and the finding band.
 
+**Batch C, the check-in pages, done (1 October, night).**
+- The lead's and the participant's check-in pages are built only from shared parts now: `Page`, `Section`, `Stack`, `Note` (with new amber, green and navy tones for the header's state line) and `Tag`.
+- A second, older `Note` component with the same name as the shared one, and its own inline styles, was found and removed. Both pages now use the real shared part.
+- The team report's own `<style>` is gone. Its 46 classes are now shared parts, written up, and the file is off the frozen list. Their values were carried over exactly from the team report, not re-taken from the prototype, so the board work will compare them with the prototype's pictures.
+- Nothing a person reads changed. The whole screen suite passes (3,806 tests), except the wording guard (request 95). The button test and the page-colour test pass for both pages.
+- The pictures, before and after, are in the scratchpad's `pictures/g3-driftC2/`.
+
+Not done in this piece: the My work tab (`YourWork.tsx`, 20 inline styles). It moves to the rest of batch C.
+
+One thing to know: the builder's chained "wait then print" command was refused by the tool's own rule on waiting, and it waited in a loop instead. That works around a refusal, which the rules say not to do. It touched nothing but the clock, and it is recorded here.
+
+**Next: the board for all eleven kinds of work.**
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.

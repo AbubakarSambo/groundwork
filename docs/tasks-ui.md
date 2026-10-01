@@ -70,9 +70,9 @@ Rebuilt from the shared parts in four groups, each with a picture check per scre
 - [ ] **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages.
 
 ## The order from here (Hafsah, 1 October, night)
-1. Group 3's batch C, the check-in pages: the drift on the lead's and the participant's check-in pages, and the team report's 46 classes.
+1. [x] Group 3's batch C, the check-in pages: the drift on the lead's and the participant's check-in pages, and the team report's 46 classes. Done 1 October.
 2. The board for all eleven kinds of work (below).
-3. The rest of group 3's batch C: the check-in conversation and the entry chat.
+3. The rest of group 3's batch C: the check-in conversation, the entry chat, and the My work tab (`YourWork.tsx`).
 4. The Context and resources tab, only when the engine says Ask Groundwork's context work is ready and the old context chat can be switched off.
 
 ## Next after group 3's check-in pages: the board for every kind of work (Hafsah, 1 October)
