@@ -55,10 +55,14 @@ describe('The work plan, as each person reads it', () => {
     expect(other.workPlan).toBeUndefined();
   });
 
-  it('on an evaluation check-in the person reads their own and the lead\'s and no colleague\'s, even where people see each other', async () => {
+  /* CHANGED (1 October review, part 1): this used to expect the lead's commitment on the person's own work plan.
+     On an evaluation check-in the lead's commitments are the lead's intentions about the person (one read
+     "I will put a formal performance improvement plan in front of Nathan." before he was told), so the person
+     reads only their own. See a-goal-the-lead-has-not-told-and-the-leads-own-words-on-an-evaluation-board. */
+  it('on an evaluation check-in the person reads their own and no colleague\'s and not the lead\'s, even where people see each other', async () => {
     const evaluation: Setup = { ...RECORD, scenario: GroundScenario.PIP, peersVisibleToEachOther: true };
     const b = await boardAs(evaluation, ...RUKIA);
-    expect(b.workPlan.map((r: any) => r.participantId).sort()).toEqual(['p-amina', 'p-rukia']);
+    expect(b.workPlan.map((r: any) => r.participantId)).toEqual(['p-rukia']);
   });
 
   it('serves nothing where nobody has committed to anything', async () => {

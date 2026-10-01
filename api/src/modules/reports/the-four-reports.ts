@@ -356,9 +356,11 @@ export const BEFORE_THE_DEAD_BODY_CAN_GO: { rule: string; spec: string }[] = [
    * Five more came off by pointing them at the copy people see. The two that remain are the ones
    * where the rule genuinely has no live home, and both need a surface rather than a repoint.
    */
-  /* The live `ResolutionPanel` returns null when the run is not near its end - so resolution is
-     ABSENT rather than one line, which is the opposite of what this rule asks for. Real work. */
-  { rule: 'A panel with nothing to say is a line, and staleness is never conditional on being settled', spec: 'a-panel-with-nothing-to-say-is-a-line' },
+  /* Decision 70 (1 October): the resolution panel shows nothing until a decision is near, as the
+     prototype does, so the "Resolution. Not set yet." half of this rule is retired, not owed.
+     Decision 71: the old-version notice stays, and the rebuilt session report does not carry one
+     yet. That half is real work for the screens, and this entry comes off when it is live. */
+  { rule: 'Staleness is never conditional on being settled: a report changed since it was opened says so', spec: 'a-panel-with-nothing-to-say-is-a-line' },
   /* The weigh section and the soft spots render only inside the body. This is the same work as
      giving the risk reads a surface, and it is the larger of the two. */
   { rule: 'What the server already knew reaches the page, lead-only, worded about the record', spec: 'what-the-server-already-knew' },

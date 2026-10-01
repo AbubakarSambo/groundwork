@@ -140,8 +140,56 @@ describe('the latest summary on the list, as each reader gets it', () => {
     expect(row.latestSummary).not.toMatch(/Participant [A-Z]\b|the initiator/i);
     expect(row.latestSummary).toMatch(/Omar|Miriam/);
   });
-  it('where people are not named to each other, a participant reads "a colleague", never a name or a label', async () => {
+  /* CHANGED (request 97e): this used to expect "a colleague" in place of a name, which still sent the team's
+     picture to somebody who is shown nobody else on the row. It now expects none of it, which is stricter. */
+  it('where people are not named to each other, a participant is given none of the team\'s picture', async () => {
     const row = await listAs(PART, 'MEMBER', { ...stored, peersVisibleToEachOther: false });
-    expect(row.latestSummary).not.toMatch(/Omar|Participant [A-Z]\b/);
+    expect(row.peersVisibleEffective).toBe(false);
+    expect(row.latestSummary).toBeNull();
+    expect(row.latestFinding).toBeNull();
+  });
+});
+
+/*
+ * REQUEST 97(e): THE TEAM'S PICTURE ON THE LIST, FOR EACH READER, WHERE PEOPLE DO NOT SEE EACH OTHER.
+ * Asset loans, cohort 3, was served to a participant with the latest summary and finding although the
+ * rest of the row shows them only themselves.
+ */
+describe('the latest summary and finding, for each reader of a released report', () => {
+  const released = {
+    report: { releasedAt: new Date(), agreements: [], divergences: [], sharedAs: null },
+    reportRounds: [{ sessionNumber: 1, finding: 'Omar is behind on the loans.', sharedPicture: 'Omar has closed no loans. Miriam has closed two.' }],
+  };
+  it('the lead who runs a private check-in reads both', async () => {
+    const row = await listAs(LEAD, 'MEMBER', { ...released, peersVisibleToEachOther: false });
+    expect(row.latestSummary).toBe('Omar has closed no loans. Miriam has closed two.');
+    expect(row.latestFinding).toBe('Omar is behind on the loans.');
+  });
+  it('a participant on a private check-in reads neither, and nothing of Omar', async () => {
+    const row = await listAs(PART, 'MEMBER', { ...released, peersVisibleToEachOther: false });
+    expect(row.latestSummary).toBeNull();
+    expect(row.latestFinding).toBeNull();
+    expect(JSON.stringify(row)).not.toMatch(/Omar|closed no loans/);
+  });
+  it('a participant on a check-in where people see each other reads the summary', async () => {
+    const row = await listAs(PART, 'MEMBER', { ...released, peersVisibleToEachOther: true });
+    expect(row.peersVisibleEffective).toBe(true);
+    /* Changed 1 October: Miriam is the reader, so her own name is "you" (the review, section 2). */
+    expect(row.latestSummary).toBe('Omar has closed no loans. You have closed two.');
+    expect(row.latestFinding).toBe('Omar is behind on the loans.');
+  });
+  it('an admin who runs the organisation reads both on a private team check-in', async () => {
+    const row = await listAs(ADMIN, 'ADMIN', { ...released, peersVisibleToEachOther: false });
+    expect(row.latestSummary).toBe('Omar has closed no loans. Miriam has closed two.');
+  });
+  it('an admin who was not given access to an evaluation check-in is not listed it at all, so is sent neither', async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const prisma: any = { ground: { findMany }, groundParticipant: { updateMany: jest.fn().mockResolvedValue({ count: 0 }), findMany: jest.fn().mockResolvedValue([]) } };
+    const svc = new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const rows = (await svc.list('org1', ADMIN, `${ADMIN}@baridi.test`, 'ADMIN')) as any[];
+    expect(rows).toEqual([]);
+    const where = JSON.stringify(findMany.mock.calls[0][0].where);
+    expect(where).toContain('notIn');
+    expect(where).toContain(`"initiatorId":"${ADMIN}"`);
   });
 });

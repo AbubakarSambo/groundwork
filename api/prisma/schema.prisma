@@ -1877,6 +1877,12 @@ model CheckInGap {
   @@map("check_in_gaps")
 }
 
+/// Which way is good for a target: an aim to reach, or a limit not to go over (decision 69).
+enum TargetDirection {
+  AIM
+  LIMIT
+}
+
 model GroundObjective {
   id       String @id @default(uuid())
   groundId String @map("ground_id")
@@ -1909,6 +1915,15 @@ model GroundObjective {
   /// this instead of the old wording guess: a target with it set is shown to the check-in's lead and
   /// nobody else, whoever else is reading and whatever `whoSeesTargets` says.
   isADecisionAboutAPerson Boolean @default(false) @map("is_a_decision_about_a_person")
+  /// AN AIM TO REACH, OR A LIMIT NOT TO GO OVER, SAID BY THE LEAD (decision 69, 1 October 2026).
+  ///
+  /// The board used to guess this from the words in the name ("budget", "within", "no more than"), and
+  /// a guess read "Pumps sold under the new scheme" as a ceiling. Hafsah: each target carries a
+  /// direction, set when the target is made. The words in the name can suggest it, and the lead
+  /// confirms it. Null means not set: nobody has confirmed it yet, and the board keeps today's
+  /// word-based guess (a-measure-that-goes-down-is-still-going-well.ts) until the lead sets one.
+  /// The suggestion is never stored here; only what the lead confirmed is.
+  direction TargetDirection?
   /// Who SAID this target, when it came out of a check-in rather than the setup form. A target the
   /// lead set for a person is put to that person as the lead's expectation; one they set themselves
   /// is theirs. Without this the two read the same and a rep was asked about "the N4m gap that the

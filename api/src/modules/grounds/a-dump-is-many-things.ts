@@ -26,6 +26,7 @@
  */
 
 import { ContextItemKind } from '@prisma/client';
+import { whatTheWordsSuggest, theListsWordsFor, A_LIMIT_NOT_TO_GO_OVER, type TargetDirection } from '../board/an-aim-or-a-limit';
 import { ABOUT_SOMEBODY } from './what-this-check-in-knows';
 import { NONE_IS_ASKED_UNTIL_YOU_CONFIRM_IT,THIS_ONE_IS_NOT_ASKED_UNTIL_YOU_CONFIRM_IT, plainQuestionFrom, whatGroundworkWillAsk } from './a-question-asked-word-for-word';
 
@@ -187,7 +188,11 @@ const fmt = (n: number): string =>
 
 export interface WhatAPasteGives {
   success: string | null;
-  teamTargets: { name: string; target: number | null; notToExceed: boolean }[];
+  /**
+   * `direction` is what the lead said yes to (decision 69), read back off the list they answered by
+   * `theDirectionsInTheList`. Absent or null until then: the list only suggests one.
+   */
+  teamTargets: { name: string; target: number | null; notToExceed: boolean; direction?: TargetDirection | null }[];
   forPeople: { who: string; participantId: string; expectation: string; targets: { name: string; number: number }[] }[];
   dates: { what: string; when: string }[];
   unmatched: string[];
@@ -267,7 +272,10 @@ export function whatWeTookFromThat(
   if (got.teamTargets.length) {
     lines.push('', 'These are for the whole check-in.');
     for (const t of got.teamTargets) {
-      lines.push(`- ${t.name}${t.target != null ? `: ${fmt(t.target)}${t.notToExceed ? ', not to be passed' : ''}` : ', tracked rather than counted'}`);
+      /* Decision 69: asking, each number says which way it goes, so the yes confirms it. Once recorded,
+         only a direction the lead said yes to is said. */
+      const way = theWayThisNumberGoes(t, !!opts.asking);
+      lines.push(`- ${t.name}${t.target != null ? `: ${fmt(t.target)}${way ? `, ${theListsWordsFor(way)}` : ''}` : ', tracked rather than counted'}`);
     }
   }
   if (got.forPeople.length) {
@@ -376,6 +384,43 @@ export function whatWeTookFromThat(
  * opens with THE_LIST_OPENS_WITH, which only whatWeTookFromThat writes.
  */
 export const THE_LIST_OPENS_WITH = 'Here is what I took from that.';
+
+/**
+ * WHICH WAY ONE OF THE TEAM'S NUMBERS GOES, AS THE LIST SAYS IT (decision 69).
+ *
+ * Asking: what the lead said yes to before, or else the suggestion, a limit where the paste said "not
+ * to exceed" or the name's words say so, and an aim otherwise. Recorded: only what was said yes to.
+ */
+export function theWayThisNumberGoes(t: { name: string; target: number | null; notToExceed?: boolean; direction?: TargetDirection | null }, asking: boolean): TargetDirection | null {
+  if (t.target == null) return null;
+  if (t.direction) return t.direction;
+  if (!asking) return null;
+  return t.notToExceed ? 'LIMIT' : whatTheWordsSuggest(t.name);
+}
+
+/**
+ * THE DIRECTIONS THE LEAD SAID YES TO, READ OFF THE LIST THEY ANSWERED (decision 69).
+ *
+ * A yes re-reads the paste, and a second reading can come back with a different "not to exceed" from
+ * the first. What the lead agreed to is what the list in front of them said, so it is read from there,
+ * the same way `theTellingInTheList` reads what participants are told. Keyed on the name, flattened.
+ */
+export function theDirectionsInTheList(history: { role: 'user' | 'assistant'; content: string }[] | null | undefined): Map<string, TargetDirection> {
+  const out = new Map<string, TargetDirection>();
+  const lastAssistant = [...(history ?? [])].reverse().find((t) => t.role === 'assistant')?.content ?? '';
+  if (!lastAssistant.trim().startsWith(THE_LIST_OPENS_WITH)) return out;
+  for (const line of lastAssistant.split('\n')) {
+    const m = line.match(/^-\s+(.+):\s+[^:]+,\s+(an aim to reach|a limit not to go over)\s*$/);
+    if (!m) continue;
+    out.set(aNameKey(m[1]), m[2] === A_LIMIT_NOT_TO_GO_OVER ? 'LIMIT' : 'AIM');
+  }
+  return out;
+}
+
+/** A target's name as the list and the yes compare it: lower case, one space, no end stop. */
+export function aNameKey(name: string): string {
+  return (name ?? '').toLowerCase().replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim();
+}
 
 /** Their answer to "Record all of this?", with nothing else in it. Anything longer is a new instruction. */
 const A_PLAIN_YES = /^(yes|yep|yeah|yup|ok|okay|sure|go ahead|do it|please do|confirm(ed)?|record (it|that|all of (it|that|this))|save (it|that)|take (it|that|the rest)|all of it|that is right|correct)\b[\s\S]{0,60}$/i;

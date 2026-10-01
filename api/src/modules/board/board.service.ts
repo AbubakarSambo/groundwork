@@ -1,5 +1,8 @@
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
+import { theSharedReadWithoutTheLeadsJudgement } from './what-the-room-says-is-not-a-reading-of-the-lead';
+import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
+import { withoutWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
@@ -37,7 +40,8 @@ import {
   sectionsForARunOf,
 } from './board-families';
 import { totalSessionsFor } from '../grounds/session-count';
-import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart } from '../reports/party-labels';
+import { labelsForParties, namesVisibleTo, readsWithNamesOf, eachSideGetsSomebody, plainWordsByPerson, atTheStart, withNames } from '../reports/party-labels';
+import { anAimAsASentence, yourOwnWhereYouAreTheSubject } from './an-aim-is-a-sentence-about-somebody';
 import {
   CoverageKind,
   CoverageRead,
@@ -56,6 +60,7 @@ import { GroundsService } from '../grounds/grounds.service';
 import { theSessionReport } from '../reports/the-session-report';
 import { isThisACascade } from './is-this-a-cascade';
 import { theJourneySoFar } from './a-measure-that-goes-down-is-still-going-well';
+import { asADirection, whatTheWordsSuggest, theQuestionAboutWhichWay, type TargetDirection } from './an-aim-or-a-limit';
 import { onlyWhoIsActuallyOutside, WHY_THIS_IS_HERE } from './somebody-carrying-work-with-no-account';
 import { draftTheQuestion } from '../reports/the-picture-is-drafted-from-the-reads';
 import { whyNothingIsCrossReferenced } from './why-nothing-is-cross-referenced';
@@ -86,7 +91,9 @@ import { leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
-import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
+import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
+import { theQuickReadAgreesWithTheReport, theDisagreementTheReportOpensWith } from './the-quick-read-agrees-with-the-report';
+import { oneCountPerThing } from './one-count-per-thing';
 import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
@@ -97,8 +104,11 @@ import { peopleFrom } from '../alignment/a-file-of-people-becomes-people';
 import { whatTheyTried } from '../conversation/a-blocker-is-not-a-blocker-until-you-have-tried';
 import { theBoardsJudgementFor } from '../reports/the-judgement-is-the-leads';
 import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '../reports/is-this-an-evaluation-check-in';
+import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
+import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
+import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
 import { theMarkOf, whoAddedEachBackingDocument, WHAT_A_MARK_READS } from '../reports/how-a-line-is-known';
@@ -425,7 +435,7 @@ export class BoardService {
      * of the organisation. The rule is between the parties.
      */
     /* One copy of the rule, shared with the grounds page, the reports and the interview. See peers-are-named. */
-    const peersVisible = peersAreNamedOn(ground as any);
+    const peersVisible = peersAreNamedOn(ground as any, { participantId: me?.id ?? null });
     /* `viewer` and `adminHere` are read once at the door above - see the note there. */
     const runsThisGround = isInitiator || isSetupAdmin || adminHere;
     const whoMaySee = { peersHidden: !peersVisible && !runsThisGround, meParticipantId: me?.id ?? null };
@@ -499,7 +509,16 @@ export class BoardService {
     /* THE BOARD IS EVERY SESSION. The session report runs its engines over one session's rows; the
        board runs the same engines over all of them, so the two share a vocabulary and differ only in
        scope. Same tiles, same settled-and-open, same question engine. */
-    const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound).catch((err: any) => {
+    /* Whether a colleague's own words are walled from this reader: the person an evaluation check-in is
+       about, or an admin without access to it (the same rule as Who owns what, further down). */
+    const colleaguesWordsWalled = viewerIsTheSubjectOfAnEvaluationCheckIn({
+      scenario: (ground as any).scenario,
+      isLead: isInitiator || runsItForAPattern(ground as any, requestingUserId),
+      viewerParticipantId: me?.id ?? null,
+      participants: ground.participants as any,
+    }) || (adminHere && !runsItForAPattern(ground as any, requestingUserId) && isEvaluationCheckIn((ground as any).scenario));
+    const theMovementsReader = { participantId: me?.id ?? null, isLead: isInitiator, colleaguesWordsWalled };
+    const sessionShape: any = await this.everySessionThroughTheReportEngines(groundId, ground as any, checkIns as any[], openRound, theMovementsReader).catch((err: any) => {
       this.logger.warn(`Board could not run the report engines over ${groundId}: ${err?.message}`);
       return null;
     });
@@ -845,8 +864,8 @@ export class BoardService {
        *
        * The lowest session we have a snapshot for, per objective. A target added at session six
        * starts at session six - nobody gets credit for distance covered before anybody was
-       * counting. See a-measure-that-goes-down-is-still-going-well.ts for why this is derived
-       * rather than asked: a direction column can be set wrong, and three numbers cannot.
+       * counting. See a-measure-that-goes-down-is-still-going-well.ts. Since decision 69 the lead
+       * can also say which way is good (GroundObjective.direction), and where they have, that wins.
        */
       const firstSnapshots = await this.prisma.groundObjectiveSnapshot.findMany({
         where: { groundId },
@@ -895,8 +914,26 @@ export class BoardService {
         { isLead: isInitiator },
       ).shown as typeof ground.objectives;
 
-      out.objectives = mayRead.map((o) => ({
-        journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
+      /*
+       * AND NOT WHAT THE LEAD HAS SET FOR A PERSON AND NOT YET TOLD THEM (decision 56). See
+       * an-untold-goal-is-not-a-board-objective: the lead's own words in the check-in become objectives that
+       * share no sentence with the stored goal, so the sentence wall below never caught them.
+       */
+      const untoldRows = isInitiator ? [] : await this.untoldGoalRows(groundId);
+      const { kept: mayReadUntold } = withoutWhatTheLeadHasNotToldThemAbout(mayRead as any[], untoldRows, ground.participants as any[], isInitiator);
+
+      out.objectives = (mayReadUntold as typeof ground.objectives).map((o) => ({
+        /* The lead's own direction where they set one (decision 69); otherwise the words of the name, as before. */
+        journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target, name: o.name, direction: asADirection((o as any).direction) }),
+        /*
+         * AN AIM TO REACH, OR A LIMIT NOT TO GO OVER, AS THE LEAD SET IT (decision 69). Null: not set.
+         * To whoever may read the target, because it is part of the target. The suggestion and the
+         * question go to the lead alone, the only person who can answer it (assertInitiatorOfBoardGround
+         * on the update route), and only while nobody has answered it.
+         */
+        direction: asADirection((o as any).direction),
+        directionSuggested: isInitiator && o.target != null && asADirection((o as any).direction) == null ? whatTheWordsSuggest(o.name) : null,
+        directionQuestion: isInitiator && asADirection((o as any).direction) == null ? theQuestionAboutWhichWay(o.target) : null,
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
         id: o.id, name: o.name, count: o.count, prevCount: o.prevCount, target: o.target,
@@ -934,6 +971,50 @@ export class BoardService {
             ),
           })),
       }));
+      /* A week past, the person reads that the goal exists, with no number (decision 56, item 4). Only they do. */
+      if (untoldRows.length) {
+        const leadFirst = ((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user?.firstName ?? '').trim() || 'Your lead';
+        const withArea = await Promise.all(untoldRows.map(async (g) => ({ ...g, area: await areaOfGoalOrFallback(this.prisma, g.text ?? '') })));
+        for (const say of whatThePersonReadsOfTheirOwnUntoldGoals(withArea, me?.id ?? null, leadFirst)) {
+          (out.objectives as any[]).push({
+            journey: { direction: 'unknown', start: null, now: 0, target: null, say: '', covered: null },
+            notSettled: null, id: `lead-set-goal-${(out.objectives as any[]).length}`, name: say, count: 0, prevCount: 0, target: null,
+            direction: null, directionSuggested: null, directionQuestion: null,
+            assumes: [], ownerParticipantId: me?.id ?? null, owner: null, delta: 0, isNew: false, suggestedCount: null, suggestedSaid: null, askedOf: null,
+          });
+        }
+      }
+    }
+
+    /* One row per thing, with one count. See one-count-per-thing. */
+    if (Array.isArray(out.objectives)) out.objectives = oneCountPerThing(out.objectives as any[], theLeadsRow);
+
+    /*
+     * EACH AIM, AS A FULL SENTENCE ABOUT SOMEBODY, NAMED FOR THIS READER (review of 1 October 2026).
+     * After one-count-per-thing, which joins rows on the words as they were stored. "I", "the speaker"
+     * and "the person" are whoever set the aim; a row that only says what is counted is its holder
+     * aiming at its number. Then the same naming every report goes through, so the reader's own name
+     * is "you". The sentences the board wrote itself above (an untold goal) are already finished.
+     */
+    if (Array.isArray(out.objectives)) {
+      const labels = labelsForParties(ground.participants as any);
+      const readerLabel = me?.id ? labels.get(me.id) ?? null : null;
+      const stored = new Map(((ground.objectives ?? []) as any[]).map((o) => [o.id, o]));
+      const othersNames = (ground.participants as any[]).filter((p) => p.id !== me?.id)
+        .flatMap((p) => [p.user?.firstName, p.user?.lastName, p.nameGiven].filter(Boolean) as string[]);
+      out.objectives = (out.objectives as any[]).map((o) => {
+        const row = stored.get(o.id);
+        if (!row) return o;
+        const setBy = row.setByParticipantId ?? row.ownerParticipantId ?? theLeadsRow;
+        const inLabels = anAimAsASentence(o.name, {
+          speaker: setBy ? labels.get(setBy) ?? null : null,
+          holder: o.ownerParticipantId ? labels.get(o.ownerParticipantId) ?? null : null,
+          target: o.target ?? null,
+          direction: asADirection(row.direction),
+        });
+        const named = withNames(inLabels, visibleNames, labels.values(), { viewerLabel: readerLabel });
+        return { ...o, name: yourOwnWhereYouAreTheSubject(named, othersNames) };
+      });
     }
 
     if (has('divergence') && reportSafe) {
@@ -998,6 +1079,14 @@ export class BoardService {
         ...(sessionShape?.whereThingsStand?.settledMarks ? { settledMarks: sessionShape.whereThingsStand.settledMarks } : {}),
         ...(sessionShape?.whereThingsStand?.openMarks ? { stillOpenMarks: sessionShape.whereThingsStand.openMarks } : {}),
       };
+      /*
+       * AND THE REASON THERE IS NOTHING HERE ONLY WHERE THERE IS NOTHING HERE (review of 1 October
+       * 2026). "Everybody answered, and nothing in the written report reads as a difference or an
+       * agreement yet." went out on 38 boards that listed differences right beside it. The screen
+       * hid it; the payload, which the panel and the API read too, said both. It is said only over
+       * an empty section now.
+       */
+      if ((out.divergence.items as any[]).length || (out.divergence.agreements as any[]).length) delete out.divergence.whyNothingYet;
     }
 
     /*
@@ -1202,6 +1291,31 @@ export class BoardService {
       out.toLookAt = await this.whatHasStayedTheSameFor(groundId, ground as any, checkIns as any[], rawDependencies, me?.id ?? null, nameOf, aColleague);
     }
 
+    /*
+     * AND NOBODY THIS PAGE SHOWS AS SOMETHING TO LOOK AT IS "NOTHING HERE NEEDS YOU" (review of
+     * 1 October 2026). On the sales run the lead read "Femi Okonkwo has checked in, and nothing here
+     * needs you this week." above "Femi Okonkwo has had the same thing in the way for 3 check-ins.",
+     * and Kwame Mensah got the same line while a difference two sections up was about his count. A
+     * person named in a difference on this board, or in what keeps coming up, has something here.
+     */
+    if (Array.isArray(out.eachPerson)) {
+      /* And where the report opens with a disagreement it never listed (contractreview, run 21), the
+         people that opening names are in it. See the-quick-read-agrees-with-the-report. */
+      const sp = ((ground as any).report?.sharedPicture as string | null) ?? '';
+      const theOpening = theDisagreementTheReportOpensWith(sp) ? String(sp).split(/\n\s*\n/)[0] : '';
+      out.eachPerson = notNothingWhereThePageSaysSomething(
+        out.eachPerson as any[],
+        [
+          ...(theOpening
+            ? (out.eachPerson as any[]).filter((r) => String(r.who ?? '').trim() && theOpening.includes(String(r.who).trim())).map((r) => ({ participantId: r.participantId, who: null }))
+            : []),
+          ...((out.toLookAt as any[] | undefined) ?? []).map((t) => ({ participantId: t?.participantId ?? null, who: null })),
+          ...((out.divergence?.items as any[] | undefined) ?? []).flatMap((d) => [...(d?.positions ?? []), ...(d?.perspectives ?? [])])
+            .map((side: any) => ({ participantId: null, who: typeof side?.who === 'string' ? side.who : null })),
+        ],
+      );
+    }
+
     if (has('checkInGrid')) {
       out.checkInGrid = {
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b),
@@ -1235,6 +1349,13 @@ export class BoardService {
       });
       /* How each line is known, by the same rule as the reports (week 6b). Stored columns only. */
       const whoAdded = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
+      /* What each person typed in their own check-ins, so a line is quoted only in words they said. See
+         what-each-person-said-is-in-their-name. */
+      const typed = await whatEachHandoffPersonTyped(
+        this.prisma,
+        (entries as any[]).map((e) => ({ fromParticipantId: e.participantId, sourceCheckInId: e.checkInId })),
+        checkIns as any[],
+      );
       out.whoOwnsWhat = ground.participants
         .filter((p) => !p.managingOnly)
         .map((p) => ({
@@ -1250,7 +1371,8 @@ export class BoardService {
            * reads.ts is the thing that READS the marker - that one is not a surface.
            */
           items: entries.filter((e) => e.participantId === p.id).map((e) => ({
-            id: e.id, type: e.type, text: cleanText(e.text),
+            id: e.id, type: e.type,
+            ...inTheirOwnWords(cleanText(e.text), e.checkInId ? typed.get(e.checkInId) : undefined),
             mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
             markSays: WHAT_EACH_MARK_SAYS[theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded)],
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,
@@ -1336,7 +1458,7 @@ export class BoardService {
       if (sessionShape?.atAGlance?.length) {
         out.quickRead = sessionShape.atAGlance;
       } else {
-        const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
+        const held = await whatThisSessionHolds(this.prisma, groundId, openRound, theMovementsReader);
         /*
          * THE DIFFERENCE THE PAGE IS SHOWING IS THE DIFFERENCE THE TILE COUNTS. Read live, 22 Sep
          * 2026: the tile said "Nothing to compare yet" on a board whose own session report, one
@@ -1355,6 +1477,7 @@ export class BoardService {
           agreed: agreedCount, stillOpen: divCount, movedOnTargets: held.movedOnTargets, blocked: held.blocked, waiting: held.waiting,
           /* How many exist, so "no target set" is only said where none is - see whatThisSessionHolds. */
           targetsSet: held.targetsSet,
+          targetsMoved: held.targetsMoved,
           /* How many have still to answer, from the one counter - the tile said "not everybody has
              answered yet" on every board because this was never passed and undefined is not zero. */
           stillToAnswer: Math.max(0, (out.howItIsGoing?.glance?.progress?.ofPeople ?? 0) - (out.howItIsGoing?.glance?.progress?.answeredThisRound ?? 0)),
@@ -1368,6 +1491,8 @@ export class BoardService {
       }
       /* The same first blocker as the top line, from the one place that picks it (request 88). */
       out.quickRead = theBlockersTileNamesThis(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.oldest ?? null);
+      /* And never "no disagreement" over a report that opens with one. See the-quick-read-agrees-with-the-report. */
+      out.quickRead = theQuickReadAgreesWithTheReport(out.quickRead as any, ((ground as any).report?.sharedPicture as string | null) ?? null) as any;
     }
 
     // Loaded once and shared. It was fetched twice, running every one of these
@@ -1754,6 +1879,13 @@ export class BoardService {
       const adminWithoutAccess = adminHere && !runsIt && evaluation;
       /* On an evaluation check-in people never read each other's things, whatever was chosen about seeing each other (request 78, part 3). */
       const peersWalled = whoMaySee.peersHidden || evaluation;
+      /* Whether a sentence names one of the people on this check-in other than the lead: first name, or full name. */
+      const namesOfThePeople = (ground.participants as any[])
+        .filter((p) => p.id !== theLeadsRow && !p.managingOnly)
+        .flatMap((p) => [`${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim(), (p.user?.firstName ?? '').trim(), (p.nameGiven ?? '').trim()])
+        .filter((n) => n.length > 1)
+        .map((n) => new RegExp(`(?<![\\p{L}\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'iu'));
+      const namesAnyone = (text: string | null | undefined) => !!text && namesOfThePeople.some((re) => re.test(text));
       const reader: WhoIsReading = {
         meId: me?.id ?? null,
         mayReadEveryone,
@@ -1766,8 +1898,18 @@ export class BoardService {
         },
         handoffMayBeRead: (d) => {
           if (adminWithoutAccess) return false;
-          if (mayReadEveryone || !peersWalled) return true;
+          if (mayReadEveryone) return true;
+          /* What the lead said they are waiting on, about people, is the lead's (decisions 4 and 30). */
+          if (d.fromParticipantId && d.fromParticipantId === theLeadsRow && (evaluation || namesAnyone(d.what))) return false;
+          if (!peersWalled) return true;
           return !!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id);
+        },
+        commitmentMayBeRead: (c) => {
+          if (adminWithoutAccess) return false;
+          if (mayReadEveryone || !c.participantId || c.participantId === me?.id) return true;
+          /* The lead's own commitments are the lead's intentions: never read by a person in an evaluation check-in, nor, anywhere, when they name somebody. */
+          if (c.participantId === theLeadsRow) return !evaluation && !namesAnyone(c.text);
+          return true;
         },
         nameOf: (pid) => nameOf(pid),
         aColleague: (pid) => aColleague(pid),
@@ -1775,7 +1917,11 @@ export class BoardService {
       const mine = await this.theRecordTheSwitchboardsSectionsRead(groundId, checkIns as any[]);
       const sessions = (checkIns as any[]).map((c) => ({ id: c.id, participantId: c.participantId, sessionNumber: c.sessionNumber, status: c.status, completedAt: c.completedAt ?? null, isSetup: !!c.isSetup }));
       const people = (ground.participants as any[]).map((p) => ({ id: p.id, managingOnly: !!p.managingOnly }));
-      const handoffs = (ground.dependencies ?? []) as any[];
+      /* A quotation mark goes only round words found character for character in what that person typed. */
+      const handoffs = withTheirWordsChecked(
+        (ground.dependencies ?? []) as any[],
+        await whatEachHandoffPersonTyped(this.prisma, (ground.dependencies ?? []) as any[], checkIns as any[]),
+      ) as any[];
       const risks = theRisks(mine.commitments, handoffs, sessions, typeof (out as any).targetsNobodyOwns === 'string' ? (out as any).targetsNobodyOwns : null, reader);
       if (risks.length) out.risks = risks;
       const workPlan = theWorkPlan(mine.commitments, sessions, reader);
@@ -1851,10 +1997,18 @@ export class BoardService {
       /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
          grounds/a-goal-not-told-stays-with-the-lead. */
       if (!isInitiator) walled = withoutGoalsNotToldIn(walled, await this.goalsNotToldYet(groundId));
+      /* The shared read of the answers carries no sentence that is a reading of the lead, to anybody but the lead. */
+      if (!isInitiator && walled.whatTheAnswersSay) {
+        const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
+        const leadNames = [[leadRow?.user?.firstName, leadRow?.user?.lastName].filter(Boolean).join(' '), leadRow?.user?.firstName ?? '', leadRow?.nameGiven ?? ''];
+        walled.whatTheAnswersSay = theSharedReadWithoutTheLeadsJudgement(walled.whatTheAnswersSay, leadNames);
+      }
       /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
       /* And a line with no words is left out here, never served for the page to draw as an empty line. */
       walled = withoutLinesWithNoWords(walled, ['whoOwnsWhat', '*', 'items'], 'text');
+      /* Each line is a person's own words, so it is served as theirs, in quotation marks with their name. See what-each-person-said-is-in-their-name. */
+      if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = eachLineInTheirName(walled.whoOwnsWhat, me?.id ?? null);
       /*
        * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being
        * reviewed reads the facts on this board, never a colleague's exact words - those stay with
@@ -1880,9 +2034,23 @@ export class BoardService {
         if (Array.isArray(walled.divergence?.items)) {
           walled.divergence = {
             ...walled.divergence,
-            items: divergenceForTheSubject(walled.divergence.items, [me?.id ? nameOf(me.id) : null]),
+            items: divergenceForTheSubject(walled.divergence.items, [me?.id ? nameOf(me.id) : null], {
+              subjectRecord: me?.id ? ((await theRecordAQuoteMayComeFromByParticipant(this.prisma as any, groundId).catch(() => new Map<string, string[]>())).get(me.id) ?? []) : [],
+              leadNames: [theLeadsRow ? nameOf(theLeadsRow) : null, 'Your lead', 'The lead', 'your lead', 'the lead'],
+            }),
           };
         }
+      }
+      /*
+       * THE NAME OF AN EVALUATION CHECK-IN, FOR THE PERSON IT IS ABOUT AND FOR A COLLEAGUE. The label is the
+       * lead's own ("Formal improvement plan: the account manager"), which describes the person and names the
+       * plan before anybody has told them. Neither reads it; they read whose check-in it is (decisions 4 and 30,
+       * "no labels on people"). The lead, and an admin given access, read the label as the lead typed it.
+       */
+      if (isEvaluationCheckIn(ground.scenario) && !(isInitiator || evaluationWordsRunsIt)) {
+        const leadFirst = ((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user?.firstName ?? '').trim();
+        const theirs = viewerIsTheSubjectOfAnEvaluationCheckIn({ scenario: ground.scenario, isLead: false, viewerParticipantId: me?.id ?? null, participants: ground.participants as any });
+        walled.title = leadFirst ? `${theirs ? 'Your' : 'A'} check-in with ${leadFirst}` : (theirs ? 'Your check-in' : 'A check-in');
       }
       /* A record whose name was only a hidden number is not left as a row with no name. */
       if (Array.isArray(walled.workRecords)) {
@@ -2076,6 +2244,15 @@ export class BoardService {
       select: { text: true, awareness: true, authoredBy: true },
     }) ?? Promise.resolve([])).catch(() => []);
     return (rows as any[]).filter(notToldYet).map((r) => String(r.text ?? '')).filter(Boolean);
+  }
+
+  /** The lead-written goals not told yet, whole rows (for the board's objectives, decision 56). */
+  private async untoldGoalRows(groundId: string): Promise<{ participantId: string | null; text: string | null; awareness: string | null; authoredBy: string | null; createdAt: Date | null }[]> {
+    const rows = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    return (rows as any[]).filter(notToldYet);
   }
 
   /** The same rows, kept by participant - decision 56, item 3: wherever an untold goal counts
@@ -2322,7 +2499,7 @@ export class BoardService {
   async createObjective(
     groundId: string,
     requestingUserId: string,
-    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean },
+    dto: { name: string; target?: number | null; ownerParticipantId?: string | null; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const owner = await this.whoOnThisGround(groundId, dto.ownerParticipantId);
@@ -2355,7 +2532,10 @@ export class BoardService {
            guessed from its wording. This route is already the lead's alone - assertInitiatorOfBoardGround
            above. */
         isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true,
-      },
+        /* Decision 69: an aim to reach or a limit not to go over, as the lead chose it. Absent is null,
+           not set, and the board keeps reading the words of the name until the lead says. */
+        direction: asADirection(dto.direction),
+      } as any,
     });
   }
 
@@ -2419,11 +2599,25 @@ export class BoardService {
     groundId: string,
     objectiveId: string,
     requestingUserId: string,
-    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean },
+    dto: { name?: string; target?: number | null; count?: number; assumes?: string[]; isADecisionAboutAPerson?: boolean; direction?: TargetDirection | null },
   ) {
     await this.assertInitiatorOfBoardGround(groundId, requestingUserId);
     const existing = await this.prisma.groundObjective.findUnique({ where: { id: objectiveId } });
     if (!existing || existing.groundId !== groundId) throw new NotFoundException('Objective not found');
+    /*
+     * ACCEPTING A NUMBER READ OFF A CLOSED ROUND PUTS IT WHERE THAT ROUND CLOSED (review of 1 October
+     * 2026). The listener writes a number it lands into that round's snapshot, so the Movement tile and
+     * Since the last round read the same movement. A number it only offered, and the lead accepts later,
+     * is the same fact about the same round, so it goes into that round's snapshot too. Only a snapshot
+     * that exists is changed: a round still open has none, and its live count already stands in.
+     */
+    const suggestedAt = (existing as any).suggestedAtSession as number | null | undefined;
+    if (dto.count !== undefined && suggestedAt != null && (existing as any).suggestedCount != null && dto.count === (existing as any).suggestedCount) {
+      await (this.prisma as any).groundObjectiveSnapshot?.updateMany?.({
+        where: { groundId, objectiveId, sessionNumber: suggestedAt },
+        data: { count: dto.count },
+      })?.catch?.(() => undefined);
+    }
     return this.prisma.groundObjective.update({
       where: { id: objectiveId },
       data: {
@@ -2436,7 +2630,9 @@ export class BoardService {
         ...(dto.count !== undefined ? { count: dto.count, prevCount: existing.count } : {}),
         /* Decision 46: the lead alone (assertInitiatorOfBoardGround above), set plainly, never guessed. */
         ...(dto.isADecisionAboutAPerson !== undefined ? { isADecisionAboutAPerson: dto.isADecisionAboutAPerson === true } : {}),
-      },
+        /* Decision 69: the lead sets or changes which way is good here; null puts it back to not set. */
+        ...(dto.direction !== undefined ? { direction: asADirection(dto.direction) } : {}),
+      } as any,
     });
   }
 
@@ -2684,7 +2880,7 @@ export class BoardService {
    * dependency, every OPEN document: the same pure functions the session report runs, with the
    * ground's rows instead of one session's. Names go through the same labels the board already uses.
    */
-  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number) {
+  private async everySessionThroughTheReportEngines(groundId: string, ground: any, checkIns: any[], openRound: number, reader: { participantId: string | null; isLead: boolean; colleaguesWordsWalled?: boolean }) {
     const completed = checkIns.filter((c) => c.status === CheckInStatus.COMPLETED);
     const [entries, docs, baseline, deps] = await Promise.all([
       this.prisma.recordEntry.findMany({
@@ -2703,7 +2899,7 @@ export class BoardService {
     const whoAnswered = await howManyHaveAnswered(this.prisma, groundId, openRound);
     const waiting = new Set(whoAnswered.waitingOn);
     const answered = ground.participants.filter((p: any) => !waiting.has(p.id) && completed.some((c) => c.participantId === p.id && c.sessionNumber === openRound));
-    const held = await whatThisSessionHolds(this.prisma, groundId, openRound);
+    const held = await whatThisSessionHolds(this.prisma, groundId, openRound, reader);
     /* Whose document backs each line: somebody else's proves nothing of theirs (how-a-line-is-known). */
     const whoseDocument = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
     const shape = theSessionReport({
@@ -2722,6 +2918,7 @@ export class BoardService {
       /* From the one owner, over the round in play - not a lifetime delta and not every dependency ever raised. */
       movedOnTargets: held.movedOnTargets,
       targetsSet: held.targetsSet,
+      targetsMoved: held.targetsMoved,
       blocked: held.blocked,
       waiting: held.waiting,
       /* And the blocker itself, so the board's tile names it exactly as the report's does. */

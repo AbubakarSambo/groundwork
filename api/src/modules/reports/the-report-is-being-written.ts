@@ -1,3 +1,5 @@
+import { withoutAStoredCount, theStoryHasSomeoneToPointTo } from './the-picture-in-plain-sentences';
+
 /**
  * WHILE THE REPORT IS BEING WRITTEN, THE LEAD IS TOLD SO, PLAINLY (week 25).
  *
@@ -42,4 +44,33 @@ export class Syntheses {
   since(groundId: string): Date | null {
     return this.open.get(groundId)?.since ?? null;
   }
+}
+
+/**
+ * AND WHILE IT IS BEING WRITTEN, THE PAGE DOES NOT ALSO SAY EVERYBODY IS IN IT (review of 1 October
+ * 2026).
+ *
+ * On the sales run the lead read "All four people have answered." at the top of the report, beside
+ * "The report is being written with what Femi Okonkwo, Kwame Mensah and Ngozi Eze said. It will
+ * include everyone in a few minutes." The report served was the one built before Kwame's second
+ * check-in, which held the finding the whole scenario turns on. The count at the top was stored when
+ * that report was written and was true of it; served beside the line that says the report does not
+ * include everyone yet, it reads as the opposite.
+ *
+ * So while the line is served, the stored count is taken off the top of the story, as it is on every
+ * list and board header (withoutAStoredCount), and a story that then starts "They disagree" says
+ * "People disagree". Nothing else in the report is touched, and it is only the lead's read.
+ */
+export function withoutTheCountWhileItIsWritten<T extends Record<string, any>>(served: T): T {
+  if (!served || typeof served !== 'object') return served;
+  const story = (t: unknown) => (typeof t === 'string' ? theStoryHasSomeoneToPointTo(withoutAStoredCount(t)) : t);
+  const out: any = { ...served };
+  if (typeof out.sharedPicture === 'string') out.sharedPicture = story(out.sharedPicture);
+  if (typeof out.theOpening === 'string') out.theOpening = story(out.theOpening);
+  if (Array.isArray(out.sharedPictureLines) && out.sharedPictureLines.length) {
+    const lines = out.sharedPictureLines.filter((l: any) => !(typeof l?.text === 'string' && !withoutAStoredCount(l.text)));
+    if (lines.length && typeof lines[0]?.text === 'string') lines[0] = { ...lines[0], text: theStoryHasSomeoneToPointTo(lines[0].text) };
+    out.sharedPictureLines = lines;
+  }
+  return out;
 }

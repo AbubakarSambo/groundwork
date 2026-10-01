@@ -9,7 +9,7 @@ import { GroundMode, GroundScenario, PartyType } from '@prisma/client';
  * only reads. Everything the record holds (commitments, handoffs, check-ins, lines) is given in
  * `Setup`; the answer is the board as that reader is served it.
  */
-const person = (id: string, userId: string, first: string, last: string, partyType: PartyType = PartyType.PARTICIPANT) => ({
+export const person = (id: string, userId: string, first: string, last: string, partyType: PartyType = PartyType.PARTICIPANT) => ({
   id, userId, partyType, email: `${id}@baridi.test`, roleAsDescribed: 'the team', nameGiven: null, organisationGiven: null,
   remitAsGiven: null, managingOnly: partyType === PartyType.INITIATOR, signedOffAt: null,
   createdAt: new Date(partyType === PartyType.INITIATOR ? '2026-09-01T09:00:00Z' : '2026-09-01T10:00:00Z'),
@@ -36,12 +36,23 @@ export interface Setup {
   checkIns?: any[];
   lines?: any[];
   objectives?: any[];
+  /** The lead's own goals for a person (PersonObjective), with whether the lead has told them. */
+  personObjectives?: any[];
   closedAt?: Date | null;
+  /** What people typed, as conversation turns the person wrote (role PERSON). */
+  turns?: { checkInId: string; content: string }[];
   createdByUserId?: string;
   /** A stored report, where a spec reads the parts of the board that are built from it. */
   report?: any;
   /** Who may read the targets (the ground's own setting). */
   whoSeesTargets?: string;
+  /** What the lead called the check-in. */
+  label?: string;
+  /** Other people than Amina, Rukia and Baraka, with the sign-in of whoever runs it. */
+  people?: any[];
+  initiatorId?: string;
+  /** Each target's count at its first session (GroundObjectiveSnapshot), where it started. */
+  snapshots?: { objectiveId: string; count: number }[];
 }
 
 export const commitment = (id: string, participantId: string | null, text: string, more: Record<string, any> = {}) => ({
@@ -65,9 +76,9 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
   const checkIns = setup.checkIns ?? [answered('p-rukia', 1), answered('p-baraka', 1)];
   const ground: any = {
     id: 'g-1', scenario: setup.scenario ?? GroundScenario.OKR_ALIGNMENT, mode: GroundMode.SHARED,
-    initiatorId: 'u-amina', createdByUserId: setup.createdByUserId ?? 'u-amina', organizationId: 'org-1',
+    initiatorId: setup.initiatorId ?? 'u-amina', createdByUserId: setup.createdByUserId ?? setup.initiatorId ?? 'u-amina', organizationId: 'org-1',
     peopleWorkTogether: true, peersVisibleToEachOther: setup.peersVisibleToEachOther ?? true, timelineDays: 28, cadence: 'WEEKLY',
-    whoSeesTargets: setup.whoSeesTargets ?? 'THEIR_OWN', label: 'The team, Q3', participants: PEOPLE, checkIns, report: setup.report ?? null,
+    whoSeesTargets: setup.whoSeesTargets ?? 'THEIR_OWN', label: setup.label ?? 'The team, Q3', participants: setup.people ?? PEOPLE, checkIns, report: setup.report ?? null,
     dependencies: setup.dependencies ?? [], poll: null, objectives: setup.objectives ?? [], closedAt: setup.closedAt ?? null,
     kindOfWork: null, workStages: null,
   };
@@ -81,6 +92,9 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     ground: model({ findUnique: jest.fn(async () => clone(ground)) }),
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
     checkIn: model({ findMany: jest.fn(async () => clone(checkIns)) }),
+    groundObjectiveSnapshot: model({ findMany: jest.fn(async () => clone(setup.snapshots ?? [])) }),
+    conversationTurn: model({ findMany: jest.fn(async (args: any) => clone((setup.turns ?? []).filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId)))) }),
+    personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
     recordEntry: model({ findMany: jest.fn(async (args: any) => {
       if (args?.where?.id?.in) return [];

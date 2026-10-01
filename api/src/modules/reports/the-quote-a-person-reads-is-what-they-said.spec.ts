@@ -147,7 +147,9 @@ function harness() {
           theGap: `The initiator moved ${ZAINABS_LABEL} onto sales support, and the three partnerships have not moved since.`,
           whatTheNumbersSay: [],
           whatToDo: [{
-            move: 'Ask the initiator what is holding the partnership terms.',
+            /* Changed 1 October: this move asked the initiator, who is the reader, to ask herself, and such a
+               step is no longer served (the review, section 2). It now names what to find out. */
+            move: 'Find out what is holding the partnership terms.',
             because: 'The initiator said "neither party has signed the partnership terms yet — not even the first one."',
             startWith: 'the initiator',
           }, {

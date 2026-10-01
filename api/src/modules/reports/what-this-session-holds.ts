@@ -1,3 +1,7 @@
+import { aNumberPeopleCanRead } from '../board/an-aim-is-a-sentence-about-somebody';
+import { targetsFor } from '../board/whose-number-is-whose-business';
+import { labelsForParties, namesVisibleTo } from './party-labels';
+import { peopleSaidDifferentThingsAbout } from './what-people-said-differently-about';
 import { cleanText } from './what-the-record-actually-holds';
 import { PrismaService } from '../prisma/prisma.service';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from './a-quote-built-at-the-read';
@@ -109,32 +113,98 @@ export interface WhatThisSessionHolds {
    * is null before there are two snapshots to subtract, and null was being read as "none exist".
    */
   targetsSet: number;
+  /**
+   * HOW MANY TARGETS MOVED, because a sum across them is not a number anybody can read. Run re-d,
+   * sales, session 3: 11 approved facilities and 31 million naira moved, and the tile read "+31000000".
+   * Two targets counted in two different things are said as how many moved, never added together.
+   */
+  targetsMoved?: number;
 }
 
-export async function whatThisSessionHolds(prisma: PrismaService, groundId: string, sessionNumber: number): Promise<WhatThisSessionHolds> {
+/** Who is reading, so the Movement tile counts only the targets they may read. */
+export interface WhoReadsTheMovement {
+  participantId: string | null;
+  /** Whoever set the targets reads every one of them. */
+  isLead: boolean;
+  /**
+   * The person an evaluation check-in is about, or an admin without access to it: a colleague's own
+   * words are walled from them (colleagues-exact-words-stay-with-the-manager), so the tile gives them
+   * only how many worries there are, never a colleague's words.
+   */
+  colleaguesWordsWalled?: boolean;
+}
+
+/**
+ * WHAT MOVED IN ONE ROUND, FOR EVERY SURFACE THAT SAYS SO (review of 1 October 2026, re-d, sales).
+ *
+ * Session 2's Movement tile said "No target moved this session." while the same page's "since the last
+ * round" said 31 million naira moved. The tile read two snapshots; the sentence read `count` against
+ * `prevCount`. They are now one read: the count as the round before closed, and the count as this
+ * round closed (the live count while it is still open). An objective with no count from the round
+ * before has nothing to move from and is left out, never counted from nought.
+ */
+export async function whatMovedInTheRound(
+  prisma: any,
+  groundId: string,
+  sessionNumber: number,
+  objectives: readonly { id: string; count: number }[],
+): Promise<Map<string, { from: number; to: number }>> {
+  const out = new Map<string, { from: number; to: number }>();
+  if (!objectives.length || sessionNumber < 2) return out;
+  const [now, before] = await Promise.all([
+    prisma.groundObjectiveSnapshot?.findMany?.({ where: { groundId, sessionNumber }, select: { objectiveId: true, count: true } })?.catch?.(() => []) ?? [],
+    prisma.groundObjectiveSnapshot?.findMany?.({ where: { groundId, sessionNumber: sessionNumber - 1 }, select: { objectiveId: true, count: true } })?.catch?.(() => []) ?? [],
+  ]) as [{ objectiveId: string; count: number }[], { objectiveId: string; count: number }[]];
+  const prev = new Map((before ?? []).map((b) => [b.objectiveId, b.count]));
+  const current = new Map((now ?? []).map((n) => [n.objectiveId, n.count]));
+  for (const o of objectives) {
+    const from = prev.get(o.id);
+    if (from == null) continue;
+    out.set(o.id, { from, to: current.get(o.id) ?? o.count });
+  }
+  return out;
+}
+
+export async function whatThisSessionHolds(prisma: PrismaService, groundId: string, sessionNumber: number, reader: WhoReadsTheMovement): Promise<WhatThisSessionHolds> {
   /* A dependency knows which check-in raised it (sourceCheckInId); the check-in knows its session. */
   const raisedIn = await prisma.checkIn.findMany({ where: { groundId, sessionNumber }, select: { id: true } });
-  const [deps, objectives, now, before, worried] = await Promise.all([
+  const [deps, everyObjective, theGround, worried] = await Promise.all([
     raisedIn.length
       ? prisma.groundDependency.findMany({
           where: { groundId, clearedAt: null, status: { in: ['WAITING', 'BLOCKING'] as any }, sourceCheckInId: { in: raisedIn.map((c) => c.id) } },
           select: { status: true, fromParticipantId: true, onParticipantId: true, what: true, onLabel: true },
         })
       : Promise.resolve([] as { status: string; fromParticipantId: string; onParticipantId: string | null; what: string; onLabel: string | null }[]),
-    prisma.groundObjective.findMany({ where: { groundId, target: { not: null } }, select: { id: true, count: true } }),
-    prisma.groundObjectiveSnapshot.findMany({ where: { groundId, sessionNumber }, select: { objectiveId: true, count: true } }),
-    sessionNumber > 1
-      ? prisma.groundObjectiveSnapshot.findMany({ where: { groundId, sessionNumber: sessionNumber - 1 }, select: { objectiveId: true, count: true } })
-      : Promise.resolve([] as { objectiveId: string; count: number }[]),
+    /* Every count, as Since the last round reads them; `targetsSet` counts the ones with a number. */
+    prisma.groundObjective.findMany({ where: { groundId }, select: { id: true, count: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true } }),
+    (prisma as any).ground?.findUnique?.({
+      where: { id: groundId },
+      select: {
+        whoSeesTargets: true, peersVisibleToEachOther: true,
+        participants: { select: { id: true, userId: true, partyType: true, email: true, createdAt: true, roleAsDescribed: true, nameGiven: true, organisationGiven: true, user: { select: { firstName: true, lastName: true } } } },
+      },
+    })?.catch?.(() => null) ?? null,
     raisedIn.length
       ? prisma.recordEntry.findMany({
           where: { disputedAt: null, checkInId: { in: raisedIn.map((c) => c.id) }, type: { in: ['WORRY', 'TENSION'] as any } },
-          select: { text: true },
+          select: { text: true, participantId: true, saidWordForWord: true },
           orderBy: { createdAt: 'asc' },
         })
-      : Promise.resolve([] as { text: string }[]),
+      : Promise.resolve([] as { text: string; participantId: string | null; saidWordForWord: boolean | null }[]),
   ]);
   const worries = worried.length;
+  /*
+   * ONLY THE TARGETS THIS READER MAY READ (review of 1 October 2026). The tile added up every target on
+   * the check-in whoever was reading, so a participant where people see only their own numbers could
+   * read "+5" when the only target that moved was a colleague's. The same rule the board's own targets
+   * use for this reader (whose-number-is-whose-business).
+   */
+  const objectives = targetsFor(
+    (everyObjective ?? []) as any[],
+    reader.participantId,
+    (theGround as any)?.whoSeesTargets === 'EVERYBODY' ? 'everybody' : 'their own',
+    { isLead: reader.isLead },
+  ).shown as unknown as { id: string; count: number; target?: number | null }[];
   /*
    * THE FIRST WORRY WHOSE LINE STANDS WHOLE: a first sentence that fits a tile, and whose quotes,
    * if it has any, are the record's words, so the quote rule at the read leaves it as it is (see
@@ -142,10 +212,32 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
    * took that sentence out and left a fragment. A worry that would lose a piece is passed over for
    * one that would not, and with none the tile says how many there are.
    */
+  /*
+   * AND IT IS SAID AS THEIRS (review of 1 October 2026). The tile served a worry in the person's own
+   * first-person words with nobody's name: "I still set up the meetings. There are 4 more worries on
+   * record, ...". It is now their words in quotation marks after their name ("Amina Yusuf said, "I
+   * still set up the meetings.""), "You said, ..." to them, and "A colleague said, ..." where this
+   * reader may not be told who. Where a colleague's words are walled from this reader (the person an
+   * evaluation is about), only their own worry can be named, and otherwise the tile gives the count.
+   * A line with quotation marks of its own is passed over, so no quote is put inside another, and so is
+   * a line the record did not keep word for word: only what somebody said in those words is put in
+   * quotation marks (a-quote-built-at-the-read), and the tile then gives the count instead.
+   */
   const quotable = worried.length ? await theRecordAQuoteMayComeFrom(prisma as any, groundId) : [];
+  const parties = (((theGround as any)?.participants ?? []) as any[]);
+  const labels = labelsForParties(parties as any);
+  const visible = namesVisibleTo(reader.participantId, parties as any, (theGround as any)?.peersVisibleToEachOther ?? undefined);
+  const whoSaid = (pid: string | null | undefined): string => {
+    if (pid && pid === reader.participantId) return 'You';
+    const name = pid ? visible.get(labels.get(pid) ?? '') : null;
+    return name?.trim() || 'A colleague';
+  };
   const theFirstWorry = worried
-    .map((w) => theFirstSentenceThatFits(w?.text ? cleanText(w.text) : null))
-    .find((line): line is string => !!line && quotesBuiltAtTheRead(line, quotable) === line) ?? null;
+    .filter((w: any) => w.saidWordForWord === true)
+    .filter((w: any) => !reader.colleaguesWordsWalled || (!!w.participantId && w.participantId === reader.participantId))
+    .map((w: any) => ({ who: w.participantId as string | null, line: theFirstSentenceThatFits(w?.text ? cleanText(w.text) : null) }))
+    .filter((w): w is { who: string | null; line: string } => !!w.line && !/["“”]/.test(w.line) && quotesBuiltAtTheRead(w.line, quotable) === w.line)
+    .map((w) => `${whoSaid(w.who)} said, "${/[.!?]$/.test(w.line) ? w.line : `${w.line}.`}"`)[0] ?? null;
   const real = deps.filter((d) => !(d.onParticipantId && d.onParticipantId === d.fromParticipantId));
   const blocked = real.filter((d) => d.status === 'BLOCKING').length;
   const waiting = real.filter((d) => d.status === 'WAITING').length;
@@ -159,18 +251,19 @@ export async function whatThisSessionHolds(prisma: PrismaService, groundId: stri
   const theFirstBlocker = what ? `${what}${on && !alreadySaid ? `, which waits on ${on}` : ''}` : null;
 
   /* Movement is the difference between two snapshots, and nothing at all when there is only one. A
-     session still in play has no snapshot of its own yet, so its live count stands in for it. */
+     session still in play has no snapshot of its own yet, so its live count stands in for it. The one
+     read every surface uses: see whatMovedInTheRound. */
   let movedOnTargets: number | null = null;
-  if (objectives.length && before.length) {
-    const prev = new Map(before.map((b) => [b.objectiveId, b.count]));
-    const current = new Map(now.map((n) => [n.objectiveId, n.count]));
-    movedOnTargets = objectives.reduce((sum, o) => {
-      const from = prev.get(o.id);
-      if (from == null) return sum;
-      return sum + ((current.get(o.id) ?? o.count) - from);
-    }, 0);
+  let targetsMoved = 0;
+  const moves = await whatMovedInTheRound(prisma, groundId, sessionNumber, objectives);
+  if (moves.size) {
+    movedOnTargets = 0;
+    for (const { from, to } of moves.values()) {
+      movedOnTargets += to - from;
+      if (to - from > 0) targetsMoved += 1;
+    }
   }
-  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.length };
+  return { movedOnTargets, blocked, waiting, theFirstBlocker, worries, theFirstWorry, targetsSet: objectives.filter((o) => o.target != null).length, targetsMoved };
 }
 
 /** The four tiles, from the counts. The one builder both the report and the board call. */
@@ -178,6 +271,8 @@ export function atAGlanceTiles(a: {
   agreed: number; stillOpen: number; movedOnTargets: number | null; blocked: number; waiting: number;
   /** How many targets this check-in holds. Nought is "none set"; anything else is "none moved yet". */
   targetsSet?: number;
+  /** How many targets went up this session. More than one is said as how many, never as their sum. */
+  targetsMoved?: number;
   backedPct: number | null; numberWasSaid: boolean;
   /**
    * WHETHER ANYBODY IS STILL TO ANSWER, because the Differences tile was guessing.
@@ -238,7 +333,7 @@ export function atAGlanceTiles(a: {
        */
       sub: a.stillOpen
         ? (theDifference
-          ? `People said different things about ${inASentence(theDifference)}.${a.stillOpen > 1 ? ` ${a.stillOpen - 1} more ${a.stillOpen === 2 ? 'difference is' : 'differences are'} still open.` : ''}`
+          ? `${peopleSaidDifferentThingsAbout(theDifference)}${a.stillOpen > 1 ? ` ${a.stillOpen - 1} more ${a.stillOpen === 2 ? 'difference is' : 'differences are'} still open.` : ''}`
           : 'The written report reads this as still open.')
         : a.agreed ? 'The written report finds no disagreement.'
           : a.stillToAnswer === 0 ? 'Everybody has answered, and the written report names no agreement and no gap yet.'
@@ -268,7 +363,7 @@ export function atAGlanceTiles(a: {
       value: a.movedOnTargets == null
         ? (a.targetsSet ?? 0) > 0 ? 'Nothing yet'
           : a.numberWasSaid ? 'Not tracked' : 'No target set'
-        : a.movedOnTargets > 0 ? `+${a.movedOnTargets}` : 'None',
+        : a.movedOnTargets > 0 ? ((a.targetsMoved ?? 0) > 1 ? `${a.targetsMoved} targets` : `+${aNumberPeopleCanRead(a.movedOnTargets)}`) : 'None',
       sub: a.movedOnTargets == null
         ? (a.targetsSet ?? 0) > 0
           /* Set, and nothing to subtract from yet: a round has to close before movement exists. */
@@ -276,7 +371,7 @@ export function atAGlanceTiles(a: {
           : a.numberWasSaid
             ? 'Somebody named a number, and nothing is tracking it.'
             : 'Nobody has set anything to measure this against.'
-        : a.movedOnTargets > 0 ? 'Targets moved this session.' : 'No target moved this session.',
+        : a.movedOnTargets > 0 ? ((a.targetsMoved ?? 0) > 1 ? `${a.targetsMoved} targets went up this session.` : 'Targets moved this session.') : 'No target moved this session.',
       tone: a.movedOnTargets == null
         ? a.numberWasSaid && !(a.targetsSet ?? 0) ? 'warn' : 'flat'
         : a.movedOnTargets > 0 ? 'good' : 'flat',

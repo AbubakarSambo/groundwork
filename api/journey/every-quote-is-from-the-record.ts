@@ -7,7 +7,7 @@
  * reader was served them (lead report, lead board, participant report, participant board), finds
  * every quotation in them, and looks each one up in that check-in's record in the database: every
  * record line stamped as the person's own words (`saidWordForWord`), and the lead's own words at
- * set-up. A line the record reader tidied is not an original, so a quote of it fails here. A quote passes only if it is there character for
+ * set-up, and (since 1 October) every message the people themselves wrote in their check-ins. A line the record reader tidied is not an original, so a quote of it fails here. A quote passes only if it is there character for
  * character.
  *
  * WHAT IT DOES NOT COUNT, AND WHY:
@@ -65,7 +65,14 @@ async function main() {
       /* Only the lines that are the person's own words, as the report may quote them. */
       const lines = await prisma.recordEntry.findMany({ where: { participant: { groundId: run.groundId }, saidWordForWord: true }, select: { text: true } });
       const promises = await prisma.groundCommitment.findMany({ where: { groundId: run.groundId }, select: { text: true, whenSaid: true, saidWordForWord: true, whenSaidWordForWord: true } });
+      /* Hafsah, 1 October: people's own messages in their check-ins are their words too, so a quote
+         taken word for word from a message is never flagged. Only people's turns, never Groundwork's. */
+      const theirMessages = await prisma.conversationTurn.findMany({
+        where: { checkIn: { groundId: run.groundId }, role: { not: 'AI' as any } },
+        select: { content: true },
+      });
       const record = [
+        ...theirMessages.map((t) => t.content ?? ''),
         ...lines.map((l) => l.text.replace(/\s*\[INFERRED:[^\]]*\]/gi, '')),
         ...promises.filter((c) => c.saidWordForWord).map((c) => c.text),
         ...promises.filter((c) => c.whenSaidWordForWord && c.whenSaid).map((c) => c.whenSaid!),

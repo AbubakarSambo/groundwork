@@ -111,7 +111,7 @@ export class TheWeeklyReportService {
     const mine = viewerIsLead ? stored : stored.filter((s) => !!me && s.participantId === me.id);
     if (!mine.length) return { weekStart: latest.weekStart, builtAt: latest.builtAt, saying: viewerIsLead ? NOTHING_YET_THIS_WEEK : 'Nothing has been written about you this week yet.', eachPerson: [] };
 
-    const peersAreNamed = peersAreNamedOn(ground);
+    const peersAreNamed = peersAreNamedOn(ground as any, { participantId: me?.id ?? null });
     const asWhom = viewerIsLead ? (parties.find((p) => p.partyType === PartyType.INITIATOR)?.id ?? me?.id ?? null) : me?.id ?? null;
     const visible = namesVisibleTo(asWhom, parties as any, viewerIsLead ? true : peersAreNamed);
     const called = whatEachLabelIsCalled(parties as any, { viewerIsLead, viewerParticipantId: me?.id ?? null, peersAreNamed });

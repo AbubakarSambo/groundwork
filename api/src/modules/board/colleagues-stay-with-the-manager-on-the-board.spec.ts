@@ -49,7 +49,9 @@ describe('the board calls the one helper, for the one reader, right where it ret
   });
 
   it('redacts divergence positions/perspectives, and passes the viewer\'s own resolved name so their own side is left alone', () => {
-    expect(board).toMatch(/divergenceForTheSubject\(walled\.divergence\.items,\s*\[me\?\.id \? nameOf\(me\.id\) : null\]\)/);
+    /* CHANGED (1 October review): the call also hands in the subject's own record and the lead's names, so the
+       evidence loses a colleague's quoted words and the lead's side is not called "a colleague". */
+    expect(board).toMatch(/divergenceForTheSubject\(walled\.divergence\.items,\s*\[me\?\.id \? nameOf\(me\.id\) : null\],/);
   });
 
   it('redacts whoOwnsWhat items, keyed to the subject\'s own participant id', () => {

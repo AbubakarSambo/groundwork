@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { groundsAViewerMayList } from '../grounds/who-may-read-this-check-in';
-import { peersAreNamedOn } from '../reports/peers-are-named';
+import { peersAreNamedOn, theReaderBySignIn } from '../reports/peers-are-named';
 import { inTheLeadsTeam } from './a-leads-team';
 import { asAnAction } from '../grounds/a-promise-as-an-action';
 import { sameRequest } from '../grounds/a-fuller-promise-wins';
@@ -77,14 +77,14 @@ export class TodosService {
 
     const grounds = await this.prisma.ground.findMany({
       where: groundsAViewerMayList(reader.userId, { role, organizationId: org }, org, []) as any,
-      select: { id: true, label: true, initiatorId: true, createdByUserId: true, scenario: true, peersVisibleToEachOther: true },
+      select: { id: true, label: true, initiatorId: true, createdByUserId: true, scenario: true, peersVisibleToEachOther: true, participants: { select: { id: true, userId: true, partyType: true, managingOnly: true, createdAt: true } } },
     });
     /* Where the reader only takes part, they read the others' words only if people there see each other.
        This is also where a performance plan, a promotion or a renewal an admin was not given access to
        already left the list: `groundsAViewerMayList` is the one rule for which check-ins a reader may
        open at all (grounds/who-may-read-this-check-in.ts), so a line from one never reaches `grounds`
        in the first place, and cannot reach `readable` either. */
-    const readable = grounds.filter((g) => role === 'ADMIN' || g.initiatorId === reader.userId || g.createdByUserId === reader.userId || peersAreNamedOn(g));
+    const readable = grounds.filter((g) => role === 'ADMIN' || g.initiatorId === reader.userId || g.createdByUserId === reader.userId || peersAreNamedOn(g, theReaderBySignIn(g, reader.userId)));
     if (!readable.length) return { people: [] };
     const labelOf = new Map(readable.map((g) => [g.id, g.label]));
 

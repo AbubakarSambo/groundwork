@@ -1,3 +1,4 @@
+import { whatTheWordsSuggest, theQuestionAboutWhichWay, type TargetDirection } from '../board/an-aim-or-a-limit';
 /**
  * A PLAN IS MANY PROPOSALS, EACH CONFIRMED ON ITS OWN (week 13, screens request 6a).
  *
@@ -63,6 +64,14 @@ export interface PlanProposal {
   /* The shape agreed in request 6: `line` is the line to keep, `saidAs` the lead's own words. */
   line: string;
   saidAs: string;
+  /**
+   * A GOAL WITH A NUMBER: AN AIM TO REACH, OR A LIMIT NOT TO GO OVER (decision 69). `whichWay` is the
+   * question the card asks the lead, `directionSuggested` what the plan's words suggest. Nothing is
+   * stored from either: the confirm sends the lead's answer as `direction`, and without it the target
+   * is saved with no direction set. Absent on everything else.
+   */
+  whichWay?: string;
+  directionSuggested?: TargetDirection;
 }
 
 export interface SomebodyNamed {
@@ -235,6 +244,9 @@ export function proposalsFromAPlan(
       ...(note ? { note } : {}),
       line: says,
       saidAs: quote,
+      ...(kind === 'goal' && fields.number !== undefined
+        ? { whichWay: theQuestionAboutWhichWay(fields.number) as string, directionSuggested: whatTheWordsSuggest(`${what} ${quote}`) }
+        : {}),
     });
   }
   return out;

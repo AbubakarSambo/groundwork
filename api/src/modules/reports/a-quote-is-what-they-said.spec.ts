@@ -201,8 +201,10 @@ describe('and nothing touches the inside of a quote on the way out', () => {
 
   it('a label somebody said inside their own words stays as they said it', () => {
     /* Before, a role label inside a quote was swapped for the person's name, inside their own words. */
+    /* Changed 1 October: Zainab is the reader, so her own name outside the quote is "you" (the review,
+       section 2). The inside of the quote is still exactly as she wrote it, which is what this checks. */
     expect(withNames('Zainab wrote “the initiator asked me to”.', visible, labels, { viewerLabel: 'Participant A' })).toBe(
-      'Zainab wrote “the initiator asked me to”.',
+      'You wrote “the initiator asked me to”.',
     );
   });
 

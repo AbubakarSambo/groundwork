@@ -70,12 +70,28 @@ describe('the board applies it, and says so', () => {
    * do that second half any more, so the rule is exercised rather than read.
    */
   it('works the rule out the same way the ground does, from the one copy of it', () => {
-    expect(SRC).toMatch(/const peersVisible = peersAreNamedOn\(ground as any\)/);
+    /* With the reader, so decision 17 can tell the person reviewed from a colleague giving a view. */
+    expect(SRC).toMatch(/const peersVisible = peersAreNamedOn\(ground as any, \{ participantId: me\?\.id \?\? null \}\)/);
     /* A PIP hides peers from each other; an ordinary check-in does not; the lead's answer wins either way. */
     expect(peersAreNamedOn({ scenario: GroundScenario.PIP, peersVisibleToEachOther: null })).toBe(false);
     expect(peersAreNamedOn({ scenario: GroundScenario.COHORT_CHECK, peersVisibleToEachOther: null })).toBe(false);
     expect(peersAreNamedOn({ scenario: GroundScenario.NEW_HIRE, peersVisibleToEachOther: null })).toBe(true);
-    expect(peersAreNamedOn({ scenario: GroundScenario.PIP, peersVisibleToEachOther: true })).toBe(true);
+    /*
+     * DECISION 17 WINS OVER THE SWITCH (1 October 2026). This line used to expect a PIP with the switch
+     * on to name everybody to everybody, the person on the plan included; that is the defect decision 17
+     * rules out. Now: with no reader the answer is the private one; the person reviewed is never named a
+     * colleague; a colleague giving a view on a recognition round still is, because the lead chose it.
+     */
+    const lead = { id: 'p-lead', partyType: 'INITIATOR', createdAt: new Date('2026-09-01') };
+    const subject = { id: 'p-subject', partyType: 'PARTICIPANT', createdAt: new Date('2026-09-02') };
+    const colleague = { id: 'p-colleague', partyType: 'PARTICIPANT', createdAt: new Date('2026-09-03') };
+    const pip = { scenario: GroundScenario.PIP, peersVisibleToEachOther: true, participants: [lead, subject] };
+    const recognition = { scenario: GroundScenario.RECOGNITION, peersVisibleToEachOther: true, participants: [lead, subject, colleague] };
+    expect(peersAreNamedOn(pip)).toBe(false);
+    expect(peersAreNamedOn(pip, { participantId: 'p-subject' })).toBe(false);
+    expect(peersAreNamedOn(pip, { participantId: 'p-lead' })).toBe(true);
+    expect(peersAreNamedOn(recognition, { participantId: 'p-subject' })).toBe(false);
+    expect(peersAreNamedOn(recognition, { participantId: 'p-colleague' })).toBe(true);
     expect(peersAreNamedOn({ scenario: GroundScenario.NEW_HIRE, peersVisibleToEachOther: false })).toBe(false);
   });
 

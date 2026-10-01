@@ -32,7 +32,14 @@ export interface WhoIsReading {
   /** Whether the reader is the person who runs it: they are "you" in the lead's own sentences. */
   theLeadsId: string | null;
   personMayBeRead: (participantId: string | null | undefined) => boolean;
-  handoffMayBeRead: (d: { fromParticipantId?: string | null; onParticipantId?: string | null }) => boolean;
+  handoffMayBeRead: (d: { fromParticipantId?: string | null; onParticipantId?: string | null; what?: string | null }) => boolean;
+  /**
+   * Whether the reader may read what a person committed to. The lead's own commitments are the lead's
+   * intentions: a person reviewed in an evaluation check-in never reads them, and on any check-in a
+   * participant never reads one of the lead's that names somebody (decisions 4 and 30). Where the reader
+   * runs the check-in, or the commitment is their own, this is the same as `personMayBeRead`.
+   */
+  commitmentMayBeRead: (c: { participantId?: string | null; text?: string | null }) => boolean;
   /** The name this reader may read for a person, or null. The reader themselves is named 'You'. */
   nameOf: (participantId: string) => string | null;
   /** Said when this reader may not read the person's name: 'A colleague'. */
@@ -71,6 +78,14 @@ export interface AHandoff {
   createdAt: Date | string;
   /** The check-in the person first said it in. */
   sourceCheckInId?: string | null;
+  /**
+   * The passage of what this person typed in that check-in that `triedSaid` is, character for character,
+   * or null. Set when the board is built from the record (the-handoff-words-the-person-typed). Only this
+   * may be put inside quotation marks; a tidied or joined `triedSaid` never is.
+   */
+  triedSaidTheirWords?: string[] | null;
+  /** The same for `dueSaid`. */
+  dueSaidTheirWords?: string[] | null;
 }
 
 export interface ASession {
@@ -104,6 +119,36 @@ const inASentence = (phrase: string): string => {
 const listed = (ns: string[]) => (ns.length <= 1 ? ns.join('') : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`);
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const isAre = (who: string) => (who === 'You' ? 'are' : 'is');
+const hasHave = (who: string) => (who === 'You' ? 'have' : 'has');
+
+/** Each of their sentences in quotation marks, as they typed them, joined as a sentence reads. */
+const theirSentencesQuoted = (them: string[]): string => {
+  const q = them.map((t) => `"${t}"`);
+  const list = q.length <= 1 ? q.join('') : `${q.slice(0, -1).join(', ')} and ${q[q.length - 1]}`;
+  return `${list}${/[.!?]$/.test(them[them.length - 1]) ? '' : '.'}`;
+};
+
+/**
+ * WHAT WAS TRIED. Inside quotation marks only where the words are the person's own: the stored text if
+ * found in what they typed in that check-in, otherwise the sentences of theirs it was drawn from. Where
+ * no sentence of theirs is its source, only that they have said it. Never their words without marks.
+ */
+export function whatWasTriedSaid(d: AHandoff, who: string): string | null {
+  if (!d.triedSaid?.trim()) return null;
+  const them = d.triedSaidTheirWords;
+  if (them?.length) return `About what has been tried, ${midSentence(who)} said, ${theirSentencesQuoted(them)}`;
+  return `${who} ${hasHave(who)} said what has been tried.`;
+}
+
+/** WHEN IT IS DUE, by the same rule. */
+export function theTimeGivenSaid(d: AHandoff, who: string): string | null {
+  if (!d.dueSaid?.trim()) return null;
+  const them = d.dueSaidTheirWords;
+  if (them?.length === 1 && them[0].replace(/[.!?]+$/, '').toLowerCase() === d.dueSaid.trim().replace(/[.!?]+$/, '').toLowerCase()) return `The time given for it was "${them[0].replace(/[.!?]+$/, '')}".`;
+  if (them?.length) return `About when it is due, ${midSentence(who)} said, ${theirSentencesQuoted(them)}`;
+  return 'A time has been given for it.';
+}
+
 const midSentence = (who: string) => (who === 'You' ? 'you' : who);
 const possessive = (who: string) => (who === 'You' ? 'Your' : `${who}'s`);
 
@@ -159,7 +204,7 @@ export function theWorkPlan(
   const so = theSessionsSoFar(sessions, commitments);
   const leadLabel = r.theLeadsId ? whoIs(r, r.theLeadsId) : 'The person running this check-in';
   return commitments
-    .filter((c) => r.personMayBeRead(c.participantId))
+    .filter((c) => r.personMayBeRead(c.participantId) && r.commitmentMayBeRead(c))
     .map((c) => {
       const who = c.participantId ? whoIs(r, c.participantId) : null;
       const says = aCommitmentSaid({
@@ -220,15 +265,15 @@ export function theRisks(
     const since = day(d.createdAt);
     const facts: string[] = [];
     if (since) facts.push(`It was first said on ${saidAsDate(since)}.`);
-    facts.push(d.triedSaid?.trim() ? `About what has been tried, ${midSentence(who)} said, "${d.triedSaid.trim()}"` : 'Nobody has said what has been tried.');
-    facts.push(d.dueSaid?.trim() ? `The time given for it was "${d.dueSaid.trim()}".` : 'No time has been given for it.');
+    facts.push(whatWasTriedSaid(d, who) ?? 'Nobody has said what has been tried.');
+    facts.push(theTimeGivenSaid(d, who) ?? 'No time has been given for it.');
     out.push({ id: `handoff-${d.id}`, says, because: facts.join(' ') });
   }
 
   /* 2. Commitments still open with no time, and ones said again and again and still open. */
   for (const c of commitments) {
     if (String(c.status).toUpperCase() !== 'UNKNOWN') continue;
-    if (!r.personMayBeRead(c.participantId)) continue;
+    if (!r.personMayBeRead(c.participantId) || !r.commitmentMayBeRead(c)) continue;
     const who = c.participantId ? whoIs(r, c.participantId) : 'Somebody';
     const clause = clauseOf(c);
     const what = clause ? `committed to ${clause}` : 'made a commitment';
@@ -296,7 +341,7 @@ export function theTimeline(
   for (const [n, at] of firstAnswer) push(at, `The first answers for session ${n} came in.`);
 
   for (const c of commitments) {
-    if (!r.personMayBeRead(c.participantId)) continue;
+    if (!r.personMayBeRead(c.participantId) || !r.commitmentMayBeRead(c)) continue;
     const who = c.participantId ? whoIs(r, c.participantId) : 'Somebody';
     const clause = clauseOf(c);
     push(c.createdAt, clause ? `${who} committed to ${clause}.` : `${who} made a commitment, which is in the record.`);
@@ -418,8 +463,8 @@ export function theBlockerCheck(handoffs: AHandoff[], r: WhoIsReading): ABlocker
       timeGiven,
       checks: [
         named ? (on === 'you' ? 'You hold it.' : `${on!.charAt(0).toUpperCase()}${on!.slice(1)} holds it.`) : 'Nobody has been named as holding it.',
-        wentBack ? `About what has been tried, ${midSentence(who)} said, "${d.triedSaid!.trim()}"` : 'Nobody has said what has been tried.',
-        timeGiven ? `The time given for it was "${d.dueSaid!.trim()}".` : 'No time has been given for it.',
+        whatWasTriedSaid(d, who) ?? 'Nobody has said what has been tried.',
+        theTimeGivenSaid(d, who) ?? 'No time has been given for it.',
       ],
     });
   }

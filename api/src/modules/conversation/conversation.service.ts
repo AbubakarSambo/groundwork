@@ -8,6 +8,7 @@ import { theLeadByName, mentionsTheLeadByALabel } from './the-lead-has-a-name';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
 import { aSentenceStartsWithACapital } from './a-sentence-starts-with-a-capital';
 import { theFirstNameFrom } from '../reports/a-title-is-not-a-first-name';
+import { theSpeakerLine } from './the-person-speaking';
 import { Injectable, Logger, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { whereThisCameFrom, WHAT_TO_DO_WITH_THESE } from './where-this-document-came-from';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -122,8 +123,16 @@ import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
+import { theNextStepIsStillOwed, theCloseQuestionFor, whereTheCheckInIs, whyTheCloseWasHeld, theyHaveJustAnsweredIt } from './what-they-will-do-is-asked-before-the-end';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
+import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
+import { withoutADateNobodyGave } from './a-date-nobody-gave';
+import { withoutCommentsOnTheAnswer } from './a-comment-is-not-a-question';
+import { withOneQuestionPerSentence } from './a-question-asks-one-thing-in-one-sentence';
+import { aNameNobodyTyped } from './a-record-line-with-a-name-nobody-typed';
+import { commitmentsTheyNeverMade } from './a-commitment-is-read-back-from-a-commitment';
+import { withoutAThingTheLeadListedAsTheirs } from './a-thing-the-lead-listed-is-not-theirs';
 import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -211,6 +220,10 @@ import { whenThisIsOver, theyAskedWhenThisIsOver, THE_RUN_IS_WHAT_THEY_ASKED_ABO
 import { whatTheySaidTheyWouldDo, thingsNobodyOwns, whatIsNotSettled, theQuestionsTheLeadWants, whatSitsBetweenPeople, whatTheyHedged, keepTheirHedge, howThisTeamWorks } from './what-the-context-already-holds';
 import { alreadyAsked, withTheQuestionAsConfirmed } from '../grounds/a-question-asked-word-for-word';
 import { targetsFor, UNLESS_SOMEBODY_SAYS } from '../board/whose-number-is-whose-business';
+import { withoutWhatTheLeadHasNotToldThemAbout, type AnUntoldGoalRow } from '../board/an-untold-goal-is-not-a-board-objective';
+import { asADirection } from '../board/an-aim-or-a-limit';
+import { theTargetAsASentence } from './each-target-is-a-sentence-about-whoever-set-it';
+import { withoutOurInstructions } from './our-instructions-never-reach-them';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargets } from '../board/a-hidden-target-stays-hidden';
 import { askWhoSecuredIt } from './who-secured-that-meeting';
 import { READ_WHAT_THEY_PROMISED, WHAT_THEY_PROMISED_SCHEMA, theOnesToKeep } from './what-they-said-they-would-do-next';
@@ -321,7 +334,11 @@ const WHAT_THE_BRIEF_IS_READ_FROM = {
      who set this up said". See nothing-said-yet-cannot-be-quoted. */
   initiator: { select: { firstName: true, lastName: true } },
   whoSeesTargets: true,
-  objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' as const } },
+  /* WHO SET EACH TARGET AND WHICH WAY IT GOES (decision 69), so it is said about them and not as the reader's own. */
+  objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' as const } },
+  /* And the people, by first name, under the same naming rule as everywhere else. */
+  peersVisibleToEachOther: true,
+  participants: { select: { id: true, partyType: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
 } as const;
 
 const RECORD_EXTRACTION_SCHEMA = {
@@ -506,15 +523,56 @@ export class ConversationService {
    * the brief on their screen already follows (whose-number-is-whose-business). The lead gets all.
    */
   private theTargetsThisPersonMaySee(
-    ground: { objectives?: { name: string; target: number | null; ownerParticipantId?: string | null }[]; whoSeesTargets?: string | null },
+    ground: { objectives?: { name: string; target: number | null; ownerParticipantId?: string | null }[]; whoSeesTargets?: string | null; participants?: any[] },
     checkIn: { participantId: string; participant?: { partyType?: string | null } | null },
+    untold: AnUntoldGoalRow[] = [],
   ) {
-    return targetsFor(
+    const isLead = checkIn.participant?.partyType === PartyType.INITIATOR;
+    const shown = targetsFor(
       (ground.objectives ?? []) as any[],
       checkIn.participantId ?? null,
       ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : UNLESS_SOMEBODY_SAYS,
-      { isLead: checkIn.participant?.partyType === PartyType.INITIATOR },
+      { isLead },
     ).shown;
+    /* AND NOT A GOAL THE LEAD HAS NOT TOLD THEM ABOUT (decision 56): the board's own wall, read the same way. */
+    return withoutWhatTheLeadHasNotToldThemAbout(shown as any[], untold, (ground.participants ?? []) as any[], isLead).kept;
+  }
+
+  /** The goals the lead has set for somebody on this check-in and not yet told them (decision 56). */
+  private async untoldGoalsOn(groundId: string): Promise<AnUntoldGoalRow[]> {
+    const rows = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    return (rows as any[]).filter(notToldYet);
+  }
+
+  /**
+   * EACH TARGET THIS PERSON MAY READ, AS A SENTENCE ABOUT WHOEVER SET IT (decision 69). "You" for the
+   * person in this check-in, a first name for anybody this check-in names to them, "a colleague"
+   * otherwise. Only the wording: who may read which target is decided before this is called.
+   */
+  private theTargetsAsSentences(
+    rows: { name: string; target: number | null; ownerParticipantId?: string | null; setByParticipantId?: string | null; direction?: string | null }[],
+    ground: { participants?: any[]; scenario?: any; peersVisibleToEachOther?: boolean | null } | null,
+    readerParticipantId: string | null,
+  ): { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | null }[] {
+    const people = (ground?.participants ?? []) as any[];
+    const first = (p: any) => (p?.user?.firstName ?? p?.nameGiven ?? '').trim() || null;
+    const reader = people.find((p) => p.id === readerParticipantId);
+    const lead = people.find((p) => p.partyType === PartyType.INITIATOR);
+    const peersMayBeNamed = peersAreNamedOn(ground as any, { participantId: readerParticipantId });
+    return rows.map((o) => ({
+      name: theTargetAsASentence(o, {
+        readerId: readerParticipantId,
+        readerFirstName: first(reader),
+        leadId: lead?.id ?? null,
+        /* The lead runs the check-in and is named to everybody in it; anybody else by the naming rule. */
+        firstNameOf: (id) => (id === lead?.id || peersMayBeNamed ? first(people.find((p) => p.id === id)) : null),
+      }),
+      target: o.target ?? null,
+      direction: asADirection(o.direction),
+    }));
   }
 
   /**
@@ -685,7 +743,7 @@ export class ConversationService {
         groundLabel: ground?.label ?? null,
         scenario: ground?.scenario ?? null,
       },
-      brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)),
+      brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)),
       /* The turn floor the server will hold this to, so the screen offers to finish exactly when the server will honour it. See how-short-a-check-in-may-be. */
       mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null),
       turns: turns.map(asRead),
@@ -835,14 +893,20 @@ export class ConversationService {
      * colleague's screen is a decision nobody made. See whose-number-is-whose-business.
      */
     reader?: { participantId: string | null; isLead: boolean },
-  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null }[]; alsoSay?: string | null } | null {
+    untold: AnUntoldGoalRow[] = [],
+  ): { subject: string | null; says: string | null; objectives: { name: string; target: number | null; direction: 'AIM' | 'LIMIT' | null }[]; alsoSay?: string | null } | null {
     if (!ground) return null;
-    const maySee = targetsFor(
+    const allowed = targetsFor(
       ground.objectives ?? [],
       reader?.participantId ?? null,
       ground.whoSeesTargets === 'EVERYBODY' ? 'everybody' : UNLESS_SOMEBODY_SAYS,
       { isLead: !!reader?.isLead },
     );
+    /* AND NOT A GOAL THE LEAD HAS NOT TOLD THEM ABOUT (decision 56), the board's own wall. */
+    const maySee = {
+      ...allowed,
+      shown: withoutWhatTheLeadHasNotToldThemAbout(allowed.shown as any[], untold, ((ground as any).participants ?? []) as any[], !!reader?.isLead).kept,
+    };
     return {
       subject: ground.label ?? null,
       /*
@@ -863,7 +927,8 @@ export class ConversationService {
       says: reader?.isLead
         ? ground.brief?.trim() || null
         : whatAParticipantIsToldAboutThis(ground.brief, maySee.shown as any, { told: (ground as any).toldToParticipants ?? null, readerParticipantId: reader?.participantId ?? null }),
-      objectives: maySee.shown,
+      /* Each as a sentence about whoever set it, and only the fields a reader is shown: never the row as stored. */
+      objectives: this.theTargetsAsSentences(maySee.shown as any[], ground as any, reader?.participantId ?? null),
       alsoSay: maySee.alsoSay,
     };
   }
@@ -908,7 +973,7 @@ export class ConversationService {
       orderBy: { createdAt: 'asc' },
     });
     if (existingAiTurn) {
-      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
+      return { reply: existingAiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null) };
     }
     /*
      * THE BRIEF IS READ WHILE EVERYTHING ELSE IS GATHERED, NOT AFTER IT (request 44). The opener's
@@ -1099,6 +1164,8 @@ export class ConversationService {
       ? ''
       : `${await this.composeSystemPrompt(checkIn, undefined, { forTheOpener: true })}\n\n${THE_OPENER_IS_ONE_MESSAGE}`;
     if (!alreadyWritten) this.logger.log(`Check-in ${checkIn.id}: opener prompt ${openerSystem.length} chars.`);
+    /* The opener is saved through the same step as every turn, so it is read against its own prompt. */
+    if (openerSystem) this.setThePromptForThisTurn(checkIn.id, openerSystem);
 
     const beginMessage = (checkIn as any).isFinal
       ? '<<BEGIN_CHECK_IN>> The person has just arrived for their CLOSING session. Open by telling them plainly, in your first sentence, that this is their closing check-in - the last word on their record, worth documenting thoroughly - and then continue per your runtime context.'
@@ -1188,7 +1255,7 @@ export class ConversationService {
     const contextAtTheTop = await this.theContextNotYetSaid(checkIn as any);
     /* Suggested answers under the opening question too. */
     const suggestedAnswers = await this.suggestedAnswersFor(aiTurn.id, aiTurn.content ?? '', null);
-    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}) };
+    return { reply: contextAtTheTop ? `${contextAtTheTop}\n\n${aiTurn.content}` : aiTurn.content, theOpener: aiTurn.content, groundId: checkIn.groundId, brief: this.briefFor(ground, this.whoIsReadingIt(ground as any, checkIn as any), await this.untoldGoalsOn(checkIn.groundId)), mayCompleteAfter: theFloorFor(!!(checkIn as any).isSelfCorrection, (ground as any).scenario ?? null), ...(suggestedAnswers.length ? { suggestedAnswers } : {}) };
   }
 
 
@@ -1206,6 +1273,63 @@ export class ConversationService {
      * decides when to ask it, and where it asked it its own way the confirmed sentence is put back.
      * Here because every path a turn is saved by - the opener, the turn, the stream - comes through.
      */
+    /*
+     * AND NO RECORD IS PRESENTED THAT THE PERSON DOES NOT HOLD. "The record from our side shows that
+     * weekly repayments have not been made" went to a borrower who had paid every week; no record was
+     * ever given to the check-in. Every path saves through here, so it is cut here. See
+     * a-record-claim-nobody-holds.
+     */
+    /* What this check-in has already said, so a fallback question is never one it has asked before. */
+    const saidHereBefore: string[] = (checkIn as any)?.id
+      ? await (this.prisma.conversationTurn?.findMany?.({ where: { checkInId: (checkIn as any).id, role: TurnRole.AI }, select: { content: true } }) ?? Promise.resolve([]))
+        .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? '')).catch(() => [] as string[])
+      : [];
+    /*
+     * AND NONE OF OUR INSTRUCTIONS TO THE MODEL. Tobi read "Your last three turns all ended by asking them
+     * something. This one should not. Say the single thing you noticed in what they just told you" (re-e):
+     * the rhythm block, copied out. Cut here, where every reply is saved, against the whole prompt this
+     * turn was given. See our-instructions-never-reach-them.
+     */
+    const thePrompt = (checkIn as any)?.id
+      ? [this.promptForThisTurn.get((checkIn as any).id) ?? '', ...(this.retryInstructionsForThisTurn.get((checkIn as any).id) ?? [])].filter(Boolean).join('\n\n')
+      : '';
+    if (thePrompt) {
+      const theirWordsHere: string[] = await (this.prisma.conversationTurn?.findMany?.({ where: { checkInId: (checkIn as any).id, role: TurnRole.PERSON }, select: { content: true } }) ?? Promise.resolve([]))
+        .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? '')).catch(() => [] as string[]);
+      const sayable = [
+        ...theirWordsHere,
+        ...(this.theirEarlierWordsForThisTurn.get((checkIn as any).id) ?? []),
+        ...(this.knownForThisTurn.get((checkIn as any).id) ?? []),
+      ];
+      const ours = withoutOurInstructions(raw, thePrompt, sayable, saidHereBefore);
+      for (const c of ours.cut) this.logger.warn(`Check-in ${(checkIn as any).id}: cut a sentence that copied our instructions to the model: "${c.slice(0, 160)}"`);
+      raw = ours.text;
+    }
+    const noRecordInvented = withoutARecordClaimNobodyHolds(raw, saidHereBefore);
+    if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);
+    raw = noRecordInvented.text;
+    /*
+     * AND NO THING THE LEAD LISTED IS SAID TO THEM AS THEIRS. Three borrowers were told they had the
+     * wrong asset: the brief lists four, and the model took the first. See a-thing-the-lead-listed-is-not-theirs.
+     */
+    if ((checkIn as any)?.id && (checkIn as any)?.participant?.partyType !== PartyType.INITIATOR && checkIn?.groundId) {
+      const brief = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true } }) ?? Promise.resolve(null)).then((g: any) => g?.brief ?? null).catch(() => null);
+      if (brief) {
+        const theirs = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
+          .then((rows: any[]) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
+        const notTheirs = withoutAThingTheLeadListedAsTheirs(raw, brief, theirs, saidHereBefore);
+        if (notTheirs.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${notTheirs.cut.length} sentence(s) naming something from the lead's list as this person's.`);
+        raw = notTheirs.text;
+      }
+    }
+    /*
+     * AND NO COMMENT ON THEIR ANSWER. "That is noted, and it is the kind of thing that changes how you go
+     * about the conversation" went out in seven scenarios, and "That is a very specific thing to not know"
+     * to a new hire. There was never a net for it, only a paragraph in the prompt. See a-comment-is-not-a-question.
+     */
+    const noComment = withoutCommentsOnTheAnswer(raw);
+    if (noComment.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noComment.cut.length} comment(s) on the answer.`);
+    raw = noComment.text;
     const asConfirmed = (checkIn as any)?.id ? this.withTheLeadsQuestionsAsConfirmed((checkIn as any).id, raw) : { text: raw, confirmed: [] as string[] };
     /*
      * AND ONE QUESTION, ON EVERY PATH. The opener, the turn and the stream all save through here, so
@@ -1214,8 +1338,11 @@ export class ConversationService {
      */
     const oneThing = oneThingAsked(asConfirmed.text, asConfirmed.confirmed);
     if (oneThing.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a turn asked more than one question; ${oneThing.saidAsAnExample} said as an example, ${oneThing.leftOut} left out.`);
+    /* AND ONE QUESTION IN A SENTENCE: two joined by "and" or "or" had one question mark and went through. */
+    const oneInASentence = withOneQuestionPerSentence(oneThing.text, asConfirmed.confirmed);
+    if (oneInASentence.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: ${oneInASentence.cut.length} question(s) joined to another by "and" or "or" were left out.`);
     /* AND NO SENTENCE STARTS IN LOWER CASE. See a-sentence-starts-with-a-capital. */
-    const capitalised = aSentenceStartsWithACapital(oneThing.text);
+    const capitalised = aSentenceStartsWithACapital(oneInASentence.text);
     if (capitalised.changed) this.logger.warn(`Check-in ${(checkIn as any).id}: a sentence started in lower case and was repaired before saving.`);
     const text = capitalised.text;
     if (!text || !mentionsTheLeadByALabel(text)) return text;
@@ -1330,7 +1457,7 @@ export class ConversationService {
     this.logger.warn(`Check-in ${checkInId}: the opener ${wrong.map((w) => w.why).join(' and ')}; asking again.`);
 
     const second = await this.anthropic
-      .respond(`${fullSystem}\n\n${wrong.map((w) => w.instruction).join('\n\n')}`, [{ role: 'user', content: beginMessage }])
+      .respond(this.keptForTheLeakCheck(checkInId, `${fullSystem}\n\n${wrong.map((w) => w.instruction).join('\n\n')}`), [{ role: 'user', content: beginMessage }])
       .then((t) => forHumans(t))
       .catch(() => '');
     if (second.trim() && faults(second).length === 0) {
@@ -1594,6 +1721,7 @@ export class ConversationService {
     const fullSystem = [composed, aboutTheirDeadline, numbersGap ? askWhichItIs(numbersGap) : null]
       .filter(Boolean)
       .join('\n\n');
+    this.setThePromptForThisTurn(checkIn.id, fullSystem);
 
     // Persist the person's turn.
     const personTurn = await this.prisma.conversationTurn.create({
@@ -1763,7 +1891,7 @@ export class ConversationService {
          * paragraph.
          */
         this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close; adding a question.`);
-        screened.text = withAQuestion(screened.text, { closing: closingNow });
+        screened.text = withAQuestion(screened.text, { closing: closingNow, asked: turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '') });
       }
 
       /*
@@ -1803,7 +1931,7 @@ export class ConversationService {
       if (alreadyAskedTwice(screened.text, earlierAsks)) {
         this.logger.warn(`Check-in ${checkIn.id}: the same question a third time; asking again.`);
         const moved = await this.anthropic
-          .respond(`${fullSystem}\n\n${ASKED_IT_TWICE_ALREADY}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${ASKED_IT_TWICE_ALREADY}`), history)
           .catch(() => '');
         const second = moved.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
@@ -1848,7 +1976,7 @@ export class ConversationService {
         if (askedAgain) {
           this.logger.warn(`Check-in ${checkIn.id}: asked again about ${JSON.stringify(askedAgain.thing.what)} after it was answered; asking for another turn.`);
           const moved = await this.anthropic
-            .respond(`${fullSystem}\n\n${theyAlreadyAnsweredThat(askedAgain.thing.what, askedAgain.answer)}`, history)
+            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${theyAlreadyAnsweredThat(askedAgain.thing.what, askedAgain.answer)}`), history)
             .catch(() => '');
           const second = moved.trim()
             ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
@@ -1885,7 +2013,7 @@ export class ConversationService {
           const askedSentence = lastAskHere.split(/(?<=[.!?])\s+/).find((x) => /\?\s*$/.test(x)) ?? lastAskHere;
           this.logger.warn(`Check-in ${checkIn.id}: asked a question again after it was answered; asking for another turn.`);
           const moved = await this.anthropic
-            .respond(`${fullSystem}\n\n${theyAlreadyAnsweredThat(`this - ${JSON.stringify(askedSentence.slice(0, 160))}`, again.answer)}`, history)
+            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${theyAlreadyAnsweredThat(`this - ${JSON.stringify(askedSentence.slice(0, 160))}`, again.answer)}`), history)
             .catch(() => '');
           const second = moved.trim()
             ? screen(withoutQuotesTheyDidNotSay(forHumans(moved), theirWords), known, readerName, conversationSoFar)
@@ -1914,7 +2042,7 @@ export class ConversationService {
       if (isAVerdictAboutSomebodyElse(message, screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: a verdict about somebody not in the room; asking again.`);
         const hers = await this.anthropic
-          .respond(`${fullSystem}\n\n${HERS_TO_DRAW}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${HERS_TO_DRAW}`), history)
           .catch(() => '');
         const second = hers.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(hers), theirWords), known, readerName, conversationSoFar)
@@ -1944,7 +2072,7 @@ export class ConversationService {
       if (untoldGoalsHere.length && saysWhatAnUntoldGoalWithholds(screened.text, untoldGoalsHere)) {
         this.logger.warn(`Check-in ${checkIn.id}: a reply named a number or a goal the lead has not told them about; asking again.`);
         const withheld = await this.anthropic
-          .respond(`${fullSystem}\n\n${IT_NAMED_THE_UNTOLD_NUMBER}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${IT_NAMED_THE_UNTOLD_NUMBER}`), history)
           .catch(() => '');
         const second = withheld.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withheld), theirWords), known, readerName, conversationSoFar)
@@ -1969,7 +2097,7 @@ export class ConversationService {
         if (lastAsk && asksTheSameThingAgain(lastAsk, screened.text)) {
           this.logger.warn(`Check-in ${checkIn.id}: they ${declined ? 'declined it' : 'said the questions were wrong'} and the reply asked it again; asking again.`);
           const heard = await this.anthropic
-            .respond(`${fullSystem}\n\n${declined ? THEY_DECLINED_IT : THEY_ALREADY_SAID_NO}`, history)
+            .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${declined ? THEY_DECLINED_IT : THEY_ALREADY_SAID_NO}`), history)
             .catch(() => '');
           const second = heard.trim()
             ? screen(withoutQuotesTheyDidNotSay(forHumans(heard), theirWords), known, readerName, conversationSoFar)
@@ -2001,7 +2129,7 @@ export class ConversationService {
         /* The offending sentence goes back with the instruction. Asking for "no restatement" in the
            abstract lost 58 times out of 75 across nineteen live check-ins. */
         const straight = await this.anthropic
-          .respond(`${fullSystem}\n\n${doNotSayItBack(message, screened.text)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${doNotSayItBack(message, screened.text)}`), history)
           .catch(() => '');
         const second = straight.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(straight), theirWords), known, readerName, conversationSoFar)
@@ -2090,7 +2218,7 @@ export class ConversationService {
            for what a close is FOR, or the retry trims a paragraph that should not exist at all. */
         const askFor = thisIsTheClosingTurn ? A_CLOSE_IS_THREE_SENTENCES : SAY_IT_SHORTER;
         const shorter = await this.anthropic
-          .respond(`${fullSystem}\n\n${askFor}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${askFor}`), history)
           .catch(() => '');
         const second = shorter.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(shorter), theirWords), known, readerName, conversationSoFar)
@@ -2118,7 +2246,7 @@ export class ConversationService {
         this.logger.warn(`Check-in ${checkIn.id}: the reply left the date out; asking again.`);
         const theInstruction = SAY_THE_DATE(period, dateItHadToSay);
         const withTheDate = await this.anthropic
-          .respond(`${fullSystem}\n\n${theInstruction}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${theInstruction}`), history)
           .catch(() => '');
         const second = withTheDate.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withTheDate), theirWords), known, readerName, conversationSoFar)
@@ -2150,7 +2278,7 @@ export class ConversationService {
       if (numbersGap && !saidBothNumbers(screened.text, numbersGap)) {
         this.logger.warn(`Check-in ${checkIn.id}: the reply left the numbers out; asking again.`);
         const withBoth = await this.anthropic
-          .respond(`${fullSystem}\n\n${askWhichItIs(numbersGap)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${askWhichItIs(numbersGap)}`), history)
           .catch(() => '');
         const second = withBoth.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withBoth), theirWords), known, readerName, conversationSoFar)
@@ -2181,7 +2309,7 @@ export class ConversationService {
       if (asksForAShapeWithoutShowingOne(screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: asked for a shape without showing one; asking again.`);
         const withOne = await this.anthropic
-          .respond(`${fullSystem}\n\n${SHOW_WHAT_ONE_LOOKS_LIKE}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${SHOW_WHAT_ONE_LOOKS_LIKE}`), history)
           .catch(() => '');
         const second = withOne.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(withOne), theirWords), known, readerName, conversationSoFar)
@@ -2223,7 +2351,7 @@ export class ConversationService {
       if (wouldLeaveAQuestionOut(screened.text)) {
         this.logger.warn(`Check-in ${checkIn.id}: the reply asked more than one question; asking again.`);
         const once = await this.anthropic
-          .respond(`${fullSystem}\n\n${ASK_ONE_THING}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${ASK_ONE_THING}`), history)
           .catch(() => '');
         const second = once.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(once), theirWords), known, readerName, conversationSoFar)
@@ -2251,7 +2379,7 @@ export class ConversationService {
       if (jargonHere.length) {
         this.logger.warn(`Check-in ${checkIn.id}: ${jargonHere.length} management word(s) they did not use; asking again.`);
         const plain = await this.anthropic
-          .respond(`${fullSystem}\n\n${sayItInPlainWords(jargonHere, screened.text)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${sayItInPlainWords(jargonHere, screened.text)}`), history)
           .catch(() => '');
         const second = plain.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(plain), theirWords), known, readerName, conversationSoFar)
@@ -2275,7 +2403,7 @@ export class ConversationService {
       if (notOurWords.length) {
         this.logger.warn(`Check-in ${checkIn.id}: ${notOurWords.length} word(s) we do not use; asking again.`);
         const ours = await this.anthropic
-          .respond(`${fullSystem}\n\n${sayItWithoutThose(notOurWords, screened.text)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${sayItWithoutThose(notOurWords, screened.text)}`), history)
           .catch(() => '');
         const second = ours.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(ours), theirWords), known, readerName, conversationSoFar)
@@ -2326,7 +2454,7 @@ export class ConversationService {
       if (movedIt && standsAt != null && target != null) {
         this.logger.warn(`Check-in ${checkIn.id}: the reply moved a target to where they stand; asking again.`);
         const again = await this.anthropic
-          .respond(`${fullSystem}\n\n${A_STANDING_IS_NOT_A_TARGET(standsAt, target)}`, history)
+          .respond(this.keptForTheLeakCheck(checkIn.id, `${fullSystem}\n\n${A_STANDING_IS_NOT_A_TARGET(standsAt, target)}`), history)
           .catch(() => '');
         const second = again.trim()
           ? screen(withoutQuotesTheyDidNotSay(forHumans(again), theirWords), known, readerName, conversationSoFar)
@@ -2354,6 +2482,19 @@ export class ConversationService {
         /* And never cut a close down to a stub: "Speak soon." was all Elena read (run-7). */
         const cut = whatIsLeftToSend(screened.text, promiseNobodyMade, closingNow);
         if (cut) screened = { ...screened, text: cut };
+      }
+
+      /*
+       * AND A COMMITMENT IS ONLY READ BACK FROM A COMMITMENT. "You said you would track the integration
+       * project's status" went to a man who had said the project was on track because he had been told so;
+       * the net above let it stand because the TOPIC was his. See a-commitment-is-read-back-from-a-commitment.
+       */
+      const commitmentRows = this.commitmentsForThisTurn.get(checkIn.id) ?? [];
+      this.commitmentsForThisTurn.delete(checkIn.id);
+      for (const unmade of commitmentsTheyNeverMade(screened.text, [...theirWords, ...(this.theirEarlierWordsForThisTurn.get(checkIn.id) ?? [])], commitmentRows)) {
+        this.logger.warn(`Check-in ${checkIn.id}: cut a commitment read back that this person never made: ${JSON.stringify(unmade)}`);
+        const cutAlready = whatIsLeftToSend(screened.text, unmade, closingNow);
+        if (cutAlready) screened = { ...screened, text: cutAlready };
       }
 
       /* AND NO HOMEWORK IN A ONE-TIME SESSION. See withoutTheHomework. */
@@ -2387,6 +2528,17 @@ export class ConversationService {
         for (const c of unsupported.cut) this.logger.warn(`Check-in ${checkIn.id}: cut a number claim: ${c.why}: ${JSON.stringify(c.sentence)}`);
         /* An untrue number never goes back in; a fragment on the closing turn becomes the plain close. */
         screened = { ...screened, text: afterTheCut(screened.text, unsupported.text, { closing: closingNow, mayRestore: false }) };
+      }
+
+      /*
+       * AND NO CALENDAR DAY THAT NOBODY GAVE. "By the end of the quarter, so by December 31st", said as a
+       * fact to a woman whose quarter ended on 30 September. A statement naming a day stands only where
+       * somebody said it, a document has it, or the product put it. See a-date-nobody-gave.
+       */
+      const noDateInvented = withoutADateNobodyGave(screened.text, [...known, ...theirWords, ...(dateItHadToSay ? [dateItHadToSay] : [])]);
+      if (noDateInvented.cut.length) {
+        this.logger.warn(`Check-in ${checkIn.id}: cut ${noDateInvented.cut.length} statement(s) naming a calendar day nobody gave.`);
+        screened = { ...screened, text: afterTheCut(screened.text, noDateInvented.text, { closing: closingNow, mayRestore: false }) };
       }
 
       const shipping = howManyWords(screened.text);
@@ -2486,7 +2638,7 @@ export class ConversationService {
     // record". No phrase list is ever complete, so the model says it outright
     // instead. Costs nothing: it rides on the reply it was already generating.
     const signalled = hadCloseMarker || this.closesInOtherWords(reply, message);
-    const close: { ready: boolean; ask?: string; sayFirst?: string } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
+    const close: { ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } } = signalled ? await this.mayClose(checkIn.id, !!(checkIn as any).isSelfCorrection) : { ready: false };
     /* A close on an apology says, first, that none was owed. See an-apology-is-not-owed. */
     if (close.ready && !close.ask && isAnApology(message)) close.sayFirst = NOTHING_TO_APOLOGISE_FOR;
     if (close.ask) {
@@ -2497,7 +2649,8 @@ export class ConversationService {
       /* And the close line is the one question: what the model left above it asking goes. See withTheOneMoreLine. */
       aiTurn = await this.prisma.conversationTurn.update({
         where: { id: aiTurn.id },
-        data: { content: withTheOneMoreLine(stillOpen, close.ask) },
+        /* The next-step question is worded against what is kept above it, so it never asks about a "that" with nothing before it. */
+        data: { content: withTheOneMoreLine(stillOpen, close.nextStep ? theCloseQuestionFor(close.nextStep.isLead, close.nextStep.personSaid, stillOpen) : close.ask) },
       });
     } else if (!close.ready && hasAGoodbye(aiTurn.content ?? '')) {
       /*
@@ -2509,7 +2662,7 @@ export class ConversationService {
        */
       aiTurn = await this.prisma.conversationTurn.update({
         where: { id: aiTurn.id },
-        data: { content: withAQuestion(withoutTheGoodbye(aiTurn.content ?? ''), { closing: false }) },
+        data: { content: withAQuestion(withoutTheGoodbye(aiTurn.content ?? ''), { closing: false, asked: await this.whatThisCheckInAskedBefore(checkIn.id, aiTurn.id) }) },
       });
     } else if (close.ready && close.sayFirst) {
       /* A close that records something before the goodbye: the goodbye stays, the fact goes in front of it. */
@@ -2540,7 +2693,7 @@ export class ConversationService {
      * early one runs on every turn the close machinery never reaches.
      */
     if (!sessionComplete && isADeadEnd(aiTurn.content ?? '', false)) {
-      const asking = withAQuestion(aiTurn.content ?? '', { closing: false });
+      const asking = withAQuestion(aiTurn.content ?? '', { closing: false, asked: await this.whatThisCheckInAskedBefore(checkIn.id, aiTurn.id) });
       if (asking !== (aiTurn.content ?? '')) {
         this.logger.warn(`Check-in ${checkIn.id}: the model closed, the product did not, and the reply asked nothing; added a question.`);
         aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: asking } });
@@ -2684,7 +2837,7 @@ export class ConversationService {
     checkInId: string,
   ): Promise<{ screened: ReturnType<typeof screen>; hadMarker: boolean } | null> {
     const second = await this.anthropic
-      .respond(`${fullSystem}\n\n${askInsteadOfInventing(hits)}`, history)
+      .respond(this.keptForTheLeakCheck(checkInId, `${fullSystem}\n\n${askInsteadOfInventing(hits)}`), history)
       .catch(() => '');
     if (!second.trim()) {
       for (const h of hits) this.logger.warn(hitLogLine(checkInId, h, 'regenerated, still hit'));
@@ -2712,9 +2865,16 @@ export class ConversationService {
    * by aiTurns > personTurns, which is true on every turn of every session (the opener is an AI
    * turn), so the hold never held. It is fed by the stamp now.
    */
-  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string }> {
+  /** Every earlier thing this check-in said, so a fallback question is never one it has already asked. */
+  private async whatThisCheckInAskedBefore(checkInId: string, notThisTurn: string): Promise<string[]> {
+    return (this.prisma.conversationTurn?.findMany?.({ where: { checkInId, role: TurnRole.AI, id: { not: notThisTurn } }, select: { content: true } }) ?? Promise.resolve([]))
+      .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? ''))
+      .catch(() => [] as string[]);
+  }
+
+  private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string; nextStep?: { isLead: boolean; personSaid: string[] } }> {
     const [row, turns] = await Promise.all([
-      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, ground: { select: { cadence: true, scenario: true } } } }),
+      this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, isClarification: true, ground: { select: { cadence: true, scenario: true } } } }),
       this.prisma.conversationTurn.findMany({
         where: { checkInId },
         orderBy: { createdAt: 'asc' },
@@ -2788,7 +2948,35 @@ export class ConversationService {
      * the owed list's own words, so the model cannot soften it into a fourth question about
      * something else. A one-time session has no owed list to hold on.
      */
-    if (!oneTime && !justDeclined) {
+    /*
+     * AND NOT WITHOUT ASKING WHAT THEY WILL DO, AND BY WHEN. The prompt has said for weeks that the close
+     * is attached to this question, and nothing here checked it: six check-ins in re-c and re-d closed
+     * with no next step and no date, and the one hold went to the owed list instead. The model is told
+     * where it is from the sixth answer (whereTheCheckInIs); this is only for the close it reached
+     * without asking. It takes the one hold, so it is asked once and the next close lands. Never in a
+     * one-time session, a correction, a clarification or a team update, and never after a decline.
+     */
+    if (!justDeclined && theNextStepIsStillOwed({
+      personTurns: personSaid,
+      aiTurns: turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? ''),
+      oneTime,
+      isLead,
+      notACheckIn: isSelfCorrection || !!(row as any)?.isClarification || (row as any)?.ground?.scenario === 'TEAM_UPDATES',
+      askedToFinish: false,
+    })) {
+      await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
+      this.logger.log(`Holding the close once on ${checkInId}: they were never asked what they will do, and by when.`);
+      return { ready: false, ask: theCloseQuestionFor(isLead, personSaid), nextStep: { isLead, personSaid } };
+    }
+    /*
+     * NOT THE LEAD, AND NOT ON TOP OF AN ANSWER THEY HAVE JUST GIVEN (re-e, 1 October 2026). Amina, who runs
+     * the check-in, was held with "What did you understand you were meant to do?": the first-session spine
+     * owes that of every role, and it is a participant's question; the lead's own close is the decision,
+     * held for above. And Kwame said he would start tomorrow and was asked "How is it actually going?" on
+     * top of it: a person who has just said what they will do, and when, has given the close its answer.
+     */
+    const aiSaid = turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '');
+    if (!oneTime && !justDeclined && !isLead && !theyHaveJustAnsweredIt(aiSaid, personSaid)) {
       const neverAsked = await this.whatThisSessionNeverAsked(checkInId).catch(() => [] as string[]);
       if (neverAsked.length) {
         await this.prisma.checkIn.update({ where: { id: checkInId }, data: { closeHeldAt: new Date() } });
@@ -3036,10 +3224,48 @@ export class ConversationService {
    * "invented" by that reading, so a reply that used a colleague's name from the roster lost the
    * sentence. Written by composeSystemPrompt, read once by the reply path, same request.
    */
+  /*
+   * THE PROMPT THIS TURN WAS GIVEN, so the step every reply is saved through can cut a sentence that copies
+   * our instructions to the model. Written by composeSystemPrompt and again once the turn's own additions
+   * are on it; read once by theTurnAsItIsSaved, same request. See our-instructions-never-reach-them.
+   */
+  private _promptForThisTurn?: Map<string, string>;
+  private get promptForThisTurn(): Map<string, string> {
+    if (!this._promptForThisTurn) this._promptForThisTurn = new Map();
+    return this._promptForThisTurn;
+  }
+  /*
+   * AND WHAT A RETRY ADDED TO IT. A reply asked for again goes out with one more instruction on the end
+   * (ASK_ONE_THING, HERS_TO_DRAW, the invention note and the rest), and a reply that copies THAT is as much a
+   * leak as one that copies the first prompt. Every retry's system text passes through here on its way to
+   * the model, so the leak check reads the instruction the reply was actually written under.
+   */
+  private keptForTheLeakCheck(checkInId: string, system: string): string {
+    const base = this.promptForThisTurn.get(checkInId) ?? '';
+    const added = (base && system.startsWith(base) ? system.slice(base.length) : system).trim();
+    if (added) this.retryInstructionsForThisTurn.set(checkInId, [...(this.retryInstructionsForThisTurn.get(checkInId) ?? []), added]);
+    return system;
+  }
+  private _retryInstructionsForThisTurn?: Map<string, string[]>;
+  private get retryInstructionsForThisTurn(): Map<string, string[]> {
+    if (!this._retryInstructionsForThisTurn) this._retryInstructionsForThisTurn = new Map();
+    return this._retryInstructionsForThisTurn;
+  }
+  /** The prompt this turn was given, every retry's added instruction with it. A new turn's prompt starts the list again. */
+  private setThePromptForThisTurn(checkInId: string, prompt: string): void {
+    this.promptForThisTurn.set(checkInId, prompt);
+    this.retryInstructionsForThisTurn.delete(checkInId);
+  }
   private _knownForThisTurn?: Map<string, string[]>;
   private get knownForThisTurn(): Map<string, string[]> {
     if (!this._knownForThisTurn) this._knownForThisTurn = new Map();
     return this._knownForThisTurn;
+  }
+  /* Their commitment rows from earlier sessions, per check-in, for the commitment read-back cut. Same shape and lifetime. */
+  private _commitmentsForThisTurn?: Map<string, string[]>;
+  private get commitmentsForThisTurn(): Map<string, string[]> {
+    if (!this._commitmentsForThisTurn) this._commitmentsForThisTurn = new Map();
+    return this._commitmentsForThisTurn;
   }
   /* Their own words from earlier sessions, per check-in, for the number-claim cut. Same shape and lifetime. */
   private _theirEarlierWordsForThisTurn?: Map<string, string[]>;
@@ -3112,7 +3338,7 @@ export class ConversationService {
     const ground = await this.prisma.ground.findUnique({
       where: { id: checkIn.groundId },
       include: {
-        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true }, orderBy: { sortOrder: 'asc' } },
+        objectives: { select: { name: true, target: true, ownerParticipantId: true, isADecisionAboutAPerson: true, setByParticipantId: true, direction: true }, orderBy: { sortOrder: 'asc' } },
         /* The product's finding per person, for the lead's side of the disagreement. */
         report: { select: { findings: true } },
         /**
@@ -3153,6 +3379,8 @@ export class ConversationService {
       },
     });
     if (!ground) throw new NotFoundException('Check-in not found');
+    /* The goals the lead has not told people about yet (decision 56): no target of theirs reaches this check-in. */
+    const untoldHere = await this.untoldGoalsOn(checkIn.groundId);
 
     /*
      * WHAT THIS INTERVIEW MAY CALL THE OTHER PEOPLE IN IT.
@@ -3167,7 +3395,7 @@ export class ConversationService {
      * `plainWords` is the wording the reports already use for somebody this reader may not have
      * the name of. The three rules for choosing between them are in whatToCallThem.
      */
-    const peersMayBeNamed = peersAreNamedOn(ground as any);
+    const peersMayBeNamed = peersAreNamedOn(ground as any, { participantId: checkIn.participantId });
     const whoIsHere = whoIsOnThisGround((ground.participants ?? []) as any);
     const plainWords = plainWordsForEveryoneElse((ground.participants ?? []) as any, checkIn.participantId);
 
@@ -3423,11 +3651,11 @@ export class ConversationService {
      */
     /* Optional-chained like `personObjective` above: a caller whose prisma double does not stub a
        model must get an empty read, not a crash mid-prompt. */
-    const [objectivesOnRecord, inTheWayRows, lastTimeRows] = await Promise.all([
+    const [objectivesAsStored, inTheWayRows, lastTimeRows] = await Promise.all([
       this.prisma.groundObjective?.findMany({
         where: { groundId: ground.id },
         orderBy: { sortOrder: 'asc' },
-        select: { name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true },
+        select: { name: true, target: true, count: true, ownerParticipantId: true, setByParticipantId: true, direction: true },
       })?.catch(() => [] as any[]) ?? [],
       /*
        * Theirs only. Somebody else's blocker is on the board, not in this person's interview.
@@ -3454,13 +3682,21 @@ export class ConversationService {
         select: { text: true, type: true },
       })?.catch(() => [] as any[]) ?? [],
     ]);
+    /*
+     * AND NO GOAL THE LEAD HAS NOT TOLD THEM ABOUT (decision 56), for every block below that reads the
+     * targets: the record, what does not add up, the disagreement and the rest. The board's own wall.
+     */
+    const objectivesOnRecord = withoutWhatTheLeadHasNotToldThemAbout(
+      (objectivesAsStored ?? []) as any[], untoldHere, (ground.participants ?? []) as any[], checkIn.participant.partyType === PartyType.INITIATOR,
+    ).kept;
     const recordAlreadyHolds = whatTheRecordAlreadyHolds({
       /* Good news first, when there is some: task 2.4. Only in the opener, only from the same lines as saidLastTime. */
       wentWellLastTime: how?.forTheOpener ? theGoodNewsIn(lastTimeRows as any[]) : [],
       /* Theirs, and the check-in's own. Somebody else's owned number is on the board, not in this person's interview. */
+      /* Each said about whoever set it, "you" for this person (decision 69). */
       targets: (objectivesOnRecord as any[])
         .filter((o) => !o.ownerParticipantId || o.ownerParticipantId === checkIn.participantId)
-        .map((o) => ({ name: o.name, target: o.target, count: o.count, yours: o.ownerParticipantId === checkIn.participantId, setByThem: o.setByParticipantId === checkIn.participantId })),
+        .map((o) => ({ name: this.theTargetsAsSentences([o], ground as any, checkIn.participantId)[0].name.replace(/[.\s]+$/, ''), target: o.target, count: o.count, yours: o.ownerParticipantId === checkIn.participantId, setByThem: o.setByParticipantId === checkIn.participantId })),
       inTheWay: (inTheWayRows as any[]).map((d) => ({
         what: d.what,
         /* Their own word for whoever they meant first, then a name where this check-in allows one,
@@ -3761,7 +3997,8 @@ export class ConversationService {
       /* ONLY THE TARGETS THIS PERSON MAY SEE (week 0). Every target went in, so on a check-in where
          people see only their own, each person's model was given everybody's numbers and could say
          them back. The same rule the brief on their screen uses. */
-      objectives: this.theTargetsThisPersonMaySee(ground as any, checkIn as any),
+      /* And each one as a sentence about whoever set it, "you" for this person (decision 69). */
+      objectives: this.theTargetsAsSentences(this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere) as any[], ground as any, checkIn.participantId),
       /* The same: never the lead's words about this person, in this person's own session (request 36). */
       priorContext: aRoleInTheirOwnWords(checkIn.participant as any),
       priorSession,
@@ -4354,6 +4591,21 @@ Open the session by naming that you're returning to session ${checkIn.selfCorrec
     /* Asking for proof kindly: task 2.5, week 4. Not in the opener, which has nothing of theirs yet. */
     const proofKindly = how?.forTheOpener ? '' : askForProofKindly(aClaimNothingShowsYet(turnsThisSession as any));
 
+    /*
+     * WHERE THIS CHECK-IN IS, AND WHETHER THEY HAVE BEEN ASKED WHAT THEY WILL DO. Context, never the
+     * question itself: from the sixth answer, while it is still unasked, the model is told how far in
+     * it is and that the next session can only test what is said here. See
+     * what-they-will-do-is-asked-before-the-end.
+     */
+    const whereItIs = how?.forTheOpener ? '' : whereTheCheckInIs({
+      personTurns: turnsThisSession.filter((t) => t.role === 'PERSON').map((t) => t.content),
+      aiTurns: turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content),
+      oneTime: (ground as any).cadence === Cadence.ONE_TIME,
+      isLead: isTheLead,
+      notACheckIn: !!checkIn.isSelfCorrection || !!checkIn.isClarification || ground.scenario === 'TEAM_UPDATES',
+      askedToFinish: askedToFinish(latestMessage ? [latestMessage] : []),
+    });
+
     // FINAL SESSION: same conversation, flagged closing. The block adds the
     // four closing probes and the thoroughness framing; assessment targets are
     // the pre-agreed resolutionState when set, else the party's own session-1
@@ -4719,7 +4971,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         .catch(() => ''),
       this.prisma.checkIn
         .findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } })
-        .then((r) => (r?.closeHeldAt ? THE_CLOSE_WAS_HELD : ''))
+        .then((r) => (r?.closeHeldAt ? whyTheCloseWasHeld(turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content)) : ''))
         .catch(() => ''),
       /* THE UPLOADER IS ASKED, NOT CORRECTED. A document that does not read as they described it is
          put to them once as a question; until they answer it backs nothing. */
@@ -4740,6 +4992,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
 
     /* Their own words from earlier sessions, for the number-claim cut. Same lifetime as knownForThisTurn. */
     this.theirEarlierWordsForThisTurn.set(checkIn.id, pastEntries.map((e) => e.text));
+    this.commitmentsForThisTurn.set(checkIn.id, pastEntries.filter((e) => e.type === 'COMMITMENT').map((e) => e.text));
     /* What the invention gate may treat as already said. See knownForThisTurn. */
     this.knownForThisTurn.set(checkIn.id, [
       ...(ground.participants ?? []).flatMap((p) => [p.user?.firstName ?? '', p.user?.lastName ?? '', p.roleAsDescribed ?? '']),
@@ -4747,7 +5000,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ...(ground.leadContextNotes ?? []).map((n) => this.theLeadsWordsThisPersonMayBeGiven(ground as any, checkIn as any, n.text) ?? ''),
       ...uploadedDocs.map((d: any) => `${d.fileName ?? ''} ${d.content ?? ''} ${d.uploaderNote ?? ''}`),
       /* Only the targets this person may see: a colleague's hidden number is not "already said" to them (week 0). */
-      ...this.theTargetsThisPersonMaySee(ground as any, checkIn as any).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
+      ...this.theTargetsThisPersonMaySee(ground as any, checkIn as any, untoldHere).map((o: any) => `${o.name ?? ''} ${o.target ?? ''}`),
       priorSession ?? '',
       /* Their own earlier sessions' entries: a difference the product quotes from session one is theirs to hear back. */
       ...pastEntries.map((e) => e.text),
@@ -4766,7 +5019,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['finalSession', finalSessionContext], ['returningUser', returningUserContext], ['roleProbe', roleProbeBlock], ['roleConfirm', roleConfirmationBlock], ['coaching', coachingBlock], ['patternProbe', patternProbeBlock],
       ['floorGiveBack', theFloorGiveBack], ['whoCarries', numbersAndOwners.whoCarries], ['whereItStands', numbersAndOwners.whereItStands], ['whoSecuredIt', whoSecuredIt],
       ['seenBefore', seenBefore], ['closeHeld', closeHeldLine], ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed], ['rhythm', rhythmNow], ['dynamicContext', dynamicContext], ['docs', docContext],
-      ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem],
+      ['docHint', docPromptHint], ['notes', notesBlock], ['deliveries', deliveriesBlock], ['burden', burden], ['putThisToThem', putThisToThem], ['whereItIs', whereItIs],
     ];
     this.logger.log(`prompt-blocks check-in=${checkIn.id} present=${named.filter(([, v]) => !!(v ?? '').trim()).map(([k]) => k).join(',')} absent=${named.filter(([, v]) => !(v ?? '').trim()).map(([k]) => k).join(',')}`);
 
@@ -4897,7 +5150,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       ['documentReadsDifferently', documentReadsDifferently], ['documentNotAsDescribed', documentNotAsDescribed],
       ['rhythmNow', rhythmNow], ['dynamicContext', dynamicContext], ['docContext', docContext],
       ['docPromptHint', docPromptHint], ['notesBlock', notesBlock], ['deliveriesBlock', deliveriesBlock],
-      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge], ['heldBack', heldBack],
+      ['burden', burden], ['putThisToThem', putThisToThem], ['askedWhenThisEnds', askedWhenThisEnds], ['theirHedge', theirHedge], ['heldBack', heldBack], ['whereItIs', whereItIs],
       ['theirCommitments', theirCommitments], ['nobodyOwns', nobodyOwns], ['notSettledBlock', notSettledBlock],
       ['leadsQuestions', leadsQuestions], ['betweenBlock', betweenBlock], ['howWeWork', howWeWork],
     ].map(([name, text]) => ({ name: String(name), text: text as any }));
@@ -4942,7 +5195,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       earlierAiTurns.map((t) => t.content ?? '').filter(Boolean),
     );
 
-    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
+    return [systemPrompt, theirLanguage, VOCABULARY_RULE, A_CORRECTION_IS_NOT_A_SCOLDING, ANSWER_THE_REMARK, OPEN_WITH_SOMETHING_THEY_DO_NOT_ALREADY_HAVE, planBlock, disagreementBlock, recordAlreadyHolds, doesNotAddUp, owedBlock, spineSoFar, intakeBlock, ...pendingLines, ...evidenceLines, theirWeek, howWeDoIt, styleBlock, clarificationContext, selfCorrectionContext, finalSessionContext, howLongThisRuns, returningUserContext, roleProbeBlock, roleConfirmationBlock, coachingBlock, theOneThingBack, theFloorGiveBack, numbersAndOwners.whoCarries, numbersAndOwners.whereItStands, whoSecuredIt, oneThingToDoBetter, seenBefore, closeHeldLine, documentReadsDifferently, documentNotAsDescribed, rhythmNow, dynamicContext, docContext, docPromptHint, notesBlock, deliveriesBlock, theirCommitments, nobodyOwns, notSettledBlock, leadsQuestions, betweenBlock, howWeWork, burden, putThisToThem, askedWhenThisEnds, theirHedge, theHole, heldBack, proofKindly, whereItIs, cannotBeMissed, askedLastTurn, patternProbeBlock].filter(Boolean).join('\n\n');
   }
 
   /**
@@ -4980,7 +5233,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       if (!latestMessage.trim()) return '';
       const ground = await this.prisma.ground.findUnique({
         where: { id: checkIn.groundId },
-        select: { mode: true, scenario: true, peersVisibleToEachOther: true },
+        select: { mode: true, scenario: true, peersVisibleToEachOther: true, participants: { select: { id: true, partyType: true, managingOnly: true, createdAt: true } } },
       });
       if (ground?.mode !== 'SHARED') return '';
       /*
@@ -4992,7 +5245,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
        * person being reviewed in the next question. The fact still gets said; without the names it
        * reads "Somebody else on this check-in has already named the same thing".
        */
-      const mayName = peersAreNamedOn(ground as any);
+      const mayName = peersAreNamedOn(ground as any, { participantId: checkIn.participantId });
       const rows = await this.prisma.groundDependency.findMany({
         where: {
           groundId: checkIn.groundId,
@@ -6973,7 +7226,8 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         continue;
       }
       /* The same promise said twice in one breath, once with its time on the end, is one promise. */
-      const same = (theirs as any[]).find((h) => !(h.statedInSession === row.sessionNumber && nameTwoDifferentDates({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when })) && (theSameMeasure(h.text ?? '', c.action)
+      /* Said in another session at another length, it is its own record and the earlier one is left as it was. */
+      const same = (theirs as any[]).find((h) => !(h.statedInSession !== row.sessionNumber && theFullerPromise({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when })) && !(h.statedInSession === row.sessionNumber && nameTwoDifferentDates({ text: h.text ?? '', when: h.whenSaid }, { text: c.action, when: c.when })) && (theSameMeasure(h.text ?? '', c.action)
         || (!!aCommitmentKey(c.action, c.when) && aCommitmentKey(h.text ?? '', h.whenSaid) === aCommitmentKey(c.action, c.when))));
       if (same) {
         /* Already settled by a person: saying it again does not reopen it and is not counted. */
@@ -7727,6 +7981,14 @@ The ground will close toward one of these end states: ${endStates || 'the partie
       return countCheckableSpecifics(t) === 0;
     };
 
+    /* EVERYBODY IN THIS CHECK-IN BY NAME, for the line that puts the wrong one on somebody's work. */
+    const roster: string[] = await (async () => {
+      const ci = await this.prisma.checkIn?.findUnique?.({ where: { id: checkInId }, select: { groundId: true } });
+      if (!ci?.groundId) return [] as string[];
+      const rows: any[] = (await this.prisma.groundParticipant?.findMany?.({ where: { groundId: ci.groundId }, select: { nameGiven: true, user: { select: { firstName: true, lastName: true } } } } as any)) ?? [];
+      return rows.flatMap((r) => [r.user?.firstName ?? r.nameGiven ?? '', r.user?.lastName ?? '']).filter(Boolean);
+    })().catch(() => [] as string[]);
+
     /* And belt-and-braces on the way out: an entry that quotes a remark anyway - by reaching into
        an AI turn that repeated it back - is dropped. The thing it prevents ends up on a board. */
     const valid = notARemarkAboutUs(result?.entries ?? []).filter(
@@ -7746,7 +8008,13 @@ The ground will close toward one of these end states: ${endStates || 'the partie
          * The prompt now says so. This is what makes it hold, because a prompt asking a model
          * politely not to confuse two speakers is the thing that just failed.
          */
-        isTheirs(e.text, whatTheySaid),
+        isTheirs(e.text, whatTheySaid) &&
+        /*
+         * AND IT CARRIES NO NAME THEY NEVER TYPED. "He did. He set them up." was written as "Amina set up
+         * the client meetings I am still attending" - the lead's own name on the hire's work, in the
+         * lead's own list. See a-record-line-with-a-name-nobody-typed.
+         */
+        !aNameNobodyTyped(e.text, whatTheySaid, roster).length,
     );
 
     /*
@@ -8793,7 +9061,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         /** REFERENCE only: where the work is tracked. Never its state. */
         trackedUrl?: string;
       }[];
-    }>(EXPECTATION_PROMPT, [{ role: 'user', content: transcript }], EXPECTATION_SCHEMA as any);
+    }>(EXPECTATION_PROMPT, [{ role: 'user', content: `${theSpeakerLine(me)}\n\n${transcript}` }], EXPECTATION_SCHEMA as any);
     if (!result) return;
 
     /** The same resolver as work mentions: a name that matches nobody is dropped, never guessed. */

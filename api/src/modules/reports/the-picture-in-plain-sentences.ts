@@ -228,6 +228,22 @@ export function theCountSaidRight(opening: string, answered: number, expected: n
 }
 
 /**
+ * A SUMMARY ON A LIST OR A BOARD HEADER DOES NOT CARRY A COUNT OF WHO HAS ANSWERED (request 97b).
+ *
+ * The opening is written once, when the round's report is taken, and says "All three people have
+ * answered." Six people were in the check-in by the time Today read it, and four had answered, so
+ * Today said "The report for Sales team, Q3 is ready. All three people have answered." The count is
+ * stored in the sentence and goes stale the moment somebody is added. The live count is served beside
+ * it (glance.progress), so a summary served on a list or a board does not repeat a stored one: a first
+ * sentence that is only a count is left out, and what follows it is read first.
+ */
+export function withoutAStoredCount(text: string): string {
+  if (!text) return text;
+  const rest = text.replace(A_COUNT_SENTENCE, '').trim();
+  return rest;
+}
+
+/**
  * HOW MANY PEOPLE, IN WORDS, AND NEVER "1 people".
  *
  * Forty-two lines across seven scenarios read "1 people answered this check-in" or "1 of 1 people

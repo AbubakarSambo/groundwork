@@ -22,8 +22,11 @@ const board = (commitments: any[], userId = 'u-amani') =>
 describe('the You board, as Amani', () => {
   it('serves the promise once, in her fuller words, with its date in one form', () => {
     const r = board([SHORT, LONG]);
-    expect(r.map((x) => [x.text, x.when, x.checkIn])).toEqual([
-      ['I will deliver the Tuskys cookers on 9 October and ask for the signed order form that day.', '9 October', 'Sales team, Q3'],
+    /* Request 98: the You board now writes a promise as an action ("Deliver ..."), so compare the
+       promise without its leading "I will" and its first letter. Still once, the fuller words, one date form. */
+    const promise = (t: string) => t.replace(/^\s*i will\s+/i, '').replace(/^./, (c) => c.toLowerCase());
+    expect(r.map((x) => [promise(x.text), x.when, x.checkIn])).toEqual([
+      ['deliver the Tuskys cookers on 9 October and ask for the signed order form that day.', '9 October', 'Sales team, Q3'],
     ]);
   });
 

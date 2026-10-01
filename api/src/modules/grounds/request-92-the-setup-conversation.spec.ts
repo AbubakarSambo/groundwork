@@ -15,7 +15,8 @@ describe('point 6: the list a paste gives keeps one bullet to a line, as the con
     const { service } = aSetupConversation({ paste });
     const out: any = await service.contextChat('g1', 'userLead', [{ role: 'user', content: 'z'.repeat(500) }]);
     expect(out.proposal.say).toBe(whatWeTookFromThat(aPaste(paste), { asking: true }));
-    expect(out.proposal.say).toContain('\n- Shops signed: 4\n- Deposits paid: 10\n');
+    /* Each number says which way it goes, so the yes confirms it (decision 69). */
+    expect(out.proposal.say).toContain('\n- Shops signed: 4, an aim to reach\n- Deposits paid: 10, an aim to reach\n');
     expect(out.proposal.say).toContain('\n- Lead with the cold chain.\n- Visit every shop twice.\n');
     expect(out.proposal.say).not.toContain('Go wide Pricing');
   });

@@ -93,17 +93,18 @@ describe('the first worry is one whose line survives the quote rule whole', () =
     groundObjectiveSnapshot: { findMany: async () => [] },
     groundCommitment: { findMany: async () => [] },
     ground: { findUnique: async () => ({ brief: null, participants: [] }) },
-    recordEntry: { findMany: async (args: any) => (args?.where?.type ? rows.map((r) => ({ text: r.text })) : rows) },
+    recordEntry: { findMany: async (args: any) => (args?.where?.type ? rows.map((r) => ({ text: r.text, saidWordForWord: r.saidWordForWord })) : rows) },
   });
 
   it('passes over Amina\'s line, whose quote is not the record\'s words, for the next one', async () => {
-    const held = await whatThisSessionHolds(prisma(ROWS), 'g', 1);
+    const held = await whatThisSessionHolds(prisma(ROWS), 'g', 1, { participantId: null, isLead: true });
     expect(held.worries).toBe(4);
-    expect(held.theFirstWorry).toBe("I'm just not sure the brief was clear enough on that one point.");
+    /* Nobody on this record has a name this reader may read, so it is a colleague's, in their words. */
+    expect(held.theFirstWorry).toBe('A colleague said, "I\'m just not sure the brief was clear enough on that one point."');
   });
 
   it('and with none that stands whole, there is no first worry, and the tile says the count', async () => {
-    const held = await whatThisSessionHolds(prisma(ROWS.slice(0, 1)), 'g', 1);
+    const held = await whatThisSessionHolds(prisma(ROWS.slice(0, 1)), 'g', 1, { participantId: null, isLead: true });
     expect(held.theFirstWorry).toBeNull();
   });
 });
@@ -140,5 +141,20 @@ describe('movement before a round has closed', () => {
 
   it('one target reads as one', () => {
     expect(tile({ targetsSet: 1 }).sub).toContain('1 target is set');
+  });
+});
+
+describe('the Movement tile says a number a person can read (re-d, sales, session 3)', () => {
+  const base = { agreed: 0, stillOpen: 0, blocked: 0, waiting: 0, backedPct: null, numberWasSaid: false, targetsSet: 2 };
+  const movement = (t: ReturnType<typeof atAGlanceTiles>) => t.find((x) => x.label === 'Movement')!;
+  it('one target that moved by 31 million reads "+31 million", never "+31000000"', () => {
+    const m = movement(atAGlanceTiles({ ...base, movedOnTargets: 31000000, targetsMoved: 1 }));
+    expect(m.value).toBe('+31 million');
+    expect(m.value).not.toMatch(/\d{5,}/);
+  });
+  it('two targets counted in different things are said as how many moved, never added together', () => {
+    const m = movement(atAGlanceTiles({ ...base, movedOnTargets: 31000011, targetsMoved: 2 }));
+    expect(m.value).toBe('2 targets');
+    expect(m.sub).toBe('2 targets went up this session.');
   });
 });

@@ -11,6 +11,7 @@ const line = (id: string, participantId: string, text: string, more: Record<stri
 });
 const LONG_AGO = new Date(Date.now() - 30 * 86_400_000);
 const RICH: Setup = {
+  turns: [{ checkInId: 'c1-p-rukia', content: 'I emailed twice.' }, { checkInId: 'c1-p-rukia', content: 'by Friday' }],
   checkIns: [answered('p-rukia', 1), answered('p-rukia', 2, '2026-09-16T16:00:00Z'), answered('p-baraka', 1)],
   commitments: [
     commitment('k-1', 'p-rukia', 'I will send the Westgate quote.'),
@@ -20,7 +21,7 @@ const RICH: Setup = {
     commitment('k-5', 'p-baraka', 'I will order the freezers.', { status: 'NOT_DONE' }),
   ],
   dependencies: [
-    handoff('d-1', 'p-rukia', 'the credit terms', { onLabel: 'Finance', dueSaid: 'by Friday', triedSaid: 'I emailed twice.', createdAt: LONG_AGO, updatedAt: LONG_AGO }),
+    handoff('d-1', 'p-rukia', 'the credit terms', { onLabel: 'Finance', dueSaid: 'by Friday', triedSaid: 'I emailed twice.', sourceCheckInId: 'c1-p-rukia', createdAt: LONG_AGO, updatedAt: LONG_AGO }),
     handoff('d-2', 'p-baraka', 'the depot keys', { onParticipantId: 'p-rukia', status: 'WAITING' }),
     handoff('d-3', 'p-rukia', 'the approval for the second tranche', { createdAt: LONG_AGO, updatedAt: LONG_AGO }),
     handoff('d-4', 'p-baraka', 'the old price list', { status: 'CLEARED', clearedAt: new Date('2026-09-09T09:00:00Z') }),

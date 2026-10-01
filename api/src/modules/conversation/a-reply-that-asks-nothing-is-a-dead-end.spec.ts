@@ -87,7 +87,8 @@ describe('a reply that asks nothing is a dead end', () => {
     expect(at).toBeGreaterThan(-1);
     const block = SERVICE.slice(at, at + 900);
     expect(block).toMatch(/asked nothing and did not close/);
-    expect(block).toMatch(/withAQuestion\(screened\.text, \{ closing: closingNow \}\)/);
+    /* `asked` was added 1 October 2026 so the question added is never one this check-in already asked. */
+    expect(block).toMatch(/withAQuestion\(screened\.text, \{ closing: closingNow, asked: /);
     /* Still no retry: no second respond() between finding it and fixing it. */
     expect(block).not.toContain('ASK_SOMETHING_OR_CLOSE');
     expect(block.slice(0, block.indexOf('withAQuestion'))).not.toContain('this.anthropic');
@@ -113,7 +114,7 @@ describe('the model closed and the product did not', () => {
     expect(at).toBeGreaterThan(-1);
     /* After the product's own decision, not before it. */
     expect(at).toBeGreaterThan(SRC.indexOf('const sessionComplete = close.ready'));
-    expect(SRC.slice(at, at + 400)).toContain("withAQuestion(aiTurn.content ?? '', { closing: false })");
+    expect(SRC.slice(at, at + 400)).toContain("withAQuestion(aiTurn.content ?? '', { closing: false, asked: ");
   });
 
   /* And `false` is passed deliberately: the question is whether the PRODUCT closed, and it did not. */

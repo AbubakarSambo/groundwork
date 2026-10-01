@@ -27,7 +27,7 @@ describe('week 16: what Today reads from the latest report', () => {
     const { report, writes } = reportFor('u-wairimu');
     const r = await report;
     expect(r.sinceLast).toEqual({
-      says: 'The count for Freezers sold went from 18 to 21, of the 25 aimed for. Miriam’s count for Quotes sent went from 4 to 6, of the 10 aimed for.',
+      says: "The team's freezers sold went from 18 to 21, against the aim of 25. Miriam's quotes sent went from 4 to 6, against the aim of 10.",
       also: 'Miriam is no longer waiting on Finance for the price list. Brian and Miriam are now waiting on you for a decision on whether a price range counts as a budget.',
     });
     expect(r.forTheLead).toEqual([
@@ -46,14 +46,14 @@ describe('week 16: what Today reads from the latest report', () => {
 
   it('a participant reads the shared count and their own work, never a colleague’s, and nothing for the lead', async () => {
     const r = await reportFor('u-brian').report;
-    expect(r.sinceLast).toEqual({ says: 'The count for Freezers sold went from 18 to 21. You are now waiting on Wairimu for a decision on whether a price range counts as a budget.' });
+    expect(r.sinceLast).toEqual({ says: "The team's freezers sold went from 18 to 21. You are now waiting on Wairimu for a decision on whether a price range counts as a budget." });
     expect(r).not.toHaveProperty('forTheLead');
     const text = JSON.stringify(r);
-    expect(text).not.toMatch(/Miriam|Quotes sent|price list|Kito Foods|aimed for/);
+    expect(text).not.toMatch(/Miriam|Quotes sent|quotes sent|price list|Kito Foods|aim of/);
 
     const m = await reportFor('u-miriam').report;
     expect(m.sinceLast).toEqual({
-      says: 'The count for Freezers sold went from 18 to 21. Your count for Quotes sent went from 4 to 6.',
+      says: "The team's freezers sold went from 18 to 21. Your quotes sent went from 4 to 6.",
       also: 'You are no longer waiting on Finance for the price list. You are now waiting on Wairimu for a decision on whether a price range counts as a budget.',
     });
     expect(m).not.toHaveProperty('forTheLead');
@@ -62,11 +62,11 @@ describe('week 16: what Today reads from the latest report', () => {
   it('an admin who only reads reads what moved, with the team’s count and no one person’s, no number aimed for, and nothing for the lead', async () => {
     const r = await reportFor('u-grace', 'ADMIN').report;
     expect(r.sinceLast).toEqual({
-      says: 'The count for Freezers sold went from 18 to 21. Miriam is no longer waiting on Finance for the price list.',
+      says: "The team's freezers sold went from 18 to 21. Miriam is no longer waiting on Finance for the price list.",
       also: 'Brian and Miriam are now waiting on Wairimu for a decision on whether a price range counts as a budget.',
     });
     expect(r).not.toHaveProperty('forTheLead');
-    expect(JSON.stringify(r)).not.toMatch(/Quotes sent|Kito Foods|still to decide|aimed for/);
+    expect(JSON.stringify(r)).not.toMatch(/Quotes sent|quotes sent|Kito Foods|still to decide|aim of/);
     expect(JSON.stringify(r.sinceLast)).not.toMatch(NO_LABELS);
   });
 });

@@ -1,5 +1,5 @@
 import { blockerHasSubstance, dedupeDependencies, type ReadDependency } from '../board/reads';
-import { peersAreNamedOn } from '../reports/peers-are-named';
+import { peersAreNamedOn, theReaderBySignIn } from '../reports/peers-are-named';
 import { theDueFields } from './when-a-handoff-is-due';
 
 /**
@@ -41,6 +41,8 @@ export interface OpenableCheckIn {
   initiatorId: string | null;
   scenario?: any;
   peersVisibleToEachOther?: boolean | null;
+  /** Who is on it, as far as telling the person reviewed apart from a colleague needs (decision 17). */
+  participants?: { id: string; userId?: string | null; partyType: string; managingOnly?: boolean | null; createdAt?: Date | string | null }[] | null;
 }
 
 export interface WaitingOnAnotherTeam {
@@ -96,7 +98,7 @@ const labelOf = (g: OpenableCheckIn) => (g.label ?? '').trim();
 /** Whoever runs a check-in, or an admin of the organisation, is never walled from its people. */
 function wallFor(g: OpenableCheckIn, reader: LinkReader): boolean {
   const runs = (!!g.initiatorId && g.initiatorId === reader.userId) || reader.role === 'ADMIN';
-  return !runs && !peersAreNamedOn(g as any);
+  return !runs && !peersAreNamedOn(g as any, theReaderBySignIn(g as any, reader.userId));
 }
 
 function youArePartOf(r: LinkRow, reader: LinkReader) {

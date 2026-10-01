@@ -160,3 +160,16 @@ export function selfContradictionLine(c: SelfContradiction): string {
  */
 export const CURRENT_BEST_READING =
   'This is the picture as it stands, from what has been said so far. It is not a verdict, and the next session can change any part of it.';
+
+/**
+ * THE FIVE READINGS A SESSION IS SCORED ON, AND ONLY THOSE (review of 1 October 2026).
+ *
+ * The scorer stores a sixth key, `checkable`, in the same column: a yes-or-no summary the board uses,
+ * not a reading of its own. It was printed as "In session 1, what was said about checkable was
+ * specific." under a confidence line that said "What is here is general rather than checkable",
+ * about the same reader, on the same page. A note under the confidence line is one of the five.
+ */
+export const THE_FIVE_READINGS: readonly string[] = ['coverage', 'delivery', 'evidence', 'commitment', 'enablement'];
+export function theFiveReadings(dims: Record<string, string> | null | undefined): [string, string][] {
+  return Object.entries(dims ?? {}).filter(([dim]) => THE_FIVE_READINGS.includes(dim));
+}

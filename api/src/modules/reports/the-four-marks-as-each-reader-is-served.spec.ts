@@ -91,6 +91,8 @@ function prismaFor(viewerRole: string, ground: any = GROUND) {
       findMany: jest.fn(async (q: any) => revive(copy(q?.where?.participantId ? LINES.filter((l) => l.participantId === q.where.participantId) : LINES))),
     }),
     groundBaseline: model({ findFirst: jest.fn(async () => ({ successLooksLike: 'Five new sales a month', conditions: [] })) }),
+    /* What Aisha typed in her check-in: each line is hers word for word, so each is quoted as hers. */
+    conversationTurn: model({ findMany: jest.fn(async (q: any) => (q?.where?.role === 'PERSON' ? [{ checkInId: 'c1', content: LINES.filter((l) => l.participantId === 'p-aisha').map((l) => (/[.!?]$/.test(l.text) ? l.text : `${l.text}.`)).join(' ') }] : [])) }),
     reportActivation: model({ findUnique: jest.fn(async () => ({ status: 'ACTIVATED' })) }),
   } as any, {
     get(target: any, prop: string) {
@@ -107,7 +109,11 @@ const READERS: [string, string, string, string | null][] = [
   ['an admin who only reads', 'u-grace', 'ADMIN', null],
 ];
 
-const marksIn = (items: any[]) => Object.fromEntries((items ?? []).map((i: any) => [i.text, i.mark]));
+/* Each line is served as the person's words in quotation marks with their name ("Aisha Otieno said, "..."",
+   "You said, "..."" to Aisha), so the words are read from inside the marks. */
+const SAID_AS_THEIRS = /^(?:You|Aisha Otieno) said, "(.*?)\.?"$/;
+const theirWords = (text: string): string => SAID_AS_THEIRS.exec(String(text))?.[1] ?? text;
+const marksIn = (items: any[]) => Object.fromEntries((items ?? []).map((i: any) => [theirWords(i.text), i.mark]));
 const RATING = /specificity|recallNote|confidence|tier|rated|score/i;
 
 describe('the board: each line in who owns what carries its mark', () => {
@@ -121,6 +127,7 @@ describe('the board: each line in who owns what carries its mark', () => {
     const board = await boardAs(userId, role);
     const aisha = (board.whoOwnsWhat ?? []).find((r: any) => r.participantId === 'p-aisha');
     expect(aisha).toBeTruthy();
+    for (const item of aisha.items) expect(item.text).toMatch(SAID_AS_THEIRS);
     expect(marksIn(aisha.items)).toEqual(EXPECTED);
     /* Only the line and how it is known: no file, and nothing about how anybody's answers were rated. */
     for (const item of aisha.items) expect(Object.keys(item).sort()).toEqual(['id', 'mark', 'markSays', 'sessionNumber', 'text', 'type']);

@@ -1022,3 +1022,70 @@ Up to two of a kind are each said. Three or more are said once, with the count. 
 These items are in the count beside Today and in the "new" count on "Choose an organisation", because they are in `needs`. The time sheets board rows also now carry `days`, the days of that week that have hours.
 
 Tests: `grounds/what-is-waiting-for-you-to-approve-as-each-reader-reads-it.spec.ts`.
+
+## 1 October: why the person reviewed is not told who else gave a view (decision 17)
+
+On a performance plan, a recognition or promotion round, or a contract renewal, the person the check-in is about is never told who else gave a view, whatever the lead switched for "people see each other". Everybody else still follows the lead's switch: a colleague giving a view reads who is on it when the lead switched it on, and the lead and an admin with access read everybody.
+
+The check-in's own read (`GET /grounds/:id`) and each row of the list now carry `whyThePersonReviewedIsNotTold`. On those three kinds of check-in it reads:
+
+"On a check-in about one person, that person is never told who else gave a view."
+
+On every other check-in it is null. Please show it beside the lead's switch for "people see each other", and on the page of the person reviewed where the list of who is on it would be. `peersVisibleEffective` is now worked out for the reader: it is false for the person reviewed, and true for the lead and for a colleague giving a view when the lead switched it on. Before this, it read false for everybody on those check-ins, the lead included, even with the switch on.
+
+Tests: `grounds/decision-17-on-the-check-in-page.spec.ts` and `reports/decision-17-wins-over-the-leads-switch.spec.ts`.
+
+## 1 October: the name of each aim on the board, and the line under it (review row 113)
+
+`board.objectives[*].name` is now one full sentence about a person by name, and "you" for the reader. For example, on the sales board Bisi reads "You are aiming for 120 million naira disbursed this quarter." and Ngozi reads "Bisi Adeyemi is aiming for 120 million naira disbursed this quarter." and "You are aiming for 14 approved facilities." Please show `name` as it comes. The Context page (`GET /grounds/:id`) still serves the name as stored, because that is the field the lead edits.
+
+`board.objectives[*].journey.say` is now one full sentence with numbers a person can read: "It was 0 at the start and is 11 now, and the aim is 40.", "It is 0 now, and the aim is 120 million.", "It was 0 at the start and is 254,000 now, so the aim of 180,000 has been reached.", and "Nothing has been counted for it yet." where nothing is counted. `BoardPage.tsx` (around line 1023) builds its own line from `o.count`, `o.journey.start` and `o.target`, so it prints "120000000". Please show `journey.say` there instead, or write the numbers the same way. An admin outside the check-in who may not see a number gets an empty `say`.
+
+## 1 October: each target says whether it is an aim to reach or a limit not to go over (decision 69)
+
+Each target now has a field `direction`. Its values are `"AIM"` (an aim to reach) and `"LIMIT"` (a limit not to go over). `null` means nobody has set it yet. Where it is `null`, the board reads the words of the target's name as it did before.
+
+**Where it is served.** On the board, `GET /grounds/:id/board`, every row of `objectives` carries:
+
+- `direction`: `"AIM"`, `"LIMIT"` or `null`, to everybody who may read that target.
+- `directionQuestion`: the sentence to ask the lead, only to the lead, only while `direction` is `null`, and only for a target with a number. Otherwise `null`. It reads, for example: "Is 40 something to reach, or a limit not to go over?" Please show it under the aim's own sentence, so the lead reads "Bisi is aiming for 40 approved facilities." and then the question.
+- `directionSuggested`: `"AIM"` or `"LIMIT"`, what the words of the name suggest, only to the lead and only while `direction` is `null`. Please use it to pre-select one of the two answers. It is never stored until the lead answers.
+
+The answers can be worded "Something to reach" and "A limit not to go over".
+
+**How the lead sets or changes it.** `POST /grounds/:id/board/objectives` (when making a target) and `PATCH /grounds/:id/board/objectives/:objectiveId` (later) both take `direction`: `"AIM"`, `"LIMIT"`, or `null` to put it back to not set. Leaving it out of a `PATCH` changes nothing. Both routes are the lead's alone.
+
+**From a plan.** Each waiting goal with a number, from `POST /grounds/:id/plan/proposals` and `GET /grounds/:id/plan/proposals`, now carries `whichWay` (the same question, "Is 25 something to reach, or a limit not to go over?") and `directionSuggested`. Please show `whichWay` on the card, with the two answers, and send the lead's answer as `{ "direction": "AIM" }` or `{ "direction": "LIMIT" }` in the body of `POST /grounds/:id/plan/proposals/:pid/confirm`. Without it the goal is saved with no direction set.
+
+**In the setup conversation and Ask Groundwork,** nothing changes for the screens. The say-back now states the direction of each number, and the lead's yes confirms it. A paste's list reads, for example, "- Spending this quarter: 180,000, a limit not to go over" and "- Pumps sold under the new scheme: 40, an aim to reach". Measures named one at a time read, for example, `"Pumps sold under the new scheme" is an aim of 40 to reach.`
+
+**What the board then says.** A limit the lead set reads "It was 0 at the start and is 254,000 now, which is 74,000 over the limit of 180,000." whatever the name says, and its name reads "The team is keeping spending to no more than 180,000." An aim the lead set reads "It was 0 at the start and is 254,000 now, so the aim of 180,000 has been reached." even where its name says "budget".
+
+Tests: `board/a-target-is-an-aim-or-a-limit-as-each-reader-reads-it.spec.ts` and `grounds/a-target-is-an-aim-or-a-limit-when-it-is-made.spec.ts`.
+
+
+## 1 October: each goal's name is now a full sentence (check-in screen)
+
+Each item in a check-in's brief objectives is now `{ name, target, direction }`, and `name` is a full sentence for the person reading it, for example "You are aiming for 14 approved facilities." or "Bisi is aiming for 120 million naira disbursed this quarter." The number is already in the sentence. `ChatPage.tsx` adds "(14)" after the name when there is no prose summary, which would read "You are aiming for 14 approved facilities. (14)". Please show `name` on its own.
+
+
+## 1 October: request 99, the dead report body and the three engine tests
+
+**Not done yet. I have not changed the three tests, because two things in your note do not hold when I read the code.** The three tests still fail, and they fail for a reason: they are the gate `the-four-reports.ts` keeps until every rule has a live home.
+
+**1. The wording of the two fields did not move with them.** `WhatToProbeThemOn.tsx` draws `whatItRestedOn` and `whereThisStarted`, but without the sentence under each one. The old body said, under the conditions, "These were not in their hands. Read anything unmet above against them first." and, under the starting point, "Written at the beginning and left as it was. Read what people shared above against it." Neither sentence is in the new component. The first one is the whole point of the field: without it, an unmet standard is read without the warning that it was never in the person's hands, which is the reading this product exists to prevent. `grounds/the-teams-starting-point.spec.ts` checks for exactly that sentence. Please add both sentences back, word for word, under "What you said it rested on" and "Where this stood at the start". Once they are there I will point both tests at `WhatToProbeThemOn.tsx`. For `reports/one-session-is-not-a-movement.spec.ts` I will match `startedAt={(groundReport as any)?.whereThisStarted}` on `SessionReportPage.tsx`, since the field is now read from `groundReport`; nothing else in that test needs to change.
+
+**2. Only one of the two gate entries has a live home.** The list has two entries, not two homes in `WhatToProbeThemOn.tsx`. The second, "What the server already knew reaches the page, lead-only, worded about the record", does live there now, and its client test (`what-the-server-already-knew.spec.tsx`, 9 tests) passes. The first, "A panel with nothing to say is a line, and staleness is never conditional on being settled", does not. You say so yourself: the live `ResolutionPanel` draws nothing at all until a decision is near, where the rule asks for one quiet line, and there is no "you are reading an old version" notice anywhere live. The gate's own note says this is real work, not a repoint. I am putting it to Hafsah rather than taking it off the list: either she agrees that "nothing at all until a decision is near" is right, and the entry comes off with that reason written down, or `ResolutionPanel` gets its one line back.
+
+**3. Who reads these two fields, so the comment in the component is true.** The server does not send them to the lead alone. `whatItRestedOn` comes with the weigh section, which `whoIsReadingTheWeighing` builds for the lead and also for the subject, the one person a check-in with a single account is about. `whereThisStarted` is not limited by reader at all. Neither is a privacy problem: both are the check-in's starting point, which `baselineEntries` and `baselineHistory` already show to everybody in the check-in by design. But it means the subject of a one-person check-in, opening their session report, now sees this whole box under the heading "What to ask each person" and the tag "Yours as the lead", with "What you said good would mean" over the lead's words. The old body was never mounted, so nobody read that before; the new home is the first place it can be seen. Please draw the weigh part for the subject under a heading that speaks to them, or tell me, and I will change the server to send the weigh section to the lead only. That second choice changes who reads what, so it would go to Hafsah first.
+
+**What happens next.** When the two sentences are back, tell me here and I will repoint the two tests. The first test, `every-field-belongs-to-one-of-the-four.spec.ts`, waits for Hafsah's answer on the resolution line. When that entry comes off, the list is empty, and "the body is still there" is removed with it, as the file has always said it would be.
+
+
+## Request 99, after Hafsah's answers (1 October)
+
+Hafsah decided two things (decisions 70 and 71 in `docs/decisions-merged.md`):
+- **70.** The resolution panel shows nothing until a decision is near, as the prototype does. "Resolution. Not set yet." is not brought back. Your note in `a-panel-with-nothing-to-say-is-a-line.spec.ts` already matches this; I have taken that half off the guard list in `the-four-reports.ts`.
+- **71.** The old-version notice stays. The rebuilt session report (`TheSessionsReport.tsx` / `SessionReportPage.tsx`) needs to tell a person when the report they are reading has changed since they opened it, as the old body's banner did ("someone has checked in since this was written, you are reading the previous version"), worded plainly. Please build it and add a test in `a-panel-with-nothing-to-say-is-a-line.spec.ts` that reads it in the live page. Its guard entry is the last one left; when it is live, I take it off the list, and the "body is still there" test retires with it, as the file says.
+
+The two dropped sentences and the rewording of "Yours as the lead" for the person are with you, as agreed. When those are pushed I merge and run the three tests.

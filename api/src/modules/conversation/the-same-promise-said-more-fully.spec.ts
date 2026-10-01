@@ -57,6 +57,21 @@ describe('the same promise said short and then whole is one row (request 96)', (
     expect(r.created).toHaveLength(2);
     expect(r.updated).toEqual([]);
   });
+  /* Hafsah, 1 October: only a promise said short and whole in the SAME session is one record. Said in
+     two different sessions, they stay two records, even when one contains the other. */
+  it('a short promise from an earlier session and the whole one now stay two separate records', async () => {
+    const r = await run([{ text: SHORT.action, whenSaid: 'on 9 October', statedInSession: 0 }], [WHOLE], SAID);
+    expect(r.updated.every((u: any) => !u.data.text)).toBe(true);
+    expect(r.created).toHaveLength(1);
+    expect(r.created[0].text).toBe(WHOLE.action);
+  });
+
+  it('the same words said in a later session are still marked said again', async () => {
+    const r = await run([{ text: WHOLE.action, whenSaid: '9 October', statedInSession: 0 }], [WHOLE], SAID);
+    expect(r.created).toEqual([]);
+    expect(r.updated).toHaveLength(1);
+    expect(r.updated[0].data).toEqual({ saidAgainIn: { set: [1] } });
+  });
   it('a promise from an earlier check-in is not rewritten', async () => {
     const r = await run([{ text: SHORT.action, whenSaid: 'on 9 October', statedInSession: 0 }], [WHOLE], SAID);
     expect(r.updated.every((u: any) => !u.data.text)).toBe(true);

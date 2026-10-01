@@ -1,5 +1,7 @@
 import { PartyType } from '@prisma/client';
-import { fromTheReadersSide } from './a-sentence-from-the-readers-side';
+import { fromTheReadersSide, noInstructionToAskYourself, theirOwnIsTheReaders } from './a-sentence-from-the-readers-side';
+import { aNameInTheirWordsIsTheLabel } from './a-name-in-their-words-is-the-label';
+import { theShortNameOf } from './a-title-is-not-a-first-name';
 import { theQuotesKept } from './a-quote-is-what-they-said';
 
 export type LabelParty = {
@@ -709,6 +711,25 @@ function withNamesOutsideTheQuotes(
    */
   const viewerLabel = opts?.viewerLabel?.trim();
   if (viewerLabel) {
+    /*
+     * THE READER'S OWN NAME IS THE READER TOO (the 1 October review). A model that met the lead's
+     * name in somebody's words wrote it as it found it, so Amina read "Ask Amina for her account of
+     * her role in the meetings" in her own judgement. Her name, outside a quote, becomes her label
+     * here, and everything below then makes it "you", with its verb. A first name that is also an
+     * everyday word ("Sunday", "Will") is left, and so is a first name somebody else here shares.
+     */
+    const ownLabel = [...visible.keys()].find((l) => l.trim().toLowerCase() === viewerLabel.toLowerCase());
+    if (ownLabel && visible.get(ownLabel)) {
+      const people = [...visible.entries()].map(([label, name]) => ({ label, name }));
+      const others = [
+        ...people.filter((x) => x.label !== ownLabel).flatMap((x) => [x.name, theShortNameOf(x.name)]),
+        ...[...(allLabels ?? [])].filter((l) => l !== ownLabel),
+      ];
+      text = text.split(/(?<=[.!?])(\s+)/).map((piece) => {
+        const swapped = aNameInTheirWordsIsTheLabel(piece, people, { only: ownLabel, asTheReadSeesIt: true });
+        return swapped === piece ? piece : theirOwnIsTheReaders(swapped, ownLabel, others);
+      }).join('');
+    }
     /* A LABEL THAT ENDS IN A FULL STOP NEVER MATCHED. The Harvestline sales manager's role read "...some
        on 60-day credit." and `\b` after a full stop needs a word character next, so "credit. said this
        was for" left the whole label standing in her own report (smoke run 7, 21 Sep 2026). Labels are
@@ -731,6 +752,8 @@ function withNamesOutsideTheQuotes(
         .replace(new RegExp(`\\bthe ${hesc}\\b`, 'gi'), 'you');
     }
     text = theVerbAgreesWithYouIn(text);
+    /* And nobody is told to ask themselves. See noInstructionToAskYourself. */
+    text = noInstructionToAskYourself(text, theVerbAgreesWithYouIn);
 
     /**
      * AND THE NEXT SENTENCE, WHICH IS STILL ABOUT THEM.
@@ -1100,12 +1123,16 @@ export function theVerbAgreesWithYouIn(input: string): string {
             'recognizes', 'recognises', 'operates', 'meets', 'hears', 'envisions', 'dismisses',
             'directs', 'decides', 'contrasts', 'clarifies', 'cites', 'chooses', 'cares', 'begins',
             'answers', 'acts',
+            /* Read on the 1 October review: "You reviews the individual targets", "you stays blocked". */
+            'reviews', 'stays', 'plays',
           ].join('|') +
           ')\\b',
         'gi',
       ),
       (_m, you: string, adv: string | undefined, verb: string) => `${you}${adv ?? ''}${theVerbForYou(String(verb))}`,
     );
+
+  text = everyVerbThatFollowsYouAgrees(text);
 
   /**
    * AND A SENTENCE STILL STARTS WITH A CAPITAL.
@@ -1116,6 +1143,64 @@ export function theVerbAgreesWithYouIn(input: string): string {
    * of "Hafsah" would have passed on a sentence beginning with a lowercase letter.
    */
   text = text.replace(/(^|[.!?]\s+|\n\s*)(you|your)\b/g, (_m, lead, word) => `${lead}${word[0].toUpperCase()}${word.slice(1)}`);
+  return text;
+}
+
+/**
+ * AND EVERY VERB THAT FOLLOWS "YOU" AGREES WITH IT, NOT ONLY THE ONES ON THE LIST (the 1 October review).
+ *
+ * The closed list above is right where "you" might be the object of something before it. Two places
+ * it is not, and the list kept missing verbs there:
+ *
+ *   "You reviews the individual targets."                  "you" opens the sentence
+ *   "the churn model remains unused and you stays blocked."  "you" opens a clause after "and"
+ *
+ * There "you" can only be the subject, so a word ending in -s straight after it is its verb. Words
+ * that end in -s and are not verbs ("always", "perhaps", "status") are left alone.
+ *
+ * And the verbs that share "you" with the first one: "You confirm the date and shares it", "You are
+ * blocked, has been waiting since the 8th, and is unsure". Only in a sentence that opens with "You",
+ * only straight after a comma or "and", and only for "is", "has", "was", "does" and the verbs on the
+ * list, so "You lead sales, operations and logistics" keeps its "logistics".
+ */
+const ENDS_IN_S_AND_IS_NOT_A_VERB = new Set([
+  'always', 'sometimes', 'perhaps', 'thus', 'nevertheless', 'nonetheless', 'afterwards', 'besides',
+  'towards', 'as', 'yes', 'unless', 'plus', 'less', 'us', 'this', 'its', 'his', 'hers', 'theirs',
+  'ours', 'yours', 'across', 'whereas', 'regardless', 'overseas', 'backwards', 'forwards', 'sideways',
+  'nowadays', 'downstairs', 'upstairs', 'indoors', 'outdoors', 'thanks', 'is', 'was', 'has', 'does',
+]);
+const aWordThatIsAVerbAfterYou = (word: string): boolean => {
+  const w = word.toLowerCase();
+  if (w.length < 4 || ENDS_IN_S_AND_IS_NOT_A_VERB.has(w)) return false;
+  if (/(?:ss|us|is|ous|'s|’s)$/.test(w)) return false;
+  return /s$/.test(w);
+};
+const A_CLAUSE_OPENS = '(?:and|but|while|until|unless|because|so|if|when|whereas|since|though|although|once)';
+const SHARES_ITS_YOU = new RegExp(
+  `(,\\s+(?:and\\s+|but\\s+)?|\\s+(?:and|but)\\s+)${ADVERBS}(is|has|was|does|reviews|stays|shares|confirms|sends|expects|wants|needs|believes|says|thinks|feels|plans|knows|works|leads|waits|asks|agrees|keeps|takes|makes|owns|holds|sees|remains|continues|hopes|intends|accepts|tracks|manages|uses|gets|shows|follows|attends|handles|decides|chooses|answers|aims|relies|depends|builds)\\b`,
+  'g',
+);
+/* "You have no visibility of these facts, and so has understood..." - but never "and so is the
+   invoice", where "so" turns the sentence round and the verb belongs to what follows it. */
+const AND_SO_SHARES_ITS_YOU = /(,?\s+and\s+so\s+)(is|has|was|does)\b(?!\s+(?:the|a|an|this|that|it|he|she|they|we|you|I|[A-Z]\w*)\b)/g;
+function everyVerbThatFollowsYouAgrees(input: string): string {
+  let text = input.replace(
+    new RegExp(`(^|[.!?]["”’)]?\\s+|\\n\\s*|\\b${A_CLAUSE_OPENS}\\s+)(you\\s+)${ADVERBS}([A-Za-z]+)\\b`, 'gi'),
+    (m: string, lead: string, you: string, adv: string | undefined, word: string) =>
+      aWordThatIsAVerbAfterYou(word) && word === word.toLowerCase() ? `${lead}${you}${adv ?? ''}${theVerbForYou(word)}` : m,
+  );
+  /* The verbs that share it, sentence by sentence. */
+  const pieces = text.split(/(?<=[.!?])(\s+)/);
+  text = pieces.map((piece) => {
+    if (!/^\s*You\s/.test(piece)) return piece;
+    return piece.replace(AND_SO_SHARES_ITS_YOU, (_m: string, join: string, verb: string) =>
+      `${join}${({ is: 'are', has: 'have', was: 'were', does: 'do' } as Record<string, string>)[verb.toLowerCase()]}`,
+    ).replace(SHARES_ITS_YOU, (_m: string, join: string, adv: string | undefined, verb: string) => {
+      const lower = verb.toLowerCase();
+      const said = lower === 'is' ? 'are' : lower === 'was' ? 'were' : lower === 'has' ? 'have' : lower === 'does' ? 'do' : theVerbForYou(verb);
+      return `${join}${adv ?? ''}${said}`;
+    });
+  }).join('');
   return text;
 }
 

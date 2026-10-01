@@ -80,7 +80,7 @@ export class WhatNeedsYouService {
     for (const g of here as any[]) {
       const runsIt = g.initiatorId === userId || role === 'ADMIN';
       const me = (g.participants ?? []).find((p: any) => p.userId === userId);
-      for (const [k, v] of whatEachLabelIsCalled(g.participants ?? [], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsIt, peersAreNamed: runsIt || peersAreNamedOn(g) })) if (k[0] === '@' || k[0] === '~') called.set(k, v);
+      for (const [k, v] of whatEachLabelIsCalled(g.participants ?? [], { viewerParticipantId: me?.id ?? null, viewerIsLead: runsIt, peersAreNamed: runsIt || peersAreNamedOn(g, { participantId: me?.id ?? null }) })) if (k[0] === '@' || k[0] === '~') called.set(k, v);
     }
     return called.size ? withoutInternalLabelsIn(told, called) : told;
   }

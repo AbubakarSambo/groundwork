@@ -53,7 +53,9 @@ import { totalSessionsFor } from './session-count';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
-import { peersAreNamedOn, peersAreNamedByDefaultOn } from '../reports/peers-are-named';
+import { theStoryHasSomeoneToPointTo, withoutAStoredCount } from '../reports/the-picture-in-plain-sentences';
+import { whoseIsIt } from './a-blocker-that-says-her-or-his';
+import { peersAreNamedOn, peersAreNamedByDefaultOn, theReaderBySignIn, whyThePersonReviewedIsNotTold } from '../reports/peers-are-named';
 import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
 import { cleanText } from '../reports/what-the-record-actually-holds';
@@ -86,7 +88,7 @@ import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in'
 import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
-import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
+import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
 import { aQuestionAsTheLeadReadsIt, aQuestionReworded, plainQuestionFrom, theExactQuestion, theLeadsOwnQuestionIfAddressedToThem, THE_EXACT_QUESTION_PROMPT, THE_EXACT_QUESTION_TOOL, whatGroundworkWillAsk, type AQuestionForAPerson } from './a-question-asked-word-for-word';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { aLabelTheyCanTellApart } from './four-check-ins-with-the-same-name';
@@ -1290,7 +1292,7 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
         checkIns: {
           /** `isSetup` so a setup conversation can be kept out of every session count. GW-EXP-6. */
           /**
@@ -1369,7 +1371,7 @@ export class GroundsService {
          * Same nested select as `SAFE_PARTICIPANT_SELECT`: display name only, no other
          * user field comes through.
          */
-        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
+        participants: { select: { id: true, email: true, partyType: true, userId: true, roleAsDescribed: true, createdAt: true, managingOnly: true, nameGiven: true, user: { select: { firstName: true, lastName: true } } } },
             checkIns: {
               /** Must match the sibling query above: both feed the same list. GW-EXP-6. */
               select: { id: true, participantId: true, sessionNumber: true, status: true, completedAt: true, createdAt: true, isSetup: true, availableFrom: true },
@@ -1461,6 +1463,7 @@ export class GroundsService {
           /* The opening the report wrote, preferred over slicing the picture. See how-a-check-in-is-going. */
           theOpening: ((rest as any).report?.theOpening as string | null) ?? null,
           leave: leaveOnTheList,
+          forTheList: true,
         });
         const roundsDone = going.glance.progress.roundsDone;
         /*
@@ -1484,7 +1487,9 @@ export class GroundsService {
          * sentence ends without a second copy of the rule - and a decimal or a closing quote is how
          * splitting on a full stop goes wrong. `sentencesIn` is the one that knows.
          */
-        const latestSummary = going.latestSummary;
+        /* AND NOT A COUNT OF WHO HAS ANSWERED, which was true when the report was written and is stale once
+         * somebody is added (request 97b): the live count is served beside it, in glance.progress. */
+        const latestSummary = going.latestSummary ? theStoryHasSomeoneToPointTo(withoutAStoredCount(going.latestSummary)) || null : null;
         /*
          * WHETHER THIS ONE HAS A BOARD AT ALL, said by the side that decides it.
          *
@@ -1525,7 +1530,7 @@ export class GroundsService {
          * themselves: their own row, their own sessions, and only what is owed to or by them.
          * Today and "N new" read this list, so they follow.
          */
-        const peersVisibleEffective = peersAreNamedOn(rest as any);
+        const peersVisibleEffective = peersAreNamedOn(rest as any, theReaderBySignIn(rest as any, userId));
         const hidePeers = !peersVisibleEffective && !runsIt;
         const isMe = (p: any) => !!userId && p.userId === userId;
         const participants = ((allParticipants ?? []) as any[])
@@ -1549,7 +1554,14 @@ export class GroundsService {
          * finding are report text; somebody who does not run the check-in is given them only after
          * the report has been released, the same as the report itself.
          */
-        const mayReadTheReport = runsIt || !!fullReport?.releasedAt;
+        /*
+         * AND NOT WHERE PEOPLE ARE NOT NAMED TO EACH OTHER (request 97e). The latest round's summary and
+         * finding are the team's picture, written about the people in it, and a participant on a check-in
+         * where colleagues are unnamed (a review, a cohort, or where the lead chose it) is given only
+         * themselves everywhere else on this row, so is given none of the team's picture here either.
+         * Their own report is read on their own check-in, never through these two fields.
+         */
+        const mayReadTheReport = runsIt || (!!fullReport?.releasedAt && peersVisibleEffective);
         /* And no sentence with a colleague's hidden target, in the brief or the report's words (as get()). */
         return this.withoutTheTargetsHiddenFrom(g as any, userId, {
           ...safe,
@@ -1565,6 +1577,8 @@ export class GroundsService {
           checkIns: checkInsShown,
           dependencies: dependenciesShown,
           peersVisibleEffective,
+          /* Decision 17, said plainly: on a check-in about one person the switch never reaches them. */
+          whyThePersonReviewedIsNotTold: whyThePersonReviewedIsNotTold(rest as any),
           ...(runsIt ? { joinToken } : {}),
           report: fullReport ? { releasedAt: fullReport.releasedAt ?? null } : null,
           alignment, overdue, checkInsToday, roundsDone, lastActivity, reportWaitingForMe, otherOrgName,
@@ -1578,9 +1592,38 @@ export class GroundsService {
           hasBoard,
           /* No count of other people either, where they are not named to this reader: not how many
              answered, nor what is holding them up. Their own turn still shows from their own rows. */
-          glance: hidePeers
-            ? { ...glance, progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0, waitingOn: [] }, inTheWay: { count: 0, oldest: null, daysWaiting: null } }
-            : glance,
+          glance: (() => {
+            const { oldestOnParticipantId, ...inTheWay } = (glance.inTheWay ?? {}) as any;
+            if (hidePeers) {
+              /* What the reader may say of themselves, in place of numbers about people they are not shown
+                 (request 97d): "Just started" was read from those zeroes and was untrue of a check-in
+                 where others had answered. */
+              const open = glance.progress.openRound;
+              const mineThisRound = ((checkInsShown ?? []) as any[]).filter((c) => !c.isSetup && c.sessionNumber === open);
+              const answered = mineThisRound.some((c) => c.status === 'COMPLETED' || c.status === 'DECLINED');
+              return {
+                ...glance,
+                progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0, waitingOn: [], youHaveAnswered: answered, standsSaid: answered ? 'You have answered.' : 'You have not answered yet.' },
+                inTheWay: { count: 0, oldest: null, daysWaiting: null },
+              };
+            }
+            /* A thing waited on that starts with "her" says "A colleague's"; a reader who may name people is told whose. */
+            let oldest: string | null = inTheWay.oldest;
+            if (oldest && oldestOnParticipantId && oldest.startsWith("A colleague's")) {
+              const who = ((allParticipants ?? []) as any[]).find((p) => p.id === oldestOnParticipantId);
+              const name = (who?.user?.firstName ?? '').trim() || (who?.nameGiven ?? '').trim().split(/\s+/)[0] || null;
+              if (name && (runsIt || peersVisibleEffective)) oldest = whoseIsIt(oldest.replace(/^A colleague's/, 'her'), name);
+            }
+            return { ...glance, inTheWay: { ...inTheWay, oldest } };
+          })(),
+          /* Who runs it, for a reader who is shown nobody else on the row (request 97d). Not a peer: the person
+             who invited them. Never their private description of anybody, only a name they gave or have. */
+          runByName: ((): string | null => {
+            const lead = ((allParticipants ?? []) as any[]).find((p) => p.partyType === 'INITIATOR') ?? ((allParticipants ?? []) as any[]).find((p) => p.userId && p.userId === (rest as any).initiatorId);
+            if (!lead) return null;
+            const named = [lead.user?.firstName, lead.user?.lastName].filter(Boolean).join(' ').trim() || (lead.nameGiven ?? '').trim();
+            return named || null;
+          })(),
         });
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
@@ -1950,7 +1993,7 @@ export class GroundsService {
     // where it does not. The lead always sees everyone - running the ground is
     // the job.
     /* One copy of the rule, shared with the board, the reports and the interview. See peers-are-named. */
-    const peersVisible = peersAreNamedOn(ground as any);
+    const peersVisible = peersAreNamedOn(ground as any, theReaderBySignIn(ground as any, requestingUserId));
     const hidePeers = !peersVisible && !viewerRunsThisGround;
 
     /**
@@ -2528,6 +2571,12 @@ export class GroundsService {
        */
       peersVisibleEffective: peersVisible,
       peersDefaultVisible: peersAreNamedByDefaultOn(ground as any),
+      /**
+       * WHY THE SWITCH DOES NOT REACH EVERYBODY, in one plain sentence (decision 17). On a performance
+       * plan, a recognition round or a contract renewal, the person reviewed is never told who else gave
+       * a view, whatever the lead switched. Null on every other check-in.
+       */
+      whyThePersonReviewedIsNotTold: whyThePersonReviewedIsNotTold(ground as any),
       /*
        * AND THE TWO THAT HAD NO WAY IN. Both were read by the board and the conversation and
        * travelled to nobody, so a control for either would have read its own default forever and
@@ -3922,6 +3971,11 @@ export class GroundsService {
       const read = await this.whatAPasteGives(groundId, thePaste).catch(() => null);
       /* What participants are told is written only if the list the lead is answering said it. */
       if (read) read.toldToParticipants = theTellingInTheList(dto.history as any);
+      /* And each number's direction only as that list said it (decision 69); a number it did not show stays not set. */
+      if (read) {
+        const ways = theDirectionsInTheList(dto.history as any);
+        read.teamTargets = read.teamTargets.map((t) => ({ ...t, direction: t.target != null ? ways.get(aNameKey(t.name)) ?? null : null }));
+      }
       let got = read;
       /*
        * "YES, BUT NOT THE 12M" TAKES THE REST AND LEAVES THAT.
@@ -4092,7 +4146,9 @@ export class GroundsService {
       await this.prisma.groundObjective.createMany({
         data: proposal.targets.map((t, i) => ({
           groundId, name: t.name, target: t.target, sortOrder: existing + i,
-        })),
+          /* Decision 69: the direction the say-back stated, which the lead has just said yes to. */
+          direction: t.direction ?? null,
+        })) as any,
       });
       return { changed: 'targets', say: proposal.say };
     }
@@ -4175,18 +4231,19 @@ export class GroundsService {
        - "signed" and "signed sales" - and two names for one number is two answers. See theSameMeasure. */
     const held: { owner: string; name: string }[] = existing.map((o) => ({ owner: o.ownerParticipantId ?? 'team', name: (o.name ?? '').trim() }));
     const alreadyHeld = (owner: string, name: string) => held.some((h) => h.owner === owner && theSameMeasure(h.name, name));
-    const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number }[] = [];
+    const rows: { groundId: string; name: string; target: number | null; ownerParticipantId: string | null; sortOrder: number; direction?: string | null }[] = [];
     let sortOrder = existing.length;
     for (const t of got.teamTargets) {
       if (alreadyHeld('team', t.name)) continue;
       held.push({ owner: 'team', name: t.name });
-      rows.push({ groundId, name: t.name, target: t.target, ownerParticipantId: null, sortOrder: sortOrder++ });
+      /* Decision 69: only a direction the lead said yes to on the list; otherwise not set. */
+      rows.push({ groundId, name: t.name, target: t.target, ownerParticipantId: null, sortOrder: sortOrder++, direction: t.direction ?? null });
     }
     for (const p of got.forPeople) {
       for (const t of p.targets) {
         if (alreadyHeld(p.participantId, t.name)) continue;
         held.push({ owner: p.participantId, name: t.name });
-        rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++ });
+        rows.push({ groundId, name: t.name, target: t.number, ownerParticipantId: p.participantId, sortOrder: sortOrder++, direction: null });
       }
     }
     if (rows.length) {

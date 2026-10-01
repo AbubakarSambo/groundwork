@@ -69,7 +69,10 @@ function boardFor(userId: string) {
     .get('g1', userId) as Promise<any>;
 }
 
-const names = (rows: any[] | undefined) => (rows ?? []).map((o) => o.name);
+/* By the row, not its name (1 October 2026): the board now serves each name as a full sentence for
+   its reader ("Your share is 12."), while the Context page serves the name as stored. Which rows reach
+   which reader is the same check as before, as strict, on both routes. */
+const names = (rows: any[] | undefined) => (rows ?? []).map((o) => ({ 'o-team': 'Water pumps sold this quarter', 'o-aisha': 'Aisha’s share', 'o-baraka': 'Baraka’s share' } as Record<string, string>)[o.id] ?? o.id);
 
 describe('whose share of a target each reader is given', () => {
   for (const [route, read] of [
@@ -93,6 +96,11 @@ describe('whose share of a target each reader is given', () => {
       });
     });
   }
+
+  it('and on the board each share is a full sentence for its reader', async () => {
+    expect(((await boardFor(WANJIRU)).objectives as any[]).map((o) => o.name)).toEqual(['The team is aiming for 25 water pumps sold this quarter.', 'Aisha Otieno\'s share is 12.', 'Baraka Kip\'s share is 13.']);
+    expect(((await boardFor(AISHA)).objectives as any[]).map((o) => o.name)).toEqual(['The team is aiming for 25 water pumps sold this quarter.', 'Your share is 12.']);
+  });
 
   it('and the board’s person-by-person read gives Otieno where each person is, without their number', async () => {
     const rows = (await boardFor(OTIENO)).eachPerson ?? [];

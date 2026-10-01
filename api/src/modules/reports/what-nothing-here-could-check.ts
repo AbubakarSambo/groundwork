@@ -97,15 +97,25 @@ export function whatCouldBeChecked(claims: AClaim[], othersWhoGaveAnAccount: num
     says.push(NOBODY_TO_CHECK_AGAINST);
   }
 
+  /* One thing is "the one thing", never "all 1 of the things"; the list of what it was checked
+     against is a sentence of its own, never hung on a dash. */
+  const things = (n: number) => (n === 1 ? 'thing' : 'things');
+  const are = (n: number) => (n === 1 ? 'is' : 'are');
+  const AGAINST = ' It is backed by what another person said, a document, or a record.';
   if (checked === 0) {
     says.push(
-      `None of the ${total} things described here could be checked against what another person said, a`
-      + ' document, or a record from a system. They are in this report because somebody said them.',
+      total === 1
+        ? 'The one thing described here could not be checked against what another person said, a document,'
+          + ' or a record from a system. It is in this report because somebody said it.'
+        : `None of the ${total} things described here could be checked against what another person said, a`
+          + ' document, or a record from a system. They are in this report because somebody said them.',
     );
   } else if (checked === total) {
     says.push(
-      `All ${total} of the things described here line up with something other than what the person`
-      + ' said - what another person said, a document, or a record.',
+      total === 1
+        ? 'The one thing described here lines up with something other than what the person said.' + AGAINST
+        : `All ${total} of the things described here line up with something other than what the person said.`
+          + ' Each one is backed by what another person said, a document, or a record.',
     );
   } else {
     /*
@@ -113,10 +123,11 @@ export function whatCouldBeChecked(claims: AClaim[], othersWhoGaveAnAccount: num
      * sentence so neither can be read alone: some of this stood up against something, and some of
      * it is here because it was said.
      */
+    const rest = total - checked;
     says.push(
-      `${checked} of the ${total} things described here line up with something other than what the person`
-      + ` said. The other ${total - checked} are in this report because somebody said`
-      + ' them, and nothing else in the record speaks to them either way.',
+      `${checked} of the ${total} ${things(total)} described here ${checked === 1 ? 'lines' : 'line'} up with something other than what the person`
+      + ` said. The other ${rest === 1 ? 'one is' : `${rest} ${are(rest)}`} in this report because somebody said`
+      + ` ${rest === 1 ? 'it' : 'them'}, and nothing else in the record speaks to ${rest === 1 ? 'it' : 'them'} either way.`,
     );
   }
 

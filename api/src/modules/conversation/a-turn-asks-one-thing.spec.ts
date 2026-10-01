@@ -82,20 +82,20 @@ describe('a turn asks one thing', () => {
   });
 
   it('the product close line stays, and the question the model had left above it goes (sales, run 8)', () => {
-    const ask = 'One more before this closes. How is it actually going?';
+    const ask = 'I have one more question before we finish. How is it actually going?';
     expect(withTheOneMoreLine('What is the single biggest reason for any deals that are currently stalled?', ask)).toBe(ask);
-    expect(withTheOneMoreLine('That means the vendor has been on notice for weeks and nothing has moved. What have you done to follow up with them?', 'One more before this closes. What is actually happening, in your account of it?'))
-      .toBe('That means the vendor has been on notice for weeks and nothing has moved.\n\nOne more before this closes. What is actually happening, in your account of it?');
+    expect(withTheOneMoreLine('That means the vendor has been on notice for weeks and nothing has moved. What have you done to follow up with them?', 'I have one more question before we finish. What is actually happening, in your account of it?'))
+      .toBe('That means the vendor has been on notice for weeks and nothing has moved.\n\nI have one more question before we finish. What is actually happening, in your account of it?');
   });
 
   it('and a close line with no question mark is still the thing being asked (renewal, run 8)', () => {
-    expect(withTheOneMoreLine('Understood. What is actually happening, in your account of it?', 'One more before this closes. Tell me how the relationship has actually worked from your side.'))
-      .toBe('Understood.\n\nOne more before this closes. Tell me how the relationship has actually worked from your side.');
+    expect(withTheOneMoreLine('Understood. What is actually happening, in your account of it?', 'I have one more question before we finish. Tell me how the relationship has actually worked from your side.'))
+      .toBe('Understood.\n\nI have one more question before we finish. Tell me how the relationship has actually worked from your side.');
   });
 
   it("the lead's decision question under the close line: the close line is the one asked, and no line is broken (pip, run 8)", () => {
-    const out = withTheOneMoreLine(`You will be sending Nathan an invite for this meeting. ${THE_LEADS_DECISION}`, 'One more before this closes. What did you understand you were meant to do?');
-    expect(out).toBe('You will be sending Nathan an invite for this meeting.\n\nOne more before this closes. What did you understand you were meant to do?');
+    const out = withTheOneMoreLine(`You will be sending Nathan an invite for this meeting. ${THE_LEADS_DECISION}`, 'I have one more question before we finish. What did you understand you were meant to do?');
+    expect(out).toBe('You will be sending Nathan an invite for this meeting.\n\nI have one more question before we finish. What did you understand you were meant to do?');
   });
 
   it("a question the lead confirmed stays, even when the model asked its own first", () => {

@@ -52,6 +52,8 @@ export interface InTheWay {
 }
 
 import { stillToAsk, waysThrough, type Effort } from './a-blocker-is-not-a-blocker-until-you-have-tried';
+/* Numbers as a person reads them, "120 million" rather than 120000000 (decision 69, the board's own wording). */
+import { aNumberPeopleCanRead as readable } from '../board/an-aim-is-a-sentence-about-somebody';
 
 export const A_DAY = 24 * 60 * 60 * 1000;
 
@@ -150,14 +152,14 @@ export function whatTheRecordAlreadyHolds(input: {
       'this person is aiming for as though nobody has said - ask where they are against it, and ' +
       'what the next ones are by name.\n' +
       (mine.length
-        ? `Theirs, said by them: ${mine.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')}\n`
+        ? `Theirs, said by them: ${mine.map((t) => `${t.name}, ${readable(t.count)} of ${readable(t.target as number)}`).join('; ')}\n`
         : '') +
       (setForThem.length
-        ? `Set for them by the lead - put these to them as the lead's expectation, in the lead's name, never as "you said" and never as something "the opener set": ${setForThem.map((t) => `${t.name}, ${t.count} of ${t.target}`).join('; ')}\n`
+        ? `Set for them by the lead - put these to them as the lead's expectation, in the lead's name, never as "you said" and never as something "the opener set": ${setForThem.map((t) => `${t.name}, ${readable(t.count)} of ${readable(t.target as number)}`).join('; ')}\n`
         : '') +
       (theRest.length
         ? 'Set for the whole check-in, not said by this person. The count on it is EVERYBODY\'S together, never this person\'s standing: never "you are at", "the record shows you at", never a difference between it and their own number. Never put these to them as "you said": ' +
-          theRest.map((t) => `${t.name}, the whole check-in is at ${t.count} of ${t.target}`).join('; ')
+          theRest.map((t) => `${t.name}, the whole check-in is at ${readable(t.count)} of ${readable(t.target as number)}`).join('; ')
         : ''),
     );
   }

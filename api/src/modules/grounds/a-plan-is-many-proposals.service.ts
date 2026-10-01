@@ -8,6 +8,7 @@ import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { whoThisNameIs, theNameWeUseFor } from '../documents/what-a-document-holds';
 import { whyItRefuses } from './a-ground-that-has-ended';
 import { BoardService } from '../board/board.service';
+import { asADirection, type TargetDirection } from '../board/an-aim-or-a-limit';
 import { A_PLAN_PROMPT, A_PLAN_SCHEMA, proposalsFromAPlan, type PlanProposal, type PlanProposalFields, type PlanRead } from './a-plan-is-many-proposals';
 
 interface StoredProposal {
@@ -199,7 +200,7 @@ export class APlanIsManyProposalsService {
    * Confirm ONE stored proposal. It is checked again against its own quote, and the person in it is
    * found again on this side. Exactly one row is written, and the proposal remembers which.
    */
-  async confirm(groundId: string, userId: string, pid: string) {
+  async confirm(groundId: string, userId: string, pid: string, answer: { direction?: unknown } = {}) {
     const ground = await this.theLeadsCheckIn(groundId, userId, ONLY_THE_LEAD_CONFIRMS);
     const row = await this.theWaitingOne(groundId, pid);
     const held = this.recheck(row, this.people(ground));
@@ -216,7 +217,7 @@ export class APlanIsManyProposalsService {
     if (!claimed?.count) throw new BadRequestException('That one is already confirmed.');
     let wrote: { table: string; id: string };
     try {
-      wrote = await this.writeTheOne(groundId, userId, held);
+      wrote = await this.writeTheOne(groundId, userId, held, asADirection(answer?.direction));
     } catch (err) {
       await this.prisma.planProposal.update({ where: { id: row.id }, data: { status: 'PENDING', decidedAt: null, decidedByUserId: null } }).catch(() => undefined);
       throw err;
@@ -225,14 +226,15 @@ export class APlanIsManyProposalsService {
     return { confirmed: { ...held, status: 'CONFIRMED' }, wrote };
   }
 
-  private async writeTheOne(groundId: string, userId: string, held: PlanProposal): Promise<{ table: string; id: string }> {
+  private async writeTheOne(groundId: string, userId: string, held: PlanProposal, direction: TargetDirection | null = null): Promise<{ table: string; id: string }> {
     const f = held.fields;
     switch (held.kind) {
       case 'goal': {
         /* The board's own writer: the lead only, a board that tracks targets, stamped with the round. */
         const board = this.moduleRef?.get(BoardService, { strict: false });
         if (!board) throw new BadRequestException('Targets cannot be added just now. Please try again in a minute.');
-        const made = await board.createObjective(groundId, userId, { name: f.what, target: f.number ?? null, ownerParticipantId: f.participantId ?? null });
+        /* Decision 69: the direction only as the lead answered the card's question; otherwise not set. */
+        const made = await board.createObjective(groundId, userId, { name: f.what, target: f.number ?? null, ownerParticipantId: f.participantId ?? null, direction: f.number !== undefined ? direction : null });
         return { table: 'GroundObjective', id: made.id };
       }
       case 'role': {

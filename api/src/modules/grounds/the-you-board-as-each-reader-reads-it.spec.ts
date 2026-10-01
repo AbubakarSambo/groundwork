@@ -122,7 +122,7 @@ describe('Miriam reads her own You board', () => {
     const b = await read('miriam');
 
     expect(b.checkIns).toEqual([
-      { id: 'g-sales', label: 'Sales team, Q3', youRunIt: false, line: 'You have finished 2 sessions.', to: '/grounds/g-sales' },
+      { id: 'g-sales', label: 'Sales team, Q3', youRunIt: false, line: 'You have finished two check-ins.', to: '/grounds/g-sales' },
     ]);
     expect(b.turns.map((t) => [t.title, t.action.label, t.action.to])).toEqual([
       ['Your own check-in for Sales team, Q3', 'Start it', '/checkin/c-m3'],
@@ -181,7 +181,7 @@ describe('nobody else may read Miriam’s You board', () => {
   it('Wairimu’s own board carries only her own place, though her list carries Miriam’s', async () => {
     const { read } = setup();
     const b = await read('wairimu');
-    expect(b.checkIns.map((c) => c.line)).toEqual(['You run this check-in. You have finished 1 session.']);
+    expect(b.checkIns.map((c) => c.line)).toEqual(['You run this check-in. You have finished one check-in.']);
     const said = JSON.stringify(b);
     for (const hers of ['Westgate', 'Green Mart', 'Sales closed', 'c-m2', 'BRIAN']) expect(said).not.toContain(hers);
     expect(b.goals).toEqual([]);

@@ -31,6 +31,37 @@ export const A_PLACE_TO_START = 'Where would you like to start?';
 /** And for a turn in the middle of one, where there is already something to build on. */
 export const WHAT_ELSE = 'What else should I know?';
 
+/*
+ * A PLAIN QUESTION IS NEVER ASKED TWICE IN ONE CHECK-IN. Read on re-d (1 October 2026): Hauwa was asked
+ * "What has happened for you since this began?" three times, and Amina "What else should I know?" twice,
+ * because each fallback put its one sentence on whatever turn needed it. Each is still a plain question
+ * that claims nothing; where the first has been asked, the next one not yet asked is used.
+ */
+export const PLAIN_QUESTIONS = [
+  WHAT_ELSE,
+  'What would you like to add about that?',
+  'What has happened for you since this began?',
+  'What matters most to you about this right now?',
+  'What is the next thing coming up for you?',
+];
+
+const asWords = (t: string) => (t ?? '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+/** Has this check-in already asked this question, in these words? */
+export function alreadyAsked(question: string, earlierAiTurns: string[]): boolean {
+  const q = asWords(question);
+  return !!q && (earlierAiTurns ?? []).some((t) => asWords(t).includes(q));
+}
+
+/**
+ * The question to use: `first` if this check-in has not asked it, otherwise the first plain question it
+ * has not asked. Null when every one has been asked, so the caller decides what is left.
+ */
+export function aQuestionNotYetAsked(first: string, earlierAiTurns: string[]): string | null {
+  for (const q of [first, ...PLAIN_QUESTIONS]) if (!alreadyAsked(q, earlierAiTurns)) return q;
+  return null;
+}
+
 /**
  * The text, with a question on the end where it had none.
  *
@@ -39,11 +70,13 @@ export const WHAT_ELSE = 'What else should I know?';
  */
 export function withAQuestion(
   text: string | null | undefined,
-  { opening = false, closing = false }: { opening?: boolean; closing?: boolean } = {},
+  { opening = false, closing = false, asked = [] }: { opening?: boolean; closing?: boolean; asked?: string[] } = {},
 ): string {
   const said = (text ?? '').trim();
-  if (!said) return opening ? A_PLACE_TO_START : WHAT_ELSE;
+  /* Never the same plain question twice; if every one has been asked, the first, rather than no question. */
+  const theQuestion = opening ? A_PLACE_TO_START : aQuestionNotYetAsked(WHAT_ELSE, asked) ?? WHAT_ELSE;
+  if (!said) return theQuestion;
   if (closing) return said;
   if (!isADeadEnd(said, closing)) return said;
-  return `${said}\n\n${opening ? A_PLACE_TO_START : WHAT_ELSE}`;
+  return `${said}\n\n${theQuestion}`;
 }

@@ -1,3 +1,4 @@
+import { aNumberPeopleCanRead, theNumbersPeopleCanRead, aboutTheSpeaker } from '../board/an-aim-is-a-sentence-about-somebody';
 /**
  * WHAT A PARTICIPANT IS TOLD ABOUT THIS CHECK-IN: THE SITUATION AND THE GOALS, NEVER THE INSTRUCTION.
  *
@@ -79,6 +80,59 @@ export interface AGoalTheyMaySee {
   target: number | null;
   /** Whose goal it is; null for the whole check-in's. */
   ownerParticipantId?: string | null;
+  /** An aim to reach or a limit not to go over, where the lead has said (decision 69). */
+  direction?: 'AIM' | 'LIMIT' | null;
+}
+
+/*
+ * EACH GOAL IS A SENTENCE, WITH NUMBERS A PERSON CAN READ (review of 1 October 2026). The block read
+ * "The goal for the whole check-in: I'm aiming for N120 million disbursed this quarter (120,000,000)."
+ * - the lead's "I" on the participant's page, pieces joined with a colon and a semicolon, and the
+ * number twice, once as the database holds it. Now each goal is its own plain sentence:
+ *
+ *   "Your goal is 30 million naira this quarter."
+ *   "The goal for the whole check-in is to hit 180 million naira."
+ *   "Your lead is aiming for 120 million naira disbursed this quarter."
+ *
+ * "I" in a goal for the whole check-in is the lead who set it, and in a person's own goal it is that
+ * person, the same reading the board uses when it does not know who said it.
+ */
+const A_CLAUSE = /(?:^|[^\p{L}'’])(?:I|I'm|I’m|I've|I’ve|I'll|I’ll|my|My|we|We|our|Our|me)(?![\p{L}'’])|\bthe (?:speaker|person)\b|\b(?:is|are|am|will|wants?|needs?|aims?|aiming|has|have)\b/u;
+const A_VERB_FIRST = /^(?:hit|reach|close|sell|sign|get|win|deliver|launch|disburse|achieve|grow|cut|reduce|keep|make|finish|complete|ship|hire|raise|land|onboard|bring|build|book|recover|collect)\b/i;
+
+/** "I'm aiming for", "my", "me" as the reader: "You are aiming for", "your", "you". */
+export function asTheReader(text: string): string {
+  return text
+    .replace(/(^|[^\p{L}'’])I(?:'|’)m\b/gu, '$1you are')
+    .replace(/(^|[^\p{L}'’])I am\b/gu, '$1you are')
+    .replace(/(^|[^\p{L}'’])I(?:'|’)ve\b/gu, '$1you have')
+    .replace(/(^|[^\p{L}'’])I(?:'|’)ll\b/gu, '$1you will')
+    .replace(/(^|[^\p{L}'’])I\b/gu, '$1you')
+    .replace(/\b[Mm]y\b/g, 'your')
+    .replace(/\bme\b/g, 'you')
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+/** One goal, as one or two plain sentences for the person reading. */
+export function aGoalAsTheyReadIt(g: AGoalTheyMaySee, opts: { isTheirs: boolean; leadIn: string }): string {
+  const readable = theNumbersPeopleCanRead((g.name ?? '').trim()).replace(/[.!?]+$/, '');
+  if (!readable) return '';
+  const number = typeof g.target === 'number' ? aNumberPeopleCanRead(g.target) : null;
+  const isALimit = g.direction === 'LIMIT';
+  if (A_CLAUSE.test(readable)) {
+    const said = opts.isTheirs ? asTheReader(readable) : aboutTheSpeaker(readable, 'Your lead');
+    const sentence = `${said.charAt(0).toUpperCase()}${said.slice(1)}.`;
+    return number && !sentence.includes(number)
+      ? `${sentence} The ${isALimit ? 'limit not to go over' : 'number to reach'} is ${number}.`
+      : sentence;
+  }
+  const words = readable.split(/\s+/);
+  if (/^\p{Lu}\p{Ll}*$/u.test(words[0] ?? '') && (words.length === 1 || /^[\p{Ll}\p{N}]/u.test(words[1]))) words[0] = words[0].toLowerCase();
+  const phrase = `${A_VERB_FIRST.test(words[0]) ? 'to ' : ''}${words.join(' ')}`;
+  const withTheNumber = number && !phrase.includes(number)
+    ? `, and the ${isALimit ? 'limit not to go over' : 'number to reach'} is ${number}`
+    : '';
+  return `${opts.leadIn} ${phrase}${withTheNumber}.`;
 }
 
 /*
@@ -264,13 +318,16 @@ export function whatAParticipantIsToldAboutThis(
   const told = (opts?.told ?? '').trim();
   const situation = told || theSituationIn(brief);
   if (situation) parts.push(situation);
-  const say = (g: AGoalTheyMaySee) => (g.target != null ? `${g.name.trim().replace(/[.]+$/, '')} (${g.target.toLocaleString('en-GB')})` : g.name.trim().replace(/[.]+$/, ''));
   const named = (goals ?? []).filter((g) => g?.name?.trim());
   const mine = opts?.readerParticipantId ? named.filter((g) => g.ownerParticipantId === opts.readerParticipantId) : [];
   const shared = named.filter((g) => !mine.includes(g));
-  if (mine.length) parts.push(`${mine.length === 1 ? 'Your goal' : 'Your goals'}: ${mine.slice(0, 4).map(say).join('; ')}.`);
-  if (shared.length) {
-    parts.push(`${shared.length === 1 ? (mine.length ? 'The goal for the whole check-in' : 'The goal on this check-in') : (mine.length ? 'The goals for the whole check-in' : 'The goals on this check-in')}: ${shared.slice(0, 4).map(say).join('; ')}.`);
+  for (const g of mine.slice(0, 4)) {
+    parts.push(aGoalAsTheyReadIt(g, { isTheirs: true, leadIn: mine.length === 1 ? 'Your goal is' : 'One of your goals is' }));
   }
-  return parts.length ? parts.join(' ') : null;
+  const where = mine.length ? 'for the whole check-in' : 'on this check-in';
+  for (const g of shared.slice(0, 4)) {
+    parts.push(aGoalAsTheyReadIt(g, { isTheirs: false, leadIn: shared.length === 1 ? `The goal ${where} is` : `One of the goals ${where} is` }));
+  }
+  const said = parts.filter(Boolean);
+  return said.length ? said.join(' ') : null;
 }

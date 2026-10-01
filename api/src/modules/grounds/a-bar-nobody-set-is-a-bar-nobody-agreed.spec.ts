@@ -35,9 +35,10 @@ describe('a bar nobody set is a bar nobody agreed', () => {
     ] } as any, []);
     expect(p.kind).toBe('targets');
     if (p.kind !== 'targets') throw new Error('wrong kind');
+    /* Each carries the direction its say-back states (decision 69); none without a number. */
     expect(p.targets).toEqual([
-      { name: 'shops onboarded', target: 40 },
-      { name: 'the new depot running', target: null },
+      { name: 'shops onboarded', target: 40, direction: 'AIM' },
+      { name: 'the new depot running', target: null, direction: null },
     ]);
     expect(p.say).toContain('1 of them with a number');
   });
@@ -61,7 +62,7 @@ describe('a bar nobody set is a bar nobody agreed', () => {
       { name: 'Shops Onboarded', target: 50 },
     ] } as any, []);
     if (p.kind !== 'targets') throw new Error('wrong kind');
-    expect(p.targets).toEqual([{ name: 'shops onboarded', target: 40 }]);
+    expect(p.targets).toEqual([{ name: 'shops onboarded', target: 40, direction: 'AIM' }]);
   });
 
   it('does not let a pasted plan become twenty rows on a board', () => {

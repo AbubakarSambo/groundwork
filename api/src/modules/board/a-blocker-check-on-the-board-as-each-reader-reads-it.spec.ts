@@ -9,8 +9,9 @@ import { AMINA, BARAKA, JUMA, RUKIA, SETUP_ADMIN, boardAs, handoff, type Setup }
  * a missing one is said as missing, not as a judgement on anybody.
  */
 const RECORD: Setup = {
+  turns: [{ checkInId: 'c1-p-rukia', content: 'I emailed twice.' }, { checkInId: 'c1-p-rukia', content: 'by Friday' }],
   dependencies: [
-    handoff('d-1', 'p-rukia', 'the credit terms', { onLabel: 'Finance', dueSaid: 'by Friday', triedSaid: 'I emailed twice.' }),
+    handoff('d-1', 'p-rukia', 'the credit terms', { onLabel: 'Finance', dueSaid: 'by Friday', triedSaid: 'I emailed twice.', sourceCheckInId: 'c1-p-rukia' }),
     handoff('d-2', 'p-baraka', 'the depot keys', { onParticipantId: 'p-rukia', status: 'WAITING' }),
     handoff('d-3', 'p-baraka', 'the new price list'),
     handoff('d-4', 'p-rukia', 'the old invoice', { status: 'CLEARED', clearedAt: new Date('2026-09-05T09:00:00Z') }),

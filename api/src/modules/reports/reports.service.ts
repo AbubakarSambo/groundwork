@@ -17,7 +17,7 @@ import { whatTheRecordsReach, NEVER_CONCLUDE_ABOUT_SHIPPING } from '../public-ap
 import { whatCouldBeChecked, AClaim, COULD_NOT_WORK_IT_OUT } from './what-nothing-here-could-check';
 import { Cron } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
-import { confidenceInThePicture, CURRENT_BEST_READING } from './confidence-in-the-picture';
+import { confidenceInThePicture, CURRENT_BEST_READING, theFiveReadings } from './confidence-in-the-picture';
 import { softSpots, whatWouldRaiseIt } from './harder-to-fool';
 import { markWhatOnlyTheLeadSaid, whyItWasDropped } from './a-lead-note-is-not-evidence';
 import { whatALeaderCanWeigh, THIS_IS_MATERIAL_NOT_A_VERDICT, whoIsReadingTheWeighing } from './what-a-leader-can-weigh';
@@ -36,7 +36,8 @@ import { wordedByTheModel, type Drafted, type Compose } from './the-engine-draft
 import { rememberedCompose } from './a-line-worded-once-is-kept';
 import { wordPatternEvidence } from './pattern-evidence-in-plain-words';
 import { runAtOnce, READERS_WARMED_TOGETHER } from './run-at-once-with-a-cap';
-import { Syntheses, theSentenceWhileItIsWritten } from './the-report-is-being-written';
+import { Syntheses, theSentenceWhileItIsWritten, withoutTheCountWhileItIsWritten } from './the-report-is-being-written';
+import { itWasTakenFurther } from './what-they-said-they-did-about-it';
 import { OneAtATime } from './one-warm-up-at-a-time';
 import { stillRaised, notRaisedAgain, sayingWhatWentQuiet } from '../board/a-blocker-nobody-raised-again';
 import { pickTheFinding, draftThePicture, draftTheQuestion, WHY_NO_QUESTION } from './the-picture-is-drafted-from-the-reads';
@@ -46,6 +47,7 @@ import { buildCoverage, buildContribution } from '../board/reads';
 import { roleMapFor } from '../board/role-maps';
 import { BoardFamily, familyFor } from '../board/board-families';
 import { peersAreNamedOn } from './peers-are-named';
+import { YOUR_OWN_ACCOUNT_IS_NOT_HERE } from './a-sentence-from-the-readers-side';
 
 /**
  * The catalogue by code, so both coaching surfaces read the same plain words.
@@ -510,6 +512,14 @@ AND ONLY WHAT WAS REFERENCED. If you are reasoning from what success would imply
 14b. A LEADERSHIP PATTERN CAN LIVE IN ONE ACCOUNT. Several of these patterns are visible from a single person's record over time - a conversation named as still to be had across three sessions without it happening is a pattern whether or not anyone else mentions it. Do not require both sides to speak to it before reporting it. Where a second account does corroborate, say so in the note.
 15. "ALL", "EVERY" AND "EACH" ARE COUNTS YOU HAVE MADE. Before writing that all clients, every person or each participant does or has something, check every account in the corpus across every session. Where one account says otherwise - a bike that is with a cousin, a target that was not met - the sentence is false, and the exception is a divergence to write, not a detail to smooth. A cohort report read "All clients are using the asset they received a loan for" over a record in which one had said his cousin had it (20 Sep 2026). Prefer "the clients who..." with the exception named to a universal that one record contradicts.
 13. LEAD-SUPPLIED CONTEXT IS DIRECTION, NEVER A CLAIM. The LEAD-SUPPLIED CONTEXT section is private background from the initiator, not a party's statement. Use it only to decide what to weigh and what to probe. Never attribute it to a party, never quote it, never present it as an established fact, and never let it become a claim in the report. Every claim you write must trace to a party's own record entry - if lead context points at something no party's record supports, do not assert it.
+
+16. ONE PAGE TELLS ONE STORY. The opening, the agreements, the divergences and the central question are read on one page, and none of them may say the opposite of another. Before you return, read them against each other:
+  - If the opening says people disagree on something, that thing is in divergences. If divergences is empty, the opening does not say anybody disagrees.
+  - Never say people disagree on a point and, anywhere else, that they agree on the same point. Where they agree on part of it and differ on the rest, say which part is which: "Both of you say Tobi owns the five largest clients. You differ on whether that includes pricing and renewals."
+  - If you say there is one thing they disagree on, there is one, and it is the same one everywhere it is named.
+  - A number, a target or a fact is stated once, the same way, everywhere. Do not write "you have not set individual targets" in one place and "the individual targets add up to 40" in another. Where two people say different things about it, that is a divergence: say who said which.
+  - Where you name a cause, it is the cause the record gives. If one section says a difference comes from how the loan was designed, no other section says it comes from what people were told.
+  - Write about the latest session. Where somebody's account changed, say what they say now, and that it changed; do not keep an earlier sentence that the latest session contradicts.
 
 15. AND HOW EVERY SENTENCE OF IT IS WRITTEN. These two blocks are the product's one wording rulebook, and they override anything above or below them that disagrees.
 
@@ -2044,7 +2054,14 @@ Close the report by framing - neutrally, without recommending one - the choice n
       const label = labelById.get(p.id) ?? 'a party';
       specificityNotes.push({
         label,
-        dimensions: Object.entries(dims).map(([dim, level]) => ({
+        /*
+         * THE FIVE READINGS, AND NOT A SIXTH KEY THE SCORER ALSO STORES (review of 1 October 2026).
+         * `checkable` sits in the same column as a summary flag, not one of the five, and it came
+         * out as "In session 1, what was said about checkable was specific." under a confidence line
+         * that said "What is here is general rather than checkable", about the same reader, on the
+         * same page. Only the five the confidence is read from are said here.
+         */
+        dimensions: theFiveReadings(dims).map(([dim, level]) => ({
           dim,
           level,
           /**
@@ -2841,7 +2858,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * check-in whose lead is plainly entitled to her name and is shown it on the next tab along.
      * The session report two hundred lines below passes `me?.id` and has always been right.
      */
-    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any, me?.id ?? null));
     const whoOf = (participantId: string | null) => {
       if (!participantId) return null;
       const label = labels.get(participantId) ?? null;
@@ -3032,7 +3049,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * a roster calling three colleagues "a teammate" (the word before request 36) - and the rule that fixes it is the one the
      * report body already uses, not a second guess at it.
      */
-    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    /* Whoever runs this check-in - its lead, or an admin with access to it - reads everybody by
+       name, as on the main report (decision 5). Only a participant is held to the peer rule. */
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, viewerIsLead || this.peersAreNamed(ground as any, me?.id ?? null));
     /*
      * AND SOMEBODY THIS READER CANNOT NAME IS A COLLEAGUE, NEVER "PARTICIPANT B" OR "A TEAMMATE".
      * Request 36: the same plain words, for the same person, as every other surface. A line of the
@@ -3085,7 +3104,17 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * not this reader's slice of them (P3-010).
      */
     const [held, saidInAll, documentedInAll, whoAnswered] = await Promise.all([
-      whatThisSessionHolds(this.prisma, groundId, sessionNumber),
+      whatThisSessionHolds(this.prisma, groundId, sessionNumber, {
+        participantId: me?.id ?? null,
+        isLead: viewerIsLead,
+        /* A colleague's own words are walled from the person an evaluation is about, and from an admin without access to it. */
+        colleaguesWordsWalled: viewerIsTheSubjectOfAnEvaluationCheckIn({
+          scenario: (ground as any).scenario,
+          isLead: isInitiator || evaluationWordsRunsIt,
+          viewerParticipantId: me?.id ?? null,
+          participants: ground.participants as any,
+        }) || (isOrgAdmin && !evaluationWordsRunsIt && isEvaluationCheckIn((ground as any).scenario)),
+      }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber } } }),
       this.prisma.recordEntry.count({ where: { disputedAt: null, participant: { groundId }, checkIn: { sessionNumber }, recallBased: false, anchoredOrigin: { in: [...COUNTS_AS_A_SOURCE] as any } } }),
       howManyHaveAnswered(this.prisma, groundId, sessionNumber),
@@ -3189,6 +3218,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       movedOnTargets: held.movedOnTargets,
       /* And how many exist, so "no target set" is only ever said where none is. */
       targetsSet: held.targetsSet,
+      targetsMoved: held.targetsMoved,
       blocked: held.blocked,
       waiting: held.waiting,
       /* So the Blockers tile names the thing instead of repeating its own label. */
@@ -3437,7 +3467,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       started(() => this.prisma.workMention.findMany({ where: { groundId }, select: { sourceParticipantId: true, aboutParticipantId: true, kind: true, sessionNumber: true } }), [] as any[]),
       started(() => this.prisma.groundDependency.findMany({
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, blockerKind: true, sourceCheckInId: true },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, status: true, createdAt: true, escalatedAt: true, triedSaid: true, blockerKind: true, sourceCheckInId: true },
       }), [] as any[]),
     ]);
 
@@ -3695,7 +3725,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
             who: nameFor(d.fromParticipantId),
             on: d.onParticipantId ? nameFor(d.onParticipantId) : d.onLabel,
             onIsPerson: !!d.onParticipantId,
-            what: d.what, kind: (d.blockerKind as any) ?? null, escalated: !!d.escalatedAt,
+            what: d.what, kind: (d.blockerKind as any) ?? null, escalated: itWasTakenFurther(d),
             /* Whether they named the thing: the model's answer where we have it, the word-list rule
                on the rows written before that column existed. The finding's sentence branches on it. */
             named: theyNamedWhatTheyAreWaitingOn(d),
@@ -3992,7 +4022,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
       }),
       this.prisma.groundDependency.findMany({
         where: { groundId, status: 'WAITING' },
-        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, blockerKind: true },
+        select: { fromParticipantId: true, onParticipantId: true, onLabel: true, what: true, escalatedAt: true, triedSaid: true, blockerKind: true },
       }),
       this.prisma.delivery.findMany({ where: { groundId }, select: { participantId: true, objectiveId: true, text: true } }),
       /*
@@ -4033,7 +4063,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
           openBlockers: mine.map((b) => ({
             what: b.what,
             onName: b.onParticipantId ? (labelById.get(b.onParticipantId) ?? null) : (b.onLabel ?? null),
-            escalated: !!b.escalatedAt,
+            escalated: itWasTakenFurther(b),
           })),
           progress: deliveries.filter((d) => d.participantId === o.participantId).map((d) => ({ text: d.text })),
           saidWhy: saidWhyByParticipant.get(o.participantId) ?? null,
@@ -4142,7 +4172,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
        * identically as "one person waiting on another", and they need different people in the
        * room - so the argument was being settled by whoever described it best.
        */
-      lines.push(`- ${from}: ${howToSayIt(b.blockerKind as any, b.what, on)}${b.escalatedAt ? ' Already raised.' : ''}`);
+      lines.push(`- ${from}: ${howToSayIt(b.blockerKind as any, b.what, on)}${itWasTakenFurther(b) ? ' Already raised.' : ''}`);
     }
 
     return `WHAT IS ON THE RECORD, AND WHAT IT SHOWS.
@@ -4247,7 +4277,7 @@ happened, and what is in the way.`;
       (this.prisma.groundDependency?.findMany?.({
         where: { groundId },
         orderBy: { createdAt: 'asc' },
-        select: { what: true, fromParticipantId: true, onParticipantId: true, onLabel: true, status: true, escalatedAt: true, createdAt: true },
+        select: { what: true, fromParticipantId: true, onParticipantId: true, onLabel: true, status: true, escalatedAt: true, triedSaid: true, createdAt: true },
       }) ?? Promise.resolve([])).catch(() => [] as any[]),
       (this.prisma.patternDetection?.findMany?.({
         where: { groundId },
@@ -4490,7 +4520,9 @@ happened, and what is in the way.`;
           who: p.who,
           isLead: p.isLead,
           role: p.role,
-          finding: p.finding,
+          /* A name in it is a label too, so the lead named in somebody's finding is not read as a
+             stranger and then written about in the third person to the lead (the 1 October review). */
+          finding: p.finding ? theirWords(p.finding) : p.finding,
           /*
            * AND THE SAME EXCLUSION THE SYNTHESIS CORPUS HAS, WHICH THIS PATH NEVER GOT.
            *
@@ -4513,7 +4545,10 @@ happened, and what is in the way.`;
             .map((x) => ({ name: x.heading, observation: x.whatHappened as string, seenInSessions: x.sessions })),
           openCommitments: (open as any[]).filter((c) => c.participantId === p.participantId).map((c) => theirWords(String(c.text))),
         })),
-        room!.differences,
+        room!.differences.map((d) => ({
+          topic: theirWords(d.topic),
+          positions: d.positions.map((x) => ({ who: x.who, view: theirWords(x.view) })),
+        })),
         sessions,
         namedByMoreThanOne(shared),
       );
@@ -5120,8 +5155,20 @@ happened, and what is in the way.`;
      * a side assigned to each position before names go in, and `engagement` gets a name carried
      * beside the label rather than into it.
      */
+    const named = walkTextOnly(report);
+    /*
+     * A STEP THAT ONLY ASKED THE READER TO ASK THEMSELVES IS NOT A STEP (the 1 October review). Once
+     * their own name is "you", withNames writes it as what is missing ("Your own account of ... is
+     * not in this check-in."), which belongs under what this cannot tell them, not under what to do.
+     */
+    if (named?.theJudgement && Array.isArray(named.theJudgement.whatToDo)) {
+      named.theJudgement = {
+        ...named.theJudgement,
+        whatToDo: named.theJudgement.whatToDo.filter((m: any) => !(m && typeof m.move === 'string' && YOUR_OWN_ACCOUNT_IS_NOT_HERE.test(m.move))),
+      };
+    }
     return {
-      ...walkTextOnly(report),
+      ...named,
       sharedPicture: t(report.sharedPicture),
       centralQuestion: t(report.centralQuestion),
       agreements: walk(report.agreements),
@@ -5212,7 +5259,7 @@ happened, and what is in the way.`;
     viewerIsLead: boolean,
   ) {
     const sharedAs = (ground.report as any)?.sharedAs ?? null;
-    const named = namesTheyMayRead({ viewerIsLead, sharedAs, peersAreNamed: this.peersAreNamed(ground as any) });
+    const named = namesTheyMayRead({ viewerIsLead, sharedAs, peersAreNamed: this.peersAreNamed(ground as any, viewerParticipantId) });
     /* AND THE MACHINE'S TABLE NEVER LEAVES THE MACHINE, for any reader, lead included. Stripped
        here because this is the door every report read goes through, the board's included. See
        the-table-is-for-the-engine. */
@@ -5235,9 +5282,14 @@ happened, and what is in the way.`;
     })));
   }
 
-  private peersAreNamed(ground: { scenario?: any; peersVisibleToEachOther?: boolean | null }): boolean {
-    /* One copy of the rule, shared with the board, the grounds page and the interview. See peers-are-named. */
-    return peersAreNamedOn(ground);
+  private peersAreNamed(
+    ground: { scenario?: any; peersVisibleToEachOther?: boolean | null; participants?: any[] | null },
+    readerParticipantId: string | null | undefined,
+  ): boolean {
+    /* One copy of the rule, shared with the board, the grounds page and the interview. See
+       peers-are-named. The reader is passed so that decision 17 can tell the person reviewed on an
+       evaluation check-in, who is never named a colleague, from a colleague the lead's switch names. */
+    return peersAreNamedOn(ground as any, { participantId: readerParticipantId ?? null });
   }
 
   /**
@@ -5477,7 +5529,7 @@ happened, and what is in the way.`;
         where: { groundId, status: { in: ['WAITING', 'BLOCKING'] as any } },
         select: {
           fromParticipantId: true, onParticipantId: true, onLabel: true,
-          what: true, createdAt: true, escalatedAt: true,
+          what: true, createdAt: true, escalatedAt: true, triedSaid: true,
           /* What kind of thing is in the way, and therefore who can move it. The row has carried
              this all along and both coaching surfaces said "waiting on X" without reading it. */
           blockerKind: true,
@@ -5524,7 +5576,7 @@ happened, and what is in the way.`;
     if (!participant && !runsIt) return null;
 
     const labels = labelsForParties(ground.participants as any);
-    const names = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    const names = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any, participant?.id ?? null));
     const plainNameOf = (id: string): string | null => {
       const label = labels.get(id);
       return (label ? names.get(label) : undefined) ?? label ?? null;
@@ -5652,7 +5704,7 @@ happened, and what is in the way.`;
              Only a resolved participant is somebody you can be waiting on. */
           who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
           daysOld: held.wholeDays(d.createdAt),
-          escalated: !!d.escalatedAt,
+          escalated: itWasTakenFurther(d),
           kind: (d.blockerKind as any) ?? null,
         })),
       holdingUp: held.dependencies
@@ -5661,7 +5713,7 @@ happened, and what is in the way.`;
           what: d.what,
           who: nameOf(d.fromParticipantId, null),
           daysOld: held.wholeDays(d.createdAt),
-          escalated: !!d.escalatedAt,
+          escalated: itWasTakenFurther(d),
           kind: (d.blockerKind as any) ?? null,
         })),
       saidSomethingSpecific: mine.length > 0,
@@ -5846,7 +5898,7 @@ happened, and what is in the way.`;
              Only a resolved participant is somebody you can be waiting on. */
           who: d.onParticipantId ? nameOf(d.onParticipantId, null) : null,
               daysOld: held.wholeDays(d.createdAt),
-              escalated: !!d.escalatedAt,
+              escalated: itWasTakenFurther(d),
               kind: (d.blockerKind as any) ?? null,
             })),
           holdingUp: held.dependencies
@@ -6199,7 +6251,7 @@ happened, and what is in the way.`;
     const answeredIds = new Set(answered.map((c) => c.participantId));
     const labels = labelsForParties(ground.participants ?? []);
     const who = (ground.participants ?? []).filter((p: any) => answeredIds.has(p.id) && !p.managingOnly && p.userId !== requestingUserId).map((p: any) => labels.get(p.id) as string).filter(Boolean);
-    return { ...(served as any), beingWritten: { since: since.toISOString(), sentence: theSentenceWhileItIsWritten(who) } };
+    return { ...withoutTheCountWhileItIsWritten(served as any), beingWritten: { since: since.toISOString(), sentence: theSentenceWhileItIsWritten(who) } };
   }
 
   /**
@@ -6280,7 +6332,7 @@ happened, and what is in the way.`;
     const called = whatEachLabelIsCalled(ground.participants ?? [], {
       viewerParticipantId: me?.id ?? null,
       viewerIsLead: isInitiator || isOrgAdmin,
-      peersAreNamed: this.peersAreNamed(ground as any),
+      peersAreNamed: this.peersAreNamed(ground as any, me?.id ?? null),
     });
     /* Labels become names FIRST: the hidden-target read looks for a person's name, and a line still
        saying "Participant B" hid nothing (read live, 28 Sep 2026). */
@@ -6292,6 +6344,10 @@ happened, and what is in the way.`;
         select: { text: true, awareness: true, authoredBy: true },
       }) ?? Promise.resolve([])).catch(() => []);
       served = withoutGoalsNotToldIn(served, (notTold as any[]).filter(notToldYet).map((r) => String(r.text ?? '')));
+      /* A line of the picture whose only sentence was the goal is not left as a line with no words. */
+      if (Array.isArray((served as any).sharedPictureLines)) {
+        served = { ...(served as any), sharedPictureLines: (served as any).sharedPictureLines.filter((l: any) => !(l && typeof l.text === 'string' && !l.text.trim())) };
+      }
     }
     /* What people said stays as they said it: the hidden-target rule is for the report's own words.
        See board/their-own-words-stay (screens request 77). */
@@ -6549,7 +6605,7 @@ happened, and what is in the way.`;
      * the coaching surfaces cannot invent a second naming rule of their own.
      */
     const coachLabels = labelsForParties(ground.participants as any);
-    const coachNames = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    const coachNames = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any, participant?.id ?? null));
     /** Whoever this is, named, with no "you" - for a heading rather than a sentence. */
     const plainNameOf = (participantId: string): string | null => {
       const label = coachLabels.get(participantId);
@@ -6757,6 +6813,8 @@ happened, and what is in the way.`;
       base.sharedPicture = deeplyWithoutColleaguesQuotesForTheSubject(base.sharedPicture, subjectRecord);
       base.theOpening = deeplyWithoutColleaguesQuotesForTheSubject(base.theOpening, subjectRecord);
       base.agreements = deeplyWithoutColleaguesQuotesForTheSubject(base.agreements, subjectRecord);
+      /* The shared picture sentence by sentence, with its marks: the same words, so the same wall (1 October review). */
+      if (Array.isArray(base.sharedPictureLines)) base.sharedPictureLines = deeplyWithoutColleaguesQuotesForTheSubject(base.sharedPictureLines, subjectRecord).filter((l: any) => !(l && typeof l.text === 'string' && !l.text.trim()));
       if (Array.isArray(base.findings)) {
         base.findings = base.findings.map((f: any) => (f && typeof f === 'object'
           ? { ...f, text: deeplyWithoutColleaguesQuotesForTheSubject(f.text, subjectRecord) ?? '' }

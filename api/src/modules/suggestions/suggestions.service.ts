@@ -61,7 +61,7 @@ export interface ASuggestionFromTheEngine {
 }
 
 const PARTY_SELECT = {
-  id: true, userId: true, partyType: true, roleAsDescribed: true, email: true, createdAt: true,
+  id: true, userId: true, partyType: true, roleAsDescribed: true, email: true, createdAt: true, managingOnly: true,
   user: { select: { firstName: true, lastName: true, email: true } },
 } as const;
 
@@ -393,7 +393,7 @@ export class SuggestionsService {
     const lead = parties.find((p) => p.userId === ground.initiatorId) ?? parties.find((p) => p.partyType === 'INITIATOR');
     const about = parties.find((p) => p.id === row.aboutParticipantId);
     const viewer = as === 'person' ? about : lead;
-    const visible = namesVisibleTo(viewer?.id ?? null, parties, peersAreNamedOn(ground));
+    const visible = namesVisibleTo(viewer?.id ?? null, parties, peersAreNamedOn(ground, { participantId: viewer?.id ?? null }));
     const allLabels = [...labelsForParties(parties).values()];
     const viewerLabel = as === 'person' ? viewerLabelOf(about?.id ?? null, parties) : null;
     return {

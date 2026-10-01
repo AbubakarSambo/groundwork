@@ -48,6 +48,10 @@ const GROUND: any = {
   ],
   poll: null,
 };
+const SNAPSHOTS: Record<number, { objectiveId: string; count: number }[]> = {
+  1: [{ objectiveId: 'o1', count: 18 }, { objectiveId: 'o2', count: 4 }],
+  2: [{ objectiveId: 'o1', count: 21 }, { objectiveId: 'o2', count: 6 }],
+};
 const NOTES = [{ id: 'n1', text: 'Decide whether Kito Foods stays on the list', kind: 'DECISION', audience: 'LEAD_ONLY', closedAt: null }];
 
 const WRITES = ['create', 'createMany', 'update', 'updateMany', 'upsert', 'delete', 'deleteMany'];
@@ -72,6 +76,8 @@ export function prismaFor(viewerRole = 'MEMBER') {
     user: model('user', { findUnique: jest.fn(async () => ({ role: viewerRole, organizationId: 'org-1' })) }),
     checkIn: model('checkIn', { findMany: jest.fn(async () => structuredClone(CHECK_INS)) }),
     groundContextItem: model('groundContextItem', { findMany: jest.fn(async () => structuredClone(NOTES)) }),
+    /* Where each count stood as each round closed: what moved is read from these, on every surface. */
+    groundObjectiveSnapshot: model('groundObjectiveSnapshot', { findMany: jest.fn(async (args: any) => structuredClone(SNAPSHOTS[args?.where?.sessionNumber] ?? [])) }),
   }, {
     get(target: any, prop: string) {
       if (!(prop in target) && typeof prop === 'string' && !prop.startsWith('$')) target[prop] = model(prop);

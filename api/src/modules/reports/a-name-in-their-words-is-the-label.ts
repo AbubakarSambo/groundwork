@@ -45,6 +45,16 @@
  * read from the database for it.
  */
 
+import { theShortNameOf, isATitle } from './a-title-is-not-a-first-name';
+
+/** The name with the titles in front of it taken off: "Dr Amina Bello" is "Amina Bello". */
+function withoutItsTitles(name: string): string {
+  const words = name.split(' ');
+  let k = 0;
+  while (k < words.length - 1 && isATitle(words[k])) k += 1;
+  return words.slice(k).join(' ');
+}
+
 export interface ALabelAndItsName {
   label: string;
   name: string | null | undefined;
@@ -63,7 +73,27 @@ const startsASentence = (text: string, at: number): boolean => {
 };
 const withACapital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function aNameInTheirWordsIsTheLabel(text: string, people: ALabelAndItsName[]): string {
+/*
+ * A FIRST NAME THAT IS ALSO AN EVERYDAY WORD AT THE START OF A SENTENCE, OR A DAY OR A MONTH.
+ * Only for the read (`asTheReadSeesIt`), where the text is Groundwork's own sentence and "by Sunday"
+ * or "Will this hold?" is far more often the word than the person.
+ */
+const A_WORD_AS_OFTEN_AS_A_NAME = new Set([
+  'will', 'may', 'june', 'april', 'august', 'mark', 'bill', 'hope', 'grace', 'joy', 'faith', 'summer',
+  'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'patience', 'mercy',
+  'gift', 'favour', 'precious', 'victory', 'chance', 'rich', 'frank', 'sterling', 'major',
+]);
+
+export function aNameInTheirWordsIsTheLabel(
+  text: string,
+  people: ALabelAndItsName[],
+  opts: {
+    /** Only this person's name is swapped; everybody else is still counted for shared first names. */
+    only?: string | null;
+    /** Leave a first name that is an everyday word ("Sunday", "Will") as it is. */
+    asTheReadSeesIt?: boolean;
+  } = {},
+): string {
   if (!text || !people.length) return text;
 
   const named = people
@@ -71,24 +101,36 @@ export function aNameInTheirWordsIsTheLabel(text: string, people: ALabelAndItsNa
     .filter((p) => p.label && p.name && /^\p{Lu}/u.test(p.name));
   if (!named.length) return text;
 
-  /* How many people in this check-in answer to each first name. More than one, and it is left. */
-  const firstOf = (n: string) => n.split(' ')[0];
+  /*
+   * THE FIRST NAME IS THE FIRST WORD THAT IS NOT A TITLE (the 1 October review). For "Dr Amina Bello"
+   * this took "Dr", so "Amina" in somebody's words was never turned into her label, the model read
+   * her as somebody else, and Amina was told in her own judgement to "Ask Amina for her account".
+   * See a-title-is-not-a-first-name.
+   */
+  const firstOf = (n: string) => theShortNameOf(n);
   const shared = new Map<string, number>();
   for (const p of named) shared.set(firstOf(p.name), (shared.get(firstOf(p.name)) ?? 0) + 1);
 
   /* Every full name before any first name, and longer before shorter, so "Nadia Haddad" is spent
-     whole and cannot be left as "the initiator Haddad". */
+     whole and cannot be left as "the initiator Haddad". The name without its title too: "Amina Bello". */
   const swaps: { find: string; label: string }[] = [];
-  for (const p of named) if (p.name.includes(' ')) swaps.push({ find: p.name, label: p.label });
+  for (const p of named) {
+    if (p.name.includes(' ')) swaps.push({ find: p.name, label: p.label });
+    const untitled = withoutItsTitles(p.name);
+    if (untitled !== p.name && untitled.includes(' ')) swaps.push({ find: untitled, label: p.label });
+  }
   for (const p of named) {
     const first = firstOf(p.name);
     if (first.length < 2 || (shared.get(first) ?? 0) > 1) continue;
+    if (first === p.name && p.name.includes(' ')) continue;
+    if (opts.asTheReadSeesIt && A_WORD_AS_OFTEN_AS_A_NAME.has(first.toLowerCase())) continue;
     swaps.push({ find: first, label: p.label });
   }
   swaps.sort((a, b) => b.find.length - a.find.length);
+  const theseSwaps = opts.only ? swaps.filter((x) => x.label === opts.only) : swaps;
 
   let out = text;
-  for (const s of swaps) {
+  for (const s of theseSwaps) {
     const re = new RegExp(`${NOT_A_LETTER_BEFORE}${esc(s.find)}(['’]s)?${NOT_A_LETTER_AFTER}`, 'gu');
     out = out.replace(re, (_m: string, possessive: string | undefined, offset: number, whole: string) => {
       const label = startsASentence(whole, offset) ? withACapital(s.label) : s.label;

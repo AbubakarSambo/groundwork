@@ -18,20 +18,59 @@
  * it. Everywhere else people are named to each other by default, because they work together and
  * pretending otherwise makes the product look like it has lost track of who is in the room.
  *
- * `peersVisibleToEachOther` is the lead's explicit answer where they have given one, and it wins
- * in both directions. Null means nobody has said, so the family decides.
+ * `peersVisibleToEachOther` is the lead's explicit answer where they have given one. Null means
+ * nobody has said, so the family decides.
+ *
+ * DECISION 17 WINS OVER THE SWITCH. In an evaluation check-in (a performance plan, a promotion or
+ * recognition round, a contract renewal) the person being reviewed is never told a colleague's
+ * name, whatever the lead has switched. The review of 1 October found a lead's "people see each
+ * other" on a renewal naming a colleague to the person reviewed.
+ *
+ * Everything else about the switch is kept. On an evaluation check-in with the switch on, a
+ * colleague giving a view is still named to the other colleagues, and still reads their names,
+ * because the lead chose that and decision 17 is only about the person reviewed. But only a caller
+ * that says who is reading can know the reader is not the person reviewed. A caller that does not
+ * say gets "not named" on every evaluation check-in, so the safe answer is the default. Away from
+ * evaluation check-ins the switch still wins in both directions, a cohort included. Whoever runs
+ * the check-in, the lead or an admin with access, is named everybody by each caller as before.
  */
 
 import { BoardFamily, familyFor } from '../board/board-families';
+import { theSubjectOfAnEvaluationCheckIn, type AParticipantForTellingTheSubject } from './is-this-an-evaluation-check-in';
 
-/** True where this check-in names people to each other. */
+/** Who is reading. `participantId` is their row on this check-in, or null where they have none. */
+export interface TheReader {
+  participantId: string | null | undefined;
+}
+
+/**
+ * True where this check-in names people to each other, for this reader.
+ *
+ * `reader` is optional. Without it, an evaluation check-in never names people to each other,
+ * whatever the switch, because the reader might be the person reviewed.
+ */
 export function peersAreNamedOn(
-  ground: { scenario?: any; peersVisibleToEachOther?: boolean | null } | null | undefined,
+  ground: {
+    scenario?: any;
+    peersVisibleToEachOther?: boolean | null;
+    participants?: readonly AParticipantForTellingTheSubject[] | null;
+  } | null | undefined,
+  reader?: TheReader,
 ): boolean {
-  const evaluative = [BoardFamily.EVALUATION, BoardFamily.COHORT].includes(
-    familyFor((ground as any)?.scenario),
-  );
-  return (ground as any)?.peersVisibleToEachOther ?? !evaluative;
+  const family = familyFor((ground as any)?.scenario);
+  const switched = (ground as any)?.peersVisibleToEachOther as boolean | null | undefined;
+  if (family === BoardFamily.EVALUATION) {
+    /* Not switched on: nobody is named to each other, as before. */
+    if (switched !== true) return false;
+    /* Decision 17: the person reviewed is never named a colleague. A caller that does not say who
+       is reading cannot rule that out, so it gets the private answer. */
+    if (!reader) return false;
+    const subject = theSubjectOfAnEvaluationCheckIn((ground as any)?.participants);
+    if (!subject) return false;
+    return reader.participantId !== subject;
+  }
+  const evaluative = family === BoardFamily.COHORT;
+  return switched ?? !evaluative;
 }
 
 /**
@@ -43,4 +82,33 @@ export function peersAreNamedOn(
  */
 export function peersAreNamedByDefaultOn(ground: { scenario?: any } | null | undefined): boolean {
   return ![BoardFamily.EVALUATION, BoardFamily.COHORT].includes(familyFor((ground as any)?.scenario));
+}
+
+/**
+ * THE READER, BY THEIR SIGN-IN, for a caller that knows who is reading but not their row on this
+ * check-in. Their row is looked up among the check-in's own participants; somebody with no row (an
+ * admin, a stranger) is `participantId: null`, which is never the person reviewed.
+ *
+ * The participants must carry `partyType`, and `createdAt` and `managingOnly` where they can, or the
+ * person reviewed cannot be told apart from a colleague. A list cut down to the reader alone is safe:
+ * the reader is then the only one left to be the person reviewed, so they are told nobody's name.
+ */
+export function theReaderBySignIn(
+  ground: { participants?: readonly any[] | null } | null | undefined,
+  userId: string | null | undefined,
+): TheReader {
+  const mine = userId ? ((ground as any)?.participants ?? []).find((p: any) => p?.userId === userId) : null;
+  return { participantId: mine?.id ?? null };
+}
+
+/**
+ * WHY THE PERSON REVIEWED IS NOT TOLD WHO ELSE GAVE A VIEW, in one plain sentence the screens can show
+ * beside the lead's switch. Served on every evaluation check-in, because there the switch never reaches
+ * the person reviewed (decision 17).
+ */
+export const WHY_THE_PERSON_REVIEWED_IS_NOT_TOLD =
+  'On a check-in about one person, that person is never told who else gave a view.';
+
+export function whyThePersonReviewedIsNotTold(ground: { scenario?: any } | null | undefined): string | null {
+  return familyFor((ground as any)?.scenario) === BoardFamily.EVALUATION ? WHY_THE_PERSON_REVIEWED_IS_NOT_TOLD : null;
 }

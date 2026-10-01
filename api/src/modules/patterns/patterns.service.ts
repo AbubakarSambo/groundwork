@@ -1,3 +1,4 @@
+import { restsOnARecordNobodyHolds } from './a-pattern-does-not-rest-on-a-record-nobody-holds';
 import { Injectable, Optional, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { theirApprovedLeave } from '../suites/who-is-away';
 import { isAGuestIn } from '../participants/a-guest-is-never-somebody-on-the-hosts-list';
@@ -144,6 +145,12 @@ export class PatternsService {
       return;
     }
 
+    /* What the PERSON said, and the lines taken from it, and their own earlier lines: never Groundwork's side. */
+    const whatThePersonSaid = [
+      ...turns.filter((t) => t.role !== TurnRole.AI).map((t) => t.content ?? ''),
+      ...records.map((r) => r.text),
+      ...(earlierLines as any[]).map((r) => r?.text ?? ''),
+    ];
     const transcript = turns.map((t) => `${t.role === TurnRole.AI ? 'GROUNDWORK' : 'PERSON'}: ${t.content}`).join('\n');
     const recordText = records.map((r) => `(${r.type}) ${r.text}`).join('\n');
     const content = `PERIOD ${period}\n\nTRANSCRIPT:\n${transcript}\n\nEXTRACTED RECORD:\n${recordText}${whatTheySaidThisWasFor(statedGoals)}${theirOwnEarlierRecord(earlierLines as any, period)}`;
@@ -232,7 +239,7 @@ export class PatternsService {
      */
     const attempts = await Promise.allSettled(
       Array.from({ length: READS_PER_CHECK_IN }, () =>
-        this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput),
+        this.whatOneReadKeeps(checkInId, content, recogniseBlock, lastPeriod, statedGoals, theirDependencies, getDetectionInput, whatThePersonSaid),
       ),
     );
 
@@ -312,6 +319,7 @@ export class PatternsService {
     statedGoals: string[],
     theirDependencies: any[],
     getDetectionInput: () => Promise<DetectionInput>,
+    whatThePersonSaid: string[] = [],
   ): Promise<{ code: string; observation: string }[]> {
     const kept: { code: string; observation: string }[] = [];
 
@@ -324,6 +332,14 @@ export class PatternsService {
 
     for (const d of result?.detections ?? []) {
       if (!d.observation?.trim()) continue;
+
+      /* The transcript the detector reads has Groundwork's own lines in it, and a record the conversation
+         invented ("the record shows no payments") became a finding that somebody was not honest. A
+         pattern rests only on what the record holds. See a-pattern-does-not-rest-on-a-record-nobody-holds. */
+      if (restsOnARecordNobodyHolds(d.observation, whatThePersonSaid)) {
+        this.logger.log(`Check-in ${checkInId}: ${d.code} dropped; it rests on a record this person's record does not hold.`);
+        continue;
+      }
 
       /* The steer recognised something and wrote it up under the wrong code. See
          the-detector-has-no-memory-of-last-period.evidenceBorrowedFromAnotherCode. */
