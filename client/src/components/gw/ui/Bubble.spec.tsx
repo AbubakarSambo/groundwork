@@ -17,10 +17,10 @@ describe('Bubble', () => {
     expect(el.style.maxWidth).toBe('82%')
   })
 
-  it('the person\'s turn: ink, right-aligned, bottom-right corner squared', () => {
+  it('the person\'s turn: ink (not navy, which the prototype never puts a bubble on), right-aligned, bottom-right corner squared', () => {
     render(<Bubble mine>Hi back</Bubble>)
     const el = screen.getByText('Hi back')
-    expect(el.style.background).toBe('var(--gw-navy)')
+    expect(el.style.background).toBe('var(--gw-ink)')
     expect(el.style.color).toBe('white')
     expect(el.style.alignSelf).toBe('flex-end')
     expect(el.style.borderRadius).toBe('16px 16px 4px 16px')
