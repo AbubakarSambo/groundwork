@@ -89,7 +89,9 @@ import { leaveOfThePeopleOn, theAwayLinesFor } from '../suites/who-is-away';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
-import { whereEachPersonIs, hasANumberADateOrADocument } from './where-each-person-is-against-their-number';
+import { whereEachPersonIs, hasANumberADateOrADocument, notNothingWhereThePageSaysSomething } from './where-each-person-is-against-their-number';
+import { theQuickReadAgreesWithTheReport, theDisagreementTheReportOpensWith } from './the-quick-read-agrees-with-the-report';
+import { oneCountPerThing } from './one-count-per-thing';
 import { type ToLookAt } from './the-same-thing-for-three-check-ins';
 import { theSameThingFromTheRows } from './the-same-thing-read-from-the-record';
 import { whenTheBoardLastChanged, whatAReaderWhoOnlyReadsIsTold } from './when-the-board-last-changed';
@@ -961,6 +963,9 @@ export class BoardService {
       }
     }
 
+    /* One row per thing, with one count. See one-count-per-thing. */
+    if (Array.isArray(out.objectives)) out.objectives = oneCountPerThing(out.objectives as any[], theLeadsRow);
+
     if (has('divergence') && reportSafe) {
       /*
        * THE BOARD HOLDS THE SUBSTANCE NOW.
@@ -1023,6 +1028,14 @@ export class BoardService {
         ...(sessionShape?.whereThingsStand?.settledMarks ? { settledMarks: sessionShape.whereThingsStand.settledMarks } : {}),
         ...(sessionShape?.whereThingsStand?.openMarks ? { stillOpenMarks: sessionShape.whereThingsStand.openMarks } : {}),
       };
+      /*
+       * AND THE REASON THERE IS NOTHING HERE ONLY WHERE THERE IS NOTHING HERE (review of 1 October
+       * 2026). "Everybody answered, and nothing in the written report reads as a difference or an
+       * agreement yet." went out on 38 boards that listed differences right beside it. The screen
+       * hid it; the payload, which the panel and the API read too, said both. It is said only over
+       * an empty section now.
+       */
+      if ((out.divergence.items as any[]).length || (out.divergence.agreements as any[]).length) delete out.divergence.whyNothingYet;
     }
 
     /*
@@ -1227,6 +1240,31 @@ export class BoardService {
       out.toLookAt = await this.whatHasStayedTheSameFor(groundId, ground as any, checkIns as any[], rawDependencies, me?.id ?? null, nameOf, aColleague);
     }
 
+    /*
+     * AND NOBODY THIS PAGE SHOWS AS SOMETHING TO LOOK AT IS "NOTHING HERE NEEDS YOU" (review of
+     * 1 October 2026). On the sales run the lead read "Femi Okonkwo has checked in, and nothing here
+     * needs you this week." above "Femi Okonkwo has had the same thing in the way for 3 check-ins.",
+     * and Kwame Mensah got the same line while a difference two sections up was about his count. A
+     * person named in a difference on this board, or in what keeps coming up, has something here.
+     */
+    if (Array.isArray(out.eachPerson)) {
+      /* And where the report opens with a disagreement it never listed (contractreview, run 21), the
+         people that opening names are in it. See the-quick-read-agrees-with-the-report. */
+      const sp = ((ground as any).report?.sharedPicture as string | null) ?? '';
+      const theOpening = theDisagreementTheReportOpensWith(sp) ? String(sp).split(/\n\s*\n/)[0] : '';
+      out.eachPerson = notNothingWhereThePageSaysSomething(
+        out.eachPerson as any[],
+        [
+          ...(theOpening
+            ? (out.eachPerson as any[]).filter((r) => String(r.who ?? '').trim() && theOpening.includes(String(r.who).trim())).map((r) => ({ participantId: r.participantId, who: null }))
+            : []),
+          ...((out.toLookAt as any[] | undefined) ?? []).map((t) => ({ participantId: t?.participantId ?? null, who: null })),
+          ...((out.divergence?.items as any[] | undefined) ?? []).flatMap((d) => [...(d?.positions ?? []), ...(d?.perspectives ?? [])])
+            .map((side: any) => ({ participantId: null, who: typeof side?.who === 'string' ? side.who : null })),
+        ],
+      );
+    }
+
     if (has('checkInGrid')) {
       out.checkInGrid = {
         sessions: Array.from(new Set(checkIns.map((c) => c.sessionNumber))).sort((a, b) => a - b),
@@ -1393,6 +1431,8 @@ export class BoardService {
       }
       /* The same first blocker as the top line, from the one place that picks it (request 88). */
       out.quickRead = theBlockersTileNamesThis(out.quickRead as any, out.howItIsGoing?.glance?.inTheWay?.oldest ?? null);
+      /* And never "no disagreement" over a report that opens with one. See the-quick-read-agrees-with-the-report. */
+      out.quickRead = theQuickReadAgreesWithTheReport(out.quickRead as any, ((ground as any).report?.sharedPicture as string | null) ?? null) as any;
     }
 
     // Loaded once and shared. It was fetched twice, running every one of these

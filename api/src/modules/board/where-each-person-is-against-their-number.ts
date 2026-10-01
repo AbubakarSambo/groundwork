@@ -226,6 +226,13 @@ export function whatHappened(row: PersonRow, reason: Reason, roundsPlanned: numb
       /* Decision 53, item 11: never told "nothing here needs you" when this reader cannot see
          whether that is true. */
       if (row.targetHiddenFromReader) return `${start} has checked in.`;
+      /*
+       * AND NEVER WHILE SOMETHING IS STILL IN THEIR WAY (review of 1 October 2026). Femi Okonkwo read
+       * "has checked in, and nothing here needs you this week" on the lead's board while the same
+       * board listed him waiting on his customers' bank statements, because he had chased them and it
+       * was under a fortnight old, so there was nothing to ask. Something open is something.
+       */
+      if (row.inTheWay.length) return `${start} has checked in, and still has something in the way.`;
       return `${start} has checked in, and nothing here needs you this week.`;
     }
   }
@@ -373,4 +380,28 @@ export function whereEachPersonIs(rows: PersonRow[], roundsPlanned: number | nul
       /* Within that, by name, so the order does not shuffle between reads and read as movement. */
       return a.who.localeCompare(b.who);
     });
+}
+
+/**
+ * A ROW SAYS "NOTHING HERE NEEDS YOU" ONLY WHERE NOTHING ON THE SAME PAGE IS ABOUT THAT PERSON
+ * (review of 1 October 2026).
+ *
+ * The row is worked out from the person's own number and blockers; the page around it also lists
+ * the differences between people and what keeps coming up. On the sales run Femi Okonkwo's row
+ * said "nothing here needs you this week" while what keeps coming up said he had had the same
+ * thing in the way for 3 check-ins. Where the page names the person, by id or by the name this
+ * reader sees, the row keeps "has checked in." and leaves the rest to what the page says.
+ */
+const NOTHING_NEEDS_YOU = /, and nothing here needs you this week\.$/;
+export function notNothingWhereThePageSaysSomething<T extends { participantId: string; who?: string | null; says?: string }>(
+  rows: T[],
+  aboutSomebody: { participantId: string | null; who: string | null }[],
+): T[] {
+  const ids = new Set(aboutSomebody.map((a) => a.participantId).filter(Boolean) as string[]);
+  const names = new Set(aboutSomebody.map((a) => (a.who ?? '').trim().toLowerCase()).filter((w) => w && w !== 'you' && w !== 'a colleague'));
+  return rows.map((row) => {
+    if (typeof row.says !== 'string' || !NOTHING_NEEDS_YOU.test(row.says)) return row;
+    const named = ids.has(row.participantId) || names.has(String(row.who ?? '').trim().toLowerCase());
+    return named ? { ...row, says: row.says.replace(NOTHING_NEEDS_YOU, '.') } : row;
+  });
 }

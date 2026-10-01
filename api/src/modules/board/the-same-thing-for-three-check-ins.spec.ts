@@ -279,10 +279,17 @@ describe('a line that said nothing needs you, when something keeps coming up', (
     commitments: [{ participantId: 'p-aisha', text: 'visit Green Mart with the new price list', status: 'UNKNOWN', statedInSession: 1, saidAgainIn: [2, 3], explicit: true, source: 'CHECK_IN', saidWordForWord: true }],
   };
 
-  it('her row on its own says nothing needs the lead, and the line under what keeps coming up does not', async () => {
+  /*
+   * CHANGED 1 OCTOBER 2026 (review of 1 October, section 3). This used to pin her row, `eachPerson`,
+   * at "has checked in, and nothing here needs you this week." while the same board said she had
+   * made the same promise for 3 check-ins: the page contradicting itself, which is the defect. Her
+   * row now says what `eachPersonToday` says, on every list the lead reads.
+   */
+  it('neither her row nor the line under what keeps coming up says nothing needs the lead', async () => {
     const b = await boardFor('u-wairimu', 'MEMBER', data).board;
     const row = b.eachPerson.find((r: any) => r.participantId === 'p-aisha');
-    expect(row.says).toBe('Aisha Mwangi has checked in, and nothing here needs you this week.');
+    expect(row.says).toBe('Aisha Mwangi has checked in.');
+    expect(row.says).not.toMatch(/nothing here needs you/);
     const today = b.eachPersonToday.find((r: any) => r.participantId === 'p-aisha');
     expect(today.keepsComingUp).toBe('Aisha Mwangi has made the same promise for 3 check-ins.');
     expect(today.line).toBe('Aisha Mwangi has checked in.');
