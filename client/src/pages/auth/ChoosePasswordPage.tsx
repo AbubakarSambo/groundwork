@@ -179,36 +179,36 @@ export function ChoosePasswordPage() {
       */}
       {/* A form, so Enter submits from the first field too, and the password manager is told what these are. */}
       <form noValidate onSubmit={e => { e.preventDefault(); submit() }}>
-        <PasswordField
-          id="new-password"
-          label={kind === 'set' ? 'Password' : 'New password'}
-          autoComplete="new-password"
-          value={password}
-          onChange={setPassword}
-          autoFocus
-        />
-        {kind === 'reset' ? (
-          <>
-            <PasswordField
-              id="confirm-password"
-              label="Type it again"
-              spokenAs="password you typed again"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={setConfirm}
-            />
-            <PasswordRules password={password} confirm={confirm} />
-          </>
-        ) : (
-          <>
-            <PasswordStrength password={password} email={theirEmail} />
-            <p className="gwui-fine">
-              Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.
-            </p>
-          </>
-        )}
-        {error && <AuthError>{error}</AuthError>}
         <Stack gap={10}>
+          <PasswordField
+            id="new-password"
+            label={kind === 'set' ? 'Password' : 'New password'}
+            autoComplete="new-password"
+            value={password}
+            onChange={setPassword}
+            autoFocus
+          />
+          {kind === 'reset' ? (
+            <>
+              <PasswordField
+                id="confirm-password"
+                label="Type it again"
+                spokenAs="password you typed again"
+                autoComplete="new-password"
+                value={confirm}
+                onChange={setConfirm}
+              />
+              <PasswordRules password={password} confirm={confirm} />
+            </>
+          ) : (
+            <>
+              <PasswordStrength password={password} email={theirEmail} />
+              <p className="gwui-fine">
+                Use one you don’t use anywhere else. A few unrelated words are easier to remember than symbols.
+              </p>
+            </>
+          )}
+          {error && <AuthError>{error}</AuthError>}
           <Button type="submit" wide disabled={save.isPending}>
             {save.isPending ? 'Saving…' : 'Save password'}
           </Button>

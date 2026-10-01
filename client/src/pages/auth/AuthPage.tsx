@@ -461,25 +461,25 @@ export function AuthPage() {
 
         <form noValidate onSubmit={submitPassword}>
           {trap.field}
-          {/* "Email", not the prototype's "Your work email": which label to use is waiting for Hafsah. */}
-          <AuthField
-            id="signin-email"
-            label="Email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={v => { setEmail(v); clearNotices() }}
-            autoFocus
-          />
-          <PasswordField
-            id="signin-password"
-            label="Password"
-            autoComplete="current-password"
-            value={password}
-            onChange={v => { setPassword(v); clearNotices() }}
-          />
-          {error && <AuthError>{error}</AuthError>}
           <Stack gap={10}>
+            {/* "Email", not the prototype's "Your work email": which label to use is waiting for Hafsah. */}
+            <AuthField
+              id="signin-email"
+              label="Email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={v => { setEmail(v); clearNotices() }}
+              autoFocus
+            />
+            <PasswordField
+              id="signin-password"
+              label="Password"
+              autoComplete="current-password"
+              value={password}
+              onChange={v => { setPassword(v); clearNotices() }}
+            />
+            {error && <AuthError>{error}</AuthError>}
             <Button type="submit" wide disabled={signIn.isPending}>
               {signIn.isPending ? 'Signing you in…' : 'Sign in'}
             </Button>
@@ -551,48 +551,48 @@ export function AuthPage() {
 
         <form noValidate onSubmit={submitCreate}>
           {trap.field}
-          <AuthField id="signup-name" label="Your name" value={firstName} onChange={v => { setFirstName(v); clearNotices() }} autoFocus />
-          {/* "Email", not "Work email": Hafsah's decision of 26 September. Nothing requires a company address. */}
-          <AuthField id="signup-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} />
-          {/*
-            ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from the name. Optional,
-            because a person signing up to try it should not be stopped by a naming decision.
-          */}
-          {!fromAnInviteLink && (
-            <>
-              <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
-              <p className="gwui-field-help">
-                {!orgTouched && suggestedOrg && orgName === suggestedOrg
-                  ? 'We suggested this from your email address. You can change it now or later.'
-                  : 'What your organisation will be called. You can change it later.'}
-              </p>
-            </>
-          )}
-
-          <div>
-            <p className="gwui-field-label">How would you like to sign in?</p>
-            <Choices
-              label="How would you like to sign in?"
-              value={signInBy}
-              onChange={k => { setSignInBy(k as 'link' | 'password'); clearNotices() }}
-              options={[
-                { key: 'link', label: 'With a link we email you' },
-                { key: 'password', label: 'With a password' },
-              ]}
-            />
-          </div>
-
-          {signInBy === 'password' && (
-            <>
-              <PasswordField id="signup-password" label="Password" autoComplete="new-password" value={newPassword} onChange={v => { setNewPassword(v); clearNotices() }} />
-              <PasswordField id="signup-confirm" label="Type it again"
-              spokenAs="password you typed again" autoComplete="new-password" value={newConfirm} onChange={v => { setNewConfirm(v); clearNotices() }} />
-              <PasswordRules password={newPassword} confirm={newConfirm} email={email.trim() || null} />
-            </>
-          )}
-
-          {error && <AuthError>{error}</AuthError>}
           <Stack gap={10}>
+            <AuthField id="signup-name" label="Your name" value={firstName} onChange={v => { setFirstName(v); clearNotices() }} autoFocus />
+            {/* "Email", not "Work email": Hafsah's decision of 26 September. Nothing requires a company address. */}
+            <AuthField id="signup-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} />
+            {/*
+              ASKED, NOT GUESSED. Left empty this becomes "Sam's workspace" from the name. Optional,
+              because a person signing up to try it should not be stopped by a naming decision.
+            */}
+            {!fromAnInviteLink && (
+              <div>
+                <AuthField id="signup-org" label="Your organisation (optional)" value={orgName} onChange={v => { setOrgTouched(true); setOrgName(v); clearNotices() }} />
+                <p className="gwui-field-help">
+                  {!orgTouched && suggestedOrg && orgName === suggestedOrg
+                    ? 'We suggested this from your email address. You can change it now or later.'
+                    : 'What your organisation will be called. You can change it later.'}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <p className="gwui-field-label">How would you like to sign in?</p>
+              <Choices
+                label="How would you like to sign in?"
+                value={signInBy}
+                onChange={k => { setSignInBy(k as 'link' | 'password'); clearNotices() }}
+                options={[
+                  { key: 'link', label: 'With a link we email you' },
+                  { key: 'password', label: 'With a password' },
+                ]}
+              />
+            </div>
+
+            {signInBy === 'password' && (
+              <Stack gap={10}>
+                <PasswordField id="signup-password" label="Password" autoComplete="new-password" value={newPassword} onChange={v => { setNewPassword(v); clearNotices() }} />
+                <PasswordField id="signup-confirm" label="Type it again"
+                spokenAs="password you typed again" autoComplete="new-password" value={newConfirm} onChange={v => { setNewConfirm(v); clearNotices() }} />
+                <PasswordRules password={newPassword} confirm={newConfirm} email={email.trim() || null} />
+              </Stack>
+            )}
+
+            {error && <AuthError>{error}</AuthError>}
             <Button type="submit" wide disabled={createAccount.isPending}>
               {createAccount.isPending ? 'Sending…' : 'Create account'}
             </Button>
@@ -617,9 +617,9 @@ export function AuthPage() {
       >
         <form noValidate onSubmit={submitLink}>
           {trap.field}
-          <AuthField id="link-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
-          {error && <AuthError>{error}</AuthError>}
           <Stack gap={10}>
+            <AuthField id="link-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
+            {error && <AuthError>{error}</AuthError>}
             <Button type="submit" wide disabled={sendLink.isPending}>
               {sendLink.isPending ? 'Sending…' : 'Email me a sign-in link'}
             </Button>
@@ -647,10 +647,10 @@ export function AuthPage() {
   return (
     <AuthCard title="Forgot your password?" sub="We’ll email you a link to choose a new one. It works for an hour.">
       <form noValidate onSubmit={(e) => { e.preventDefault(); setError(''); { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } } sendReset.mutate() }}>
-        {/* "Email", not the prototype's "Work email": which label to use is waiting for Hafsah. */}
-        <AuthField id="forgot-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
-        {error && <AuthError>{error}</AuthError>}
         <Stack gap={10}>
+          {/* "Email", not the prototype's "Work email": which label to use is waiting for Hafsah. */}
+          <AuthField id="forgot-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); clearNotices() }} autoFocus />
+          {error && <AuthError>{error}</AuthError>}
           <Button type="submit" wide disabled={sendReset.isPending}>
             {sendReset.isPending ? 'Sending…' : 'Email me a reset link'}
           </Button>

@@ -85,9 +85,9 @@ function AskForAFreshLink({ kind, title, sub, button }: { kind: 'sign-in' | 'res
     <AuthCard title={title} sub={sub}>
       <form noValidate onSubmit={e => { e.preventDefault(); setError(''); { const wrong = whatIsWrongWithTheAddress(email); if (wrong) { setError(wrong); return } } send.mutate() }}>
         {trap.field}
-        <AuthField id="expired-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); setError('') }} autoFocus />
-        {error && <AuthError>{error}</AuthError>}
         <Stack gap={10}>
+          <AuthField id="expired-email" label="Email" type="email" autoComplete="email" value={email} onChange={v => { setEmail(v); setError('') }} autoFocus />
+          {error && <AuthError>{error}</AuthError>}
           <Button type="submit" wide disabled={send.isPending}>
             {send.isPending ? 'Sending…' : button}
           </Button>
