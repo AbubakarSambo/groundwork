@@ -3,6 +3,7 @@ import { theJudgementWithItsConversationPoints } from './the-judgement-and-a-goa
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from './no-internal-label-reaches-anyone';
 import { thePrivateSummaryAsRead } from '../conversation/the-private-summary-opens-with-a-sentence';
 import { whoIsInTheRound } from './how-many-have-answered';
+import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { AsyncLocalStorage } from 'async_hooks';
 import { canSeeDocument } from '../documents/who-can-see-a-document';
 import { targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
@@ -2244,12 +2245,18 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * something else). Now both count who is in the round by the header's rule (whoIsInTheRound),
      * and "answered" is who answered this round.
      */
-    const inTheRound = whoIsInTheRound(parties as any[], roundNow, (ground as any).scenario);
     const answeredThisRound = new Set(
       ((await (this.prisma.checkIn?.findMany?.({
         where: { groundId, sessionNumber: roundNow, status: { in: AN_ANSWER } },
         select: { participantId: true },
       }) ?? Promise.resolve([] as any[])).catch(() => [] as any[])) as any[]).map((r: any) => r.participantId),
+    );
+    /* Somebody away, who has not answered, is not in the count (week 23). */
+    const awayThisRound = await whoOnACheckInIsAway(this.prisma, groundId);
+    const inTheRound = whoIsInTheRound(
+      (parties as any[]).map((p: any) => ({ ...p, awayUntil: awayThisRound.get(p.id) ?? null, checkIns: answeredThisRound.has(p.id) ? [{ status: 'COMPLETED', sessionNumber: roundNow }] : [] })),
+      roundNow,
+      (ground as any).scenario,
     );
     const inRoundIds = new Set(inTheRound.map((p: any) => p.id));
     const answered = [...answeredThisRound].filter((id) => inRoundIds.has(id)).length || Math.min(peopleWhoAnswered, inTheRound.length);
@@ -3091,7 +3098,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * round waits on them. Who the round WAITS on before it is written stays whoAnswered, above.
      */
     const theRound = howManyInTheRoundAnswered(
-      (ground.participants as any[]).map((p: any) => ({ ...p, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
+      (ground.participants as any[]).map((p: any) => ({ ...p, awayUntil: whoAnswered.awayUntil?.[p.id] ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
       sessionNumber,
       (ground as any).scenario,
     );
@@ -3292,8 +3299,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * managing-only, so the masthead said "4 people, 2 of 4 answered" while the finding three lines
      * below it - which asks how-many-have-answered - said "2 of 5". Same card, two denominators.
      */
+    const awayNow = await whoOnACheckInIsAway(this.prisma, groundId);
     const counting = whoIsInTheRound(
-      ground.participants.map((p: any) => ({ ...p, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
+      ground.participants.map((p: any) => ({ ...p, awayUntil: awayNow.get(p.id) ?? null, checkIns: answeredIds.has(p.id) ? [{ status: CheckInStatus.COMPLETED, sessionNumber }] : [] })),
       sessionNumber,
       (ground as any).scenario,
     )

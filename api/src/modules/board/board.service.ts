@@ -82,6 +82,7 @@ import { theShortNameOf } from '../reports/a-title-is-not-a-first-name';
 import { whatThisSessionHolds, atAGlanceTiles, theBlockersTileNamesThis } from '../reports/what-this-session-holds';
 import { quotesBuiltAtTheRead, theRecordAQuoteMayComeFrom } from '../reports/a-quote-built-at-the-read';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
+import { leaveOfThePeopleOn } from '../suites/who-is-away';
 import { adminsThisOrg } from '../grounds/who-may-read-this-check-in';
 import { CANNOT_OPEN_THE_BOARD_YET } from '../participants/nobody-joins-your-company-by-being-invited-to-a-check-in';
 import { theLeadsWordsAbout, withoutTheLeadsDescriptionOfAnyone, theShareableTextFor } from '../grounds/the-leads-words-about-someone';
@@ -626,6 +627,7 @@ export class BoardService {
        * disagree about one week. Not a new read: the same summary, the same two facts.
        */
       howItIsGoing: howACheckInIsGoing({
+        leave: await leaveOfThePeopleOn(this.prisma as any, [groundId]),
         checkIns: (ground as any).checkIns ?? [],
         participants: ground.participants ?? [],
         dependencies: (ground as any).dependencies ?? [],

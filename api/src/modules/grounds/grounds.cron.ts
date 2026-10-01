@@ -4,6 +4,7 @@ import { deadlineOf } from './when-the-clock-starts';
 import { A_GROUND_IS_OVER, A_GROUND_IS_HELD, A_GROUND_HAS_STOPPED } from './a-ground-that-has-ended';
 import { AN_ANSWER } from './an-answer-includes-a-refusal';
 import { recordRoundCompletion } from './round-completion';
+import { whoOnACheckInIsAway } from '../suites/who-is-away';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -838,8 +839,11 @@ export class GroundsCron {
            picture cannot help anybody, and a round whose picture was empty keeps no snapshot at all,
            so bounding the re-emit to one round per ground is what keeps this from firing daily. */
         const closed: { sessionNumber: number; anAccount: (typeof answers)[number] }[] = [];
+        /* Somebody on approved leave today is not waited on (week 23). */
+        const away = await whoOnACheckInIsAway(this.prisma, g.id);
         for (const [sessionNumber, rows] of rounds) {
-          if (new Set(rows.map((r) => r.participantId)).size < parties.length) continue;
+          const spoke = new Set(rows.map((r) => r.participantId));
+          if (parties.some((p) => !spoke.has(p.id) && !away.has(p.id))) continue;
           const anAccount = rows.find((r) => r.status === CheckInStatus.COMPLETED);
           if (!anAccount) continue;
           closed.push({ sessionNumber, anAccount });

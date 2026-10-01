@@ -31,6 +31,7 @@ import { targetsFor } from '../board/whose-number-is-whose-business';
 import { namesOnTheRoster, targetsHiddenFrom, withoutHiddenTargetsIn } from '../board/a-hidden-target-stays-hidden';
 import { contextGaps, contextChatPrompt, openingLine, withoutTheOpeningGreeting } from './the-context-chat';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
+import { leaveOfThePeopleOn, whoOnACheckInIsAway } from '../suites/who-is-away';
 import { LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { offerToKeep, keepWhatWasOffered, dropWhatWasOffered } from '../knowledge/organisation-memory';
 import { keepable, soundsCompanyWide, MEMORY_PROMPT, MEMORY_TOOL, NOT_KEPT } from '../knowledge/what-the-organisation-keeps';
@@ -1387,6 +1388,8 @@ export class GroundsService {
       }
     }
 
+    /* Who is away today, for every check-in in the list at once (week 23). */
+    const leaveOnTheList = await leaveOfThePeopleOn(this.prisma as any, [...orgGrounds, ...participantGrounds].map((g: any) => g.id));
     return [...orgGrounds, ...participantGrounds]
       .map(g => {
         // Only set when the ground belongs to a different organisation than the one
@@ -1457,6 +1460,7 @@ export class GroundsService {
           sharedPicture: ((rest as any).reportRounds?.[0]?.sharedPicture as string | null) ?? null,
           /* The opening the report wrote, preferred over slicing the picture. See how-a-check-in-is-going. */
           theOpening: ((rest as any).report?.theOpening as string | null) ?? null,
+          leave: leaveOnTheList,
         });
         const roundsDone = going.glance.progress.roundsDone;
         /*
@@ -7373,11 +7377,14 @@ export class GroundsService {
     /* Everybody has ANSWERED - and a decline is an answer (an-answer-includes-a-refusal.ts). Counting
        only COMPLETED here froze every round with one refusal in it, for that session and every one after. */
     let completed = 0;
+    /* Somebody on approved leave today is not waited on; if they answer anyway, they count (week 23). */
+    const away = await whoOnACheckInIsAway(this.prisma as any, groundId);
     for (const p of active) {
       const ci = await this.prisma.checkIn.findFirst({
         where: { participantId: p.id, sessionNumber, status: { in: AN_ANSWER } },
         select: { status: true },
       });
+      if (!ci && away.has(p.id)) continue;
       if (!ci) return false;
       if (ci.status === CheckInStatus.COMPLETED) completed += 1;
     }

@@ -2,6 +2,7 @@ import { CheckInStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AN_ANSWER } from '../grounds/an-answer-includes-a-refusal';
 import { waitsOnAManagingOnlyLead } from '../grounds/the-lead-who-only-asks';
+import { whoOnACheckInIsAway } from '../suites/who-is-away';
 
 /**
  * "N OF M ANSWERED", COMPUTED ONCE.
@@ -32,6 +33,11 @@ export interface SomebodyWhoMightAnswer {
   userId?: string | null;
   invitedAt?: Date | string | null;
   inviteTokenExpiresAt?: Date | string | null;
+  /**
+   * The last day of approved leave that covers today, when they are away (week 23). Somebody who is
+   * away is not waited on, and is not counted as still to answer; if they answer anyway, they count.
+   */
+  awayUntil?: string | null;
   /** This session's rows for them, whatever the state. */
   checkIns?: { status: string; sessionNumber?: number }[];
 }
@@ -55,6 +61,7 @@ export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
   const waitsOnTheLead = waitsOnAManagingOnlyLead(scenario, sessionNumber);
   return (people ?? []).filter((p) => {
     if (p.managingOnly && !waitsOnTheLead) return false;
+    if (p.awayUntil && !theyAnswered(p, sessionNumber)) return false;
     if (p.userId) return true;
     if (theyAnswered(p, sessionNumber)) return true;
     /*
@@ -81,7 +88,9 @@ export function whoIsExpected<T extends SomebodyWhoMightAnswer>(
  */
 export function whoIsInTheRound<T extends { managingOnly?: boolean | null }>(people: T[], sessionNumber: number, scenario?: string | null): T[] {
   const waitsOnTheLead = waitsOnAManagingOnlyLead(scenario, sessionNumber);
-  return (people ?? []).filter((p) => !p.managingOnly || waitsOnTheLead);
+  /* Somebody away, who has not answered, is not in the count this round waits on (week 23). */
+  return (people ?? []).filter((p) => (!p.managingOnly || waitsOnTheLead)
+    && !((p as unknown as SomebodyWhoMightAnswer).awayUntil && !theyAnswered(p as unknown as SomebodyWhoMightAnswer, sessionNumber)));
 }
 
 /** Of the people in the round, by the header's rule, how many have answered this round. */
@@ -110,6 +119,8 @@ export interface HowManyHaveAnswered {
   expected: number;
   /** Everybody this session waits on, in row order. */
   expectedIds: string[];
+  /** Participant ids of people who are away today, with the last day of it, and who are not waited on. */
+  awayUntil: Record<string, string>;
   /** Participant ids still expected. Names are the caller's business; this file knows none. */
   waitingOn: string[];
   /** Of those who answered, how many gave an account (COMPLETED) rather than declining. */
@@ -123,7 +134,8 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
   /* Optional-chained the way the rest of this codebase reaches a model a test double may not carry:
      with no ground read, the rule falls back to what it did before - managing-only leads are out. */
   const ground = await (prisma.ground?.findUnique?.({ where: { id: groundId }, select: { scenario: true } }) ?? Promise.resolve(null)).catch(() => null);
-  const expected = await prisma.groundParticipant.findMany({
+  const away = await whoOnACheckInIsAway(prisma, groundId);
+  const everyone = await prisma.groundParticipant.findMany({
     where: {
       groundId,
       ...(waitsOnAManagingOnlyLead(ground?.scenario, sessionNumber) ? {} : { managingOnly: false }),
@@ -135,11 +147,14 @@ export async function howManyHaveAnswered(prisma: PrismaService, groundId: strin
     },
     select: { id: true, checkIns: { where: { sessionNumber, status: { in: AN_ANSWER } }, select: { status: true } } },
   });
+  /* Away and not answered: not waited on. Away and answered anyway: counted like anybody. */
+  const expected = everyone.filter((p) => !(away.has(p.id) && p.checkIns.length === 0));
   const answeredRows = expected.filter((p) => p.checkIns.length > 0);
   return {
     answered: answeredRows.length,
     expected: expected.length,
     expectedIds: expected.map((p) => p.id),
+    awayUntil: Object.fromEntries(everyone.filter((p) => away.has(p.id) && p.checkIns.length === 0).map((p) => [p.id, away.get(p.id) as string])),
     waitingOn: expected.filter((p) => p.checkIns.length === 0).map((p) => p.id),
     completed: answeredRows.filter((p) => p.checkIns.some((c) => c.status === CheckInStatus.COMPLETED)).length,
     declinedIds: expected
