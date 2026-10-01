@@ -38,7 +38,7 @@ const party = (id: string, who: Who, partyType: string, role: string, at: number
 const grounds: Record<string, any> = {
   'g-daniel': {
     id: 'g-daniel', label: 'Daniel, the next six weeks', organizationId: ORG, initiatorId: 'u-wairimu',
-    scenario: 'PERFORMANCE_IMPROVEMENT', peersVisibleToEachOther: null,
+    scenario: 'PIP', peersVisibleToEachOther: null,
     participants: [party('p-w1', 'wairimu', 'INITIATOR', 'Sales lead', 1), party('p-d1', 'daniel', 'PARTICIPANT', 'Sales rep', 2)],
   },
   'g-sales': {
@@ -82,6 +82,16 @@ function matches(row: any, where: any): boolean {
     if (v && typeof v === 'object' && 'in' in v) return v.in.includes(row[k]);
     return (row[k] ?? null) === v;
   });
+}
+
+/** A row as it would sit in the table, written before the engine stopped reaching anything on a team check-in. */
+function aRowAlreadyThere(over: Partial<any> = {}) {
+  return {
+    id: 's-old', organizationId: ORG, ...aSuggestion(), ifYouAgree: null, otherChoices: [], forTheEnding: null,
+    decision: null, decisionReason: null, decidedById: null, decidedAt: null, theirSide: null, theirSideAt: null,
+    appeal: null, appealedAt: null, appealOutcome: null, appealReason: null, appealDecidedById: null, appealDecidedAt: null,
+    createdAt: new Date(2026, 8, 1), ...over,
+  };
 }
 
 function setup() {
@@ -252,9 +262,10 @@ describe('the person, Daniel, reads the facts and the decision, never the verdic
   });
 
   it('on the You board, reads every suggestion about him, and only those', async () => {
-    const { svc, as } = setup();
+    const { svc, as, suggestions } = setup();
     await svc.record(aSuggestion());
-    await svc.record(aSuggestion({ groundId: 'g-sales', aboutParticipantId: 'p-m2', factsForThem: 'MIRIAM-FACTS', headline: 'MIRIAM-HEADLINE', verdict: 'reward' }));
+    /* CHANGED 1 October: nothing is reached on a team check-in now (decision 6), so Miriam's is a row written there before that rule. */
+    suggestions.push(aRowAlreadyThere({ groundId: 'g-sales', aboutParticipantId: 'p-m2', factsForThem: 'MIRIAM-FACTS', headline: 'MIRIAM-HEADLINE', verdict: 'reward' }));
     const mine = await svc.aboutYou(as('daniel'));
     expect(mine).toHaveLength(1);
     expect(mine[0].checkIn).toEqual({ id: 'g-daniel', label: 'Daniel, the next six weeks' });
@@ -335,12 +346,43 @@ describe('an admin, Grace, reads a suggestion only once it is appealed, and deci
 
 describe('a colleague, Miriam, and somebody outside, Kofi', () => {
   it('Miriam reads nothing about Daniel on the team check-in; Kofi is refused', async () => {
-    const { svc, as } = setup();
-    await svc.record(aSuggestion({ groundId: 'g-sales', aboutParticipantId: 'p-d2' }));
+    const { svc, as, suggestions } = setup();
+    suggestions.push(aRowAlreadyThere({ groundId: 'g-sales', aboutParticipantId: 'p-d2' }));
     expect((await svc.forGround('g-sales', as('miriam'))).suggestions).toEqual([]);
     await expect(svc.forGround('g-sales', as('kofi'))).rejects.toThrow(REFUSED.notInIt);
-    /* Daniel still reads his own there. */
-    expect((await svc.forGround('g-sales', as('daniel'))).suggestions).toHaveLength(1);
+  });
+});
+
+/**
+ * ON A TEAM CHECK-IN, NOTHING (decision 6, clarified 29 September: a verdict is reached only on the
+ * evaluation check-ins of decision 17). "Sales team, Q3" is not one. The engine cannot write a
+ * suggestion there, and a row already there is served to nobody and cannot be decided, answered or
+ * appealed. CHANGED 1 October: Daniel used to read his own there.
+ */
+describe('on the team check-in, which is not an evaluation check-in', () => {
+  it('the engine cannot write one there', async () => {
+    const { svc } = setup();
+    await expect(svc.record(aSuggestion({ groundId: 'g-sales', aboutParticipantId: 'p-d2' })))
+      .rejects.toThrow('A suggestion is only reached on a performance plan, a recognition or a contract renewal.');
+  });
+
+  it('a row already there is served to no reader, anywhere', async () => {
+    const { svc, as, suggestions } = setup();
+    suggestions.push(aRowAlreadyThere({ groundId: 'g-sales', aboutParticipantId: 'p-d2', appeal: 'I disagree.', appealedAt: new Date(2026, 8, 3), decision: 'A plan', decisionReason: 'Slipping.', decidedById: 'u-wairimu' }));
+    for (const who of ['wairimu', 'daniel', 'miriam', 'grace', 'omar'] as const) {
+      expect((await svc.forGround('g-sales', as(who))).suggestions).toEqual([]);
+    }
+    expect(await svc.aboutYou(as('daniel'))).toEqual([]);
+    expect((await svc.appealsToDecide(as('grace'))).appeals).toEqual([]);
+    expect(await svc.latestForTheLeadAbout('u-daniel', as('wairimu'))).toBeNull();
+  });
+
+  it('a row already there cannot be decided, answered or appealed', async () => {
+    const { svc, as, suggestions } = setup();
+    suggestions.push(aRowAlreadyThere({ id: 's-old', groundId: 'g-sales', aboutParticipantId: 'p-d2', decision: 'A plan', decisionReason: 'Slipping.', decidedById: 'u-wairimu' }));
+    await expect(svc.decide('s-old', as('wairimu'), { decision: 'x', reasons: 'y' })).rejects.toThrow(REFUSED.notFound);
+    await expect(svc.addSide('s-old', as('daniel'), { side: 'x' })).rejects.toThrow(REFUSED.notFound);
+    await expect(svc.appeal('s-old', as('daniel'), { why: 'x' })).rejects.toThrow(REFUSED.notFound);
   });
 });
 

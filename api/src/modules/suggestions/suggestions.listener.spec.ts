@@ -11,6 +11,7 @@ import { SUGGESTION_THRESHOLDS_KEY } from './thresholds';
  */
 const ground = {
   id: 'g-tobi',
+  scenario: 'PIP',
   participants: [
     { id: 'p-wairimu', partyType: 'INITIATOR', roleAsDescribed: null, email: 'wairimu@atlas.test', managingOnly: true, createdAt: new Date(2026, 8, 1), nameGiven: null, user: { firstName: 'Wairimu', lastName: 'X', email: 'wairimu@atlas.test' } },
     { id: 'p-tobi', partyType: 'PARTICIPANT', roleAsDescribed: null, email: 'tobi@atlas.test', managingOnly: false, createdAt: new Date(2026, 8, 2), nameGiven: null, user: { firstName: 'Tobi', lastName: 'X', email: 'tobi@atlas.test' } },

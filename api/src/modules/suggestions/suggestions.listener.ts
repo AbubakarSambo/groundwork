@@ -39,6 +39,9 @@ import { theirApprovedLeave } from '../suites/who-is-away';
  * ("That is all I have.", "No other blockers that I can name right now."), which the lead then read
  * as "Tobi's own answer." Nothing is guessed in its place.
  *
+ * ONLY ON AN EVALUATION CHECK-IN (decision 6, clarified 29 September). SuggestionsService.reachFromTheRecord
+ * reaches nothing on any other check-in (aVerdictIsReachedOn), so this runs everywhere and writes only there.
+ *
  * AFTER A DECISION, A FRESH START (decided for Hafsah to confirm). Once the lead has decided a
  * suggestion, the next one about the same person on the same check-in counts only what was settled
  * after that decision - the decision's own "over the next four weeks" - rather than reaching a new

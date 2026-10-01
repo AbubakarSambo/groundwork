@@ -56,10 +56,10 @@ function fieldMatches(value: any, cond: any): boolean {
   return value === cond;
 }
 
-function aWorld(opts: { leave?: { startsOn: Date; endsOn: Date }[]; thresholdRow?: any } = {}) {
+function aWorld(opts: { leave?: { startsOn: Date; endsOn: Date }[]; thresholdRow?: any; scenario?: string; label?: string } = {}) {
   const ground: any = {
-    id: G, label: 'Tobi, the next six weeks', organizationId: ORG, initiatorId: 'u-wairimu', createdByUserId: 'u-grace',
-    scenario: 'PIP', peersVisibleToEachOther: null, cadence: 'WEEKLY', patternDetections: [],
+    id: G, label: opts.label ?? 'Tobi, the next six weeks', organizationId: ORG, initiatorId: 'u-wairimu', createdByUserId: 'u-grace',
+    scenario: opts.scenario ?? 'PIP', peersVisibleToEachOther: null, cadence: 'WEEKLY', patternDetections: [],
     participants: [party('p-wairimu', 'wairimu', 'INITIATOR', 1), party('p-tobi', 'tobi', 'PARTICIPANT', 2), party('p-miriam', 'miriam', 'PARTICIPANT', 3)],
   };
   const commitments: any[] = [];
@@ -447,5 +447,33 @@ describe('the edges', () => {
   it('an admin who empties the threshold stops every suggestion (decision 33)', async () => {
     const w = await acrossTheLine(aWorld({ thresholdRow: { value: {} } }));
     expect(w.suggestions).toHaveLength(0);
+  });
+});
+
+/**
+ * THE SAME RECORD ON AN ORDINARY TEAM CHECK-IN (decision 6, clarified 29 September: a verdict is
+ * reached only on the evaluation check-ins of decision 17). "Sales team, Q3" is a REALIGN_TEAM check-in
+ * with the same three people. Tobi keeps the same 2 of 6, through the same services, and nothing is
+ * reached; no reader is served a suggestion, a count or "what would change this".
+ */
+describe('the same record on an ordinary team check-in', () => {
+  it('reaches nothing', async () => {
+    const w = await acrossTheLine(aWorld({ scenario: 'REALIGN_TEAM', label: 'Sales team, Q3' }));
+    expect(w.commitments.filter((c) => c.status !== 'UNKNOWN')).toHaveLength(6);
+    expect(w.fired.filter((e) => e === GroundworkEvents.COMMITMENTS_SETTLED)).toHaveLength(2);
+    expect(w.suggestions).toHaveLength(0);
+  });
+
+  it.each(['tobi', 'wairimu', 'miriam', 'grace', 'omar'] as const)('%s is served nothing about it, anywhere', async (who) => {
+    const w = await acrossTheLine(aWorld({ scenario: 'REALIGN_TEAM', label: 'Sales team, Q3' }));
+    jest.setSystemTime(new Date(at('2026-09-21').getTime() + 4 * DAY));
+    const all = served([
+      await w.service.forGround(G, w.as(who)),
+      await w.service.aboutYou(w.as(who)),
+      await w.service.latestForTheLeadAbout('u-tobi', w.as(who)),
+      await theEndingPageFor({ prisma: w.prisma, suggestions: w.service }, G, people[who].userId),
+      people[who].role === 'ADMIN' ? await w.service.appealsToDecide(w.as(who)) : null,
+    ]);
+    expect(all).not.toMatch(/Groundwork suggests|commitments|What would change|kept|extra help/i);
   });
 });

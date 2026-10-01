@@ -706,6 +706,8 @@ What a lead reads, for a person the suggestion was reached for:
 
 What the person reads: "In the last four weeks, you kept two of your eight commitments in this check-in. When fewer than half are kept, Groundwork suggests extra help to Wairimu." and "What would change this: Keeping at least half of your commitments in this check-in over the next four weeks.", and, once decided, the decision with its reasons.
 
+Suggestions exist only on a performance plan, a recognition or a contract renewal (decision 6, clarified 29 September; the same list as the reading rule). On any other check-in, including a first 90 days, `suggestions`, `aboutYou` and `appealed` are always empty, and the You board, reviews and appeals list leave them out (changed 1 October).
+
 Until the threshold in decision 61 is crossed (fewer than half kept, at least 6 settled), there is no suggestion, so `suggestions` and `aboutYou` are empty lists, and the page should draw nothing for them rather than a line saying nothing was found.
 
 ### Reviews (`/suites/reviews`)

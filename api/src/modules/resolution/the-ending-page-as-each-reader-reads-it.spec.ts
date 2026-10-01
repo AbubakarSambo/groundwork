@@ -53,7 +53,10 @@ const patterns = [
 function world(opts: { scenario?: GroundScenario; decided?: boolean; createdByUserId?: string | null } = {}) {
   const ground = {
     id: 'g1', label: 'Kwame, first 90 days', organizationId: ORG, initiatorId: WAIRIMU, createdByUserId: opts.createdByUserId ?? null,
-    scenario: opts.scenario ?? GroundScenario.NEW_HIRE, cadence: 'WEEKLY', peersVisibleToEachOther: null, status: GroundStatus.ACTIVE,
+    /* CHANGED 1 October: a suggestion is reached only on an evaluation check-in (decision 6, clarified
+       29 September), so the world these tests read is a performance plan. The prototype's "first 90
+       days" ending is noted for Hafsah, not built. */
+    scenario: opts.scenario ?? GroundScenario.PIP, cadence: 'WEEKLY', peersVisibleToEachOther: null, status: GroundStatus.ACTIVE,
     participants, patternDetections: patterns,
   };
   const suggestions: any[] = [];
@@ -216,21 +219,20 @@ describe('Aisha, a colleague on the same check-in, reads nothing about Kwame', (
 });
 
 describe('Grace, an admin who is not in the check-in', () => {
-  it('reads no suggestion that is not appealed, and no signal or question, on an ordinary check-in', async () => {
-    const w = world({ scenario: GroundScenario.NEW_HIRE });
+  it('reads no suggestion that is not appealed, and no question, on a check-in she set up', async () => {
+    const w = world({ createdByUserId: GRACE });
     await withASuggestion(w, true);
     const page = (await w.resolution.get('g1', GRACE) as any).theEndingPage;
-    expect(page).toMatchObject({ reader: 'admin', suggestions: [], aboutYou: [], appealed: [], signals: [], questions: [] });
+    expect(page).toMatchObject({ reader: 'admin', suggestions: [], aboutYou: [], appealed: [], questions: [] });
   });
 
   it('reads the suggestion only once it is appealed', async () => {
-    const w = world({ scenario: GroundScenario.NEW_HIRE });
+    const w = world({ createdByUserId: GRACE });
     await withASuggestion(w, true);
     Object.assign(w.suggestions[0], { appeal: 'I did not get the stock.', appealedAt: new Date('2026-08-06') });
     const page = (await w.resolution.get('g1', GRACE) as any).theEndingPage;
     expect(page.appealed).toHaveLength(1);
     expect(page.appealed[0].appeal.says).toBe('I did not get the stock.');
-    expect(page.signals).toEqual([]);
   });
 
   it('reads nothing at all on an evaluation check-in she was not given access to', async () => {
@@ -245,5 +247,34 @@ describe('Grace, an admin who is not in the check-in', () => {
     const page = (await w.resolution.get('g1', GRACE) as any).theEndingPage;
     expect(page.suggestions).toEqual([]);
     expect(page.signals).toHaveLength(1);
+  });
+});
+
+/**
+ * ON AN ORDINARY CHECK-IN, NOTHING (decision 6, clarified 29 September). "Kwame, first 90 days" is a
+ * new hire's check-in, not an evaluation one. Nothing can be reached on it, and a row that exists on
+ * it anyway (written before this rule, or by hand) is served to nobody, decided and appealed with it.
+ */
+describe('on a first-90-days check-in, which is not an evaluation check-in', () => {
+  async function aRowThatShouldNotBeThere() {
+    const w = world({ scenario: GroundScenario.NEW_HIRE });
+    await expect(withASuggestion(w)).rejects.toThrow('A suggestion is only reached on a performance plan, a recognition or a contract renewal.');
+    const made = aSuggestionFromTheRecord('g1', {
+      aboutParticipantId: 'p-kwame', aboutLabel: labelsForParties(participants as any).get('p-kwame')!,
+      commitmentsSettledRecently: { kept: 2, of: 8 }, ownWords: null,
+    }, DEFAULT_SUGGESTION_THRESHOLDS)!;
+    w.suggestions.push({
+      ...made, id: 's-old', organizationId: ORG, decision: 'Extra support', decisionReason: 'Stock was late.', decidedById: WAIRIMU, decidedAt: new Date('2026-08-05'),
+      theirSide: 'Stock took three weeks.', theirSideAt: new Date('2026-08-02'), appeal: 'I did not get the stock.', appealedAt: new Date('2026-08-06'),
+      appealOutcome: null, appealReason: null, appealDecidedById: null, appealDecidedAt: null, createdAt: new Date('2026-08-01T00:00:00Z'),
+    });
+    return w;
+  }
+
+  it.each([['Wairimu', WAIRIMU], ['Kwame', KWAME], ['Aisha', AISHA], ['Grace', GRACE]])('%s reads no suggestion, count or what would change it', async (_who, userId) => {
+    const w = await aRowThatShouldNotBeThere();
+    const page = (await w.resolution.get('g1', userId) as any).theEndingPage;
+    expect(page).toMatchObject({ suggestions: [], aboutYou: [], appealed: [] });
+    expect(served(page)).not.toMatch(/Groundwork suggests|commitments|What would change|kept/i);
   });
 });

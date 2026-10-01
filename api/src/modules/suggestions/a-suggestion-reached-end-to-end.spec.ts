@@ -25,7 +25,7 @@ const party = (id: string, who: Who, partyType: string, at: number) => ({
 
 const ground = {
   id: 'g-tobi', label: 'Tobi, the next few weeks', organizationId: ORG, initiatorId: 'u-wairimu',
-  scenario: 'PERFORMANCE_IMPROVEMENT', peersVisibleToEachOther: null,
+  scenario: 'PIP', peersVisibleToEachOther: null,
   participants: [party('p-w', 'wairimu', 'INITIATOR', 1), party('p-t', 'tobi', 'PARTICIPANT', 2)],
 };
 
