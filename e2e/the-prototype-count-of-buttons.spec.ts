@@ -130,6 +130,27 @@ const SCREENS: Record<string, Counterpart> = {
      adding them needs a database write, which the safety check refused (1 October). */
   'pages/company/CompanyPage.tsx': { productPath: '/company', reader: 'admin', hash: '#/company', persona: 'ceo', mustShow: "No priorities have come in from your organisation's own systems yet." },
   'pages/company/CompanyContextPage.tsx': { productPath: '/company/context', reader: 'admin', hash: '#/company/kijani/context', persona: 'ceo' },
+  /*
+   * GROUP 2, PIECE 4 (E-suites). Every suite board's prototype screen is drawn for the "admin"
+   * persona (docs/prototype/screens/index.json) - Juma here. The hub itself has two prototype
+   * screens (suites-admin, suites-lead, both at the same hash, picked by persona); admin's is used,
+   * since every board below needs its suite switched on, which only an admin's own page offers.
+   */
+  'pages/suites/SuitesPage.tsx': { productPath: '/settings/suites', reader: 'admin', hash: '#/settings/suites', persona: 'admin' },
+  /* None of Kilima Traders U8's ten suites is switched on, so every board below shows its own true
+     "not switched on" sentence - the same reason the Company page needed `mustShow` (1 October);
+     turning a suite on would be adding data, which this piece was told not to do. */
+  'pages/suites/OnboardingBoardPage.tsx': { productPath: '/suite/onboard', reader: 'admin', hash: '#/suite/onboard', persona: 'admin', mustShow: 'The onboarding suite is not switched on.' },
+  'pages/suites/LeaveBoardPage.tsx': { productPath: '/suite/leave', reader: 'admin', hash: '#/suite/leave', persona: 'admin', mustShow: 'The leave suite is not switched on.' },
+  'pages/suites/TimeSheetsPage.tsx': { productPath: '/suite/time', reader: 'admin', hash: '#/suite/time', persona: 'admin' },
+  'pages/suites/ReviewsBoardPage.tsx': { productPath: '/suite/reviews', reader: 'admin', hash: '#/suite/reviews', persona: 'admin' },
+  'pages/suites/ReviewPage.tsx': null, // needs a real review id, started from the board above; not opened separately
+  'pages/suites/LeavingBoardPage.tsx': { productPath: '/suite/leaving', reader: 'admin', hash: '#/suite/leaving', persona: 'admin', mustShow: 'The suite for when someone leaves is not switched on.' },
+  'pages/suites/RoleMapPage.tsx': { productPath: '/suite/roles', reader: 'admin', hash: '#/suite/roles', persona: 'admin', mustShow: 'The role map suite is not switched on.' },
+  'pages/suites/SpendingPage.tsx': { productPath: '/suite/spend', reader: 'admin', hash: '#/suite/spend', persona: 'admin', mustShow: 'The spending suite is not switched on.' },
+  'pages/suites/TodosPage.tsx': { productPath: '/suite/todos', reader: 'admin', hash: '#/suite/todos', persona: 'admin', mustShow: 'The to-dos suite is not switched on.' },
+  'pages/suites/CustomersPage.tsx': { productPath: '/suite/customers', reader: 'admin', hash: '#/suite/customers', persona: 'admin', mustShow: 'The customers and deals suite is not switched on.' },
+  'pages/suites/EquipmentPage.tsx': { productPath: '/suite/equipment', reader: 'admin', hash: '#/suite/equipment', persona: 'admin', mustShow: 'The equipment suite is not switched on.' },
 };
 
 /* Sign-in is by the emailed link, through the one mail catcher every browser test shares

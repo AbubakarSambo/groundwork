@@ -31,8 +31,8 @@ const READERS: Reader[] = process.env.PAGE_COLOUR_READERS
   ? JSON.parse(process.env.PAGE_COLOUR_READERS)
   : [
       { who: 'participant', email: 'amani.u8@example.test', paths: ['/today', `/grounds/${CHECK_IN}/p`, `/grounds/${CHECK_IN}/board`, '/you', '/company', '/settings'] },
-      { who: 'lead', email: 'rukia.u8lead@example.test', paths: ['/today', `/grounds/${CHECK_IN}`, `/grounds/${CHECK_IN}/board`, '/settings/people', '/boards', '/billing', '/billing/checkout', '/settings/billing'] },
-      { who: 'admin', email: 'juma.u8admin@example.test', paths: ['/today', `/grounds/${CHECK_IN}/board`, '/settings/people', '/company'] },
+      { who: 'lead', email: 'rukia.u8lead@example.test', paths: ['/today', `/grounds/${CHECK_IN}`, `/grounds/${CHECK_IN}/board`, '/settings/people', '/boards', '/billing', '/billing/checkout', '/settings/billing', '/settings/suites'] },
+      { who: 'admin', email: 'juma.u8admin@example.test', paths: ['/today', `/grounds/${CHECK_IN}/board`, '/settings/people', '/company', '/settings/suites', '/suite/time', '/suite/reviews', '/suite/onboard', '/suite/leave', '/suite/leaving', '/suite/roles', '/suite/spend', '/suite/todos', '/suite/customers', '/suite/equipment'] },
     ];
 
 /* Sign-in is by the emailed link, through the one mail catcher every browser test shares
