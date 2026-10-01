@@ -107,7 +107,7 @@ export const SUITES: readonly Suite[] = [
   },
   {
     key: 'equipment', group: 'Work', name: 'Equipment', forLeads: false,
-    line: 'Laptops, phones and demo freezers: who has what, and what needs fixing.',
+    line: 'Laptops, phones and demo freezers. See who has what, and what needs fixing.',
     questions: [
       { id: 'keeper', kind: 'person', ask: 'Who looks after equipment and repairs?' },
     ],

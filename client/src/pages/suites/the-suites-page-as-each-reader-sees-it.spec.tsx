@@ -42,7 +42,7 @@ const GRACES: SuitesForAnAdmin = {
     { name: 'Work', suites: [
       suite('todos', 'To-dos', 'Everything people said they will do, from every check-in and chat, in one list for each person.'),
       suite('customers', 'Customers and deals', 'One list of customers and deals for the whole company, kept up to date by the sales check-ins.'),
-      suite('equipment', 'Equipment', 'Laptops, phones and demo freezers: who has what, and what needs fixing.', {
+      suite('equipment', 'Equipment', 'Laptops, phones and demo freezers. See who has what, and what needs fixing.', {
         questions: [{ id: 'keeper', kind: 'person', ask: 'Who looks after equipment and repairs?' }],
       }),
     ] },
