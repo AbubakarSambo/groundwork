@@ -6957,4 +6957,14 @@ No organisation on this Mac has company priorities, so both pages show their emp
 
 The pictures are in the scratchpad's `pictures/g2c/`.
 
+**Group 2, fourth piece: the Suites page and all ten suite boards are rebuilt from the shared parts (1 October).**
+- Every board keeps every action. The role map's roles, owners and "Nobody owns" lines are unchanged word for word, and handover from Leaving works as before.
+- Reviews and Leaving still show no label, score or verdict, and the person a review is about never reads the manager's words.
+- Two faults were found and fixed on the way. "Money" had shrunk to a third of its row. The equipment board showed two navy buttons while a row was being edited.
+- The button test passes on all 26 screens, and the page-colour test now covers every board.
+
+No suite is switched on in the test organisation, so every board has only been seen empty so far. The review is switching suites on through the Suites page itself, as the admin, to see real rows. It will switch every one back off afterwards.
+
+The pictures are in the scratchpad's `pictures/g2d/`. The review of all of group 2 is under way.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
