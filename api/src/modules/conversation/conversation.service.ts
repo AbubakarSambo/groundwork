@@ -126,6 +126,7 @@ import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTh
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
 import { withoutADateNobodyGave } from './a-date-nobody-gave';
+import { withoutAThingTheLeadListedAsTheirs } from './a-thing-the-lead-listed-is-not-theirs';
 import { aCutThatLeavesAFragment, afterTheCut } from './a-cut-never-leaves-a-fragment';
 import { seenInEnoughSessions, theyAskedForItThemselves, type Observation } from '../coaching/one-step-at-a-time';
 import { ANCHOR_TO_DOCUMENTS_PROMPT, ANCHOR_TO_DOCUMENTS_SCHEMA } from './prompt-library';
@@ -1217,6 +1218,20 @@ export class ConversationService {
     const noRecordInvented = withoutARecordClaimNobodyHolds(raw);
     if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);
     raw = noRecordInvented.text;
+    /*
+     * AND NO THING THE LEAD LISTED IS SAID TO THEM AS THEIRS. Three borrowers were told they had the
+     * wrong asset: the brief lists four, and the model took the first. See a-thing-the-lead-listed-is-not-theirs.
+     */
+    if ((checkIn as any)?.id && (checkIn as any)?.participant?.partyType !== PartyType.INITIATOR && checkIn?.groundId) {
+      const brief = await (this.prisma.ground?.findUnique?.({ where: { id: checkIn.groundId }, select: { brief: true } }) ?? Promise.resolve(null)).then((g: any) => g?.brief ?? null).catch(() => null);
+      if (brief) {
+        const theirs = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
+          .then((rows: any[]) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
+        const notTheirs = withoutAThingTheLeadListedAsTheirs(raw, brief, theirs);
+        if (notTheirs.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${notTheirs.cut.length} sentence(s) naming something from the lead's list as this person's.`);
+        raw = notTheirs.text;
+      }
+    }
     const asConfirmed = (checkIn as any)?.id ? this.withTheLeadsQuestionsAsConfirmed((checkIn as any).id, raw) : { text: raw, confirmed: [] as string[] };
     /*
      * AND ONE QUESTION, ON EVERY PATH. The opener, the turn and the stream all save through here, so
