@@ -27,8 +27,11 @@ type Dir = { externalId: string; linkedUserId: string | null; department: string
 /**
  * TO-DOS (E8, #/suite/todos, U.17): what each person said they will do, from their check-ins, in one
  * list for each person. Nothing new is stored: it reads the commitments each check-in already keeps
- * (`GroundCommitment`), the same rows the check-in's own board and each person's You board show, and
- * only the ones nobody has said are done or dropped yet.
+ * (`GroundCommitment`) and the self-authored commitments and to-dos on `PersonObjective` - the same
+ * two sources the You board's "What you said you'd do" reads (your-board.ts) - and only the ones
+ * nobody has said are done or dropped yet. The same promise sometimes sits in both, a short copy and
+ * a fuller, dated one; only the fuller is shown (`a-fuller-promise-wins.ts`'s `sameRequest`, request
+ * 96), the rule this board and the You board now share.
  *
  * WHO READS WHAT is decided here, never on the screen, and never wider than today:
  *   - nobody, while the suite is off; a member and a guest are refused;
@@ -85,19 +88,30 @@ export class TodosService {
     if (!readable.length) return { people: [] };
     const labelOf = new Map(readable.map((g) => [g.id, g.label]));
 
+    const groundIds = readable.map((g) => g.id);
     const rows = await this.prisma.groundCommitment.findMany({
-      where: { groundId: { in: readable.map((g) => g.id) }, participantId: { not: null }, status: 'UNKNOWN' },
+      where: { groundId: { in: groundIds }, participantId: { not: null }, status: 'UNKNOWN' },
       select: { id: true, groundId: true, text: true, source: true, createdAt: true, participant: { select: { userId: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    /* THE SAME PROMISE CAN LIVE TWICE, IN TWO DIFFERENT TABLES - a GroundCommitment and a
+       self-authored PersonObjective, exactly as on the You board's "What you said you'd do"
+       (your-board.ts), which reads both for the same reason. Read through the identical
+       `groundsAViewerMayList` filter (`groundIds`, already resolved above), so an objective from a
+       check-in the reader may not open never reaches this board either. */
+    const objectiveRows = await this.prisma.personObjective.findMany({
+      where: { groundId: { in: groundIds }, kind: { in: ['COMMITMENT', 'TODO'] }, authoredBy: 'self', status: 'OPEN' },
+      select: { id: true, groundId: true, text: true, createdAt: true, participant: { select: { userId: true } } },
       orderBy: { createdAt: 'desc' },
     });
 
     const inScope = (userId: string) => role === 'ADMIN' || userId === reader.userId || (!!me && !!byUser.get(userId) && inTheLeadsTeam(me, byUser.get(userId)!));
-    const kept = rows
+    const kept = [...rows, ...objectiveRows]
       .filter((r) => r.participant?.userId && inScope(r.participant.userId) && r.text?.trim())
-      .map((r) => ({ ...r, text: r.text.trim() }));
+      .map((r) => ({ id: r.id, groundId: r.groundId, createdAt: r.createdAt, participant: r.participant, text: r.text.trim() }));
     /* The same promise written twice, a short one and a fuller dated one (request 96): the fuller
        text is shown, never both - per person, per check-in, so two different people's or two
-       different check-ins' words are never folded together. */
+       different check-ins' words are never folded together, and never two different people's. */
     const deduped: typeof kept = [];
     for (const r of kept) {
       const at = deduped.findIndex((d) => d.participant!.userId === r.participant!.userId && d.groundId === r.groundId && sameRequest(d.text, r.text));

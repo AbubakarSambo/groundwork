@@ -56,12 +56,18 @@ const COMMITMENTS = [
   c('c-6', 'g-cohort', 'u-miriam', 'Finish the product course', '2026-09-20'),
   c('c-7', 'g-lakeside', 'u-aisha', 'Call Lakeside’s buyer on Tuesday', '2026-09-25'),
 ];
+/** A self-authored commitment or to-do on PersonObjective, the second table "What you said you'd
+ *  do" (your-board.ts) and this board now both read, for the same reason - request 96's fuller
+ *  copy sometimes lives here, not on GroundCommitment at all. */
+const o = (id: string, groundId: string, userId: string, text: string, day: string, kind: 'COMMITMENT' | 'TODO' = 'COMMITMENT') =>
+  ({ id, groundId, text, kind, authoredBy: 'self', status: 'OPEN', createdAt: new Date(`${day}T10:00:00Z`), participant: { userId } });
 
-function setup(opts: { on?: boolean; grounds?: typeof GROUNDS; commitments?: typeof COMMITMENTS; users?: typeof users } = {}) {
+function setup(opts: { on?: boolean; grounds?: typeof GROUNDS; commitments?: typeof COMMITMENTS; objectives?: any[]; users?: typeof users } = {}) {
   const writes: string[] = [];
   const todoRead = { count: 0 };
   const grounds = opts.grounds ?? GROUNDS;
   const commitments = opts.commitments ?? COMMITMENTS;
+  const objectives = opts.objectives ?? [];
   const theUsers = opts.users ?? users;
   const inList = (g: any, w: any) => {
     if (w.organizationId !== g.organizationId) return false;
@@ -87,6 +93,10 @@ function setup(opts: { on?: boolean; grounds?: typeof GROUNDS; commitments?: typ
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())),
       update: jest.fn(async () => { writes.push('groundCommitment'); }),
       create: jest.fn(async () => { writes.push('groundCommitment'); }),
+    },
+    personObjective: {
+      findMany: jest.fn(async ({ where }: any) => objectives.filter((x) =>
+        where.groundId.in.includes(x.groundId) && where.kind.in.includes(x.kind) && x.authoredBy === where.authoredBy && x.status === where.status)),
     },
     todo: { findMany: jest.fn(async () => { todoRead.count++; return [{ text: 'buy milk' }]; }) },
     user: { findMany: jest.fn(async ({ where }: any) => where.id.in.map((id: string) => ({ id, firstName: theUsers[id][0], lastName: theUsers[id][1], email: `${id}@baridi.example` }))) },
@@ -195,6 +205,33 @@ describe('each line, as an action, with where it came from (fault B)', () => {
     const b = await svc.board(as('u-wairimu'));
     const miriam = b.people.find((p) => p.name === 'Rukia Otieno Wanjiku')!;
     expect(miriam.firstName).toBe('Rukia');
+  });
+
+  /* The re-review: the board still showed the short copy ("File the bundle", "Call the client",
+     "Plan shorter routes") because it only read GroundCommitment, while the fuller, dated copy of
+     the same promise is sometimes a self-authored PersonObjective instead - exactly what the You
+     board's "What you said you'd do" already reads both tables for. */
+  it('where the fuller copy of a promise is a self-authored objective and the short copy a commitment, shows only the fuller one', async () => {
+    const objectives = [o('o-1', 'g-sales', 'u-miriam', 'I will file the bundle once the reply is settled', '2026-09-26')];
+    const extra = c('c-9', 'g-sales', 'u-miriam', 'I will file the bundle', '2026-09-20');
+    const { svc, as } = setup({ commitments: [...COMMITMENTS, extra], objectives });
+    const b = await svc.board(as('u-wairimu'));
+    const miriam = b.people.find((p) => p.name === 'Miriam Wanjiku')!;
+    expect(miriam.todos.map((t) => t.text)).not.toContain('File the bundle');
+    expect(miriam.todos.map((t) => t.text)).toContain('File the bundle once the reply is settled');
+  });
+
+  it('an objective from a check-in the reader may not read never appears', async () => {
+    /* Aisha is in Wairimu's team, but "Lakeside" is run by Brian, not Wairimu, and Wairimu does
+       not take part in it - the same check-in the existing commitment test already shows is
+       withheld from her (c-7, "Call Lakeside's buyer"). */
+    const objectives = [o('o-2', 'g-lakeside', 'u-aisha', 'I will send Lakeside the trade references', '2026-09-26')];
+    const { svc, as } = setup({ objectives });
+    const b = await svc.board(as('u-wairimu'));
+    expect(JSON.stringify(b)).not.toContain('trade references');
+    /* Grace, an admin, reads every check-in, so she does see it. */
+    const forGrace = await svc.board(as('u-grace'));
+    expect(JSON.stringify(forGrace)).toContain('trade references');
   });
 });
 
