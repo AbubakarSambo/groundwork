@@ -1418,3 +1418,41 @@ Decided for Hafsah to confirm:
 - `howItIsGoing.glance` (rounds, how many have answered, how many things are in the way) stays for everybody, as on the list of check-ins.
 
 Tests: `board/request-105-a-participants-board-is-their-own.spec.ts` (13 cases).
+
+## Request 105, part 1: five kinds of work get their own board shape (2 October)
+
+Yes, these five are meant to have their own board, and they have it now. The other six kinds keep the switchboard, which is what their own examples show. The engine knows a check-in's kind from `Ground.kindOfWork` (`board/the-kind-of-work.ts`), and the board already sends it as `kindOfWork`. For these five, `GET /grounds/:id/board` now sends extra fields, under the prototype's headings. They are built from the board this reader is already sent, after every wall, so they show nothing a reader could not already read row by row. Nothing is made up: where the record holds nothing for a section, it says so in a sentence. The fields go only to whoever runs the check-in, meaning the lead, the admin who set it up, and an admin of the organisation on a check-in that is not an evaluation. A person who checks in reads their own board (part 3). The person reviewed on an evaluation check-in is never told how many others answered or are waiting (decision 17). Code: `board/each-kind-gets-its-own-board.ts`.
+
+Each section is `{ heading, state, ... }`. `state` is "filled", or "none-yet" with `says`, or "not-known" with `why`. Please draw the heading, and then the sentences as they are.
+
+**(a) A government programme** (`kindOfWork: "a government programme"`):
+- `whatEachLevelUnderstood`: the aim that was set comes first, then each person's own words for what the aim is, from what they said. `levels: [{ participantId, who, said: [...] }]`. To Stephen, who runs the rollout run (run-21, implementation): "You" with "The system is deployed in all four branches.", then "Ngozi Duru said, "My team understood that we were supposed to integrate the new system into our daily operations."" and "Musa Ibrahim said, "My understanding was that we were meant to get the new system installed and start using it for our daily operations."" `note`: "Groundwork does not keep which level each person works at, so each person's own words are shown in the order they joined, after the aim that was set." Where nobody has said: "Nobody has said yet what the aim means to them."
+- `theCounties`: each county record, with the project records that name it. "The project on record for Enugu is Receipts on the new system." Or "Kiambu has no project on record yet.", or "No county is on record yet."
+- `whatTheVisitLogShows`: the numbers brought in from another system for what this check-in is about. These are `ProductMetric` rows whose `subjectExternalId` is the check-in's own. For example: "The visit log shows 412 for extension visits this month, as of 30 September." The three sentences about what a number is not come with them, as in the report. Where none are attached: "No numbers from another system are attached to this check-in yet, so the board cannot say what they show. They appear here once they are brought in from the system that keeps them."
+
+**(b) Asset loans:**
+- `whereTheCohortStands`: on the loan cohort (re-f), to Amaka, who runs it: "4 people are in this cohort." Then "The loan records show 2 loans being repaid." (Sunday Eze, Hauwa Ibrahim), "The loan records show 1 loan behind on repayment." (Yakubu Sani), "1 person is waiting on something that stops them, and it has not been cleared." (Musa Danjuma), and "1 person has not checked in yet." (Yakubu Sani). The names are in `who`. They come from the loan records' stages, the open blockers and who has finished a check-in. Without loan records: "No loan record says who is repaying or who is behind yet."
+- `supportGiven`: always "not-known", with "Nothing on record says what support each person was given, or whether it helped, so this cannot be shown yet."
+
+**(c) A law firm matter:**
+- `whereTheMatterStands`: on the contract review (run-21): "The reply to the supplier is due on 2 October." "Nothing is in the way that has not been cleared." "1 thing is waiting for a decision."
+- `whatYouNeedToDecide`: the board's own decisions under this heading. The heading is "What you need to decide" to the lead and "What needs deciding" to anyone else. For example: "People in this check-in said different things about what the service agreement means, so it needs settling."
+- `whatChangedThisWeek`: what was said in the newest session, as served in who owns what, with its mark. "In session 1, 2 things were said about the matter." Then "Frank Mbeki said, "The supplier has acknowledged every ticket within two hours so far."" and "Frank Mbeki said, "Three fixes have taken over a week."" `cannotTell`: "Nothing on record links each change to what it changed, so this shows what was said in the newest session and how each line is known."
+- The handover page: there is no handover page for a check-in today. The handover brief belongs to a role that is changing hands across the organisation, not to a check-in. So no link is sent, and nothing is made up to stand in for one.
+
+**(d) MarketView where next:**
+- `byWhoTheyAre`: "not-known", with "Groundwork does not keep which group each person belongs to, such as processors, distributors or researchers, so the answers cannot be shown by group yet." and `says`: "1 of 2 people have answered."
+- `whereTheyDisagree`: the board's own `divergence` items, under this heading. Or: "Nobody has said anything that differs from what somebody else said yet."
+
+**(e) MarketView Q4:**
+- `whatTheSystemsShow`: the same numbers as (a). On the sales run with a number brought in: "The loan system shows 11 for approved facilities this quarter, as of 30 September." With none, the same "not-known" sentence as (a). **No system data exists in the record today unless it is brought in.** Groundwork does not connect to Paystack or MarketView itself. Numbers reach a check-in only as `ProductMetric` rows for the check-in's `subjectExternalId`, so on our test check-ins this section says that nothing is attached. No number is made up.
+- `whereWhatWasSaidAndTheSystemsDiffer`: each line somebody said where a document on the check-in says it differently. This is the record's own `documentSays`, and it is shown only where this reader may open that document. "Kwame Mensah said, "I've also had follow-up conversations with all 22 of my applications."" with "A document on this check-in says it differently. It says, "14 applications were followed up in September."" A document only Kwame may open is quoted to nobody else. With none: "Nothing anybody said differs from a document or a number on record yet."
+
+Not built, and why: "Where next, ranked" (mvnext) would rank the priorities by how many people named each. The records keep one row per priority, with no count of who named it, so it is left out rather than ranked on nothing. "The meaning changed here" (gov) is a judgement about two people's words, and nothing on record makes it. The lead reads the words side by side.
+
+Decided for Hafsah to confirm:
+- These fields go only to whoever runs the check-in.
+- The visit log and the systems are only the numbers brought in for the check-in's subject.
+- Should Setup ask for each person's level (gov) and group (mvnext), so the board can show them? Today nothing on record holds either.
+
+Tests: `board/request-105-each-kind-gets-its-own-board.spec.ts` (23 cases, on the real run text named above, as every reader). This includes a walk of every sentence in the five through the plain-sentence rules.

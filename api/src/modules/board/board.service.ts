@@ -4,6 +4,7 @@ import { whatEachSessionSays } from './one-count-for-the-sessions';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
 import { theBlockers } from './the-blockers';
 import { aParticipantsOwnBoard } from './a-participants-board-is-their-own';
+import { theBoardForThisKind } from './each-kind-gets-its-own-board';
 import { howARecordIsKnown, whatHappensNext } from './what-happens-next-to-a-record';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { theShareSays } from './your-share';
@@ -2240,6 +2241,56 @@ export class BoardService {
             return { ...sec, rows, state: rows.length ? 'filled' : 'none-yet' };
           })()
           : sec));
+      }
+      /*
+       * FIVE KINDS OF WORK GET THEIR OWN BOARD SHAPE (request 105; the prototype's gov, loans, matter, mvnext
+       * and mvq4 examples). Built from the board as this reader is served it, after every wall above, plus the
+       * numbers from another system and the lines a document says differently, each read under the same
+       * walls. Nothing is invented: a section the record cannot fill says so. See each-kind-gets-its-own-board.
+       */
+      {
+        const kind = oneOfTheKinds((ground as any).kindOfWork);
+        const evaluationHere = isEvaluationCheckIn(ground.scenario);
+        const readerRunsIt = isInitiator || evaluationWordsRunsIt || (runsThisGround && !evaluationHere);
+        /* Only for whoever runs the check-in: a person who checks in reads their own board (part 3), and the person
+           reviewed on an evaluation check-in is never told how many others answered or are waiting (decision 17). */
+        if (kind && readerRunsIt) {
+          const answeredBy = new Set((checkIns as any[]).filter((c) => String(c.status).toUpperCase() === 'COMPLETED').map((c) => c.participantId));
+          const people = (ground.participants as any[]).map((p) => ({
+            id: p.id,
+            name: p.id === me?.id ? 'You' : (nameOf(p.id) ?? aColleague(p.id)),
+            managingOnly: !!p.managingOnly,
+            isLead: p.id === theLeadsRow,
+            answered: answeredBy.has(p.id),
+          }));
+          /* Numbers from another system about what this check-in is about: only whoever runs it reads them. */
+          const subject = (ground as any).subjectExternalId as string | null;
+          const metrics = readerRunsIt && subject && (kind === 'a government programme' || kind === 'MarketView Q4')
+            ? await ((this.prisma as any).productMetric?.findMany?.({
+              where: { organizationId: ground.organizationId, subjectExternalId: subject },
+              orderBy: { asOf: 'desc' },
+              take: 12,
+              select: { key: true, says: true, value: true, unit: true, asOf: true, sourceSystem: true, subjectExternalId: true },
+            }) ?? Promise.resolve([])).catch(() => [])
+            : [];
+          /* A line a document says differently, only where this reader may open that document. */
+          const documentSaysOf = new Map<string, string>();
+          if (kind === 'MarketView Q4') {
+            const differ = await ((this.prisma.recordEntry.findMany({
+              where: { disputedAt: null, participant: { groundId }, documentSays: { not: null } } as any,
+              select: { id: true, documentSays: true, documentSaysId: true } as any,
+            }) as Promise<any[]>).catch(() => [] as any[]));
+            const docIds = [...new Set((differ ?? []).map((d: any) => d.documentSaysId).filter(Boolean))];
+            const docs = docIds.length
+              ? await ((this.prisma as any).groundDocument?.findMany?.({ where: { id: { in: docIds } }, select: { id: true, visibility: true, participantId: true } }) ?? Promise.resolve([])).catch(() => [])
+              : [];
+            const mayOpen = new Set((docs as any[]).filter((d) => canSeeDocument(d as any, reader, true)).map((d) => d.id));
+            for (const d of differ ?? []) if (d.documentSays && d.documentSaysId && mayOpen.has(d.documentSaysId)) documentSaysOf.set(d.id, String(d.documentSays));
+          }
+          Object.assign(walled, theBoardForThisKind({
+            kind, board: walled, people, readerRunsIt, readerIsTheLead: isInitiator, metrics: metrics as any[], documentSaysOf,
+          }));
+        }
       }
       /*
        * A PARTICIPANT'S BOARD IS THEIR OWN (request 105; the prototype's B5). After every wall above, so the

@@ -61,6 +61,8 @@ export interface Setup {
   /** Numbers from another system about what this check-in is about (ProductMetric rows), and its subject. */
   metrics?: any[];
   subjectExternalId?: string | null;
+  /** The documents on the check-in (GroundDocument rows). */
+  documents?: any[];
 }
 
 /**
@@ -116,6 +118,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
     checkInGap: model({ findMany: jest.fn(async () => clone(setup.gaps ?? [])) }),
     workItem: model({ findMany: jest.fn(async () => clone(setup.items ?? [])) }),
+    groundDocument: model({ findMany: jest.fn(async (args: any) => clone((setup.documents ?? []).filter((d: any) => !args?.where?.id?.in || args.where.id.in.includes(d.id)))) }),
     productMetric: model({ findMany: jest.fn(async (args: any) => clone((setup.metrics ?? []).filter((m: any) => !args?.where?.subjectExternalId || m.subjectExternalId === args.where.subjectExternalId))) }),
     recordEntry: model({ findMany: jest.fn(async (args: any) => {
       if (args?.where?.id?.in) return [];
