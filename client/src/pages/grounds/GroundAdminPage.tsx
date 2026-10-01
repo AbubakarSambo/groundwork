@@ -1540,13 +1540,22 @@ export function GroundAdminPage() {
           if (!parts.length && sessionsDone !== 0) return null
           const cls = ended && hasStalled(ground.status) ? 'gwui-ink-amber' : ended ? 'gwui-ink-green' : 'gwui-ink-sub'
           return (
-            <p className={`gwui-fs-13-5 ${cls}`}>
-              {parts.join(' ')}
-              {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
+            <>
+              <p className={`gwui-fs-13-5 ${cls}`}>{parts.join(' ')}</p>
+              {/*
+                GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 12: A LINK IS NOT THE LAST WORD OF A
+                SENTENCE. "...Nothing anybody wrote is lost. How to run one" ran the link straight
+                on from the sentence before it, in the same paragraph, as if it were one more
+                clause rather than a different kind of thing to press. Before anybody has finished
+                a session, the guide written for this moment is now its own short line, a quiet
+                text link, below the sentence rather than inside it.
+              */}
               {sessionsDone === 0 && !ended && (
-                <>{parts.length ? ' ' : ''}<Link className="gwui-plain-link" to="/org/guide">How to run one</Link></>
+                <p className="gwui-fs-13-5 gwui-mt-2">
+                  <Link className="gwui-plain-link" to="/org/guide">Read how to run one</Link>
+                </p>
               )}
-            </p>
+            </>
           )
         })()}
 
