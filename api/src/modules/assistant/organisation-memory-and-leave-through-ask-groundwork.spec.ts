@@ -141,3 +141,37 @@ describe('leave dates said to Ask Groundwork', () => {
     expect(s.prisma.assistantTurn.createMany).not.toHaveBeenCalled();
   });
 });
+
+/*
+ * FOUND LIVE, 1 October 2026 (item 6, journey/memory-requests-and-being-away-live.ts). Chidi read
+ * "I cannot answer that one yet" twice: once for "I need Monday and Wednesday off next week", whose
+ * days cannot be read without guessing, and once for "I want leave on 20 October", sent while an
+ * earlier leave say-back was still waiting for his yes.
+ */
+describe('leave is never answered with a shrug', () => {
+  beforeAll(() => jest.useFakeTimers({ now: new Date('2026-10-01T09:00:00Z'), doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'setInterval', 'queueMicrotask', 'clearTimeout', 'clearInterval', 'clearImmediate', 'performance'] }));
+  afterAll(() => jest.useRealTimers());
+
+  it('days that cannot be read are asked for again, and nothing is parked or sent', async () => {
+    const s = svc();
+    const out = await said(s, 'I need Monday and Wednesday off next week.');
+    expect(out).toEqual({
+      lane: 'ask_for_leave',
+      text: 'I could not tell exactly which days you mean, so I have not sent anything. Tell me the first day and the last day, for example "from next Monday to next Wednesday", and I will ask again.',
+    });
+    expect(s.proposals).toEqual([]);
+    expect(s.ask).not.toHaveBeenCalled();
+  });
+
+  it('a new request, sent while an earlier say-back still waits, drops the earlier one and is said back itself', async () => {
+    const parked = { id: 'pk3', kind: 'leave_request', state: 'PARKED', summary: 'x', payload: { startsOn: '2026-10-02', endsOn: '2026-10-02' } };
+    const s = svc({ parked });
+    s.prisma.organizationMembership.findUnique.mockResolvedValue({ role: 'LEAD' });
+    const out = await said(s, 'I want leave on 20 October.');
+    expect(s.proposals[0]).toMatchObject({ id: 'pk3', state: 'DROPPED' });
+    expect(out.lane).toBe('ask_for_leave');
+    expect(out.text).toBe('You asked for leave on Tuesday 20 October, which is 1 working day. You have 16 days of leave left this year, and nobody else in Sales is off then. Shall I send it to Wairimu to approve?');
+    expect(s.proposals[1]).toMatchObject({ kind: 'leave_request', payload: { startsOn: '2026-10-20', endsOn: '2026-10-20' } });
+    expect(s.ask).not.toHaveBeenCalled();
+  });
+});

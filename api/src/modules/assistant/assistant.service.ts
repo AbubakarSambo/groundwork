@@ -24,7 +24,7 @@ import {
 import { KnowledgeService, STOPWORDS } from '../knowledge/knowledge.service';
 import { keptForTheOrganisation, keptThatTouches, mayReadWhatIsKept } from '../knowledge/organisation-memory';
 import { LeaveBoardService } from '../suites/the-leave-board.service';
-import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
+import { LEAVE_NOT_SENT, LEAVE_NOTHING_WAITING, LEAVE_WHICH_DAYS, plainlyAsksForLeave, readLeaveDates, sayBackLeave, sendLeave, soundsLikeLeave } from '../suites/leave-said-in-chat';
 import { TimeSheetsService } from '../suites/the-time-sheets.service';
 import { SpendingService } from '../suites/the-spending.service';
 import { HOURS_NOT_SENT, HOURS_NOTHING_WAITING, HOURS_SUITE_OFF, hoursSaidBack, hoursSent, readHours, soundsLikeHours, type HoursSaid } from '../suites/hours-said-in-chat';
@@ -275,6 +275,18 @@ export class AssistantService {
       if (parked) return this.resolveParked(organizationId, personId, who, parked, message);
     }
 
+    /*
+     * THE SIGNED-IN PERSON, ALSO AFTER A SAY-BACK WAS LEFT UNANSWERED (found live, 1 October 2026,
+     * item 6). When somebody leaves a say-back waiting and writes something else, it is dropped and
+     * their message is answered again through here without `userId`, so leave, hours and spending
+     * (which need it) were skipped: "I want leave on 20 October", sent after an unanswered leave
+     * say-back, was answered "I cannot answer that one yet". It is read from their own entry.
+     */
+    if (userId === undefined && who) {
+      const mine = await this.prisma.person.findFirst({ where: { id: personId, organizationId }, select: { linkedUserId: true } }).catch(() => null);
+      userId = mine?.linkedUserId ?? null;
+    }
+
     /* Asking one person something is not an answer to the question the setup conversation has open,
        even inside it (request 92, point 11): it is said back as the exact question and confirmed. */
     if (forceAddContext && parseAskAPerson(message)) return this.questionsForPeopleByChat(organizationId, who, userId ?? null, groundId, message);
@@ -287,6 +299,8 @@ export class AssistantService {
     if (who && userId && soundsLikeLeave(message)) {
       const dates = readLeaveDates(message);
       if (dates) return this.proposeLeave(organizationId, who, userId, dates);
+      /* Plainly a request for time off whose days cannot be read without guessing: asked again, never shrugged at. */
+      if (plainlyAsksForLeave(message)) return rules('ask_for_leave', text(LEAVE_WHICH_DAYS));
     }
 
     /*
@@ -2401,10 +2415,16 @@ export class AssistantService {
           } as never,
         },
       });
+      /*
+       * NEVER AN EMPTY BUBBLE (found live, 1 October 2026, item 6). Where the lead answers with a yes
+       * or a no the setup conversation says nothing beside the say-back, so `reply` is empty, and the
+       * panel drew that empty text block as an empty bubble above the question. The say-back is then
+       * the text as well, which the panel shows once, and it is also what is kept as the turn.
+       */
       return {
         lane: 'add_context',
         composedBy: 'rules',
-        blocks: [text(result.reply), { type: 'proposal', proposalId: proposal.id, summary: proposal.summary }],
+        blocks: [text(result.reply?.trim() ? result.reply : proposal.summary), { type: 'proposal', proposalId: proposal.id, summary: proposal.summary }],
       };
     }
 
