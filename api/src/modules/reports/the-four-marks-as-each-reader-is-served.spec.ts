@@ -91,6 +91,8 @@ function prismaFor(viewerRole: string, ground: any = GROUND) {
       findMany: jest.fn(async (q: any) => revive(copy(q?.where?.participantId ? LINES.filter((l) => l.participantId === q.where.participantId) : LINES))),
     }),
     groundBaseline: model({ findFirst: jest.fn(async () => ({ successLooksLike: 'Five new sales a month', conditions: [] })) }),
+    /* What Aisha typed in her check-in: each line is hers word for word, so each is quoted as hers. */
+    conversationTurn: model({ findMany: jest.fn(async (q: any) => (q?.where?.role === 'PERSON' ? [{ checkInId: 'c1', content: LINES.filter((l) => l.participantId === 'p-aisha').map((l) => (/[.!?]$/.test(l.text) ? l.text : `${l.text}.`)).join(' ') }] : [])) }),
     reportActivation: model({ findUnique: jest.fn(async () => ({ status: 'ACTIVATED' })) }),
   } as any, {
     get(target: any, prop: string) {

@@ -67,6 +67,8 @@ function boardAs(userId: string, role: string) {
     groundDocument: model({
       findMany: jest.fn(async () => [{ fileName: 'team-plan.txt', visibility: 'OWN', participantId: 'p-amina' }]),
     }),
+    /* What Rukia typed in that check-in: each line is hers word for word, so each is quoted as hers. */
+    conversationTurn: model({ findMany: jest.fn(async () => [{ checkInId: 'c1-p-rukia', content: SHE_SAID.join(' ') }]) }),
   } as any, {
     get(target: any, prop: string) {
       if (!(prop in target) && typeof prop === 'string' && !prop.startsWith('$')) target[prop] = model();

@@ -1,3 +1,5 @@
+import { theirWordsItCameFrom } from './the-handoff-words-the-person-typed';
+
 /**
  * WHAT EACH PERSON SAID IS SERVED AS THEIR WORDS, IN QUOTATION MARKS, WITH THEIR NAME (review of
  * 1 October 2026, run re-d, sales, session 1).
@@ -14,13 +16,20 @@
  * A piece that is not a sentence ("22 approved facilities", "to disburse N120m") is what they said
  * success is, so it reads "Femi Okonkwo said success would be "to disburse N120m"."
  *
+ * ONLY WORDS THEY SAID GO INSIDE THE MARKS (review of 1 October 2026). A record line is the record
+ * reader's version, sometimes tidied ("I've had follow-up conversations with all 22 of my
+ * applications." for Kwame's "I've also had follow-up conversations with all 22 of my applications.").
+ * As the board's risks and blocker check do (the-handoff-words-the-person-typed), each line is checked
+ * against what the person typed in that check-in when the board is built: found whole, it is quoted;
+ * drawn from sentences of theirs, those sentences are quoted instead; drawn from nothing they typed,
+ * the line is a plain sentence that carries none of their words ("Kwame Mensah has made a commitment
+ * here."). No verb is changed and no pronoun is guessed.
+ *
  * RUN LAST, ON WHAT IS ALREADY WALLED. The name is the row's name as this reader may read it, after
  * every rule about names has run, so this adds no name the reader could not already read above the
  * line. A line already replaced for the person an evaluation is about (the facts only, never a
  * colleague's words) is not a quote and is left as it is.
  */
-
-const QUOTED_ALREADY = /^[^"“]{1,80}\bsaid\b[^"“]*["“]/;
 
 /** Their words as a sentence inside quotation marks: the closing stop goes inside. */
 const inMarks = (words: string) => `"${/[.!?]$/.test(words) ? words : `${words}.`}"`;
@@ -46,6 +55,35 @@ export function oneLineInTheirName(words: string, who: string, type?: string | n
   return `${who} said, ${inMarks(w)}`;
 }
 
+/** How a line may be said: its own words quoted, the sentences it came from quoted, or none of its words. */
+export type SaidAs = 'their-words' | 'their-sentences' | 'not-their-words';
+
+/**
+ * The line's text and how it may be said, from what the person typed in the check-in it came from. The
+ * text is what will go inside the marks, so every rule the board runs over a person's words (names, a
+ * private file's name) runs over exactly these words.
+ */
+export function inTheirOwnWords(line: string, typed: string[] | undefined): { text: string; saidAs: SaidAs } {
+  const them = theirWordsItCameFrom(line, typed);
+  if (!them?.length) return { text: line, saidAs: 'not-their-words' };
+  const same = (a: string, b: string) => a.trim().replace(/[.!?]+$/, '').toLowerCase() === b.trim().replace(/[.!?]+$/, '').toLowerCase();
+  if (them.length === 1 && same(them[0], line)) return { text: line, saidAs: 'their-words' };
+  return { text: them.join(' '), saidAs: 'their-sentences' };
+}
+
+/** A line drawn from nothing they typed: what kind of thing they said, with none of their words. */
+export function saidWithoutTheirWords(who: string, type?: string | null): string {
+  const has = who === 'You' ? 'have' : 'has';
+  const they = who === 'You' ? 'you' : 'they';
+  switch (type) {
+    case 'COMMITMENT': return `${who} ${has} made a commitment here.`;
+    case 'SUCCESS_DEFINITION': return `${who} ${has} said what success looks like.`;
+    case 'INTENT': return `${who} ${has} said what ${they} intend to do.`;
+    case 'PROGRESS': return `${who} ${has} reported progress.`;
+    default: return `${who} ${has} said what ${they} own here.`;
+  }
+}
+
 export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
   rows: readonly T[] | null | undefined,
   readerParticipantId: string | null,
@@ -61,9 +99,16 @@ export function eachLineInTheirName<T extends AWhoOwnsWhatRow>(
     return {
       ...row,
       items: row.items.map((item: any) => {
-        const text = typeof item?.text === 'string' ? item.text.trim() : '';
-        if (!text || notTheirWords.includes(text) || QUOTED_ALREADY.test(text)) return item;
-        return { ...item, text: oneLineInTheirName(text, who, item.type) };
+        const { saidAs, ...rest } = item ?? {};
+        const text = typeof rest?.text === 'string' ? rest.text.trim() : '';
+        /* Already said as theirs (this ran once before on it): left as it is. */
+        const alreadyTheirs = saidAs === undefined && (text.startsWith(`${who} said`) || text.startsWith(`${who} has `) || text.startsWith(`${who} have `));
+        if (!text || notTheirWords.includes(text) || alreadyTheirs) return item ? rest : item;
+        if (saidAs === 'not-their-words') return { ...rest, text: saidWithoutTheirWords(who, rest.type) };
+        /* Their own marks inside a quote become single ones, so one quote is never closed by another. */
+        const words = text.replace(/["“”]/g, "'");
+        if (saidAs === 'their-sentences') return { ...rest, text: `${who} said, "${/[.!?]$/.test(words) ? words : `${words}.`}"` };
+        return { ...rest, text: oneLineInTheirName(words, who, rest.type) };
       }),
     };
   });

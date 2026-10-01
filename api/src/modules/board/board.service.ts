@@ -107,7 +107,7 @@ import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '..
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
-import { eachLineInTheirName } from './what-each-person-said-is-in-their-name';
+import { eachLineInTheirName, inTheirOwnWords } from './what-each-person-said-is-in-their-name';
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -1349,6 +1349,13 @@ export class BoardService {
       });
       /* How each line is known, by the same rule as the reports (week 6b). Stored columns only. */
       const whoAdded = await whoAddedEachBackingDocument(this.prisma, entries as any[]);
+      /* What each person typed in their own check-ins, so a line is quoted only in words they said. See
+         what-each-person-said-is-in-their-name. */
+      const typed = await whatEachHandoffPersonTyped(
+        this.prisma,
+        (entries as any[]).map((e) => ({ fromParticipantId: e.participantId, sourceCheckInId: e.checkInId })),
+        checkIns as any[],
+      );
       out.whoOwnsWhat = ground.participants
         .filter((p) => !p.managingOnly)
         .map((p) => ({
@@ -1364,7 +1371,8 @@ export class BoardService {
            * reads.ts is the thing that READS the marker - that one is not a surface.
            */
           items: entries.filter((e) => e.participantId === p.id).map((e) => ({
-            id: e.id, type: e.type, text: cleanText(e.text),
+            id: e.id, type: e.type,
+            ...inTheirOwnWords(cleanText(e.text), e.checkInId ? typed.get(e.checkInId) : undefined),
             mark: theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded),
             markSays: WHAT_EACH_MARK_SAYS[theMarkOf({ ...(e as any), text: cleanText(e.text) }, whoAdded)],
             sessionNumber: checkIns.find((c) => c.id === e.checkInId)?.sessionNumber ?? null,

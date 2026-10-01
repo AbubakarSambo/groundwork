@@ -118,6 +118,9 @@ describe('and in who owns what, where the line was found live', () => {
   const whoOwnsWhatAs = async (userId: string, role = 'MEMBER') => {
     const prisma: any = prismaFor(role);
     prisma.recordEntry.findMany = jest.fn(async (q: any) => (q?.where?.type ? [JSON.parse(JSON.stringify(LINE))] : []));
+    /* What Aisha typed in that check-in, so the line is served as her own words (only words she said are
+       quoted: what-each-person-said-is-in-their-name), and the file's name inside them is what is tested. */
+    prisma.conversationTurn = { findMany: jest.fn(async () => [{ checkInId: 'c1', content: LINE.text }]) };
     const reports = Object.create(ReportsService.prototype) as ReportsService;
     const svc = new BoardService(prisma, { respond: jest.fn(async () => null) } as any, { getSessionProgress: async () => null } as any, reports);
     const board: any = await svc.get('g-sales', userId);
