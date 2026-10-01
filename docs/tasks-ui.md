@@ -69,6 +69,11 @@ Rebuilt from the shared parts in four groups, each with a picture check per scre
 - [ ] **Group 3, check-ins and signing in:** the rest of GroundAdminPage, ChatPage, CreateGroundPage, EntryChatPage and SaveCard, ReportPage and SessionReportPage, the sign-in pages (AuthPage, auth-kit, MagicVerifyPage), JoinPage.
 - [ ] **Group 4, the back office:** AdminPage, AdminDashboardPage, the ops pages, the prompt pages.
 
+## Next after group 3's batch C: the board for every kind of work (Hafsah, 1 October)
+- [ ] Draw the engine's new board fields: request 82 (the two parts of "What keeps coming up", with the lead's "coach towards" and "one step"), 85, 87, 89, and the switchboard's 22 sections.
+- [ ] Picture all eleven kinds of work, as the lead and as a participant, at 1440 and 375, against their prototype examples, using the local test check-ins and the kind-of-work records from request 76.
+- [ ] Review and fix, with the board's drift replaced by shared parts. Then say for each kind: done and matching the prototype.
+
 ## The engine's answers of 30 September, to draw on the screens
 
 Each is in `docs/answers-from-engine.md`. They come after group 1, in this order.

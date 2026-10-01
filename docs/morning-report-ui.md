@@ -161,6 +161,42 @@ The invitation and every state it hands over to (the fresh invitation, already j
 
 **The full run at the end, 29 September:** 10,475 of 10,477 API tests and 3,430 of 3,433 screen tests passed, and both type checks are clean. None of the five failures comes from the invitation. One waits on the engine's heading label (request 62). One is two of the engine's own new specs reading source without stripping comments (request 72). Two are the sidebar's "Jump to" focus and its failed-list message, which the engine workspace also saw failing without any code change on 27 September; they look order- or time-dependent and are still to be pinned down. One is a leftover file, `GroundTabRow.tsx`, which the check-in rebuild removes after moving its test to the new tabs.
 
+## Is the board done for every kind of work? (Hafsah's question, 1 October)
+
+**No, not fully. All eleven kinds are partly done.** None can yet be called done and matching the prototype.
+
+What is done, for all eleven, on 30 September:
+- Each kind's board was rebuilt from the shared parts, using the local test check-ins and the engine's kind-of-work records from request 76.
+- Each was pictured as its lead and as a participant, and reviewed: 22 boards in all.
+- The faults that review found were fixed.
+
+Why that is not enough to call any of them done:
+- **The re-review read only nine of the eleven kinds,** and the report does not record which nine. So two kinds were never checked after their fixes.
+- **The final check covered one board only,** "Sales team, Q3", as Rukia and Juma.
+- **The engine has changed the board in four merges since,** and the boards have not been pictured again.
+- **New board fields from the engine are not drawn yet:** the two parts of "What keeps coming up", with the lead's "coach towards" and "one step" (request 82); who said each record (request 89); someone an admin did not let in (request 85); "in 1 session" (request 87); and the switchboard's 22 sections.
+
+| Kind of work | Status |
+| --- | --- |
+| Sales team (sales org) | Partly done. Rebuilt, reviewed, re-reviewed, and the final check was on this one. The new engine fields are not drawn yet. |
+| Engineering release | Partly done. Rebuilt and reviewed. Not re-checked since the engine's changes. |
+| Support desk | Partly done, the same. |
+| Distribution operations | Partly done, the same. |
+| Trader training programme | Partly done, the same. |
+| Founder's own check-in | Partly done, the same. |
+| Asset loans | Partly done, the same. |
+| Choosing where to focus next (MarketView where next) | Partly done, the same. |
+| Subscriptions and payments (MarketView Q4) | Partly done, the same. |
+| A law firm matter | Partly done, the same. |
+| A government programme | Partly done, the same. |
+
+**Next, straight after batch C:** the board for every kind of work.
+1. Draw the engine's new board fields.
+2. Picture all eleven kinds, as the lead and as a participant, at 1440 and 375, against their prototype examples.
+3. Review them and fix what is found, with the drift on the board's pages replaced by shared parts as for every group.
+
+It will take roughly six to eight hours of work: about two to three to draw the new fields, about one to picture and compare 44 screens, and two to four for the review and the fixes it finds.
+
 ## In short, for the morning
 
 *Kept up to date as the night goes on. The details are further down.*
