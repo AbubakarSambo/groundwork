@@ -1,5 +1,6 @@
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
+import { theSharedReadWithoutTheLeadsJudgement } from './what-the-room-says-is-not-a-reading-of-the-lead';
 import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
 import { withoutWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
@@ -1896,6 +1897,12 @@ export class BoardService {
       /* A goal the lead has not told somebody about is in no sentence anybody but the lead reads. See
          grounds/a-goal-not-told-stays-with-the-lead. */
       if (!isInitiator) walled = withoutGoalsNotToldIn(walled, await this.goalsNotToldYet(groundId));
+      /* The shared read of the answers carries no sentence that is a reading of the lead, to anybody but the lead. */
+      if (!isInitiator && walled.whatTheAnswersSay) {
+        const leadRow = (ground.participants as any[]).find((p) => p.id === theLeadsRow);
+        const leadNames = [[leadRow?.user?.firstName, leadRow?.user?.lastName].filter(Boolean).join(' '), leadRow?.user?.firstName ?? '', leadRow?.nameGiven ?? ''];
+        walled.whatTheAnswersSay = theSharedReadWithoutTheLeadsJudgement(walled.whatTheAnswersSay, leadNames);
+      }
       /* An aim whose only sentence was the hidden number is not left on the board as an empty line. */
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
       /* And a line with no words is left out here, never served for the page to draw as an empty line. */
