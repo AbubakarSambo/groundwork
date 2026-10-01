@@ -374,3 +374,35 @@ team-report-as-participant.txt):
 `where-to-focus.tsx`, `ResolutionPanel.tsx`, `split-one-total-across-people.tsx`, `BoardPage.tsx`,
 `WorkRecords.tsx`, `two-accounts-side-by-side.tsx`), so neither rule nor name comes off
 `one-off-style-classes.ts` yet.
+
+## Group 3's drift-list review, part 2 (1 October): `TheSessionsReport.tsx`'s own `<style>` tag removed
+
+Its 46 classes lived in a component-local stylesheet (a template string, injected with a `<style>`
+element), which neither class guard reads - the same drift as a one-off utility class, just hidden
+in a different place (Hafsah, 1 October). They are now ordinary named classes in `gw-ui.css`,
+`gwui-` prefixed like every other shared part, with every value carried over unchanged. The file
+and its class list come off `the-style-tags-there-were-on-1-october.ts`.
+
+Each followed the values below before this move, and follows them still - nothing changed but
+where the rule lives:
+
+| Class | What it draws | Where it came from |
+| --- | --- | --- |
+| `gwui-sr` | the report card's own overflow clip, so the full-bleed finding and tile bands do not escape the panel's rounded corners | the card's own shape (no dedicated prototype class; this product's own invention for a card with full-bleed internal bands) |
+| `gwui-sr-head`, `gwui-sr-head-title`, `gwui-sr-head-shared` | the masthead line ("Session 37. 6 of 6 people checked in.") and, once released, "Shared with the team." under it | one-session.txt's own masthead sentence and share line |
+| `gwui-sr-counted`, `gwui-sr-counted-item`, `gwui-sr-muted` | the row naming who is counted and who has or has not checked in | one-session.txt: "You have checked in.", "Omar has not checked in yet." |
+| `gwui-sr-finding`, `gwui-sr-finding-label` | the amber finding band at the top of the card | the marketing example report's own finding band (no screen in `docs/prototype/screens` carries this card; the marketing site's example reports are the nearest prototype source, as the file's own top comment says) |
+| `gwui-find`, `gwui-find-why`, `gwui-find-why-basis`, `gwui-find-why-also` | the finding's own sentence, and its basis/also-would-have-surfaced captions underneath, in amber | the same marketing example report |
+| `gwui-sr-row` | one numbered block of the card (the cascade, the objective band, "what people said", "the picture from everybody", "not raised again", "what this is built from") | the marketing example report's own row rhythm, a rule above and padding around each block |
+| `gwui-tile-grid`, `gwui-tile`, `gwui-tile-n`, `gwui-tile-txt`, `gwui-tile-good`, `gwui-tile-watch` | the "at a glance" row of four tiles, each a sentence rather than a bare figure (U.9 third review, item 2) | the marketing example report's own four-state row |
+| `gwui-sr-parent`, `gwui-sr-why` | the cascade block: the bigger goal this one sits under, and why | one-session.txt's "This is part of a bigger goal" block |
+| `gwui-sr-quotes`, `gwui-sr-quote`, `gwui-sr-cite` | a quote, and the sentence under it naming who said it (or, for a document, what kind of file it is) | one-session.txt's quoted lines, each with its own source line underneath |
+| `gwui-sr-statement`, `gwui-sr-position` | a plain sentence row (the picture from everybody; what went quiet; a person's own position on an open topic) | one-session.txt's own prose rows |
+| `gwui-sr-caption-label`, `gwui-sr-caption-text` | a small caption above its own sentence ("Why this matters", "What would settle it") | one-session.txt's "why it matters"/"what settles it" captions, re-read (U.9 review fix 12) as a caption over a sentence rather than a label joined by a colon |
+| `gwui-sr-source-line` | the folded "lines this comes from", under an open topic | one-session.txt's own sourcing line |
+| `gwui-sr-toggle-row`, `gwui-sr-muted-inline` | the row holding "Each person's own work, in their own words." beside the "Group by person"/"Group by theme" link | the card's own control row (no dedicated prototype class; the prototype does not carry this toggle) |
+| `gwui-sr-item-title`, `gwui-sr-muted-prose` | a themed or per-person heading, and the sentence said when a group has nothing in it | one-session.txt's own grouped headings |
+| `gwui-sr-grouped`, `gwui-sr-lines-gap`, `gwui-sr-picture-list`, `gwui-sr-definitions`, `gwui-sr-built-from`, `gwui-sr-rests-on-item`, `gwui-sr-agree-wrap` | the spacing between items inside a folded or grouped list | the card's own vertical rhythm, 8 to 16px between rows, the same scale every other shared part uses |
+| `gwui-sr-section-note` | a short note under a themed group ("the lines this comes from" style of aside) | one-session.txt's own section notes |
+| `gwui-sr-person-saying`, `gwui-sr-person-finding` | a person's own summary line, and (grouped by person) the product's own finding about their work, with an amber edge when there is a gap | one-session.txt's per-person material, grouped |
+| `gwui-sr-footer`, `gwui-sr-footer-line` | the closing line: when it was last updated, and whether it is still forming or closed | team-report.txt's own "Last updated on..." line |

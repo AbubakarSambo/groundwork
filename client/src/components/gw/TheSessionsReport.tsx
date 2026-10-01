@@ -36,13 +36,19 @@ import { Panel, SubHeading, Note, Callout, EdgeList, EdgeRow } from '@/component
  * `the-order-comes-from-one-place.spec.ts` reads this file's own source for `<Row ... label=...>`
  * - but draws its label with `SubHeading` now, not a bespoke bold-and-muted span. What is left
  * after that is content this report alone has no other shared part for (the quote-and-citation
- * pairing, the at-a-glance tiles, the amber finding band): each now lives in one purpose-named
- * local class under `.gw-sr` (`.gw-sr-quote`, `.gw-tile-grid`, and the rest), the same pattern this
- * file already used for `.gw-find`/`.gw-tile*`, rather than a combination of atomic utility
- * classes. `Section` and `Tag` are not used here: this component has no page-level heading of its
+ * pairing, the at-a-glance tiles, the amber finding band): each is a named class in `gw-ui.css`
+ * (`.gwui-sr-quote`, `.gwui-tile-grid`, and the rest), prefixed `gwui-` like every other shared
+ * part. `Section` and `Tag` are not used here: this component has no page-level heading of its
  * own (the page that draws it already supplies one), and nothing on it is the short, unpunctuated
  * fact `Tag` is for - "Shared with the team." is a sentence the prototype prints as plain text
  * (one-session.txt), not a pill. See docs/the-parts-against-the-prototype.md.
+ *
+ * GROUP 3's DRIFT-LIST REVIEW, PART 2 (Hafsah, 1 October 2026): THE COMPONENT'S OWN STYLE TAG IS GONE.
+ * The 46 classes that local stylesheet carried (`.gwui-sr*`, `.gwui-tile*`, `.gwui-find*`) are the
+ * same drift as a one-off utility class in another file's inline style, just hidden from both
+ * class guards by living inside a component's own style element instead of `gw-ui.css`. Every value is
+ * unchanged; only the file they are written in moved, from this component's own `SHEET` constant
+ * into `gw-ui.css`, written up in `docs/the-parts-against-the-prototype.md`.
  */
 
 /** The themes, in the order the promise makes them. Server omits a section it cannot fill. */
@@ -68,9 +74,9 @@ const RESTS_ON = ['What this is built from', 'What this rests on']
  * page had the same facts as eleven headings of prose. Every block below is one of the card's rows;
  * the facts and their sources are unchanged, only the shape is.
  *
- * ONE LOCAL STYLESHEET, SCOPED UNDER `.gw-sr`, FOR WHAT NO SHARED PART ALREADY NAMES. Each class
- * below is named for the thing it draws, the way `.gwui-edge-h`/`.gwui-panel-text` are, not for the
- * raw value it happens to carry - the difference between a shared part and the one-off classes this
+ * EVERY CLASS THIS CARD DRAWS FROM LIVES IN `gw-ui.css` NOW, NOT IN A LOCAL STYLE ELEMENT. Each is
+ * named for the thing it draws, the way `.gwui-edge-h`/`.gwui-panel-text` are, not for the raw
+ * value it happens to carry - the difference between a shared part and the one-off classes this
  * rebuild removed.
  *
  * WHAT A PHONE CHANGES ON THIS PAGE, AND IT IS NOT THE TYPE SIZE OF THE BODY.
@@ -91,66 +97,6 @@ const RESTS_ON = ['What this is built from', 'What this rests on']
  *
  * Nothing is cut. A phone gets the same words at a size that lets somebody read them.
  */
-const SHEET = `
-.gw-sr { overflow: hidden; }
-.gw-sr-head     { padding: 16px 20px; }
-.gw-sr-head-title { font-size: 14px; line-height: 1.5; color: var(--gw-text); }
-.gw-sr-head-shared { font-size: 13.5px; color: var(--gw-sub); margin-top: 2px; }
-.gw-sr-counted  { border-top: 1px solid var(--gw-border); padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 6px 20px; }
-.gw-sr-counted-item { font-size: 13px; color: var(--gw-text); }
-.gw-sr-counted-item.gw-sr-muted { color: var(--gw-sub); }
-.gw-sr-finding  { border-top: 1px solid var(--gw-border); padding: 16px 20px; background: var(--gw-amber-bg); }
-.gw-sr-finding-label { font-size: 13px; font-weight: 700; color: var(--gw-amber-t); margin-bottom: 8px; }
-.gw-sr .gw-find     { font-size: 16.5px; line-height: 1.4; font-weight: 600; color: var(--gw-text); margin: 0; max-width: 58ch; }
-.gw-sr .gw-find-why { font-size: 13px; line-height: 1.6; color: var(--gw-amber-t); display: block; }
-.gw-sr .gw-find-why-basis { margin-top: 8px; }
-.gw-sr .gw-find-why-also  { margin-top: 6px; opacity: .85; }
-.gw-sr-row      { border-top: 1px solid var(--gw-border); padding: 16px 20px; }
-.gw-tile-grid   { border-top: 1px solid var(--gw-border); display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-.gw-sr .gw-tile     { padding: 14px 18px; }
-.gw-sr .gw-tile-n   { border-left: 1px solid var(--gw-border); }
-/* U.9 THIRD REVIEW: ONE CLASS, FOR ONE SENTENCE, NOT A FIGURE CLASS AND A CAPTION CLASS. Each tile
-   used to be a big figure (.gw-tile-v) over a small caption (.gw-tile-s); it is one sentence now,
-   set at a size that reads as body text rather than as a scoreboard digit. */
-.gw-sr .gw-tile-txt { font-size: 13px; font-weight: 600; line-height: 1.5; color: var(--gw-text); }
-.gw-sr .gw-tile-good  { color: var(--gw-green-t); }
-.gw-sr .gw-tile-watch { color: var(--gw-amber-t); }
-.gw-sr-parent   { margin: 0 0 6px; font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--gw-text); }
-.gw-sr-why      { margin: 0; font-size: 13.5px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
-.gw-sr-quotes   { display: grid; gap: 12px; }
-.gw-sr-quote    { font-size: 13.5px; font-style: italic; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
-.gw-sr-cite     { font-size: 13px; color: var(--gw-muted); margin-top: 6px; }
-.gw-sr-statement{ margin: 0; font-size: 13.5px; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
-.gw-sr-position { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
-.gw-sr-caption-label { margin: 0 0 2px; font-size: 13px; color: var(--gw-sub); }
-.gw-sr-caption-text  { margin: 0; font-size: 13px; color: var(--gw-text); max-width: 68ch; line-height: 1.6; }
-.gw-sr-source-line   { margin: 0; font-size: 13px; font-style: italic; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
-.gw-sr-toggle-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-.gw-sr-muted-inline { font-size: 13px; color: var(--gw-sub); }
-.gw-sr-item-title { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-bottom: 6px; }
-.gw-sr-muted-prose { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
-.gw-sr-section-note { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; margin-top: 8px; }
-.gw-sr-person-saying { font-size: 13px; color: var(--gw-sub); max-width: 68ch; line-height: 1.6; }
-.gw-sr-person-finding { font-size: 13px; color: var(--gw-text); margin-top: 6px; padding: 8px 10px; max-width: 68ch; line-height: 1.6; }
-.gw-sr-footer   { font-size: 13px; color: var(--gw-sub); line-height: 1.6; }
-.gw-sr-footer-line { display: block; margin-bottom: 4px; }
-.gw-sr-definitions { display: grid; gap: 12px; margin-top: 12px; }
-.gw-sr-agree-wrap { margin-top: 12px; }
-.gw-sr-grouped  { display: grid; gap: 16px; margin-top: 10px; }
-.gw-sr-lines-gap { display: grid; gap: 8px; }
-.gw-sr-picture-list { display: grid; gap: 10px; }
-.gw-sr-built-from { margin-top: 10px; }
-.gw-sr-rests-on-item { margin-top: 12px; }
-@media (max-width: 640px) {
-  .gw-sr .gw-find     { font-size: 15px; line-height: 1.5; font-weight: 600; }
-  .gw-sr .gw-find-why { font-size: 13px; }
-  /* Stacked, the divider is the rule ABOVE each tile, not a stripe down its left edge. */
-  .gw-sr .gw-tile     { padding: 12px 16px; }
-  .gw-sr .gw-tile-n   { border-left: none; border-top: 1px solid var(--gw-border); }
-  .gw-sr .gw-tile-txt { font-size: 13.5px; }
-}
-`
-
 /** "Note from Tuskys Kilimani.txt", "team-plan.txt" - a source cited by its own filename, never a
     person's name. Used to decide how the sentence under it reads. */
 function looksLikeAFilename(who: string): boolean {
@@ -203,7 +149,7 @@ function Cite({ who, documented, figureIs, isYou }: { who: string; documented?: 
       ? `${who} is ${kindOfFile(who)}.`
       : `${who} said this${figureIs ? ` ${figureIs}` : ''}.${documented && !figureIs ? ' A document backs it.' : ''}`
   return (
-    <div className="gw-sr-cite">
+    <div className="gwui-sr-cite">
       {sentence}
     </div>
   )
@@ -216,10 +162,10 @@ function Cite({ who, documented, figureIs, isYou }: { who: string; documented?: 
  */
 function Quotes({ items, yourName }: { items: { text: string; who?: string | null; documented?: boolean; figureIs?: string }[]; yourName: string | null }) {
   return (
-    <div className="gw-sr-quotes">
+    <div className="gwui-sr-quotes">
       {items.map((it, i) => (
         <div key={i}>
-          <div className="gw-sr-quote">{it.text}</div>
+          <div className="gwui-sr-quote">{it.text}</div>
           <Cite
             who={it.who == null || it.who === yourName ? 'You' : it.who}
             isYou={it.who == null || it.who === yourName}
@@ -248,7 +194,7 @@ function Quotes({ items, yourName }: { items: { text: string; who?: string | nul
  * GROUP 3's DRIFT-LIST REVIEW (1 October 2026): keeps its name and its `label`/`n` props exactly -
  * `the-order-comes-from-one-place.spec.ts` reads this file's own source for `<Row ... label=...>` -
  * but draws the label with `SubHeading` now, not the bespoke bold-and-muted span this file used to
- * build by hand, and the row itself with the local `.gw-sr-row` class in place of the one-off
+ * build by hand, and the row itself with the local `.gwui-sr-row` class in place of the one-off
  * `gwui-rule-top gwui-pt-16 gwui-pr-20 gwui-pb-16 gwui-pl-20` combination.
  */
 function Row({ label, children, style }: {
@@ -260,7 +206,7 @@ function Row({ label, children, style }: {
   style?: React.CSSProperties
 }) {
   return (
-    <div className="gw-sr-row" style={style}>
+    <div className="gwui-sr-row" style={style}>
       {/*
         U.9 REVIEW FIX 7 AND 12, AND THE RE-REVIEW: ONE PLAIN LABEL, NOTHING UNDER IT.
         "01 What this sits under" numbered every block, which is what produced "Session 1 /
@@ -586,9 +532,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
   const next = () => (step += 1)
 
   return (
-    <Panel pad={false} className="gw-sr">
-      <style>{SHEET}</style>
-
+    <Panel pad={false} className="gwui-sr">
       {/*
         ── The masthead: where you are in it. No title of its own here any more - every page that
         draws this card already carries its own "Session N" heading above it (SessionReportPage,
@@ -596,12 +540,12 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         an objective, read three times on one screen: the page's own heading, this one, then
         "Session N" again inside the count sentence below. One heading, said once, above the card.
       */}
-      <div className="gw-sr-head">
-        <div className="gw-sr-head-title">
+      <div className="gwui-sr-head">
+        <div className="gwui-sr-head-title">
           {sessionAndWhoCheckedIn(d.sessionNumber, d.plannedSessions ?? null, answered, ofPeople)}
         </div>
         {final && (
-          <div className="gw-sr-head-shared">{SHARED_WITH_THE_TEAM}</div>
+          <div className="gwui-sr-head-shared">{SHARED_WITH_THE_TEAM}</div>
         )}
       </div>
 
@@ -614,9 +558,9 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         row exists for, and I dropped the whole row in the rebuild before a spec caught it.
       */}
       {(d.counting ?? []).length > 0 && (
-        <div className="gw-sr-counted">
+        <div className="gwui-sr-counted">
           {d.counting.map((c: any, i: number) => (
-            <span key={i} className={`gw-sr-counted-item${c.answered ? '' : ' gw-sr-muted'}`}>
+            <span key={i} className={`gwui-sr-counted-item${c.answered ? '' : ' gwui-sr-muted'}`}>
               {hasCheckedIn(c)}
             </span>
           ))}
@@ -625,16 +569,16 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
 
       {/* ── The finding, first and alone. One sentence the engines stand behind. */}
       {finding && (
-        <div className="gw-sr-finding">
-          <div className="gw-sr-finding-label">The finding</div>
-          <p className="gw-find">{finding.text}</p>
+        <div className="gwui-sr-finding">
+          <div className="gwui-sr-finding-label">The finding</div>
+          <p className="gwui-find">{finding.text}</p>
           {finding.basis && (
-            <small className="gw-find-why gw-find-why-basis">{finding.basis}</small>
+            <small className="gwui-find-why gwui-find-why-basis">{finding.basis}</small>
           )}
           {/* When it would have come up on its own. Under the finding and nowhere else: alone it is a
               remark about a calendar; here it is why the finding matters now rather than later. */}
           {finding.wouldHaveSurfaced && (
-            <small className="gw-find-why gw-find-why-also">
+            <small className="gwui-find-why gwui-find-why-also">
               {finding.wouldHaveSurfaced}
             </small>
           )}
@@ -659,11 +603,11 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         shown as a heading of its own.
       */}
       {(d.atAGlance ?? []).length > 0 && (
-        <div className="gw-tile-grid">
+        <div className="gwui-tile-grid">
           {d.atAGlance.map((r: any, i: number) => (
-            <div key={r.label} className={i > 0 ? 'gw-tile gw-tile-n' : 'gw-tile'}>
+            <div key={r.label} className={i > 0 ? 'gwui-tile gwui-tile-n' : 'gwui-tile'}>
               <span className="gwui-sr-only">{r.label}</span>
-              <div className={`gw-tile-txt ${r.tone === 'good' ? 'gw-tile-good' : r.tone === 'watch' ? 'gw-tile-watch' : ''}`}>
+              <div className={`gwui-tile-txt ${r.tone === 'good' ? 'gwui-tile-good' : r.tone === 'watch' ? 'gwui-tile-watch' : ''}`}>
                 {tileSentence(r)}
               </div>
             </div>
@@ -694,9 +638,9 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       {d.cascade && (
         <Row n={next()} label={d.cascade.isCascade ? 'This is part of a bigger goal.' : 'Nobody has said what bigger goal this is part of.'}>
           {d.cascade.parentNamed && (
-            <p className="gw-sr-parent">{d.cascade.parentNamed}</p>
+            <p className="gwui-sr-parent">{d.cascade.parentNamed}</p>
           )}
-          <p className="gw-sr-why">{d.cascade.why}</p>
+          <p className="gwui-sr-why">{d.cascade.why}</p>
         </Row>
       )}
 
@@ -713,10 +657,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         <Row n={next()} label="What everybody said good looks like">
           <WhatSuccessLooksLike data={{ ...d.againstSuccess, definitions: [] }} yourName={yourName} headingIsTheCallers />
           {definitions.length > 0 && (
-            <div className="gw-sr-definitions">
+            <div className="gwui-sr-definitions">
               {definitions.map((def, i) => (
                 <div key={i}>
-                  <div className="gw-sr-quote">{def.text}</div>
+                  <div className="gwui-sr-quote">{def.text}</div>
                   <Cite
                     who={def.who === null || (yourName && def.who === yourName) ? 'You' : def.who!}
                     isYou={def.who === null || (yourName && def.who === yourName) || false}
@@ -743,7 +687,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                       {o.positions.length > 0 && (
                         <div>
                           {o.positions.map((p, j) => (
-                            <p key={j} className="gw-sr-position">
+                            <p key={j} className="gwui-sr-position">
                               {/*
                                 GROUP 3'S REVIEW, BATCH A FAULT 6: "BARAKA MWANGI: COMPETITOR PRICING
                                 IS..." AND "RUKIA OTIENO: THE MAIN OBSTACLE..." WERE A LABEL GLUED TO
@@ -765,21 +709,21 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                       */}
                       {o.atStake && (
                         <div>
-                          <p className="gw-sr-caption-label">Why this matters</p>
-                          <p className="gw-sr-caption-text">{o.atStake}</p>
+                          <p className="gwui-sr-caption-label">Why this matters</p>
+                          <p className="gwui-sr-caption-text">{o.atStake}</p>
                         </div>
                       )}
                       {o.settledBy && (
                         <div>
-                          <p className="gw-sr-caption-label">What would settle it</p>
-                          <p className="gw-sr-caption-text">{o.settledBy}</p>
+                          <p className="gwui-sr-caption-label">What would settle it</p>
+                          <p className="gwui-sr-caption-text">{o.settledBy}</p>
                         </div>
                       )}
                       {o.restsOn.length > 0 && (
                         <Folded summary="The lines this comes from">
                           <div>
                             {o.restsOn.map((r, j) => (
-                              <p key={j} className="gw-sr-source-line">{r}</p>
+                              <p key={j} className="gwui-sr-source-line">{r}</p>
                             ))}
                           </div>
                         </Folded>
@@ -797,10 +741,10 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
             <Note>Nothing is open. Everything anybody raised has been settled.</Note>
           )}
           {settled.length > 0 && (
-            <div className="gw-sr-agree-wrap">
+            <div className="gwui-sr-agree-wrap">
               <Folded summary={`What everybody agrees (${settled.length})`}>
                 <div>
-                  {settled.map((t, i) => <p key={i} className="gw-sr-statement">{t}</p>)}
+                  {settled.map((t, i) => <p key={i} className="gwui-sr-statement">{t}</p>)}
                 </div>
               </Folded>
             </div>
@@ -811,8 +755,8 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       {/* ── What each person said they did. Folded: long, and their own work only. */}
       {themed.length > 0 && (
         <Row n={next()} label="What people said this session">
-          <div className="gw-sr-toggle-row">
-            <span className="gw-sr-muted-inline">Each person&apos;s own work, in their own words.</span>
+          <div className="gwui-sr-toggle-row">
+            <span className="gwui-sr-muted-inline">Each person&apos;s own work, in their own words.</span>
             {/*
               HAFSAH'S BUTTON-COUNT REVIEW (1 October 2026): THIS SWITCHES BETWEEN TWO VIEWS OF THE
               SAME LIST, IT DOES NOT GO ANYWHERE OR SEND ANYTHING. A boxed button read as a second
@@ -830,23 +774,23 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
             </button>
           </div>
           <Folded summary={byPerson ? `What each of the ${(d.whatEachPersonSaid ?? []).length} said` : `All ${themed.length} groups`}>
-            <div className="gw-sr-grouped">
+            <div className="gwui-sr-grouped">
               {byPerson
                 ? (d.whatEachPersonSaid ?? []).map((p: any, i: number) => (
                   <div key={i}>
                     {/* U.9 RE-REVIEW, ITEM A: "a colleague" as a heading is capitalised, like the
                         start of any other sentence or line - `atTheStart` only touches the plain
                         phrases this can fall back to, never a real name. */}
-                    <div className="gw-sr-item-title">
+                    <div className="gwui-sr-item-title">
                       {p.isYou ? `${p.who} (you)` : atTheStart(p.who)}
                     </div>
-                    {p.saying && <div className="gw-sr-person-saying">{p.saying}</div>}
+                    {p.saying && <div className="gwui-sr-person-saying">{p.saying}</div>}
                     {/* The product's own finding for this person, from the record: purpose, standing, the lead's number against theirs, the gap. */}
-                    {p.finding && <div className="gw-sr-person-finding" style={{ borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: p.hasGap ? 'var(--gw-amber-b)' : 'var(--gw-border)' }}>{p.finding}</div>}
+                    {p.finding && <div className="gwui-sr-person-finding" style={{ borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: p.hasGap ? 'var(--gw-amber-b)' : 'var(--gw-border)' }}>{p.finding}</div>}
                     {p.lines?.length ? (
-                      <div className="gw-sr-lines-gap">
+                      <div className="gwui-sr-lines-gap">
                         {p.lines.map((l: string, j: number) => (
-                          <div key={j} className="gw-sr-quote">{l}</div>
+                          <div key={j} className="gwui-sr-quote">{l}</div>
                         ))}
                       </div>
                     ) : null}
@@ -854,11 +798,11 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                 ))
                 : themed.map((sec: any) => (
                   <div key={sec.title}>
-                    <div className="gw-sr-item-title">{sec.title}</div>
+                    <div className="gwui-sr-item-title">{sec.title}</div>
                     {sec.items.length > 0
                       ? <Quotes items={sec.items} yourName={yourName} />
-                      : <div className="gw-sr-muted-prose">{sec.saying}</div>}
-                    {sec.note && <div className="gw-sr-section-note">{sec.note}</div>}
+                      : <div className="gwui-sr-muted-prose">{sec.saying}</div>}
+                    {sec.note && <div className="gwui-sr-section-note">{sec.note}</div>}
                   </div>
                 ))}
             </div>
@@ -869,8 +813,8 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       {/* ── The picture from everybody. The long read of the finding, after the sharp part. */}
       {rest.length > 0 && (
         <Row n={next()} label="The picture from everybody">
-          <div className="gw-sr-picture-list">
-            {rest.map((l) => <p key={l.key} className="gw-sr-statement">{l.text}</p>)}
+          <div className="gwui-sr-picture-list">
+            {rest.map((l) => <p key={l.key} className="gwui-sr-statement">{l.text}</p>)}
           </div>
         </Row>
       )}
@@ -883,13 +827,13 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       */}
       {d.whatWentQuiet && (
         <Row n={next()} label="Not raised again">
-          <p className="gw-sr-statement">{d.whatWentQuiet}</p>
+          <p className="gwui-sr-statement">{d.whatWentQuiet}</p>
         </Row>
       )}
 
       {/* ── The one conversation worth having. Boxed, because it is the thing to do next. */}
       {d.theConversationWorthHaving ? (
-        <div className="gw-sr-row">
+        <div className="gwui-sr-row">
           {/* U.9 REVIEW FIX 12: no more "06 THE CONVERSATION WORTH HAVING NOW" - a number and a
               shout on a heading that already reads plainly as a sentence in itself. `next()` still
               advances `step`, which the "nothing yet" empty state below reads. */}
@@ -900,7 +844,7 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
         </div>
       ) : d.whyNoQuestion ? (
         <Row n={next()} label="The conversation worth having now">
-          <p className="gw-sr-muted-prose">{d.whyNoQuestion}</p>
+          <p className="gwui-sr-muted-prose">{d.whyNoQuestion}</p>
         </Row>
       ) : null}
 
@@ -908,13 +852,13 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
              read as a verdict on it. */}
       <Row n={next()} label="What this is built from">
         <Folded summary="How much there is to go on, and what it is built from">
-          <div className="gw-sr-built-from">
+          <div className="gwui-sr-built-from">
             {d.confidence && <HowMuchThereIsToGoOn read={d.confidence} />}
             {restsOn.map((sec: any) => (
-              <div key={sec.title} className="gw-sr-rests-on-item">
+              <div key={sec.title} className="gwui-sr-rests-on-item">
                 {sec.items.length > 0
                   ? <Quotes items={sec.items.map((it: any) => ({ ...it, text: asFileIsKindSentence(it.text) }))} yourName={yourName} />
-                  : <div className="gw-sr-muted-prose">{sec.saying}</div>}
+                  : <div className="gwui-sr-muted-prose">{sec.saying}</div>}
               </div>
             ))}
           </div>
@@ -922,9 +866,9 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
       </Row>
 
       {/* ── The promise, and what state this is in. */}
-      <div className="gw-sr-row gw-sr-footer">
+      <div className="gwui-sr-row gwui-sr-footer">
         {!final && lastChangedLine && (
-          <span className="gw-sr-footer-line">{lastChangedLine}</span>
+          <span className="gwui-sr-footer-line">{lastChangedLine}</span>
         )}
         {!final
           ? 'People are still answering, so this moves. '
