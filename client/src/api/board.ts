@@ -284,6 +284,14 @@ export interface AServedWorkRow {
   /** "said": read from somebody's check-in, with `said` holding their words exactly. "lead": added by the lead. */
   from: 'said' | 'lead'
   said?: string
+  /**
+   * REQUEST 89: WHO SAID THIS RECORD, as a first name ("Baraka"), or "a colleague" (lower case,
+   * to sit inside "In ...'s words") where this reader may not be told who. Null for a record the
+   * lead added, and null when `from` is "lead".
+   */
+  saidBy?: string | null
+  /** The id behind `saidBy`, or null for "a colleague" and for a record the lead added. */
+  saidByParticipantId?: string | null
 }
 
 export type AServedWorkSection =

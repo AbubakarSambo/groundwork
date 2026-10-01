@@ -248,19 +248,23 @@ export function KindOfWorkBanner({ groundId, kindOfWork, workStages, canEdit }: 
  * `readerIsLead`, since the lead is the only one who adds a record); and "In Amani's words," which
  * guessed the speaker FROM THE OWNER FIELD - `row.owner` is whose the record is, not who said it in
  * their check-in, and a record about Amani's deal can just as easily have been said by somebody
- * else. `AServedWorkRow` (client/src/api/board.ts) carries no field for who actually spoke, so
- * rather than keep guessing, this now says "In the words of someone in this check-in," when the row
- * does not say who said it - engine request: a `saidBy` (or similarly named) field on a "said" row,
- * separate from `owner`, naming who spoke it.
+ * else.
+ *
+ * REQUEST 89, ANSWERED: `AServedWorkRow` now carries `saidBy`, separate from `owner` - the person's
+ * first name, "a colleague" (lower case, to sit inside "In ...'s words") where this reader may not
+ * be told who, or null for a record the lead added. "In the words of someone in this check-in," was
+ * this screen's own stand-in for the missing field and is gone now that the field exists; a "said"
+ * row with no `saidBy` at all (an older server) still falls back to it, so nothing breaks mid-rollout.
  */
 function WhatShowsIt({ row, leadFirstName, readerIsLead }: { row: AServedWorkRow; leadFirstName: string | null; readerIsLead: boolean }) {
   if (row.from === 'lead') {
     const addedBy = readerIsLead ? 'You' : (leadFirstName ?? 'The person running this check-in')
     return <p className="gwui-mt-0 gwui-mr-0 gwui-mb-0 gwui-ml-0 gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>{`${addedBy} added it.`}</p>
   }
+  const saidBy = row.saidBy?.trim()
   return (
     <div className="gwui-fs-13 gwui-ink-sub" style={{lineHeight: 1.5}}>
-      <div>In the words of someone in this check-in,</div>
+      <div>{saidBy ? `In ${saidBy}'s words,` : 'In the words of someone in this check-in,'}</div>
       {row.said && <p className="gwui-mt-2 gwui-mr-0 gwui-mb-0 gwui-ml-0" style={{fontStyle: 'italic'}}>{`“${row.said}”`}</p>}
     </div>
   )
