@@ -127,6 +127,15 @@ export interface YourWorkProps {
   /** This reader's own participant row, for their expectations (`objective.all`) - deliveries are
       filed against one of them, or against nothing ("something nobody asked for"). */
   myParticipant: any
+  /**
+   * THE READER'S OWN REAL NAME, AS THE SERVER NAMES THEM ELSEWHERE ON THE SAME REPORT.
+   *
+   * `WhatSuccessLooksLikeFor` reads each row's `who` and says "You" only where it equals this -
+   * never a literal "You" (group 3's review, batch A fault 6: that comparison can never succeed
+   * against a real name, so it always fell through to the name itself). BoardPage already passes
+   * its own equivalent (`myName`); null is a plain "no name known yet", never guessed.
+   */
+  myName?: string | null
   /** Read from the participant's own name where the report has one - "Wairimu" beside "You". */
   leadFirstName?: string | null
   otherParties: { id: string; name: string; email?: string | null }[]
@@ -158,7 +167,7 @@ export interface YourWorkProps {
 
 export function YourWork({
   groundId, ground, myRecord, mySoloReport, refetchSoloReport, specificity, report,
-  totalSessions, completedCount, myFinishedSessions, sessionDots, myParticipant, leadFirstName,
+  totalSessions, completedCount, myFinishedSessions, sessionDots, myParticipant, myName, leadFirstName,
   otherParties, postReportGuide, aTeamReportComes, onSeeEverySession, onReadTeamReport, onSeeRoster,
 }: YourWorkProps) {
   const myCommitments = ((ground?.commitments ?? []) as any[]).filter((c) => c.participantId === myParticipant?.id)
@@ -354,7 +363,7 @@ export function YourWork({
           {/* headingIsTheCallers: WhatSuccessLooksLike draws its own "What success looks like"
               heading unless told this Section already has it - without this, the page would show
               the same heading twice, two lines apart. */}
-          <WhatSuccessLooksLikeFor groundId={groundId} yourName="You" headingIsTheCallers />
+          <WhatSuccessLooksLikeFor groundId={groundId} yourName={myName} headingIsTheCallers />
         </Section>
       )}
 

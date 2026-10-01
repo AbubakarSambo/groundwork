@@ -17,6 +17,7 @@ vi.mock('@/api/grounds', () => ({
   },
 }))
 vi.mock('@/api/reports', () => ({ reportsApi: { againstSuccess: vi.fn().mockResolvedValue(null) } }))
+import { reportsApi } from '@/api/reports'
 
 function mount(overrides: Partial<Parameters<typeof YourWork>[0]> = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -178,5 +179,26 @@ describe('Your work', () => {
     const roster = screen.getAllByRole('button', { name: 'Who has answered' })
     roster[0].click()
     expect(onSeeRoster).toHaveBeenCalled()
+  })
+
+  /*
+   * GROUP 3'S REVIEW, BATCH A FAULT 6: "AMANI WEKESA SAID, 'I AM AIMING...'" ABOUT HIMSELF.
+   * `WhatSuccessLooksLikeFor` (inside "What success looks like") says "You" only where a row's
+   * `who` equals the `yourName` it is passed - YourWork used to pass the literal string "You",
+   * which a real name never equals, so the reader always read their own name back at themselves.
+   */
+  it('reads "You said" on the reader\'s own row, not their own name back at them', async () => {
+    vi.mocked(reportsApi.againstSuccess).mockResolvedValue({
+      sides: 'everyone',
+      spokenTo: { count: 0, of: 0 },
+      conditions: [],
+      stated: null,
+      saying: 'Nobody has said what good looks like yet.',
+      definitions: [{ who: 'Amani Wekesa', text: 'I am aiming for 3 shops in Kilimani' }],
+    } as any)
+    mount({ myName: 'Amani Wekesa', leadFirstName: 'Rukia' })
+    await screen.findByText(/I am aiming for 3 shops in Kilimani/)
+    const row = screen.getByText(/I am aiming for 3 shops in Kilimani/).closest('div')
+    expect(row?.textContent).toBe('You said, “I am aiming for 3 shops in Kilimani”')
   })
 })

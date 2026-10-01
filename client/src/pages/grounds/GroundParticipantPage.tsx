@@ -679,6 +679,16 @@ export function GroundParticipantPage() {
             myFinishedSessions={myFinishedSessions}
             sessionDots={mySessionDots}
             myParticipant={myParticipant}
+            /*
+              GROUP 3'S REVIEW, BATCH A FAULT 6: "AMANI WEKESA SAID, 'I AM AIMING...'" ABOUT
+              HIMSELF. `WhatSuccessLooksLikeFor` (inside YourWork) matches each row's `who` against
+              `yourName` to decide whether to say "You" - YourWork passed the literal string "You"
+              as `yourName`, which never equals the server's own name for the row, so it always fell
+              through to the real name. BoardPage already passes the reader's own real name
+              (`myName`); the same real name, from the same labels map already built on this page,
+              goes to YourWork now.
+            */
+            myName={myParticipant ? labelsForMe.get(myParticipant.id) ?? null : null}
             leadFirstName={(ground as any)?.leadFirstName}
             otherParties={(ground.participants ?? [])
               .filter((p: any) => p.userId !== user?.id)

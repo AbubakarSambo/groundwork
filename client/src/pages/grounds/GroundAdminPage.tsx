@@ -1712,6 +1712,8 @@ export function GroundAdminPage() {
             myFinishedSessions={mySessions}
             sessionDots={mySessionDots}
             myParticipant={myParticipant}
+            /* GROUP 3'S REVIEW, BATCH A FAULT 6: see the matching note on GroundParticipantPage.tsx. */
+            myName={myParticipant ? personLabel(myParticipant) : null}
             leadFirstName={(ground as any)?.leadFirstName}
             otherParties={(ground.participants ?? [])
               .filter((p: any) => p.userId !== user?.id)
