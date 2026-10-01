@@ -1,5 +1,7 @@
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
+import { areaOfGoalOrFallback } from '../grounds/the-area-of-a-goal-is-worded-once';
+import { withoutWhatTheLeadHasNotToldThemAbout, whatThePersonReadsOfTheirOwnUntoldGoals } from './an-untold-goal-is-not-a-board-objective';
 import { whatEachLabelIsCalled, withoutInternalLabelsIn } from '../reports/no-internal-label-reaches-anyone';
 import { contributionAsThisReaderMayRead } from './a-rating-goes-only-to-the-person';
 import { oneOfTheKinds, plainFields, theRecordSections, itemKindsFor, stagesFor, RECORDS_FOR_EACH_KIND, type AServedRecord, type KindOfWork } from './the-kind-of-work';
@@ -896,7 +898,15 @@ export class BoardService {
         { isLead: isInitiator },
       ).shown as typeof ground.objectives;
 
-      out.objectives = mayRead.map((o) => ({
+      /*
+       * AND NOT WHAT THE LEAD HAS SET FOR A PERSON AND NOT YET TOLD THEM (decision 56). See
+       * an-untold-goal-is-not-a-board-objective: the lead's own words in the check-in become objectives that
+       * share no sentence with the stored goal, so the sentence wall below never caught them.
+       */
+      const untoldRows = isInitiator ? [] : await this.untoldGoalRows(groundId);
+      const { kept: mayReadUntold } = withoutWhatTheLeadHasNotToldThemAbout(mayRead as any[], untoldRows, ground.participants as any[], isInitiator);
+
+      out.objectives = (mayReadUntold as typeof ground.objectives).map((o) => ({
         journey: theJourneySoFar({ start: startOf.get(o.id) ?? null, now: o.count, target: o.target }),
         /** The lead's own sentence about what is unsettled here, where there is one. Never a block. */
         notSettled: whatIsNotSettledAbout({ name: o.name, target: o.target }, notSettledLines),
@@ -935,6 +945,18 @@ export class BoardService {
             ),
           })),
       }));
+      /* A week past, the person reads that the goal exists, with no number (decision 56, item 4). Only they do. */
+      if (untoldRows.length) {
+        const leadFirst = ((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user?.firstName ?? '').trim() || 'Your lead';
+        const withArea = await Promise.all(untoldRows.map(async (g) => ({ ...g, area: await areaOfGoalOrFallback(this.prisma, g.text ?? '') })));
+        for (const say of whatThePersonReadsOfTheirOwnUntoldGoals(withArea, me?.id ?? null, leadFirst)) {
+          (out.objectives as any[]).push({
+            journey: { direction: 'unknown', start: null, now: 0, target: null, say: '', covered: null },
+            notSettled: null, id: `lead-set-goal-${(out.objectives as any[]).length}`, name: say, count: 0, prevCount: 0, target: null,
+            assumes: [], ownerParticipantId: me?.id ?? null, owner: null, delta: 0, isNew: false, suggestedCount: null, suggestedSaid: null, askedOf: null,
+          });
+        }
+      }
     }
 
     if (has('divergence') && reportSafe) {
@@ -1755,6 +1777,13 @@ export class BoardService {
       const adminWithoutAccess = adminHere && !runsIt && evaluation;
       /* On an evaluation check-in people never read each other's things, whatever was chosen about seeing each other (request 78, part 3). */
       const peersWalled = whoMaySee.peersHidden || evaluation;
+      /* Whether a sentence names one of the people on this check-in other than the lead: first name, or full name. */
+      const namesOfThePeople = (ground.participants as any[])
+        .filter((p) => p.id !== theLeadsRow && !p.managingOnly)
+        .flatMap((p) => [`${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim(), (p.user?.firstName ?? '').trim(), (p.nameGiven ?? '').trim()])
+        .filter((n) => n.length > 1)
+        .map((n) => new RegExp(`(?<![\\p{L}\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'iu'));
+      const namesAnyone = (text: string | null | undefined) => !!text && namesOfThePeople.some((re) => re.test(text));
       const reader: WhoIsReading = {
         meId: me?.id ?? null,
         mayReadEveryone,
@@ -1767,8 +1796,18 @@ export class BoardService {
         },
         handoffMayBeRead: (d) => {
           if (adminWithoutAccess) return false;
-          if (mayReadEveryone || !peersWalled) return true;
+          if (mayReadEveryone) return true;
+          /* What the lead said they are waiting on, about people, is the lead's (decisions 4 and 30). */
+          if (d.fromParticipantId && d.fromParticipantId === theLeadsRow && (evaluation || namesAnyone(d.what))) return false;
+          if (!peersWalled) return true;
           return !!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id);
+        },
+        commitmentMayBeRead: (c) => {
+          if (adminWithoutAccess) return false;
+          if (mayReadEveryone || !c.participantId || c.participantId === me?.id) return true;
+          /* The lead's own commitments are the lead's intentions: never read by a person in an evaluation check-in, nor, anywhere, when they name somebody. */
+          if (c.participantId === theLeadsRow) return !evaluation && !namesAnyone(c.text);
+          return true;
         },
         nameOf: (pid) => nameOf(pid),
         aColleague: (pid) => aColleague(pid),
@@ -1888,6 +1927,17 @@ export class BoardService {
             items: divergenceForTheSubject(walled.divergence.items, [me?.id ? nameOf(me.id) : null]),
           };
         }
+      }
+      /*
+       * THE NAME OF AN EVALUATION CHECK-IN, FOR THE PERSON IT IS ABOUT AND FOR A COLLEAGUE. The label is the
+       * lead's own ("Formal improvement plan: the account manager"), which describes the person and names the
+       * plan before anybody has told them. Neither reads it; they read whose check-in it is (decisions 4 and 30,
+       * "no labels on people"). The lead, and an admin given access, read the label as the lead typed it.
+       */
+      if (isEvaluationCheckIn(ground.scenario) && !(isInitiator || evaluationWordsRunsIt)) {
+        const leadFirst = ((ground.participants as any[]).find((p) => p.partyType === 'INITIATOR')?.user?.firstName ?? '').trim();
+        const theirs = viewerIsTheSubjectOfAnEvaluationCheckIn({ scenario: ground.scenario, isLead: false, viewerParticipantId: me?.id ?? null, participants: ground.participants as any });
+        walled.title = leadFirst ? `${theirs ? 'Your' : 'A'} check-in with ${leadFirst}` : (theirs ? 'Your check-in' : 'A check-in');
       }
       /* A record whose name was only a hidden number is not left as a row with no name. */
       if (Array.isArray(walled.workRecords)) {
@@ -2081,6 +2131,15 @@ export class BoardService {
       select: { text: true, awareness: true, authoredBy: true },
     }) ?? Promise.resolve([])).catch(() => []);
     return (rows as any[]).filter(notToldYet).map((r) => String(r.text ?? '')).filter(Boolean);
+  }
+
+  /** The lead-written goals not told yet, whole rows (for the board's objectives, decision 56). */
+  private async untoldGoalRows(groundId: string): Promise<{ participantId: string | null; text: string | null; awareness: string | null; authoredBy: string | null; createdAt: Date | null }[]> {
+    const rows = await ((this.prisma as any).personObjective?.findMany?.({
+      where: { groundId, awareness: 'NOT_TOLD' },
+      select: { participantId: true, text: true, awareness: true, authoredBy: true, createdAt: true },
+    }) ?? Promise.resolve([])).catch(() => []);
+    return (rows as any[]).filter(notToldYet);
   }
 
   /** The same rows, kept by participant - decision 56, item 3: wherever an untold goal counts

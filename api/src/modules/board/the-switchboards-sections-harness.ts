@@ -36,6 +36,8 @@ export interface Setup {
   checkIns?: any[];
   lines?: any[];
   objectives?: any[];
+  /** The lead's own goals for a person (PersonObjective), with whether the lead has told them. */
+  personObjectives?: any[];
   closedAt?: Date | null;
   /** What people typed, as conversation turns the person wrote (role PERSON). */
   turns?: { checkInId: string; content: string }[];
@@ -44,6 +46,8 @@ export interface Setup {
   report?: any;
   /** Who may read the targets (the ground's own setting). */
   whoSeesTargets?: string;
+  /** What the lead called the check-in. */
+  label?: string;
 }
 
 export const commitment = (id: string, participantId: string | null, text: string, more: Record<string, any> = {}) => ({
@@ -69,7 +73,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     id: 'g-1', scenario: setup.scenario ?? GroundScenario.OKR_ALIGNMENT, mode: GroundMode.SHARED,
     initiatorId: 'u-amina', createdByUserId: setup.createdByUserId ?? 'u-amina', organizationId: 'org-1',
     peopleWorkTogether: true, peersVisibleToEachOther: setup.peersVisibleToEachOther ?? true, timelineDays: 28, cadence: 'WEEKLY',
-    whoSeesTargets: setup.whoSeesTargets ?? 'THEIR_OWN', label: 'The team, Q3', participants: PEOPLE, checkIns, report: setup.report ?? null,
+    whoSeesTargets: setup.whoSeesTargets ?? 'THEIR_OWN', label: setup.label ?? 'The team, Q3', participants: PEOPLE, checkIns, report: setup.report ?? null,
     dependencies: setup.dependencies ?? [], poll: null, objectives: setup.objectives ?? [], closedAt: setup.closedAt ?? null,
     kindOfWork: null, workStages: null,
   };
@@ -84,6 +88,7 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     user: model({ findUnique: jest.fn(async () => ({ role, organizationId: 'org-1' })) }),
     checkIn: model({ findMany: jest.fn(async () => clone(checkIns)) }),
     conversationTurn: model({ findMany: jest.fn(async (args: any) => clone((setup.turns ?? []).filter((t) => (args?.where?.checkInId?.in ?? []).includes(t.checkInId)))) }),
+    personObjective: model({ findMany: jest.fn(async (args: any) => clone((setup.personObjectives ?? []).filter((o: any) => !args?.where?.awareness || o.awareness === args.where.awareness))) }),
     groundCommitment: model({ findMany: jest.fn(async () => clone(setup.commitments ?? [])) }),
     recordEntry: model({ findMany: jest.fn(async (args: any) => {
       if (args?.where?.id?.in) return [];

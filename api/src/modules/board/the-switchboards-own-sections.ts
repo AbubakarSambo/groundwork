@@ -32,7 +32,14 @@ export interface WhoIsReading {
   /** Whether the reader is the person who runs it: they are "you" in the lead's own sentences. */
   theLeadsId: string | null;
   personMayBeRead: (participantId: string | null | undefined) => boolean;
-  handoffMayBeRead: (d: { fromParticipantId?: string | null; onParticipantId?: string | null }) => boolean;
+  handoffMayBeRead: (d: { fromParticipantId?: string | null; onParticipantId?: string | null; what?: string | null }) => boolean;
+  /**
+   * Whether the reader may read what a person committed to. The lead's own commitments are the lead's
+   * intentions: a person reviewed in an evaluation check-in never reads them, and on any check-in a
+   * participant never reads one of the lead's that names somebody (decisions 4 and 30). Where the reader
+   * runs the check-in, or the commitment is their own, this is the same as `personMayBeRead`.
+   */
+  commitmentMayBeRead: (c: { participantId?: string | null; text?: string | null }) => boolean;
   /** The name this reader may read for a person, or null. The reader themselves is named 'You'. */
   nameOf: (participantId: string) => string | null;
   /** Said when this reader may not read the person's name: 'A colleague'. */
@@ -197,7 +204,7 @@ export function theWorkPlan(
   const so = theSessionsSoFar(sessions, commitments);
   const leadLabel = r.theLeadsId ? whoIs(r, r.theLeadsId) : 'The person running this check-in';
   return commitments
-    .filter((c) => r.personMayBeRead(c.participantId))
+    .filter((c) => r.personMayBeRead(c.participantId) && r.commitmentMayBeRead(c))
     .map((c) => {
       const who = c.participantId ? whoIs(r, c.participantId) : null;
       const says = aCommitmentSaid({
@@ -266,7 +273,7 @@ export function theRisks(
   /* 2. Commitments still open with no time, and ones said again and again and still open. */
   for (const c of commitments) {
     if (String(c.status).toUpperCase() !== 'UNKNOWN') continue;
-    if (!r.personMayBeRead(c.participantId)) continue;
+    if (!r.personMayBeRead(c.participantId) || !r.commitmentMayBeRead(c)) continue;
     const who = c.participantId ? whoIs(r, c.participantId) : 'Somebody';
     const clause = clauseOf(c);
     const what = clause ? `committed to ${clause}` : 'made a commitment';
@@ -334,7 +341,7 @@ export function theTimeline(
   for (const [n, at] of firstAnswer) push(at, `The first answers for session ${n} came in.`);
 
   for (const c of commitments) {
-    if (!r.personMayBeRead(c.participantId)) continue;
+    if (!r.personMayBeRead(c.participantId) || !r.commitmentMayBeRead(c)) continue;
     const who = c.participantId ? whoIs(r, c.participantId) : 'Somebody';
     const clause = clauseOf(c);
     push(c.createdAt, clause ? `${who} committed to ${clause}.` : `${who} made a commitment, which is in the record.`);
