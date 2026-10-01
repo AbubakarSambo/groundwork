@@ -157,14 +157,14 @@ const midSentence = (who: string) => (who === 'You' ? 'you' : who);
 const possessive = (who: string) => (who === 'You' ? 'Your' : `${who}'s`);
 
 /** Who, as a sentence starts with them: the reader's own name is 'You', somebody they may not name is 'A colleague'. */
-function whoIs(r: WhoIsReading, participantId: string | null | undefined): string {
+export function whoIs(r: WhoIsReading, participantId: string | null | undefined): string {
   if (!participantId) return 'Somebody';
   if (r.meId && participantId === r.meId) return 'You';
   return r.nameOf(participantId) ?? r.aColleague(participantId);
 }
 
 /** Who a handoff waits on, said inside a sentence: "you", a name, "a colleague", or the team outside named for it. A thing is not somebody (request 107 b). */
-function whoIsWaitedOn(r: WhoIsReading, d: { onParticipantId?: string | null; onLabel?: string | null; what?: string | null }): string | null {
+export function whoIsWaitedOn(r: WhoIsReading, d: { onParticipantId?: string | null; onLabel?: string | null; what?: string | null }): string | null {
   if (d.onParticipantId) {
     if (d.onParticipantId === r.meId) return 'you';
     const n = r.nameOf(d.onParticipantId) ?? r.aColleague(d.onParticipantId);
@@ -178,7 +178,7 @@ function whoIsWaitedOn(r: WhoIsReading, d: { onParticipantId?: string | null; on
  * somebody: " That waits on a decision on who owns them." Nothing where it is somebody, or the same
  * thing as what is waited for (request 107 b). Put after the sentence about the wait, never inside it.
  */
-function thatWaitsOn(d: { what: string; onLabel?: string | null; onParticipantId?: string | null }): string {
+export function thatWaitsOn(d: { what: string; onLabel?: string | null; onParticipantId?: string | null }): string {
   const on = (d.onLabel ?? '').trim();
   if (d.onParticipantId || !on || aPartyOutside(d) || theSameThing(on, d.what)) return '';
   return ` That waits on ${inASentence(on)}.`;

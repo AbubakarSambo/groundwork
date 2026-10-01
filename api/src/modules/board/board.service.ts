@@ -2,6 +2,7 @@ import { isAWholeSentence } from '../reports/what-people-said-differently-about'
 import { aPartyOutside } from './a-thing-is-not-somebody';
 import { whatEachSessionSays } from './one-count-for-the-sessions';
 import { howOftenItWasRaised } from './how-often-it-was-raised';
+import { theBlockers } from './the-blockers';
 import { howARecordIsKnown, whatHappensNext } from './what-happens-next-to-a-record';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { theShareSays } from './your-share';
@@ -2061,6 +2062,20 @@ export class BoardService {
       if (obligations.length) out.obligations = obligations;
       const waits = whoWaitedOnWhom(handoffs, reader);
       if (waits.length) out.whoWaitedOnWhom = waits;
+      /*
+       * BLOCKERS, ONE SECTION (request 105): each open blocker with every time it was raised, what the
+       * proof shows, the time given, and what would clear it only where somebody said so. Under the
+       * same wall as every other wait (`handoffMayBeRead`). See the-blockers.
+       */
+      const sessionOfCheckIn = new Map((checkIns as any[]).map((c) => [c.id, c.sessionNumber as number]));
+      const blockers = theBlockers(
+        handoffs,
+        mine.commitments,
+        mine.lines.map((l) => ({ ...l, wordsMayBeRead: mayReadEveryone || l.participantId === me?.id || !peersWalled })),
+        (id) => (id ? sessionOfCheckIn.get(id) ?? null : null),
+        reader,
+      );
+      if (blockers.length) out.blockers = blockers;
       const contradictions = theContradictions(mine.commitments, sessions, reader);
       if (contradictions.length) out.contradictions = contradictions;
       const questionsForTheLead = theQuestionsForTheLead(mine.commitments, handoffs, sessions, reader);

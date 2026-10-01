@@ -1,0 +1,198 @@
+import { inOurVoice } from '../reports/what-the-record-shows-over-time';
+import { howOftenItWasRaised } from './how-often-it-was-raised';
+import { aDayPeopleRead, asDate } from './one-count-for-the-sessions';
+import {
+  type ACommitment, type AHandoff, type WhoIsReading,
+  whoIs, whoIsWaitedOn, thatWaitsOn, theTimeGivenSaid,
+} from './the-switchboards-own-sections';
+import { aPartyOutside } from './a-thing-is-not-somebody';
+
+/**
+ * BLOCKERS, ONE SECTION, ONE ENTRY PER BLOCKER (request 105; the prototype's "Blockers. Each with its
+ * history and the one thing that would clear it", in eng.txt, founder.txt, ops.txt, programme.txt,
+ * salesorg.txt and support.txt).
+ *
+ * The same facts were spread across "Waiting on" (`whoWaitedOnWhom`) and "What could go wrong"
+ * (`risks`). This gathers one blocker's whole story in one place: who is waiting on whom for what,
+ * every time it was raised (the days and the sessions), what the proof shows, the time given for it,
+ * and what would clear it.
+ *
+ * NEVER INVENTED. Every sentence is read from rows the record already holds:
+ *  - every time it was raised: the check-ins it was said in (how-often-it-was-raised);
+ *  - what the proof shows: a line about the same thing that a document backs or a colleague
+ *    confirmed, from somebody this reader may read; otherwise that nothing on record proves it;
+ *  - what would clear it: only an open commitment, from somebody this reader may read, whose words
+ *    name the thing waited for. Where nobody has said, the entry says so. Groundwork never suggests
+ *    an action here, because a suggestion is not something the record holds;
+ *  - what it is holding up: the `then` that was said with it, where one was.
+ *
+ * THE SAME WALL AS EVERY OTHER WAIT: `handoffMayBeRead`, decided once by the caller. Nothing here
+ * rates or labels anybody: each line says what was said and what happened.
+ */
+export interface ABlocker {
+  id: string;
+  /** Who is waiting, as this reader reads them: "You", a name, or "A colleague". */
+  who: string;
+  /** The thing waited for, as it was stored, for a heading: "the bank statements". */
+  name: string;
+  /** "blocking" where it stops the work, "waiting" where the work can go on meanwhile. */
+  state: 'blocking' | 'waiting';
+  /** Who is waiting on whom, for what, as one full sentence. */
+  says: string;
+  /** Every time it was raised. */
+  raised: {
+    times: number;
+    firstRaisedAt: string | null;
+    lastRaisedAt: string | null;
+    /** The sessions it was raised in, in order, where the record says which. */
+    sessions: number[];
+    /** "This has been raised 3 times, from 1 September to 23 September." */
+    says: string;
+    /** "It was raised in sessions 1, 2 and 3." Null where no session is on record. */
+    inSessions: string | null;
+  } | null;
+  /** What the proof shows, in a full sentence. */
+  proof: { state: 'shown' | 'none'; says: string };
+  /** The time given for it, in a full sentence, and whether it was raised again after that day. */
+  timeGiven: string;
+  /** What would clear it, only where somebody said so. */
+  wouldClearIt: string | null;
+  /** Said always: what would clear it, or that nobody has said. */
+  wouldClearItSays: string;
+  /** What it is holding up, where that was said with it. */
+  holdingUp: string | null;
+}
+
+const STOP = new Set(['the', 'a', 'an', 'for', 'of', 'on', 'to', 'from', 'with', 'and', 'or', 'my', 'our', 'their', 'his', 'her', 'its', 'this', 'that', 'these', 'those', 'some', 'any', 'about', 'in', 'at', 'by', 'it', 'is', 'be', 'we', 'i', 'you', 'they', 'them', 'us']);
+const wordsOf = (t: string) => (t ?? '').toLowerCase().replace(/[‘’“”'"]/g, '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(Boolean);
+const contentWords = (t: string) => wordsOf(t).filter((w) => w.length >= 3 && !STOP.has(w));
+const stem = (w: string) => w.replace(/(?:ies|es|s)$/, '');
+
+/**
+ * WHETHER A SENTENCE IS ABOUT THE THING WAITED FOR. The last word of what is waited for (its head:
+ * "statements" in "the bank statements") must be in it, and at least half of the thing's own words.
+ * Strict on purpose: a wrong match would put somebody's promise under a blocker it is not about.
+ */
+export function isAboutTheThing(text: string, what: string): boolean {
+  const thing = contentWords(what);
+  if (!thing.length) return false;
+  const said = new Set(wordsOf(text).map(stem));
+  const head = stem(thing[thing.length - 1]);
+  if (!said.has(head)) return false;
+  const found = thing.filter((w) => said.has(stem(w))).length;
+  return found * 2 >= thing.length;
+}
+
+const listed = (ns: string[]) => (ns.length <= 1 ? ns.join('') : `${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`);
+const inASentence = (phrase: string): string => {
+  const t = (phrase ?? '').trim().replace(/[.!?]+$/, '');
+  return /^(The|A|An|Whether|What|How|Who|When|Where|Which|Why|If|This|That|Our|Their|His|Her|Its)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+};
+const isAre = (who: string) => (who === 'You' ? 'are' : 'is');
+const mid = (who: string) => (who === 'You' ? 'you' : /^(A|Another|One) colleague/.test(who) ? who.charAt(0).toLowerCase() + who.slice(1) : who);
+
+const isOpen = (d: AHandoff) => String(d.status).toUpperCase() !== 'CLEARED' && !d.clearedAt;
+
+export interface ALineForTheBlockers {
+  id: string;
+  participantId: string | null;
+  text: string;
+  /** The same mark every line carries: 'proven' where a document backs it, 'confirmed' where a colleague did. */
+  mark: string;
+  /** Whether this reader may read this person's words. */
+  wordsMayBeRead: boolean;
+}
+
+export function theBlockers(
+  handoffs: (AHandoff & { raisedAt?: { at: Date | string | null; checkInId: string | null }[] | null; then?: string | null })[],
+  commitments: ACommitment[],
+  lines: ALineForTheBlockers[],
+  sessionOf: (checkInId: string | null | undefined) => number | null,
+  r: WhoIsReading,
+  now = new Date(),
+): ABlocker[] {
+  const out: (ABlocker & { order: number })[] = [];
+  for (const d of handoffs) {
+    if (!isOpen(d)) continue;
+    if (d.onParticipantId && d.onParticipantId === d.fromParticipantId) continue;
+    if (!r.handoffMayBeRead(d)) continue;
+    const who = whoIs(r, d.fromParticipantId);
+    const on = whoIsWaitedOn(r, d);
+    const what = inASentence(d.what);
+    const says = `${on ? `${who} ${isAre(who)} waiting on ${on} for ${what}.` : `${who} ${isAre(who)} waiting for ${what}.`}${thatWaitsOn(d)}`;
+
+    /* Every time it was raised: the days, and the sessions where the record says which. */
+    const raisedRows = d.raisedAt?.length ? d.raisedAt : [{ at: d.createdAt ?? null, checkInId: d.sourceCheckInId ?? null }];
+    const often = howOftenItWasRaised(raisedRows, now);
+    const sessions = [...new Set(raisedRows.map((x) => sessionOf(x.checkInId)).filter((n): n is number => typeof n === 'number'))].sort((a, b) => a - b);
+    const raised = often
+      ? {
+        ...often,
+        sessions,
+        inSessions: sessions.length ? `It was raised in ${sessions.length === 1 ? 'session' : 'sessions'} ${listed(sessions.map(String))}.` : null,
+      }
+      : null;
+
+    /* What the proof shows: a line about this thing that a document backs, or a colleague confirmed. */
+    const people = new Set([d.fromParticipantId, d.onParticipantId].filter(Boolean) as string[]);
+    const backing = lines.find((l) => (l.mark === 'proven' || l.mark === 'confirmed')
+      && l.wordsMayBeRead && r.personMayBeRead(l.participantId)
+      && (!l.participantId || people.has(l.participantId) || r.mayReadEveryone)
+      && isAboutTheThing(l.text, d.what));
+    const proof: ABlocker['proof'] = backing
+      ? {
+        state: 'shown',
+        says: backing.mark === 'proven'
+          ? `A document backs what ${mid(whoIs(r, backing.participantId))} said about it.`
+          : `A colleague confirmed what ${mid(whoIs(r, backing.participantId))} said about it.`,
+      }
+      : { state: 'none', says: `Nothing on record proves it yet. It rests on what ${mid(who)} said.` };
+
+    /* The time given, and whether it was raised again once that day had passed. */
+    let timeGiven = theTimeGivenSaid(d, who) ?? 'No time has been given for it.';
+    const due = asDate(d.dueOn as any);
+    const last = raised?.lastRaisedAt ? asDate(raised.lastRaisedAt) : null;
+    if (due && last && last.getTime() > due.getTime()) timeGiven += ` It was raised again after ${aDayPeopleRead(due, now)}, the day it was due.`;
+
+    /* What would clear it: only what somebody said they would do about it. */
+    const promise = commitments.find((c) => String(c.status ?? '').toUpperCase() === 'UNKNOWN'
+      && r.personMayBeRead(c.participantId) && r.commitmentMayBeRead(c)
+      && isAboutTheThing(c.text, d.what));
+    let wouldClearIt: string | null = null;
+    if (promise) {
+      const by = whoIs(r, promise.participantId);
+      const clause = inOurVoice(promise.text);
+      const words = String(promise.text ?? '').trim();
+      wouldClearIt = clause
+        ? `${by} committed to ${clause}.`
+        : promise.saidWordForWord && words
+          ? `${by} said, "${/[.!?]$/.test(words) ? words : `${words}.`}"`
+          : `${by} made a commitment about it. It is in the work plan.`;
+    }
+    const nobodyNamed = !d.onParticipantId && !aPartyOutside(d);
+    const wouldClearItSays = wouldClearIt
+      ?? (nobodyNamed
+        ? 'Nobody has said what would clear it, and nobody has been named as holding it.'
+        : 'Nobody has said what would clear it yet.');
+
+    const then = (d.then ?? '').trim();
+    out.push({
+      id: d.id,
+      who,
+      name: d.what,
+      state: String(d.status).toUpperCase() === 'BLOCKING' ? 'blocking' : 'waiting',
+      says,
+      raised,
+      proof,
+      timeGiven,
+      wouldClearIt,
+      wouldClearItSays,
+      holdingUp: then ? `Once it is cleared, ${inASentence(then)}.` : null,
+      order: new Date(d.createdAt).getTime(),
+    });
+  }
+  /* The ones raised most often first, then the oldest. */
+  return out
+    .sort((a, b) => (b.raised?.times ?? 1) - (a.raised?.times ?? 1) || a.order - b.order)
+    .map(({ order, ...b }) => b);
+}

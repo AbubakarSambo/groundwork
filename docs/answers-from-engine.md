@@ -1353,3 +1353,25 @@ Every field below is built from what the record already holds, after the same wa
 - A participant's own number goes on the board with their name on it, and is read like a number the lead set for them.
 
 Tests: `board/request-107-c-the-fields-the-boards-need.spec.ts` (10 cases), `board/your-share-as-each-reader-reads-it.spec.ts` (10), and `conversation/an-aim-they-set-for-themselves-is-on-the-board.spec.ts` (5). One older test, `each-kind-of-work-has-its-records.spec.ts`, compared whole rows, so it now expects the new fields as well. Nothing in it was taken out.
+
+## Request 105, part 2: blockers get one section (2 October)
+
+Yes, a field is served now, so the screen does not need to put it together from `whoWaitedOnWhom` and `risks`. `blockers` is on `GET /grounds/:id/board`. It has one entry for each open blocker, shown under the same wall as every other wait (`handoffMayBeRead`). A cleared blocker is not in it. Each entry is `{ id, who, name, state, says, raised, proof, timeGiven, wouldClearIt, wouldClearItSays, holdingUp }`:
+- `name` is what is waited for, as it was said, for a heading ("the bank statements").
+- `state` is "blocking" where the work is stopped and "waiting" where it can carry on in the meantime.
+- `raised` holds `times`, `firstRaisedAt`, `lastRaisedAt` and `sessions`, plus two sentences. `says` is "This has been raised 3 times, from 1 September to 23 September." and `inSessions` is "It was raised in sessions 1, 2 and 3."
+- `proof.says` is "A document backs what Rukia Mwangi said about it." where a line about the same thing has a document behind it. It is "A colleague confirmed what ... said about it." where a colleague confirmed it. Otherwise it is "Nothing on record proves it yet. It rests on what Femi Okonkwo said."
+- `timeGiven` is "The time given for it was "by Friday"." or "No time has been given for it.". Where it was raised again after the day it was due, it adds "It was raised again after 5 September, the day it was due."
+- `wouldClearIt` is filled only where somebody made an open commitment about the same thing, and only from somebody this reader may read about. Otherwise it is null, and `wouldClearItSays` is "Nobody has said what would clear it yet." Groundwork never suggests an action here, because a suggestion is not something the record holds.
+- `holdingUp` is "Once it is cleared, the reporting system can restart.", only where that was said with the blocker.
+The ones raised most often come first, then the oldest. Please draw each sentence as it is. Do not use "Raised:" or "Would clear it:" labels.
+
+What each reader reads on the sales run (re-f):
+- Bisi, who runs it: "Femi Okonkwo is waiting for the bank statements." "This was raised once, on 16 September." "It was raised in session 2." "Nothing on record proves it yet. It rests on what Femi Okonkwo said." "No time has been given for it." "Femi Okonkwo said, "I will visit a few of them again this week to see if I can collect the statements myself."" Also "Ngozi Eze is waiting on Mr. Adebayo for a date for the credit decision." with "Nobody has said what would clear it yet.", and "Kwame Mensah is waiting on you for the approval of five applications."
+- Femi: "You are waiting for the bank statements." "Nothing on record proves it yet. It rests on what you said." "You said, "I will visit a few of them again this week to see if I can collect the statements myself.""
+- Kwame: "You are waiting on Bisi Adeyemi for the approval of five applications."
+- Ngozi, where people see only themselves: only her own blocker. Nothing about Femi or Kwame reaches her.
+- An admin who only reads, and the admin who set it up: the same as Bisi, with names ("Kwame Mensah is waiting on Bisi Adeyemi for the approval of five applications.").
+- An admin with no access to a performance plan is not served that board at all, as before.
+
+Tests: `board/request-105-blockers-as-each-reader-reads-them.spec.ts` (13 cases). All of them fail without this change.
