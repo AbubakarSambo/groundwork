@@ -7224,4 +7224,12 @@ Still to do in part 1:
 - The pictures of the reports.
 - The report a stranger reads at the end of a check-in without an account. Its sizes shrink on a phone on purpose, so its mechanism is kept, but nothing in it will be below 13 pixels any more; parts of it went down to 9.
 
+**Part 1 is finished.**
+- The team report is rebuilt from `Panel`, `Callout`, `EdgeList`, `SubHeading` and `Note`. Each still-open topic is now a row with an amber edge, where before it had a dot.
+- The stranger's end-of-check-in report has nothing below 13 pixels now, with its phone sizing kept, and a test holds it.
+- The pictures of the session report, the round report and the Report tab, as Rukia and as Amani, before and after, are in the scratchpad's `pictures/g3-driftC1/`.
+- The whole screen suite passes (3,805 tests), except the wording guard (request 95), and the button test passes on all 31 screens.
+
+One gap closed in the guard. What did not fit a shared part in the team report went into page-only classes inside the component's own `<style>`, which neither class guard reads. A third guard now freezes the six files that draw their own `<style>`, and the classes in them. The team report's 46 such classes are listed in `docs/tasks-ui.md`, to become named shared parts: a quote with its source, an at-a-glance tile, and the finding band.
+
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.
