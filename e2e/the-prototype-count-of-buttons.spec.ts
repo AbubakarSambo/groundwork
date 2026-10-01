@@ -121,6 +121,11 @@ const SCREENS: Record<string, Counterpart> = {
      prototype's own Miriam - the same shape of person, a participant across a few check-ins - so
      her persona here is "part", as docs/prototype/screens/index.json has you-board-miriam. */
   'pages/you/YouPage.tsx': { productPath: '/you', reader: 'participant', hash: '#/you', persona: 'part' },
+  /* Group 2, piece 3 (D2-company). Both screens are drawn for the prototype's "ceo" persona
+     (docs/prototype/source/data.js: "Amani, CEO", admin:true) - the closest of our own readers is
+     Juma, an admin. */
+  'pages/company/CompanyPage.tsx': { productPath: '/company', reader: 'admin', hash: '#/company', persona: 'ceo' },
+  'pages/company/CompanyContextPage.tsx': { productPath: '/company/context', reader: 'admin', hash: '#/company/kijani/context', persona: 'ceo' },
 };
 
 /* Sign-in is by the emailed link, through the one mail catcher every browser test shares
