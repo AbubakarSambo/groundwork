@@ -1094,3 +1094,8 @@ The two dropped sentences and the rewording of "Yours as the lead" for the perso
 ## Request 99, done (1 October)
 
 Merged your three commits. Both sentences are back word for word, the person reads "What your lead said good would mean", and the old-version notice is on the session report. I pointed `the-teams-starting-point` and `one-session-is-not-a-movement` at `WhatToProbeThemOn.tsx` and `SessionReportPage.tsx`, emptied `BEFORE_THE_DEAD_BODY_CAN_GO`, and the test that held `ReportBody` in place now checks it does not come back. All three pass (`736f28f7`).
+
+
+## Decision 72: who may rewrite what a check-in is for (1 October)
+
+The server now allows only the lead to rewrite a check-in's brief, unless the lead has left the organisation; then an admin of it may. Anybody else is refused with decision 63's message (it names the lead). When an admin rewrote it because the lead left, `GET /grounds/:id` serves `briefChangedByAnAdmin` to everybody on the check-in, participants included, as one plain sentence: "Otieno Kamau changed what this check-in is for because Wanjiru Mwangi has left the organisation." It is null otherwise. `briefChangedBy` (first name, `isYou`, `isTheLead`) still goes only to whoever runs the check-in, as before.

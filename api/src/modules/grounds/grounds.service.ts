@@ -85,7 +85,7 @@ import { theLeadsWordsAbout } from './the-leads-words-about-someone';
 import { timelineDaysForAChosenEnd } from './session-count';
 import { adminsThisOrg, maySee, groundsAViewerMayList, WHAT_AN_ADMIN_NEEDS_TO_BE_GIVEN_ACCESS } from './who-may-read-this-check-in';
 import { EVALUATION_SCENARIOS } from '../reports/is-this-an-evaluation-check-in';
-import { whoMayConfirmSetup, confirmedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
+import { whoMayConfirmSetup, confirmedByAnAdminSentence, briefChangedByAnAdminSentence, ONLY_THE_LEAD_CONFIRMS_SETUP, onlyTheLeadConfirmsSetup, type SetupConfirmDecision } from './who-may-confirm-setup';
 import { inviteExpiryFrom } from '../participants/how-long-an-invite-lasts';
 import { howManyHaveAnswered } from '../reports/how-many-have-answered';
 import { A_DUMP_PROMPT, A_DUMP_SCHEMA, aSuccessStatementHolds, ASK_THEM_THIS_OPENS, whatTheYesLeavesOut, whatThatLeavesOut, withoutWhatTheyLeftOut, BETWEEN_THEM_OPENS, HOW_THE_TEAM_WORKS_OPENS, looksLikeADump, MY_READ_OF_THEM_OPENS, NOT_SETTLED_OPENS, STILL_TO_DECIDE_OPENS, theSameMeasure, thePasteThisYesIsFor, theTellingInTheList, theDirectionsInTheList, aNameKey, whatWeTookFromThat, type ADumpRead, type WhatAPasteGives } from './a-dump-is-many-things';
@@ -2623,6 +2623,9 @@ export class GroundsService {
       briefIsTheLeadsOwnWords,
       /* Who last rewrote it, to whoever runs the check-in: their first name, or "you". */
       briefChangedBy: viewerRunsThisGround ? briefChangedBy : undefined,
+      /* Decision 72: when an admin rewrote it because the lead has left, everybody on the check-in
+         is told who did it, in one plain sentence. Null otherwise. */
+      briefChangedByAnAdmin: typeof briefChange?.byAnAdminSentence === 'string' ? briefChange.byAnAdminSentence : null,
       /* Whether the brief is still the one setup put together from the lead's answers. */
       briefPutTogetherBySetup: viewerRunsThisGround ? briefWasPutTogetherBySetup : undefined,
       /* What she typed in setup, to her alone (U.7 re-check). See LeadSetupWords. */
@@ -6273,18 +6276,16 @@ export class GroundsService {
     }
 
     /*
-     * THE BRIEF. Whoever runs the check-in writes it and can rewrite it; it is the words everybody
-     * reads before they answer, so it carries the same permission as renaming and the same audit
-     * entry. Blank clears it, deliberately: a lead who wants the wrong brief GONE - every entry-chat
-     * check-in before today had one written by the report rather than by them - should not have to
-     * replace it with something they do not mean.
+     * THE BRIEF. It is the words everybody reads before they answer. Hafsah, 1 October (decision 72):
+     * rewriting it follows the same rule as every other setup change (decision 63). Only the lead
+     * can, unless the lead has left the organisation; then an admin of it can, and the people on
+     * the check-in are told who did it. It used to carry renaming's permission, so any admin could
+     * rewrite a present lead's words. Blank clears it, deliberately: a lead who wants the wrong
+     * brief GONE should not have to replace it with something they do not mean.
      */
+    let briefDecision: Awaited<ReturnType<GroundsService['mayConfirmSetupOn']>> | null = null;
     if (dto.brief !== undefined) {
-      if (ground.initiatorId !== requestingUserId && !isOrgAdmin) {
-        throw new ForbiddenException(
-          'Only the lead of this check-in, or an admin in your organisation, can change what it says it is for.',
-        );
-      }
+      briefDecision = await this.mayConfirmSetupOn(ground, requestingUserId);
     }
 
     /**
@@ -6355,7 +6356,7 @@ export class GroundsService {
 
     // Parse existing audit log - migrate legacy array format to structured object.
     const rawLog = ground.groundAuditLog;
-    const auditData: { timeline: object[]; contextNotes: string[]; briefChangedBy?: { userId: string; at: string } } =
+    const auditData: { timeline: object[]; contextNotes: string[]; briefChangedBy?: { userId: string; at: string; byAnAdminSentence?: string } } =
       rawLog && !Array.isArray(rawLog) && typeof rawLog === 'object'
         ? {
             timeline: (rawLog as any).timeline ?? [], contextNotes: (rawLog as any).contextNotes ?? [],
@@ -6371,7 +6372,15 @@ export class GroundsService {
      * changes to the length and the cadence.
      */
     if (dto.brief !== undefined && (dto.brief.trim() || null) !== ((ground as any).brief ?? null)) {
-      auditData.briefChangedBy = { userId: requestingUserId, at: new Date().toISOString() };
+      auditData.briefChangedBy = {
+        userId: requestingUserId,
+        at: new Date().toISOString(),
+        /* Decision 72: an admin who rewrote it because the lead has left is named to everybody on
+           the check-in, in the same sentence shape as decision 63's. */
+        ...(briefDecision?.as === 'admin'
+          ? { byAnAdminSentence: briefChangedByAnAdminSentence(briefDecision.confirmedByName, briefDecision.leadName) }
+          : {}),
+      };
     }
 
     if (requestedDays !== undefined || dto.cadence !== undefined || dto.workingDays !== undefined) {

@@ -82,30 +82,74 @@ describe('what this check-in is for, as each reader is sent it', () => {
   });
 });
 
-describe('rewriting it records who did', () => {
-  function makeService(viewer: any) {
+describe('rewriting it: only the lead, unless the lead has left, and then who did it is told (decision 72)', () => {
+  /* Hafsah, 1 October: rewriting a check-in's brief follows the same rule as other setup changes
+     (decision 63). This test used to prove that any admin could rewrite a present lead's words; it
+     now proves the rule that replaced that. */
+  function makeService({ leadHasLeft = false }: { leadHasLeft?: boolean } = {}) {
     const g = { id: 'g1', organizationId: 'org1', initiatorId: WANJIRU, scenario: 'NEW_PROJECT', label: 'Sales', timelineDays: 90, timelineWeeks: 13, cadence: 'WEEKLY', mode: 'SHARED', brief: HER_WORDS, groundAuditLog: null };
     const updated = jest.fn(async (args: any) => ({ ...g, ...args.data }));
+    const people: Record<string, any> = {
+      [WANJIRU]: { role: 'MEMBER', organizationId: 'org1', firstName: 'Wanjiru', lastName: 'Mwangi', isActive: !leadHasLeft },
+      [OTIENO]: { role: 'ADMIN', organizationId: 'org1', firstName: 'Otieno', lastName: 'Kamau', isActive: true },
+      [AISHA]: { role: 'MEMBER', organizationId: 'org1', firstName: 'Aisha', lastName: 'Otieno', isActive: true },
+    };
     const prisma: any = {
       ground: { findUnique: jest.fn(async () => g), update: updated },
       groundParticipant: { findFirst: jest.fn(async () => null), findMany: jest.fn(async () => []) },
-      user: { findUnique: jest.fn(async () => viewer) },
+      user: { findUnique: jest.fn(async (a: any) => people[a.where.id] ?? null) },
       checkIn: { findFirst: jest.fn(async () => null) },
     };
     return { service: new GroundsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, { respond: async () => '' } as any), updated };
   }
 
-  it('an admin who rewrites it is recorded as having changed it', async () => {
-    const { service, updated } = makeService({ role: 'ADMIN', organizationId: 'org1' });
+  it('the lead rewrites it, and is recorded as having changed it', async () => {
+    const { service, updated } = makeService();
+    await service.updateTimeline('g1', WANJIRU, { brief: 'Sell 25 water pumps this quarter.' });
+    const log = updated.mock.calls[0][0].data.groundAuditLog;
+    expect(log.briefChangedBy.userId).toBe(WANJIRU);
+    expect(log.briefChangedBy.byAnAdminSentence).toBeUndefined();
+  });
+
+  it('an admin may not rewrite a present lead\'s words, and nothing is written', async () => {
+    const { service, updated } = makeService();
+    await expect(service.updateTimeline('g1', OTIENO, { brief: 'Sell 25 water pumps this quarter.' })).rejects.toThrow(/Wanjiru Mwangi/);
+    expect(updated).not.toHaveBeenCalled();
+  });
+
+  it('once the lead has left, an admin may, and the sentence naming who did it is recorded', async () => {
+    const { service, updated } = makeService({ leadHasLeft: true });
     await service.updateTimeline('g1', OTIENO, { brief: 'Sell 25 water pumps this quarter.' });
     const log = updated.mock.calls[0][0].data.groundAuditLog;
     expect(log.briefChangedBy.userId).toBe(OTIENO);
+    expect(log.briefChangedBy.byAnAdminSentence).toBe('Otieno Kamau changed what this check-in is for because Wanjiru Mwangi has left the organisation.');
+  });
+
+  it('a participant may never rewrite it', async () => {
+    const { service, updated } = makeService({ leadHasLeft: true });
+    await expect(service.updateTimeline('g1', AISHA, { brief: 'Something else.' })).rejects.toThrow();
+    expect(updated).not.toHaveBeenCalled();
   });
 
   it('saving the same words again records nothing', async () => {
-    const { service, updated } = makeService({ role: 'MEMBER', organizationId: 'org1' });
+    const { service, updated } = makeService();
     await service.updateTimeline('g1', WANJIRU, { brief: HER_WORDS });
     expect(updated.mock.calls[0][0].data.groundAuditLog.briefChangedBy).toBeUndefined();
+  });
+});
+
+describe('who rewrote it, as each reader is told (decision 72)', () => {
+  const SENTENCE = 'Otieno Kamau changed what this check-in is for because Wanjiru Mwangi has left the organisation.';
+  const byAnAdmin = { groundAuditLog: { timeline: [], contextNotes: [], briefChangedBy: { userId: OTIENO, at: '2026-10-01T10:00:00Z', byAnAdminSentence: SENTENCE } }, toldToParticipants: null };
+  it('Aisha, on the check-in, is told who did it', async () => {
+    expect((await getAs(AISHA, byAnAdmin)).briefChangedByAnAdmin).toBe(SENTENCE);
+  });
+  it('whoever runs it is told too', async () => {
+    expect((await getAs(OTIENO, byAnAdmin)).briefChangedByAnAdmin).toBe(SENTENCE);
+  });
+  it('a rewrite by the lead names nobody to Aisha', async () => {
+    const byTheLead = { groundAuditLog: { timeline: [], contextNotes: [], briefChangedBy: { userId: WANJIRU, at: '2026-10-01T10:00:00Z' } } };
+    expect((await getAs(AISHA, byTheLead)).briefChangedByAnAdmin).toBeNull();
   });
 });
 
