@@ -131,14 +131,10 @@ export const REBUILT_PAGES: string[] = [
    */
   'pages/report/SessionReportPage.tsx',
   /*
-   * GROUP 3, PIECE 2 (continued): `ReportPage.tsx`. Its default export, `ReportPage`, is a
-   * three-line redirect to the Report tab and draws nothing itself. The rest of the file,
-   * `ReportBody`, is not mounted by any route today (confirmed against the file's own regression
-   * tests - the-sharp-part-first.spec.ts, no-label-is-the-leads-note.spec.tsx,
-   * one-report-not-two.spec.ts and others each say so in their own comment) - its logic, text and
-   * every conditional are unchanged; only its styling moved off inline fontSize/color/margin/
-   * padding/border onto the shared kit and gw-ui.css's utility classes, so it stops carrying old
-   * style debt even though nobody reads it today. See docs/the-parts-against-the-prototype.md.
+   * GROUP 3, PIECE 2 (continued): `ReportPage.tsx` came OFF this list (1 October 2026), the moment
+   * its only content, `ReportBody`, was deleted - see the comment at the top of `ReportPage.tsx`
+   * for where each of its sections went. What is left is a three-line redirect to the Report tab
+   * with no styling of its own to guard: a page with no inline style and no kit import trivially
+   * satisfies this guard and no longer needs an entry to prove it.
    */
-  'pages/report/ReportPage.tsx',
 ]

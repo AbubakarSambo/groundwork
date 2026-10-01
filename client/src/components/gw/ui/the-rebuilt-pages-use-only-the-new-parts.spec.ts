@@ -369,7 +369,7 @@ describe('a rebuilt page never falls back to the old parts', () => {
       'pages/auth/MagicVerifyPage.tsx',
       'pages/join/JoinPage.tsx',
       'pages/report/SessionReportPage.tsx',
-      'pages/report/ReportPage.tsx',
+      /* 'pages/report/ReportPage.tsx' came off this list 1 October 2026 - see rebuilt-pages.ts. */
     ])
   })
 
