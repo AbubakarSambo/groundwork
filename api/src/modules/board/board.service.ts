@@ -6,7 +6,7 @@ import { theBlockers } from './the-blockers';
 import { aParticipantsOwnBoard } from './a-participants-board-is-their-own';
 import { theBoardForThisKind } from './each-kind-gets-its-own-board';
 import { theGlanceAsThisReaderMayReadIt } from '../grounds/what-a-manager-needs-at-a-glance';
-import { howARecordIsKnown, whatHappensNext } from './what-happens-next-to-a-record';
+import { howARecordIsKnown, theRecordsMark, whatHappensNext } from './what-happens-next-to-a-record';
 import { theWorkByArea, reportedAgainstTheRules } from './the-work-by-area-and-by-stage';
 import { theShareSays } from './your-share';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
@@ -1939,6 +1939,8 @@ export class BoardService {
             line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null,
             !!i.addedByUserId && i.addedByUserId === requestingUserId,
           ),
+          /* The proof mark the screens' ProofMark reads (request 108 c), from the line it came from, never upgraded. */
+          mark: theRecordsMark(line ? theMarkOf({ ...line, text: cleanText(line.text) }, whoAddedTheirs) : null),
           ...whatHappensNext(i, openPromises.filter((c) => runsIt || c.participantId === me?.id || (!!i.ownerParticipantId && c.participantId === i.ownerParticipantId && c.participantId !== theLeadsRow)), (pid) => {
             if (pid && pid === me?.id) return 'You';
             return pid ? (nameOf(pid) ?? aColleague(pid)) : 'Somebody';

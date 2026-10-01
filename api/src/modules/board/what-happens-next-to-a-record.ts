@@ -22,6 +22,20 @@ export function howARecordIsKnown(mark: HowALineIsKnown | null, readerAddedIt: b
   return { known: 'said', knownSays: 'Someone said it.' };
 }
 
+/**
+ * THE MARK A RECORD ROW CARRIES (request 108 c; the prototype's key, "Ringed is someone's word; filled is
+ * proven"). The same shape the screens' ProofMark reads: the mark of the line the record came from, as
+ * every line on the board is marked (how-a-line-is-known), so a document or photo the person added behind
+ * it is `proven`, a colleague who received it saying it arrived is `confirmed`, a figure about what
+ * happened with nothing attached is `memory`, and anything else is `said`. A record added on the board has
+ * no line behind it, so it is `none`. Nothing upgrades it: a record is never marked stronger than its line.
+ */
+export type ARecordsMark = HowALineIsKnown | 'none';
+
+export function theRecordsMark(lineMark: HowALineIsKnown | null): ARecordsMark {
+  return lineMark ?? 'none';
+}
+
 export interface WhatComesNext {
   next: string | null;
   nextKnown: 'said' | null;

@@ -63,6 +63,16 @@ export interface Setup {
   subjectExternalId?: string | null;
   /** The documents on the check-in (GroundDocument rows). */
   documents?: any[];
+  /** The check-in's clock (request 108): when it was made, starts and ends, how long it runs and how often. */
+  clock?: { createdAt?: Date; startsAt?: Date | null; endsAt?: Date | null; timelineDays?: number; cadence?: string; runsUntilEnded?: boolean };
+  /** Whether the lead has recorded how it ended (request 108 d). */
+  status?: string;
+  endState?: string | null;
+  resolvedAt?: Date | null;
+  /** The lines a record came from, read by id (RecordEntry rows with their mark's fields), where a spec reads each record's mark. */
+  recordLines?: any[];
+  /** What the lead wrote down on the Context page (GroundContextItem rows: kind, audience, text). */
+  contextItems?: { kind: string; audience?: string; text: string; closedAt?: Date | null }[];
 }
 
 /**
@@ -101,6 +111,10 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     whoSeesTargets: setup.whoSeesTargets ?? 'THEIR_OWN', label: setup.label ?? 'The team, Q3', participants: setup.people ?? PEOPLE, checkIns, report: setup.report ?? null,
     dependencies: setup.dependencies ?? [], poll: null, objectives: setup.objectives ?? [], closedAt: setup.closedAt ?? null,
     kindOfWork: setup.kindOfWork ?? null, workStages: null, subjectExternalId: setup.subjectExternalId ?? null,
+    ...(setup.clock ?? {}),
+    ...(setup.status ? { status: setup.status } : {}),
+    ...(setup.endState !== undefined ? { endState: setup.endState } : {}),
+    ...(setup.resolvedAt !== undefined ? { resolvedAt: setup.resolvedAt } : {}),
   };
   const reads = {
     findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null), findUnique: jest.fn(async () => null),
@@ -120,8 +134,13 @@ export function boardAs(setup: Setup, userId: string, role: string): Promise<any
     workItem: model({ findMany: jest.fn(async () => clone(setup.items ?? [])) }),
     groundDocument: model({ findMany: jest.fn(async (args: any) => clone((setup.documents ?? []).filter((d: any) => !args?.where?.id?.in || args.where.id.in.includes(d.id)))) }),
     productMetric: model({ findMany: jest.fn(async (args: any) => clone((setup.metrics ?? []).filter((m: any) => !args?.where?.subjectExternalId || m.subjectExternalId === args.where.subjectExternalId))) }),
+    groundContextItem: model({ findMany: jest.fn(async (args: any) => clone((setup.contextItems ?? [])
+      .filter((c) => !c.closedAt)
+      .filter((c) => !args?.where?.kind || c.kind === args.where.kind)
+      .filter((c) => !args?.where?.audience || (c.audience ?? 'EVERYONE') === args.where.audience)
+      .map((c) => ({ text: c.text })))) }),
     recordEntry: model({ findMany: jest.fn(async (args: any) => {
-      if (args?.where?.id?.in) return [];
+      if (args?.where?.id?.in) return clone((setup.recordLines ?? []).filter((l: any) => args.where.id.in.includes(l.id)).map((l: any) => ({ disputedAt: null, type: 'PROGRESS', ...l })));
       return clone(setup.lines ?? []);
     }) }),
   } as any, {

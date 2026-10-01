@@ -1497,3 +1497,18 @@ The route already takes it, so nothing on the server had to change, and a test n
 - A word that is not one of the eleven, "none" included, is still refused in a plain sentence. Please send `null` for "None of these".
 
 Tests: `grounds/request-106-the-kind-of-work-can-be-cleared.spec.ts` (6 cases), including one that passes `{ "kind": null }` through the app's own validation, as the route receives it. They pass on the code before this test, because the route already allowed it.
+
+## Request 108 (c): each record row carries its mark (2 October)
+
+Each row in `workRecords[].rows` now has `mark`, in the shape `ProofMark` already reads: `proven`, `confirmed`, `said`, `memory` or `none`. It is the mark of the line the record came from, by the same rule that marks every line on the board and in the reports (`reports/how-a-line-is-known.ts`):
+- `proven`: a document or photo the person themselves added is behind the line.
+- `confirmed`: the colleague who received the work said it arrived.
+- `memory`: a line about what happened, with a figure, and nothing of the person's own attached.
+- `said`: anything else somebody said.
+- `none`: a record added on the board, which no line is behind.
+
+Nothing upgrades it. A line backed by somebody else's document is not proof of it: Femi's "I have 31 applications that I've taken from businesses." with the lead's pipeline sheet behind it is `memory`, never `proven`. `known` and `knownSays` are as before ("Proof shows it." or "Someone said it."), so the prototype's key, "Ringed is someone's word; filled is proven", can be drawn from `mark`: filled for `proven`, ringed for the rest, and nothing for `none`. The rows are walled as before: a participant reads only their own rows with their marks.
+
+What each reader reads on the sales run (re-f): Bisi, Juma (an admin who only reads) and the admin who set it up read every row with its mark, "Ikeja Bakery" `proven`, "Jos Grain Traders" `memory` (Kwame's "That N8 million disbursed represents three approved facilities."), "Lekki Cold Rooms" `confirmed`, and the deal Bisi added on the board `none`. Femi reads only his two rows. Ngozi, where people see only themselves, reads only hers.
+
+Tests: `board/request-108-c-each-record-row-carries-its-mark.spec.ts` (8 cases; all fail without this change). `each-kind-of-work-has-its-records.spec.ts` compares whole rows, so it now expects `mark` as well; nothing in it was taken out.
