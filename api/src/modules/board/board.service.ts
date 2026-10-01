@@ -107,6 +107,7 @@ import { isEvaluationCheckIn, viewerIsTheSubjectOfAnEvaluationCheckIn } from '..
 import { whatEachHandoffPersonTyped, withTheirWordsChecked } from './the-handoff-words-the-person-typed';
 import { theRisks, theWorkPlan, theTimeline, thePersonHistory, theBlockerCheck, theEvidenceIndex, theBusyOrMoving, type WhoIsReading, type ACommitment } from './the-switchboards-own-sections';
 import { whoOwnsWhatForTheSubject, divergenceForTheSubject } from '../reports/colleagues-exact-words-stay-with-the-manager';
+import { eachLineInTheirName } from './what-each-person-said-is-in-their-name';
 import { theRecordAQuoteMayComeFromByParticipant } from '../reports/a-quote-built-at-the-read';
 import { ReportsService } from '../reports/reports.service';
 import { peersAreNamedOn } from '../reports/peers-are-named';
@@ -1989,6 +1990,8 @@ export class BoardService {
       if (Array.isArray(walled.objectives)) walled.objectives = walled.objectives.filter((o: any) => !(typeof o?.aim === 'string' && !o.aim.trim()));
       /* And a line with no words is left out here, never served for the page to draw as an empty line. */
       walled = withoutLinesWithNoWords(walled, ['whoOwnsWhat', '*', 'items'], 'text');
+      /* Each line is a person's own words, so it is served as theirs, in quotation marks with their name. See what-each-person-said-is-in-their-name. */
+      if (Array.isArray(walled.whoOwnsWhat)) walled.whoOwnsWhat = eachLineInTheirName(walled.whoOwnsWhat, me?.id ?? null);
       /*
        * PART 3, HAFSAH'S RULING, 30 SEPTEMBER 2026: in an evaluation check-in, the person being
        * reviewed reads the facts on this board, never a colleague's exact words - those stay with

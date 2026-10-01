@@ -78,8 +78,14 @@ function boardAs(userId: string, role: string) {
     .get('g-1', userId) as Promise<any>;
 }
 
+/* Each line is served as hers, in quotation marks with her name (what-each-person-said-is-in-their-name),
+   so her words are read from inside the marks, and every one must be there exactly. */
 const whatRukiaSaid = (board: any): string[] =>
-  ((board.whoOwnsWhat ?? []).find((r: any) => r.participantId === 'p-rukia')?.items ?? []).map((i: any) => i.text);
+  ((board.whoOwnsWhat ?? []).find((r: any) => r.participantId === 'p-rukia')?.items ?? []).map((i: any) => {
+    const m = /^Rukia Mwangi said, "(.*)"$/.exec(String(i.text));
+    expect(m).not.toBeNull();
+    return m![1];
+  });
 const rukiasRow = (board: any) => (board.eachPerson ?? []).find((r: any) => r.participantId === 'p-rukia');
 
 describe('what Rukia said in her check-in, read by each person', () => {
