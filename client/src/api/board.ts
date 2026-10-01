@@ -171,10 +171,14 @@ export type BoardPresent = {
     nameIsTheirRole: boolean
     target: number | null
     count: number
-    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do'
+    reason: 'has not answered' | 'stuck and not chasing' | 'behind the pace' | 'nothing checkable' | 'nothing to do' | 'not let in'
     /** What happened and what would change it, in a full sentence from the server. Shown under the pill in place of a fixed phrase. */
     says: string
     ask: string | null
+    /** REQUEST 85: an admin did not let this person in. `notLetInBy` is the decider's name, for whoever runs the check-in or an admin only. */
+    notLetIn?: boolean
+    notLetInBy?: string | null
+    notLetInAt?: string | null
   }[]
   /**
    * EACH PERSON'S OWN LINE, AND WHAT KEEPS COMING UP ABOUT THEIR WORK (board-as-lead.txt, "The team
