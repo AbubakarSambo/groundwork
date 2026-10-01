@@ -305,3 +305,96 @@ describe('the parts on their own', () => {
     expect(aTargetThisWeek(aim, 'team', false)!.says).not.toMatch(/aim|reached|100\b/);
   });
 });
+
+/*
+ * DECISION 73 (Hafsah, 1 October). What a person in the check-in reads of aims and limits follows the
+ * check-in's "who sees targets" setting, as on the board: THEIR_OWN, the counts only; EVERYBODY, the
+ * aims and limits too. And every earlier week stays readable: a new week never overwrites an old one.
+ */
+describe('aims and limits follow the check-in\'s setting, for a person in it (decision 73)', () => {
+  async function asBaraka(whoSeesTargets: string | null) {
+    const c = aCheckIn();
+    const ground = await c.prisma.ground.findUnique();
+    c.prisma.ground.findUnique = jest.fn(async () => ({ ...ground, whoSeesTargets }));
+    await c.svc.build('g1', AT);
+    return (await c.svc.read('g1', BARAKA, AT)).inNumbers!.map((f: any) => f.says).join(' ');
+  }
+  it('THEIR_OWN: the team\'s count, with no aim and no limit', async () => {
+    const says = await asBaraka('THEIR_OWN');
+    expect(says).toContain('freezers sold went from 12 to 17 this week.');
+    expect(says).not.toMatch(/against the (aim|limit)|over the limit/);
+  });
+  it('EVERYBODY: the aim and the limit too', async () => {
+    const says = await asBaraka('EVERYBODY');
+    expect(says).toContain('against the aim of 40');
+    expect(says).toContain('against the limit of 180,000. That is 74,000 over the limit.');
+  });
+  it('an admin who only reads keeps the counts alone, whatever the setting', async () => {
+    const c = aCheckIn();
+    const ground = await c.prisma.ground.findUnique();
+    c.prisma.ground.findUnique = jest.fn(async () => ({ ...ground, whoSeesTargets: 'EVERYBODY' }));
+    await c.svc.build('g1', AT);
+    const says = (await c.svc.read('g1', ADMIN, AT)).inNumbers!.map((f: any) => f.says).join(' ');
+    expect(says).not.toMatch(/against the (aim|limit)/);
+  });
+});
+
+describe('every earlier week stays readable, and a new week never overwrites an old one (decision 73)', () => {
+  function withEveryWeekKept() {
+    const c = aCheckIn();
+    const rows = new Map<string, any>();
+    c.prisma.weeklyReport = {
+      upsert: jest.fn(async ({ where, create, update }: any) => {
+        const k = where.groundId_weekStart.weekStart;
+        const row = rows.has(k) ? { ...rows.get(k), ...update } : { ...create, builtAt: new Date() };
+        rows.set(k, row);
+        return row;
+      }),
+      findFirst: jest.fn(async () => [...rows.values()].sort((a, b) => b.weekStart.localeCompare(a.weekStart))[0] ?? null),
+      findUnique: jest.fn(async ({ where }: any) => rows.get(where.groundId_weekStart.weekStart) ?? null),
+    };
+    return { ...c, rows };
+  }
+  const NEXT_WEEK = new Date(AT.getTime() + 7 * 24 * 3600 * 1000);
+
+  it('building next week adds a row and leaves this week\'s exactly as it was', async () => {
+    const c = withEveryWeekKept();
+    await c.svc.build('g1', AT);
+    const [first] = [...c.rows.keys()];
+    const before = JSON.stringify(c.rows.get(first));
+    await c.svc.build('g1', NEXT_WEEK);
+    expect(c.rows.size).toBe(2);
+    expect(JSON.stringify(c.rows.get(first))).toBe(before);
+  });
+
+  it('the earlier week is read as it was kept, by the date of its Monday', async () => {
+    const c = withEveryWeekKept();
+    await c.svc.build('g1', AT);
+    const [first] = [...c.rows.keys()];
+    const thenRead = await c.svc.read('g1', LEAD, AT);
+    await c.svc.build('g1', NEXT_WEEK);
+    const latest = await c.svc.read('g1', LEAD, NEXT_WEEK);
+    expect(latest.weekStart).not.toBe(first);
+    const earlier = await c.svc.read('g1', LEAD, NEXT_WEEK, first);
+    expect(earlier.weekStart).toBe(first);
+    expect(earlier.eachPerson).toEqual(thenRead.eachPerson);
+    expect(earlier.inNumbers).toEqual(thenRead.inNumbers);
+  });
+
+  it('a report kept in the earlier form, only the sentences about each person, still reads', async () => {
+    const c = withEveryWeekKept();
+    await c.svc.build('g1', AT);
+    const [first] = [...c.rows.keys()];
+    const sentences = (c.rows.get(first).eachPerson.eachPerson ?? c.rows.get(first).eachPerson.sentences ?? c.rows.get(first).eachPerson);
+    c.rows.set('2026-09-07', { groundId: 'g1', weekStart: '2026-09-07', eachPerson: Array.isArray(sentences) ? sentences : [], builtAt: new Date('2026-09-09T10:00:00Z') });
+    const old = await c.svc.read('g1', LEAD, NEXT_WEEK, '2026-09-07');
+    expect(old.weekStart).toBe('2026-09-07');
+    expect(Array.isArray(old.eachPerson)).toBe(true);
+  });
+
+  it('a week nobody has a report for says so, and a date that is not a Monday\'s form is refused', async () => {
+    const c = withEveryWeekKept();
+    expect((await c.svc.read('g1', LEAD, AT, '2026-08-03')).saying).toBe('There is no weekly report for that week.');
+    await expect(c.svc.read('g1', LEAD, AT, 'last week')).rejects.toThrow(/date of its Monday/);
+  });
+});

@@ -1140,3 +1140,9 @@ Draw `figure` large with `of` under it, as the prototype's tiles do; `says` is t
 - The prototype's "9 customers said the price was too high, and none named a competitor" needs a reading of what each claim was about, which needs a model. The engine says what it can count instead: how many things were said, how many have something behind them, and how many numbers were estimates or from memory.
 - Figures such as "14 deals moved stage", "5 sales closed" and "3 deals hit the stall rule" come from the stages and the stall rule, which are not in the record yet (week 6b's marks). Today the numbers are the check-ins made, the things with proof, and every target the reader may read.
 - The week is kept in the existing weekly report row; nothing in the database changed.
+
+
+## Decision 73: the weekly report for each reader, and earlier weeks (1 October)
+
+- A person in the check-in reads aims and limits in the weekly report only where the check-in's `whoSeesTargets` is `EVERYBODY`, as on the board. With `THEIR_OWN` they read the counts alone.
+- `GET /grounds/:groundId/report/week?week=2026-09-21` reads an earlier week by the date of its Monday, as it was kept. Without `week`, the latest week. A week with no report returns `saying: "There is no weekly report for that week."`; a value that is not a date in that form is refused with "Pick a week by the date of its Monday, for example 2026-09-21."

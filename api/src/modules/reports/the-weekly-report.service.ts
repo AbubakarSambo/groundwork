@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CheckInStatus, PartyType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -240,7 +240,13 @@ export class TheWeeklyReportService {
   }
 
   /** Reads what was stored, for this reader. Builds nothing. */
-  async read(groundId: string, who: { userId: string; role?: string | null; organizationId?: string | null }, now: Date = new Date()): Promise<TheWeeklySentences> {
+  /**
+   * `week` (decision 73): the Monday of an earlier week ("2026-09-21"), to read that week's report as it
+   * was kept. Each week is its own row; a later week never overwrites an earlier one. Omitted, the
+   * latest week is read.
+   */
+  async read(groundId: string, who: { userId: string; role?: string | null; organizationId?: string | null }, now: Date = new Date(), week?: string | null): Promise<TheWeeklySentences> {
+    if (week != null && !/^\d{4}-\d{2}-\d{2}$/.test(week)) throw new BadRequestException('Pick a week by the date of its Monday, for example 2026-09-21.');
     const ground: any = await this.prisma.ground.findUnique({
       where: { id: groundId },
       select: {
@@ -254,8 +260,10 @@ export class TheWeeklyReportService {
     /* Somebody with no reach, and an admin who was not given access to an evaluation check-in, read nothing. */
     if (!level) throw new NotFoundException('Check-in not found');
 
-    const latest: any = await this.prisma.weeklyReport.findFirst({ where: { groundId }, orderBy: { weekStart: 'desc' } });
-    if (!latest) return { weekStart: null, builtAt: null, saying: NOTHING_YET_THIS_WEEK, eachPerson: [] };
+    const latest: any = week
+      ? await this.prisma.weeklyReport.findUnique({ where: { groundId_weekStart: { groundId, weekStart: week } } })
+      : await this.prisma.weeklyReport.findFirst({ where: { groundId }, orderBy: { weekStart: 'desc' } });
+    if (!latest) return { weekStart: week ?? null, builtAt: null, saying: week ? 'There is no weekly report for that week.' : NOTHING_YET_THIS_WEEK, eachPerson: [] };
 
     const parties: any[] = ground.participants ?? [];
     const me = parties.find((p) => p.userId === who.userId) ?? null;
@@ -305,7 +313,11 @@ export class TheWeeklyReportService {
       { isLead: runsIt },
     ).shown as any[];
     const whoseIs = (t: any) => (!t.ownerParticipantId ? 'team' as const : t.ownerParticipantId === me?.id ? 'you' as const : { label: labels.get(t.ownerParticipantId) ?? 'A colleague' });
-    const targetFigures = shownTargets.map((t) => ({ t, f: aTargetThisWeek(t, whoseIs(t), runsIt) })).filter((x) => !!x.f) as { t: any; f: AFigure }[];
+    /* Aims and limits (Hafsah, 1 October, decision 73): whoever runs the check-in reads them; a person
+       in it reads them only where the check-in's "who sees targets" is EVERYBODY, as on the board.
+       With THEIR_OWN they read the counts alone. An admin who only reads keeps the counts alone. */
+    const readsTheAims = runsIt || (!!me && ground.whoSeesTargets === 'EVERYBODY');
+    const targetFigures = shownTargets.map((t) => ({ t, f: aTargetThisWeek(t, whoseIs(t), readsTheAims) })).filter((x) => !!x.f) as { t: any; f: AFigure }[];
     out.inNumbers = [
       theCheckInsMade(facts.checkIns.due, facts.checkIns.made),
       theThingsWithProof(theirCounts.said, theirCounts.documented, !viewerIsLead),

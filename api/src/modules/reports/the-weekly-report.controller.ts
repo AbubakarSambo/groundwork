@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TheWeeklyReportService } from './the-weekly-report.service';
 import { CurrentUser } from '../../common';
@@ -21,7 +21,9 @@ export class TheWeeklyReportController {
     @CurrentUser('id') userId: string,
     @CurrentUser('role') role: string,
     @CurrentUser('organizationId') organizationId: string,
+    /* An earlier week, by the date of its Monday (decision 73). Omitted, the latest week. */
+    @Query('week') week?: string,
   ) {
-    return this.weekly.read(groundId, { userId, role, organizationId });
+    return this.weekly.read(groundId, { userId, role, organizationId }, new Date(), week ?? null);
   }
 }
