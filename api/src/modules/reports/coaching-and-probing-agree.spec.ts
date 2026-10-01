@@ -158,11 +158,11 @@ describe('role and stage change what the same fact is worth raising as', () => {
   const later = whatToProbe({ ...leadBase, sessionNumber: 5, waitingOn: [waiting] });
 
   it('a new hire in session 2 who has not escalated is somebody to coach', () => {
-    expect(early.probe.join(' ')).toContain('worth showing them rather than asking about');
+    expect(early.probe.join(' ')).toContain('worth showing Zainab rather than asking about');
   });
 
   it('and the same fact later is something to ask about', () => {
-    expect(later.probe.join(' ')).toContain('what has stopped them raising it');
+    expect(later.probe.join(' ')).toContain('what has stopped Zainab raising it');
   });
 });
 

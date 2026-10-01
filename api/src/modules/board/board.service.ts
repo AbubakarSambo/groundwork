@@ -1,3 +1,5 @@
+import { isAWholeSentence } from '../reports/what-people-said-differently-about';
+import { aPartyOutside } from './a-thing-is-not-somebody';
 import { theOwedThingAskedPlainly } from '../conversation/each-owed-thing-asked-plainly';
 import { notToldYet, withoutGoalsNotToldIn, theConversationPointForTheLead } from '../grounds/a-goal-not-told-stays-with-the-lead';
 import { whoAnAdminDidNotLetIn } from '../grounds/who-an-admin-did-not-let-in';
@@ -1442,6 +1444,25 @@ export class BoardService {
          */
         await this.whatTheLeadSaysIsStillToDecide(groundId),
         (label: string) => visibleNames.get(label),
+        {
+          meId: me?.id ?? null,
+          leadId: theLeadsRow,
+          /* The same rule the switchboard's sections read a wait by (handoffMayBeRead, below). */
+          mayRead: (d) => {
+            const evaluation = isEvaluationCheckIn(ground.scenario);
+            const runsIt = isInitiator || runsItForAPattern(ground as any, requestingUserId);
+            if (adminHere && !runsIt && evaluation) return false;
+            if (runsIt || (runsThisGround && !evaluation)) return true;
+            const others = (ground.participants as any[])
+              .filter((p) => p.id !== theLeadsRow && !p.managingOnly)
+              .flatMap((p) => [`${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim(), (p.user?.firstName ?? '').trim(), (p.nameGiven ?? '').trim()])
+              .filter((n) => n.length > 1);
+            const namesSomebody = others.some((n) => new RegExp(`(?<![\\p{L}\\p{N}])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'iu').test(d.what ?? ''));
+            if (d.fromParticipantId && d.fromParticipantId === theLeadsRow && (evaluation || namesSomebody)) return false;
+            if (!(whoMaySee.peersHidden || evaluation)) return true;
+            return !!me?.id && (d.fromParticipantId === me.id || d.onParticipantId === me.id);
+          },
+        },
       );
     }
 
@@ -2171,37 +2192,66 @@ export class BoardService {
   /* A topic said inside a sentence: its first word lower-cased only when it is an ordinary word, never a name. */
   private deriveDecisions(
     divergences: any[],
-    dependencies: { what: string; status: DependencyStatus; onParticipantId: string | null; onLabel: string | null }[],
+    dependencies: { what: string; status: DependencyStatus; fromParticipantId?: string | null; onParticipantId: string | null; onLabel: string | null }[],
     nameOf: (id: string) => string | null,
     stillToDecide: string[] = [],
     /** The name this reader may see for a report label, or undefined. Nothing else is printed. */
     nameForLabel: (label: string) => string | undefined = () => undefined,
+    /**
+     * WHO IS READING (request 107 b). The person waiting is named, or "You" to themselves, and a wait
+     * this reader may not read on the rest of the board is not read here either. The owner of what the
+     * lead must settle is the lead, by name, or "You" to the lead, never "Lead and team".
+     */
+    reader: { meId: string | null; leadId: string | null; mayRead: (d: { fromParticipantId?: string | null; onParticipantId?: string | null; what?: string | null }) => boolean } = { meId: null, leadId: null, mayRead: () => true },
   ) {
-    const fromDivergence = divergences.map((d) => ({
+    const someone = (pid: string | null | undefined): string | null => {
+      if (!pid) return null;
+      if (pid === reader.meId) return 'You';
+      return nameOf(pid);
+    };
+    const theLeadOwns = someone(reader.leadId) ?? 'The person running this check-in';
+    const fromDivergence = divergences.map((d) => {
       /* Full sentences, never a label and a colon (screens request 68, 28 Sep 2026). Said as what
-         each person said, never as "the accounts differ" (29 Sep 2026). */
-      question: `${whoSaidDifferentThings(d, nameForLabel)} said different things about ${d.topic ? inASentence(d.topic) : 'this'}, so it needs settling.`,
-      why: 'What people said about this does not match, so nobody can assume it is agreed.',
-      owner: 'Lead and team',
-      source: 'divergence' as const,
-    }));
+         each person said, never as "the accounts differ" (29 Sep 2026). A topic that is a whole
+         sentence is said as its own sentence, never after "about" (request 107 b). */
+      const who = whoSaidDifferentThings(d, nameForLabel);
+      const topic = String(d.topic ?? '').trim().replace(/[.!?]+$/, '');
+      return {
+        question: !topic
+          ? `${who} said different things about this, so it needs settling.`
+          : isAWholeSentence(topic)
+            ? `${who} said different things. ${topic.charAt(0).toUpperCase()}${topic.slice(1)}. This needs settling.`
+            : `${who} said different things about ${inASentence(topic)}, so it needs settling.`,
+        why: 'What people said about this does not match, so nobody can assume it is agreed.',
+        owner: theLeadOwns,
+        source: 'divergence' as const,
+      };
+    });
     const fromBlockers = dependencies
       // Only STILL-OPEN blockers. A cleared handoff is not a decision anyone
       // needs to make, and leaving them on grew this list to 15 items.
       .filter((d) => d.status === DependencyStatus.BLOCKING)
-      .map((d) => ({
-        question: `Somebody is waiting on ${inASentence(d.what)}, so it needs deciding.`,
-        why: 'Someone cannot move until this is decided.',
-        owner: d.onParticipantId ? (nameOf(d.onParticipantId) ?? NOBODY_NAMED_TO_DECIDE) : (d.onLabel ?? NOBODY_NAMED_TO_DECIDE),
-        source: 'blocker' as const,
-      }));
+      .filter((d) => reader.mayRead(d))
+      .map((d) => {
+        /* The person waiting is known: say who (request 107 b). */
+        const who = someone(d.fromParticipantId) ?? 'Somebody';
+        const owner = d.onParticipantId
+          ? (someone(d.onParticipantId) ?? NOBODY_NAMED_TO_DECIDE)
+          : (aPartyOutside(d) ? d.onLabel!.trim() : NOBODY_NAMED_TO_DECIDE);
+        return {
+          question: `${who} ${who === 'You' ? 'are' : 'is'} waiting on ${inASentence(d.what)}, so it needs deciding.`,
+          why: who === 'You' ? 'You cannot move until this is decided.' : `${who} cannot move until this is decided.`,
+          owner,
+          source: 'blocker' as const,
+        };
+      });
 
     // Same decision phrased slightly differently is one decision.
     /* The lead's own, said as theirs: nobody agreed these, one person wrote them down. */
     const fromTheLead = stillToDecide.map((q) => ({
       question: q,
-      why: 'The person running this check-in wrote this down as still to decide.',
-      owner: 'Lead and team',
+      why: theLeadOwns === 'You' ? 'You wrote this down as still to decide.' : `${theLeadOwns} wrote this down as still to decide.`,
+      owner: theLeadOwns,
       source: 'lead' as const,
     }));
 

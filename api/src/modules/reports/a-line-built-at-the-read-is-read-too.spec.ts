@@ -23,7 +23,7 @@ describe('a line built at the read is held to the same tests', () => {
       concrete: [], documentsAttached: 0, sessionNumber: 2, totalSessions: 3, scenario: 'NEW_HIRE',
     });
     const served = linesBuiltAtTheRead(built);
-    expect(served.probe[0]).toMatch(/^You are waiting on them/);
+    expect(served.probe[0]).toMatch(/^You are waiting on Tobi Adewale/);
     expect(JSON.stringify(served)).not.toMatch(/\byou is\b/i);
   });
 

@@ -1,3 +1,4 @@
+import { aPartyOutside, theSameThing } from '../board/a-thing-is-not-somebody';
 /**
  * THE LONGITUDINAL READ: WHAT THE RECORD SHOWS ACROSS EVERY SESSION, WRITTEN BY THE PRODUCT.
  *
@@ -364,7 +365,9 @@ export function dependenciesOverTime(
   return (rows ?? [])
     .filter((d) => String(d.status).toUpperCase() !== 'CLEARED')
     .map((d) => {
-      const on = d.onParticipantId ? labelOf(d.onParticipantId) : (d.onLabel ?? null);
+      /* A thing is not somebody: "the data structure decision" is what is waited for, not who holds it (request 107 b). */
+      const on = d.onParticipantId ? labelOf(d.onParticipantId) : (aPartyOutside(d) ? (d.onLabel ?? null) : null);
+      const aThingItWaitsOn = !d.onParticipantId && d.onLabel?.trim() && !aPartyOutside(d) && !theSameThing(d.onLabel, d.what) ? d.onLabel.trim() : null;
       const from = labelOf(d.fromParticipantId);
       const stated = d.statedInSession ?? null;
       const sessionsWaiting = stated !== null ? Math.max(0, sessionsSoFar - stated) : null;
@@ -405,7 +408,11 @@ export function dependenciesOverTime(
               : tried === 'asked-once' ? 'it has been asked about once since'
                 : 'nothing on record says anybody has chased it since';
       const sentences = [
-        `${from} is waiting on ${on ?? 'somebody outside this check-in'} for "${d.what}"${howLong}, and ${since}.`,
+        aThingItWaitsOn
+          ? `${from} is waiting for "${d.what}"${howLong}, and ${since}. That waits on ${aThingItWaitsOn}.`
+          : !on && d.onLabel?.trim()
+            ? `${from} is waiting for "${d.what}"${howLong}, and ${since}.`
+            : `${from} is waiting on ${on ?? 'somebody outside this check-in'} for "${d.what}"${howLong}, and ${since}.`,
       ];
       /*
        * THE DIRECTION IS THE FINDING, AND IT IS SAID PLAINLY BECAUSE IT KEEPS BEING READ BACKWARDS.

@@ -5865,6 +5865,8 @@ happened, and what is in the way.`;
            * two cards titled by name. `nameOf2` is the same resolver without that substitution.
            */
           who: nameOf2(p.id) ?? 'A colleague',
+          /* Inside a sentence, the reader's own row is "you" (request 107 b). */
+          whoInASentence: nameOf(p.id, null) ?? nameOf2(p.id) ?? 'a colleague',
           participantId: p.id,
           role: p.roleAsDescribed ?? null,
           answeredThisSession: answered,

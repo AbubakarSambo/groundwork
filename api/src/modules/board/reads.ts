@@ -650,7 +650,7 @@ export function buildContribution(input: ReadInput, nameOf: NameOf): Contributio
         );
         if (thatOneIsWaiting) {
           reasonParts.push(
-            `That person is also waiting on them for ${waitingOnThem.length} ${waitingOnThem.length === 1 ? 'thing' : 'things'}, so read it as what one person said rather than as confirmation that the work arrived.`,
+            `That person is also waiting on ${nameOf(p.id) ?? 'this person'} for ${waitingOnThem.length} ${waitingOnThem.length === 1 ? 'thing' : 'things'}, so read it as what one person said rather than as confirmation that the work arrived.`,
           );
         } else if (!allFromOne) {
           reasonParts.push('Separate people naming the same work is worth more than the count of what anybody said.');

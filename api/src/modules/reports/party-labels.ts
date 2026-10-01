@@ -1042,6 +1042,17 @@ export function theVerbAgreesWithYouIn(input: string): string {
       (_m, verb) => `you ${verb} your`,
     )
     /**
+     * AND "THEIR OWN" AFTER WHAT "YOU" DID OR HAS NOT DONE WITH IT (request 107 b). "Wanjiku's progress
+     * depends on you completing their own open actions." and "you have not closed their own commitment"
+     * were the lead's own actions, written about the lead's label. After one of these verbs of doing or
+     * finishing, with nothing between, "their own" is the doer's. Narrow on purpose, as the rule above
+     * is: "you have not given each person their own target" has somebody between, and stays.
+     */
+    .replace(
+      /\byou ((?:have|has) not (?:yet )?(?:closed|completed|finished|done|kept|met|defined|stated|set)|completing|closing|finishing|keeping|meeting|defining|stating|to (?:close|complete|finish|keep|meet|define|state)) their own\b/gi,
+      (_m, verb) => `you ${verb} your own`,
+    )
+    /**
      * AND THE VERB AGREES WITH "YOU".
      *
      * The model writes about every party in the third person, so a label swapped for "you" leaves

@@ -25,6 +25,12 @@
  */
 export interface ProbeInput {
   who: string;
+  /**
+   * The same person inside a sentence for this reader: "you" where they are reading their own row, their
+   * name otherwise (request 107 b: "Baraka Mwangi and Amani Wekesa are waiting on them" was said to the
+   * person they were waiting on). Defaults to `who`.
+   */
+  whoInASentence?: string;
   participantId: string;
   role: string | null;
   answeredThisSession: boolean;
@@ -109,9 +115,15 @@ function earlyDays(i: ProbeInput): boolean {
 export function whatToProbe(i: ProbeInput): WhatToProbe {
   const probe: string[] = [];
   const encourage: string[] = [];
+  /* Every sentence has its person in it, by name or as "you", never "them" and never no subject at all (request 107 b). */
+  const them = (i.whoInASentence ?? i.who).trim() || 'this person';
+  const you = them.toLowerCase() === 'you';
+  const He = you ? 'You' : them.charAt(0).toUpperCase() + them.slice(1);
+  const is = you ? 'are' : 'is';
+  const has = you ? 'have' : 'has';
 
   if (!i.answeredThisSession) {
-    probe.push('Has not answered this session. Nothing below is from this round.');
+    probe.push(`${He} ${has} not answered this session, so nothing below is from this round.`);
   }
 
   /*
@@ -129,7 +141,7 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     const who = named.length ? andList(named) : 'Somebody';
     const oldest = Math.max(...i.holdingUp.map((d) => d.daysOld));
     probe.push(
-      `${who} ${named.length > 1 ? 'are' : 'is'} waiting on them${howLong(oldest)} for ${andList(i.holdingUp.map((d) => theThing(d.what)))}. Ask what that is waiting on.`,
+      `${who.charAt(0).toUpperCase()}${who.slice(1)} ${named.length > 1 || /^you$/i.test(who) ? 'are' : 'is'} waiting on ${you ? 'you' : them}${howLong(oldest)} for ${andList(i.holdingUp.map((d) => theThing(d.what)))}. Ask what that is waiting on.`,
     );
     const kind = whatKindOfThing(i.holdingUp);
     if (kind) probe.push(kind);
@@ -141,7 +153,7 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
     if (escalated.length) {
       const oldest = Math.max(...escalated.map((d) => d.daysOld));
       probe.push(
-        `Waiting${howLong(oldest)} for ${andList(escalated.map((d) => theThing(d.what)))}, and has escalated. Ask what happened after they did.`,
+        `${He} ${has} been waiting${howLong(oldest)} for ${andList(escalated.map((d) => theThing(d.what)))}, and ${has} raised it higher. Ask what happened after that.`,
       );
     }
     if (notYet.length) {
@@ -150,8 +162,8 @@ export function whatToProbe(i: ProbeInput): WhatToProbe {
       const items = andList(notYet.map((d) => theThing(d.what)));
       probe.push(
         earlyDays(i)
-          ? `Waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, with no escalation on record. This early that is worth showing them rather than asking about.`
-          : `Waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, with no escalation on record. Ask what has stopped them raising it.`,
+          ? `${He} ${has} been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, and nothing on record says it was raised higher. This early, that is worth showing ${you ? 'you' : them} rather than asking about.`
+          : `${He} ${has} been waiting${howLong(oldest)}${from.length ? ` on ${andList(from)}` : ''} for ${items}, and nothing on record says it was raised higher. Ask what has stopped ${you ? 'you' : them} raising it.`,
       );
       const kind = whatKindOfThing(notYet);
       if (kind) probe.push(kind);

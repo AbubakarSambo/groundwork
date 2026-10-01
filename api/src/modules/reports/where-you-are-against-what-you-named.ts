@@ -211,6 +211,23 @@ function theLeadSaidItButNeverSetIt(input: { readerIsTheLead?: boolean; leadName
   return `${name} said what success looks like in their own check-in, and it is in the list below. ${name} has not set it as the standard yet, so nothing is measured against it. They can set it on People and setup.`;
 }
 
+/**
+ * NOBODY HAS SAID WHAT SUCCESS LOOKS LIKE, TOLD TO WHOEVER READS IT (request 107 b). It read "Nobody has
+ * said what success looks like yet - not the person running this, and not anyone answering it." to the
+ * person running it, with a dash. Now in full sentences, with "you" for the reader and the lead's name
+ * where the reader may read it.
+ */
+function nobodyHasSaidIt(input: { counting: 'everyone' | 'only-yours'; readerIsTheLead?: boolean; leadName?: string | null }): string {
+  const lead = input.leadName?.trim() || 'The person running this check-in';
+  if (input.readerIsTheLead) {
+    return 'Nobody has said what success looks like yet. You have not said it, and nobody answering this check-in has said it either. Until somebody does, the report can say where people said different things, but not whether things are going well.';
+  }
+  if (input.counting === 'only-yours') {
+    return `Nothing has been said yet about what success looks like. ${lead} has not said it, and you have not said it either. It appears here as soon as either of you does.`;
+  }
+  return `Nobody has said what success looks like yet. ${lead} has not said it, and nobody answering this check-in has said it either. Until somebody does, the report can say where people said different things, but not whether things are going well.`;
+}
+
 export function whereYouAreAgainstWhatYouNamed(
   input: WhereAgainstSuccessInputs,
 ): WhereAgainstSuccess {
@@ -299,9 +316,7 @@ export function whereYouAreAgainstWhatYouNamed(
     sides,
     saying:
       sides === 'nobody'
-        ? input.counting === 'only-yours'
-          ? 'Nothing has been said yet about what success looks like - not by the person running this, and not by you. It appears here as soon as either of you does.'
-          : 'Nobody has said what success looks like yet - not the person running this, and not anyone answering it. Until somebody does, the report can say where people said different things, but not whether things are going well.'
+        ? nobodyHasSaidIt(input)
         : sides === 'only-the-lead' && !conditions.length
           ? input.counting === 'only-yours'
             ? 'What success looks like is stated. What you say about it appears here once you have checked in; everybody else\'s arrives with the report.'
@@ -312,7 +327,9 @@ export function whereYouAreAgainstWhatYouNamed(
                  useful thing: the words are right there, they are simply not what anybody is being
                  read against, and one person can change it in a minute. */
               ? theLeadSaidItButNeverSetIt(input)
-              : 'No standard is set. The person running this has not said what success looks like, so nobody is being measured against anything yet.'
+              : input.readerIsTheLead
+                ? 'No standard is set. You have not said what success looks like, so nobody is being measured against anything yet.'
+                : `No standard is set. ${input.leadName?.trim() || 'The person running this'} has not said what success looks like, so nobody is being measured against anything yet.`
             : null,
   };
 }
