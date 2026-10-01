@@ -104,31 +104,41 @@ describe('what the shell must not have taken over', () => {
 
 describe('the rail on the entry flow, and the way out of a session', () => {
   /**
-   * BOTH OF THESE WERE THINGS SHE REMEMBERED WORKING, AND SHE WAS RIGHT BOTH TIMES.
+   * REVERSED AGAIN, GROUP 3 REVIEW BATCH B (1 October) - AND THIS TIME AGAINST THE PROTOTYPE
+   * ITSELF, NOT AGAINST SOMEBODY'S MEMORY OF THE PRODUCT.
    *
-   * I had written "show the rail when signed in, hide it for a stranger" into a plan as work to do,
-   * and it was already the behaviour - so I recorded that as a wrong plan item. She then said the
-   * rail HAD been there on a signed-out window. Also right, and the mechanism was sitting in the
-   * file: `AppSidebar` carries a branch commented "Entry ground shown when unauthenticated on
-   * /start", which draws the check-in being built for somebody with no account yet.
+   * The history: `showSidebar` once required `isAuthenticated`, so a branch in `AppSidebar` meant
+   * to draw an "entry ground" rail for a stranger on /start (name, renameable, session count, a
+   * navy "+ Start a check-in", a "Not saved yet" card, "Sign in") could never run. Hafsah
+   * remembered that rail, it was restored (`isEntryFlow`, OR'd into `showSidebar`), and this test
+   * pinned the restoration.
    *
-   * It could never run. `showSidebar` required `isAuthenticated`, so the sidebar was never mounted
-   * for a stranger, which makes `isEntryPage = !isAuthenticated && pathname === '/start'` false
-   * whenever it is evaluated. An auth gate added later killed the branch without removing it. The
-   * same shape as the G37 defect, on the client this time, where my sweep for that class had not
-   * looked.
+   * But the prototype's own signed-out #/start (start.jpg) draws none of that - no sidebar at
+   * all, just the mark and the one question. The restored rail was real, but it was never what the
+   * prototype draws, and this same review's picture check found it sitting over "See every
+   * situation" on a phone (w375-out-_start.png) because of it. `showSidebar` is `isAuthenticated`
+   * again; a signed-out /start keeps its own way to sign in on the page itself now
+   * (`EntryChatPage.tsx`'s `Mark` + "Sign in" row), not in a rail the prototype never shows.
    */
   const SHELL = strip(readFileSync(join(__dirname, 'AppShell.tsx'), 'utf8'))
 
-  it('the entry flow gets the rail without being signed in', () => {
-    expect(SHELL).toMatch(/const isEntryFlow = location\.pathname === '\/start'/)
-    expect(SHELL).toMatch(/\(isAuthenticated \|\| isEntryFlow\) && !CHROMELESS/)
+  it('the entry flow no longer gets the rail without being signed in', () => {
+    expect(SHELL).toMatch(/const showSidebar =\s*isAuthenticated && !CHROMELESS/)
+    expect(SHELL).not.toMatch(/const isEntryFlow = location\.pathname === '\/start'/)
+    expect(SHELL).not.toMatch(/isAuthenticated \|\| isEntryFlow/)
   })
 
-  it('and the branch that draws it is therefore reachable', () => {
-    // `isEntryPage` was dead for as long as the auth gate existed. It is the thing being restored.
+  it('and the branch that drew it is unreachable again, deliberately', () => {
+    // `isEntryPage` still exists (AppSidebar's own branch), but AppSidebar no longer mounts at
+    // all for a signed-out /start, so the branch below it never runs while signed out.
     expect(SHELL).toMatch(/const isEntryPage = !isAuthenticated && location\.pathname === '\/start'/)
     expect(SHELL).toMatch(/\{isEntryPage && \(/)
+  })
+
+  it('and the page itself keeps a way to sign in, with the shared mark', () => {
+    const ENTRY = strip(readFileSync(join(__dirname, '..', '..', 'pages', 'enter', 'EntryChatPage.tsx'), 'utf8'))
+    expect(ENTRY).toMatch(/<Mark \/>/)
+    expect(ENTRY).toMatch(/Sign in/)
   })
 })
 

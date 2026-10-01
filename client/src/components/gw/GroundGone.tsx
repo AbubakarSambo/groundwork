@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { Button } from '@/components/gw/ui'
 
 /**
  * A GROUND YOU CANNOT SEE. W8-65.
@@ -29,7 +30,7 @@ export function GroundGone() {
         If you just switched organisation, this check-in belongs to the other one - switch back and it
         will be there. Otherwise it may have been closed, or you are no longer part of it.
       </div>
-      <button className="gw-btn" onClick={() => navigate('/')}>Go to my check-ins</button>
+      <Button onClick={() => navigate('/')}>Go to my check-ins</Button>
     </div>
   )
 }

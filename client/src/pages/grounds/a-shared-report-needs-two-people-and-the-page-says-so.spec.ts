@@ -34,7 +34,15 @@ describe('a check-in with one person on it', () => {
     const page = read('GroundAdminPage.tsx')
     const report = page.slice(page.indexOf("{tab === 'report' && ("), page.indexOf('<TheReportIsAListOfSessions'))
     expect(report).toContain('The shared report compares two accounts. Add somebody and this will build.')
-    expect(report).toMatch(/<TextAction onClick=\{\(\) => setTab\('checkins'\)\}/)
+    /*
+     * UPDATED (group 3, piece 5, the Report tab rebuild): `TextAction` was `kit.tsx`'s own old
+     * quiet-link component, one of several raw styles this tab drew its own copy of. The link now
+     * uses the shared part's own class for this exact shape, `.gwui-plain-link` (CLAUDE.md: "a
+     * quiet text link is .gwui-plain-link") - same click handler, same place, no `kit.tsx` import
+     * left anywhere in this tab.
+     */
+    expect(report).toMatch(/className="gwui-plain-link" onClick=\{\(\) => setTab\('checkins'\)\}/)
+    expect(report).not.toMatch(/<TextAction/)
   })
 
   it('and on the list row, without opening it', () => {

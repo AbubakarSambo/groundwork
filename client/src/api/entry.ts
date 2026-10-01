@@ -302,10 +302,13 @@ export const openLinkApi = {
 }
 
 export const joinApi = {
+  /* `skipNotFoundToast`: the /join page already says this itself in its own sentence (the same
+     reasoning as participantsApi.preview). Without it, a bad link raised a second, differently
+     worded toast on top of the page's own message - group 3's review, request batch A, fault 3. */
   preview: (token: string) =>
     apiClient.get<{ groundId: string; groundLabel: string; scenario: string; initiatorName: string }>(
       '/entry/join-preview',
-      { params: { t: token } },
+      { params: { t: token }, skipNotFoundToast: true } as any,
     ).then(r => r.data),
 
   /**

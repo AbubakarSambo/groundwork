@@ -551,6 +551,14 @@ export function AppSidebar() {
   const todayCount = today?.count ?? 0
 
   const location = useLocation()
+  /*
+   * GROUP 3 REVIEW, BATCH B: unreachable again, deliberately this time. `AppShell`'s own
+   * `showSidebar` no longer mounts this component at all for a signed-out reader on /start
+   * (start.jpg draws no rail there), so this branch below never runs while signed out. Left in
+   * place, not deleted: `isEntryPage` still matches a signed-out `/start` by its own definition,
+   * and deleting the branch would be a second, separate change to make in the same file as the
+   * one this review actually asked for (AppShell's `showSidebar`).
+   */
   const isEntryPage = !isAuthenticated && location.pathname === '/start'
   const { groundName, setGroundName } = useEntryStore()
   const [renamingEntry, setRenamingEntry] = useState(false)
@@ -1179,21 +1187,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ]
 
   /**
-   * THE RAIL ON /start FOR SOMEBODY WITHOUT AN ACCOUNT YET.
+   * THERE IS NO RAIL ON /start FOR SOMEBODY WITHOUT AN ACCOUNT YET.
    *
-   * `AppSidebar` has a branch for exactly this, and its own comment says so: "Entry ground shown when
-   * unauthenticated on /start". It draws the ground being built - its name, renameable, and how many
-   * sessions - for a person who has no grounds because they are making their first one.
+   * GROUP 3 REVIEW, BATCH B (1 October): start.jpg, the prototype's own signed-out #/start, draws
+   * no sidebar at all - just the mark, the one question, and (on the account-card screens beside
+   * it) a plain way to sign in. A previous round restored a rail here (`isEntryFlow`, below,
+   * OR'd into `showSidebar`) on the strength of a different memory - a signed-out window that once
+   * showed an "entry ground" rail (name, renameable, session count, a navy "+ Start a check-in",
+   * "Not saved yet", "Sign in") - but that rail is not what the prototype draws, and it is also
+   * where w375-out-_start.png found the floating Feedback button covering "See every situation".
    *
-   * It could never run. `showSidebar` required `isAuthenticated`, so the sidebar was not mounted at
-   * all for a stranger, which made `isEntryPage = !isAuthenticated && pathname === '/start'` a
-   * condition that is false whenever it is evaluated. The rail Hafsah remembered on a signed-out
-   * window was real, and an auth gate added later killed it without removing the branch.
-   *
-   * Same shape as the G37 defect: a check that cannot be true, no failure, just a thing that quietly
-   * stopped happening. The API sweep for this class did not cover the client.
+   * The rail stays for an AUTHENTICATED reader on /start (building a second or further check-in),
+   * since `isAuthenticated` alone already covers that case. Only the signed-out exception is
+   * removed. `EntryChatPage.tsx` keeps a way to sign in on its own, with the shared `Mark` and a
+   * plain "Sign in" link, so a stranger on /start is not left with no way back to an account -
+   * see `the-door-has-no-rail-when-signed-out.spec.ts`.
    */
-  const isEntryFlow = location.pathname === '/start'
   /**
    * TWO PRODUCTS ON ONE SCREEN. W-UX-8.
    *
@@ -1221,7 +1230,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
      own, as the prototype draws them, whoever happens to be signed in on this browser. */
   const fromAnEmail = ['/stop-reminders/', '/unsubscribe/', '/j/'].some(p => location.pathname.startsWith(p))
   const showSidebar =
-    (isAuthenticated || isEntryFlow) && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail
+    isAuthenticated && !CHROMELESS.includes(location.pathname) && !isBackOffice && !bare && !fromAnEmail
 
   if (!showSidebar) return <main id="main">{children}</main>
 

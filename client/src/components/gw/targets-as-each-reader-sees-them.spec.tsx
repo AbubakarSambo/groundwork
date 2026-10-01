@@ -79,6 +79,24 @@ describe('the lead, Wairimu', () => {
   })
 })
 
+describe('the lead, on her own share', () => {
+  /*
+   * GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 8: ONE PERSON, NAMED TWICE. On her own share -
+   * where she is both the lead and the owner - this used to check `isTheLead` first, so her own
+   * first name (the owner's) stood beside "you": "Wairimu / Seen by Wairimu and you", as if two
+   * people read it. `readerIsOwner` is checked first now, so her own share reads "You" and "Seen
+   * by you" - true of who actually sees it, since it is the same one person either way.
+   */
+  const herOwnShops: Target = { id: 't4', name: 'Shops', target: 4, ownerParticipantId: 'p-lead', assumes: [] }
+  it('reads "You", not her own name, and "Seen by you", not "Seen by Wairimu and you"', () => {
+    draw({ targets: [herOwnShops], viewerUserId: 'u-lead', isTheLead: true })
+    expect(rowText('t4')).toContain('You')
+    expect(rowText('t4')).toContain('Seen by you')
+    expect(rowText('t4')).not.toContain('Wairimu')
+    expect(rowText('t4')).not.toContain('Seen by you and you')
+  })
+})
+
 describe('Aisha, who takes part', () => {
   it('reads the team target and her own share, told that only she and Wairimu see it', () => {
     /* What the server sends her: the team's target and her own share, not Brian's. */

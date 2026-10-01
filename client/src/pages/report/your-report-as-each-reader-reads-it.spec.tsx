@@ -72,7 +72,15 @@ describe('a session’s page, as its owner reads it', () => {
   it('says the team’s report has closed, with the date through the shared formatter, once it has', async () => {
     vi.mocked(reportsApi.sessionReport).mockResolvedValue({ correctable: false, whyNotCorrectable: 'The window to correct it has closed.', state: 'final', takenAt: '2026-09-27T10:00:00.000Z' } as any)
     renderIt()
-    expect(await screen.findByText('Closed 27 Sept 2026. This does not change. What each person said about their own work can appear here. What anyone said about somebody else never does.')).toBeTruthy()
+    /*
+     * WORDING UPDATED (group 3's review, request batch A, fault 2): "What anyone said about
+     * somebody else never does" was not true - a person's own words that name somebody else stay
+     * as they said them (their-own-words-stay.ts), and the same report this sentence sits on can
+     * read "Baraka Mwangi and Neema Achieng are waiting on Rukia Otieno for 3 things". Only a
+     * lead's private judgement of a person is withheld from anyone but the lead, which is what the
+     * sentence now says.
+     */
+    expect(await screen.findByText('Closed 27 Sept 2026. This does not change. What each person said about their own work can appear here. Nobody\'s private judgement of somebody else does.')).toBeTruthy()
     expect(document.body.textContent).not.toMatch(/it updates as people check in/)
   })
 })

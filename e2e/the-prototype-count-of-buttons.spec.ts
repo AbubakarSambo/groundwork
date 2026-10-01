@@ -102,6 +102,22 @@ const SCREENS: Record<string, Counterpart> = {
   'pages/org/WhoCanOpenACheckIn.tsx': null, // a panel of the people screen above
   'pages/org/OnePersonPage.tsx': { productPath: '/org/members/f5d37595-4a15-41e9-9c2e-f9b7e52a30a3', reader: 'admin', hash: '#/settings/people/miriam', persona: 'admin' },
   'pages/grounds/CheckInPeopleAndSetup.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd?tab=settings', reader: 'lead', hash: '#/c/sales/people', persona: 'lead' },
+  /*
+   * GROUP 3, PIECE 5, LAST PIECE (Context and resources, B2-context): the lead's check-in page,
+   * ContextPage.tsx, drawn by GroundAdminPage.tsx as the "Context and resources" tab. Rukia is the
+   * same lead persona the prototype's own context.jpg/context.txt are drawn for, on the same "Sales
+   * team, Q3" check-in every other lead entry here opens.
+   */
+  'pages/grounds/GroundAdminPage.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd?tab=context', reader: 'lead', hash: '#/c/sales/context', persona: 'lead' },
+  'components/gw/ContextPage.tsx': null, // the tab GroundAdminPage.tsx above opens; not a screen of its own
+  /*
+   * GROUP 3, PIECE 5, PART 9 (the participant's check-in page): Amani, on the same "Sales team, Q3"
+   * check-in every other entry here opens, at its default tab (`/p` with no `?tab=`). Her check-in
+   * is not due right now, so the page renders the prototype's own "between sessions" conversation
+   * card (`BetweenCheckIns`) - the closest prototype counterpart is B3's own `between-check-ins`
+   * screen (docs/prototype/screens/index.json), drawn for the "part" persona.
+   */
+  'pages/grounds/GroundParticipantPage.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd/p', reader: 'participant', hash: '#/c/sales/between', persona: 'part' },
   'pages/board/BoardPage.tsx': { productPath: '/grounds/9028f0ad-293b-4592-9a4e-25b680dd91cd/board', reader: 'lead', hash: '#/c/sales/board', persona: 'lead' },
   'pages/board/WorkRecords.tsx': null, // a section of the board screen above
   'components/gw/where-each-person-is.tsx': null, // a section of the board screen above
@@ -254,11 +270,17 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
       return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
     };
     const root = document.querySelector('#main') ?? document.body;
-    const nodes = Array.from(root.querySelectorAll('button, a')).filter((e) => {
+    /* The prototype draws some screens as static pictures, with a reply chip as <span class="chip">;
+       in the product that chip is a tappable reply. Counted on both sides, so like is compared with
+       like (1 October, the between-check-ins screen). */
+    const nodes = Array.from(root.querySelectorAll('button, a, span.chip')).filter((e) => {
       if (e.closest('#dev, #devshow')) return false; // the prototype's own dev bar, not the screen
       /* An on/off switch is a setting, not a button, on both sides (ours is a button with
          role="switch", the prototype's a checkbox); like a chosen chip, it is not counted. */
       if (e.getAttribute('role') === 'switch' || e.getAttribute('role') === 'checkbox') return false;
+      /* A tab is the check-in page's own navigation between its views, like the sidebar this count
+         already leaves out (1 October): not a button on the screen being compared. */
+      if (e.getAttribute('role') === 'tab' || e.closest('[role="tablist"]')) return false;
       /* A quiet text link is a link, not a button (Hafsah, 30 September: the no-seat warning's
          action is "a quiet text link inside the warning, not a second button"). Ours is drawn
          by `.gwui-plain-link`, underlined words with no box, sometimes on a <button> because it
@@ -266,7 +288,7 @@ async function countButtons(page: Page): Promise<{ total: number; primary: numbe
          which were never counted. Only the class decides, so a boxed button can't slip through. */
       if (e.classList.contains('gwui-plain-link')) return false;
       const cs = getComputedStyle(e);
-      const looksLikeAButton = e.tagName === 'BUTTON' || cs.display.includes('flex') || cs.display.includes('inline-flex') || e.className.toString().includes('btn');
+      const looksLikeAButton = e.tagName === 'BUTTON' || (e.tagName === 'SPAN' && e.classList.contains('chip')) || cs.display.includes('flex') || cs.display.includes('inline-flex') || e.className.toString().includes('btn');
       return looksLikeAButton && isVisible(e);
     });
     const isPrimary = (e: Element) => {

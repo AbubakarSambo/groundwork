@@ -258,12 +258,25 @@ export function TheDonePage({
       {(leadName || carry) && (
         <section aria-labelledby={savedHeadingId} style={{ background: 'var(--gw-green-bg)', border: '1px solid var(--gw-green-b)', borderRadius: 12, padding: '15px 17px', display: 'grid', gap: 10 }}>
           <h2 id={savedHeadingId} style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--gw-green-t)' }}>That’s saved</h2>
+          {/*
+            GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 11: A LABEL AND A COLON IS NOT A HEADING.
+            "Why answering matters:" and "One thing for next time:" were bolded words glued to the
+            front of a sentence with a colon, which CLAUDE.md's wording rule rules out same as
+            anywhere else a person reads. Each is now its own heading, then a plain sentence under
+            it - the same shape "That's saved" itself already uses, one level down.
+          */}
           {leadName && (
-            <p className="gwui-panel-text">
-              <strong>Why answering matters:</strong> {leadName} also answers a check-in. The report puts the answers side by side. It does not decide who is right.
-            </p>
+            <div>
+              <h3 style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>Why answering matters</h3>
+              <p className="gwui-panel-text">{leadName} also answers a check-in. The report puts the answers side by side. It does not decide who is right.</p>
+            </div>
           )}
-          {carry && <p className="gwui-panel-text">One thing for next time: {carry}</p>}
+          {carry && (
+            <div>
+              <h3 style={{ margin: '0 0 2px', fontSize: 13, fontWeight: 700, color: 'var(--gw-green-t)' }}>One thing for next time</h3>
+              <p className="gwui-panel-text">{carry}</p>
+            </div>
+          )}
         </section>
       )}
 

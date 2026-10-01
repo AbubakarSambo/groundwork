@@ -8,11 +8,14 @@ import { QuickReplies } from '../ui/QuickReplies'
  * might give. They are a help, never a limit."), and they arrive with its reply. Until the engine
  * sends them this draws nothing, and the box to type in is always there beside them.
  *
- * ROUND 4, ITEM B: draws through `components/gw/ui/QuickReplies`, the prototype's own pill
- * (`.chip`: `flex-wrap:wrap`, not a stacked column - a real fix, not only a move, since a fourth or
- * fifth suggestion used to run off a phone's width in a single column). This file keeps the
- * filtering (`theSuggestedAnswers`: real sentences only, no repeats, at most four) - the engine's
- * own rule, not the pill's.
+ * ROUND 4, ITEM B: draws through `components/gw/ui/QuickReplies`, the prototype's own pill. This
+ * file keeps the filtering (`theSuggestedAnswers`: real sentences only, no repeats, at most four) -
+ * the engine's own rule, not the pill's.
+ *
+ * GROUP 3 REVIEW, BATCH B: the prototype's own screens (check-in-start.jpg, check-in-phone.jpg)
+ * stack these one to a line, at every width, not wrapped into a row - `QuickReplies`' `stacked`
+ * mode, already used by `BetweenCheckIns.tsx`. A wrapping row had been tried here instead; that
+ * is not what the prototype draws.
  */
 
 /** What the server sent, cleaned: real sentences only, no repeats, at most four. */
@@ -38,5 +41,5 @@ export function SuggestedAnswers({ answers, onPick, disabled }: {
 }) {
   const shown = theSuggestedAnswers(answers)
   if (shown.length === 0) return null
-  return <QuickReplies items={shown} onPick={onPick} disabled={disabled} label="Suggested answers" />
+  return <QuickReplies items={shown} onPick={onPick} disabled={disabled} label="Suggested answers" stacked />
 }

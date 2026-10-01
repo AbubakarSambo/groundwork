@@ -1,4 +1,4 @@
-import { Sec } from '@/components/gw/kit'
+import { Section } from '@/components/gw/ui'
 
 /**
  * THE LEAD'S FRAMING OF THE SITUATION, READ BY EVERYONE.
@@ -26,7 +26,7 @@ export function SharedNote({ text, leadName }: { text?: string | null; leadName?
   const who = leadName?.trim()
   return (
     <div style={{ marginBottom: 22 }}>
-      <Sec title="How this is being framed" src={who ? `${who}'s words, read by everyone here` : 'the lead’s words, read by everyone here'} />
+      <Section heading="How this is being framed" note={who ? `${who}'s words, read by everyone here` : 'the lead’s words, read by everyone here'} />
       <div
         style={{
           background: 'white',

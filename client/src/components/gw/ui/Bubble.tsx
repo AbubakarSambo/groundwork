@@ -7,8 +7,9 @@ import type { ReactNode } from 'react'
  * Groundwork's own turn (`them`) squares its BOTTOM-left corner and sits on the prototype's
  * `--chat` (our `--gw-bg`, #F7F1E5 - the same cream every soft fill in the product uses,
  * never `--gw-paper-2`, which is the page colour itself and would make this bubble invisible);
- * the person's own turn (`me`) squares its bottom-RIGHT corner and sits on ink (`--gw-navy` here),
- * in white.
+ * the person's own turn (`me`) squares its bottom-RIGHT corner and sits on the prototype's
+ * `--ink` (`--gw-ink`, #1A1916 in light mode - NOT `--gw-navy`, the brand blue, which the
+ * prototype never puts a bubble on), in the prototype's `--on-ink` (white).
  *
  * ROUND 4, ITEM B: extracted so `ChatPage.tsx` and `GroundChat.tsx`'s `Message` (still used by
  * `MyCheckInSessions.tsx` for past sessions) draw the same bubble from one place. `GroundChat.tsx`
@@ -28,7 +29,7 @@ export function Bubble({ mine, children, opacity = 1 }: {
       style={{
         maxWidth: '82%',
         alignSelf: mine ? 'flex-end' : 'flex-start',
-        background: mine ? 'var(--gw-navy)' : 'var(--gw-bg)',
+        background: mine ? 'var(--gw-ink)' : 'var(--gw-bg)',
         color: mine ? 'white' : 'var(--gw-text)',
         borderRadius: mine ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
         padding: '12px 16px',

@@ -50,7 +50,9 @@ describe('who the report is counting', () => {
     /* Same rule, now also passed what the check-in's own setting says about naming peers, so the
        report cannot disagree with the roster above it. See
        the-report-names-people-the-way-the-setting-says.spec.ts. */
-    expect(API).toContain('namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any))')
+    /* The engine now asks peersAreNamed about this reader (merge of 1 October): who may be named
+       depends on who is reading. The promise is unchanged: names come through namesVisibleTo. */
+    expect(API).toContain('namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any, me?.id ?? null))')
     expect(API).toContain('nameByLabel.get(label)')
   })
 

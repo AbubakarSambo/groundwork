@@ -156,11 +156,25 @@ describe('Aisha, who takes part', () => {
 })
 
 describe('an admin reading a check-in somebody else leads', () => {
-  it('reads the brief as the lead’s words, and may rewrite it', async () => {
+  /* Hafsah, 1 October: the brief follows the same rule as every other setup change. Only the lead
+     rewrites it, unless the lead has left the organisation; then an admin may (request 104). */
+  it('reads the brief as the lead’s words, and is not offered to rewrite it while the lead is here', async () => {
     ;(documentsApi.list as any).mockResolvedValue([])
     draw('admin', 'u-admin', { briefAsEveryoneReadsIt: ground.brief, briefIsTheLeadsOwnWords: true, briefChangedBy: null })
     expect(whose()).toEqual(['Wairimu’s words, from setup. This is what everyone in this check-in reads before they answer.'])
+    expect(screen.queryByText('Rewrite')).toBeNull()
+  })
+
+  it('and may rewrite it once the lead has left, when the server says so', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([])
+    draw('admin', 'u-admin', { briefAsEveryoneReadsIt: ground.brief, briefIsTheLeadsOwnWords: true, briefChangedBy: null, mayChangeSetup: true })
     expect(screen.getByText('Rewrite')).toBeTruthy()
+  })
+
+  it('and the server is believed both ways: told no, even the lead is not offered it', async () => {
+    ;(documentsApi.list as any).mockResolvedValue([])
+    draw('lead', 'u-lead', { briefAsEveryoneReadsIt: ground.brief, briefIsTheLeadsOwnWords: true, briefChangedBy: null, mayChangeSetup: false })
+    expect(screen.queryByText('Rewrite')).toBeNull()
   })
 
   it('and reads "You changed this." once he has', async () => {
@@ -330,7 +344,8 @@ describe('Juma’s check-in: what the lead wrote, and what Groundwork put togeth
   })
 
   it('an admin reads what everyone reads, no setup words of hers and no put-together text, and rewrites from what everyone reads', async () => {
-    draw('admin', 'u-otieno', juma)
+    /* Once the lead has left (Hafsah, 1 October): the server says so in mayChangeSetup. */
+    draw('admin', 'u-otieno', { ...juma, mayChangeSetup: true })
     expect(folds()).toEqual([])
     expect(whose()).toEqual(['Groundwork wrote this from Wairimu’s words. This is what everyone in this check-in reads before they answer.'])
     expect(document.body.textContent).not.toMatch(/taken to mean|put together|Juma joined our warehouse/)

@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { scrollTo } from '@/lib/scroll-to'
 import './gw-ui.css'
 
 /**
@@ -11,6 +13,13 @@ import './gw-ui.css'
  * "every tab is underlined"): only the chosen tab gets a visible underline. The others get a 3px
  * TRANSPARENT border of the same weight, so nothing shifts when the choice changes, but nothing is
  * drawn under a tab that is not chosen.
+ *
+ * GROUP 3 REVIEW, BATCH B: AT 375px THE CHOSEN TAB CAN OPEN OFF SCREEN. The row scrolls sideways
+ * (`overflow-x: auto` above), and a reader can land on a page with its later tab already chosen -
+ * "My work" on the lead's own check-in page, say - with the row still scrolled to its own start, so
+ * the one tab that says where they are sits past the right edge, unseen, on a phone. Scrolled into
+ * view as soon as the page opens, and again whenever the choice changes under this same row (the
+ * report tab redirecting elsewhere does not touch this - a changed `active` prop is what moves it).
  */
 export type TabItem = { key: string; label: string; to?: string }
 
@@ -21,6 +30,15 @@ export function Tabs({ items, active, onChange, label }: {
   onChange?: (key: string) => void
   label?: string
 }) {
+  const activeRef = useRef<HTMLAnchorElement | HTMLButtonElement>(null)
+
+  useEffect(() => {
+    /* `scrollTo` (lib/scroll-to.ts), not a bare `scrollIntoView` call: the one already proven not
+       to be fatal in an environment with no real scrolling (jsdom's tests included), and the one
+       every other "jump to it" control in this app already uses. */
+    scrollTo(activeRef.current, { block: 'nearest', inline: 'nearest' })
+  }, [active])
+
   return (
     <div className="gwui-tabs" role="tablist" aria-label={label}>
       {items.map(item => {
@@ -28,7 +46,14 @@ export function Tabs({ items, active, onChange, label }: {
         const className = `gwui-tab${isOn ? ' gwui-tab-on' : ''}`
         if (item.to) {
           return (
-            <Link key={item.key} to={item.to} className={className} role="tab" aria-selected={isOn}>
+            <Link
+              key={item.key}
+              ref={isOn ? (activeRef as React.Ref<HTMLAnchorElement>) : undefined}
+              to={item.to}
+              className={className}
+              role="tab"
+              aria-selected={isOn}
+            >
               {item.label}
             </Link>
           )
@@ -36,6 +61,7 @@ export function Tabs({ items, active, onChange, label }: {
         return (
           <button
             key={item.key}
+            ref={isOn ? (activeRef as React.Ref<HTMLButtonElement>) : undefined}
             type="button"
             className={className}
             role="tab"

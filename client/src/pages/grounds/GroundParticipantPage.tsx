@@ -11,6 +11,8 @@ import { useAuthStore } from '@/stores/auth'
 import { reportsApi } from '@/api/reports'
 import { CheckInHeader } from '@/components/gw/ui/CheckInHeader'
 import { Page } from '@/components/gw/ui/Page'
+import { Note } from '@/components/gw/ui/Note'
+import { Empty, Button, Stack, SubHeading, Callout } from '@/components/gw/ui'
 import { cadenceLabel } from '@/lib/cadence'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { whoRunsThis, whenTheNextOneOpens } from '@/lib/what-the-end-of-a-check-in-can-say'
@@ -222,7 +224,7 @@ export function GroundParticipantPage() {
     })
   }, [tab, myOpenForAutoOpen, sessionOpening, openSession])
 
-  if (isLoading) return <div style={{ minHeight: '100vh', background: 'var(--gw-page)', padding: 24, fontSize: 13, color: 'var(--gw-muted)' }}>Loading…</div>
+  if (isLoading) return <Page narrow><Note>Loading…</Note></Page>
   /*
    * A FAILED REQUEST WAS TELLING PEOPLE THEY HAD BEEN REMOVED.
    *
@@ -235,27 +237,17 @@ export function GroundParticipantPage() {
    * a check-in that is genuinely gone answers 404, and anything else is a failure to load.
    */
   if (isError && !definitelyGone) return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, letterSpacing: '-.01em', color: 'var(--gw-text)' }}>
-          We could not load this check-in
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, maxWidth: 340, margin: '0 auto 18px' }}>
-          This is a connection problem, not a lost record. You are still part of it, and nothing you
-          have written is affected.
-        </div>
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-          style={{ padding: '9px 18px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: isFetching ? 'default' : 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
-        >{isFetching ? 'Trying…' : 'Try again'}</button>
-      </div>
-    </div>
+    <Page narrow>
+      <Empty title="We could not load this check-in" action={<Button kind="secondary" onClick={() => refetch()} disabled={isFetching}>{isFetching ? 'Trying…' : 'Try again'}</Button>}>
+        This is a connection problem, not a lost record. You are still part of it, and nothing you
+        have written is affected.
+      </Empty>
+    </Page>
   )
 
   // Was the bare words "Ground not found." with nothing to press, in two hardcoded
   // colours of its own. W8-65.
-  if (!ground) return <div style={{ minHeight: '100vh', background: 'var(--gw-page)' }}><GroundGone /></div>
+  if (!ground) return <Shell><GroundGone /></Shell>
 
   /* "This check-in reached its end date" (A3, U.3): what a person taking part meets first on a check-in
      that ran out of time, with a way to ask the lead for more and a way on to their own work. */
@@ -323,19 +315,20 @@ export function GroundParticipantPage() {
 
   if (!myParticipant) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ maxWidth: 400, textAlign: 'center' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 8 }}>You are not in this check-in</div>
-          <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, marginBottom: 20 }}>
-            {user?.role === 'ADMIN'
-              ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
-              : 'Whoever runs it can add you.'}
-          </div>
-          <button onClick={() => navigate(user?.role === 'ADMIN' ? `/grounds/${id}` : '/grounds')} style={{ fontSize: 13, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
-            {user?.role === 'ADMIN' ? 'Open the whole check-in' : 'Back to check-ins'}
-          </button>
-        </div>
-      </div>
+      <Page narrow>
+        <Empty
+          title="You are not in this check-in"
+          action={(
+            <Button kind="secondary" onClick={() => navigate(user?.role === 'ADMIN' ? `/grounds/${id}` : '/grounds')}>
+              {user?.role === 'ADMIN' ? 'Open the whole check-in' : 'Back to check-ins'}
+            </Button>
+          )}
+        >
+          {user?.role === 'ADMIN'
+            ? 'You run it as an admin without giving a check-in yourself. Everything about it is on the whole check-in.'
+            : 'Whoever runs it can add you.'}
+        </Empty>
+      </Page>
     )
   }
   const myCheckIns: any[] = (ground.checkIns ?? []).filter((ci: any) => ci.participantId === myParticipant?.id)
@@ -437,11 +430,14 @@ export function GroundParticipantPage() {
         name: atTheStart(participantLabel(p)),
         done: hasDoneThisSession((p.checkIns ?? []) as any[], currentSession),
         isSelf: p.userId === user?.id,
+        /* GROUP 3'S REVIEW, CONTRADICTION 4: held outside the organisation, by an admin - not by
+           the session's own clock. See the matching note in WhoIsInThis.tsx. */
+        waitingToBeLetIn: !!p.user?.awaitingOrgApproval,
       }
     })
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--gw-page)', display: 'flex', flexDirection: 'column' }}>
+    <div className="gwui-page-shell">
 
       {/*
         U.10 PICTURE-CHECK ROUND 7, ITEM 2 (CHECK-IN REBUILD): THE SAME HEADER PLACEMENT AS THE
@@ -469,7 +465,7 @@ export function GroundParticipantPage() {
           title={ground.label}
           subtitle={(ground as any).cadence ? `${cadenceLabel((ground as any).cadence)}.` : undefined}
           action={(
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+            <div className="gwui-button-row">
               {/*
                 REVIEW ROUND 3, ITEM 1: THIS LINK WENT TO THE PAGE THE PERSON WAS ALREADY ON.
                 `/grounds/${id}/p` IS this page - clicking it while standing on it reloads the
@@ -486,14 +482,12 @@ export function GroundParticipantPage() {
                 and setup tab carried two navy buttons at once.
               */}
               {myOpenForAutoOpen && outerTabOf(tab) !== 'people' && (
-                <button
-                  type="button"
+                <Button
                   onClick={() => openSession(myOpenForAutoOpen, { isFreeGround: ground?.isFreeGround, groundLabel: ground?.label, isInitiator })}
                   disabled={sessionOpening}
-                  style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 13, fontWeight: 700, border: 'none', cursor: sessionOpening ? 'wait' : 'pointer', fontFamily: 'inherit' }}
                 >
                   {sessionOpening ? 'Opening…' : 'Start my check-in'}
-                </button>
+                </Button>
               )}
               {/*
                 HAFSAH, 30 SEPTEMBER, ITEM 4: NOT HERE EITHER. "Ask" only sits in the header on the
@@ -503,14 +497,14 @@ export function GroundParticipantPage() {
                 its own header never needs one.
               */}
               {/* The way back for an admin who is a party elsewhere - not in the prototype, but a
-                  real door this product needs (the-two-views-are-a-pair.spec.ts). */}
+                  real door this product needs (the-two-views-are-a-pair.spec.ts). The trailing arrow
+                  the button's words used to carry ("The whole check-in →") is gone: a decorative
+                  arrow on button text is a joined-on fragment, not a sentence (CLAUDE.md's wording
+                  rule), the same reason GroundAdminPage.tsx dropped one from "Go to my check-ins". */}
               {canRunThisCheckIn && (
-                <button
-                  onClick={() => navigate(`/grounds/${id}`)}
-                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, padding: '5px 11px', borderRadius: 20, background: 'white', color: 'var(--gw-navy)', border: '1px solid var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  The whole check-in →
-                </button>
+                <Button kind="secondary" size="small" onClick={() => navigate(`/grounds/${id}`)}>
+                  The whole check-in
+                </Button>
               )}
             </div>
           )}
@@ -530,7 +524,7 @@ export function GroundParticipantPage() {
           }}
         />
 
-        <div style={{ fontSize: 11, color: 'var(--gw-muted)', display: 'flex', gap: 8, flexWrap: 'wrap', padding: '10px 0 12px' }}>
+        <div className="gwui-button-row gwui-fs-13 gwui-ink-muted gwui-pt-10 gwui-pb-12">
           {/*
             REVIEW ROUND 3, ITEM 2: ONE PAGE PER CHECK-IN NOW, NOT TWO.
             This used to say which of two pages you were on, for whoever runs the check-in AND
@@ -552,13 +546,13 @@ export function GroundParticipantPage() {
             Null on a reader's own check-in, because "at your own company" is not information.
           */}
           {(ground as any).guestIn && (
-            <span style={{ color: 'var(--gw-navy)', fontWeight: 600 }}>
-              · A guest check-in at {(ground as any).guestIn}
+            <span className="gwui-ink-navy" style={{ fontWeight: 600 }}>
+              A guest check-in at {(ground as any).guestIn}.
             </span>
           )}
           {/* Once it has ended, the clock is not the news. See lib/a-ground-that-has-ended. */}
           {howItEnded(ground as any) ? (
-            <span style={{ color: 'var(--gw-green-t)', fontWeight: 600 }}>· {howItEnded(ground as any)}</span>
+            <span className="gwui-ink-green" style={{ fontWeight: 600 }}>{howItEnded(ground as any)}</span>
           ) : (
             <>
               {/* OPEN IS NOT DUE, in the header too. `opensLater` is derived above to tell the two
@@ -578,8 +572,17 @@ export function GroundParticipantPage() {
                   two numbers for what read as one fact on two different screens of the same
                   check-in. Each is true; only one of them was ever about the team. Saying "your"
                   makes plain which one this is, on every reader's own page, lead included. */}
+              {/*
+                GROUP 3'S REVIEW, CONTRADICTION 5: THE SAME DATE, SAID TWICE, ONE OF THEM LESS
+                TRUE. On the Check-in tab, between sessions, this header's "Your next session opens
+                on 7 October." sat right above BetweenCheckIns' own "Your next check-in opens on
+                Wednesday 7 October at 3:30pm." - the same fact, but this one left out the weekday
+                and the time BetweenCheckIns actually has. Said once is enough, so this header skips
+                it exactly where BetweenCheckIns is about to say the fuller version; every other tab
+                still reads the date here, since nothing else on those tabs says it at all.
+              */}
               {opensLater ? (
-                <span>Your next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
+                tab !== 'checkin' && <span>Your next session opens on {whenItWas(openAvailableFrom, 'dayAndMonthLong')}.</span>
               ) : totalSessions != null ? (
                 <span>This is your session {Math.min(completedCheckIns.length + 1, totalSessions)} of {totalSessions}.</span>
               ) : (
@@ -591,7 +594,7 @@ export function GroundParticipantPage() {
                 <span>{(ground as any).daysLeft} day{(ground as any).daysLeft === 1 ? ' is' : 's are'} left.</span>
               )}
               {totalSessions != null && completedCheckIns.length >= totalSessions && (
-                <span>· every session done</span>
+                <span>Every session is done.</span>
               )}
             </>
           )}
@@ -633,9 +636,9 @@ export function GroundParticipantPage() {
         * box first.
         */}
       {tab === 'checkin' && (
-        <div style={{ padding: '4px 2px' }}>
+        <div className="gwui-pt-4 gwui-pb-4 gwui-pl-3 gwui-pr-3">
           {dueNow ? (
-            <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening your check-in…</div>
+            <Note>Opening your check-in…</Note>
           ) : (
             <BetweenCheckIns
               groundLabel={ground.label}
@@ -649,14 +652,19 @@ export function GroundParticipantPage() {
       )}
 
       {/* READING WIDTH, EXCEPT WHERE THE PAGE ISN'T PROSE (see the-dashboard-uses-the-screen.spec.ts).
-          "Report" and "Context and resources" are read, so they keep the 600px measure the
-          conversation itself uses. "My work" is not: my-record.jpg draws it as two columns side by
-          side (the stat tiles and any deals beside the pattern, commitments and reports), the same
-          shape GroundAdminPage.tsx already gives "People and setup" for the same reason - a settings
-          or overview page, not a column of prose - so `record` widens the same way `settings`
-          already does on the lead's own page, rather than folding that two-column layout down to
-          one. */}
-      <div style={{ maxWidth: (tab === 'settings' || tab === 'record') ? 1150 : 600, margin: (tab === 'settings' || tab === 'record') ? '0' : '0 auto', width: '100%', padding: '16px 16px 48px' }}>
+          "Report" is read, so it keeps the 600px measure the conversation itself uses - own-report.jpg
+          draws it exactly that narrow. "My work" and "Context and resources" are not: my-record.jpg
+          draws "My work" as two columns side by side, and context.jpg draws "Context and resources"
+          the page's own full width, the same shape GroundAdminPage.tsx already gives "People and
+          setup" and its own "Context" tab for the same reason - a settings, overview or resource page,
+          not a column of prose.
+          GROUP 3 REVIEW, BATCH B: `docs` used to stay at the reading width here, with only `record`
+          and `settings` widened - the one tab this page draws from the very same `ContextPage`
+          GroundAdminPage.tsx now widens, left narrower by mistake. */}
+      <div
+        className={`gw-bd gwui-pt-16${(tab === 'settings' || tab === 'record' || tab === 'docs') ? '' : ' gwui-ml-auto gwui-mr-auto'}`}
+        style={{ maxWidth: (tab === 'settings' || tab === 'record' || tab === 'docs') ? 1150 : 600, width: '100%' }}
+      >
 
         {/**
           * "MY WORK" IS ONE FLAT PAGE NOW, NOT TWO SUB-TABS.
@@ -685,6 +693,16 @@ export function GroundParticipantPage() {
             myFinishedSessions={myFinishedSessions}
             sessionDots={mySessionDots}
             myParticipant={myParticipant}
+            /*
+              GROUP 3'S REVIEW, BATCH A FAULT 6: "AMANI WEKESA SAID, 'I AM AIMING...'" ABOUT
+              HIMSELF. `WhatSuccessLooksLikeFor` (inside YourWork) matches each row's `who` against
+              `yourName` to decide whether to say "You" - YourWork passed the literal string "You"
+              as `yourName`, which never equals the server's own name for the row, so it always fell
+              through to the real name. BoardPage already passes the reader's own real name
+              (`myName`); the same real name, from the same labels map already built on this page,
+              goes to YourWork now.
+            */
+            myName={myParticipant ? labelsForMe.get(myParticipant.id) ?? null : null}
             leadFirstName={(ground as any)?.leadFirstName}
             otherParties={(ground.participants ?? [])
               .filter((p: any) => p.userId !== user?.id)
@@ -699,7 +717,7 @@ export function GroundParticipantPage() {
 
         {/* REPORT TAB */}
         {tab === 'report' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Stack gap={10}>
             {/*
               A SHARED REPORT NEEDS TWO PEOPLE, AND THE PAGE SAYS SO. A check-in with one person on it
               can never release one - the rule refuses outright below two - and the page said
@@ -713,9 +731,9 @@ export function GroundParticipantPage() {
               the same rule's answer, computed off the raw participants before that filter runs.
             */}
             {!(ground as any).atLeastTwoInThisRound && (
-              <div role="status" style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
+              <Callout tone="warning" role="status">
                 The shared report compares two accounts. {isInitiator ? 'Add somebody and this will build.' : 'It will build once the person running this check-in adds somebody.'} Your own record is yours to read in the meantime.
-              </div>
+              </Callout>
             )}
 
             <SharedReportForAParty
@@ -741,7 +759,7 @@ export function GroundParticipantPage() {
               )}
               viewerUserId={user?.id}
             />
-          </div>
+          </Stack>
         )}
 
         {/*
@@ -754,8 +772,17 @@ export function GroundParticipantPage() {
         )}
 
         {/* SETTINGS TAB */}
+        {/*
+          SETTINGS TAB: STILL A FLEX COLUMN, NOT `Stack` (what-is-true-about-you-comes-first.spec.ts).
+          `MyParticipation`'s own sections carry `order` values that only mean anything inside a
+          flex or grid parent, so the person's own facts can sit before the lead-owned panels
+          without changing where either is written in the source. `Stack` lays its children out
+          with plain block margins, which would silently undo that reordering - so only `gap` (the
+          one banned prop this div had) moves to a class; `display`/`flexDirection` are not banned
+          and stay inline, keeping the flex context `order` needs.
+        */}
         {tab === 'settings' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="gwui-gap-10" style={{ display: 'flex', flexDirection: 'column' }}>
             {/*
               ROUND 4, ITEM A STEP 2: "WHO IS IN THIS", MOVED HERE FROM THE CHECK-IN TAB.
               GroundChat.tsx's GroundTopic used to hold this beside "About this check-in" - which
@@ -791,7 +818,7 @@ export function GroundParticipantPage() {
               on My record, beside her own account of it, which is where it can be compared rather
               than merely disclosed. See `WhatSuccessLooksLike`.
             */}
-            <div style={{ order: 0, fontSize: 13, fontWeight: 700, color: 'var(--gw-text)', marginBottom: 4 }}>Setup</div>
+            <SubHeading>Setup</SubHeading>
 
             {/* Profile summary */}
             <MyParticipation
@@ -811,4 +838,10 @@ export function GroundParticipantPage() {
 
     </div>
   )
+}
+
+/* The same shell GroundAdminPage.tsx uses for a state that renders outside `Page` altogether
+   (the ground is genuinely gone): full height, the page's own cream, nothing else. */
+function Shell({ children }: { children: React.ReactNode }) {
+  return <div className="gwui-page-shell">{children}</div>
 }

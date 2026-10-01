@@ -137,8 +137,19 @@ describe('every page is painted with the page colour, not the card fill', () => 
   })
 
   it('and the search above is finding real pages, so it cannot pass on nothing', () => {
+    /*
+     * THE FLOOR ONLY EVER SHRINKS, AS A PAGE MOVES ONTO THE SHARED PART.
+     *
+     * GroundParticipantPage.tsx carried five of its own `background: 'var(--gw-page)'` inline
+     * styles (the loading, error, gone and "not in this check-in" states, plus its own full-page
+     * wrapper) - one file in this count, however many times it repeated the string. Group 3, piece
+     * 5, part 9 moved every one of them onto the shared `gwui-page-shell` class (the same part
+     * GroundAdminPage.tsx's own equivalent states already use), so this file no longer matches the
+     * search at all and the floor drops by the one file it was. This still proves the search finds
+     * real pages, not nothing: 14 files still paint themselves with the page colour inline.
+     */
     const onThePage = files.filter(f => /background: 'var\(--gw-page\)'/.test(readFileSync(f, 'utf8')))
-    expect(onThePage.length).toBeGreaterThan(15)
+    expect(onThePage.length).toBeGreaterThan(14)
   })
 })
 

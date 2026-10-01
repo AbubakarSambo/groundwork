@@ -353,7 +353,15 @@ function movementSentence(value: string, sub: string): string {
     return `${capitalize(smallWord(n))} target${n === 1 ? '' : 's'} moved this session.`
   }
   if (value === 'None' && /no target moved this session/.test(sub)) return 'No target moved this session.'
-  const set = sub.match(/^(\d+) targets? set, and no round has closed to measure from$/)
+  /*
+   * GROUP 3'S REVIEW, BATCH A FAULT 6: THIS REGEX NEVER MATCHED WHAT THE SERVER ACTUALLY SENDS.
+   * `what-this-session-holds.ts` writes "6 targets are set, and no round has closed to measure
+   * from." (with "are", and a trailing period) - the pattern here expected "6 targets set, and no
+   * round has closed to measure from" (no "are", no period), so it always fell through to the raw
+   * fallback below, which is why "no round has closed" (the retired word) reached the screen
+   * instead of the session-worded sentence this function already knows how to build.
+   */
+  const set = sub.match(/^(\d+) targets? (?:is|are )?set, and no round has closed to measure from\.?$/)
   if (set) {
     const n = Number(set[1])
     return `Nothing has moved yet. ${capitalize(smallWord(n))} target${n === 1 ? '' : 's'} ${n === 1 ? 'is' : 'are'} set, and no session has closed to measure ${n === 1 ? 'it' : 'them'} against.`
@@ -371,7 +379,12 @@ function blockersSentence(value: string, sub: string): string {
       const extra = Number(more[2])
       return `${lead}, ${lowerFirst(more[1])}, and ${smallWord(extra)} more thing${extra === 1 ? '' : 's'} ${extra === 1 ? 'is' : 'are'} blocking work too.`
     }
-    return `${lead}, ${lowerFirst(sub)}.`
+    /*
+     * GROUP 3'S REVIEW, BATCH A FAULT 6: "ONE THING IS BLOCKING WORK, WORK IS HELD UP BY THE
+     * DISCOUNT DECISION.." - a bare "." was appended even when `sub` already ended in one, giving
+     * two full stops on one sentence. `withPeriod` only adds one when none is already there.
+     */
+    return withPeriod(`${lead}, ${lowerFirst(sub)}`)
   }
   const waiting = value.match(/^(\d+) waiting$/)
   if (waiting) {
@@ -675,7 +688,14 @@ export function TheSessionsReport({ groundId, sessionNumber, totalInThisRound }:
                       <div className="gwui-gap-3" style={{ display: 'grid' }}>
                         {o.positions.map((p, j) => (
                           <p key={j} className="gwui-m-0 gwui-fs-13 gwui-ink-text" style={PROSE}>
-                            <span className="gwui-ink-sub">{p.who}: </span>{p.view}
+                            {/*
+                              GROUP 3'S REVIEW, BATCH A FAULT 6: "BARAKA MWANGI: COMPETITOR PRICING
+                              IS..." AND "RUKIA OTIENO: THE MAIN OBSTACLE..." WERE A LABEL GLUED TO
+                              A CLAUSE WITH A COLON, NOT A SENTENCE. Each is now its own full
+                              sentence, "X said ...", with the reader's own line read as "You said
+                              ..." - the same rule `Cite`/`Quotes` already use just above.
+                            */}
+                            {(p.who === yourName ? 'You' : p.who)} said {lowerFirst(p.view)}
                           </p>
                         ))}
                       </div>

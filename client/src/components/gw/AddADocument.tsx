@@ -88,9 +88,6 @@ export function AddADocument({
     onError: () => toast.error('It was not removed. It is still here and still private to you, so try again.'),
   })
 
-  const h3 = { fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', margin: '18px 0 6px' } as const
-  const rowStyle = { display: 'flex', gap: 10, alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid var(--gw-line)', flexWrap: 'wrap' } as const
-
   return (
     <section aria-label="Add a document" style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '18px 20px', marginBottom: 16, maxWidth: 720 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
@@ -122,10 +119,10 @@ export function AddADocument({
 
       {isRead && took.length > 0 && (
         <>
-          <h3 style={h3}>What it took from the document</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', margin: '18px 0 6px' }}>What it took from the document</h3>
           <div>
             {took.map((t, i) => (
-              <div key={i} style={rowStyle}>
+              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid var(--gw-line)', flexWrap: 'wrap' }}>
                 <span aria-hidden style={{ color: 'var(--gw-green-t)' }}>{'✓'}</span>
                 <span style={{ flex: '1 1 200px', fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>{t.what}</span>
                 {t.detail && <span style={{ flex: '1 1 160px', fontSize: 13, color: 'var(--gw-text)' }}>{t.detail}</span>}
@@ -138,10 +135,10 @@ export function AddADocument({
 
       {isRead && leftOut.length > 0 && (
         <>
-          <h3 style={h3}>What it left out</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', margin: '18px 0 6px' }}>What it left out</h3>
           <div>
             {leftOut.map((t, i) => (
-              <div key={i} style={rowStyle}>
+              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '8px 0', borderTop: '1px solid var(--gw-line)', flexWrap: 'wrap' }}>
                 <span aria-hidden style={{ color: 'var(--gw-muted)' }}>{'○'}</span>
                 <span style={{ flex: '1 1 200px', fontSize: 13, fontWeight: 600, color: 'var(--gw-dark)' }}>{t.what}</span>
                 {t.page != null && <span style={{ fontSize: 12, color: 'var(--gw-sub)' }}>Page {t.page}</span>}
@@ -152,7 +149,7 @@ export function AddADocument({
         </>
       )}
 
-      <h3 style={h3}>Who can read it</h3>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--gw-dark)', margin: '18px 0 6px' }}>Who can read it</h3>
       {contextEnabled ? (
         <div role="radiogroup" aria-label="Who can read it" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {([

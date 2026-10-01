@@ -24,6 +24,7 @@ import { useState } from 'react'
 import { peopleLabels, atTheStart } from '@/lib/utils'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { ExpectationsPanel } from '@/components/gw/ExpectationsPanel'
+import { Folded } from '@/components/gw/ui'
 
 export interface APersonOnTheCard {
   id: string
@@ -152,43 +153,43 @@ export function EachPerson({
         ].filter(Boolean).join(', ') || 'Nothing on record yet'
 
         return (
-          <div key={p.id} style={{ background: 'white', border: `1px solid ${isMe ? 'var(--gw-navy)' : 'var(--gw-border)'}`, borderRadius: 10, overflow: 'hidden' }}>
-            <button
-              onClick={() => setOpen((o) => ({ ...o, [p.id]: !o[p.id] }))}
-              aria-expanded={isOpen}
-              style={{
-                width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer',
-                padding: '11px 13px', display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', fontFamily: 'inherit',
-              }}
-            >
-              {/*
-                AN ARROW, NOT THE WORD "OPEN".
-                
-                Hafsah, 23 September 2026: "it is not clear that open is a drop down, can you make
-                it an arrow." It was an eleven-pixel grey word at the far right of the row, which
-                reads as a status rather than a control - and the thing it sat beside, the summary,
-                IS a status. The arrow goes at the front, where the eye starts, points down when the
-                card is open, and the word stays at the end for anybody who reads labels rather than
-                shapes. `aria-hidden`, because `aria-expanded` on the button already says this to a
-                screen reader and a second voice saying it again is noise.
-              */}
-              <span aria-hidden style={{
-                fontSize: 10, color: 'var(--gw-sub)', lineHeight: 1,
-                display: 'inline-block', width: 10,
-                transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .12s ease',
-              }}>&#9654;</span>
-              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{isMe ? 'You' : atTheStart(labelOf(p))}</span>
-              {/* The lead's own note, beside the name and never as it. The server sends it only to the
-                  check-in's lead, and this card says "Your note" only to the lead as well: an admin
-                  reading the page did not write it (U.7 review). */}
-              {isTheLead && p.roleAsDescribed && <span data-leads-note style={{ fontSize: 12, color: 'var(--gw-sub)' }}>{theLeadsNote(p.roleAsDescribed)}</span>}
-              <span style={{ flex: 1 }} />
-              <span style={{ fontSize: 12, color: 'var(--gw-muted)' }}>{summary}</span>
-              <span style={{ fontSize: 11, color: 'var(--gw-muted)' }}>{isOpen ? 'Hide' : 'Open'}</span>
-            </button>
+          /*
+            THE FOLD ITSELF IS THE SHARED `Folded` PART, NOT A BESPOKE BUTTON (Hafsah, 30 September,
+            the button rules: "something that only opens or closes a section is the shared Folded
+            part"). `Folded` draws the arrow itself (CSS `::before` on its summary, pointing right
+            closed and down open) and is a `<details>`/`<summary>`, not a `<button>` or `<a>`, so it
+            is never counted by the two-button-rules test either way - the arrow and the "Open"/
+            "Hide" word this used to carry are gone with the bespoke button, same as every other
+            `Folded` row in the app (e.g. "Who reports to whom") carries neither.
 
-            {isOpen && (
-              <div style={{ padding: '2px 13px 13px' }}>
+            CONTROLLED, not the plain uncontrolled disclosure most `Folded` callers use: a closed
+            row's whole body - the expectation, numbers, to-dos, asks and files - must stay OUT of
+            the DOM while shut, exactly as the previous `{isOpen && (...)}` kept it, not merely
+            hidden by the browser's own `<details>` styling. See the note on `Folded`'s own `open`/
+            `onToggle` props.
+          */
+          <Folded
+            key={p.id}
+            summary={isMe ? 'You' : atTheStart(labelOf(p))}
+            open={isOpen}
+            onToggle={(next) => setOpen((o) => ({ ...o, [p.id]: next }))}
+            note={(
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {/* The lead's own note, beside the name and never as it. The server sends it only to
+                    the check-in's lead, and this card says "Your note" only to the lead as well: an
+                    admin reading the page did not write it (U.7 review).
+
+                    GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 7: TWO SENTENCES, NOT ONE RUN-ON
+                    WORD. These sat as two inline spans with nothing between them, so the lead's
+                    note ran straight into the summary with no space - "I sell fridges in
+                    KilimaniNothing on record yet." A column, not a row, puts each on its own line. */}
+                {isTheLead && p.roleAsDescribed && <span data-leads-note>{theLeadsNote(p.roleAsDescribed)}</span>}
+                <span>{summary}</span>
+              </div>
+            )}
+          >
+            {(
+              <div style={{ padding: '2px 0 0' }}>
                 {/* WHAT THEIR CHECK-IN IS ABOUT FOR THEM: the expectation, in the lead's words, and
                     whether the person has seen it. Never editable here - see the note at the top. */}
                 <Part title={isMe ? 'What is expected of you' : 'What is expected of them'}>
@@ -216,8 +217,11 @@ export function EachPerson({
                         or from the conversation on this page.
                       </Empty>
                     )}
+                  {/* THIS ONLY GOES ELSEWHERE (Hafsah, 30 September, the button rules): it hands the
+                      change to the conversation rather than doing anything itself, so it is a quiet
+                      text link, `.gwui-plain-link`, not a button. */}
                   {isLead && onChangeInChat && (
-                    <Small onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `)}>Change this in the chat</Small>
+                    <QuietLink onClick={() => onChangeInChat(`Change what I expect of ${labelOf(p)} to `)}>Change this in the chat</QuietLink>
                   )}
                 </Part>
 
@@ -250,10 +254,14 @@ export function EachPerson({
                           {isTheLead ? 'These are your words, not theirs.' : isMe ? `These are ${leadsOwn} words, not yours.` : `These are ${leadsOwn} words, not theirs.`}
                         </span>
                       )}
+                      {/* A PAIR OF CHOICES ON THE ROW (Hafsah, 30 September, the button rules): "Done"
+                          or "Not doing it" is a quiet text link pair, not two buttons - it marks the
+                          to-do's own state, which is a different action from the row's "Attach it"
+                          below (that sends something; this only says what already happened). */}
                       {isMe && onSetToDo && (
                         <span style={{ display: 'flex', gap: 8 }}>
-                          <Small onClick={() => onSetToDo(t.id, 'DONE')}>Done</Small>
-                          <Small onClick={() => onSetToDo(t.id, 'DROPPED')}>Not doing it</Small>
+                          <QuietLink onClick={() => onSetToDo(t.id, 'DONE')}>Done</QuietLink>
+                          <QuietLink onClick={() => onSetToDo(t.id, 'DROPPED')}>Not doing it</QuietLink>
                         </span>
                       )}
                     </div>
@@ -294,7 +302,7 @@ export function EachPerson({
                 </Part>
               </div>
             )}
-          </div>
+          </Folded>
         )
       }}
       </ShowAFew>
@@ -315,12 +323,30 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 12.5, color: 'var(--gw-muted)', lineHeight: 1.55 }}>{children}</div>
 }
 
+/*
+ * "ATTACH IT" AND "ATTACH SOMETHING" STAY BUTTONS (Hafsah, 30 September, the button rules:
+ * "something that sends or changes something stays a button"). Uploading the thing somebody said
+ * they would show is not navigation and not a row's own two-way state - it sends a file - so it
+ * keeps its own `<button>`, drawn quietly rather than as a heavy primary control.
+ */
 function Small({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
       style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--gw-navy)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
     >
+      {children}
+    </button>
+  )
+}
+
+/** A plain text link that still does something rather than going somewhere - `.gwui-plain-link`,
+    CLAUDE.md's own name for this shape - for "Change this in the chat" and a to-do's own "Done" /
+    "Not doing it" pair: neither sends anything itself, so neither competes with the page's one real
+    primary button the way a boxed button would. */
+function QuietLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="gwui-plain-link">
       {children}
     </button>
   )

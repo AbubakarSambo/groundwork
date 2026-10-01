@@ -21,10 +21,11 @@ const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[
 const PAGE = strip(readFileSync(join(__dirname, 'ContextPage.tsx'), 'utf8'))
 
 describe('writing the brief', () => {
-  it('is offered on the brief itself, to whoever runs the check-in', () => {
-    /* "Rewrite", the prototype's word, since U.7 (it was "Rewrite this"). */
+  it('is offered on the brief itself, only to whoever may change setup', () => {
+    /* "Rewrite", the prototype's word, since U.7 (it was "Rewrite this"). Hafsah, 1 October: the
+       brief follows the setup rule, the lead, or an admin once the lead has left (request 104). */
     expect(PAGE).toMatch(/>\s*Rewrite\s*</)
-    expect(PAGE).toContain('{isLead && briefDraft === null && (')
+    expect(PAGE).toContain('{mayRewriteTheBrief && briefDraft === null && (')
   })
 
   it('and offered as a way in when there is none yet', () => {

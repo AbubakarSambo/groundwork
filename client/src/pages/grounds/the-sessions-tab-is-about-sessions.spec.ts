@@ -54,8 +54,14 @@ describe('the sessions tab', () => {
     expect(SESSIONS_TAB).not.toContain('<ShareSection')
   })
 
-  it('but keeps the closing session, which is about sessions', () => {
-    expect(SESSIONS_TAB).toContain('Begin the closing session')
+  it('but keeps the closing control, worded with the plain word "check-in"', () => {
+    /*
+     * WORDING UPDATED (group 3's review, request batch A, fault 6): "session" is internal jargon
+     * on a button a lead presses; the product calls the thing a person answers a "check-in"
+     * everywhere else on this screen ("Start a new check-in"). This does not reopen the settled
+     * "session" vs "round" naming (one-word-and-it-is-session.spec.ts) - that is a different axis.
+     */
+    expect(SESSIONS_TAB).toContain('Begin the last check-in')
   })
 })
 

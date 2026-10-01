@@ -4,7 +4,7 @@ import { groundsApi } from '@/api/grounds'
 import { documentsApi } from '@/api/documents'
 import { toast } from 'sonner'
 import { personLabel, peopleLabels, firstNameOrLabel, atTheStart } from '@/lib/utils'
-import { Sec } from '@/components/gw/kit'
+import { Section, Panel, Button, TextArea, Tag, Note, Callout, Choices, SubHeading } from '@/components/gw/ui'
 import { scrollToId } from '@/lib/scroll-to'
 import { ShowAFew } from '@/components/gw/a-long-list-is-not-a-page'
 import { EachPerson } from '@/components/gw/EachPerson'
@@ -95,6 +95,13 @@ export function ContextPage({
   const isLead = role === 'lead' || role === 'admin'
   /** Its lead alone. See the note on `role` for why these are two questions. */
   const isTheLead = role === 'lead'
+  /**
+   * WHO MAY REWRITE THE BRIEF (Hafsah, 1 October): the same rule as every other setup change. Only
+   * the lead, unless the lead has left the organisation; then an admin may, and people are told who
+   * did it. The server says so in `mayChangeSetup` (request 104); until it sends that, only the
+   * lead is offered it, the more careful side of the rule.
+   */
+  const mayRewriteTheBrief = typeof (ground as any)?.mayChangeSetup === 'boolean' ? (ground as any).mayChangeSetup === true : isTheLead
   const contextEnabled = (ground as any)?.contextEnabled === true
   const myParticipant = (ground.participants ?? []).find((p: any) => p.userId === viewerUserId)
 
@@ -322,21 +329,16 @@ export function ContextPage({
     (a: any, b: any) => (a.participantId ? 1 : 0) - (b.participantId ? 1 : 0),
   )
 
-  /**
-   * THE NUMBER EACH BAND GETS, COUNTED AS THE PAGE IS DRAWN.
-   *
-   * Numbering them by hand went wrong twice in one day: first the numbers started at the third band,
-   * then a band that only renders when it has content ("Only you see this") left a gap between 3 and
-   * 5. A fixed number on a conditional section is a promise the page cannot keep, and a reader who
-   * sees 3 then 5 reasonably concludes something failed to load.
-   *
-   * Called in render order, once per band that actually renders, so the sequence is always what a
-   * person can see. It is a counter rather than a computed list because the conditions are spread
-   * through the JSX and a list would be a second copy of them.
+  /*
+   * THE BANDS ARE NOT NUMBERED (group 3, piece 5, last piece). They used to be, by a counter
+   * incremented once per band actually drawn - a fix for numbers that went wrong when a band only
+   * renders with content. But the prototype's own Context screen
+   * (docs/prototype/screens/B2-context/context.txt and company-context.txt) never numbers a
+   * heading anywhere, on this page or any other, and `docs/prototype/source/app.css` has no rule
+   * for a numbered heading either. A count the prototype does not show is not this page's to add
+   * back; `Section`'s heading and note, unnumbered, are what every other rebuilt page already
+   * uses. See docs/the-parts-against-the-prototype.md.
    */
-  let bandsSoFar = 0
-  const band = () => ++bandsSoFar
-
 
   /**
    * The lead's own answer to "What is this about? What needs to be true at the end?", typed at
@@ -422,10 +424,11 @@ export function ContextPage({
                   her own ground and waited for the first report. Nothing here writes a report; check-ins do,
                   and hers was still "Not started" on the Sessions tab. Said once, under the conversation. */}
               {contextEnabled && isTheLead && (
-                <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                  This conversation sets the context. It is not your check-in: the report is written from check-ins, and yours is on the{' '}
-                  <a href={`/grounds/${id}?tab=chat`} style={{ color: 'var(--gw-navy)' }}>Check-in tab</a>.
-                </div>
+                <Note>
+                  {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "IT IS NOT YOUR CHECK-IN: THE REPORT..." JOINED TWO SENTENCES WITH A COLON. */}
+                  This conversation sets the context. It is not your check-in. The report is written from check-ins, and yours is on the{' '}
+                  <a href={`/grounds/${id}?tab=chat`} className="gwui-plain-link">Check-in tab</a>.
+                </Note>
               )}
             </div>
 
@@ -452,44 +455,45 @@ export function ContextPage({
               setup, in your own words") is now a full sentence under the brief itself, and the
               targets, which it also had to account for, are their own band since U.7.
             */}
-            <Sec n={band()} title="What this check-in is for" />
+            <Section heading="What this check-in is for" />
             {whatEveryoneReads && (
-              <div data-gw-brief style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: objectives.length > 0 ? 8 : 6, maxWidth: 620 }}>
-                <div style={{ fontSize: 14, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{'\u201C'}{whatEveryoneReads}{'\u201D'}</div>
+              <Panel>
+                <p data-gw-brief className="gwui-panel-text gwui-pre-line">{'“'}{whatEveryoneReads}{'”'}</p>
                 {/*
                   WHOSE WORDS, SAID TO WHOEVER IS READING. The prototype's sentence for the lead; the
                   lead's name for everybody else, never "the lead" to the lead's own face (item D on
                   the Context fix list, 23 September 2026).
                 */}
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-                  <span data-gw-brief-whose style={{ fontSize: 12, color: 'var(--gw-sub)' }}>
+                <div className="gwui-sentence-row gwui-mt-8">
+                  <span data-gw-brief-whose className="gwui-fs-13 gwui-ink-sub">
                     {whoseWords ? `${whoseWords} ` : ''}This is what everyone in this check-in reads before they answer.
                   </span>
-                  {isLead && briefDraft === null && (
-                    <button
+                  {mayRewriteTheBrief && briefDraft === null && (
+                    <Button
+                      kind="quiet"
+                      size="small"
                       onClick={() => setBriefDraft(theBriefIsSetups ? whatEveryoneReads : (theBrief || whatEveryoneReads))}
-                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Rewrite
-                    </button>
+                    </Button>
                   )}
                 </div>
                 {/* Her own words from setup, to her alone, while the brief is still setup's. */}
                 {isTheLead && herSetupWords && !changedBy && (
-                  <details data-gw-brief-fold style={{ marginTop: 8 }}>
-                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>What you wrote</summary>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{herSetupWords}</div>
+                  <details data-gw-brief-fold className="gwui-mt-8">
+                    <summary className="gwui-inline-fold-summary gwui-fs-13 gwui-ink-navy">What you wrote</summary>
+                    <p className="gwui-panel-text-muted gwui-pre-line gwui-mt-6">{herSetupWords}</p>
                   </details>
                 )}
                 {/* The stored brief, where what everyone reads is Groundwork's short read of it, and
                     only when somebody wrote it: never the text setup put together (see above). */}
                 {isLead && theBrief && !shownIsTheBrief && !theBriefIsSetups && (
-                  <details data-gw-brief-fold style={{ marginTop: 8 }}>
-                    <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>{theBriefFoldTitle}</summary>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginTop: 6 }}>{theBrief}</div>
+                  <details data-gw-brief-fold className="gwui-mt-8">
+                    <summary className="gwui-inline-fold-summary gwui-fs-13 gwui-ink-navy">{theBriefFoldTitle}</summary>
+                    <p className="gwui-panel-text-muted gwui-pre-line gwui-mt-6">{theBrief}</p>
                   </details>
                 )}
-              </div>
+              </Panel>
             )}
             {/*
               AN EMPTY BRIEF SAYS WHAT A BRIEF IS, rather than nothing at all.
@@ -501,26 +505,24 @@ export function ContextPage({
               on. See the comment in entry.service.ts on `const brief`.
             */}
             {!whatEveryoneReads && briefDraft === null && (
-              <div style={{ background: 'white', border: '1px dashed var(--gw-border)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                  Nobody has said what this check-in is for yet. Whoever runs it can write a few
-                  lines about what it is for and what they want from it. Everyone in this check-in
+              <Panel className="gwui-rule-dashed">
+                <p className="gwui-panel-text-muted">
+                  Nobody has said what this check-in is for yet. The lead can write a few lines
+                  about what it is for and what they want from it. Everyone in this check-in
                   reads it before they answer.
-                </div>
-                {isLead && (
-                  <button
-                    onClick={() => setBriefDraft('')}
-                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                  >
-                    Write the brief
-                  </button>
+                </p>
+                {mayRewriteTheBrief && (
+                  <div className="gwui-mt-8">
+                    <Button kind="quiet" size="small" onClick={() => setBriefDraft('')}>
+                      Write the brief
+                    </Button>
+                  </div>
                 )}
-              </div>
+              </Panel>
             )}
             {isLead && briefDraft !== null && (
-              <div style={{ background: 'white', border: '1px solid var(--gw-blue-b)', borderRadius: 8, padding: '11px 13px', marginBottom: 6, maxWidth: 620 }}>
-                <textarea
-                  className="gw-ta"
+              <Panel className="gwui-rule-blue">
+                <TextArea
                   autoFocus
                   value={briefDraft}
                   onChange={(e) => setBriefDraft(e.target.value)}
@@ -528,25 +530,22 @@ export function ContextPage({
                   maxLength={4000}
                   placeholder="What this check-in is for, and what you want from it, in your own words."
                 />
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-                  <button
+                <div className="gwui-button-row gwui-mt-8">
+                  <Button
+                    size="small"
                     onClick={() => saveBrief.mutate(briefDraft)}
                     disabled={saveBrief.isPending || briefDraft === theBrief}
-                    style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: briefDraft === theBrief ? 0.4 : 1 }}
                   >
                     {saveBrief.isPending ? 'Saving…' : 'Save'}
-                  </button>
-                  <button
-                    onClick={() => setBriefDraft(null)}
-                    style={{ padding: '8px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
+                  </Button>
+                  <Button kind="secondary" size="small" onClick={() => setBriefDraft(null)}>
                     Cancel
-                  </button>
+                  </Button>
                   {theBrief && briefDraft.trim() === '' && (
-                    <span style={{ fontSize: 11.5, color: 'var(--gw-amber-t)' }}>Saving it empty removes the brief.</span>
+                    <Note>Saving it empty removes the brief.</Note>
                   )}
                 </div>
-              </div>
+              </Panel>
             )}
             {/*
               TARGETS, IN THE PROTOTYPE'S TABLE (U.7): what it is, the number, whose it is, and who
@@ -561,7 +560,7 @@ export function ContextPage({
             */}
             {objectives.length > 0 ? (
               <>
-                <Sec n={band()} title="Targets" />
+                <Section heading="Targets" />
                 <TargetsBand
                   groundId={id}
                   targets={objectives}
@@ -574,9 +573,9 @@ export function ContextPage({
               </>
             ) : (
               !theBrief && (
-                <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '13px 15px', fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6, marginBottom: 6, maxWidth: 620 }}>
+                <Callout>
                   Nothing yet. Say what this is counted by in the conversation below and it lands here.
-                </div>
+                </Callout>
               )
             )}
 
@@ -594,12 +593,11 @@ export function ContextPage({
               for. One heading for both made the lead's page read like a form and the participant's
               read like somebody else's list.
             */}
-            <Sec
-              n={band()}
-              /* Renamed 22 September 2026: "not sure the purpose of person by person". The band is a
-                 card per person holding everything about them, so it is named after that. */
-              title={isLead ? 'Each person' : 'Your part, and everybody else\u2019s'}
-              src={isLead ? 'Open a card to see that person\u2019s numbers, to-dos and what they said they would show.' : 'Your card is open. Open anyone else\u2019s card to see what is on it.'}
+            {/* Renamed 22 September 2026: "not sure the purpose of person by person". The band is a
+                card per person holding everything about them, so it is named after that. */}
+            <Section
+              heading={isLead ? 'Each person' : 'Your part, and everybody else\u2019s'}
+              note={isLead ? 'Open a card to see that person\u2019s numbers, to-dos and what they said they would show.' : 'Your card is open. Open anyone else\u2019s card to see what is on it.'}
             />
             {/*
               WHAT IS OUTSTANDING, IN ONE LINE, BEFORE THE LIST OF IT.
@@ -614,15 +612,7 @@ export function ContextPage({
               const all = (ground.participants ?? []).flatMap((p: any) => p.objective?.all ?? [])
               const line = whatIsOutstanding(all, new Date())
               if (!line || !isLead) return null
-              return (
-                <div style={{
-                  fontSize: 12.5, color: 'var(--gw-amber-t)', background: 'var(--gw-amber-bg)',
-                  border: '1px solid var(--gw-amber-b-soft)', borderRadius: 8,
-                  padding: '9px 12px', marginBottom: 10, lineHeight: 1.55,
-                }}>
-                  {line}
-                </div>
-              )
+              return <Callout tone="warning">{line}</Callout>
             })()}
 
             {/*
@@ -760,11 +750,11 @@ export function ContextPage({
               document, who reads it, what the check-in read from it, and what that read is used to
               check. Nothing here is invented - a line is only drawn where the server sends it.
             */}
-            <Sec n={band()} title="Resources" src="Shared, read, and what each checks" />
+            <Section heading="Resources" note="Shared, read, and what each checks" />
             {documentsAreNotOpenToYou && (
-              <div data-gw-documents-not-open style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, maxWidth: 620 }}>
+              <p data-gw-documents-not-open className="gwui-note">
                 Documents here are shared by the people in this check-in, so you cannot open them from here.
-              </div>
+              </p>
             )}
 
             {/*
@@ -787,7 +777,7 @@ export function ContextPage({
                 bulk she keeps naming - and the reader has already made the choice by their second
                 upload. */}
             {contextEnabled && docs.length === 1 && (
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, background: 'var(--gw-bg)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+              <Callout>
                 {/*
                   THE WORDS HERE ARE THE WORDS ON THE CONTROL, which they were not: this sentence
                   explained "Open" and the button has always said "Everyone", so the one term the
@@ -796,7 +786,7 @@ export function ContextPage({
                 */}
                 Everything you add starts private to you. If you choose <b>Everyone</b>, everyone in this check-in can read it. If you choose <b>Only you</b>, nobody else can open it.
                 {isTheLead && <> If you choose <b>Whoever runs this check-in</b>, the person running it can read it, so it stays readable if someone else takes the check-in over from you.</>}
-              </div>
+              </Callout>
             )}
             {/*
               THE DOCUMENTS AS CARDS, WITH "ADD A DOCUMENT" AS THE LAST CARD (U.7, the prototype's
@@ -816,7 +806,7 @@ export function ContextPage({
               />
             )}
             {!documentsAreNotOpenToYou && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10, marginBottom: 12, maxWidth: 720 }}>
+            <div className="gwui-doc-grid">
             {/*
               GROUPED BY WHO READS THEM, which is the only decision anybody makes about a file.
               
@@ -829,10 +819,11 @@ export function ContextPage({
               ...docs.filter((d: any) => d.visibility === 'OPEN'),
               ...docs.filter((d: any) => d.visibility !== 'OPEN'),
             ].filter((d: any) => d.id !== reviewing?.id).map((doc: any) => (
-              <div key={doc.id} data-gw-document={doc.id} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10, minWidth: 0 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>
-                    {doc.name}
+              <Panel key={doc.id}>
+                <div data-gw-document={doc.id} className="gwui-doc-card">
+                <div>
+                  <p className="gwui-fs-13">
+                    <strong>{doc.name}</strong>
                     {/*
                       A PHOTO READS AS A PHOTO. Her words: "they should see docs/photos/things to
                       upload". A thumbnail is not possible today and saying so is better than
@@ -841,9 +832,9 @@ export function ContextPage({
                       thumbnail waits until a file is stored as a file.
                     */}
                     {/^image\//.test((doc as any).mimeType ?? '') && (
-                      <span style={{ marginLeft: 7, fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-navy)', background: 'var(--gw-blue-bg)', border: '1px solid var(--gw-blue-b)' }}>photo</span>
+                      <> <Tag tone="action">photo</Tag></>
                     )}
-                  </div>
+                  </p>
                   {/*
                     "WHAT WE READ FROM IT" AND "USED TO CHECK", THE COMPANY-LEVEL RESOURCES ROW,
                     ONE LEVEL DOWN (company-context.txt, "Strategy v2.pdf / Everyone / What we read
@@ -857,9 +848,9 @@ export function ContextPage({
                     else who can read it.
                   */}
                   {doc.usedFor && (
-                    <div style={{ marginTop: 5 }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-sub)' }}>Used to check</div>
-                      <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5 }}>{doc.usedFor}</div>
+                    <div className="gwui-mt-5">
+                      <SubHeading>Used to check</SubHeading>
+                      <p className="gwui-panel-text-muted">{doc.usedFor}</p>
                     </div>
                   )}
                   {/*
@@ -876,9 +867,9 @@ export function ContextPage({
                       : (doc.theContextWeHave ? doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '').trim() : null)
                     if (!whatWeRead) return null
                     return (
-                      <div style={{ marginTop: 5 }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gw-sub)' }}>What we read from it</div>
-                        <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{whatWeRead}</div>
+                      <div className="gwui-mt-5">
+                        <SubHeading>What we read from it</SubHeading>
+                        <p className="gwui-panel-text-muted gwui-pre-line">{whatWeRead}</p>
                       </div>
                     )
                   })()}
@@ -890,23 +881,21 @@ export function ContextPage({
                     holds.ts) - one click away rather than printed a second time.
                   */}
                   {doc.theContextWeHave && (
-                    <details data-gw-document-took style={{ marginTop: 6 }}>
-                      <summary style={{ fontSize: 12, color: 'var(--gw-navy)', cursor: 'pointer' }}>What Groundwork took from it</summary>
+                    <details data-gw-document-took className="gwui-mt-6">
+                      <summary className="gwui-inline-fold-summary gwui-fs-13 gwui-ink-navy">What Groundwork took from it</summary>
                       {doc.uploadedAt && (
-                        <div style={{ fontSize: 11.5, color: 'var(--gw-muted)', marginTop: 5 }}>Added on {whenItWas(doc.uploadedAt, 'day')}.</div>
+                        <Note>Added on {whenItWas(doc.uploadedAt, 'day')}.</Note>
                       )}
-                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--gw-text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      <p className="gwui-panel-text gwui-pre-line gwui-mt-6">
                         {doc.theContextWeHave.replace(/^Here is the context we have from [^\n]*\n*/, '')}
                         {(doc.holds?.forOnePerson?.length || doc.holds?.forEverybody?.length) ? (
-                          <div style={{ fontSize: 11.5, color: 'var(--gw-sub)', marginTop: 6 }}>
-                            These are on the board and in the report, against the people who hold them.
-                          </div>
+                          <Note>These are on the board and in the report, against the people who hold them.</Note>
                         ) : null}
-                      </div>
+                      </p>
                     </details>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div className="gwui-button-row">
                   {/* WHO CAN READ THIS, stated on the row rather than in a
                       settings screen. Somebody deciding whether to attach a
                       handover note needs the answer where they are, not two
@@ -943,13 +932,7 @@ export function ContextPage({
                         visibility: e.target.value as 'OPEN' | 'OWN' | 'CLOSED',
                       })}
                       aria-label={`Who can read ${doc.name}`}
-                      style={{
-                        fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
-                        padding: '3px 6px', borderRadius: 20,
-                        border: `1px solid ${(doc as any).visibility === 'OPEN' ? '#A7D9CC' : 'var(--gw-border)'}`,
-                        background: (doc as any).visibility === 'OPEN' ? '#DFF1EA' : 'var(--gw-bg)',
-                        color: (doc as any).visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
-                      }}
+                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
                     >
                       <option value="OPEN">Everyone</option>
                       <option value="OWN">Only you</option>
@@ -978,13 +961,7 @@ export function ContextPage({
                       title={(doc as any).visibility === 'OPEN'
                         ? 'Everyone in this check-in can read this. Click to make it yours only.'
                         : 'Only you can read this. Click to share it with everyone in this check-in.'}
-                      style={{
-                        fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
-                        padding: '3px 9px', borderRadius: 20,
-                        border: `1px solid ${(doc as any).visibility === 'OPEN' ? '#A7D9CC' : 'var(--gw-border)'}`,
-                        background: (doc as any).visibility === 'OPEN' ? '#DFF1EA' : 'var(--gw-bg)',
-                        color: (doc as any).visibility === 'OPEN' ? 'var(--gw-green-t)' : 'var(--gw-sub)',
-                      }}
+                      className={`gwui-tag gwui-tag-control ${(doc as any).visibility === 'OPEN' ? 'gwui-tag-proven' : 'gwui-tag-plain'}`}
                     >
                       {/* THE DESTINATION IN WORDS, as the design has it. "Everyone" and "Only me"
                           are what a person is choosing between; an icon or a switch makes them
@@ -997,35 +974,27 @@ export function ContextPage({
                       Delete was drawn on everybody's OPEN files and answered "Document not found".
                       Only the uploader may delete, so only the uploader is offered it. */}
                   {(doc as any).mine !== false && (
-                    <button onClick={() => deleteDoc.mutate(doc.id)} style={{ fontSize: 12, color: 'var(--gw-red-t)', background: 'none', border: 'none', cursor: 'pointer' }}>Delete</button>
+                    <button onClick={() => deleteDoc.mutate(doc.id)} className="gwui-btn gwui-btn-quiet gwui-btn-small gwui-ink-red">Delete</button>
                   )}
                 </div>
-              </div>
+                </div>
+              </Panel>
             ))}
-            <div
+            <Panel
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !uploadDoc.isPending) { e.preventDefault(); document.getElementById('ga-doc-upload')?.click() } }}
-              style={{
-                border: '1.5px dashed var(--gw-border)', borderRadius: 8,
-                /* A card beside the documents, as the prototype draws "Add a document". */
-                padding: '12px 14px',
-                textAlign: 'left', background: 'var(--gw-bg)',
-                /* A dropped file can take a moment. Without this the box looks untouched and
-                   somebody presses it again, which is how two copies of one file get attached. */
-                cursor: uploadDoc.isPending ? 'progress' : 'pointer',
-                opacity: uploadDoc.isPending ? 0.6 : 1,
-              }}
               onClick={() => { if (!uploadDoc.isPending) document.getElementById('ga-doc-upload')?.click() }}
               /* The formats, where somebody asks the question: while choosing a file. */
               title={WHAT_YOU_CAN_UPLOAD}
+              className={`gwui-rule-dashed${uploadDoc.isPending ? ' gwui-busy' : ''}`}
             >
               {/*
                 LABELLED BY WHO READS IT, like the two note boxes below. The page had three inputs
                 named by what they were - documents, notes, private context - when the only difference
                 that matters to somebody deciding where to put something is who ends up reading it.
               */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-navy)', marginBottom: 4 }}>
+              <p className="gwui-fs-13 gwui-ink-navy">
                 {/*
                   THE HEADING FOLLOWS THE FLAG, LIKE THE SENTENCE UNDER IT.
                   
@@ -1034,10 +1003,8 @@ export function ContextPage({
                   exist, directly above a sentence correctly saying the file reaches nobody. The same
                   contradiction this box was just fixed for, reintroduced one line higher.
                 */}
-                {uploadDoc.isPending
-                  ? 'Uploading…'
-                  : 'Add a document'}
-              </div>
+                <strong>{uploadDoc.isPending ? 'Uploading…' : 'Add a document'}</strong>
+              </p>
               {/*
                 THE FILE-TYPE LIST CAME OFF THE PAGE AND ONTO THE CONTROL.
 
@@ -1075,15 +1042,15 @@ export function ContextPage({
                 somebody uploads, and the second person to upload a file reads this box too. The
                 examples below are for a first-timer; this sentence is for every upload.
               */}
-              <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6, marginTop: 4 }}>
+              <p className="gwui-panel-text-muted gwui-mt-4">
                 {contextEnabled
                   ? 'It starts private to you. You choose who can read it.'
                   : 'It is private to you. It shapes your own questions and reaches nobody else.'}
-              </div>
+              </p>
               {docs.length === 0 && (
                 /* Left-aligned: it inherits the dropzone's centring otherwise, and a paragraph set
                    centred is harder to read than the same paragraph set flush. */
-                <div style={{ fontSize: 12, color: 'var(--gw-muted)', lineHeight: 1.6, marginTop: 6 }}>
+                <p className="gwui-note gwui-mt-6">
                   {/*
                     AND WHAT COUNTS, WHICH ONLY THE FIRST-TIME READER NEEDS.
 
@@ -1096,9 +1063,9 @@ export function ContextPage({
                   can be proof of what has happened, such as meeting notes, a transcript from Gemini
                   or another notetaker, or a photo of what was agreed. It can also be the brief, plan
                   or scope this work was set against.
-                </div>
+                </p>
               )}
-              <input type="file" id="ga-doc-upload" style={{ display: 'none' }} accept={UPLOAD_ACCEPT_ATTR}
+              <input type="file" id="ga-doc-upload" className="gwui-sr-only" accept={UPLOAD_ACCEPT_ATTR}
                 onChange={e => {
                   const f = e.target.files?.[0]
                   /*
@@ -1114,7 +1081,7 @@ export function ContextPage({
                   }
                   e.target.value = ''
                 }} />
-            </div>
+            </Panel>
             </div>
             )}
 
@@ -1160,39 +1127,38 @@ export function ContextPage({
             */}
             {(isTheLead || commitments.length > 0) && (
               <>
-                <Sec n={band()} title="What people are down as doing" src="Nobody is marked as having done these. The check-ins ask about them." />
+                <Section heading="What people are down as doing" note="Nobody is marked as having done these. The check-ins ask about them." />
                 {isTheLead && contextEnabled && commitments.length === 0 && (
-                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 14, maxWidth: 720, fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                    Nothing yet. Anything somebody says they will do in a check-in lands here on its
-                    own. Something agreed on a call goes in by saying it in the conversation above.
-                    <div style={{ marginTop: 8 }}>
-                      <button
-                        onClick={() => changeThisInTheChat('On the call today, ')}
-                        style={{ fontSize: 12, fontWeight: 600, color: 'var(--gw-navy)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 20, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
+                  <Panel>
+                    <p className="gwui-panel-text-muted">
+                      Nothing yet. Anything somebody says they will do in a check-in lands here on its
+                      own. Something agreed on a call goes in by saying it in the conversation above.
+                    </p>
+                    <div className="gwui-mt-8">
+                      <Button kind="secondary" size="small" onClick={() => changeThisInTheChat('On the call today, ')}>
                         Something agreed on a call
-                      </button>
+                      </Button>
                     </div>
-                  </div>
+                  </Panel>
                 )}
-                <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '4px 0', marginBottom: 14, maxWidth: 720 }}>
+                <Panel pad={false}>
                   <ShowAFew rows={commitments} few={8} what="things people are down as doing">
-                  {(c: any, i: number) => {
+                  {(c: any) => {
                     const p = c.participantId ? ground.participants.find((x: any) => x.id === c.participantId) : null
                     return (
-                      <div key={c.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: c.participantId ? 'var(--gw-dark)' : 'var(--gw-amber-t)', minWidth: 120 }}>
+                      <div key={c.id} className="gwui-panel-row gwui-line-row">
+                        <Tag tone={c.participantId ? 'plain' : 'attention'}>
                           {c.participantId ? (p && p.id === myParticipant?.id ? 'You' : atTheStart((p && labelsHere.get(p.id)) ?? 'a colleague')) : 'Nobody owns this'}
-                        </span>
-                        <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 200 }}>{c.text}</span>
-                        {c.whenSaid && <span style={{ fontSize: 11.5, color: 'var(--gw-sub)' }}>{c.whenSaid}</span>}
+                        </Tag>
+                        <span className="gwui-panel-text">{c.text}</span>
+                        {c.whenSaid && <Note>{c.whenSaid}</Note>}
                         {/* Whose words, to whoever is reading: it said "your words" to everyone (U.7 review). */}
-                        {!c.explicit && <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{isTheLead ? 'These are your words, not theirs.' : p && p.id === myParticipant?.id ? `These are ${theLeadMidSentence}\u2019s words, not yours.` : `These are ${theLeadMidSentence}\u2019s words, not theirs.`}</span>}
+                        {!c.explicit && <Note>{isTheLead ? 'These are your words, not theirs.' : p && p.id === myParticipant?.id ? `These are ${theLeadMidSentence}’s words, not yours.` : `These are ${theLeadMidSentence}’s words, not theirs.`}</Note>}
                       </div>
                     )
                   }}
                   </ShowAFew>
-                </div>
+                </Panel>
               </>
             )}
 
@@ -1226,7 +1192,7 @@ export function ContextPage({
             */}
             {(isTheLead || theBuckets.some((b) => b.lines.length > 0)) && (
               <>
-                <Sec n={band()} title="Strategy, notes and how we work" src={isTheLead ? 'What you put here guides every check-in. You can change any line in it.' : `What ${theLeadMidSentence} put here guides the check-ins. It is never quoted as something anyone found.`} />
+                <Section heading="Strategy, notes and how we work" note={isTheLead ? 'What you put here guides every check-in. You can change any line in it.' : `What ${theLeadMidSentence} put here guides the check-ins. It is never quoted as something anyone found.`} />
                 {/*
                   A PLACE TO TYPE A LINE, BESIDE THE CONVERSATION RATHER THAN INSTEAD OF IT.
 
@@ -1246,33 +1212,23 @@ export function ContextPage({
                   who knows exactly what the line is and does not want a conversation about it.
                 */}
                 {isTheLead && (
-                  <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '11px 13px', marginBottom: 10, maxWidth: 720 }}>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+                  <Panel>
+                    <p className="gwui-panel-text-muted">
                       {theBuckets.some((b) => b.lines.length > 0)
                         ? 'Add a line. Every check-in is guided by what is here.'
                         : 'Nothing here yet. Put anything the check-ins should know in the right place, and every check-in is guided by it.'}
-                    </div>
-                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
-                      {BUCKETS.map((b) => (
-                        <button
-                          key={b.kind}
-                          onClick={() => { setTypingInto(typingInto === b.kind ? null : b.kind); setLineDraft('') }}
-                          title={b.sub}
-                          style={{
-                            fontSize: 12, fontWeight: 600, borderRadius: 20, padding: '5px 11px', cursor: 'pointer', fontFamily: 'inherit',
-                            border: `1px solid ${typingInto === b.kind ? 'var(--gw-navy)' : 'var(--gw-border)'}`,
-                            background: typingInto === b.kind ? 'var(--gw-blue-bg)' : 'var(--gw-bg)',
-                            color: 'var(--gw-navy)',
-                          }}
-                        >
-                          {b.title}
-                        </button>
-                      ))}
+                    </p>
+                    <div className="gwui-mt-8">
+                      <Choices
+                        label="Which kind of line"
+                        value={typingInto ?? ''}
+                        onChange={(kind) => { setTypingInto(typingInto === kind ? null : kind); setLineDraft('') }}
+                        options={BUCKETS.map((b) => ({ key: b.kind, label: b.title, description: b.sub }))}
+                      />
                     </div>
                     {typingInto && (
-                      <div style={{ marginTop: 10 }}>
-                        <textarea
-                          className="gw-ta"
+                      <div className="gwui-mt-10">
+                        <TextArea
                           autoFocus
                           rows={3}
                           maxLength={2000}
@@ -1280,20 +1236,25 @@ export function ContextPage({
                           onChange={(e) => setLineDraft(e.target.value)}
                           placeholder={THE_WAY_IN[typingInto] ?? ''}
                         />
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <button
+                        <div className="gwui-button-row gwui-mt-8">
+                          {/*
+                            SECONDARY, NOT PRIMARY: at most one navy button per screen, and the
+                            brief's own "Save" above is the page's one primary action. This and that
+                            one can be open at the same time (the brief editor and this bucket
+                            editor are independent state), so they are never "two branches of one
+                            either/or" - a genuine second navy button, not a false positive.
+                          */}
+                          <Button
+                            kind="secondary"
+                            size="small"
                             onClick={() => addLine.mutate({ kind: typingInto, text: lineDraft })}
                             disabled={!lineDraft.trim() || addLine.isPending}
-                            style={{ padding: '7px 13px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: lineDraft.trim() ? 1 : 0.4 }}
                           >
-                            {addLine.isPending ? 'Saving\u2026' : 'Everyone here reads this'}
-                          </button>
-                          <button
-                            onClick={() => { setTypingInto(null); setLineDraft('') }}
-                            style={{ padding: '7px 12px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                          >
+                            {addLine.isPending ? 'Saving…' : 'Everyone here reads this'}
+                          </Button>
+                          <Button kind="secondary" size="small" onClick={() => { setTypingInto(null); setLineDraft('') }}>
                             Cancel
-                          </button>
+                          </Button>
                           {/*
                             AND THE CONVERSATION, WHICH IS STILL THE BETTER ROUTE.
 
@@ -1305,7 +1266,7 @@ export function ContextPage({
                           {contextEnabled && (
                             <button
                               onClick={() => { changeThisInTheChat(lineDraft.trim() || (THE_WAY_IN[typingInto] ?? '')); setTypingInto(null); setLineDraft('') }}
-                              style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: 'var(--gw-sub)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+                              className="gwui-plain-link"
                             >
                               Say it in the conversation instead
                             </button>
@@ -1313,62 +1274,52 @@ export function ContextPage({
                         </div>
                       </div>
                     )}
-                  </div>
+                  </Panel>
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14, maxWidth: 720 }}>
+                <div className="gwui-stack-10">
                   {theBuckets.filter((b) => b.lines.length > 0).map((b) => (
-                    <div key={b.kind} style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 10, overflow: 'hidden' }}>
-                      <div style={{ padding: '8px 13px 6px', background: 'var(--gw-bg)', display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gw-dark)' }}>{b.title}</span>
-                        <span style={{ fontSize: 11.5, color: 'var(--gw-muted)' }}>{b.sub}</span>
+                    <Panel key={b.kind} pad={false}>
+                      <div className="gwui-group-head">
+                        <span className="gwui-fs-13 gwui-ink-dark"><strong>{b.title}</strong></span>
+                        <Note>{b.sub}</Note>
                       </div>
                       <ShowAFew rows={b.lines} few={6} what={`lines under ${b.title.toLowerCase()}`}>
-                      {(l: any, i: number) => (
-                        <div key={l.id} style={{ padding: '9px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--gw-line)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-                          <span style={{ flex: 1, fontSize: 13, color: 'var(--gw-text)', lineHeight: 1.55, minWidth: 220 }}>{l.text}</span>
+                      {(l: any) => (
+                        <div key={l.id} className="gwui-panel-row gwui-line-row">
+                          <span className="gwui-panel-text">{l.text}</span>
                           {l.audience !== 'EVERYONE' && (
-                            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.03em', padding: '1px 7px', borderRadius: 10, color: 'var(--gw-sub)', background: 'var(--gw-bg)', border: '1px solid var(--gw-border)' }}>Only you</span>
+                            <Tag tone="plain">Only you</Tag>
                           )}
                           {isTheLead && l.legacy && l.audience !== 'EVERYONE' && (
-                            <button
-                              onClick={() => shareOlderNote.mutate(l.id)}
-                              disabled={shareOlderNote.isPending}
-                              style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
-                            >
+                            <Button kind="quiet" size="small" onClick={() => shareOlderNote.mutate(l.id)} disabled={shareOlderNote.isPending}>
                               Share with the team
-                            </button>
+                            </Button>
                           )}
                           {isTheLead && !l.legacy && (
                             <>
-                              <button
+                              <Button
+                                kind="quiet"
+                                size="small"
                                 onClick={() => changeLine.mutate({ itemId: l.id, audience: l.audience === 'EVERYONE' ? 'LEAD_ONLY' : 'EVERYONE' })}
                                 disabled={changeLine.isPending}
-                                style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
                               >
                                 {l.audience === 'EVERYONE' ? 'Make it yours only' : 'Share with the team'}
-                              </button>
+                              </Button>
                               {contextEnabled && (
-                                <button
-                                  onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `)}
-                                  style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
-                                >
+                                <Button kind="quiet" size="small" onClick={() => changeThisInTheChat(`Change the line "${l.text}" to `)}>
                                   Change this
-                                </button>
+                                </Button>
                               )}
                               {/* Retired, not deleted: a decision that was made is not one that never existed. */}
-                              <button
-                                onClick={() => changeLine.mutate({ itemId: l.id, closed: true })}
-                                disabled={changeLine.isPending}
-                                style={{ fontSize: 11.5, color: 'var(--gw-sub)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}
-                              >
+                              <Button kind="quiet" size="small" onClick={() => changeLine.mutate({ itemId: l.id, closed: true })} disabled={changeLine.isPending}>
                                 Done with it
-                              </button>
+                              </Button>
                             </>
                           )}
                         </div>
                       )}
                       </ShowAFew>
-                    </div>
+                    </Panel>
                   ))}
                 </div>
               </>
@@ -1416,9 +1367,7 @@ export function ContextPage({
               nothing on screen said so.
             */}
             {!contextEnabled && !isLead && (
-              <div style={{ background: 'var(--gw-bg)', border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-                {LEAD_HOLDS_MORE}
-              </div>
+              <Callout>{LEAD_HOLDS_MORE}</Callout>
             )}
 
             {/*

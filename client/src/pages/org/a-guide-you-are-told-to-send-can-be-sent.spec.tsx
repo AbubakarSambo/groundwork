@@ -34,10 +34,10 @@ describe('the lead guide', () => {
     expect(MEMBERS).toContain("navigate('/org/guide')")
     /*
      * HAFSAH, 30 SEPTEMBER: "HOW TO RUN ONE" ONLY GOES TO ANOTHER PAGE, SO IT IS A LINK NOW, NOT A
-     * BUTTON WITH A navigate() CALL STANDING IN FOR ONE. `TextAction`'s own `to` prop renders a real
-     * `<Link>` to '/org/guide' - checked here directly, since there is no `navigate(...)` call left
-     * on this control to search for. The People page's own "Send the guide" (MEMBERS, above) is
-     * unchanged: it is a real button there, matching the prototype's own people.txt.
+     * BUTTON WITH A navigate() CALL STANDING IN FOR ONE - checked here directly, since there is no
+     * `navigate(...)` call left on this control to search for. The People page's own "Send the
+     * guide" (MEMBERS, above) is unchanged: it is a real button there, matching the prototype's own
+     * people.txt.
      */
     expect(ADMIN).toContain("to=\"/org/guide\"")
     /*
@@ -48,6 +48,14 @@ describe('the lead guide', () => {
      * `!ended` addition (no guide link once the check-in has finished), are unchanged in spirit.
      */
     expect(ADMIN).toMatch(/sessionsDone === 0 && !ended && \(/)
-    expect(ADMIN).toMatch(/<TextAction to="\/org\/guide"/)
+    /*
+     * UPDATED (group 3, piece 5, the header rebuild): `TextAction` was `kit.tsx`'s own old quiet
+     * link, drawn with inline styles; this control is now a plain `react-router-dom` `Link` with
+     * the shared part's own class for a quiet text link, `.gwui-plain-link` (CLAUDE.md: "a quiet
+     * text link is .gwui-plain-link") - still a real `<Link>` to the same address, which is the
+     * fact this test protects, and no `kit.tsx` import left on this control.
+     */
+    expect(ADMIN).toMatch(/<Link className="gwui-plain-link" to="\/org\/guide"/)
+    expect(ADMIN).not.toMatch(/<TextAction to="\/org\/guide"/)
   })
 })

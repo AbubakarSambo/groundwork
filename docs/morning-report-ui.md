@@ -289,6 +289,8 @@ U.20 (small states and errors) starts only when all have passed, as you asked.
 
 ## Hafsah's decisions, recorded here because `docs/decisions.md` is protected
 
+**1 October, who may rewrite a check-in's brief.** A check-in's brief follows the same rule as every other setup change. Only the lead can rewrite it, unless the lead has left the organisation; then an admin can, and people are told who did it. "Rewrite" is shown only to whoever is allowed under that rule. The screen now does this: "Rewrite" and "Write the brief" show only when the server says the reader may change setup, and until the server says so, only to the lead. The server's side is request 104.
+
 **1 October, the moved report sections (from the engine's answer to request 99).**
 - The two explaining sentences dropped in the move are back, word for word. Under "What you said it rested on": "These were not in their hands. Read anything unmet above against them first." Under "Where this stood at the start": "Written at the beginning and left as it was. Read what people shared above against it." Done.
 - The resolution panel shows nothing until a decision is near, as the prototype does, with no "Resolution. Not set yet." line. It already did this, and a test now holds it.
@@ -7119,5 +7121,96 @@ But the builders moved the old page's values into 153 new page-only classes, and
 - Nothing that writes was pressed, and the whole screen suite passes (3,752 tests).
 
 Next are the roster of participants, with the bounced-invitation pill, and the per-session grid. After those come the page's header and states, and the Report, chat and settings tabs.
+
+**The lead's check-in page is clean in all eight parts.**
+- The roster's bounced invitation reads "This invitation bounced. Fix the address and send it again." with a quiet "Fix and resend". Remind and resend are quiet buttons on every row, and dates read "27 September".
+- The header's states use the shared parts, and "Your turn - 1 day late" reads "Your turn. It is 1 day late."
+- The Report tab's "closing a round early" is a fold, and "Publish it now" is the white button with red words.
+- The settings tab's access-code window is the shared dialog, so it now closes with Escape and has a named "Close" button.
+- A second navy button on the bounced-invitation form was found and fixed.
+- The whole screen suite passes (3,760 tests), and the button test passes on all 29 screens. The privacy test that failed twice under load passed every time on its own.
+
+The builder did not add the page to the rebuilt list, because it draws the Context and resources tab (`ContextPage.tsx`), which still uses the old parts. That tab's drawing is being rebuilt now as group 3's last piece. The old context chat stays on, exactly as it works today, until the engine's five live checks pass.
+
+**Context and resources is rebuilt from the shared parts (1 October).**
+- Its six numbered headings are now plain headings, because the prototype never numbers a heading.
+- The five kind-of-line buttons are one shared choice.
+- A second navy button that appeared when two forms were open at once was found and fixed.
+- Every action is kept, and the old context chat still works exactly as before. All 258 tests around it pass, and so does the whole screen suite (3,757 tests).
+- The lead's check-in page is now on the rebuilt list.
+
+Two things are being fixed now, as group 3's sixth piece:
+- On this tab the lead's page shows 32 buttons against the prototype's 21. The extras come from each person's part (`EachPerson.tsx`) and the targets band: fold arrows, and "Done" and "Not doing it" on every to-do.
+- The participant's check-in page still uses the old parts in its loading, header and "not in this check-in" screens.
+
+Both are fixed, and group 3's pages are all built from the shared parts now.
+- The lead's Context and resources tab shows 21 buttons, the same as the prototype. Each person's fold arrow became the shared fold. "Done" and "Not doing it" on each to-do are quiet text links. "Attach it", which sends a file, stays a button.
+- The participant's check-in page is rebuilt, and is on the rebuilt list.
+- The button test now leaves out the check-in page's own tabs, which are its navigation, like the sidebar. It also counts the prototype's reply chips as buttons, because the prototype draws that screen as a picture, with each chip as a plain text box. With that, the comparison is like for like, and the participant's page shows the same five controls as the prototype's between-check-ins screen. The button test passes on all 31 screens.
+
+**The fourth merge of the engine's work (1 October, afternoon).** It merged with no conflicts. The new database change is applied locally, and the API is rebuilt and restarted. The engine's new review (`docs/review-1-october.md`) asked the screens two things. Both were already right: the board hides "nothing reads as a difference" when differences are listed, and never shows an internal kind-of-work label. That is answered as request 100.
+
+**Before group 3's review:** a dev-only preview page, `/dev/conversation`, is being added. It draws the check-in conversation from its real parts with the prototype's own example words, and calls the server for nothing. So the live conversation can finally be pictured against the prototype without starting anyone's session.
+
+The API tests after this merge pass 13,124 of 13,128. Three of the four failures are request 99: they are the engine's own tests, waiting to be pointed at the moved report sections, which the engine said it would do once this workspace's fixes landed, and they have now. The fourth is the engine's own new conversation test failing the comment guard, which is request 94 again.
+
+**Group 3's review sent it back (1 October, evening).**
+
+What held:
+- The page colour is right everywhere.
+- Nothing scrolls sideways on a phone.
+- From what the API sends: each person's own report is refused to anyone else, a participant gets no lead's judgement, ratings stay with each person, and the lead's private notes go to the lead only.
+
+What did not hold, most serious first:
+- **A closed Session 1 report shows Session 2's material.** "What to work on next" opens "This is session 2…", under "Closed 27 Sept 2026. This does not change."
+- **Some privacy sentences are not true.** People and setup says "Nobody sees another person's answers", while the team report quotes people by name. The end card leaves out what the team will see.
+- **Two error messages on a bad join link,** and a misleading one when opening someone else's report.
+- **Contradictions,** such as Juma being told he can read reports he cannot reach, and "Rewrite" offered to someone who only reads.
+- **About 30 of the screen's own sentences** with colons, run-ons or jargon.
+- **The look:** your own bubble is navy where the prototype's is near-black. Suggested answers sit in a row where the prototype stacks them. The lead's tabs sit in a 600-pixel column where the prototype uses the full width. Sign-up has no card. Signed out, `/start` shows the sidebar.
+- **Drift:** the review listed every one-off and page-only class on group 3's pages. That is about 170 in the entry chat, 70 in the conversation and 50 in the team report, each with the shared part it should be.
+
+The text the engine writes that reaches the wrong reader is request 101. That includes advice to the lead sent to participants, "0 check-ins on record" about someone not let in, and "Rukia Otieno" written to Rukia. The fixes go in three batches, one builder at a time: what is untrue (under way), then the look, then the drift list, page by page. The review's pictures are in the scratchpad's `pictures/review-g3/`.
+
+**Batch A, first half, done.**
+- A closed session's report now keeps a later check-in's material in its own section, "Since then, in the latest check-in". A per-session copy is asked for in request 102.
+- The privacy sentences are true now. The switch says "The people in this check-in, including your manager, can see what you say in it, once the team's report is shared. You are named to each other." The end card again says what the team will see, from the check-in's real setting.
+- One error message shows on a bad join link, not three.
+- Opening someone else's report says "This report is not yours to open. Each person's own report can only be read by that person."
+- A promise with a date reads "You said "9 October"", where before it said "no date agreed".
+- Many of the screen's own sentences are fixed: "Baraka Mwangi said…" instead of "Baraka Mwangi:", "Tell Groundwork how this team works", "Begin the last check-in", and "What we worked out from what you said".
+
+The rest of batch A (six contradictions, six more sentences and the pictures) is with a fresh builder. One of this workspace's tests had broken because the engine now asks who may be named for each reader. It was pointed at the new call, and the promise it checks is unchanged.
+
+Two of my pushes were refused tonight, because I had chained the push with another command. Each was run again on its own, as the check's message allows.
+
+**Batch A is done.**
+- Juma's way to the reports now lands on the board, where they are. Before, it sent him to Context.
+- An admin is told "You can let Faraji Odhiambo in on People." on every tab.
+- Amani reads "Faraji Odhiambo is waiting to be let in."
+- The next check-in's date is said once.
+- The lead's note and the summary are two lines.
+- Rukia's own share reads "You. Seen by you."
+- A solo report's headings are "What you said" and "What to carry into next time".
+- Rukia's own row says "Your expectation is set."
+- The Done screen's two colon-joined lines are each a heading and a sentence.
+- "Read how to run one" is its own line.
+- The Done screen's "Groundwork did not pick this up this time" reads the right field, but the engine computed it before its own fix of 29 September. That is request 103.
+- "Rewrite" stays for admins; see "Decided for Hafsah to confirm".
+
+The whole screen suite passes (3,792 tests), except the wording guard, which is request 95. The button test passes on all 31 screens, and the page-colour test passes 4 of 4. The pictures are in the scratchpad's `pictures/g3-fixA/`. Batch B, the look, is next.
+
+**Batch B, the look, is done.**
+- Your own bubble is the prototype's ink (#1A1916), no longer navy.
+- Suggested answers stack one per line.
+- The end card keeps "Pause", and its "What happens next" has bullets again.
+- Sign-up and a bad link get the prototype's white card.
+- The lead's and the participant's tabs use the page's full width, as the prototype's pictures do. Only the conversation keeps its reading width.
+- "Send the report to everyone who asked for it" is now a short line with a white button, after "Every session".
+- Signed out, `/start` has no sidebar, just the mark and a "Sign in" link, as in the prototype. The Feedback button no longer covers "See every situation" on a phone.
+- On a phone, the chosen tab scrolls into view.
+- The whole screen suite passes (3,804 tests), except the wording guard, which is request 95. The pictures are in the scratchpad's `pictures/g3-fixB/`.
+
+Batch C, the drift list, comes next, page by page: every one-off and page-only class on group 3's pages is replaced with the shared part the review named, then pictured again.
 
 **Still to do before group 1 resumes:** the same side-by-side check against the prototype on the other rebuilt screens (the check-in page and conversation, Done, between check-ins, My work, People, one person, the board, Connections, WhatsApp and More). Now with a builder.

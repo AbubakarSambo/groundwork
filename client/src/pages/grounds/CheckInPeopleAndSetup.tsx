@@ -449,11 +449,24 @@ export function CheckInPeopleAndSetup(props: {
         <FieldRows>
         <SwitchRow
           title="Each other's check-ins"
+          /*
+           * GROUP 3'S REVIEW, BATCH A FAULT 2: "NOBODY SEES ANOTHER PERSON'S ANSWERS" IS NOT TRUE.
+           *
+           * The team's report, which everyone in the check-in reads once it is shared, can quote a
+           * person's own words under their name - `peersVisibleToEachOther` decides whether that
+           * naming happens, not whether the content does (see `who-may-read-this-check-in.ts` and
+           * `peersAreNamedOn`: a participant always reads the shared report, either with names or
+           * with "a colleague" in their place). So the old sentence told the reader the opposite of
+           * what the switch actually controls. Hafsah's settled wording for this fact (Conflict A,
+           * 29 September) is "The people in this check-in, including your manager, can see what you
+           * say in it." - carried here, with the one thing this switch truly decides (whether that
+           * is said with names or without) added after it.
+           */
           detail={props.peersVisible
-            ? "Nobody sees another person's answers. Everyone sees the team's report once you share it."
+            ? "The people in this check-in, including your manager, can see what you say in it, once the team's report is shared. You are named to each other."
             : (ground as any)?.peersVisibleToEachOther == null
-              ? `Not set, so this check-in uses the default for its kind: ${props.peersDefaultHidden ? 'hidden' : 'shown'}. Nobody sees another person's answers. Everyone sees the team's report once you share it.`
-              : "Each person sees only themselves. Nobody sees another person's answers. Everyone sees the team's report once you share it."}
+              ? `Not set, so this check-in uses the default for its kind: ${props.peersDefaultHidden ? 'hidden' : 'shown'}. The people in this check-in, including your manager, can see what you say in it, once the team's report is shared. ${props.peersDefaultHidden ? 'You are not named to each other.' : 'You are named to each other.'}`
+              : "The people in this check-in, including your manager, can see what you say in it, once the team's report is shared. You are not named to each other."}
           on={props.peersVisible}
           onChange={(on) => props.setPeerVisibility.mutate(on)}
           disabled={!canEditRunOrAdmin || props.setPeerVisibility.isPending}

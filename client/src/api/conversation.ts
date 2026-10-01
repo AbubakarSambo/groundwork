@@ -109,9 +109,14 @@ export const conversationApi = {
   /**
    * The report this session ended on, as it was read. Not the same object as `artifact`, which is
    * the two-line summary a background job writes afterwards.
+   *
+   * `skipForbiddenToast`: a session report is only ever readable by the person who wrote it
+   * (`SessionReportPage.tsx`'s own isError branch already says so, in its own sentence). Without
+   * it, opening somebody else's session also raised the client's generic "That one is not yours to
+   * open" toast on top of that sentence - group 3's review, request batch A, fault 4.
    */
   sessionReport: (checkInId: string) =>
-    apiClient.get(`/check-ins/${checkInId}/session-report`, { skipNotFoundToast: true })
+    apiClient.get(`/check-ins/${checkInId}/session-report`, { skipNotFoundToast: true, skipForbiddenToast: true } as any)
       .then(r => r.data as { report: import('./entry').EntryReport | null; finishedAt: string | null; sessionNumber: number | null; groundId: string | null; isInitiator: boolean }),
 
   documentReceived: (checkInId: string) =>

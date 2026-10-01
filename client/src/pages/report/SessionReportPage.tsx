@@ -115,6 +115,35 @@ export default function SessionReportPage() {
     (p: any) => p.userId === viewerUserId && p.partyType === 'INITIATOR',
   )
 
+  /**
+   * GROUP 3'S REVIEW, FAULT 1: THIS SESSION'S OWN PAGE DREW THE LATEST SESSION'S MATERIAL.
+   *
+   * `groundReport` (`GET /grounds/:id/report`) is always the check-in's CURRENT working copy -
+   * whatever the coaching note, the lead's probe list and the inference review are built from "now",
+   * not "as of the session this page is about". Reading a closed session 1's report showed "This is
+   * session 2 of sales and expansion work" under "Closed 27 Sept 2026. This does not change.", and
+   * the lead's probe list said people had not answered a session the team report, two lines above it
+   * on the same page, said they had - because the probe list was already about session 2.
+   *
+   * `GET /grounds/:id/report/session/:n` (`shape`) is the one call that is genuinely locked to this
+   * page's own session, but it carries no coaching note, probe list or inferences at all (see
+   * `SessionShapedReport` in `api/reports.ts`) - those are engine reads that it has never produced
+   * per session, only "as of now". So rather than drop them from a closed session's own report, or
+   * silently show session 2's answers where session 1's belong, they are only drawn here when this
+   * page's session IS the one the engine's "now" is about - `myRows` already does the right thing on
+   * its own, because every row carries its own `sessionNumber` and the component filters to it.
+   *
+   * `ground.sessionProgress.sessionNumber` is "the highest session anybody has actually completed an
+   * answer for" (see `GroundsService.getSessionProgress`), which is exactly what the coaching note,
+   * probe list and inference pass are built against. When it is not this page's session, the latest
+   * material moves to its own section below, plainly labelled as the latest rather than folded into
+   * a session that has already closed. See `docs/requests-to-engine.md` for the ask: a per-session
+   * copy of these three reads, so a closed session's own page never needs the live ones at all.
+   */
+  const latestMaterialSessionNumber: number | null = (ground as any)?.sessionProgress?.sessionNumber ?? null
+  const reportIsForThisSession = !!data?.sessionNumber
+    && (latestMaterialSessionNumber == null || latestMaterialSessionNumber === data.sessionNumber)
+
   const setCadence = useMutation({
     mutationFn: (cadence: string) => groundsApi.update(data!.groundId as string, { cadence } as any),
     onSuccess: () => {
@@ -261,14 +290,14 @@ export default function SessionReportPage() {
           {/* Three things, three sentences: 404 is "no longer here", only 403 accuses, everything else offers the retry. */}
           <div className="gwui-fs-13-5 gwui-ink-text gwui-mb-5" style={{ fontWeight: 700 }}>
             {(error as any)?.response?.status === 403
-              ? 'This session is not yours to open'
+              ? 'This report is not yours to open'
               : (error as any)?.response?.status === 404
                 ? 'This session is no longer here'
                 : 'This did not load'}
           </div>
           <div className="gwui-fs-13 gwui-ink-sub" style={{ lineHeight: 1.6 }}>
             {(error as any)?.response?.status === 403
-              ? 'A session report is only ever readable by the person who wrote it.'
+              ? 'Each person’s own report can only be read by that person.'
               : (error as any)?.response?.status === 404
                 ? 'The link may be out of date. Your check-ins page lists the sessions that are.'
                 : 'Nothing is wrong with the report - the request did not get through. Try again.'}
@@ -456,8 +485,9 @@ export default function SessionReportPage() {
               */}
               <div className="gwui-rule gwui-pt-13 gwui-pb-13 gwui-pl-15 gwui-pr-15 gwui-mt-6" style={{ borderRadius: 10 }}>
                 <div className="gwui-fs-13 gwui-ink-text gwui-mb-3" style={{ fontWeight: 700 }}>Something here isn’t right</div>
-                {/* The inferred claims themselves, each with its own "Correct this". */}
-                {Array.isArray((groundReport as any)?.inferences) && (groundReport as any).inferences.length > 0 && (
+                {/* The inferred claims themselves, each with its own "Correct this". Only when the
+                    latest report is this session's own - see `reportIsForThisSession` above. */}
+                {reportIsForThisSession && Array.isArray((groundReport as any)?.inferences) && (groundReport as any).inferences.length > 0 && (
                   <div className="gwui-mb-14">
                     <InferenceReviewPanel groundId={data!.groundId as string} inferences={(groundReport as any).inferences} />
                   </div>
@@ -469,9 +499,13 @@ export default function SessionReportPage() {
                 ) : (
                   <>
                     <div className="gwui-fs-13 gwui-ink-sub gwui-mb-10" style={{ lineHeight: 1.6 }}>
-                      Correcting it is a short check-in of its own. It asks you what it got wrong. Nothing
-                      is overwritten; the change is shown alongside the original, and it closes a short
-                      while after the shared report goes out.
+                      {/*
+                        GROUP 3'S REVIEW, BATCH A FAULT 6: "NOTHING IS OVERWRITTEN; THE CHANGE IS
+                        SHOWN ALONGSIDE THE ORIGINAL" JOINED TWO SENTENCES WITH A SEMICOLON.
+                      */}
+                      Correcting it is a short check-in of its own. It asks you what it got wrong.
+                      Nothing is overwritten. The change is shown alongside the original, and it
+                      closes a short while after the shared report goes out.
                     </div>
                     <Button kind="secondary" onClick={() => correct.mutate()} disabled={correct.isPending || !data.groundId || !data.sessionNumber}>
                       <span role="status">{correct.isPending ? 'Starting...' : 'Correct it'}</span>
@@ -488,15 +522,17 @@ export default function SessionReportPage() {
           )}
 
           {/*
-            "THIS RECORD IS YOURS. IT IS PORTABLE AND PERMANENT" - offered wherever that is true,
-            which is once the session is finished, not only when a stored report happens to exist
-            (the branch above). A session run while signed in has no stored `data.report` but is
-            just as much a finished session whose record is yours to take away.
+            "THIS RECORD IS YOURS" - offered wherever that is true, which is once the session is
+            finished, not only when a stored report happens to exist (the branch above). A session
+            run while signed in has no stored `data.report` but is just as much a finished session
+            whose record is yours to take away.
+            GROUP 3'S REVIEW, BATCH A FAULT 6: "IT IS PORTABLE AND PERMANENT" IS WORK JARGON. Said
+            plainly instead - you can keep your own copy, and it stays here for you either way.
           */}
           {data?.finishedAt && (
             <div className="gwui-mt-10">
               <div className="gwui-fs-13 gwui-ink-sub gwui-mb-6" style={{ lineHeight: 1.55 }}>
-                This record is yours. It is portable and permanent.
+                This record is yours. You can keep your own copy, and it will always be here for you.
               </div>
               <button
                 type="button"
@@ -522,10 +558,12 @@ export default function SessionReportPage() {
             read as another summary card, inside the private surface so its privacy is not in
             question. See WhatToWorkOnNext.
           */}
-          <WhatToWorkOnNext
-            note={(groundReport as any)?.coaching}
-            guide={(groundReport as any)?.postReportGuide}
-          />
+          {reportIsForThisSession && (
+            <WhatToWorkOnNext
+              note={(groundReport as any)?.coaching}
+              guide={(groundReport as any)?.postReportGuide}
+            />
+          )}
         </section>
       )}
 
@@ -566,10 +604,20 @@ export default function SessionReportPage() {
             opposite about the same report. It now says the same true thing `shape` already knows,
             in a sentence, with the date through the one shared formatter every other page uses.
           */}
+          {/*
+            GROUP 3'S REVIEW, BATCH A FAULT 2: "WHAT ANYONE SAID ABOUT SOMEBODY ELSE NEVER DOES" WAS
+            NOT TRUE OF THIS SAME REPORT. A person's own words, even when they name somebody else
+            ("Four shops for me", a dependency on a colleague), stay as they said them
+            (`their-own-words-stay.ts`, decision 18) - only a lead's private judgement of a person is
+            withheld from anyone but the lead (`deeplyWithoutTheLeadsDescriptionOfAnyone`). The same
+            report that carried the old line also read "Baraka Mwangi and Neema Achieng are waiting
+            on Rukia Otieno for 3 things", which is exactly what it claimed never happened. The
+            sentence now says only what is true and actually enforced.
+          */}
           <div className="gwui-fs-13 gwui-ink-sub gwui-mb-14" style={{ lineHeight: 1.55 }}>
             {shape?.state === 'final'
-              ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. What anyone said about somebody else never does.`
-              : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. What anyone said about somebody else never does.'}
+              ? `Closed${shape.takenAt ? ` ${whenItWas(shape.takenAt, 'day')}` : ''}. This does not change. What each person said about their own work can appear here. Nobody's private judgement of somebody else does.`
+              : 'Everybody’s side of this session, together, and it updates as people check in. What each person said about their own work can appear here. Nobody\'s private judgement of somebody else does.'}
           </div>
           <TheSessionsReport
             groundId={data.groundId}
@@ -589,17 +637,56 @@ export default function SessionReportPage() {
         point: a lead-only surface guarded by a caller remembering to check is one refactor away
         from not being lead-only.
       */}
-      <WhatToProbeThemOn
-        reads={(groundReport as any)?.probes}
-        weigh={(groundReport as any)?.whatTheGroundCanTellYou}
-        weighNote={(groundReport as any)?.whatTheGroundCanTellYouNote}
-        restedOn={(groundReport as any)?.whatItRestedOn}
-        startedAt={(groundReport as any)?.whereThisStarted}
-        softSpots={(groundReport as any)?.softSpots}
-        arcAdvisories={(groundReport as any)?.arcAdvisories}
-        nameFor={nameFor}
-        readerRunsIt={!(myParticipant && !amTheInitiator)}
-      />
+      {reportIsForThisSession && (
+        <WhatToProbeThemOn
+          reads={(groundReport as any)?.probes}
+          weigh={(groundReport as any)?.whatTheGroundCanTellYou}
+          weighNote={(groundReport as any)?.whatTheGroundCanTellYouNote}
+          restedOn={(groundReport as any)?.whatItRestedOn}
+          startedAt={(groundReport as any)?.whereThisStarted}
+          softSpots={(groundReport as any)?.softSpots}
+          arcAdvisories={(groundReport as any)?.arcAdvisories}
+          nameFor={nameFor}
+          readerRunsIt={!(myParticipant && !amTheInitiator)}
+        />
+      )}
+
+      {/*
+        THIS SESSION IS CLOSED, AND SOMETHING NEWER EXISTS. See `reportIsForThisSession` above: the
+        coaching note, the lead's probe list and the inference review are built from "now", not from
+        this session, so they no longer belong under "Session {n}" once a later session has moved
+        past it. Shown here instead, plainly labelled as the latest, rather than left out or folded
+        silently into a session that has already closed.
+      */}
+      {!isLoading && !isError && !reportIsForThisSession && (
+        <Panel as="section">
+          <h2 className="gwui-fs-15 gwui-m-0 gwui-mb-2" style={{ fontWeight: 800 }}>Since then, in the latest check-in</h2>
+          <div className="gwui-fs-13 gwui-ink-sub gwui-mb-14" style={{ lineHeight: 1.55 }}>
+            This session is closed and does not change. Since it closed, a later check-in has added
+            more. This is what the latest one says now.
+          </div>
+          {Array.isArray((groundReport as any)?.inferences) && (groundReport as any).inferences.length > 0 && data?.groundId && (
+            <div className="gwui-mb-14">
+              <InferenceReviewPanel groundId={data.groundId as string} inferences={(groundReport as any).inferences} />
+            </div>
+          )}
+          <WhatToWorkOnNext
+            note={(groundReport as any)?.coaching}
+            guide={(groundReport as any)?.postReportGuide}
+          />
+          <WhatToProbeThemOn
+            reads={(groundReport as any)?.probes}
+            weigh={(groundReport as any)?.whatTheGroundCanTellYou}
+            weighNote={(groundReport as any)?.whatTheGroundCanTellYouNote}
+            restedOn={(groundReport as any)?.whatItRestedOn}
+            startedAt={(groundReport as any)?.whereThisStarted}
+            softSpots={(groundReport as any)?.softSpots}
+            arcAdvisories={(groundReport as any)?.arcAdvisories}
+            nameFor={nameFor}
+            readerRunsIt={!(myParticipant && !amTheInitiator)}
+          />
+        </Panel>
+      )}
 
       {/*
         15. ACTION, AFTER BOTH HALVES.

@@ -100,8 +100,15 @@ describe('the two views of a check-in are a pair', () => {
 
   it('but the way BACK still exists, for anybody who lands on the party view and can run it', () => {
     /* Unchanged, and still the thing that stranded people: an org admin who is a party to somebody
-       else's check-in can reach `/p` and must be able to leave. */
-    expect(PARTY).toContain('The whole check-in →')
+       else's check-in can reach `/p` and must be able to leave.
+
+       UPDATED (group 3, piece 5, part 9, the header rebuild): the button's trailing arrow
+       ("The whole check-in →") is gone - a decorative arrow on button text is a joined-on
+       fragment, not a sentence, which CLAUDE.md's wording rule rules out, the same reason
+       GroundAdminPage.tsx dropped one from "Go to my check-ins" (commit 1ebc69ef). The button
+       itself, and what it does, is unchanged - only the arrow is gone. */
+    expect(PARTY).toContain('The whole check-in')
+    expect(PARTY).not.toContain('The whole check-in →')
     expect(PARTY).toContain("const canRunThisCheckIn = isInitiator || user?.role === 'ADMIN'")
   })
 

@@ -55,6 +55,11 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
    the cascade and cancel the gap - live on the expired-link page, whose foot line touched the
    button above it. */
 .gwui-page-wrap.gwui-page-wrap > * + *, .gwui-page-narrow.gwui-page-narrow > * + * { margin-top: 30px; }
+/* THE WHITE CARD BEHIND SIGN-UP AND THE OTHER NARROW ACCOUNT SCREENS (group 3 review, batch B;
+   signup.jpg, verify-expired.jpg): `AuthCard` (auth-kit.tsx) now wraps its mark, heading and form
+   in a `Panel`, one level deeper inside `Page narrow` than before - this gives that panel's own
+   direct children the same 30px rhythm the rule above gives a bare `Page narrow`. */
+.gwui-auth-card.gwui-auth-card > * + * { margin-top: 30px; }
 @media (max-width: 860px) {
   .gwui-page-main { padding: 20px 18px 100px; }
 }
@@ -97,6 +102,10 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
   font-size: 18px; font-weight: 700; letter-spacing: -.01em; min-height: 32px;
 }
 .gwui-mark:focus-visible { outline: 3px solid var(--gw-navy); outline-offset: 3px; border-radius: 4px; }
+/* GROUP 3 REVIEW, BATCH B: the mark, with one action beside it - a signed-out reader's "Sign in"
+   on /start (EntryChatPage.tsx), now that that screen draws no sidebar of its own (start.jpg
+   draws none either). A plain flex row; nothing here is specific to /start. */
+.gwui-mark-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; }
 
 /* ── CALLOUT (prototype: a tinted line injected above the invitation's H1, s44.js:
    `background:var(--chat);border-radius:10px;padding:10px 14px`, class `t-small`) ─────────── */
@@ -1367,7 +1376,13 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ci-endcard-markcol { width: 16px; flex-shrink: 0; padding-top: 3px; }
 .gwui-ci-endcard-line { display: block; font-size: 14px; font-weight: 700; color: var(--gw-text); line-height: 1.45; }
 .gwui-ci-endcard-how { display: block; font-size: 13px; color: var(--gw-sub); line-height: 1.45; margin-top: 2px; }
-.gwui-ci-endcard-next { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+/* GROUP 3 REVIEW, BATCH B: a real <ul> of <li>, but Tailwind's preflight resets every list to
+   `list-style:none`, so this read with no marker at all - the prototype's own "What happens
+   next" (s44.js) types a literal "• " before each line. `list-style: disc` restores the bullet
+   this list already had room for (padding-left:18px), rather than switching to a hand-typed
+   character. */
+.gwui-ci-endcard-next { list-style: disc; margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.gwui-ci-endcard-next > li { display: list-item; }
 .gwui-ci-endcard-actions { display: grid; gap: 10px; }
 
 /* The page frame itself: the composer pinned to the bottom of the viewport, the card centred and
@@ -1531,6 +1546,15 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-phase-bar { padding: 7px 20px; border-bottom: 1px solid var(--gw-border); background: var(--gw-paper); flex-shrink: 0; }
 .gwui-ec-refusal-band { padding: 12px 20px 0; flex-shrink: 0; max-width: 680px; margin: 0 auto; width: 100%; box-sizing: border-box; }
 .gwui-ec-door-slot { align-self: stretch; width: 100%; padding-top: 24px; }
+/* GROUP 3 REVIEW, BATCH B: w375-out-_start.png - the floating Feedback trigger's own mobile
+   position (`.gw-fb-trigger-chat-mobile-safe`, index.css, `bottom: 148px`) was tuned for a page
+   with a composer and the app's bottom nav below it; the door (TheDoor.tsx, EverySituation.tsx)
+   has neither, so its own last line, "Rather pick from a list? See every situation.", sat exactly
+   where that offset lands, covered. Clearance, not a repositioned button: the trigger's own
+   placement is shared with every other chat-like page, where 148px is right. */
+@media (max-width: 640px) {
+  .gwui-ec-door-slot { padding-bottom: 64px; }
+}
 .gwui-ec-thinking { margin-right: 6px; font-style: normal; color: var(--gw-muted); font-size: 13px; }
 .gwui-ec-fork { display: flex; flex-direction: column; gap: 8px; max-width: 82%; align-self: flex-start; margin-top: 4px; }
 .gwui-ec-fork-note { font-weight: 700; margin-top: 8px; }
@@ -1699,3 +1723,31 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
    phone the name never wraps away from its own dot and avatar while the row's actions wrap below.
    Gap 10px, the prototype's own avatar-to-name gap (app.css .person). */
 .gwui-person-head { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px; }
+
+/* ── CONTEXT AND RESOURCES (group 3, piece 5, last piece: B2-context). ContextPage.tsx's own
+   shapes, none of them a dedicated prototype class (the prototype draws each of these by hand) -
+   built at the same sizes the rest of this file already uses for a panel, a row and a pill. See
+   docs/the-parts-against-the-prototype.md for the full note. ────────────────────────────────── */
+/* The documents, as cards: shared ones first, "Add a document" last - the same auto-fill grid the
+   prototype's own resource cards sit in. */
+.gwui-doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+/* One line of text with its own inline meta and actions beside it - a thing somebody is down as
+   doing, a line under "Strategy, notes and how we work", the brief's "whose words" line: a label or
+   sentence, flex:1, then a short tag or button, never stacking on a mid-width screen until it must. */
+.gwui-line-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+/* A GROUP'S OWN HEADER STRIP, inside a Panel(pad=false) list - "How we work", "Notes", each with its
+   one-line sentence beside its name, set off from the page by the same fill a dropzone and an empty
+   state already use. */
+.gwui-group-head { background: var(--gw-bg); padding: 10px 16px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+/* A PILL THAT IS ALSO A CONTROL: `.gwui-tag`'s own shape (26px, round, 13.5px bold) on a `<select>`
+   or `<button>` instead of a `<span>` - who can read a document, toggled or chosen on the row
+   itself. Resets the native element's own border, font and pointer so only the tag's look shows. */
+.gwui-tag-control { border: 0; font: inherit; cursor: pointer; }
+/* A CONTROL WHILE IT IS WORKING: the upload dropzone while a file is on its way in - the prototype
+   never shows this state (nothing in it takes long enough to need one), so this is the product's
+   own addition, not a value carried over from an old page. */
+.gwui-busy { cursor: progress; opacity: .6; }
+/* A SMALL FOLD INSIDE A PANEL, NOT ITS OWN PANEL: "What you wrote", "What Groundwork took from it" -
+   a native `<details>` whose summary is a plain navy line, not `Folded`'s own boxed-and-bordered
+   shape (which is for a closed panel in a list, not a aside folded under one). */
+.gwui-inline-fold-summary { cursor: pointer; }

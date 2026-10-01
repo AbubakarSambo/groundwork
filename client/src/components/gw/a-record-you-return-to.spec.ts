@@ -51,12 +51,22 @@ describe('something still open', () => {
 })
 
 describe('something with no date', () => {
-  it('says no date was agreed, rather than treating it as open-ended', () => {
-    /* "We never agreed when" is the thing worth noticing, and it is invisible if the page just
-       shows their words. */
+  /*
+   * WORDING UPDATED (group 3's review, request batch A, fault 2): "They said "9 October" - no date
+   * agreed" claimed the opposite of what it had just quoted - "9 October" IS a date, said in words
+   * rather than picked from a calendar, so "no date agreed" was never true of it. The sentence now
+   * just reports what was said, and says "You" rather than "They" on the reader's own row.
+   */
+  it('quotes what they said, without claiming no date was agreed over their own words', () => {
     const stand = whereItStands({ dueSaid: 'soon' }, NOW)
     expect(stand.says).toContain('"soon"')
-    expect(stand.says).toContain('no date agreed')
+    expect(stand.says).not.toContain('no date agreed')
+    expect(stand.says).toBe('They said "soon"')
+  })
+
+  it('says "You" on the reader\'s own row, and the person\'s name on somebody else\'s', () => {
+    expect(whereItStands({ dueSaid: '9 October' }, NOW, { isMine: true, name: 'Amani Wekesa' }).says).toBe('You said "9 October"')
+    expect(whereItStands({ dueSaid: '9 October' }, NOW, { isMine: false, name: 'Amani Wekesa' }).says).toBe('Amani Wekesa said "9 October"')
   })
 
   it('and says nothing at all when they never mentioned timing', () => {

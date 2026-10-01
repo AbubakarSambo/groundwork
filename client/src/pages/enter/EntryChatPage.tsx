@@ -10,7 +10,7 @@ import { SCENARIO_LABELS, SCENARIO_GROUPS, scenarioLabel, SCENARIO_FACTS, CADENC
  * tidier home and is a separate change - doing it here would bury the fix in a file move.
  */
 import { groupOfCard } from '@/pages/grounds/CreateGroundPage'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { entryApi } from '@/api/entry'
 import { billingApi } from '@/api/billing'
@@ -39,7 +39,7 @@ import { looksLikeAnAddress, NOT_AN_ADDRESS } from '@/components/gw/an-address-t
 import { copy } from '@/components/gw/copying-can-fail'
 import { whatIsSetAndWhatIsNot, whenTheCheckInsLand } from '@/components/gw/when-the-check-ins-land'
 import { WhichDaysTheyWork } from '@/components/gw/WhichDaysTheyWork'
-import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal } from '@/components/gw/ui'
+import { Button, Callout, Note, TextField, TextArea, Bubble, Composer, PhaseSteps, Modal, Mark } from '@/components/gw/ui'
 
 /*
  * A COLLEAGUE ON THE INVITE LIST, BY ID (U.4). The list of colleagues carries no addresses, so a
@@ -2726,6 +2726,20 @@ export function EntryChatPage() {
     /* The viewport less the nav strip pinned over it, and dvh so a phone's address bar sliding away
        does not leave the composer under the fold. See --gw-bottom-nav in AppShell. */
     <div className="gwui-ec-frame">
+
+      {/*
+        GROUP 3 REVIEW, BATCH B: A SIGNED-OUT READER HAS NO SIDEBAR HERE NOW (AppShell.tsx's
+        `showSidebar`, start.jpg draws none) - so this is the only mark and the only way to sign
+        in this reader has on /start. Not shown once there is a session header below (a stranger
+        partway into onboarding still has no account, but by then they are mid-conversation, not
+        at the door, and the session header already carries its own way out).
+      */}
+      {!user && atTheDoor && (
+        <div className="gwui-mark-row">
+          <Mark />
+          <Link to="/auth" className="gwui-plain-link">Sign in</Link>
+        </div>
+      )}
 
       {/* Session header */}
       {/* U.6 review: not on the setup conversation, which start-chat.txt draws without a name, a plan or steps. */}

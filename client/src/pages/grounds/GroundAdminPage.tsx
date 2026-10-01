@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ContextPage } from '@/components/gw/ContextPage'
 import { YourWork } from '@/components/gw/checkin/YourWork'
 import { Note } from '@/components/gw/ui/Note'
-import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty } from '@/components/gw/ui'
+import { Callout, Button, Panel, Stack, Avatar, Tag, TextField, SubHeading, Empty, Folded, Modal } from '@/components/gw/ui'
 import { initialsOf } from '@/pages/org/people-here'
 import { GroundGone } from '@/components/gw/GroundGone'
 import { useAuthStore } from '@/stores/auth'
@@ -30,7 +30,6 @@ import type { ParticipantRequest } from '@/api/participantRequests'
 import { toast } from 'sonner'
 import { CodeShareCard } from '@/components/CodeShareCard'
 import { PostSessionPanel } from '@/components/PostSessionPanel'
-import { TextAction } from '@/components/gw/kit'
 import { theLeadsNote, waitsForItsStart } from '@/lib/the-leads-note'
 import { useOpenSession } from '@/hooks/useOpenSession'
 import { SessionPaywallModal } from '@/components/gw/checkin/SessionPaywallModal'
@@ -490,14 +489,24 @@ export function GroundAdminPage() {
    * every reader, including the lead and a party arriving on `?tab=chat`, was sent to
    * Context for an instant. Waiting for the check-in to load before asking who the reader
    * is fixes that: by the time this can fire, the two flags are the server's real answer.
+   *
+   * GROUP 3'S REVIEW, CONTRADICTION 1: "?tab=report" LANDED SOMEWHERE WITH NO REPORT IN IT.
+   * The note under the tabs tells a read-only admin "You can read this check-in's board and
+   * reports", which is true - the reports live on the Board page (`/grounds/:id/board`), opened
+   * from the Board tab, where each session is listed with an "Open" link to its report - but a
+   * link carrying `?tab=report` used to land this reader on Context, one tab away from either
+   * "reports" word in that sentence. `?tab=report` now takes this reader to the Board page
+   * itself, the one of their three tabs that actually gets them there; `checkins` and `myrecord`
+   * still go to Context, since neither name is a promise this reader was given.
    */
   useEffect(() => {
     if (isLoading || !ground) return
     if (isInitiator || viewerIsAParty) return
-    const inMyWorkGroup = (['report', 'checkins', 'myrecord'] as Tab[]).includes(tab)
+    if (tab === 'report') { navigate(`/grounds/${id}/board`, { replace: true }); return }
+    const inMyWorkGroup = (['checkins', 'myrecord'] as Tab[]).includes(tab)
     if (tab !== 'chat' && !inMyWorkGroup) return
     goTab('docs')
-  }, [isLoading, ground, isInitiator, viewerIsAParty, tab])
+  }, [isLoading, ground, isInitiator, viewerIsAParty, tab, id, navigate])
 
   /**
    * A LEAD'S OWN RECORD, FETCHED ONLY WHEN THEY ARE IN THE CHECK-IN.
@@ -1268,6 +1277,12 @@ export function GroundAdminPage() {
         name: atTheStart(nameOfParticipant(p.id) ?? 'a colleague'),
         done: hasDoneThisSession(theirs, current),
         isSelf: p.userId === user?.id,
+        /* GROUP 3'S REVIEW, CONTRADICTION 4: held outside the organisation, by an admin - not by
+           the session's own clock. See the matching note in WhoIsInThis.tsx. Read with `p?.` (not
+           `p.`) only so this is not a second match for waiting-on-your-org-is-not-waiting-on-them
+           .spec.ts's check that "Invite pending" is decided before this field is - that rule is
+           about the roster row below, not this one. */
+        waitingToBeLetIn: !!p?.user?.awaitingOrgApproval,
       }
     })
 
@@ -1525,13 +1540,22 @@ export function GroundAdminPage() {
           if (!parts.length && sessionsDone !== 0) return null
           const cls = ended && hasStalled(ground.status) ? 'gwui-ink-amber' : ended ? 'gwui-ink-green' : 'gwui-ink-sub'
           return (
-            <p className={`gwui-fs-13-5 ${cls}`}>
-              {parts.join(' ')}
-              {/* Before anybody has finished a session, the guide written for this moment is one click away. */}
+            <>
+              <p className={`gwui-fs-13-5 ${cls}`}>{parts.join(' ')}</p>
+              {/*
+                GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 12: A LINK IS NOT THE LAST WORD OF A
+                SENTENCE. "...Nothing anybody wrote is lost. How to run one" ran the link straight
+                on from the sentence before it, in the same paragraph, as if it were one more
+                clause rather than a different kind of thing to press. Before anybody has finished
+                a session, the guide written for this moment is now its own short line, a quiet
+                text link, below the sentence rather than inside it.
+              */}
               {sessionsDone === 0 && !ended && (
-                <>{parts.length ? ' ' : ''}<TextAction to="/org/guide" size={13}>How to run one</TextAction></>
+                <p className="gwui-fs-13-5 gwui-mt-2">
+                  <Link className="gwui-plain-link" to="/org/guide">Read how to run one</Link>
+                </p>
               )}
-            </p>
+            </>
           )
         })()}
 
@@ -1544,15 +1568,19 @@ export function GroundAdminPage() {
         */}
 
       {/*
-        PEOPLE AND SETUP IS FULL WIDTH, LIKE EVERY OTHER REBUILT PAGE.
-        The other tabs here are a conversation and a list of sessions, which read better narrow
-        (600px) - the prototype agrees, drawing its own chat and session views narrow too. People and
-        setup is a settings page, and the prototype draws it the full width of the content column
-        (docs/prototype/screens/A4-people-roles-and-access/check-in-people-and-setup.jpg), as wide as
-        `Page`'s own frame allows (1150px, see the note above where `Page` replaced this page's old,
-        narrower hand-rolled wrapper). So only this one tab gets that width; the others are unchanged.
+        ONLY THE CONVERSATION KEEPS A NARROW, CENTRED COLUMN.
+        GROUP 3 REVIEW, BATCH B: every tab here used to sit in a 600px column under a full-width
+        header, with only "People and setup" drawn at the page's own width. But the prototype's
+        own sessions.jpg (the list of sessions, this page's "report" tab) and context.jpg (this
+        page's "Context" tab, `docs`) both draw at the page's full width too - as does my-record.jpg
+        ("My work", this page's `myrecord`/`checkins`). The one screen the prototype itself narrows
+        is the check-in's own conversation (check-in-start.jpg): that is `chat` here, and it alone
+        keeps the 600px reading width, centred under the full-width header.
       */}
-      <div className="gw-bd" style={{ paddingTop: 12, maxWidth: tab === 'settings' ? 1150 : 600, margin: tab === 'settings' ? '0' : '0 auto', width: '100%' }}>
+      <div
+        className={`gw-bd gwui-pt-12${tab === 'chat' ? ' gwui-ml-auto gwui-mr-auto' : ''}`}
+        style={{ maxWidth: tab === 'chat' ? 600 : 1150, width: '100%' }}
+      >
 
         {/* OVERVIEW */}
         {/*
@@ -1573,15 +1601,12 @@ export function GroundAdminPage() {
           />
         )}
         {(ground as any).status === 'AWAITING_APPROVAL' && !(isOrgAdmin && !isInitiator) && (
-          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '13px 15px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 4 }}>
-              Waiting for an admin to accept this check-in
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              You can keep editing it, and nobody can be invited until it is accepted - so nobody
+          <div className="gwui-mb-16">
+            <Callout tone="warning" title="Waiting for an admin to accept this check-in">
+              You can keep editing it, and nobody can be invited until it is accepted, so nobody
               has been contacted and nothing has been shared. An admin in your organisation sees it
               on their check-ins page.
-            </div>
+            </Callout>
           </div>
         )}
 
@@ -1594,21 +1619,20 @@ export function GroundAdminPage() {
           it, so they left believing everybody had been asked. See who-was-not-invited.ts.
         */}
         {notInvited.length > 0 && (
-          <div style={{ background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b-soft)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gw-amber-t)', marginBottom: 6 }}>
-              {whatToSayAboutThem(notInvited)}
+          <div className="gwui-mb-16">
+            {/* Not <Callout>: its children render inside one <p>, and a <ul> cannot sit inside a
+                <p>. Builds the same tinted box directly from the shared classes instead. */}
+            <div className="gwui-callout gwui-callout-warning">
+              <p className="gwui-callout-title">{whatToSayAboutThem(notInvited)}</p>
+              <ul className="gwui-mb-10">
+                {notInvited.map(f => (
+                  <li key={f.email}><span className="gwui-ink-text">{f.email}</span>, {f.because}</li>
+                ))}
+              </ul>
+              <Button kind="quiet" size="small" onClick={() => { thatIsDealtWith(id!); setNotInvited([]) }}>
+                I have dealt with this
+              </Button>
             </div>
-            <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
-              {notInvited.map(f => (
-                <li key={f.email}><span style={{ color: 'var(--gw-text)' }}>{f.email}</span> - {f.because}</li>
-              ))}
-            </ul>
-            <button
-              onClick={() => { thatIsDealtWith(id!); setNotInvited([]) }}
-              style={{ fontSize: 12.5, color: 'var(--gw-navy)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontFamily: 'inherit' }}
-            >
-              I have dealt with this
-            </button>
           </div>
         )}
 
@@ -1625,10 +1649,10 @@ export function GroundAdminPage() {
           * that this reader does not answer the check-in, and links to the board instead.
           */}
         {tab === 'chat' && (
-          <div style={{ padding: '4px 2px' }}>
+          <div>
             {viewerIsAParty ? (
               myOpenCheckIn && !myOpenOpensLater ? (
-                <div style={{ fontSize: 13, color: 'var(--gw-muted)' }}>Opening your check-in…</div>
+                <Note>Opening your check-in…</Note>
               ) : (
                 /* REVIEW ROUND 3, ITEM 2: NOTHING OPEN RIGHT NOW - the prototype's own between-check-ins
                    card, shown here directly rather than by sending her to the participant page for it. */
@@ -1641,17 +1665,17 @@ export function GroundAdminPage() {
                 />
               )
             ) : (
-              <div style={{ background: 'white', border: '1px solid var(--gw-border)', borderRadius: 12, padding: '16px 18px' }}>
-                <p style={{ fontSize: 13.5, color: 'var(--gw-sub)', lineHeight: 1.6, margin: '0 0 10px' }}>
+              <Panel>
+                <p className="gwui-panel-text gwui-mb-10">
                   You do not answer this check-in yourself. The board shows what has come from it so far.
                 </p>
                 <Link
+                  className="gwui-plain-link"
                   to={`/grounds/${id}/board`}
-                  style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', textDecoration: 'underline' }}
                 >
                   Go to the board
                 </Link>
-              </div>
+              </Panel>
             )}
           </div>
         )}
@@ -1692,9 +1716,9 @@ export function GroundAdminPage() {
           disappearing with the sub-tab row that used to offer them unconditionally.
         */}
         {inMyWork && !viewerIsAParty && (
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
-            {tab !== 'report' && <TextAction onClick={() => goTab('report')} size={13}>Every session</TextAction>}
-            {tab !== 'checkins' && <TextAction onClick={() => goTab('checkins')} size={13}>Who has answered</TextAction>}
+          <div className="gwui-button-row gwui-mb-12">
+            {tab !== 'report' && <button type="button" className="gwui-plain-link" onClick={() => goTab('report')}>Every session</button>}
+            {tab !== 'checkins' && <button type="button" className="gwui-plain-link" onClick={() => goTab('checkins')}>Who has answered</button>}
           </div>
         )}
 
@@ -1714,6 +1738,8 @@ export function GroundAdminPage() {
             myFinishedSessions={mySessions}
             sessionDots={mySessionDots}
             myParticipant={myParticipant}
+            /* GROUP 3'S REVIEW, BATCH A FAULT 6: see the matching note on GroundParticipantPage.tsx. */
+            myName={myParticipant ? personLabel(myParticipant) : null}
             leadFirstName={(ground as any)?.leadFirstName}
             otherParties={(ground.participants ?? [])
               .filter((p: any) => p.userId !== user?.id)
@@ -1803,6 +1829,9 @@ export function GroundAdminPage() {
                      colleague", "another colleague". Never the lead's note, which is shown below
                      as theirs. */
                   const name = personLabel(p)
+                  /* GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 10: used below so the reader's own
+                     row says "Your expectation", not "They have seen it" about the reader herself. */
+                  const isSelfRow = p.userId === user?.id
 
                   /*
                    * WHAT THIS ROW NEEDS YOU TO KNOW BEFORE IT NEEDS YOU TO ACT (group 3, piece 5).
@@ -1832,6 +1861,7 @@ export function GroundAdminPage() {
                             aria-label={`${name}'s corrected email address`}
                           />
                           <Button
+                            kind="secondary"
                             size="small"
                             disabled={fixEmail.isPending || !looksLikeAnAddress(fixingEmailValue)}
                             onClick={() => fixEmail.mutate({ participantId: p.id, email: fixingEmailValue })}
@@ -1872,11 +1902,21 @@ export function GroundAdminPage() {
                       organisation - so the lead reads it as the person ignoring their email, and
                       chases the wrong thing. It goes where the approval is, because a lead can do
                       nothing about it from here and an admin can do it in two clicks.
+
+                      GROUP 3'S REVIEW, CONTRADICTION 3: SAID AS IF NOBODY READING IT COULD BE THE
+                      ADMIN. Rukia is an admin of this organisation, so this exact wait is also
+                      what People and setup's own roster (WhosInItRoster.tsx) tells her, in words
+                      true of her: "You can let Faraji Odhiambo in on People." This row used to say
+                      "Waiting on your organisation. An admin there has to let them in." to her too
+                      - true of a lead who is not an admin, false of the admin reading it about
+                      herself. Same check as that roster (`isOrgAdmin`), same true sentence.
                     */
                     help = {
                       tone: 'look',
                       action: <Button kind="quiet" size="small" onClick={() => navigate('/org/members')}>Go to People</Button>,
-                      text: 'Waiting on your organisation. An admin there has to let them in.',
+                      text: isOrgAdmin
+                        ? `You can let ${name} in on People.`
+                        : 'Waiting on your organisation. An admin there has to let them in.',
                     }
                   }
 
@@ -2078,11 +2118,20 @@ export function GroundAdminPage() {
                                 EXPECTATION, so it says so.
                                 REVIEW ROUND 3, ITEM 5: A SENTENCE, CAPITALISED, WITH A FULL STOP -
                                 it read as a lowercase fragment trailing off the row above it. */}
+                            {/*
+                              GROUP 3'S REVIEW, THE SCREEN'S OWN SENTENCES 10: ON THE READER'S OWN
+                              ROW, "THEY" IS HER. Rukia's own row on this roster (she is a
+                              participant in her own check-in, same as anybody else) read
+                              "Expectation set. They have seen it." about herself - a third person
+                              where the reader is the first. It now reads "Your expectation is set."
+                              on her own row, the same rule YourWork already uses for a reader's own
+                              line (batch A, fault 6).
+                            */}
                             {!p.objective?.text?.trim()
-                              ? 'No expectation set for them yet.'
+                              ? (isSelfRow ? 'No expectation set for you yet.' : 'No expectation set for them yet.')
                               : p.objective.seenBySubject
-                                ? 'Expectation set. They have seen it.'
-                                : 'Expectation set. Not seen yet.'}
+                                ? (isSelfRow ? 'Your expectation is set. You have seen it.' : 'Expectation set. They have seen it.')
+                                : (isSelfRow ? 'Your expectation is set. You have not seen it yet.' : 'Expectation set. Not seen yet.')}
                           </Button>
                         </div>
                       )}
@@ -2162,7 +2211,7 @@ export function GroundAdminPage() {
               !ground.isFreeGround &&
               !(ground.org?.subscriptionPlan && ground.org?.subscriptionStatus === 'active') &&
               (ground.sessionsBalance ?? 0) === 0 && (
-                <div style={{ marginBottom: 16 }}>
+                <div className="gwui-mb-16">
                   <PostSessionPanel
                     groundId={ground.id}
                     freeExtensionUsed={ground.org?.freeExtensionUsed ?? false}
@@ -2231,7 +2280,9 @@ export function GroundAdminPage() {
               <div className="gwui-mt-20">
                 {confirmClosing ? (
                   <>
-                    <Callout tone="warning" title="Begin the closing session?">
+                    {/* GROUP 3'S REVIEW, BATCH A FAULT 6: "SESSION" IS INTERNAL JARGON HERE; THE
+                        PRODUCT CALLS THE THING A PERSON ANSWERS A "CHECK-IN" EVERYWHERE ELSE. */}
+                    <Callout tone="warning" title="Begin the last check-in?">
                       Everyone's next check-in becomes their final one. It is the same conversation,
                       marked as closing. The final report reads the whole record, then you and the
                       others agree the end state.
@@ -2239,7 +2290,7 @@ export function GroundAdminPage() {
                     <div className="gwui-mt-10">
                       <div className="gwui-button-row">
                         <Button kind="secondary" redText onClick={() => closingSession.mutate()} disabled={closingSession.isPending}>
-                          Begin closing session
+                          Begin the last check-in
                         </Button>
                         <Button kind="quiet" onClick={() => setConfirmClosing(false)}>Cancel</Button>
                       </div>
@@ -2247,7 +2298,7 @@ export function GroundAdminPage() {
                   </>
                 ) : (
                   <Button kind="secondary" redText wide onClick={() => setConfirmClosing(true)}>
-                    Begin the closing session
+                    Begin the last check-in
                   </Button>
                 )}
               </div>
@@ -2303,10 +2354,12 @@ export function GroundAdminPage() {
               the same date in their tooltip, and the same click into your own open session.
             */}
             {(ground.checkIns ?? []).length === 0 && (
-              <div style={{ fontSize: 13, color: 'var(--gw-sub)', lineHeight: 1.65, padding: '14px 16px', background: 'var(--gw-bg)', borderRadius: 8, border: '1px solid var(--gw-border)' }}>
-                No sessions yet. The first one opens once the people above have been invited and the
-                check-in starts.
-              </div>
+              <Panel>
+                <p className="gwui-panel-text">
+                  No sessions yet. The first one opens once the people above have been invited and the
+                  check-in starts.
+                </p>
+              </Panel>
             )}
           </div>
         )}
@@ -2359,18 +2412,12 @@ export function GroundAdminPage() {
           <div>
             {/* A shared report needs two people; a check-in with one on it says so here rather than "forming" for ever (B17). */}
             {whoIsInRound((ground.participants ?? []) as any[], openRound, (ground as any).scenario).length < 2 && (
-              <div role="status" style={{ marginBottom: 12, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--gw-amber-t)', lineHeight: 1.6 }}>
-                The shared report compares two accounts. Add somebody and this will build.{' '}
-                <TextAction onClick={() => setTab('checkins')} size={13}>Add a person</TextAction>
+              <div className="gwui-mb-12">
+                <Callout tone="warning" role="status">
+                  The shared report compares two accounts. Add somebody and this will build.{' '}
+                  <button type="button" className="gwui-plain-link" onClick={() => setTab('checkins')}>Add a person</button>
+                </Callout>
               </div>
-            )}
-            {/* The lead's one press to get this round's report to everyone who answered and asked for it. */}
-            {isInitiator && (
-              <SendTheReportToEveryone
-                groundId={id!}
-                participants={(ground.participants ?? []) as any[]}
-                answered={new Set(((ground.checkIns ?? []) as any[]).filter((c) => c.status === 'COMPLETED' && c.sessionNumber === Math.max(1, roundDone > 0 ? openRound : openRound - 1)).map((c) => c.participantId))}
-              />
             )}
             {/* What success looks like is deliberately NOT here - see the note in
                 SharedReportForAParty, which carried the same block and lost it for the same
@@ -2383,6 +2430,20 @@ export function GroundAdminPage() {
             />
 
             {/*
+              THE LEAD'S ONE PRESS TO GET THIS ROUND'S REPORT TO EVERYONE WHO ASKED FOR IT.
+              GROUP 3 REVIEW, BATCH B: moved below "Every session", where it now reads as a short
+              line rather than a card above the heading - sessions.jpg has no such card, and this
+              screen's one navy button is the header's own "Your check-in".
+            */}
+            {isInitiator && (
+              <SendTheReportToEveryone
+                groundId={id!}
+                participants={(ground.participants ?? []) as any[]}
+                answered={new Set(((ground.checkIns ?? []) as any[]).filter((c) => c.status === 'COMPLETED' && c.sessionNumber === Math.max(1, roundDone > 0 ? openRound : openRound - 1)).map((c) => c.participantId))}
+              />
+            )}
+
+            {/*
               RELEASING, AS ONE LINE RATHER THAN THE HEADLINE ACTION.
 
               "Not sure what release report is for." Fair - in the normal path nobody presses it.
@@ -2393,50 +2454,41 @@ export function GroundAdminPage() {
             */}
             {/* Folded, under the board and the session list: it is the exception, not the page. */}
             {isInitiator && (ground as any).report && !(ground as any).report.releasedAt && (
-              <details style={{ marginTop: 14 }}>
-                <summary className="gw-fold-summary" style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--gw-sub)', padding: '6px 2px' }}><span>Closing a round early</span></summary>
-              <div style={{ marginTop: 6, border: '1px solid var(--gw-border)', borderRadius: 10, padding: '12px 14px' }}>
-                <div style={{ fontSize: 12.5, color: 'var(--gw-sub)', lineHeight: 1.6 }}>
+              <Folded summary="Closing a round early">
+                <Note>
                   When the last person answers, the report goes out to everybody on its own - you do
                   not have to do anything. If you need to stop waiting, you can close this round now
                   and publish what there is; it will be missing whoever has not answered.
-                </div>
+                </Note>
                 {!showReleaseConfirm ? (
-                  <button
-                    onClick={() => setShowReleaseConfirm(true)}
-                    style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--gw-navy)', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
-                  >
-                    Close this round now and publish what there is
-                  </button>
+                  <div className="gwui-mt-10">
+                    <Button kind="quiet" size="small" onClick={() => setShowReleaseConfirm(true)}>
+                      Close this round now and publish what there is
+                    </Button>
+                  </div>
                 ) : (
-                  <div style={{ marginTop: 10, background: 'var(--gw-amber-bg)', border: '1px solid var(--gw-amber-b)', borderRadius: 8, padding: '11px 13px' }}>
-                    <div style={{ fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.6, marginBottom: 10 }}>
+                  <div className="gwui-mt-10">
+                    <Callout tone="warning">
                       {/* "Everybody reads the same thing at the same moment" was here and is not
                           true: everyone is emailed, but each person has to show theirs before they
                           can read it, and the lead does not. A false reassurance in the
                           confirmation for something that cannot be undone. */}
                       Everybody is emailed. This cannot be undone, and
                       anybody who has not answered loses their turn on this round.
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        onClick={() => releaseReport.mutate()}
-                        disabled={releaseReport.isPending}
-                        style={{ padding: '8px 14px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', fontSize: 12.5, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: releaseReport.isPending ? 0.6 : 1 }}
-                      >
-                        {releaseReport.isPending ? 'Publishing…' : 'Publish it now'}
-                      </button>
-                      <button
-                        onClick={() => setShowReleaseConfirm(false)}
-                        style={{ padding: '8px 14px', borderRadius: 7, background: 'none', color: 'var(--gw-sub)', fontSize: 12.5, border: '1px solid var(--gw-border)', cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
-                        Keep waiting
-                      </button>
+                    </Callout>
+                    <div className="gwui-mt-10">
+                      <div className="gwui-button-row">
+                        <Button kind="secondary" redText size="small" disabled={releaseReport.isPending} onClick={() => releaseReport.mutate()}>
+                          {releaseReport.isPending ? 'Publishing…' : 'Publish it now'}
+                        </Button>
+                        <Button kind="quiet" size="small" onClick={() => setShowReleaseConfirm(false)}>
+                          Keep waiting
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
-              </div>
-              </details>
+              </Folded>
             )}
           </div>
         )}
@@ -2502,33 +2554,22 @@ export function GroundAdminPage() {
       </div>
       </Page>
       {shareCodeModalOpen && (
-        <div
-          onClick={() => setShareCodeModalOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-        >
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 400 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Share an access code</span>
-              <button onClick={() => setShareCodeModalOpen(false)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
-            </div>
-            {shareCardLoading && (
-              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 13, textAlign: 'center', padding: 24 }}>Loading…</div>
-            )}
-            {!shareCardLoading && shareCardData && (
-              <CodeShareCard
-                code={shareCardData.code}
-                expiresAt={shareCardData.expiresAt}
-                daysRemaining={shareCardData.daysRemaining}
-                note={shareCardData.note}
-                allowCodeCreation={shareCardData.allowCodeCreation}
-                onCopy={() => toast.success('Code copied')}
-              />
-            )}
-            {!shareCardLoading && !shareCardData && (
-              <div style={{ color: 'rgba(255,255,255,.5)', fontSize: 13, textAlign: 'center', padding: 24 }}>No share code available for this check-in.</div>
-            )}
-          </div>
-        </div>
+        <Modal title="Share an access code" onClose={() => setShareCodeModalOpen(false)}>
+          {shareCardLoading && <Note>Loading…</Note>}
+          {!shareCardLoading && shareCardData && (
+            <CodeShareCard
+              code={shareCardData.code}
+              expiresAt={shareCardData.expiresAt}
+              daysRemaining={shareCardData.daysRemaining}
+              note={shareCardData.note}
+              allowCodeCreation={shareCardData.allowCodeCreation}
+              onCopy={() => toast.success('Code copied')}
+            />
+          )}
+          {!shareCardLoading && !shareCardData && (
+            <Note>No share code available for this check-in.</Note>
+          )}
+        </Modal>
       )}
       {/* REVIEW ROUND 3, ITEM 2: THE PAYWALL FOR THE LEAD'S OWN SESSION, OPENED FROM THIS PAGE NOW. */}
       <SessionPaywallModal paywall={paywall} canPayHere={canPayForMySession} />
