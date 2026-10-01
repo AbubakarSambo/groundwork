@@ -29,7 +29,14 @@ describe('no total means no total', () => {
     expect(page).toMatch(/<span>This is your session \{completedCheckIns\.length \+ 1\}\.<\/span>/)
   })
   it('and a session that opens later is dated, not numbered as current', () => {
-    expect(page).toMatch(/opensLater \? \(\s*<span>Your next session opens on/)
+    /*
+     * GROUP 3'S REVIEW, CONTRADICTION 5: this header's own date is now skipped on the Check-in
+     * tab, where BetweenCheckIns already says the same date more fully (with the weekday and the
+     * time) - see the-next-session-date-is-not-said-twice.spec.tsx. The date is still what this
+     * branch of the header says everywhere else; only the extra `tab !== 'checkin' &&` guard is
+     * new.
+     */
+    expect(page).toMatch(/opensLater \? \(\s*tab !== 'checkin' && <span>Your next session opens on/)
   })
   it('the resolution gate stays closed on an unknown total', () => {
     expect(code('../components/gw/MyRecord.tsx')).toMatch(/totalSessions != null && completedCount >= totalSessions - 1/)
