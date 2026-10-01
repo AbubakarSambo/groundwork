@@ -1,6 +1,17 @@
 # How to deploy the engine work
 
-Written on 1 October 2026, on branch `wip/plain-reports`. This document only describes. Nothing was deployed, pushed or changed to write it, and no database was touched except reading the local test database.
+Written on 1 October 2026, on branch `wip/plain-reports`, and brought in line with decision 74 (the seven deploy risks) on 2 October 2026. This document only describes. Nothing was deployed, pushed or changed to write it, and no database was touched except reading the local test database.
+
+**What decision 74 changed, in short:**
+1. A backup is taken before release. It stays a release question for whoever runs the hosting.
+2. Patterns are never switched off. Who reads them is a setting, `patterns.reach`, and it is set to **the person only** (section 4).
+3. Coaching is on when there is no `coaching_live` row. That is correct and stays.
+4. `NODE_ENV` stays a release question.
+5. The word-for-word script has a safe way to run on a hosted database, only with a confirmation typed by whoever runs the release (section 5).
+6. A start never overwrites a prompt somebody activated by hand (section 6).
+7. The first night: no "time running out" email for anything that reached that point before the release, the per-organisation model calls are spread out, and every scheduled job runs once even with two copies of the API (section 7).
+
+Joining this branch with the live main line stays a release step (section 1).
 
 The questions that the person who deploys and owns the infrastructure must answer first are in `docs/release-questions.md`. This document is the "how"; that one is the "before you start".
 
@@ -11,7 +22,7 @@ The questions that the person who deploys and owns the infrastructure must answe
 The local `main` on this computer is old (11 August, pull request 130), so comparing with it would count work that is already live. Everything below is compared with the remote `main` (`origin/main`, last moved on 23 September at `f5c07d39`, pull request 317), which is the code that is deployed today.
 
 - This branch has **2,080 commits** that the remote `main` does not have.
-- The remote `main` has 43 commits that this branch does not have by their hash. All of them are either merge commits or changes that are already here under another hash, except two small fixes, and both of those are already in this branch's files in another form (the client test imports `describe`, `it` and `expect` from vitest, and the board declares `firstSnapshots` once). So **no work on the remote `main` is missing here**, but the two histories have not been joined. Joining them is a step for whoever releases (see the release questions).
+- The remote `main` has 43 commits that this branch does not have by their hash. All of them are either merge commits or changes that are already here under another hash, except two small fixes, and both of those are already in this branch's files in another form (the client test imports `describe`, `it` and `expect` from vitest, and the board declares `firstSnapshots` once). So **no work on the remote `main` is missing here**, but the two histories have not been joined. **Joining this branch with the live main line is a release step** for whoever runs the release (see the release questions, question 13): on a new branch, with every test and one full scenario run on the joined code before anything is released.
 - No workflow file, no hosting setting file and no `api/package.json` changed since the remote `main`. `client/package.json` gained two packages.
 - No migration that the remote `main` has was changed or removed on this branch. Every migration difference is a new file.
 
@@ -26,9 +37,9 @@ There are **67 new migrations** since the remote `main`. They run in name order.
 | **Deletes a column and anything in it.** `check_ins.next_commitment` is removed. The code never wrote to it, so it should be empty everywhere, but check it on each database before the migration runs: `SELECT count(*) FROM check_ins WHERE next_commitment IS NOT NULL;` must say 0. | `20260924121349_a_column_nothing_ever_wrote` |
 | **Backfills.** Every pattern row that has a last period gets that period written into the new list of periods it was seen in. | `20260924121524_a_gap_no_longer_discards_a_period` |
 | **Backfills.** People who came in through the open link are marked as having done so, worked out from the placeholder address the link gives them, or from a typed name with no account. | `20260924175813_how_somebody_arrived` |
-| **Backfills, and starts a clock on release day.** Every pattern already seen in three or more periods gets `ready_at` set to the moment the migration runs. From then, the person it is about is shown it first, and whoever runs the check-in can read it three days after the person is shown it, or seven days after release if the person never opens a page that shows it (decision 62). Because patterns are switched on in the code (section 4), this is the moment patterns start reaching people. | `20260928090000_the_person_sees_their_pattern_first` |
+| **Backfills, and starts a clock on release day.** Every pattern already seen in three or more periods gets `ready_at` set to the moment the migration runs. From then, the person it is about is shown it first (decision 62). Patterns are switched on in the code, so this is the moment patterns start reaching the person they are about. With `patterns.reach` set to the person only, the default (section 4), nobody else reads them. If the reach is later widened, whoever runs the check-in reads one three days after the person was shown it, or seven days after it was ready if the person never opened a page that shows it. | `20260928090000_the_person_sees_their_pattern_first` |
 | **Adds a settings row, only if it is not there.** It writes `suggestions.thresholds` into `platform_settings` (extra support is suggested when fewer than half of a person's commitments are kept over six periods, decision 61). If the row already exists it is left alone. This switches suggestions on, on performance plans, promotions and renewals only. | `20260930110000_the_first_threshold_for_extra_support` |
-| **Changes nothing, on purpose.** This file used to reopen every stalled check-in. Hafsah decided on 29 September (decision 54) that a migration does not reopen check-ins, so the file now only says `SELECT 1;`. It stays so that the order of migrations is unchanged. `docs/ready-to-deploy.md` still describes the old version; that description is out of date. | `20260923200000_reopen_every_check_in_that_ran_out_of_time` |
+| **Changes nothing, on purpose.** This file used to reopen every stalled check-in. Hafsah decided on 29 September (decision 54) that a migration does not reopen check-ins, so the file now only says `SELECT 1;`. It stays so that the order of migrations is unchanged. `docs/ready-to-deploy.md` now says the same. | `20260923200000_reopen_every_check_in_that_ran_out_of_time` |
 
 Every migration, in order, in one sentence each:
 
@@ -125,6 +136,9 @@ For reference, the production start-up check (unchanged since the remote `main`)
 
 | Key | Where it comes from | What it does | Works without it? |
 | --- | --- | --- | --- |
+| `patterns.reach` | Set by a platform admin through `PATCH /admin/pattern-reach` (decision 74, item 2). Not written by any migration. | Who reads a pattern: `PERSON_ONLY` (only the person it is about, with their answer box) or `PERSON_FIRST_THEN_LEAD` (the person first, then whoever runs the check-in, as decisions 58 and 62 describe). | Yes. Without the row, or with any other value, it is `PERSON_ONLY`. |
+| `release.time_running_out_warnings_from` | Written once by the first start of this version (decision 74, item 7). Never changed after. | The moment of the release. A check-in already in its last week, or past its end, at that moment gets no "time running out" email. | Yes. If it is missing when the warning job runs, the job writes it then. |
+| `job.<name>.ran_for`, one per scheduled job | Written by each daily, weekly or hourly job when it runs (decision 74, item 7). | The time slot the job last ran for, so a second copy of the API does not run it again for the same night, week or hour. One row per job, overwritten each time. | Yes. A missing row is written by the first run. |
 | `suggestions.thresholds` | Written by migration 59 if absent; an admin can change it at Admin. | Sets when extra support is suggested about a person on a performance plan, promotion or renewal. | Yes. Without the row, no suggestion is ever reached. |
 | `pricing.freeTrial` | Set by an admin at Admin, System, Pricing. Not written by any migration. | Switches on the free trial for teams under 20 people for 3 months, and stops the free plan for organisations created after that moment. | Yes. Without the row the trial is off, and billing is exactly as today. |
 
@@ -141,7 +155,8 @@ For reference, the production start-up check (unchanged since the remote `main`)
 | Switch | Where | State at release | What to do |
 | --- | --- | --- | --- |
 | Learned weights (week 8b) | Code: `APPLY_LEARNED_WEIGHTS` in `api/src/modules/learning/a-suggested-weight.ts` | **Off.** The counts are kept and a weight is suggested, and nothing uses it. | Must stay off until a scenario run proves the weights and Hafsah agrees. Switching it on is a code change, not a setting. |
-| Patterns served to people | Code: `PATTERNS_ARE_SERVED` in `api/src/modules/patterns/patterns-are-served.ts` | **On** (decision 52). With migration 46, every pattern already seen in three periods starts the person-first process on release day. | Hafsah should confirm this before release, because the morning report says patterns are not yet steady enough by the aim of 8 in 10 on what people are shown (about 7 in 10). If she says no, the switch goes to `false` in one commit before release; detection keeps running either way. |
+| Patterns served to people | Code: `PATTERNS_ARE_SERVED` in `api/src/modules/patterns/patterns-are-served.ts` | **On, and never switched off** (decisions 52, 55 and 74). Detection, storage, the periods, coaching for the person and the probes all run. | Nothing. It stays on. |
+| Who reads a pattern | Settings row `patterns.reach`, with its default in code (`DEFAULT_PATTERN_REACH` in `api/src/modules/patterns/who-reads-a-pattern.ts`) | **The person only** (`PERSON_ONLY`). The person it is about reads it, with their answer box, and is told "Only you see this. Nothing is decided from it." The lead, the admin who set the check-in up, any other admin and every colleague read none: not on the board, the check-in page, the session report, the weekly report, Today, the coaching note, the probe list, the judgement or the ending page. "How the leading is landing" reaches only the lead it is about. The lead cannot mark a pattern or say they talked it through. | It stays the person only until pattern steadiness is at least 8 in 10 on what people are shown (decision 68) and the release says otherwise. To widen it, a platform admin sends `PATCH /admin/pattern-reach` with `{ "reach": "PERSON_FIRST_THEN_LEAD" }` (and `GET /admin/pattern-reach` says which way it is set). The copy of the API that receives it serves the new reach at once; any other copy reads it within 30 seconds. |
 | Deleting invented words from questions | Code: `DELETES_WHAT_IT_FINDS` in `api/src/modules/conversation/nothing-invented-reaches-them.ts` | **Off** (it logs only, decided 17 September). | Stays off. |
 | The old context chat | No separate switch; it is part of the check-in page. | **On**, and must stay on. Hafsah decided it stays until the screens workspace confirms Ask Groundwork's screens do everything live. | Do nothing. Do not set `CONTEXT_ENABLED=false`, which would switch off the whole context feature, not only the old chat. |
 | Coaching in live check-ins | Settings row `coaching_live` | **On** if the row is missing (see section 3). | Decide before release whether production has the row, and what it says. |
@@ -154,8 +169,8 @@ For reference, the production start-up check (unchanged since the remote `main`)
 **The order to switch things on, after the release is up and checked:**
 1. Release with the states above. Do not change any switch on the same day as the migrations.
 2. Run the checks in section 7.
-3. Hafsah confirms patterns (or they are switched off before release, as above).
-4. Hafsah confirms coaching, if the row was missing.
+3. Patterns reach the person only, from release. Widen `patterns.reach` only when steadiness is at least 8 in 10 and the release says so.
+4. Coaching is on where there is no `coaching_live` row. That is correct, and stays (decision 74, item 3).
 5. WhatsApp, only after the templates are approved.
 6. The free trial, only after Stripe is wired and tested.
 7. The learned weights, last, only after a scenario run and Hafsah's yes.
@@ -164,7 +179,12 @@ For reference, the production start-up check (unchanged since the remote `main`)
 
 **Must run once on each database after the migrations: marking which record lines are people's own words.** After migrations 38 and 39, every existing record line and commitment is marked "not word for word". Until they are marked, no report can quote any of them: existing reports lose their quotation marks and some quoted sentences are dropped. New check-ins are marked as they are written, so only old data is affected. The script is `api/journey/stamp-said-word-for-word.ts`. It reads each person's own turns and sets the mark; it changes no words.
 
-**But as written, it refuses to run on any database that is not on the same machine** (it checks that `DATABASE_URL` points to `localhost`, `127.0.0.1` or `[::1]`). So it cannot be run on a hosted database without a change to the script, or without running it through a tunnel that makes the hosted database look local. How to run it is a release question.
+**How to run it (decision 74, item 5).** Only whoever runs the release runs it, once on each database, right after the migrations:
+
+1. **A dry run first.** `DATABASE_URL=<the hosted database> npx ts-node -T journey/stamp-said-word-for-word.ts --hosted-database`. It reads, prints how many record lines and commitments would change, and writes nothing.
+2. **Then the run that writes.** The same command with `--hosted-database --write`. It prints the same counts, then asks for the database's host name to be typed back. It writes only when the typed name is exactly the host in `DATABASE_URL`. A different name, an empty answer, or no keyboard to answer from (a pipe or a scheduled job) writes nothing.
+
+Without `--hosted-database` it refuses any database that is not on the machine it runs on, and reads nothing. On a database on the same machine it writes by default, as it always has, and `--dry-run` only reads. It writes only the marks that change. A dry run on the local test database read 42,495 record lines and 1,626 commitments and would change none. The engine work never runs it on anything but a local database.
 
 **Must never run on a hosted database:**
 
@@ -180,7 +200,9 @@ For reference, the production start-up check (unchanged since the remote `main`)
 
 ## 6. The prompt versions a deploy will create or activate
 
-**On every start, the API makes the active prompt for each key match the file** (`onModuleInit` in `api/src/modules/prompts/prompts.service.ts`, from `SEED_PROMPTS` in `api/src/modules/conversation/prompt-library.ts`). For each key: if the active version already matches, nothing happens; if an older version has the same words, that one is activated again; otherwise a new version is made with the summary "Seeded on deploy" and activated. History is kept.
+**On every start, the API adds the file's words for each key, and activates them only where nobody activated a version by hand** (`onModuleInit` in `api/src/modules/prompts/prompts.service.ts`, from `SEED_PROMPTS` in `api/src/modules/conversation/prompt-library.ts`, decision 74, item 6). For each key: if the active version already matches the file, nothing happens. Otherwise the file's words are kept as a version (an older version with the same words is reused; if there is none, a new one is made with the summary "Seeded on deploy"). That version is made active only when the key has no active version, or when the active version is the seeding's own. History is kept.
+
+**Which active versions count as the seeding's own.** `prompt_versions.activated_by` now records who activated a version: "seeded on start" when a start did it, and the platform admin's user id when it was done through `/prompts`. A version activated before this change has an empty `activated_by`; it counts as the seeding's own only when the seeding made it (summary "Seeded on deploy", or version 1 with no summary, as `prisma/seed.ts` writes it). Anything else stays active, and the start writes a sentence in its log naming the key and the version it kept.
 
 There are 56 keys on this branch against 52 on the remote `main`. On a database that matches the remote `main`, the first start will:
 
@@ -189,7 +211,7 @@ There are 56 keys on this branch against 52 on the remote `main`. On a database 
 - **Leave the other 29 keys as they are.**
 
 Two things to know:
-- **Any version activated by hand in production through `/prompts` for one of these 56 keys is replaced on start** by the file's words. If somebody has done that, it must be put into the file first, or it is lost from use (the row stays in the history).
+- **A version activated by hand in production through `/prompts` stays active.** The file's words wait beside it as an inactive version, and whoever runs the release decides which to use. The one case a start cannot tell apart: before this release, nothing recorded who activated a version, so a hand re-activation of an older "Seeded on deploy" version looks like the seeding's own and is replaced. Release question 11 asks about exactly that.
 - `docs/ready-to-deploy.md` says the scenario packs "run from the database, not from the files" and are switched on by hand (decision 20). The code does not work that way: the packs are among the keys written on every start. The release questions ask which is meant.
 
 **How to check which version runs.** Each report records the version of `report_synthesis` that wrote it in `reports.prompt_version_id`. After deploy, and after the first new report:
@@ -225,7 +247,11 @@ Every report updated after the release should name the newest `report_synthesis`
 | Admin who is not in the check-in | The organisation's admin pages and the check-in list | They can manage the organisation, but cannot open a performance plan, promotion or renewal they were not given access to, and cannot read the contribution and coverage reads of a check-in they cannot see. |
 | Guest from another organisation | Their own check-in and Ask Groundwork | Only their own check-in. Never a colleague's leave dates. Asking about the organisation gets "You are a guest here from another organisation, so Ask Groundwork can only answer questions about your own check-in. It cannot tell you about this organisation, its people or its other check-ins." |
 
-**Watch for the first night.** Several jobs run for the first time (see the release questions): the warning before a check-in runs out of time sends one email per check-in near its end, and the nightly company picture and role gap notes each make one model call for every organisation that has no stored picture or note yet, because nothing is stored for anyone before the first night. Read the logs the next morning.
+**Watch for the first night (decision 74, item 7).**
+- **The warning before a check-in runs out of time** goes only to check-ins that reach their last week after the release. The first start writes the release moment (`release.time_running_out_warnings_from`); a check-in already in its last week, or past its end, at that moment gets no email and no stamp, so it is not stalled either: it stays open until its lead ends or extends it. The start's log says from which moment warnings go out.
+- **The company picture and the role gap notes** build one organisation at a time, and wait 20 seconds after each organisation that made a model call or wrote a row, so the first night's calls are spread out rather than made back to back.
+- **Every daily, weekly and hourly job runs once for its time**, even with two copies of the API: each claims its slot in `job.<name>.ran_for` first, and a copy that finds the slot claimed does nothing. If the claim cannot be made, the job does not run that time, so nothing is sent twice. The jobs that run every 15 or 30 minutes (closing warnings, sessions ready, held mail, closing stale check-ins) and every minute (webhook delivery) keep their advisory lock only, and the Stripe retry is unchanged.
+- Read the logs the next morning.
 
 ## 8. What each workflow and hosting setting would do when this branch reaches `main`
 

@@ -3,7 +3,7 @@
  *
  * The warning that a check-in is about to run out of time is new in this release. On the first night
  * it would otherwise go to every lead whose check-in was already near its end, or past it, before the
- * release: one email each, about a deadline the product had never told them about. Hafsah decided
+ * release: one email each, about a deadline the product had never told them about. Decision 74 says
  * that only check-ins reaching that point after the release get one.
  *
  * So the first start of this version writes the moment into one `platform_settings` row,

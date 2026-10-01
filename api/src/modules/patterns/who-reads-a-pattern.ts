@@ -61,7 +61,7 @@ export const PERIODS_BEFORE_A_PATTERN_IS_SHOWN = 3;
  *     board, report, weekly report, Today, coaching note, probe list or judgement.
  *
  * The default is 'PERSON_ONLY', because the patterns a person is shown are not yet the same on a
- * second reading at least 8 times in 10 (decision 68). It stays so until Hafsah or the release says
+ * second reading at least 8 times in 10 (decision 68). It stays so until the release says
  * otherwise. The setting is one `platform_settings` row, `patterns.reach`, whose value is the string
  * 'PERSON_FIRST_THEN_LEAD' or 'PERSON_ONLY'. A missing row, or a row holding anything else, reads as
  * 'PERSON_ONLY', so a mistake can only ever make patterns more private. A platform admin changes it

@@ -8,7 +8,7 @@ import { run, whatThisRunMayDo, theTypedHostMatches, hostOf } from './stamp-said
  * No test here touches a database: the database is a fake that records every write.
  */
 const HOSTED = 'postgresql://release:secret@db.example-host.net:5432/groundwork?sslmode=require';
-const LOCAL = 'postgresql://hafsahjumare@localhost:5432/gw_test';
+const LOCAL = 'postgresql://someone@localhost:5432/gw_test';
 
 function aDatabase() {
   const writes: string[] = [];
