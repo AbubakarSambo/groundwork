@@ -26,7 +26,7 @@
  * The turn number picks the wording, deterministically, so the same conversation never uses the
  * same acknowledgement twice running - and none of them says "record".
  */
-import { WHAT_ELSE } from './nobody-is-left-looking-at-a-paragraph';
+import { WHAT_ELSE, aQuestionNotYetAsked } from './nobody-is-left-looking-at-a-paragraph';
 
 /** The phrase this file exists to remove, kept so the guards can name it exactly. */
 export const THE_SENTENCE_WE_SAID_FIVE_TIMES = 'That goes on this record as you put it.';
@@ -50,9 +50,9 @@ const PLAINLY = [
  * `soFar` is how many turns have already happened; it only picks the wording, so the same
  * conversation does not repeat itself and two people do not read the same script.
  */
-export function insteadOfAFiller(soFar: number): string {
+export function insteadOfAFiller(soFar: number, earlierAiTurns: string[] = []): string {
   const which = PLAINLY[Math.max(0, soFar) % PLAINLY.length];
-  return `${which} ${WHAT_ELSE}`;
+  return `${which} ${aQuestionNotYetAsked(WHAT_ELSE, earlierAiTurns) ?? WHAT_ELSE}`;
 }
 
 /**

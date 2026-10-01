@@ -2,12 +2,14 @@ import { GroundScenario, PartyType, TurnRole } from '@prisma/client';
 import { ConversationService } from './conversation.service';
 import { ConversationContextService } from './context.service';
 import { withTheOneMoreLine } from './a-turn-asks-one-thing';
-import { withoutTheGoodbye, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
+import { withoutTheGoodbye, withoutWhatWasAlreadySaid, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
 import {
   whereTheCheckInIs,
   theNextStepIsStillOwed,
   theyHaveBeenAsked,
   theCloseQuestionFor,
+  whyTheCloseWasHeld,
+  THE_CLOSE_WAS_HELD_FOR_THE_NEXT_STEP,
   type WhereTheCheckInIs,
 } from './what-they-will-do-is-asked-before-the-end';
 
@@ -249,18 +251,18 @@ describe('a close the model reached without asking what they will do', () => {
   it('Amina, the lead, closed after seven answers: held once, and asked what she has decided', async () => {
     const { s, prisma } = aService(AMINA, { lead: true, neverAsked: ['what is clear and what is not'] });
     const close = await s.mayClose('c1', false);
-    expect(close).toEqual({ ready: false, ask: 'One more before this closes. From everything you have said, what have you decided?' });
+    expect(close).toEqual({ ready: false, ask: 'I have one more question before we finish. From everything you have said, what have you decided?' });
     expect(prisma.checkIn.update).toHaveBeenCalledWith({ where: { id: 'c1' }, data: { closeHeldAt: expect.any(Date) } });
   });
 
   it('Kwame said he would phone each customer, with no day: held once, and asked only by when', async () => {
     const { s } = aService(KWAME_LAST);
     const close = await s.mayClose('c1', false);
-    expect(close).toEqual({ ready: false, ask: 'One more before this closes. By when will you do that?' });
+    expect(close).toEqual({ ready: false, ask: 'I have one more question before we finish. By when will you do that?' });
   });
 
   it('what Kwame reads is his own words, then the one question', () => {
-    expect(theCloseQuestionFor(false, said(KWAME_LAST, 'PERSON'))).toBe('One more before this closes. By when will you do that?');
+    expect(theCloseQuestionFor(false, said(KWAME_LAST, 'PERSON'))).toBe('I have one more question before we finish. By when will you do that?');
   });
 
   it('a one-time session closes without it', async () => {
@@ -299,16 +301,33 @@ const whatTheyRead = (modelsClose: string, earlierAi: string[], lead: boolean, p
 describe('what each reader is shown when the close is held for it', () => {
   it('Amina, the lead, reads one question about her own decision', () => {
     expect(whatTheyRead('Understood. Speak soon.', said(AMINA, 'AI'), true, said(AMINA, 'PERSON')))
-      .toBe('Understood.\n\nOne more before this closes. From everything you have said, what have you decided?');
+      .toBe('Understood.\n\nI have one more question before we finish. From everything you have said, what have you decided?');
   });
 
   it('Kwame reads his own words, then when', () => {
     expect(whatTheyRead('You said you will follow up with a phone call to each customer. Speak soon.', said(KWAME_LAST, 'AI').slice(0, -1), false, said(KWAME_LAST, 'PERSON')))
-      .toBe('You said you will follow up with a phone call to each customer.\n\nOne more before this closes. By when will you do that?');
+      .toBe('You said you will follow up with a phone call to each customer.\n\nI have one more question before we finish. By when will you do that?');
   });
 
   it('Femi reads what is in his way, then what he will do about it and by when', () => {
     expect(whatTheyRead('Slow customer documents are what is in your way. Speak soon.', said(FEMI, 'AI'), false, said(FEMI, 'PERSON')))
-      .toBe('Slow customer documents are what is in your way.\n\nOne more before this closes. What will you do about this, and by when?');
+      .toBe('Slow customer documents are what is in your way.\n\nI have one more question before we finish. What will you do about this, and by when?');
+  });
+});
+
+describe('on the turn after the hold, the model is told why the close was held', () => {
+  it('held for the next step: it is told that, not that it was a date, a number or a document', () => {
+    const held = 'Slow customer documents are what is in your way.\n\nI have one more question before we finish. What will you do about this, and by when?';
+    expect(whyTheCloseWasHeld([...said(FEMI, 'AI'), held])).toBe(THE_CLOSE_WAS_HELD_FOR_THE_NEXT_STEP);
+    expect(THE_CLOSE_WAS_HELD_FOR_THE_NEXT_STEP).toContain('to ask them what they will do about what they told you, and by when');
+  });
+
+  it('held for the lead\'s decision: the same', () => {
+    expect(whyTheCloseWasHeld(['Understood.\n\nI have one more question before we finish. From everything you have said, what have you decided?'])).toBe(THE_CLOSE_WAS_HELD_FOR_THE_NEXT_STEP);
+  });
+
+  it('held for something else: the line it always read', () => {
+    expect(whyTheCloseWasHeld(['I have one more question before we finish. Put a date or a number on that, or name where it is written down.'])).toBe(THE_CLOSE_WAS_HELD);
+    expect(whyTheCloseWasHeld(['I have one more question before we finish. What do you need from other people?'])).toBe(THE_CLOSE_WAS_HELD);
   });
 });

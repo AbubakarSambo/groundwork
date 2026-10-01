@@ -31,7 +31,7 @@
  *  - Nothing when the person has asked to finish. Their session, their call.
  *  - It never adds a second question to a turn, and it never asks the question twice.
  */
-import { asksForHomework, THE_LEADS_DECISION, whatIsConcreteIn } from './the-close-is-held-once';
+import { asksForHomework, THE_LEADS_DECISION, whatIsConcreteIn, ONE_MORE_QUESTION, THE_CLOSE_WAS_HELD } from './the-close-is-held-once';
 
 /** From this many answers on, the model is told the question is still owed. One past the floor of five. */
 export const SAY_IT_IS_STILL_OWED_FROM = 6;
@@ -45,7 +45,7 @@ export const WHAT_WILL_YOU_DO = 'What will you do about this, and by when?';
 /** Where they have already said what they will do, only the when is left. It follows their own words, kept above it. */
 export const BY_WHEN_WILL_YOU_DO_THAT = 'By when will you do that?';
 export const theCloseQuestionFor = (isLead: boolean, personTurns: string[] = []): string =>
-  `One more before this closes. ${isLead ? THE_LEADS_DECISION : theyHaveSaidWhatButNotWhen(personTurns) ? BY_WHEN_WILL_YOU_DO_THAT : WHAT_WILL_YOU_DO}`;
+  `${ONE_MORE_QUESTION} ${isLead ? THE_LEADS_DECISION : theyHaveSaidWhatButNotWhen(personTurns) ? BY_WHEN_WILL_YOU_DO_THAT : WHAT_WILL_YOU_DO}`;
 
 /*
  * THE WAYS IT GETS ASKED. The prompt's own sentence and its "that is the outcome" follow-up, the lead's
@@ -122,4 +122,18 @@ export function whereTheCheckInIs(w: WhereTheCheckInIs): string {
       ? 'They run this check-in, so ask what they have decided, not what homework they will do.'
       : 'If they say there is nothing to do yet, that is a real answer. Write it down and close; never ask it twice.',
   ].join('\n');
+}
+
+/**
+ * WHY THE CLOSE WAS HELD, SAID TO THE MODEL ON THE TURN AFTER. THE_CLOSE_WAS_HELD names a date, a number
+ * or a document, which is one of the two holds. When the hold asked for their next step, the model is
+ * told that instead, so it does not read their answer as a missing date and ask a second time.
+ */
+export const THE_CLOSE_WAS_HELD_FOR_THE_NEXT_STEP =
+  'THE CLOSE WAS HELD ONCE, by the product, to ask them what they will do about what they told you, and by when (for the person who runs this check-in: what they have decided). They have now answered that. Whatever they gave, do not ask it again and do not ask for a day they did not give: "nothing yet" and "soon" are recorded as what they said. If you were closing, close now, in the shortest turn of the session, with the marker.';
+
+export function whyTheCloseWasHeld(aiTurns: string[]): string {
+  const held = [...(aiTurns ?? [])].reverse().find((t) => (t ?? '').includes(ONE_MORE_QUESTION));
+  const theQuestion = held ? held.slice(held.lastIndexOf(ONE_MORE_QUESTION) + ONE_MORE_QUESTION.length) : '';
+  return theQuestion && theyHaveBeenAsked([theQuestion]) ? THE_CLOSE_WAS_HELD_FOR_THE_NEXT_STEP : THE_CLOSE_WAS_HELD;
 }

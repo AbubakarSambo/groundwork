@@ -13,6 +13,7 @@
  */
 
 import { intoSentences } from './nothing-invented-reaches-them';
+import { aQuestionNotYetAsked } from './nobody-is-left-looking-at-a-paragraph';
 
 /** The things in a list of three or more "a X, a Y, a Z" in the brief. */
 export function thingsTheBriefLists(brief: string | null | undefined): string[] {
@@ -35,7 +36,7 @@ export const WHAT_IS_ASKED_INSTEAD = 'What has happened for you since this began
 
 export type ListedThingCut = { text: string; cut: string[] };
 
-export function withoutAThingTheLeadListedAsTheirs(reply: string, brief: string | null | undefined, theirWords: string[]): ListedThingCut {
+export function withoutAThingTheLeadListedAsTheirs(reply: string, brief: string | null | undefined, theirWords: string[], earlierAiTurns: string[] = []): ListedThingCut {
   const listed = thingsTheBriefLists(brief);
   if (!listed.length) return { text: reply, cut: [] };
   const said = theirWords.join(' ').toLowerCase();
@@ -55,6 +56,13 @@ export function withoutAThingTheLeadListedAsTheirs(reply: string, brief: string 
   const kept = out.join('').trim();
   /* A turn that asked something and now asks nothing asks the plain open question, which claims nothing. */
   const asked = cut.some((c) => /\?/.test(c));
-  const text = /\?/.test(kept) ? kept : asked || !kept ? `${kept} ${WHAT_IS_ASKED_INSTEAD}`.trim() : kept;
+  if (/\?/.test(kept) || !(asked || !kept)) return { text: kept, cut };
+  /*
+   * NEVER THE SAME ONE TWICE IN A CHECK-IN. Hauwa (re-d, loans, 1 October 2026) was asked it as her
+   * opener and then twice more. Where it has been asked, the next plain question not yet asked is used;
+   * where every one has, what is left of the turn stands, and a turn is never left empty.
+   */
+  const instead = aQuestionNotYetAsked(WHAT_IS_ASKED_INSTEAD, earlierAiTurns);
+  const text = instead ? `${kept} ${instead}`.trim() : kept || WHAT_IS_ASKED_INSTEAD;
   return { text, cut };
 }

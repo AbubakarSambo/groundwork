@@ -123,7 +123,7 @@ import { theSetTheySpokeToPartOf, whatTheyToldWithoutWhen, askForWhatTheyLeftOut
 import { onlyTheRulesThisTurnNeeds, whatWasLeftOut } from './only-the-rules-this-turn-needs';
 import { THE_OPENER_IS_ONE_MESSAGE, theRosterAlreadySaysWhoTheyAre } from './the-first-thing-it-says-is-its-own-job';
 import { SentenceGate, screen, ASK_AGAIN, askInsteadOfInventing, hitLogLine, needsAFreshAsk, Hit } from './nothing-invented-reaches-them';
-import { theNextStepIsStillOwed, theCloseQuestionFor, whereTheCheckInIs } from './what-they-will-do-is-asked-before-the-end';
+import { theNextStepIsStillOwed, theCloseQuestionFor, whereTheCheckInIs, whyTheCloseWasHeld } from './what-they-will-do-is-asked-before-the-end';
 import { whatIsConcreteIn, THE_ONE_CONCRETE_THING, THE_CLOSE_WAS_HELD, withoutTheGoodbye, isAnAcknowledgement, theOneThingNeverAsked, takenAsSaidAndOn, saysGoodbye, hasAGoodbye, withoutTheHomework, withinTheHomeworkBudget, withoutWhatWasAlreadySaid } from './the-close-is-held-once';
 import { aPromiseTheyNeverMade, whatIsLeftToSend } from './a-promise-they-never-made';
 import { withoutARecordClaimNobodyHolds } from './a-record-claim-nobody-holds';
@@ -1221,7 +1221,12 @@ export class ConversationService {
      * ever given to the check-in. Every path saves through here, so it is cut here. See
      * a-record-claim-nobody-holds.
      */
-    const noRecordInvented = withoutARecordClaimNobodyHolds(raw);
+    /* What this check-in has already said, so a fallback question is never one it has asked before. */
+    const saidHereBefore: string[] = (checkIn as any)?.id
+      ? await (this.prisma.conversationTurn?.findMany?.({ where: { checkInId: (checkIn as any).id, role: TurnRole.AI }, select: { content: true } }) ?? Promise.resolve([]))
+        .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? '')).catch(() => [] as string[])
+      : [];
+    const noRecordInvented = withoutARecordClaimNobodyHolds(raw, saidHereBefore);
     if (noRecordInvented.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${noRecordInvented.cut.length} sentence(s) claiming what "the record" shows, which this person's record does not hold.`);
     raw = noRecordInvented.text;
     /*
@@ -1233,7 +1238,7 @@ export class ConversationService {
       if (brief) {
         const theirs = await (this.prisma.conversationTurn?.findMany?.({ where: { role: TurnRole.PERSON, checkIn: { participantId: (checkIn as any).participantId } }, select: { content: true } }) ?? Promise.resolve([]))
           .then((rows: any[]) => rows.map((r) => r.content ?? '')).catch(() => [] as string[]);
-        const notTheirs = withoutAThingTheLeadListedAsTheirs(raw, brief, theirs);
+        const notTheirs = withoutAThingTheLeadListedAsTheirs(raw, brief, theirs, saidHereBefore);
         if (notTheirs.cut.length) this.logger.warn(`Check-in ${(checkIn as any).id}: cut ${notTheirs.cut.length} sentence(s) naming something from the lead's list as this person's.`);
         raw = notTheirs.text;
       }
@@ -1806,7 +1811,7 @@ export class ConversationService {
          * paragraph.
          */
         this.logger.warn(`Check-in ${checkIn.id}: a reply asked nothing and did not close; adding a question.`);
-        screened.text = withAQuestion(screened.text, { closing: closingNow });
+        screened.text = withAQuestion(screened.text, { closing: closingNow, asked: turns.filter((t) => t.role === TurnRole.AI).map((t) => t.content ?? '') });
       }
 
       /*
@@ -2576,7 +2581,7 @@ export class ConversationService {
        */
       aiTurn = await this.prisma.conversationTurn.update({
         where: { id: aiTurn.id },
-        data: { content: withAQuestion(withoutTheGoodbye(aiTurn.content ?? ''), { closing: false }) },
+        data: { content: withAQuestion(withoutTheGoodbye(aiTurn.content ?? ''), { closing: false, asked: await this.whatThisCheckInAskedBefore(checkIn.id, aiTurn.id) }) },
       });
     } else if (close.ready && close.sayFirst) {
       /* A close that records something before the goodbye: the goodbye stays, the fact goes in front of it. */
@@ -2607,7 +2612,7 @@ export class ConversationService {
      * early one runs on every turn the close machinery never reaches.
      */
     if (!sessionComplete && isADeadEnd(aiTurn.content ?? '', false)) {
-      const asking = withAQuestion(aiTurn.content ?? '', { closing: false });
+      const asking = withAQuestion(aiTurn.content ?? '', { closing: false, asked: await this.whatThisCheckInAskedBefore(checkIn.id, aiTurn.id) });
       if (asking !== (aiTurn.content ?? '')) {
         this.logger.warn(`Check-in ${checkIn.id}: the model closed, the product did not, and the reply asked nothing; added a question.`);
         aiTurn = await this.prisma.conversationTurn.update({ where: { id: aiTurn.id }, data: { content: asking } });
@@ -2779,6 +2784,13 @@ export class ConversationService {
    * by aiTurns > personTurns, which is true on every turn of every session (the opener is an AI
    * turn), so the hold never held. It is fed by the stamp now.
    */
+  /** Every earlier thing this check-in said, so a fallback question is never one it has already asked. */
+  private async whatThisCheckInAskedBefore(checkInId: string, notThisTurn: string): Promise<string[]> {
+    return (this.prisma.conversationTurn?.findMany?.({ where: { checkInId, role: TurnRole.AI, id: { not: notThisTurn } }, select: { content: true } }) ?? Promise.resolve([]))
+      .then((rows: any[]) => (rows ?? []).map((r) => r.content ?? ''))
+      .catch(() => [] as string[]);
+  }
+
   private async mayClose(checkInId: string, isSelfCorrection = false): Promise<{ ready: boolean; ask?: string; sayFirst?: string }> {
     const [row, turns] = await Promise.all([
       this.prisma.checkIn.findUnique({ where: { id: checkInId }, select: { closeHeldAt: true, participantId: true, startedAt: true, isClarification: true, ground: { select: { cadence: true, scenario: true } } } }),
@@ -4827,7 +4839,7 @@ The ground will close toward one of these end states: ${endStates || 'the partie
         .catch(() => ''),
       this.prisma.checkIn
         .findUnique({ where: { id: checkIn.id }, select: { closeHeldAt: true } })
-        .then((r) => (r?.closeHeldAt ? THE_CLOSE_WAS_HELD : ''))
+        .then((r) => (r?.closeHeldAt ? whyTheCloseWasHeld(turnsThisSession.filter((t) => t.role === 'AI').map((t) => t.content)) : ''))
         .catch(() => ''),
       /* THE UPLOADER IS ASKED, NOT CORRECTED. A document that does not read as they described it is
          put to them once as a question; until they answer it backs nothing. */

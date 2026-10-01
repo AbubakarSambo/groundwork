@@ -35,8 +35,15 @@ export function whatIsConcreteIn(lastTurn: string, attachedThisSession: boolean)
  * The one question. Product-written, the way the citation is: the model does not get to soften it
  * or turn it into three. It is short because it is the last thing they read before the report.
  */
+/*
+ * THE LINE IN FRONT OF THE PRODUCT'S ONE QUESTION AT A HELD CLOSE. It read "One more before this closes.",
+ * a clipped phrase with no verb, which the wording rule does not allow (1 October 2026). A full sentence,
+ * in one place, for every hold.
+ */
+export const ONE_MORE_QUESTION = 'I have one more question before we finish.';
+
 export const THE_ONE_CONCRETE_THING =
-  'One more before this closes. Put a date or a number on that, or name where it is written down.';
+  `${ONE_MORE_QUESTION} Put a date or a number on that, or name where it is written down.`;
 
 /**
  * THE OTHER HOLD: the session is closing with something it was for never raised. Product-written,
@@ -103,7 +110,7 @@ export function asAQuestion(what: string): string {
 }
 
 export const theOneThingNeverAsked = (what: string): string =>
-  `One more before this closes. ${asAQuestion(what)}`;
+  `${ONE_MORE_QUESTION} ${asAQuestion(what)}`;
 
 /**
  * WHEN THE MODEL WILL NOT LET A QUESTION GO, THE PRODUCT MOVES THE CONVERSATION ON. Smoke run, 20 Sep
@@ -249,12 +256,12 @@ export function withinTheHomeworkBudget(reply: string, earlierAiTurns: string[],
     HOMEWORK.lastIndex = 0;
     const swapped = decisionAsked ? withoutTheHomework(text).text : text.replace(HOMEWORK, THE_LEADS_DECISION).replace(/[ \t]{2,}/g, ' ').trim();
     HOMEWORK.lastIndex = 0;
-    if (decisionAsked && swapped === text) return { text: insteadOfAFiller((earlierAiTurns ?? []).length), changed: 'cut' };
+    if (decisionAsked && swapped === text) return { text: insteadOfAFiller((earlierAiTurns ?? []).length, earlierAiTurns ?? []), changed: 'cut' };
     return { text: swapped, changed: decisionAsked ? 'cut' : 'decision' };
   }
   if (earlier < 2) return { text, changed: 'kept' };
   const without = withoutTheHomework(text);
-  if (!without.cut) return { text: insteadOfAFiller((earlierAiTurns ?? []).length), changed: 'cut' };
+  if (!without.cut) return { text: insteadOfAFiller((earlierAiTurns ?? []).length, earlierAiTurns ?? []), changed: 'cut' };
   return { text: without.text, changed: 'cut' };
 }
 

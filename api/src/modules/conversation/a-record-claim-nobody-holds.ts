@@ -27,6 +27,7 @@
  */
 
 import { intoSentences } from './nothing-invented-reaches-them';
+import { aQuestionNotYetAsked } from './nobody-is-left-looking-at-a-paragraph';
 
 const THE_RECORD = '(?:records?|system(?: of record)?|ledger|books|data|files?|logs?)';
 
@@ -66,7 +67,7 @@ export const WHAT_IS_ASKED_WHEN_NOTHING_IS_LEFT = 'What would you like to add ab
 export type RecordClaimCut = { text: string; cut: string[] };
 
 /** The text with every sentence that claims what the record shows, and the sentences that lean on one, taken out. */
-export function withoutARecordClaimNobodyHolds(text: string): RecordClaimCut {
+export function withoutARecordClaimNobodyHolds(text: string, earlierAiTurns: string[] = []): RecordClaimCut {
   const sentences = intoSentences(text);
   if (!sentences.some(claimsTheRecordShowsSomething)) return { text, cut: [] };
   const out: string[] = [];
@@ -89,5 +90,6 @@ export function withoutARecordClaimNobodyHolds(text: string): RecordClaimCut {
     out.push(s);
   }
   const kept = out.join('').trim();
-  return { text: kept || WHAT_IS_ASKED_WHEN_NOTHING_IS_LEFT, cut };
+  /* Never the same plain question twice in one check-in; see nobody-is-left-looking-at-a-paragraph. */
+  return { text: kept || (aQuestionNotYetAsked(WHAT_IS_ASKED_WHEN_NOTHING_IS_LEFT, earlierAiTurns) ?? WHAT_IS_ASKED_WHEN_NOTHING_IS_LEFT), cut };
 }
