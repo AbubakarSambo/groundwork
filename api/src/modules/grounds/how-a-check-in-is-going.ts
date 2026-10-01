@@ -45,6 +45,8 @@ export interface WhatItTakes {
   theOpening?: string | null;
   /** Each person's approved leave, by participant id (week 23). Somebody away is not waited on. */
   leave?: Map<string, Stretch[]>;
+  /** The check-ins list only: it adds where the team is in words, and keeps who the oldest blocker is waited on from, so it can be named to a reader who may be told. */
+  forTheList?: boolean;
 }
 
 export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): HowItIsGoing {
@@ -129,6 +131,7 @@ export function howACheckInIsGoing(it: WhatItTakes, now: Date = new Date()): How
       scenario: (it as any).scenario ?? null,
       thisRound: sessions.filter((c) => (c.sessionNumber ?? 1) === openRound) as any,
       dependencies: (it.dependencies ?? []) as any,
+      forTheList: it.forTheList,
     },
     now,
   );

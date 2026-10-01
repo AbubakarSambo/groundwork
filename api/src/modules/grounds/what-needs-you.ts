@@ -1,3 +1,4 @@
+import { theCheckIn, yourCheckIn } from './which-check-in-it-is';
 import { isShut } from './a-ground-that-has-ended';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 
@@ -20,11 +21,11 @@ import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
  * screen, which gets the moment itself.
  */
 
-export type NeedKind = 'ready' | 'decide' | 'look';
+export type NeedKind = 'ready' | 'decide' | 'look' | 'your_turn';
 
 export interface Need {
   key: string;
-  /** The coloured edge: ready to read, a decision or a thing to do, or something to look at. */
+  /** The coloured edge: ready to read, a decision, something to look at, or `your_turn`, your own check-in to start (starting your turn is not a decision, request 97c). */
   kind: NeedKind;
   title: string;
   detail: string | null;
@@ -71,7 +72,7 @@ export interface ListedCheckIn {
     completedAt?: string | Date | null;
     isSetup?: boolean | null;
   }[];
-  glance?: { progress?: { roundsDone?: number; roundsPlanned?: number | null; answeredThisRound?: number; ofPeople?: number; waitingOn?: string[] } } | null;
+  glance?: { progress?: { roundsDone?: number; roundsPlanned?: number | null; answeredThisRound?: number; ofPeople?: number; waitingOn?: string[]; openRound?: number } } | null;
 }
 
 export interface WaitingForApproval {
@@ -110,6 +111,7 @@ const A_WHILE = 7;
 const AHEAD = 14 * DAY;
 
 const time = (d: string | Date | null | undefined) => (d ? new Date(d).getTime() : null);
+const cap = (t: string) => `${t.charAt(0).toUpperCase()}${t.slice(1)}`;
 const firstSentence = (text: string | null | undefined) => (text ? sentencesIn(text)[0]?.trim() || null : null);
 
 function isOver(g: ListedCheckIn) {
@@ -148,11 +150,7 @@ function whoHasNotYet(missing: { name: string | null; isMe: boolean }[]): string
   return missing.length === 1 ? '1 person has not checked in yet.' : `${missing.length} people have not checked in yet.`;
 }
 
-/** The session in the reader's words, as the board says it: "the second check-in". */
-const SESSION_WORDS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
-function theSession(n: number): string {
-  return n >= 1 && n <= SESSION_WORDS.length ? `the ${SESSION_WORDS[n - 1]} check-in` : `check-in number ${n}`;
-}
+const theSession = theCheckIn;
 
 export function whatNeedsYou(
   list: ListedCheckIn[],
@@ -182,6 +180,9 @@ export function whatNeedsYou(
     const mayName = iRunIt || (isAdmin && g.organizationId === reader.organizationId);
     const sessions = sessionsOf(g);
     const base = { groundId: g.id, organizationId: g.organizationId };
+    /* THE TEAM'S ROUND, from the one clock the board and the list read (request 97a). Only where the row
+       carries none is the latest session whose date has come used. */
+    const teamRound = g.glance?.progress?.openRound ?? openSession(g, at);
 
     /*
      * NOT LET IN YET: OFFERED NEITHER A CHECK-IN NOR A REPORT (U.8 third review, PRIVACY).
@@ -203,7 +204,7 @@ export function whatNeedsYou(
         const days = opened ? Math.floor((at - opened) / DAY) : 0;
         const need: Need = {
           key: `turn-${g.id}`,
-          kind: 'decide',
+          kind: 'your_turn',
           title: next.sessionNumber === 1 ? `Your first check-in for ${g.label}` : `Your own check-in for ${g.label}`,
           /*
            * The prototype's second line (today-lead.txt). "Everyone else's answers are read against
@@ -269,7 +270,7 @@ export function whatNeedsYou(
 
     /* Who has checked in, for whoever runs it or an admin. The check-in with the most people wins. */
     if (!over && mayName) {
-      const n = openSession(g, at);
+      const n = teamRound;
       /* Somebody an admin did not let in cannot be asked, so is neither counted nor named (request 95). */
       const notLetInIds = new Set((g.participants ?? []).filter((p) => p.notLetIn).map((p) => p.id));
       const rows = sessions.filter((c) => c.sessionNumber === n && !notLetInIds.has(c.participantId));
@@ -300,10 +301,15 @@ export function whatNeedsYou(
       }
     }
 
-    /* Coming up: the next session that opens, for you, or for everybody when you run it. */
+    /*
+     * Coming up: the next check-in that opens, said as the board says it (request 97a). For somebody who
+     * runs the check-in it is the team's: the first round after the one that is open, the same for every
+     * person who runs it. For a person it is their own, said as theirs, because one person's next
+     * check-in can be a round ahead of the team's.
+     */
     if (!over) {
       const future = sessions
-        .filter((c) => (me && c.participantId === me.id) || mayName)
+        .filter((c) => (mayName ? c.sessionNumber > teamRound : me && c.participantId === me.id))
         .filter((c) => {
           const t = time(c.availableFrom);
           /* A session somebody has started has opened; it is not "coming up" (request 86). */
@@ -313,7 +319,7 @@ export function whatNeedsYou(
       if (future) {
         comingUp.push({
           at: new Date(time(future.availableFrom)!).toISOString(),
-          what: `Session ${future.sessionNumber} of ${g.label} opens.`,
+          what: mayName ? `${cap(theCheckIn(future.sessionNumber))} for ${g.label} opens.` : `${yourCheckIn(future.sessionNumber)} for ${g.label} opens.`,
           to: `/grounds/${g.id}`,
         });
       }

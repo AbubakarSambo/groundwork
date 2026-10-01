@@ -84,7 +84,7 @@ describe('and the list carries it', () => {
        the check-in gets both only once the report is released, and both go through the report's own
        naming door, so no label is ever served. This pinned the shorthand `latestFinding,
        latestSummary,` that the gate replaced. */
-    expect(GROUNDS).toMatch(/const mayReadTheReport = runsIt \|\| !!fullReport\?\.releasedAt;/);
+    expect(GROUNDS).toMatch(/const mayReadTheReport = runsIt \|\| \(!!fullReport\?\.releasedAt && peersVisibleEffective\);/);
     expect(GROUNDS).toMatch(/if \(!mayReadTheReport \|\| \(!latestFinding && !latestSummary\)\) return \{ latestFinding: null, latestSummary: null \};/);
     expect(GROUNDS).toMatch(/this\.reportTextAsItWasShared\(rest as any, \{ latestFinding, latestSummary \}, fullReport\?\.sharedAs, me\?\.id \?\? null, runsIt\)/);
     expect(GROUNDS).toMatch(/return \{ latestFinding: named\.latestFinding, latestSummary: named\.latestSummary \};/);

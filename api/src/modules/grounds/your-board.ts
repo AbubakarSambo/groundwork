@@ -1,3 +1,4 @@
+import { howManyCheckIns } from './which-check-in-it-is';
 import { isShut } from './a-ground-that-has-ended';
 import { whatNeedsYou, type ListedCheckIn, type Need } from './what-needs-you';
 import type { AServedPattern } from '../patterns/who-reads-a-pattern';
@@ -166,9 +167,10 @@ const NOT_ABOUT_ONE_PERSON = new Set(['SUCCESS_DEFINITION']);
 const THINGS_TO_DO = new Set(['COMMITMENT', 'TODO']);
 
 function sessionsLine(done: number): string {
-  if (done === 0) return 'You have not finished a session yet.';
-  if (done === 1) return 'You have finished 1 session.';
-  return `You have finished ${done} sessions.`;
+  /* In the board's own word, "check-in", and counted in words as the rest of the page counts (request 97a). */
+  if (done === 0) return 'You have not finished a check-in yet.';
+  if (done === 1) return 'You have finished one check-in.';
+  return `You have finished ${howManyCheckIns(done)} check-ins.`;
 }
 
 /** A bare field name ("shops"), not a phrase anybody wrote as a sentence: one lowercase word. */

@@ -1,3 +1,5 @@
+import { startsWithAPronoun, whoseIsIt } from './a-blocker-that-says-her-or-his';
+import { whereTheTeamIs, howManyAreDone } from './which-check-in-it-is';
 import { DependencyStatus } from '@prisma/client';
 import { whoIsExpected, howManyOfThemAnswered, howManyInTheRoundAnswered, type SomebodyWhoMightAnswer } from '../reports/how-many-have-answered';
 import { ReadDependency, dedupeDependencies, blockerHasSubstance } from '../board/reads';
@@ -34,9 +36,19 @@ export interface AtAGlance {
     /** Who, of the people counted in `ofPeople`, has not answered yet: participant ids. So Today's
         sentence and the list's "2 of 3 answered" count the same people (U.5 review). */
     waitingOn: string[];
+    /** The team's round, from the board's own clock (whichRoundIsOpen). Every screen says which check-in it is from this. */
+    openRound?: number;
+    /** That round as a sentence for the list to show as it is: "It is on the second check-in of 12." Null before any. */
+    whereItIs?: string | null;
+    /** "Two of the 12 check-ins are done." for the line under it, or null where `whereItIs` already says it. */
+    howManyAreDone?: string | null;
   };
   /** What is in the way, counted as the board counts it, with the longest-standing one named. */
-  inTheWay: { count: number; oldest: string | null; daysWaiting: number | null };
+  inTheWay: {
+    count: number; oldest: string | null; daysWaiting: number | null;
+    /** Who the oldest one is waited on from, so the list can name them for a reader who may. Never the screen's to read. */
+    oldestOnParticipantId?: string | null;
+  };
 }
 
 export interface GlanceInput {
@@ -55,6 +67,8 @@ export interface GlanceInput {
   scenario?: string | null;
   /** This round's check-ins, whatever their state. Kept for callers that do not carry rows per person. */
   thisRound: { participantId: string; status: string }[];
+  /** Only the check-ins list asks for this: the round in words, and who the oldest blocker is waited on from. The board does not serve either. */
+  forTheList?: boolean;
   dependencies: (ReadDependency & { createdAt?: Date | null; what: string })[];
 }
 
@@ -107,10 +121,16 @@ export function atAGlance(i: GlanceInput, now: Date = new Date()): AtAGlance {
       answeredThisRound: shown.answered,
       ofPeople: shown.ofPeople,
       waitingOn: counted.waitingOn,
+      ...(i.forTheList ? {
+        openRound: session,
+        whereItIs: whereTheTeamIs(i.sessionNumber ? session : 0, i.roundsPlanned, i.roundsDone),
+        howManyAreDone: howManyAreDone(i.roundsDone, i.roundsPlanned),
+      } : {}),
     },
     inTheWay: {
       count: real.length,
-      oldest: oldest?.what ?? null,
+      oldest: oldest?.what ? (startsWithAPronoun(oldest.what) ? whoseIsIt(oldest.what) : oldest.what) : null,
+      ...(i.forTheList && oldest && startsWithAPronoun(oldest.what) ? { oldestOnParticipantId: (oldest as any).onParticipantId ?? null } : {}),
       daysWaiting: oldest?.createdAt
         ? Math.max(0, Math.floor((now.getTime() - oldest.createdAt.getTime()) / A_DAY))
         : null,

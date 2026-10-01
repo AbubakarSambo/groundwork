@@ -53,6 +53,8 @@ import { totalSessionsFor } from './session-count';
 import { answeredOnALink, aLinkRoundIsReady } from './an-open-link-has-no-roster';
 import { sentencesIn } from '../presentation/where-a-sentence-actually-ends';
 import { BoardFamily, familyFor } from '../board/board-families';
+import { theStoryHasSomeoneToPointTo, withoutAStoredCount } from '../reports/the-picture-in-plain-sentences';
+import { whoseIsIt } from './a-blocker-that-says-her-or-his';
 import { peersAreNamedOn, peersAreNamedByDefaultOn } from '../reports/peers-are-named';
 import { runIntake } from '../conversation/intake';
 import { objectiveState, describeObjective, mayBeReadAgainst, canShowMovement, BASELINE_IS_FROZEN } from './an-objective-belongs-to-a-person';
@@ -1461,6 +1463,7 @@ export class GroundsService {
           /* The opening the report wrote, preferred over slicing the picture. See how-a-check-in-is-going. */
           theOpening: ((rest as any).report?.theOpening as string | null) ?? null,
           leave: leaveOnTheList,
+          forTheList: true,
         });
         const roundsDone = going.glance.progress.roundsDone;
         /*
@@ -1484,7 +1487,9 @@ export class GroundsService {
          * sentence ends without a second copy of the rule - and a decimal or a closing quote is how
          * splitting on a full stop goes wrong. `sentencesIn` is the one that knows.
          */
-        const latestSummary = going.latestSummary;
+        /* AND NOT A COUNT OF WHO HAS ANSWERED, which was true when the report was written and is stale once
+         * somebody is added (request 97b): the live count is served beside it, in glance.progress. */
+        const latestSummary = going.latestSummary ? theStoryHasSomeoneToPointTo(withoutAStoredCount(going.latestSummary)) || null : null;
         /*
          * WHETHER THIS ONE HAS A BOARD AT ALL, said by the side that decides it.
          *
@@ -1585,9 +1590,38 @@ export class GroundsService {
           hasBoard,
           /* No count of other people either, where they are not named to this reader: not how many
              answered, nor what is holding them up. Their own turn still shows from their own rows. */
-          glance: hidePeers
-            ? { ...glance, progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0, waitingOn: [] }, inTheWay: { count: 0, oldest: null, daysWaiting: null } }
-            : glance,
+          glance: (() => {
+            const { oldestOnParticipantId, ...inTheWay } = (glance.inTheWay ?? {}) as any;
+            if (hidePeers) {
+              /* What the reader may say of themselves, in place of numbers about people they are not shown
+                 (request 97d): "Just started" was read from those zeroes and was untrue of a check-in
+                 where others had answered. */
+              const open = glance.progress.openRound;
+              const mineThisRound = ((checkInsShown ?? []) as any[]).filter((c) => !c.isSetup && c.sessionNumber === open);
+              const answered = mineThisRound.some((c) => c.status === 'COMPLETED' || c.status === 'DECLINED');
+              return {
+                ...glance,
+                progress: { ...glance.progress, answeredThisRound: 0, ofPeople: 0, waitingOn: [], youHaveAnswered: answered, standsSaid: answered ? 'You have answered.' : 'You have not answered yet.' },
+                inTheWay: { count: 0, oldest: null, daysWaiting: null },
+              };
+            }
+            /* A thing waited on that starts with "her" says "A colleague's"; a reader who may name people is told whose. */
+            let oldest: string | null = inTheWay.oldest;
+            if (oldest && oldestOnParticipantId && oldest.startsWith("A colleague's")) {
+              const who = ((allParticipants ?? []) as any[]).find((p) => p.id === oldestOnParticipantId);
+              const name = (who?.user?.firstName ?? '').trim() || (who?.nameGiven ?? '').trim().split(/\s+/)[0] || null;
+              if (name && (runsIt || peersVisibleEffective)) oldest = whoseIsIt(oldest.replace(/^A colleague's/, 'her'), name);
+            }
+            return { ...glance, inTheWay: { ...inTheWay, oldest } };
+          })(),
+          /* Who runs it, for a reader who is shown nobody else on the row (request 97d). Not a peer: the person
+             who invited them. Never their private description of anybody, only a name they gave or have. */
+          runByName: ((): string | null => {
+            const lead = ((allParticipants ?? []) as any[]).find((p) => p.partyType === 'INITIATOR') ?? ((allParticipants ?? []) as any[]).find((p) => p.userId && p.userId === (rest as any).initiatorId);
+            if (!lead) return null;
+            const named = [lead.user?.firstName, lead.user?.lastName].filter(Boolean).join(' ').trim() || (lead.nameGiven ?? '').trim();
+            return named || null;
+          })(),
         });
       })
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
