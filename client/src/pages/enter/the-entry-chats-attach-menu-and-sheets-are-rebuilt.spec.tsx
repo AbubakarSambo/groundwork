@@ -32,8 +32,10 @@ import {
 const FULL_SOURCE = readFileSync(join(__dirname, 'EntryChatPage.tsx'), 'utf8')
 
 /* Stops before "Input bar / save CTA" on purpose: the check-in composer and the closed-session
-   "Invite & finish" bar are still old markup there, owned by 4d-4 ("the check-in phase's own
-   composer"), not this part. */
+   invite bar were still old markup there at the time this part was written, owned by 4d-4 ("the
+   check-in phase's own composer") rather than this one - since rebuilt, and covered by
+   the-entry-chats-everything-else-is-rebuilt.spec.tsx's own range instead. This range stays as it
+   was scoped, so a later edit above it cannot silently widen what this file checks. */
 const QUICK_ACTIONS_START = FULL_SOURCE.indexOf('{/* Natural close prompt */}')
 const QUICK_ACTIONS_END = FULL_SOURCE.indexOf('{/* Input bar / save CTA */}')
 if (QUICK_ACTIONS_START === -1 || QUICK_ACTIONS_END === -1 || QUICK_ACTIONS_END <= QUICK_ACTIONS_START) {

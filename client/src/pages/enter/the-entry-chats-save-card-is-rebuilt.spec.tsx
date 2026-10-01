@@ -120,10 +120,10 @@ describe('the save card, anonymous, before saving', () => {
     const { authApi } = await import('@/api/auth')
     seedClosedSession()
     const { container } = renderPage()
-    /* The card sits behind "Invite & finish" until opened - the same closed-session bar this
+    /* The card sits behind "Invite and finish" until opened - the same closed-session bar this
        page has always shown, untouched by this part. Opening it is a fold, not a save or a send:
        it reveals a section, it does not submit anything. */
-    fireEvent.click(await screen.findByText(/Invite & finish/))
+    fireEvent.click(await screen.findByText(/Invite and finish/))
     expect(screen.getByPlaceholderText('your@email.com')).toBeTruthy()
     expect(screen.getAllByText('Daniel, the next six weeks').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Save my check-in' })).toBeTruthy()
@@ -137,7 +137,7 @@ describe('the save card, anonymous, before saving', () => {
     vi.mocked(authApi.entrySave).mockResolvedValue({ draftToken: 'd-token' } as any)
     seedClosedSession()
     const { container } = renderPage()
-    fireEvent.click(await screen.findByText(/Invite & finish/))
+    fireEvent.click(await screen.findByText(/Invite and finish/))
     const emailInput = screen.getByPlaceholderText('your@email.com')
     fireEvent.change(emailInput, { target: { value: 'lead@example.test' } })
     fireEvent.submit(emailInput.closest('form')!)
@@ -155,7 +155,7 @@ describe('the save card, already signed in', () => {
     const { authApi } = await import('@/api/auth')
     seedClosedSession()
     const { container } = renderPage()
-    fireEvent.click(await screen.findByText(/Invite & finish/))
+    fireEvent.click(await screen.findByText(/Invite and finish/))
     expect(screen.getByRole('button', { name: 'Save this' })).toBeTruthy()
     expect(screen.getByText('Saving to rukia@example.test. No confirmation needed, you are already signed in.')).toBeTruthy()
     expect(screen.queryByPlaceholderText('your@email.com')).toBeNull()

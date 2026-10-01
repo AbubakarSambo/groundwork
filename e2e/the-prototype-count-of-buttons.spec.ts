@@ -190,6 +190,16 @@ const SCREENS: Record<string, Counterpart> = {
   'pages/chat/ChatPage.tsx': { productPath: '/checkin/614f5ad3-eace-4c01-ac58-0226a51c1b6b', reader: 'lead', hash: '#/c/sales/done', persona: 'part' },
   'components/gw/checkin/TheCheckInHeader.tsx': null, // a piece of the check-in conversation above
   'components/gw/checkin/TheEndCard.tsx': null, // a piece of the check-in conversation above
+  /*
+   * GROUP 3, PIECE 4 (starting a check-in, docs/prototype/screens/B1-starting-a-check-in), now
+   * done in full (4d-1 through 4d-4): EntryChatPage.tsx, opened as Rukia, the same lead persona
+   * the prototype's own "start" screen (start.txt/start.jpg) is drawn for. This opens /start as
+   * it first shows itself - the single "What do you want your team to check in about?" box, one
+   * "Send" and the "See every situation" link - not the later onboarding, check-in or save-card
+   * states the conversation moves through, which the entry-chat specs in client/src/pages/enter/
+   * already cover with mocked data rather than a live session.
+   */
+  'pages/enter/EntryChatPage.tsx': { productPath: '/start', reader: 'lead', hash: '#/start', persona: 'lead' },
 };
 
 /* Sign-in is by the emailed link, through the one mail catcher every browser test shares

@@ -161,4 +161,14 @@ export const REBUILT_PAGES: string[] = [
    * list yet - see the morning report for why.
    */
   'pages/home/SaveCard.tsx',
+  /*
+   * GROUP 3, PIECE 4 (continued, 4d-4): `EntryChatPage.tsx` itself, the live way to start a
+   * check-in at /start - done in four parts (4d-1 the frame/header/composer, 4d-2 the attach menu
+   * and sheets, 4d-3 the save card, 4d-4 everything left: the "fills in as you talk" side panel's
+   * own wrapper, the check-in phase's composer and bubbles, and the lead's first-check-in briefing,
+   * seemingly unreachable today - see that screen's own comment). `CreateGroundPage.tsx` stays off
+   * this list; its own render is unreachable (see the morning report), so rebuilding it would guard
+   * dead code rather than anything a person can open.
+   */
+  'pages/enter/EntryChatPage.tsx',
 ]

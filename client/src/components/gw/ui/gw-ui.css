@@ -111,6 +111,7 @@ body.gwui-cover-open .gw-feedback-btn { display: none !important; }
 
 /* ── FINE PRINT (prototype: the sentence under a button, e.g. "About two minutes…") ─────── */
 .gwui-fine { font-size: 13px; line-height: 1.5; color: var(--gw-sub); margin: 0; }
+.gwui-fine-centre { text-align: center; }
 
 /* ── FOOT DIVIDER (a "not right now"/decline footer, set off by a rule above it) ─────────── */
 .gwui-foot-divider { padding-top: 18px; border-top: 1px solid var(--gw-border); text-align: center; }
@@ -1597,6 +1598,59 @@ textarea.gwui-input { padding: 12px 16px; min-height: 96px; resize: vertical; }
 .gwui-ec-savecard-link-box { flex: 1; font-size: 13px; color: var(--gw-navy); background: var(--gw-blue-bg); border: 1px solid var(--gw-blue-b); border-radius: 7px; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gwui-ec-savecard-done { text-align: center; padding-top: 8px; }
 .gwui-ec-savecard-done-text { font-size: 13px; color: var(--gw-muted); padding-top: 8px; line-height: 1.6; }
+
+/* 4D-4: the closed-session invite bar, and the check-in composer's own centred width (the
+   message list above it centres the same way, still with its own inline maxWidth/margin until
+   that part of this rebuild reaches it). */
+.gwui-ec-invite-bar { border-top: 1px solid var(--gw-border); background: white; flex-shrink: 0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
+.gwui-ec-invite-bar-text { flex: 1; }
+.gwui-ec-invite-bar-title { font-size: 13px; font-weight: 600; color: var(--gw-text); }
+.gwui-ec-invite-bar-sub { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-ec-checkin-composer-wrap { max-width: 680px; width: 100%; margin: 0 auto; }
+.gwui-ec-fills-in { width: 300px; flex-shrink: 0; padding: 18px 20px 18px 0; overflow-y: auto; }
+.gwui-ec-checkin { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.gwui-ec-checkin-notice { background: var(--gw-amber-bg); border-bottom: 1px solid var(--gw-amber-b-soft); padding: 8px 16px; flex-shrink: 0; }
+.gwui-ec-checkin-notice-inner { max-width: 680px; margin: 0 auto; font-size: 13px; color: var(--gw-amber-t); line-height: 1.5; }
+.gwui-ec-checkin-messages { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; max-width: 680px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+.gwui-ec-checkin-starting { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 24px; }
+.gwui-ec-checkin-seam { display: flex; align-items: center; gap: 10px; padding: 2px 12px 10px; }
+.gwui-ec-checkin-seam-text { font-size: 13px; color: var(--gw-sub); font-weight: 700; white-space: nowrap; }
+.gwui-ec-checkin-note { font-size: 13px; color: var(--gw-sub); text-align: center; padding: 4px 12px 8px; line-height: 1.5; }
+.gwui-ec-checkin-note-row { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 0 12px 10px; }
+
+/* The lead's own first-check-in briefing (showAdminBriefing - see the note above where this
+   renders about why it may be unreachable today). */
+.gwui-ec-briefing { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--gw-page); padding: 24px 20px; }
+.gwui-ec-briefing-inner { max-width: 480px; width: 100%; }
+.gwui-ec-briefing-brand { margin-bottom: 24px; }
+.gwui-ec-briefing-wordmark { font-size: 13px; font-weight: 700; color: var(--gw-navy); letter-spacing: -.01em; }
+.gwui-ec-briefing-title { font-size: 22px; font-weight: 800; color: var(--gw-text); line-height: 1.2; margin-bottom: 8px; }
+.gwui-ec-briefing-sub { font-size: 14px; color: var(--gw-sub); line-height: 1.7; margin-bottom: 24px; }
+.gwui-ec-briefing-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+.gwui-ec-briefing-card { display: flex; align-items: flex-start; gap: 12px; padding: 13px 16px; background: white; border-radius: 10px; border: 1px solid var(--gw-border); }
+.gwui-ec-briefing-icon { font-size: 16px; flex-shrink: 0; }
+.gwui-ec-briefing-card-body { font-size: 13px; color: var(--gw-sub); line-height: 1.55; }
+.gwui-ec-field-label { font-size: 13px; font-weight: 600; color: var(--gw-sub); margin-bottom: 4px; }
+.gwui-ec-card-title { font-size: 13px; font-weight: 600; color: var(--gw-text); margin-bottom: 2px; }
+.gwui-ec-card-title-700 { font-weight: 700; }
+.gwui-ec-rule { flex: 1; height: 1px; background: var(--gw-border); }
+
+/* "Fills in as you talk" (FillsInAsYouTalk.tsx, B1's side panel on a wide screen) - its own
+   sizes, narrower than the shared Panel; see that file's own comment for why. */
+.gwui-fit-aside { background: white; border: 1px solid var(--gw-border); border-radius: 10px; padding: 16px; }
+.gwui-fit-name { font-size: 15px; font-weight: 700; color: var(--gw-text); }
+.gwui-fit-situation { font-size: 13px; color: var(--gw-sub); margin-top: 2px; }
+.gwui-fit-count { font-size: 13px; font-weight: 700; color: var(--gw-text); margin-top: 8px; }
+.gwui-fit-help { font-size: 13px; color: var(--gw-sub); line-height: 1.5; margin: 2px 0 12px; }
+.gwui-fit-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.gwui-fit-row { display: flex; gap: 8px; }
+.gwui-fit-mark { width: 16px; flex-shrink: 0; font-weight: 700; }
+.gwui-fit-mark-set { color: var(--gw-green-t); }
+.gwui-fit-mark-unset { color: var(--gw-muted); }
+.gwui-fit-label { display: block; font-size: 13px; font-weight: 700; color: var(--gw-text); }
+.gwui-fit-value { display: block; font-size: 13px; color: var(--gw-sub); line-height: 1.45; }
+.gwui-fit-value-name { color: var(--gw-text); }
+.gwui-fit-more { margin-top: 4px; }
 
 /* The correction thread inside the report's own dark card (TheReportYouSawAtTheEnd's correctionSlot). */
 .gwui-ec-correction-intro { font-size: 13px; color: rgba(255,255,255,.75); margin-bottom: 6px; }

@@ -106,16 +106,16 @@ interface OnboardingSelections {
  * settled is a design call, and silently picking one here would be making it by accident.
  */
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gw-sub)', marginBottom: 4 }}>{children}</div>
+  return <div className="gwui-ec-field-label">{children}</div>
 }
 
 function CardTitle({ children, weight = 600 }: { children: React.ReactNode; weight?: 600 | 700 }) {
-  return <div style={{ fontSize: 13, fontWeight: weight, color: 'var(--gw-text)', marginBottom: 2 }}>{children}</div>
+  return <div className={`gwui-ec-card-title${weight === 700 ? ' gwui-ec-card-title-700' : ''}`}>{children}</div>
 }
 
 /** The hairline either side of an "or" divider. */
 function Rule() {
-  return <div style={{ flex: 1, height: 1, background: 'var(--gw-border)' }} />
+  return <div className="gwui-ec-rule" />
 }
 
 function saveSession(s: EntrySession) {
@@ -1160,6 +1160,19 @@ export function fallbackGroundName(situation?: string, where?: string): string {
  * steps advance on a timer because they describe stages of one request, and the
  * last one stays until the report arrives however long that takes.
  */
+/*
+ * PRIMARY-BUTTONS-NEVER-TOGETHER: this page's own `kind="primary"` Buttons never render at once.
+ * - "Start my check-in" (showAdminBriefing) is an early `return` - it replaces this component's
+ *   whole output, so nothing else in this file renders alongside it.
+ * - "Save this" (signed in), "Save my check-in" (anonymous) and "Done" (once the email is sent)
+ *   come from one three-way ternary keyed on `user` and `emailSent` - exactly one branch mounts.
+ * - "Invite and finish" renders only from the closed-bar's own `closed && !showSave` branch, the
+ *   alternative of which is the check-in composer (never a primary button).
+ * - "Add to session" (the doc-context dialog) only mounts while `docContextMode && uploadedDoc`,
+ *   and is a full-screen Modal in front of anything else, so even granting it could in principle
+ *   coexist with the save card's own hidden primary (see the-entry-chats-own-test-helpers.ts for
+ *   why that one is hidden from a person regardless), nobody ever sees two navy buttons at once.
+ */
 export function EntryChatPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -2147,12 +2160,6 @@ export function EntryChatPage() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
   }
 
-  function autoResize(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setInput(e.target.value)
-    e.target.style.height = '38px'
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
-  }
-
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -2653,46 +2660,48 @@ export function EntryChatPage() {
     sendOnboarding(text, null)
   }
 
+  /* Seemingly unreachable, the same finding the previous commit made about CreateGroundPage's own
+     render: nothing in this file calls `setShowAdminBriefing(true)`, only this block's own
+     `setShowAdminBriefing(false)`. Documented rather than deleted, same as that finding - a page
+     losing a screen is a bigger decision than a rendering rebuild, so this still gets the same
+     shared-parts treatment as everything else, in case something upstream starts reaching it. */
   if (showAdminBriefing) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gw-page)', padding: '24px 20px' }}>
-        <div style={{ maxWidth: 480, width: '100%' }}>
-          <div style={{ marginBottom: 24 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gw-navy)', letterSpacing: '-.01em' }}>Groundwork</span>
+      <div className="gwui-ec-briefing">
+        <div className="gwui-ec-briefing-inner">
+          <div className="gwui-ec-briefing-brand">
+            <span className="gwui-ec-briefing-wordmark">Groundwork</span>
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--gw-text)', lineHeight: 1.2, marginBottom: 8 }}>You're up first.</h1>
-          <p style={{ fontSize: 14, color: 'var(--gw-sub)', lineHeight: 1.7, marginBottom: 24 }}>
+          <h1 className="gwui-ec-briefing-title">You're up first.</h1>
+          <p className="gwui-ec-briefing-sub">
             Yours is the first one in. Here is what to expect.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>⏱</span>
+          <div className="gwui-ec-briefing-list">
+            <div className="gwui-ec-briefing-card">
+              <span className="gwui-ec-briefing-icon">⏱</span>
               <div>
                 <CardTitle weight={700}>About 10 minutes</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
+                <div className="gwui-ec-briefing-card-body">Answer in your own words. The questions are based on what you just described. There are no right answers.</div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>📨</span>
+            <div className="gwui-ec-briefing-card">
+              <span className="gwui-ec-briefing-icon">📨</span>
               <div>
                 <CardTitle weight={700}>Invite links come after</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
+                <div className="gwui-ec-briefing-card-body">Once you finish, you will get invite links to send to the other people involved. They check in independently.</div>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px', background: 'white', borderRadius: 10, border: '1px solid var(--gw-border)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>📄</span>
+            <div className="gwui-ec-briefing-card">
+              <span className="gwui-ec-briefing-icon">📄</span>
               <div>
                 <CardTitle weight={700}>The shared report</CardTitle>
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', lineHeight: 1.55 }}>When everyone is in, the report shows where the team agrees, where it differs, and what to do next.</div>
+                <div className="gwui-ec-briefing-card-body">When everyone is in, the report shows where the team agrees, where it differs, and what to do next.</div>
               </div>
             </div>
           </div>
-          <button
-            onClick={() => { setShowAdminBriefing(false); startCheckin.mutate() }}
-            style={{ width: '100%', padding: '14px 20px', borderRadius: 8, background: 'var(--gw-navy)', color: 'white', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
+          <Button kind="primary" wide onClick={() => { setShowAdminBriefing(false); startCheckin.mutate() }}>
             Start my check-in
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -3192,7 +3201,7 @@ export function EntryChatPage() {
                 * them it is a string, and nothing in the build says so.
                 */}
               {startCheckin.isPending && (
-                <p className="gwui-fine" style={{ textAlign: 'center' }}>
+                <p className="gwui-fine gwui-fine-centre">
                   Starting your session…
                 </p>
               )}
@@ -3267,7 +3276,7 @@ export function EntryChatPage() {
           {/* U.6: the panel that fills in as you talk (new.txt), beside the conversation on a wide
               screen. Built only from what this page already holds from the conversation. */}
           {!atTheDoor && (
-            <div className="gw-fills-in" style={{ width: 300, flexShrink: 0, padding: '18px 20px 18px 0', overflowY: 'auto' }}>
+            <div className="gw-fills-in gwui-ec-fills-in">
               <FillsInAsYouTalk
                 name={groundName}
                 situation={(() => {
@@ -3289,11 +3298,11 @@ export function EntryChatPage() {
 
         {/* PHASE: CHECK-IN (AI-driven, message 15+) */}
         {phase === 'checkin' && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="gwui-ec-checkin">
             {/* Not-signed-up reminder: the entry user has no account until they save. */}
             {!user && (
-              <div style={{ background: 'var(--gw-amber-bg)', borderBottom: '1px solid var(--gw-amber-b-soft)', padding: '8px 16px', flexShrink: 0 }}>
-                <div style={{ maxWidth: 680, margin: '0 auto', fontSize: 12.5, color: 'var(--gw-amber-t)', lineHeight: 1.5 }}>
+              <div className="gwui-ec-checkin-notice">
+                <div className="gwui-ec-checkin-notice-inner">
                   You are not signed up yet. Your answers are saved to this device as you go, but save your email at the end to keep this record.
                 </div>
               </div>
@@ -3301,10 +3310,10 @@ export function EntryChatPage() {
             <div
               ref={msgsRef}
               aria-live="polite"
-              style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 680, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}
+              className="gwui-ec-checkin-messages"
             >
               {startCheckin.isPending && (
-                <div style={{ fontSize: 13, color: 'var(--gw-sub)', textAlign: 'center', padding: 24 }}>Starting your session…</div>
+                <div className="gwui-ec-checkin-starting">Starting your session…</div>
               )}
               {/*
                 W1. THE SEAM BETWEEN SETUP AND THE CHECK-IN.
@@ -3323,21 +3332,21 @@ export function EntryChatPage() {
                 seam the comment above it explains, said as a sentence a person would actually read.
               */}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 12px 10px' }}>
+                <div className="gwui-ec-checkin-seam">
                   <Rule />
-                  <span style={{ fontSize: 11.5, color: 'var(--gw-sub)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  <span className="gwui-ec-checkin-seam-text">
                     Setup is done. Your check-in starts here.
                   </span>
                   <Rule />
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '4px 12px 8px', lineHeight: 1.5 }}>
+                <div className="gwui-ec-checkin-note">
                   What you say from here is yours, and it goes on your private record. About 10 minutes, a few exchanges (around 3 answers), then you can end the session to get your report.
                 </div>
               )}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', fontSize: 12, color: 'var(--gw-sub)', padding: '0 12px 10px', lineHeight: 1.5 }}>
+                <div className="gwui-ec-checkin-note gwui-ec-checkin-note-row">
                   <VennIcon size={22} />
                   <span>Your individual report is private. The shared report shows where everyone agrees and where they differ.</span>
                 </div>
@@ -3352,45 +3361,23 @@ export function EntryChatPage() {
                 session afterwards runs on memory alone.
               */}
               {!startCheckin.isPending && displayedHistory.length <= 2 && (
-                <div style={{ fontSize: 12, color: 'var(--gw-sub)', textAlign: 'center', padding: '0 12px 12px', lineHeight: 1.5 }}>
-                  Anything else the check-ins should be held against - a plan, a brief, a spreadsheet - goes on the Context and resources tab once this is saved. You can add it any time.
+                <div className="gwui-ec-checkin-note">
+                  Anything else the check-ins should be held against, such as a plan, a brief or a spreadsheet, goes on the Context and resources tab once this is saved. You can add it any time.
                 </div>
               )}
               {displayedHistory.map((m, i) => {
+                const typing = m.content === '…'
                 return (
-                  <div
-                    key={i}
-                    style={{
-                      maxWidth: '82%',
-                      alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                      background: m.role === 'user' ? 'var(--gw-navy)' : 'white',
-                      color: m.role === 'user' ? 'white' : 'var(--gw-text)',
-                      border: m.role === 'assistant' ? '1px solid var(--gw-border)' : 'none',
-                      borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '4px 16px 16px 16px',
-                      padding: '10px 14px',
-                      fontSize: 14,
-                      lineHeight: 1.65,
-                      whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', minWidth: 0,
-                      opacity: (m.content === '…') ? 0.45 : 1,
-                      transition: 'opacity .3s',
-                      boxShadow: m.role === 'assistant' ? '0 1px 3px rgba(0,0,0,.06)' : 'none',
-                    }}
-                  >
-                    {m.content === '…' ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <Bubble key={i} mine={m.role === 'user'} opacity={typing ? 0.45 : 1}>
+                    {typing ? (
+                      <span className="gwui-ci-dots">
                         {[0, 1, 2].map(i2 => (
-                          <span key={i2} style={{
-                            display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-                            background: 'var(--gw-sub)',
-                            animation: 'gwDotBounce 1.2s ease-in-out infinite',
-                            animationDelay: `${i2 * 0.2}s`,
-                          }} />
+                          <span key={i2} className="gwui-ci-dot" style={{ animationDelay: `${i2 * 0.2}s` }} />
                         ))}
-                        <style>{`@keyframes gwDotBounce { 0%,80%,100%{transform:translateY(0);opacity:.4} 40%{transform:translateY(-5px);opacity:1} }`}</style>
                       </span>
                     ) : nothingInternalReachesTheBubble(m.content)}
-                    {streamingIdx === i && <span style={{ display: 'inline-block', width: 2, height: '1em', background: 'var(--gw-navy)', marginLeft: 2, verticalAlign: 'text-bottom', animation: 'blink .7s step-end infinite' }} />}
-                  </div>
+                    {streamingIdx === i && <span className="gwui-ci-caret" />}
+                  </Bubble>
                 )
               })}
             </div>
@@ -3448,35 +3435,28 @@ export function EntryChatPage() {
 
             {/* Input bar / save CTA */}
             {closed && !showSave ? (
-              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gw-text)' }}>{'What you said is on record.'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gw-sub)', marginTop: 2 }}>{skippedCheckin ? 'After this one, only the people you invite check in. You read what comes back.' : 'Invite others to check in - the shared report releases when all parties are in.'}</div>
+              <div className="gwui-ec-invite-bar">
+                <div className="gwui-ec-invite-bar-text">
+                  <div className="gwui-ec-invite-bar-title">{'What you said is on record.'}</div>
+                  <div className="gwui-ec-invite-bar-sub">{skippedCheckin ? 'After this one, only the people you invite check in. You read what comes back.' : 'Invite others to check in. The shared report releases when all parties are in.'}</div>
                 </div>
-                <button
-                  onClick={() => setShowSave(true)}
-                  style={{ flexShrink: 0, padding: '8px 16px', borderRadius: 7, background: 'var(--gw-navy)', color: 'white', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Invite &amp; finish →
-                </button>
+                <Button kind="primary" onClick={() => setShowSave(true)}>
+                  Invite and finish
+                </Button>
               </div>
             ) : !closed && (
-              <div style={{ borderTop: '1px solid var(--gw-border)', background: 'white', flexShrink: 0 }}>
-                <div style={{ padding: '10px 16px', display: 'flex', gap: 8, alignItems: 'flex-end', maxWidth: 680, margin: '0 auto' }}>
-                  <textarea
-                    ref={taRef}
-                    placeholder="Type your response."
-                    value={input}
-                    onChange={autoResize}
-                    onKeyDown={handleCheckinKey}
-                    disabled={loading}
-                    style={{ flex: 1, resize: 'none', height: 38, maxHeight: 120, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, border: '1px solid var(--gw-border)', borderRadius: 6, background: 'white', fontFamily: 'inherit', outline: 'none', color: 'var(--gw-text)' }}
-                  />
-                  <button onClick={() => send()} disabled={loading || !input.trim()} aria-label="Send message"
-                    style={{ padding: '0 14px', borderRadius: 6, background: 'var(--gw-navy)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 18, flexShrink: 0, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (loading || !input.trim()) ? 0.35 : 1 }}>
-                    ↑
-                  </button>
-                </div>
+              <div className="gwui-ec-checkin-composer-wrap">
+                <Composer
+                  value={input}
+                  onChange={setInput}
+                  onKeyDown={handleCheckinKey}
+                  onSend={() => send()}
+                  disabled={loading}
+                  sendDisabled={loading || !input.trim()}
+                  sendLabel="Send message"
+                  placeholder="Type your response."
+                  inputRef={taRef}
+                />
               </div>
             )}
           </div>

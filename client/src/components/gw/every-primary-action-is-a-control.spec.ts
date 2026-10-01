@@ -54,29 +54,24 @@ describe('no span or div is a control', () => {
 
 describe('a glyph carries a name', () => {
   it('every send arrow is labelled', () => {
-    for (const rel of ['pages/enter/EntryChatPage.tsx']) {
-      const src = read(rel)
-      /* A tag can hold `=>` inside a style object, so the tag is walked back from the glyph rather than matched with [^>]*. */
-      let at = src.indexOf('↑'); let seen = 0
-      while (at !== -1) {
-        const open = src.lastIndexOf('<button', at)
-        expect(src.slice(open, at)).toContain('aria-label="Send message"')
-        seen++
-        at = src.indexOf('↑', at + 1)
-      }
-      expect(seen).toBeGreaterThan(0)
-    }
     /**
      * ROUND 5, ITEM B: ChatPage.tsx's send arrow moved into components/gw/ui/Composer.tsx, whose
      * own `aria-label` comes from a `sendLabel` prop rather than a literal string - so the
      * guarantee splits in two: Composer's own button really does carry whatever name it is given
-     * (checked once, in general, here), and ChatPage really does give it a real one.
+     * (checked once, in general, here), and every caller really does give it a real one.
+     *
+     * 4D-4: EntryChatPage.tsx's own check-in composer (it used to write its own `<button>↑</button>
+     * aria-label="Send message">` by hand) moved onto this same shared Composer, so it joins
+     * ChatPage.tsx on this side of the check rather than being read for a literal arrow of its
+     * own - there is no longer a bare `<button>` with "↑" in that file at all.
      */
     const composer = read('components/gw/ui/Composer.tsx')
     const at = composer.indexOf('↑')
     const open = composer.lastIndexOf('<button', at)
     expect(composer.slice(open, at)).toContain('aria-label={sendLabel}')
     expect(read('pages/chat/ChatPage.tsx')).toMatch(/sendLabel="Send message"/)
+    expect(read('pages/enter/EntryChatPage.tsx')).toMatch(/sendLabel="Send message"/)
+    expect(read('pages/enter/EntryChatPage.tsx')).not.toContain('↑')
   })
   it('the board counts and the download buttons are named for their target', () => {
     const board = read('pages/board/BoardPage.tsx')

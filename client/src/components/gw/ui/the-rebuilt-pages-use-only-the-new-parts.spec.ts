@@ -378,6 +378,9 @@ describe('a rebuilt page never falls back to the old parts', () => {
       /* Group 3, piece 4: starting a check-in (B1-starting-a-check-in). See the comment on
          REBUILT_PAGES in rebuilt-pages.ts. */
       'pages/home/SaveCard.tsx',
+      /* Group 3, piece 4 (continued, 4d-4): EntryChatPage.tsx itself. See the comment on
+         REBUILT_PAGES in rebuilt-pages.ts. */
+      'pages/enter/EntryChatPage.tsx',
     ])
   })
 
