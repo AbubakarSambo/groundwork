@@ -104,7 +104,24 @@ describe('what success looks like never names a hidden peer', () => {
     expect(definitionText).toContain('Zawadi');
   });
 
-  it('when the lead has explicitly turned peer names ON, a participant reads the real name', async () => {
+  /*
+   * CHANGED 1 OCTOBER, DECISION 17 OVER THE LEAD'S SWITCH. This used to assert that on a PIP with the
+   * switch on, the person reviewed read the colleague's real name. Decision 17 says the person reviewed
+   * is never told a colleague's name, whatever the switch. So the switch is now proved on an ordinary
+   * check-in, and the PIP case proves the name stays hidden from the person reviewed.
+   */
+  it('when the lead has explicitly turned peer names ON on an ordinary check-in, a participant reads the real name', async () => {
+    const entries = [
+      { type: RecordEntryType.SUCCESS_DEFINITION, text: 'Twelve signed supply contracts by December.', participantId: 'p-peer' },
+    ];
+    const service = makeService(makeGround({ scenario: 'OKR_ALIGNMENT', peersVisibleToEachOther: true }), entries);
+    const result: any = await service.whereAgainstSuccess('g1', 'u-subject', 'org-1');
+
+    const definitionText = JSON.stringify(result.definitions);
+    expect(definitionText).toContain('Zawadi');
+  });
+
+  it('on a PIP, the person reviewed is never told the colleague\'s name, even with peer names switched ON (decision 17)', async () => {
     const entries = [
       { type: RecordEntryType.SUCCESS_DEFINITION, text: 'Twelve signed supply contracts by December.', participantId: 'p-peer' },
     ];
@@ -112,7 +129,8 @@ describe('what success looks like never names a hidden peer', () => {
     const result: any = await service.whereAgainstSuccess('g1', 'u-subject', 'org-1');
 
     const definitionText = JSON.stringify(result.definitions);
-    expect(definitionText).toContain('Zawadi');
+    expect(definitionText).not.toContain('Zawadi');
+    expect(definitionText).toContain('A colleague');
   });
 
   it('the ground select this endpoint reads from includes the two fields peersAreNamedOn needs', () => {

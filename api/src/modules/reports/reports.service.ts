@@ -2857,7 +2857,7 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * check-in whose lead is plainly entitled to her name and is shown it on the next tab along.
      * The session report two hundred lines below passes `me?.id` and has always been right.
      */
-    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any, me?.id ?? null));
     const whoOf = (participantId: string | null) => {
       if (!participantId) return null;
       const label = labels.get(participantId) ?? null;
@@ -3048,7 +3048,9 @@ Close the report by framing - neutrally, without recommending one - the choice n
      * a roster calling three colleagues "a teammate" (the word before request 36) - and the rule that fixes it is the one the
      * report body already uses, not a second guess at it.
      */
-    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    /* Whoever runs this check-in - its lead, or an admin with access to it - reads everybody by
+       name, as on the main report (decision 5). Only a participant is held to the peer rule. */
+    const nameByLabel = namesVisibleTo(me?.id ?? null, ground.participants as any, viewerIsLead || this.peersAreNamed(ground as any, me?.id ?? null));
     /*
      * AND SOMEBODY THIS READER CANNOT NAME IS A COLLEAGUE, NEVER "PARTICIPANT B" OR "A TEAMMATE".
      * Request 36: the same plain words, for the same person, as every other surface. A line of the
@@ -5228,7 +5230,7 @@ happened, and what is in the way.`;
     viewerIsLead: boolean,
   ) {
     const sharedAs = (ground.report as any)?.sharedAs ?? null;
-    const named = namesTheyMayRead({ viewerIsLead, sharedAs, peersAreNamed: this.peersAreNamed(ground as any) });
+    const named = namesTheyMayRead({ viewerIsLead, sharedAs, peersAreNamed: this.peersAreNamed(ground as any, viewerParticipantId) });
     /* AND THE MACHINE'S TABLE NEVER LEAVES THE MACHINE, for any reader, lead included. Stripped
        here because this is the door every report read goes through, the board's included. See
        the-table-is-for-the-engine. */
@@ -5251,9 +5253,14 @@ happened, and what is in the way.`;
     })));
   }
 
-  private peersAreNamed(ground: { scenario?: any; peersVisibleToEachOther?: boolean | null }): boolean {
-    /* One copy of the rule, shared with the board, the grounds page and the interview. See peers-are-named. */
-    return peersAreNamedOn(ground);
+  private peersAreNamed(
+    ground: { scenario?: any; peersVisibleToEachOther?: boolean | null; participants?: any[] | null },
+    readerParticipantId: string | null | undefined,
+  ): boolean {
+    /* One copy of the rule, shared with the board, the grounds page and the interview. See
+       peers-are-named. The reader is passed so that decision 17 can tell the person reviewed on an
+       evaluation check-in, who is never named a colleague, from a colleague the lead's switch names. */
+    return peersAreNamedOn(ground as any, { participantId: readerParticipantId ?? null });
   }
 
   /**
@@ -5540,7 +5547,7 @@ happened, and what is in the way.`;
     if (!participant && !runsIt) return null;
 
     const labels = labelsForParties(ground.participants as any);
-    const names = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    const names = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any, participant?.id ?? null));
     const plainNameOf = (id: string): string | null => {
       const label = labels.get(id);
       return (label ? names.get(label) : undefined) ?? label ?? null;
@@ -6296,7 +6303,7 @@ happened, and what is in the way.`;
     const called = whatEachLabelIsCalled(ground.participants ?? [], {
       viewerParticipantId: me?.id ?? null,
       viewerIsLead: isInitiator || isOrgAdmin,
-      peersAreNamed: this.peersAreNamed(ground as any),
+      peersAreNamed: this.peersAreNamed(ground as any, me?.id ?? null),
     });
     /* Labels become names FIRST: the hidden-target read looks for a person's name, and a line still
        saying "Participant B" hid nothing (read live, 28 Sep 2026). */
@@ -6569,7 +6576,7 @@ happened, and what is in the way.`;
      * the coaching surfaces cannot invent a second naming rule of their own.
      */
     const coachLabels = labelsForParties(ground.participants as any);
-    const coachNames = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any));
+    const coachNames = namesVisibleTo(participant?.id ?? null, ground.participants as any, this.peersAreNamed(ground as any, participant?.id ?? null));
     /** Whoever this is, named, with no "you" - for a heading rather than a sentence. */
     const plainNameOf = (participantId: string): string | null => {
       const label = coachLabels.get(participantId);

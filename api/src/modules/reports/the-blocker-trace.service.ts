@@ -124,7 +124,7 @@ export class TheBlockerTraceService {
       me?.id ?? null,
       viewerIsLead,
     ) as Record<string, any>;
-    const called = whatEachLabelIsCalled(g.participants as any, { viewerParticipantId: me?.id ?? null, viewerIsLead, peersAreNamed: peersAreNamedOn(g as any) });
+    const called = whatEachLabelIsCalled(g.participants as any, { viewerParticipantId: me?.id ?? null, viewerIsLead, peersAreNamed: peersAreNamedOn(g as any, { participantId: me?.id ?? null }) });
     const out: Record<string, string> = {};
     for (const k of Object.keys(text)) out[k] = String(withoutInternalLabelsIn(shared?.[k] ?? '', called));
     return out as T;

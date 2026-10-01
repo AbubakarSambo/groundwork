@@ -47,7 +47,10 @@ export function whatEachLabelIsCalled(parties: LabelParty[], reader: WhoIsReadin
       const unnamed = !(label && visible.get(label));
       const looksLikeAWord = /^[a-z]+$/.test(local);
       const worthCatching = looksLikeAWord ? unnamed && local.length >= 4 && !A_ROLE_ADDRESS.test(local) : true;
-      if (local.length >= 3 && worthCatching) out.set(`~${local}`, said);
+      /* An address whose front is a word of what the person is called here ("colleague@...", said
+         "a colleague") is not caught: putting the words in for themselves read "A a colleague". */
+      const aWordOfWhatTheyAreCalled = said.toLowerCase().split(/\s+/).includes(local);
+      if (local.length >= 3 && worthCatching && !aWordOfWhatTheyAreCalled) out.set(`~${local}`, said);
     }
   }
   return out;
