@@ -141,7 +141,7 @@ It says, for example, "Yemi is on leave until Friday 2 October, so this round do
 
 ## Known gaps, fitted in
 
-**Week 24. Ask Groundwork for a guest, within their own check-in (decision 36).** Today a guest is refused. This week scopes every part of the assistant to the guest's own check-in, so they can ask about it and nothing else.
+**Week 24. Ask Groundwork for a guest, within their own check-in (decision 36).** *Built 1 October (`3fe8d5c0`).* Today a guest is refused. This week scopes every part of the assistant to the guest's own check-in, so they can ask about it and nothing else.
 
 **Week 25. The slow report for a larger team.** *Built 1 October (`3f34d2cc`): independent calls run together, readers warmed four at a time, and a plain line while it is being written. To be measured on the next run.* For nine people, the report takes five to six minutes after the last check-in to include everyone. This week makes it faster, or shows the lead plainly that it is still being written.
 
